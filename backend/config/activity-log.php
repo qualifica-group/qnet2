@@ -19,6 +19,7 @@ use App\Models\Project;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
+use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
@@ -136,6 +137,9 @@ return [
         'registries' => [
             'model' => Registry::class,
             'relations' => ['personalData', 'personalData.contacts', 'personalData.addresses'],
+        ],
+        'reward-types' => [
+            'model' => RewardType::class,
         ],
         'roles' => [
             'model' => Role::class,

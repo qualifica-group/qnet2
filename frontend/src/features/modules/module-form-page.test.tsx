@@ -13,10 +13,10 @@ import ModuleFormPage from '@/features/modules/module-form-page'
 
 vi.mock('@/features/modules/module-registry', () => ({
   getModuleRegistryEntry: (domain: string) =>
-    domain === 'projects'
+    domain === 'projects' || domain === 'reward-types'
       ? {
-          domain: 'projects',
-          basePath: '/projects',
+          domain,
+          basePath: `/${domain}`,
           defaultMode: 'page',
           labelKey: 'navigation.projects',
           DetailScreen: ({ id }: { id: number }) => <div>detail-{id}</div>,
@@ -76,5 +76,27 @@ describe('ModuleFormPage', () => {
     renderAt('/projects/5/edit')
 
     expect(screen.getByText('form-edit-5')).toBeInTheDocument()
+  })
+
+  /**
+   * Strings are keyed by the camelCase i18n namespace, while the registry
+   * domain (and the permission) stay kebab-case. Interpolating the raw domain
+   * rendered `reward-types.form.createTitle` verbatim as the page title for
+   * every multi-word module. The pre-existing cases above all use `projects`,
+   * a single-word domain where the two spellings coincide — which is exactly
+   * why the defect survived: it is invisible unless the domain has a dash.
+   */
+  it('renders translated title/subtitle for a kebab-case domain, not the raw key', () => {
+    render(
+      <MemoryRouter initialEntries={['/reward-types/new']}>
+        <Routes>
+          <Route path="/reward-types/new" element={<ModuleFormPage domain="reward-types" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Create reward type' })).toBeInTheDocument()
+    expect(screen.getByText('Add a new voucher, reward or incentive type.')).toBeInTheDocument()
+    expect(screen.queryByText(/reward-types\.form\./)).not.toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ import { REFERENT_TYPES_FOR_SELECT_RESOURCE } from '@/features/referent-types/fo
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
 import { OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE } from '@/features/opportunity-statuses/for-select-api'
+import { REWARD_TYPES_FOR_SELECT_RESOURCE } from '@/features/reward-types/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { CAMPAIGNS_FOR_SELECT_RESOURCE } from '@/features/campaigns/for-select-api'
 import { TAGS_FOR_SELECT_RESOURCE } from '@/features/tags/for-select-api'
@@ -128,6 +129,24 @@ const opportunityStatuses: QuickCreateEntry = {
   }),
 }
 
+const rewardTypes: QuickCreateEntry = {
+  titleKey: 'rewardTypes.form.createTitle',
+  descriptionKey: 'rewardTypes.form.createSubtitle',
+  permission: 'reward-types.create',
+  form: lazy(async () => {
+    const { RewardTypeForm } = await import('@/features/reward-types/reward-type-form')
+    return {
+      default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
+        <RewardTypeForm
+          mode={{ type: 'create' }}
+          onSuccess={(rewardType) => onSuccess({ id: rewardType.id, name: rewardType.name })}
+          onCancel={onCancel}
+        />
+      ),
+    }
+  }),
+}
+
 const registries: QuickCreateEntry = {
   titleKey: 'registries.form.createTitle',
   descriptionKey: 'registries.form.createSubtitle',
@@ -226,6 +245,7 @@ export const moduleEntries: Record<string, QuickCreateEntry> = {
   [BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE]: businessFunctions,
   [PROJECT_STATUSES_FOR_SELECT_RESOURCE]: pipelineStatuses,
   [OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE]: opportunityStatuses,
+  [REWARD_TYPES_FOR_SELECT_RESOURCE]: rewardTypes,
   [REGISTRIES_FOR_SELECT_RESOURCE]: registries,
   [CAMPAIGNS_FOR_SELECT_RESOURCE]: campaigns,
   [TAGS_FOR_SELECT_RESOURCE]: tags,

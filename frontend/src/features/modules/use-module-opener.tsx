@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { moduleI18nNamespace } from '@/features/modules/i18n-namespace'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import { useModuleOpenMode } from '@/features/modules/use-module-open-mode'
 import { OPEN_MODE_MODAL, type ModuleCreateParams } from '@/features/modules/types'
@@ -25,15 +26,6 @@ function buildCreateQueryString(params?: ModuleCreateParams): string {
   }
   const stringValues = Object.entries(params).map(([key, value]) => [key, String(value)])
   return new URLSearchParams(stringValues).toString()
-}
-
-/**
- * Maps a kebab-case module `domain` (e.g. `company-sites`) to its camelCase
- * i18n namespace (`companySites`), which is how every module's strings are
- * keyed in the locale files. Single-word domains pass through unchanged.
- */
-function moduleI18nNamespace(domain: string): string {
-  return domain.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase())
 }
 
 /** Which sheet (if any) is currently open and for which row — same shape every `*-table.tsx` used inline before the rewire. */

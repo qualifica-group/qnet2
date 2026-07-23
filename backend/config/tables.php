@@ -20,6 +20,7 @@ use App\Tables\ReferentsTableDefinition;
 use App\Tables\ReferentTypesTableDefinition;
 use App\Tables\RegistriesTableDefinition;
 use App\Tables\RequestManagementTableDefinition;
+use App\Tables\RewardTypesTableDefinition;
 use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
 use App\Tables\SourcesTableDefinition;
@@ -75,6 +76,7 @@ return [
         'opportunity-statuses' => OpportunityStatusesTableDefinition::class,
         'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
+        'reward-types' => RewardTypesTableDefinition::class,
         'vat-rates' => VatRatesTableDefinition::class,
     ],
 

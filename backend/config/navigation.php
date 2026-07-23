@@ -314,6 +314,17 @@ return [
                     'route' => '/sources',
                     'permission' => 'sources.view',
                 ],
+                [
+                    // Reward types (spec 0058): the "Buoni, Premi e Incentivi"
+                    // configuration pick-list — the type catalogue for the
+                    // future reward-assignment flows (D-1/D-7), not the
+                    // assigned rewards themselves.
+                    'key' => 'reward-types',
+                    'label' => 'navigation.rewardTypes',
+                    'icon' => 'gift',
+                    'route' => '/reward-types',
+                    'permission' => 'reward-types.view',
+                ],
             ],
         ],
 

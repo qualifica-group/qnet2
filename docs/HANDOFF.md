@@ -2,6 +2,102 @@
 
 > Injected at session start. Update at every green state.
 
+## MODULO REWARD-TYPES "BUONI, PREMI E INCENTIVI" (2026-07-23) — GREEN, NON COMMITTATO
+
+Spec CONGELATA E APPROVATA: `docs/specs/0058-reward-types-module.xml`. Anagrafica configurativa pura
+con DUE soli campi: `name` (string 191, unique, NOT NULL) e `color` (string 32, NOT NULL, token di
+palette). Decisioni utente (AskUserQuestion 2026-07-23): naming `reward-types`; colore = token della
+palette esistente, NON hex; name univoco; `defaultMode: modal`.
+
+CONTESTO CHE NON SI DEDUCE DAL CODICE: il template clonato e' `opportunity-statuses` (spec 0043),
+NON `lead-statuses` — quest'ultimo e' stato RIMOSSO dal repo, ne restano solo le due migration.
+Il nome `rewards`/`Reward` e' stato lasciato DELIBERATAMENTE LIBERO per i premi effettivamente
+assegnati dei flussi futuri (assegnazione, beneficiario, valore, approvazione, emissione, consegna,
+scadenza, utilizzo): tutti fuori scope dichiarato in questa versione. Il modulo omette l'intero
+strato status-di-sistema del template (`system_key`, `group`, `sort_order`, reorder, StatusOrderManager,
+SystemStatusGuard) perche' non ha righe di sistema ne' progressione da ordinare.
+
+DIVERGENZE DELIBERATE DAL TEMPLATE (dichiarate in spec, non improvvisate): `color` OBBLIGATORIO
+(D-5) mentre in opportunity-statuses e' nullable -> di conseguenza NIENTE flag `colorSubmitted` nel
+DTO di update e NIENTE mapping `'' -> null` nel payload FE (il colore non e' azzerabile); `updated_at`
+INCLUSO nel Resource (il template ha solo created_at); ForSelectResource senza blocco `meta`;
+`RewardTypeService::delete()` SENZA delete-guard (BR-3: nessuna entita' referenzia ancora
+reward_types) — il ramo 409 e' comunque gia' cablato nei toast del FE, cosi' quando arrivera' la
+prima FK bastera' aggiungere l'`abort(409)` nel service.
+
+DUE TRAPPOLE TROVATE ED ELIMINATE — NON REINTRODURLE:
+1. `config/activity-log.php` referenziava `RewardType::class` SENZA `use App\Models\RewardType;`.
+   I file di config non hanno namespace, quindi la costante risolveva alla stringa `'RewardType'`
+   invece di `'App\Models\RewardType'`: l'activity log del dominio falliva IN SILENZIO, con `php -l`
+   verde e nessun errore a caricamento. Causa: un `pint --dirty` lanciato da un altro teammate ha
+   applicato `no_unused_imports` sul file in uno stato intermedio. Verificare sempre il percorso
+   reale (`ActivityLogRegistry::resolve()`), non il solo `php -l`.
+2. Registrare una nuova risorsa in `config/authorization.php` ROMPE
+   `tests/Feature/Authorization/FieldCatalogueEndpointTest.php`, che asserisce l'elenco canonico
+   delle resource-key con `toEqualCanonicalizing()`. Va aggiunta la chiave all'array atteso: e' un
+   aggiornamento legittimo (il registry cresce per progetto, il file lo documenta), non tampering.
+   OGNI modulo futuro che si registra li' dovra' fare lo stesso.
+
+EMENDAMENTO ALLA SPEC IN CORSO D'OPERA (AC-013b): la formulazione originale di AC-013 ("una field
+permission ristretta su `color` -> 422") era INSODDISFACIBILE. `AbstractResourceAuthorization::fieldPermissions()`
+e' `final` e per invariante di spec 0008 (righe 80-88) OGNI campo `mandatory` bypassa la matrice DB
+dei permessi di campo. D-5 rende `color` mandatory, quindi eredita il bypass gia' documentato per
+`name`. Risolto emendando il criterio e testando il comportamento REALE su entrambi i campi mandatory,
+NON rendendo `fieldPermissions()` non-final ne' con un caso speciale: avrebbe rotto un invariante
+valido su tutta l'app.
+
+TOUCHPOINT DI REGISTRAZIONE (checklist riusabile per il prossimo modulo). Backend, 7 file esistenti:
+`routes/api/lookups.php` (for-select PRIMA del wildcard) · `config/tables.php` (sblocca tabella SSRM
++ ricerca/filtri/sort/paginazione + export + bulk-delete, gratis) · `config/authorization.php` (+ il
+test sopra) · `config/activity-log.php` · `config/navigation.php` · `AppServiceProvider` morph map ·
+`DemoDataSeeder`. I permessi NON richiedono migrazione ne' seeder: `permissions:sync` li deriva dalla
+sola Policy. Frontend: il registro moduli e' GLOB-DRIVEN (`module-registry.ts` fa
+`import.meta.glob('../*/*-screens.tsx')`), quindi esportare `moduleScreen` basta e nessun file di
+registro va editato a mano; restano da toccare router, breadcrumbs, pages, i18n (it/en + spread +
+`navigation.*`), `icon-map.ts`, quick-create `module-entries.tsx`.
+
+VERIFICATO ESEGUENDO (verifier indipendente, due giri, non per ispezione): AC-001..AC-026 tutti PASS.
+Pest modulo 55/55 (213 assertion); Pest suite INTERA 3679 test, 12 failed TUTTI PRE-ESISTENTI e
+isolati con `git stash` (AbstractMigrationSourcePreviewTest, 9x *SecurityTest::navigation,
+CustomFieldWritePipelineTest sul VAT number del commit d3187ac) — zero regressioni nostre. Vitest
+modulo 40/40 su 6 file; Vitest suite INTERA 2262 test, 3 rossi PRE-ESISTENTI in
+`cell-renderers.test.tsx` (mismatch aria-label en/it). Pint `--test` pulito, `tsc --noEmit` pulito,
+ESLint sul modulo pulito (i 2 error + 3 warning residui sono in file mai toccati).
+
+TRE COSE APERTE, DA VALUTARE QUANDO SERVIRA':
+1. Nessuna sorgente di verita' PHP dei 14 token di colore (esiste solo una costante privata in
+   `OpportunityStatusFactory`): la validazione backend del colore resta `max:32` senza allow-list,
+   come in tutti gli altri moduli. Hardening cross-modulo, deliberatamente non fatto qui.
+2. L'entry quick-create di reward-types esiste ma diventera' raggiungibile dall'UI solo quando un
+   modulo futuro esporra' una relation select verso `reward-types`. Oggi nessuno lo fa.
+3. Non verificati: resa visiva reale a 375/768/1024px ed E2E su browser (solo Vitest/RTL).
+
+## FIX PREFISSO i18n DELLA PAGINA MODULO (2026-07-23) — GREEN, NON COMMITTATO
+
+Difetto SISTEMICO PREESISTENTE, chiuso su richiesta esplicita dell'utente dopo la consegna di 0058.
+`module-form-page.tsx` interpolava il `domain` KEBAB-CASE nelle chiavi i18n (`t('reward-types.form.createTitle')`)
+mentre le stringhe sono keyed sul namespace CAMELCASE (`rewardTypes`): in modalita' PAGINA titolo,
+sottotitolo e messaggio di forbidden mostravano la CHIAVE GREZZA. Colpiva tutti i moduli multi-parola —
+`request-management` in modo particolarmente visibile, avendo `defaultMode: page`.
+
+PERCHE' E' SOPRAVVISSUTO COSI' A LUNGO, e la lezione da non perdere: l'unico test della pagina
+(`module-form-page.test.tsx`) usava SOLO il dominio `projects`. Su un dominio a parola singola le due
+grafie COINCIDONO, quindi il bug e' invisibile. Ogni test di codice che trasforma kebab -> camel deve
+usare un dominio CON IL TRATTINO, altrimenti non prova nulla.
+
+FIX: estratto `moduleI18nNamespace()` da `use-module-opener.tsx` (dov'era privato e CORRETTO) nel
+nuovo modulo condiviso `frontend/src/features/modules/i18n-namespace.ts`, ora importato da entrambe le
+chrome (sheet e pagina). Nessuna duplicazione: la funzione esisteva gia' e funzionava, era la pagina a
+non usarla. ATTENZIONE: il gate `<Can permission={...}>` continua e DEVE continuare a usare il
+`domain` kebab-case — i permessi sono davvero kebab (`reward-types.create`). Namespace e permesso non
+sono la stessa stringa e non vanno unificati.
+
+VERIFICATO ESEGUENDO: il nuovo test di regressione (dominio `reward-types`, asserisce titolo e
+sottotitolo TRADOTTI e l'assenza di qualsiasi `reward-types.form.`) e' stato fatto fallire di
+proposito rimettendo il bug, poi ripassa col fix — non e' un test che passa a vuoto. Vitest suite
+INTERA: 2263 test, 3 rossi PRE-ESISTENTI in `cell-renderers.test.tsx` (mismatch aria-label en/it),
++1 test rispetto a prima. `tsc --noEmit` ed ESLint puliti.
+
 ## FORM DI CREAZIONE GESTIONE RICHIESTE + NOME OPPORTUNITA' DERIVATO (2026-07-23) — GREEN, NON COMMITTATO
 
 Spec CONGELATA E APPROVATA: `docs/specs/0057-request-management-create-form.xml`. Decisioni utente

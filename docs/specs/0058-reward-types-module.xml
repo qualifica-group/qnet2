@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0058-reward-types-module" status="draft" owner="nicola" date="2026-07-23">
+
+  <goal>
+    Introdurre il modulo anagrafico/configurativo `reward-types` ("Buoni, Premi e Incentivi"):
+    tabella di supporto che descrive le TIPOLOGIE di buono/premio/incentivo utilizzabili nel CRM.
+    Due soli campi: `name` (testuale, obbligatorio, univoco) e `color` (token di palette,
+    obbligatorio). Il modulo replica integralmente i flussi standard del CRM (elenco SSRM, create,
+    edit, show, delete guardata da conferma, permessi, activity log, ricerca, filtri, ordinamento,
+    paginazione, apertura modale/pagina secondo le preferenze utente, quick-create, i18n),
+    predisposto per i flussi di assegnazione futuri ma senza implementarne alcuno.
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono VERIFICATI sul codice reale (ricognizione 2026-07-23), non ipotizzati. -->
+
+    <precedent>
+      Il modulo `opportunity-statuses` (spec 0043) e' il template di riferimento: e' l'anagrafica
+      piu' recente e completa con campo COLORE e SENZA custom fields. Il nuovo modulo lo clona
+      OMETTENDO tutto lo strato "status di sistema" (`system_key`, `group`, `sort_order`,
+      `SystemStatusGuard`, `StatusOrderManager`, endpoint `reorder`, `status-reorder`): non esistono
+      righe di sistema e non esiste una progressione da ordinare. Il risultato e' un ibrido fra
+      `Tag` (anagrafica pura) e `OpportunityStatus` (colore).
+      NON usare `lead-statuses` come modello: e' stato RIMOSSO dal repo (restano solo le migration
+      `2026_07_14_160000_create_lead_statuses_table.php` e `2026_07_20_000000_drop_lead_statuses_from_leads.php`).
+      File da leggere PRIMA di scrivere:
+      backend/app/Models/OpportunityStatus.php, app/Services/OpportunityStatusService.php,
+      app/Tables/OpportunityStatusesTableDefinition.php,
+      app/Tables/OpportunityStatuses/{OpportunityStatusColumnCatalog,OpportunityStatusAdvancedFilterCatalog}.php,
+      app/Authorization/OpportunityStatusesAuthorization.php, app/Policies/OpportunityStatusPolicy.php,
+      app/Http/{Controllers/OpportunityStatuses,Requests/OpportunityStatuses,Resources/OpportunityStatusResource.php},
+      app/DataObjects/OpportunityStatuses/*, backend/routes/api/lookups.php,
+      frontend/src/features/opportunity-statuses/* (18 file),
+      frontend/src/pages/opportunity-statuses-page.tsx.
+    </precedent>
+
+    <naming>
+      Tabella `reward_types` · Model `RewardType` · domain / route segment / resource key
+      `reward-types` · permessi `reward-types.{viewAny,view,create,update,delete,export,import,viewActivity}`
+      · namespace i18n FE `rewardTypes` · morph map key `reward_type` · chiave di navigazione
+      `reward-types` con label i18n `navigation.rewardTypes` = "Buoni, Premi e Incentivi" (IT) /
+      "Vouchers, Rewards and Incentives" (EN).
+      Il nome `rewards` / `Reward` resta DELIBERATAMENTE LIBERO per i premi effettivamente assegnati
+      dei flussi futuri (vedi scope/out): questo modulo e' la sola tipologia (D-1).
+    </naming>
+
+    <color_is_a_token>
+      Nel progetto il colore NON e' un hex: e' un token della palette condivisa. Sorgente di verita'
+      frontend: `frontend/src/features/custom-fields/badge-color-tokens.ts` (`BADGE_COLOR_TOKENS`,
+      14 token: slate, gray, red, orange, amber, yellow, green, emerald, teal, blue, indigo, violet,
+      purple, pink) + `swatchClassFor(token)`. Picker riusabile gia' esistente:
+      `frontend/src/features/custom-fields/components/color-token-picker.tsx` (`<ColorTokenPicker
+      value onChange disabled className />`, popover Radix con griglia di pallini, trigger che mostra
+      swatch + nome localizzato = l'anteprima richiesta dal brief). Cella tabella gia' esistente:
+      `ColorSwatchCell` in `frontend/src/features/table/rich-cells.tsx`. Backend: colonna
+      `string('color', 32)`, `FieldDefinition('color', 'color')` nell'Authorization.
+      Le classi Tailwind dei token sono scritte per esteso (mai template string) per lo scanner.
+    </color_is_a_token>
+
+    <permissions_are_derived>
+      I permessi CRUD non si scrivono a mano e NON richiedono migrazione ne' seeder dedicato:
+      `SyncPermissions` (backend/app/Console/Commands/SyncPermissions.php, `php artisan permissions:sync`)
+      fa glob su app/Policies/*.php, per ogni sottoclasse di `BasePolicy` legge `permissions()` e fa
+      `Permission::firstOrCreate`; unisce i permessi dichiarati in config/navigation.php via
+      `NavigationService::permissions()`. `BasePolicy::abilities()` = viewAny, view, create, update,
+      delete, export, import, viewActivity (8). Creare `RewardTypePolicy extends BasePolicy` con
+      `resource(): 'reward-types'` e' sufficiente: la registrazione della Policy e' auto-discovery
+      Laravel per convenzione `App\Models\X` -> `App\Policies\XPolicy` (nessun `Gate::policy()`).
+      I FIELD PERMISSIONS sono un'altra cosa: si dichiarano in `RewardTypesAuthorization`
+      (`fields()` + `fieldPermissionCeiling()`) e si registrano in config/authorization.php.
+    </permissions_are_derived>
+
+    <export_is_free>
+      La sola riga in config/tables.php sblocca insieme: tabella SSRM (columns/rows), ricerca,
+      filtri, ordinamento, paginazione, row-actions, bulk-delete ED export (config/exports.php:
+      ogni TableDefinition registrata ottiene l'export gratis). Non va scritto codice di export.
+      L'IMPORT invece richiederebbe una definition dedicata in config/imports.php: FUORI SCOPE.
+    </export_is_free>
+
+    <module_registry_is_glob_driven>
+      Il registro moduli frontend e' AUTOMATICO: `frontend/src/features/modules/module-registry.ts`
+      fa `import.meta.glob('../*/*-screens.tsx', { eager: true })` e raccoglie l'export `moduleScreen`.
+      Esportare `moduleScreen` da `features/reward-types/reward-type-screens.tsx` genera GRATIS:
+      le rotte `new` / `:id` / `:id/edit` / `:id/duplicate` (`buildModuleRoutes()`), la voce nelle
+      preferenze modale/pagina (`module-open-mode-field.tsx` itera `MODULE_REGISTRY`) e lo sheet
+      modale (`useModuleOpener`). NON si edita a mano nessun file di registro.
+      La risoluzione modale-vs-pagina passa da `use-module-open-mode.ts`, che legge
+      `user.module_open_preferences` dalla query `['auth','me']` con fallback su `entry.defaultMode`.
+      I titoli dello sheet usano `moduleI18nNamespace(domain)` = kebab -> camelCase: le chiavi
+      DEVONO stare sotto `rewardTypes.*`.
+    </module_registry_is_glob_driven>
+
+    <confirm_is_generic>
+      La conferma prima della delete NON si implementa nel modulo: e' generica. La row-action arriva
+      dal backend con il flag `confirm`; `frontend/src/features/table/row-actions.tsx` chiama
+      `useConfirm()` (`components/confirm-dialog-context.ts` + `components/confirm-dialog.tsx`,
+      AlertDialog shadcn con `tone: 'destructive'`). Il modulo implementa solo la mutation e i toast
+      di esito, incluso il ramo 403 e il ramo 409.
+    </confirm_is_generic>
+
+    <list_refresh_is_imperative>
+      La lista NON ha query key: e' AG Grid SSRM. L'aggiornamento dopo create/update/delete avviene
+      con l'handle imperativo `tableRef.current?.refresh()`, passato come `onSaved` a
+      `useModuleOpener` e chiamato dopo la delete. Il DETTAGLIO invece usa
+      `useEntityDetail(['reward-types','detail',id], ...)` con `staleTime: 0`, con
+      `setQueryData` dopo l'update e `invalidateQueries` nello screen.
+    </list_refresh_is_imperative>
+
+    <known_defect_not_ours>
+      `frontend/src/features/modules/module-form-page.tsx` costruisce il prefisso i18n dal dominio
+      kebab-case (`reward-types.form.createTitle`) mentre le chiavi sono in camelCase (`rewardTypes`):
+      in modalita' PAGINA il titolo mostra la chiave grezza. Difetto SISTEMICO PREESISTENTE (colpisce
+      request-management, business-functions, company-sites). Con `defaultMode: modal` (D-4) non si
+      manifesta col default. Si SEGNALA, NON si corregge qui: vedi scope/out.
+    </known_defect_not_ours>
+  </context>
+
+  <decisions>
+    <!-- Decisioni prese dall'utente in fase di pianificazione (AskUserQuestion 2026-07-23).
+         Non rinegoziabili senza emendamento della spec. -->
+    <decision id="D-1">
+      Naming tecnico in inglese: domain `reward-types`, tabella `reward_types`, model `RewardType`.
+      L'etichetta utente "Buoni, Premi e Incentivi" vive SOLO in i18n. Motivazione: il modulo e' la
+      CONFIGURAZIONE delle tipologie, non i premi assegnati; il nome `rewards` resta libero per i
+      flussi successivi.
+    </decision>
+    <decision id="D-2">
+      Il colore e' un TOKEN della palette esistente (context/color_is_a_token), non un hex. Si riusa
+      `<ColorTokenPicker>` e `ColorSwatchCell`. NESSUN nuovo componente di colore, nessun percorso di
+      rendering parallelo a quello dei badge esistenti.
+    </decision>
+    <decision id="D-3">
+      `name` e' UNIVOCO: `unique` a livello DB + `Rule::unique` in validazione, con
+      `->ignore($rewardType->id)` in update. Violazione => 422 sul campo `name`, mai 500.
+    </decision>
+    <decision id="D-4">
+      `defaultMode: OPEN_MODE_MODAL` nel `moduleScreen`. Le rotte pagina esistono comunque e
+      l'utente puo' sovrascrivere la modalita' da Impostazioni > preferenze di apertura.
+    </decision>
+    <decision id="D-5">
+      Il colore e' OBBLIGATORIO (brief): colonna NOT NULL, `required` in Store, `sometimes|required`
+      in Update, `mandatory: true` nel `FieldDefinition`. Questa e' l'UNICA divergenza deliberata dal
+      template `opportunity-statuses`, dove `color` e' nullable. Conseguenze da NON dimenticare:
+      (a) l'`UpdateRewardTypeData` NON ha bisogno del flag `colorSubmitted` di
+      `UpdateOpportunityStatusData` (il colore non si puo' azzerare); (b) il bottone "X" di reset del
+      `ColorTokenPicker` porta il valore a `''`, che lo schema Zod deve rifiutare come required;
+      (c) `ColorSwatchCell` non incontrera' mai il ramo `<EmptyCell>`.
+    </decision>
+    <decision id="D-6">
+      Nessuna allow-list dei token lato backend: la validazione resta `required|string|max:32`, come
+      in `StoreOpportunityStatusRequest`. Motivazione: NON esiste oggi una sorgente di verita' PHP
+      dei 14 token (esiste solo la costante privata `COLOR_TOKENS` in `OpportunityStatusFactory`);
+      introdurre un enum condiviso sarebbe un refactor cross-modulo fuori scope. Si SEGNALA come
+      possibile hardening futuro.
+    </decision>
+    <decision id="D-7">
+      Si includono l'endpoint `for-select` e l'entry nel registro quick-create, benche' oggi NESSUN
+      campo relazione punti a `reward-types`. Motivazione: sono la superficie standard del modulo e
+      il brief chiede esplicitamente il "pulsante di creazione rapida, dove previsto" e una base
+      estendibile. Va dichiarato nell'handoff che l'entry diventa raggiungibile dall'UI solo quando
+      un modulo futuro esporra' una relation select verso `reward-types`.
+    </decision>
+  </decisions>
+
+  <business_rules>
+    <rule id="BR-1" name="unique-name">
+      `name` univoco a livello DB (`unique`) e di validazione (D-3). In update l'unique ignora la
+      riga stessa, quindi salvare senza modificare il nome deve dare 200, non 422.
+    </rule>
+    <rule id="BR-2" name="mandatory-color">
+      `color` NOT NULL a livello schema e `required` in validazione (D-5). Un POST/PATCH con
+      `color: null` o `color: ''` risponde 422, non 500 e non silenziosamente accettato.
+    </rule>
+    <rule id="BR-3" name="no-delete-guard-yet">
+      In questa versione NESSUNA entita' referenzia `reward_types`, quindi NON esiste delete-guard:
+      `RewardTypeService::delete()` cancella e basta (204). Il metodo va scritto come punto di
+      innesto pulito: quando arrivera' la prima FK, il guard `abort(409, ...)` si aggiunge li',
+      esattamente come `OpportunityStatusService::delete()`. Il frontend gestisce comunque il ramo
+      409 nel toast di delete (costo zero, evita di dover tornare sul componente domani).
+    </rule>
+    <rule id="BR-4" name="select-order">
+      `RewardTypeService::forSelect()` ordina per `name` asc (non esiste `sort_order`: D-1/precedent).
+      Idratazione degli id gia' selezionati via `appendHydratedIds()`, come nel template.
+    </rule>
+    <rule id="BR-5" name="activity-log">
+      `RewardType` usa il concern `LogsModelActivity` (`logFillable()->logOnlyDirty()->useLogName($this->getTable())`).
+      Perche' `GET /api/activity-log/reward-types/{id}` risponda servono DUE registrazioni, entrambe
+      obbligatorie: `config/activity-log.php` (`'reward-types' => ['model' => RewardType::class]`) e la
+      MORPH MAP in `AppServiceProvider` (`'reward_type' => RewardType::class`), senza la quale
+      `activity_log.subject_type` resta il FQCN e la lookup fallisce.
+    </rule>
+  </business_rules>
+
+  <scope>
+    <in>
+      <item>Backend, file NUOVI: migration `create_reward_types_table`, Model `RewardType`, Policy `RewardTypePolicy`, Service `RewardTypeService`, DTO `Create/UpdateRewardTypeData`, FormRequest `Store/UpdateRewardTypeRequest` + `RewardTypeForSelectRequest`, Controller `RewardTypeController` + `RewardTypeForSelectController`, Resource `RewardTypeResource` + `RewardTypeForSelectResource`, `RewardTypesTableDefinition`, `RewardTypes/RewardTypeColumnCatalog` + `RewardTypeAdvancedFilterCatalog`, `RewardTypesAuthorization`, `RewardTypeFactory`, `DemoRewardTypeSeeder`.</item>
+      <item>Backend, file ESISTENTI da modificare (7 touchpoint, nessuno omettibile): routes/api/lookups.php · config/tables.php · config/authorization.php · config/activity-log.php · config/navigation.php (nodo nel gruppo `configuration`, accanto a tags/sources) · app/Providers/AppServiceProvider.php (morph map) · database/seeders/DemoDataSeeder.php.</item>
+      <item>Frontend, feature NUOVA `features/reward-types/` (clone di opportunity-statuses SENZA group/sort_order/reorder): api.ts, types.ts, reward-type-schema.ts, reward-type-form-payload.ts, use-reward-type-form.ts, use-reward-type-form-meta.ts, reward-type-form.tsx, reward-type-form-body.tsx, reward-type-detail.tsx, column-renderers.tsx, reward-types-table.tsx, reward-type-screens.tsx (export `moduleScreen`), for-select-api.ts.</item>
+      <item>Frontend, file ESISTENTI da modificare: pages/reward-types-page.tsx (nuovo) · routes/router.tsx (lazy import + rotta lista) · routes/breadcrumbs.tsx · i18n locales it-reward-types.ts + en-reward-types.ts (nuovi) e it.ts / en.ts (import + spread + `navigation.rewardTypes`) · features/navigation/icon-map.ts (icona lucide `Gift` mappata su `gift`) · features/quick-create/quick-create-entries/module-entries.tsx (D-7).</item>
+      <item>Test Pest: `tests/Feature/RewardTypes/` — Crud, ForSelect, Meta, Table, Security, ActivityLog.</item>
+      <item>Test Vitest: schema, payload, form, table nella feature dir.</item>
+    </in>
+    <out>
+      <item>Assegnazione del premio, collegamento con segnalatori o altri beneficiari, valore economico, approvazione, accettazione/rifiuto, emissione, consegna, scadenza, utilizzo del buono. Nessuna tabella, colonna, FK, endpoint o campo per questi flussi.</item>
+      <item>Qualsiasi FK da altri moduli verso `reward_types`: nessun modulo esistente viene toccato per referenziare le tipologie (di conseguenza nessun delete-guard, BR-3).</item>
+      <item>IMPORT del modulo (config/imports.php + ImportDefinition): fuori scope, come per sources/opportunity-statuses. L'EXPORT invece e' incluso perche' gratuito (context/export_is_free).</item>
+      <item>Custom fields universali (spec 0021): come opportunity-statuses, il modulo NON e' custom-fieldable. Nessuna registrazione in `CustomFieldEntityRegistry`.</item>
+      <item>`sort_order`, righe di sistema (`system_key`), `group`, endpoint `reorder`, drag&amp;drop `status-reorder`: non pertinenti a un'anagrafica pura.</item>
+      <item>Fix del difetto i18n di `module-form-page.tsx` (context/known_defect_not_ours): si SEGNALA, non si tocca.</item>
+      <item>Enum PHP condiviso dei token di colore / allow-list backend (D-6): segnalato come hardening futuro, non implementato.</item>
+      <item>Nuove dipendenze npm/composer: nessuna. Nessun nuovo componente in `components/ui/`.</item>
+      <item>Modifiche ai moduli esistenti (opportunity-statuses, pipeline-statuses, tags, sources) oltre alle righe di registrazione elencate in scope/in.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto (BaseApiController): { success, message, data }; okWithPermissions()
+         aggiunge il blocco `permissions`. Congelato: backend implementa, frontend consuma. -->
+
+    <entity name="RewardType">
+      id: int · name: string(191, unique, NOT NULL) · color: string(32, NOT NULL, token palette) ·
+      created_at: ISO8601 · updated_at: ISO8601
+    </entity>
+
+    <endpoint method="GET" path="/api/reward-types/for-select">
+      <request>search?: string · offset?: int · limit?: int (max 100) · ids?: int[]</request>
+      <response status="200">
+        paginatedResponse(): { items: [{ id: int, label: string }], export_link: string|null,
+        pagination: { total, offset, limit, total_pages } }. `label` = name. Ordinamento: name asc (BR-4).
+      </response>
+      <errors>401 non autenticato · 403 senza `reward-types.viewAny` · 422 se limit &gt; 100</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/reward-types/{rewardType}">
+      <response status="200">
+        { success: true, message: 'OK', data: { id, name, color, created_at, updated_at },
+          permissions: { fields: {...}, actions: {...}, resource: {...} } }
+      </response>
+      <errors>403 senza `reward-types.view` · 404 id inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/reward-types">
+      <request>{ name: string (required, max 191, unique), color: string (required, max 32) }</request>
+      <response status="201">{ success: true, message: 'Created', data: { id, name, color, created_at, updated_at }, permissions }</response>
+      <errors>403 senza `reward-types.create` · 422 name mancante / duplicato (BR-1) / color mancante o null (BR-2) / max superata</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/reward-types/{rewardType}">
+      <request>
+        Campi `sometimes`: { name?: string, color?: string }. Entrambi `sometimes|required`: se
+        inviati NON possono essere vuoti o null (BR-2, D-5). PATCH parziale: un campo assente resta
+        invariato. Il DTO di update espone `submittedAttributes()` (solo i campi inviati) — NON serve
+        il flag `colorSubmitted` del template (D-5a).
+      </request>
+      <response status="200">{ success: true, message: 'OK', data: { id, name, color, created_at, updated_at }, permissions }</response>
+      <errors>403 senza `reward-types.update` · 404 · 422 (unique ignora se stesso, BR-1; color null/vuoto, BR-2)</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/reward-types/{rewardType}">
+      <response status="204">nessun body</response>
+      <errors>403 senza `reward-types.delete` · 404. NESSUN 409 in questa versione (BR-3).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/reward-types">
+      <response status="200">
+        Catalogo campi FROZEN, in quest'ordine: `name` (type 'text', mandatory: true) · `color`
+        (type 'color', mandatory: true). `permissions.fields` con visibleEditable/visibleReadonly
+        secondo `fieldPermissionCeiling()`. `permissions.actions` = delete, export, import, view_activity.
+      </response>
+      <errors>403 senza i permessi della risorsa</errors>
+    </endpoint>
+
+    <endpoint method="GENERIC" path="framework tabellare, domain `reward-types`">
+      <request>Nessun endpoint nuovo: la sola riga in config/tables.php abilita
+      /api/tables/reward-types/{columns,rows,export,bulk-delete} con ricerca, filtri, sort e
+      paginazione SSRM.</request>
+      <response status="200">
+        Colonne (RewardTypeColumnCatalog), nell'ordine: id (number) · name (text, visible, sortable,
+        filterable, searchable) · color (text, visible, NON sortable, NON filterable) · created_at
+        (date, sortable, filterable) · updated_at (date, sortable, filterable).
+        NOTA (emendamento 2026-07-23): i flag di created_at/updated_at erano inizialmente sottospecificati
+        e furono letti come "non filterable". Si allineano al template `opportunity-statuses`, dove il
+        filtro di colonna sulle date CONVIVE con l'advanced filter DateRange (non e' un'alternativa):
+        toglierlo renderebbe il modulo incoerente con gli altri a parita' di colonna.
+        defaultSort = [{ columnId: 'name', direction: 'asc' }]. defaultPagination = { limit: 25 }.
+        Advanced filters: name (Text), created_at (DateRange), updated_at (DateRange); `color`
+        volutamente ESCLUSO (come nel template).
+        Row actions filtrate via Gate: view (`reward-types.view`) · edit (`reward-types.update`) ·
+        delete (`reward-types.delete`, con flag `confirm`) · viewActivity (`reward-types.viewActivity`).
+        mapRow() ritorna la stessa shape del Resource.
+      </response>
+      <errors>403 senza `reward-types.viewAny` (fail-safe di AbstractTableDefinition::authorizeViewAny, NON overridden)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/activity-log/reward-types/{id}">
+      <response status="200">Envelope standard dell'activity log aggregato (spec 0034), alimentato da
+      LogsModelActivity + config/activity-log.php + morph map `reward_type` (BR-5).</response>
+      <errors>403 senza `reward-types.viewActivity`</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Ogni AC mappa 1:1 su un test eseguibile. Il verifier li esegue uno per uno. -->
+
+    <criterion id="AC-001">Dato un utente con `reward-types.create`, quando POSTa { name: 'Buono Amazon', color: 'green' }, allora 201, la riga esiste in `reward_types` con quei valori e la response espone { id, name, color, created_at, updated_at } + il blocco `permissions`.</criterion>
+    <criterion id="AC-002">Dato un `reward_type` di nome 'Buono Amazon', quando si POSTa un altro record con lo stesso name, allora 422 sul campo `name` (BR-1) — non 500, non 201.</criterion>
+    <criterion id="AC-003">Dato un `reward_type` esistente, quando lo si PATCHa con il PROPRIO name invariato, allora 200 (l'unique ignora se stesso, BR-1).</criterion>
+    <criterion id="AC-004">POST senza `color`, con `color: null` e con `color: ''` rispondono tutti e tre 422 sul campo `color`; lo stesso vale per PATCH che invia esplicitamente `color: null` (BR-2, D-5).</criterion>
+    <criterion id="AC-005">PATCH con il solo `{ name }` aggiorna il nome e lascia `color` invariato (merge parziale, nessun azzeramento implicito).</criterion>
+    <criterion id="AC-006">Dato un utente con `reward-types.delete`, quando fa DELETE, allora 204 e la riga sparisce dal DB.</criterion>
+    <criterion id="AC-007">Dato un utente SENZA i permessi, allora ciascuno di GET show / POST / PATCH / DELETE / for-select / GET tables columns / export risponde 403 (un'asserzione per ability). Il 403 ha precedenza sul 422 (payload invalido + permesso mancante = 403).</criterion>
+    <criterion id="AC-008">Dopo `php artisan permissions:sync` esistono gli 8 permessi `reward-types.{viewAny,view,create,update,delete,export,import,viewActivity}` — verificato eseguendo il comando, non per ispezione del codice.</criterion>
+    <criterion id="AC-009">GET /api/reward-types/for-select restituisce items { id, label } ordinati per name asc, rispetta `search`, idrata gli `ids` richiesti anche se fuori pagina (BR-4) e risponde 422 con limit &gt; 100.</criterion>
+    <criterion id="AC-010">GET /api/tables/reward-types/columns espone le 5 colonne del catalogo nell'ordine dichiarato con i flag sortable/filterable congelati nel contratto; GET rows applica ricerca su `name`, filtro su `name`, ordinamento asc/desc su `name` e su `created_at`, e la paginazione (limit 25 di default) restituisce il `total` corretto.</criterion>
+    <criterion id="AC-011">Le row-action tornate da /rows contengono view/edit/delete/viewActivity solo per chi ha il permesso corrispondente, e l'azione `delete` porta il flag `confirm`.</criterion>
+    <criterion id="AC-012">L'export del dominio `reward-types` produce un file senza alcun codice di export dedicato (registrazione in config/tables.php), e risponde 403 senza `reward-types.export`.</criterion>
+    <criterion id="AC-013">GET /api/meta/reward-types espone il catalogo campi frozen [name (mandatory), color (mandatory)] in quest'ordine, con `permissions.fields` e `permissions.actions` coerenti.</criterion>
+    <criterion id="AC-013b">EMENDATO 2026-07-23 — la formulazione originale ("un ruolo con field permission ristretta su `color` riceve 422") era INSODDISFACIBILE e va sostituita, non aggirata. Motivo: `AbstractResourceAuthorization::fieldPermissions()` e' `final` e, per invariante deliberata di spec 0008 (righe 80-88: "Mandatory fields are vital to creating the resource: the DB matrix may never narrow them"), OGNI campo `mandatory` bypassa la matrice DB dei permessi di campo. D-5 rende `color` mandatory, quindi `color` eredita lo stesso bypass gia' documentato per `name` negli altri moduli. Il criterio diventa dunque: data una riga restrittiva in `role_field_permissions` su `color`, la scrittura del colore RIESCE (200) perche' il campo e' mandatory — comportamento voluto e testato esplicitamente, non un buco di sicurezza scoperto per caso. NON si aggira rendendo `fieldPermissions()` non-final ne' con un caso speciale in `RewardTypesAuthorization`: romperebbe un invariante valido su tutta l'app.</criterion>
+    <criterion id="AC-014">Creando e poi aggiornando un `reward_type`, GET /api/activity-log/reward-types/{id} restituisce gli eventi `created` e `updated` con i campi cambiati (BR-5): prova che LogsModelActivity, config/activity-log.php e la morph map `reward_type` sono tutti e tre a posto.</criterion>
+    <criterion id="AC-015">Il nodo di navigazione `reward-types` compare in GET /navigation solo per chi ha `reward-types.view` ed e' assente per chi non ce l'ha.</criterion>
+    <criterion id="AC-016">(FE) Il form di creazione mostra il campo Nome (required) e il ColorTokenPicker; il submit con nome vuoto o colore non selezionato mostra l'errore di validazione inline e NON chiama l'API. Un 422 dal server viene mappato sul campo corrispondente.</criterion>
+    <criterion id="AC-017">(FE) Il ColorTokenPicker mostra l'anteprima del colore selezionato nel trigger (swatch + nome del token localizzato) prima del salvataggio, e azzerandolo con la "X" il form diventa invalido (D-5b).</criterion>
+    <criterion id="AC-018">(FE) La tabella renderizza la colonna `color` come swatch + label del token (`ColorSwatchCell`) e le colonne `created_at`/`updated_at` come data-ora formattata (`DateTimeCell`).</criterion>
+    <criterion id="AC-019">(FE) Dalla riga: "Elimina" apre il dialogo di conferma generico; confermando parte la DELETE e la griglia viene refreshata via `tableRef.current.refresh()`. Annullando, nessuna chiamata parte. I rami 403 e 409 producono i toast dedicati.</criterion>
+    <criterion id="AC-020">(FE) Dopo una creazione e dopo una modifica dallo sheet, la griglia si aggiorna (callback `onSaved` -> refresh) e la query di dettaglio `['reward-types','detail',id]` viene invalidata/aggiornata: la riga mostra i valori nuovi senza reload di pagina.</criterion>
+    <criterion id="AC-021">(FE) Con `module_open_preferences` non impostato il modulo apre in MODALE (D-4); impostando la preferenza a `page` per `reward-types` le stesse azioni navigano su /reward-types/new e /reward-types/:id/edit. Verificato sul comportamento reale di `resolve-open-mode` / `useModuleOpener`, non per ispezione.</criterion>
+    <criterion id="AC-022">(FE) Il modulo compare automaticamente in MODULE_REGISTRY (glob su *-screens.tsx) e quindi nell'elenco delle preferenze di apertura, senza modifiche ai file di registro.</criterion>
+    <criterion id="AC-023">(FE) La rotta /reward-types e' gated da `&lt;Can permission="reward-types.viewAny"&gt;`, e la pagina mostra lo stato di caricamento, lo stato "nessun risultato" e lo stato di errore della griglia.</criterion>
+    <criterion id="AC-024">(FE) Il detail mostra nome, anteprima colore, date e la sezione Activity Log (`ActivityLogSection resource="reward-types"`).</criterion>
+    <criterion id="AC-025">Nessuna stringa hardcoded nell'UI del modulo: tutte le etichette risolvono da i18n in IT e in EN (nessuna chiave grezza a schermo in modalita' modale), inclusa la voce di menu "Buoni, Premi e Incentivi".</criterion>
+    <criterion id="AC-026">`php artisan migrate:fresh --seed` gira verde e il seed PULITO non crea alcun reward type; `php artisan db:seed --class=DemoDataSeeder` eseguito DUE VOLTE lascia lo stesso numero di righe (idempotenza di `DemoRewardTypeSeeder` via updateOrCreate).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>ZERO nuove dipendenze (composer/npm). Nessun nuovo componente in `components/ui/`: si riusano ColorTokenPicker, ColorSwatchCell, DateTimeCell, DetailPanel, MetaField, TableView, confirm-dialog.</item>
+    <item>Authorization SEMPRE server-side: Policy su ogni endpoint del controller, `viewAny` fail-safe sulla TableDefinition (NON fare override di `authorizeViewAny`). L'UI nasconde, il backend autorizza.</item>
+    <item>Nessun `whereRaw`/`orderByRaw`/`groupByRaw`: filtri, ricerca e ordinamento SSRM solo dall'allow-list di colonne del ColumnCatalog (backend.md §8).</item>
+    <item>Layering: Controller (thin, try/catch + handleControllerException) → FormRequest (+ EnforcesFieldPermissions) → DTO → Service → Resource → Policy. Mai un array magico verso il Service, mai un model Eloquent raw in response.</item>
+    <item>`#[Fillable(['name','color'])]` sul Model (attributo PHP, convenzione REALE di questo repo — NON `protected $fillable`); `casts()` come metodo, non proprieta'. Il Model estende `BaseModel` e usa `LogsModelActivity`.</item>
+    <item>Rotte esplicite in routes/api/lookups.php con il segmento letterale `for-select` dichiarato PRIMA del wildcard `{rewardType}`, come nel template (nessun `Route::resource`).</item>
+    <item>Seed pulito intoccabile: i dati demo stanno in `DemoRewardTypeSeeder` richiamato SOLO da `DemoDataSeeder`, idempotente via `updateOrCreate` keyed by name.</item>
+    <item>Frontend: server state solo con TanStack Query (mai `useEffect` + fetch), client axios configurato, form con React Hook Form + Zod, nessun `any`, i18n per ogni stringa.</item>
+    <item>File ≤ 300 righe (soft) / 500 (hard). Zero dead code, zero emoji, identificatori in INGLESE.</item>
+    <item>Definition of Done: Pint + Pest + ESLint + `tsc --noEmit` + Vitest ESEGUITI davvero (non "dovrebbero passare"). Nessun test modificato per farlo passare.</item>
+  </constraints>
+
+</spec>

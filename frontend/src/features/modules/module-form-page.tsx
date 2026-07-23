@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Can } from '@/features/auth/can'
 import { PageHeader } from '@/components/page-header'
+import { moduleI18nNamespace } from '@/features/modules/i18n-namespace'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import type { ModuleFormScreenMode } from '@/features/modules/types'
 import { parseEntityId } from '@/routes/entity-id'
@@ -26,8 +27,9 @@ interface ModuleFormPageProps {
  * and `${basePath}/:id/duplicate`, gated by the matching `.create`/`.update`
  * permission. Replaces the per-module `*-form-page.tsx` files for the 4 Wave 0
  * modules: the header chrome (title/subtitle) is generic because every module
- * already follows the same `${domain}.form.{create,edit}{Title,Subtitle}`
- * i18n convention (duplicate reuses the create strings); everything else
+ * already follows the same `${namespace}.form.{create,edit}{Title,Subtitle}`
+ * i18n convention, where the namespace is the camelCase form of the domain
+ * (duplicate reuses the create strings); everything else
  * (fetch-for-edit/duplicate, the actual form) lives in the domain's
  * `FormScreen`.
  */
@@ -41,6 +43,11 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
   // Only used so the hooks below stay unconditional (rules-of-hooks) up to
   // the invariant check right before render.
   const basePath = entry?.basePath ?? ''
+  // Strings are keyed by the camelCase namespace, NOT the kebab-case domain:
+  // interpolating `domain` renders the raw key as the title for every
+  // multi-word module. The permission gate below keeps `domain` — permissions
+  // really are kebab-case (`reward-types.create`).
+  const ns = moduleI18nNamespace(domain)
 
   const isDuplicate = variant === 'duplicate'
   const isEdit = id !== undefined && !isDuplicate
@@ -90,7 +97,7 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
   return (
     <Can
       permission={`${domain}.${isEdit ? 'update' : 'create'}`}
-      fallback={<p className="text-sm text-muted-foreground">{t(`${domain}.forbidden`)}</p>}
+      fallback={<p className="text-sm text-muted-foreground">{t(`${ns}.forbidden`)}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
         <PageHeader />
@@ -98,10 +105,10 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           <header className="flex flex-col gap-1 border-b px-4 py-3">
             <h2 className="text-base font-semibold">
-              {t(`${domain}.form.${isEdit ? 'edit' : 'create'}Title`)}
+              {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Title`)}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {t(`${domain}.form.${isEdit ? 'edit' : 'create'}Subtitle`)}
+              {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Subtitle`)}
             </p>
           </header>
 

@@ -3,6 +3,8 @@
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
+use App\Http\Controllers\RewardTypes\RewardTypeController;
+use App\Http\Controllers\RewardTypes\RewardTypeForSelectController;
 use App\Http\Controllers\Sectors\SectorController;
 use App\Http\Controllers\Sectors\SectorForSelectController;
 use App\Http\Controllers\Sources\SourceController;
@@ -115,6 +117,22 @@ Route::get('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowCo
 Route::post('opportunity-workflows', [OpportunityWorkflowController::class, 'store']);
 Route::match(['put', 'patch'], 'opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'update']);
 Route::delete('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'destroy']);
+
+// Reward types CRUD (spec 0058): a pure anagraphic (name/color) describing
+// the TYPES of voucher/reward/incentive usable in the CRM (BR-3: no
+// delete-guard, no entity references reward_types in this version).
+// Authorization (reward-types.view/create/update/delete) is enforced
+// server-side in RewardTypeController via RewardTypePolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011,
+// D-7). Declared ABOVE reward-types/{rewardType} so the literal
+// `for-select` segment wins over the bound wildcard. Gated by
+// reward-types.viewAny server-side in RewardTypeForSelectController.
+Route::get('reward-types/for-select', RewardTypeForSelectController::class);
+
+Route::get('reward-types/{rewardType}', [RewardTypeController::class, 'show']);
+Route::post('reward-types', [RewardTypeController::class, 'store']);
+Route::match(['put', 'patch'], 'reward-types/{rewardType}', [RewardTypeController::class, 'update']);
+Route::delete('reward-types/{rewardType}', [RewardTypeController::class, 'destroy']);
 
 // VAT rates CRUD: a standalone lookup used to assign a VAT percentage to a
 // Product. Authorization (vat-rates.view/create/update/delete) is enforced
