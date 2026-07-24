@@ -41,7 +41,7 @@ class OpportunityWorkflowService
     }
 
     /**
-     * Creates the workflow, its criteria, and its status set — the 3 system
+     * Creates the workflow, its criteria, and its status set — the 4 system
      * rows (AC-004) always, plus $data->statuses' custom rows — atomically.
      */
     public function create(CreateOpportunityWorkflowData $data): OpportunityWorkflow
@@ -60,7 +60,7 @@ class OpportunityWorkflowService
             $workflow = OpportunityWorkflow::query()->forceCreate([...$data->attributes(), 'criteria_signature' => $signature]);
 
             $this->syncCriteria($workflow, $data->criteria);
-            $this->statusWriter->createWithCustoms($workflow->id, $data->statuses, $data->openStatus, $data->closedWonStatus, $data->closedLostStatus);
+            $this->statusWriter->createWithCustoms($workflow->id, $data->statuses, $data->openStatus, $data->validatedStatus, $data->closedWonStatus, $data->closedLostStatus);
 
             return $workflow;
         });

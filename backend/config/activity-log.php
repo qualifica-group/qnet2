@@ -20,6 +20,7 @@ use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
@@ -141,6 +142,9 @@ return [
         ],
         'reward-types' => [
             'model' => RewardType::class,
+        ],
+        'reward-statuses' => [
+            'model' => RewardStatus::class,
         ],
         'rewards' => [
             'model' => Reward::class,

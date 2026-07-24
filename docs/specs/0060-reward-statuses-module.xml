@@ -166,11 +166,18 @@
       disattivato continuano a mostrarlo (badge in sola lettura del valore corrente).
     </decision>
     <decision id="D-8">
-      Il PATCH della card e' autorizzato server-side da `rewarded-referents.update` (la Policy del
-      modulo che espone la card ha gia' le 8 ability di BasePolicy). La visibilita'/editabilita' del
-      campo nella card rispetta il field-permission `reward_status` dichiarato in
-      `RewardStatusesAuthorization`... [DA VALIDARE: vedi open_questions] — in alternativa un field
-      permission dedicato sotto `rewarded-referents`.
+      RISOLTA in build (2026-07-24, confermata dal verifier). Il PATCH della card e' autorizzato
+      server-side dal solo permesso di RISORSA `rewarded-referents.update` (ability-string, precedente
+      `OpportunityStatusController::reorder`; la Policy del modulo ha gia' le 8 ability di BasePolicy).
+      NON e' stata introdotta una matrice field-permission dedicata per `reward_status`: non esiste una
+      superficie MetaField/`permissions.fields` che la consumerebbe (la card master/detail non e' un
+      form con field-permissions), e `RewardedReferentsAuthorization::fields()` resta deliberatamente
+      vuoto. Il gating e' quindi binario a livello risorsa, coerente FE/BE (FE:
+      `reward-detail-renderer.tsx` gate su `can('rewarded-referents.update')`, fail-closed in loading).
+      CONSEGUENZA sul testo: dove BR-8 / AC-021 / AC-030 citano "field `reward_status` readonly", si
+      intende ora "senza `rewarded-referents.update`"; il badge readonly resta il comportamento per chi
+      non ha il permesso. Se in futuro servisse la granularita' field-level, si registra `reward_status`
+      in una resource authorization e si aggiorna questo blocco.
     </decision>
   </decisions>
 
@@ -472,9 +479,10 @@
   </constraints>
 
   <open_questions>
-    <item>D-8: il field-permission del campo `reward_status` va dichiarato sotto la resource
-      `rewarded-referents` (che espone la card) o sotto una nuova resource `rewards`? Proposta: sotto
-      `rewarded-referents` per non introdurre una resource in piu'; da confermare in build.</item>
+    <item>D-8 RISOLTA (vedi decisions/D-8): nessun field-permission dedicato per `reward_status`; gate
+      sul solo permesso di risorsa `rewarded-referents.update`. Resta da CONFERMARE dall'owner che la
+      granularita' binaria e' sufficiente (nessun ruolo deve poter vedere ma non modificare lo Stato
+      del buono separatamente dal resto del modulo).</item>
   </open_questions>
 
 </spec>

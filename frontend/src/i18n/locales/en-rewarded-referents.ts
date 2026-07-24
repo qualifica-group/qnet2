@@ -26,6 +26,7 @@ export const rewardedReferents = {
     workflowStatus: 'Workflow status',
     operator: 'Operator',
     assignedAt: 'Assignment date',
+    rewardStatus: 'Reward status',
   },
   detail: {
     loadError: "Unable to load this referent's rewards. Please try again.",
@@ -37,5 +38,12 @@ export const rewardedReferents = {
     commercialStatus: 'Commercial status',
     workflowStatus: 'Workflow status',
     operator: 'Operator',
+    status: 'Status',
+    statusPlaceholder: 'Select a status',
+    statusSearchPlaceholder: 'Search a status…',
+    statusEmpty: 'No statuses found',
+    statusError: 'Unable to load statuses',
+    statusClearLabel: 'Remove status',
+    statusRetry: 'Retry',
   },
 }

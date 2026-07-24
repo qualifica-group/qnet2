@@ -33,14 +33,15 @@ final class WorkflowStatusWriter
 
     /**
      * Creates a brand-new set (AC-004): the pinned 'open' row (sort_order 0),
-     * every $customStatuses row in submission order (STEP apart), then the two
-     * pinned terminal rows 'closed_won'/'closed_lost' (always last, in that
-     * order). $openOverride/$closedWonOverride/$closedLostOverride seed the
-     * pinned rows' descriptive fields when the client filled them up front;
-     * null falls back to the default label.
+     * every $customStatuses row in submission order (STEP apart), then the
+     * pinned tail rows 'validated'/'closed_won'/'closed_lost' (always last, in
+     * that order). $openOverride/$validatedOverride/$closedWonOverride/
+     * $closedLostOverride seed the pinned rows' descriptive fields when the
+     * client filled them up front; null falls back to the default label.
      *
      * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $customStatuses
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openOverride
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $validatedOverride
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonOverride
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostOverride
      */
@@ -48,6 +49,7 @@ final class WorkflowStatusWriter
         ?int $workflowId,
         array $customStatuses,
         ?array $openOverride = null,
+        ?array $validatedOverride = null,
         ?array $closedWonOverride = null,
         ?array $closedLostOverride = null,
     ): void {
@@ -60,13 +62,14 @@ final class WorkflowStatusWriter
             $sortOrder += self::STEP;
         }
 
-        $closedOverrides = [
+        $tailOverrides = [
+            WorkflowStatusSystemKey::Validated->value => $validatedOverride,
             WorkflowStatusSystemKey::ClosedWon->value => $closedWonOverride,
             WorkflowStatusSystemKey::ClosedLost->value => $closedLostOverride,
         ];
 
-        foreach (WorkflowStatusSystemKey::closedKeys() as $key) {
-            $this->forceCreateSystemRow($workflowId, $key, $sortOrder, $closedOverrides[$key->value]);
+        foreach (WorkflowStatusSystemKey::tailKeys() as $key) {
+            $this->forceCreateSystemRow($workflowId, $key, $sortOrder, $tailOverrides[$key->value]);
             $sortOrder += self::STEP;
         }
     }
@@ -74,8 +77,8 @@ final class WorkflowStatusWriter
     /**
      * Authoritative sync of $set's CUSTOM rows (id present = update, absent =
      * new; existing customs not included = deleted), resequencing sort_order
-     * so 'open' stays first and the two 'closed_won'/'closed_lost' rows stay
-     * last. A submitted row whose
+     * so 'open' stays first and the pinned tail rows 'validated'/'closed_won'/
+     * 'closed_lost' stay last. A submitted row whose
      * `id` matches an existing SYSTEM row is routed to
      * assertMutableSystemRow() instead (everything but `group`, spec 0047
      * data contract) and never counted as a custom / never deleted.
@@ -138,6 +141,7 @@ final class WorkflowStatusWriter
     {
         [$defaultName, $group] = match ($key) {
             WorkflowStatusSystemKey::Open => ['Aperta', WorkflowStatusGroup::Open],
+            WorkflowStatusSystemKey::Validated => ['Validato', WorkflowStatusGroup::Validated],
             WorkflowStatusSystemKey::ClosedWon => ['Chiusa positiva', WorkflowStatusGroup::ClosedWon],
             WorkflowStatusSystemKey::ClosedLost => ['Chiusa negativa', WorkflowStatusGroup::ClosedLost],
         };
@@ -275,7 +279,7 @@ final class WorkflowStatusWriter
             $sortOrder += self::STEP;
         }
 
-        foreach (WorkflowStatusSystemKey::closedKeys() as $key) {
+        foreach (WorkflowStatusSystemKey::tailKeys() as $key) {
             OpportunityWorkflowStatus::query()
                 ->where('opportunity_workflow_id', $workflowId)
                 ->where('system_key', $key->value)

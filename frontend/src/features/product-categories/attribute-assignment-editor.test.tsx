@@ -1,13 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
+import type { AttributeAssignmentInput, ProductCategoryInheritedAttribute } from '@/features/product-categories/types'
 
 /**
- * Task #19: the assigned-attribute row must be self-explanatory — a helper
- * blurb above the list, and an info tooltip on `is_required`/`sort_order`/the
- * data-type badge explaining what each one does.
+ * Spec 0061: the editor renders TWO independent, context-scoped sections
+ * ("Product attributes" / "Opportunity attributes"), each with its own
+ * picker/list/inherited list. Task #19 (self-explanatory row: helper text +
+ * info tooltips) still holds per section.
  */
 
 const useAttributeCatalogMock = vi.fn()
@@ -34,42 +36,116 @@ beforeEach(() => {
   useAttributeCatalogMock.mockReturnValue(queryResult())
 })
 
-describe('AttributeAssignmentEditor — self-explanatory row (task #19)', () => {
-  it('shows the section helper text', () => {
-    render(
-      <AttributeAssignmentEditor value={[]} onChange={vi.fn()} inherited={[]} />,
-    )
+function renderEditor(
+  value: AttributeAssignmentInput[] = [],
+  inherited: ProductCategoryInheritedAttribute[] = [],
+  onChange = vi.fn(),
+) {
+  render(<AttributeAssignmentEditor value={value} onChange={onChange} inherited={inherited} />)
+  return { onChange }
+}
 
+describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
+  it('renders both context sections with distinct titles and descriptions', () => {
+    renderEditor()
+
+    expect(screen.getByRole('heading', { name: 'Product attributes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opportunity attributes' })).toBeInTheDocument()
     expect(
-      screen.getByText(
-        'Assign the attributes that products in this category must fill in (in addition to what they inherit).',
-      ),
+      screen.getByText('Loaded in the Product card (create/edit) for products in this category.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Loaded in the Opportunity preliminary info for requests in this category.'),
     ).toBeInTheDocument()
   })
 
-  it('shows a visible "Order" label next to the sort_order input', () => {
-    render(
-      <AttributeAssignmentEditor
-        value={[{ attribute_id: 1, is_required: false, sort_order: 0 }]}
-        onChange={vi.fn()}
-        inherited={[]}
-      />,
-    )
+  it('shows each assignment only under its own context section', () => {
+    renderEditor([
+      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 2, context: 'opportunity', is_required: false, sort_order: 0 },
+    ])
 
-    expect(screen.getByText('Order')).toBeInTheDocument()
-    expect(screen.getByLabelText('Order')).toBeInTheDocument()
+    const productHeading = screen.getByRole('heading', { name: 'Product attributes' })
+    const productSection = productHeading.closest('div')?.parentElement as HTMLElement
+    const opportunityHeading = screen.getByRole('heading', { name: 'Opportunity attributes' })
+    const opportunitySection = opportunityHeading.closest('div')?.parentElement as HTMLElement
+
+    expect(within(productSection).getByText('Color')).toBeInTheDocument()
+    expect(within(productSection).queryByText('RAM (GB)')).not.toBeInTheDocument()
+    expect(within(opportunitySection).getByText('RAM (GB)')).toBeInTheDocument()
+    expect(within(opportunitySection).queryByText('Color')).not.toBeInTheDocument()
+  })
+
+  it('adding an attribute from the product picker tags it with context "product"', () => {
+    const { onChange } = renderEditor()
+
+    const [productPicker] = screen.getAllByRole('combobox')
+    fireEvent.click(productPicker)
+    fireEvent.click(screen.getByRole('option', { name: 'Color' }))
+
+    expect(onChange).toHaveBeenCalledWith([
+      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+    ])
+  })
+
+  it('the same attribute can be assigned to both sections independently (two rows)', () => {
+    const value: AttributeAssignmentInput[] = [
+      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+    ]
+    const { onChange } = renderEditor(value)
+
+    const [, opportunityPicker] = screen.getAllByRole('combobox')
+    fireEvent.click(opportunityPicker)
+    fireEvent.click(screen.getByRole('option', { name: 'Color' }))
+
+    expect(onChange).toHaveBeenCalledWith([
+      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'opportunity', is_required: false, sort_order: 0 },
+    ])
+  })
+
+  it('removing a row only affects its own context, not the sibling assignment of the same attribute', () => {
+    const value: AttributeAssignmentInput[] = [
+      { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'opportunity', is_required: true, sort_order: 2 },
+    ]
+    const { onChange } = renderEditor(value)
+
+    const [removeButton] = screen.getAllByRole('button', { name: 'Remove attribute' })
+    fireEvent.click(removeButton)
+
+    expect(onChange).toHaveBeenCalledWith([
+      { attribute_id: 1, context: 'opportunity', is_required: true, sort_order: 2 },
+    ])
+  })
+
+  it('splits the read-only inherited list by context', () => {
+    const inherited: ProductCategoryInheritedAttribute[] = [
+      { attribute_id: 1, code: 'color', name: 'Color', type: 'enum', is_required: false, context: 'product' },
+      { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, context: 'opportunity' },
+    ]
+    renderEditor([], inherited)
+
+    const productHeading = screen.getByRole('heading', { name: 'Product attributes' })
+    const productSection = productHeading.closest('div')?.parentElement as HTMLElement
+    const opportunityHeading = screen.getByRole('heading', { name: 'Opportunity attributes' })
+    const opportunitySection = opportunityHeading.closest('div')?.parentElement as HTMLElement
+
+    expect(within(productSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
+    expect(within(opportunitySection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
+  })
+
+  it('shows a visible "Order" label next to the sort_order input', () => {
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
+
+    expect(screen.getAllByText('Order')[0]).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Order')[0]).toBeInTheDocument()
   })
 
   it('reveals what "Required" means in a tooltip', async () => {
-    render(
-      <AttributeAssignmentEditor
-        value={[{ attribute_id: 1, is_required: false, sort_order: 0 }]}
-        onChange={vi.fn()}
-        inherited={[]}
-      />,
-    )
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
 
-    fireEvent.focus(screen.getByLabelText('When on, the product MUST fill in this attribute.'))
+    fireEvent.focus(screen.getAllByLabelText('When on, the product MUST fill in this attribute.')[0])
     await waitFor(() => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(
         'When on, the product MUST fill in this attribute.',
@@ -77,35 +153,10 @@ describe('AttributeAssignmentEditor — self-explanatory row (task #19)', () => 
     })
   })
 
-  it('reveals what "Order" means in a tooltip', async () => {
-    render(
-      <AttributeAssignmentEditor
-        value={[{ attribute_id: 1, is_required: false, sort_order: 0 }]}
-        onChange={vi.fn()}
-        inherited={[]}
-      />,
-    )
-
-    fireEvent.focus(
-      screen.getByLabelText('The position this field appears at in the product form.'),
-    )
-    await waitFor(() => {
-      expect(screen.getByRole('tooltip')).toHaveTextContent(
-        'The position this field appears at in the product form.',
-      )
-    })
-  })
-
   it('describes the enum type in a tooltip on the badge', async () => {
-    render(
-      <AttributeAssignmentEditor
-        value={[{ attribute_id: 1, is_required: false, sort_order: 0 }]}
-        onChange={vi.fn()}
-        inherited={[]}
-      />,
-    )
+    renderEditor([{ attribute_id: 1, context: 'product', is_required: false, sort_order: 0 }])
 
-    fireEvent.focus(screen.getByText('List of options'))
+    fireEvent.focus(screen.getAllByText('List of options')[0])
     await waitFor(() => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(
         'A choice from a predefined list of options.',

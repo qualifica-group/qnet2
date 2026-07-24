@@ -70,6 +70,10 @@ class DemoDataSeeder extends Seeder
         // Standalone anagraphic (spec 0058): no dependency on anything above,
         // no producer referencing it yet (BR-3) — order here is arbitrary.
         $this->call(DemoRewardTypeSeeder::class);
+        // Standalone anagraphic (spec 0060): no dependency on anything above,
+        // upserts on top of the migration-seeded system row — order here is
+        // arbitrary.
+        $this->call(DemoRewardStatusSeeder::class);
         // Depends on DemoSourceSeeder (mandatory criterion values) and
         // DemoBusinessFunctionSeeder (optional, two-criteria workflow), both
         // seeded above. MUST run before DemoOpportunitySeeder so opportunities

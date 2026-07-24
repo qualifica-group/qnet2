@@ -352,6 +352,15 @@ return [
                     'route' => '/sources',
                     'permission' => 'sources.view',
                 ],
+                [
+                    // Reward statuses (spec 0060): the STATE pick-list for
+                    // assigned rewards, delete-guarded (BR-4).
+                    'key' => 'reward-statuses',
+                    'label' => 'navigation.rewardStatuses',
+                    'icon' => 'list-checks',
+                    'route' => '/reward-statuses',
+                    'permission' => 'reward-statuses.view',
+                ],
             ],
         ],
 

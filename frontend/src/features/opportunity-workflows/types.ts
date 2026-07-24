@@ -12,20 +12,27 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  * Fixed group values a workflow status row carries — DEDICATED to opportunity
  * workflows (mirror of App\Enums\WorkflowStatusGroup), distinct from the
  * shared `StatusGroupValue` (pipeline/opportunity statuses, still
- * open/pending/closed): here the terminal "closed" phase splits into its two
- * outcomes, `closed_won` (esito positivo) and `closed_lost` (esito negativo).
+ * open/pending/closed): here the working phase runs open -> pending ->
+ * `validated` (esito accertato, non ancora chiuso), then the terminal "closed"
+ * phase splits into its two outcomes, `closed_won` (esito positivo) and
+ * `closed_lost` (esito negativo).
  */
-export const WORKFLOW_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
+export const WORKFLOW_STATUS_GROUPS = ['open', 'pending', 'validated', 'closed_won', 'closed_lost'] as const
 
-/** One of the four fixed workflow-status group values. */
+/** One of the five fixed workflow-status group values. */
 export type WorkflowStatusGroupValue = (typeof WORKFLOW_STATUS_GROUPS)[number]
 
-/** Marks a workflow-status row as one of the three per-set pinned rows (`open`/`closed_won`/`closed_lost`), or `null` for a custom row. */
-export type WorkflowStatusSystemKey = 'open' | 'closed_won' | 'closed_lost' | null
+/** Marks a workflow-status row as one of the four per-set pinned rows (`open`/`validated`/`closed_won`/`closed_lost`), or `null` for a custom row. */
+export type WorkflowStatusSystemKey = 'open' | 'validated' | 'closed_won' | 'closed_lost' | null
 
-/** Whether a `system_key` marks one of the two terminal closed rows (both pinned last). */
-export function isClosedWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
-  return key === 'closed_won' || key === 'closed_lost'
+/**
+ * Whether a `system_key` marks one of the pinned TAIL rows (`validated`/
+ * `closed_won`/`closed_lost`), all pinned last after every custom row — the
+ * anchor a newly-added custom row is inserted before. `open` is pinned first
+ * and is NOT part of the tail.
+ */
+export function isTailWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
+  return key === 'validated' || key === 'closed_won' || key === 'closed_lost'
 }
 
 /** One allow-listed criterion field, as returned by GET /opportunity-workflows/criterion-fields (AC-022). */

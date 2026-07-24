@@ -5,24 +5,34 @@ namespace App\Services\Statuses;
 use App\Enums\StatusSystemKey;
 use App\Models\OpportunityStatus;
 use App\Models\PipelineStatus;
+use App\Models\RewardStatus;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * The system-status protection rules (spec 0039, D-2; extended to
- * opportunity_statuses by spec 0043), shared verbatim by every status
- * configurator (pipeline_statuses, opportunity_statuses):
- * every mandatory row cannot be deleted, and only its `name`/`color` may
- * ever change — `group` (pivot, App\Enums\StatusGroup) is fixed at migration
- * time and never reassigned. Mirrors the precedent guard for a single
- * protected system row, RoleService::guardSystemRoleMutation (the
+ * opportunity_statuses by spec 0043; extended to reward_statuses by spec
+ * 0060), shared verbatim by every status configurator (pipeline_statuses,
+ * opportunity_statuses, reward_statuses): every mandatory row cannot be
+ * deleted, and only its `name`/`color` may ever change — every OTHER
+ * submitted attribute is rejected (pipeline/opportunity: `group`,
+ * App\Enums\StatusGroup, fixed at migration time; reward: `description`/
+ * `is_active`/`sort_order`, spec 0060 BR-3). Mirrors the precedent guard for
+ * a single protected system row, RoleService::guardSystemRoleMutation (the
  * `super-admin` role).
  */
 class SystemStatusGuard
 {
     /**
+     * The only two attributes a system row may ever have changed.
+     *
+     * @var array<int, string>
+     */
+    private const array MUTABLE_SYSTEM_FIELDS = ['name', 'color'];
+
+    /**
      * @throws HttpException 422
      */
-    public function assertDeletable(PipelineStatus|OpportunityStatus $status): void
+    public function assertDeletable(PipelineStatus|OpportunityStatus|RewardStatus $status): void
     {
         if (! $status->isSystem()) {
             return;
@@ -34,19 +44,22 @@ class SystemStatusGuard
     /**
      * @param  array<string, mixed>  $submittedAttributes  the attributes the
      *                                                     client actually submitted (UpdatePipelineStatusData/
-     *                                                     UpdateOpportunityStatusData::submittedAttributes()) —
-     *                                                     checked by KEY, so an update that never touches `group` (e.g.
-     *                                                     name/color only) is always allowed on a system row.
+     *                                                     UpdateOpportunityStatusData/UpdateRewardStatusData::submittedAttributes())
+     *                                                     — checked by KEY, so an update that touches ONLY name/color is
+     *                                                     always allowed on a system row, whatever other fields the
+     *                                                     concrete resource happens to carry.
      *
      * @throws HttpException 422
      */
-    public function assertUpdatable(PipelineStatus|OpportunityStatus $status, array $submittedAttributes): void
+    public function assertUpdatable(PipelineStatus|OpportunityStatus|RewardStatus $status, array $submittedAttributes): void
     {
         if (! $status->isSystem()) {
             return;
         }
 
-        if (array_key_exists('group', $submittedAttributes)) {
+        $restrictedKeys = array_diff(array_keys($submittedAttributes), self::MUTABLE_SYSTEM_FIELDS);
+
+        if ($restrictedKeys !== []) {
             abort(422, 'System statuses accept only name and color changes.');
         }
     }

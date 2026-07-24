@@ -11,11 +11,13 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the payload for POST /api/products (spec 0017). Only the
- * generic fields (name/description/cost/price/category_id) exist on a
- * product — the category-driven `attributes` catalogue stays a reusable
- * template (Attribute/ProductCategory), never coupled to a product's own
- * values.
+ * Validates the payload for POST /api/products (spec 0017; spec 0061 for
+ * `attribute_values`). `attribute_values` gets only a shallow `array` check
+ * here — its DEEP validation (per-code applicability/type/required against
+ * the product's PRODUCT-context effective attributes) runs in ProductService
+ * via the SAME AttributeValueValidator the Opportunity path uses (mirrors
+ * UpdateRequestRequest's docblock: doing it twice would mean resolving
+ * CategoryHierarchy::effectiveAttributes() an extra time for no benefit).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('create', Product::class)). EnforcesFieldPermissions
@@ -46,6 +48,7 @@ class StoreProductRequest extends FormRequest
             'product_type' => ['required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['nullable', 'integer', 'exists:registries,id'],
+            'attribute_values' => ['sometimes', 'array'],
         ];
     }
 

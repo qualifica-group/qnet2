@@ -82,6 +82,10 @@ class DemoOpportunityWorkflowSeeder extends Seeder
             'name' => 'Aperta',
             'description' => 'Stato iniziale: la richiesta e\' aperta e attende la presa in carico.',
         ],
+        'validated' => [
+            'name' => 'Validato',
+            'description' => 'Lavorazione conclusa e verificata: esito accertato, in attesa della chiusura.',
+        ],
         'closed_won' => [
             'name' => 'Chiusa positiva',
             'description' => 'Lavorazione conclusa con esito positivo: nessuna ulteriore azione.',
@@ -224,6 +228,7 @@ class DemoOpportunityWorkflowSeeder extends Seeder
             criteria: [['field' => 'source_id', 'value_id' => $sourceId]],
             statuses: $this->normalizeCustomStatuses($customStatuses),
             openStatus: self::systemStatusSeed('open'),
+            validatedStatus: self::systemStatusSeed('validated'),
             closedWonStatus: self::systemStatusSeed('closed_won'),
             closedLostStatus: self::systemStatusSeed('closed_lost'),
         ));
@@ -270,6 +275,7 @@ class DemoOpportunityWorkflowSeeder extends Seeder
                 ],
             ]),
             openStatus: self::systemStatusSeed('open'),
+            validatedStatus: self::systemStatusSeed('validated'),
             closedWonStatus: self::systemStatusSeed('closed_won'),
             closedLostStatus: self::systemStatusSeed('closed_lost'),
         ));

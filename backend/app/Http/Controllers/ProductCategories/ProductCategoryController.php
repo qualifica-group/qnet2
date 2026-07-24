@@ -6,6 +6,7 @@ use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\ProductCategories\EffectiveAttributesRequest;
 use App\Http\Requests\ProductCategories\StoreProductCategoryRequest;
 use App\Http\Requests\ProductCategories\UpdateProductCategoryRequest;
 use App\Http\Resources\ProductCategoryResource;
@@ -55,19 +56,21 @@ class ProductCategoryController extends BaseApiController
 
     /**
      * GET /api/product-categories/{productCategory}/effective-attributes —
-     * own + inherited attributes, for the product form's dynamic fields.
+     * own + inherited attributes, for the product form's dynamic fields
+     * (`?context=product`) and the request-management preliminary info
+     * (`?context=opportunity`, the default — spec 0061 hard invariant).
      *
      * Authorized by product-categories.view OR any of the products
      * view/create/update abilities: a user who may only create/edit products
      * (no product-categories module access) still needs this to render the
      * dynamic form (spec 0017 data_contract note).
      */
-    public function effectiveAttributes(Request $request, ProductCategory $productCategory): JsonResponse
+    public function effectiveAttributes(EffectiveAttributesRequest $request, ProductCategory $productCategory): JsonResponse
     {
         try {
             $this->authorizeEffectiveAttributes($request->user());
 
-            return $this->ok($this->service->effectiveAttributes($productCategory)->values());
+            return $this->ok($this->service->effectiveAttributes($productCategory, $request->context())->values());
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['productCategory' => $productCategory->id]);
         }

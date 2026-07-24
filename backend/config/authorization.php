@@ -20,6 +20,7 @@ use App\Authorization\ReferentTypesAuthorization;
 use App\Authorization\RegistriesAuthorization;
 use App\Authorization\RequestManagementAuthorization;
 use App\Authorization\RewardedReferentsAuthorization;
+use App\Authorization\RewardStatusesAuthorization;
 use App\Authorization\RewardTypesAuthorization;
 use App\Authorization\RolesAuthorization;
 use App\Authorization\SectorsAuthorization;
@@ -75,6 +76,7 @@ return [
         'opportunity-workflows' => OpportunityWorkflowsAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
+        'reward-statuses' => RewardStatusesAuthorization::class,
         'rewarded-referents' => RewardedReferentsAuthorization::class,
         'vat-rates' => VatRatesAuthorization::class,
     ],

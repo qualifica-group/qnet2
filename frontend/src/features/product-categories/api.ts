@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  AttributeContext,
   CreateProductCategoryPayload,
   EffectiveAttribute,
   ProductCategoryDetail,
@@ -19,14 +20,18 @@ export async function fetchProductCategoryTree(): Promise<ProductCategoryTreeNod
 }
 
 /**
- * Fetches a category's effective attributes (own + every ancestor's), the
- * source for the product form's dynamic attribute fields (spec AC-023).
+ * Fetches a category's effective attributes (own + every ancestor's) for a
+ * single usage context, the source for both the category form's read-only
+ * inherited lists and the product form's dynamic attribute fields (spec 0061).
+ * Defaults to `'opportunity'` — every pre-existing caller keeps its behavior.
  */
 export async function fetchEffectiveAttributes(
   categoryId: number,
+  context: AttributeContext = 'opportunity',
 ): Promise<EffectiveAttribute[]> {
   const { data } = await apiClient.get<ApiResponse<EffectiveAttribute[]>>(
     `/product-categories/${categoryId}/effective-attributes`,
+    { params: { context } },
   )
   return data.data
 }

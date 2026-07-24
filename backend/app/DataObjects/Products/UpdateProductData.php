@@ -6,17 +6,24 @@ use App\Enums\ProductType;
 
 /**
  * Validated payload for a partial (PATCH) product update
- * (PUT/PATCH /api/products/{product}, spec 0017).
+ * (PUT/PATCH /api/products/{product}, spec 0017; spec 0061 for
+ * `attributeValues`).
  *
  * Declared DTO (no "magic flying array") so the UpdateProductRequest →
  * ProductService contract is explicit. `description`/`cost`/`price`/
  * `category_id` are all legitimately nullable-or-changeable VALUES, so a
  * plain null property cannot distinguish "not submitted" from "submitted as
  * null" — the `*Submitted` flags carry that distinction, mirroring
- * UpdateBusinessFunctionData/UpdateProductCategoryData.
+ * UpdateBusinessFunctionData/UpdateProductCategoryData. `attributeValues`
+ * mirrors `attributes` on UpdateProductCategoryData: an array or absent,
+ * never a legitimate literal null, so `hasAttributeValues()` alone
+ * disambiguates without a `*Submitted` flag.
  */
 final readonly class UpdateProductData
 {
+    /**
+     * @param  array<string, mixed>|null  $attributeValues
+     */
     public function __construct(
         public ?string $name = null,
         public ?string $description = null,
@@ -33,6 +40,7 @@ final readonly class UpdateProductData
         public bool $vatRateIdSubmitted = false,
         public ?int $supplierId = null,
         public bool $supplierIdSubmitted = false,
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -58,7 +66,13 @@ final readonly class UpdateProductData
             vatRateIdSubmitted: array_key_exists('vat_rate_id', $data),
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
             supplierIdSubmitted: array_key_exists('supplier_id', $data),
+            attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
+    }
+
+    public function hasAttributeValues(): bool
+    {
+        return $this->attributeValues !== null;
     }
 
     /**

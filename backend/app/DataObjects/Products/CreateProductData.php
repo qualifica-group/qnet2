@@ -5,14 +5,18 @@ namespace App\DataObjects\Products;
 use App\Enums\ProductType;
 
 /**
- * Validated payload for creating a product (POST /api/products, spec 0017).
- * Declared DTO (no "magic flying array") so the StoreProductRequest →
- * ProductService contract is explicit — see standards/architecture.md →
- * Data Transfer Objects. `cost`/`price`/`productType` are all required by the
- * FormRequest, so they cross as non-null values.
+ * Validated payload for creating a product (POST /api/products, spec 0017;
+ * spec 0061 for `attributeValues`). Declared DTO (no "magic flying array") so
+ * the StoreProductRequest → ProductService contract is explicit — see
+ * standards/architecture.md → Data Transfer Objects. `cost`/`price`/
+ * `productType` are all required by the FormRequest, so they cross as
+ * non-null values.
  */
 final readonly class CreateProductData
 {
+    /**
+     * @param  array<string, mixed>|null  $attributeValues
+     */
     public function __construct(
         public string $name,
         public ?string $description,
@@ -22,6 +26,7 @@ final readonly class CreateProductData
         public ProductType $productType,
         public ?int $vatRateId = null,
         public ?int $supplierId = null,
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -40,6 +45,12 @@ final readonly class CreateProductData
             productType: ProductType::from((string) $data['product_type']),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
+            attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
+    }
+
+    public function hasAttributeValues(): bool
+    {
+        return $this->attributeValues !== null;
     }
 }

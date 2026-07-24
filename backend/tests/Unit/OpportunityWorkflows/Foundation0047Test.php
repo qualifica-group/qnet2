@@ -17,15 +17,15 @@ uses(TestCase::class, RefreshDatabase::class);
 
 // ============ AC-005: global default set seeded by the migration ============
 
-it('seeds exactly 3 global default rows (workflow_id null) with system_key open/closed_won/closed_lost (AC-005)', function () {
+it('seeds exactly 4 global default rows (workflow_id null) with system_key open/validated/closed_won/closed_lost (AC-005)', function () {
     $globalRows = DB::table('opportunity_workflow_statuses')
         ->whereNull('opportunity_workflow_id')
         ->orderBy('sort_order')
         ->get();
 
-    expect($globalRows)->toHaveCount(3)
-        ->and($globalRows->pluck('system_key')->all())->toBe(['open', 'closed_won', 'closed_lost'])
-        ->and($globalRows->pluck('group')->all())->toBe(['open', 'closed_won', 'closed_lost']);
+    expect($globalRows)->toHaveCount(4)
+        ->and($globalRows->pluck('system_key')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost'])
+        ->and($globalRows->pluck('group')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
 });
 
 // ============ Models: relations + isSystem() ============

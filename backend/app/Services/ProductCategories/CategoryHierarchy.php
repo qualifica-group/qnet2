@@ -2,6 +2,7 @@
 
 namespace App\Services\ProductCategories;
 
+use App\Enums\AttributeContext;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
@@ -287,9 +288,14 @@ final class CategoryHierarchy
      * order remains "ancestors first, then by sort_order" even after an
      * override.
      *
+     * $context (spec 0061, default Opportunity so every pre-existing caller
+     * is unaffected) scopes which pivot rows are read at EVERY level of the
+     * chain — a category's Product and Opportunity attribute sets are
+     * resolved and inherited completely independently of one another.
+     *
      * @return Collection<int, array<string, mixed>>
      */
-    public function effectiveAttributes(ProductCategory $category): Collection
+    public function effectiveAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
     {
         $chain = $this->inheritedAncestors($category)->push($category);
 
@@ -299,7 +305,7 @@ final class CategoryHierarchy
         foreach ($chain as $level) {
             $isOwn = $level->is($category);
 
-            foreach ($this->ownAttributeRows($level) as $attribute) {
+            foreach ($this->ownAttributeRows($level, $context) as $attribute) {
                 $entry = [
                     'id' => $attribute->id,
                     'code' => $attribute->code,
@@ -314,6 +320,7 @@ final class CategoryHierarchy
                     'is_required' => (bool) $attribute->pivot->is_required,
                     'sort_order' => (int) $attribute->pivot->sort_order,
                     'inherited' => ! $isOwn,
+                    'context' => $context->value,
                     'options' => $this->optionsFor($attribute),
                 ];
 
@@ -333,23 +340,26 @@ final class CategoryHierarchy
      * The attributes owned by the ANCESTORS $category inherits from (deduped, a
      * closer ancestor wins; empty when $category opts out of inheritance), for
      * the show endpoint's read-only `inherited_attributes` side list — never
-     * merged with $category's own assignments.
+     * merged with $category's own assignments. $context (spec 0061, default
+     * Opportunity) scopes which pivot rows are read, same as
+     * effectiveAttributes().
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function ancestorAttributes(ProductCategory $category): Collection
+    public function ancestorAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
     {
         $ordered = [];
         $index = [];
 
         foreach ($this->inheritedAncestors($category) as $ancestor) {
-            foreach ($this->ownAttributeRows($ancestor) as $attribute) {
+            foreach ($this->ownAttributeRows($ancestor, $context) as $attribute) {
                 $entry = [
                     'attribute_id' => $attribute->id,
                     'code' => $attribute->code,
                     'name' => $attribute->name,
                     'type' => $attribute->type,
                     'is_required' => (bool) $attribute->pivot->is_required,
+                    'context' => $context->value,
                 ];
 
                 if (isset($index[$attribute->id])) {
@@ -413,14 +423,18 @@ final class CategoryHierarchy
     }
 
     /**
-     * $level's OWN attribute assignments (pivot + attribute eager-loaded),
-     * ordered by the pivot's sort_order.
+     * $level's OWN attribute assignments in $context (pivot + attribute
+     * eager-loaded), ordered by the pivot's sort_order.
      *
      * @return Collection<int, Attribute>
      */
-    private function ownAttributeRows(ProductCategory $level): Collection
+    private function ownAttributeRows(ProductCategory $level, AttributeContext $context): Collection
     {
-        return $level->attributes()->with('options')->orderBy('attribute_category.sort_order')->get();
+        return $level->attributes()
+            ->wherePivot('context', $context->value)
+            ->with('options')
+            ->orderBy('attribute_category.sort_order')
+            ->get();
     }
 
     /**

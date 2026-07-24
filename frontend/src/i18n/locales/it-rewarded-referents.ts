@@ -27,6 +27,7 @@ export const rewardedReferents = {
     workflowStatus: 'Stato di lavorazione',
     operator: 'Operatore',
     assignedAt: 'Data assegnazione',
+    rewardStatus: 'Stato buono',
   },
   detail: {
     loadError: 'Impossibile caricare i buoni di questo referente. Riprova.',
@@ -38,5 +39,12 @@ export const rewardedReferents = {
     commercialStatus: 'Stato commerciale',
     workflowStatus: 'Stato di lavorazione',
     operator: 'Operatore',
+    status: 'Stato',
+    statusPlaceholder: 'Seleziona uno stato',
+    statusSearchPlaceholder: 'Cerca uno stato…',
+    statusEmpty: 'Nessuno stato trovato',
+    statusError: 'Impossibile caricare gli stati',
+    statusClearLabel: 'Rimuovi stato',
+    statusRetry: 'Riprova',
   },
 }

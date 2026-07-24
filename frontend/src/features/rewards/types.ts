@@ -16,6 +16,18 @@ export interface RewardTypeRef {
 }
 
 /**
+ * A reward status's identity as embedded in a reward: name + palette token
+ * color (spec 0060 §3 `resource_change`). Distinct from `RewardTypeRef`
+ * (same shape, different domain) so each ref stays self-documenting at the
+ * call site.
+ */
+export interface RewardStatusRef {
+  id: number
+  name: string
+  color: string
+}
+
+/**
  * The polymorphic origin of a reward, resolved server-side to a display name
  * and a direct link. `type` is the morph-map alias (e.g. "opportunity"),
  * never a FQCN.
@@ -57,6 +69,12 @@ export interface RewardDetailItem {
   reward_type: RewardTypeRef
   source: RewardSourceRef | null
   context: RewardContext | null
+  /**
+   * The persisted status of the reward itself (spec 0060 D-1/D-5), NOT
+   * derived from `context`. Null only transiently — at steady state every
+   * reward carries one (backfilled to the system row `pending`).
+   */
+  reward_status: RewardStatusRef | null
 }
 
 /**

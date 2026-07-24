@@ -3,18 +3,22 @@
 namespace App\Http\Requests\ProductCategories;
 
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
+use App\Enums\AttributeContext;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Models\ProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for PUT/PATCH /api/product-categories/{productCategory}
- * (spec 0017). Every field is `sometimes` to support partial PATCH updates:
- * `attributes`, when submitted, is a full-replace sync. The anti-cycle guard
- * (parent_id cannot be the category itself or one of its own descendants) is
- * enforced by ProductCategoryService, not here (it needs to walk the tree).
+ * (spec 0017; spec 0061 for `attributes.*.context`). Every field is
+ * `sometimes` to support partial PATCH updates: `attributes`, when
+ * submitted, is a full-replace sync. The anti-cycle guard (parent_id cannot
+ * be the category itself or one of its own descendants) is enforced by
+ * ProductCategoryService, not here (it needs to walk the tree).
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('update', $productCategory)). EnforcesFieldPermissions (spec
  * 0004) additionally rejects any submitted field the actor cannot edit on
@@ -22,7 +26,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateProductCategoryRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesAttributeContextAssignments;
 
     public function authorize(): bool
     {
@@ -42,7 +46,8 @@ class UpdateProductCategoryRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
             'attributes' => ['sometimes', 'array'],
-            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id', 'distinct'],
+            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
+            'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],
             'attributes.*.is_required' => ['sometimes', 'boolean'],
             'attributes.*.sort_order' => ['sometimes', 'integer'],
         ];
@@ -51,6 +56,7 @@ class UpdateProductCategoryRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->validateAttributeContextAssignments($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

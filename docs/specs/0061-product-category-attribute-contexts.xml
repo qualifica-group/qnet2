@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0061" title="Product Category Attributes — Product/Opportunity contexts">
+
+  <goal>
+    Extend the existing Product Category attribute system so the same attribute catalogue
+    can be surfaced in TWO distinct usage contexts, configured as two separate sections in
+    the category config page:
+      - "Attributi Prodotto"     -> loaded in the Product card (create/edit).
+      - "Attributi Opportunita'" -> loaded in the Opportunity preliminary info (UNCHANGED).
+    Reuse the current architecture (Attribute catalogue + attribute_category pivot +
+    CategoryHierarchy effective-attributes resolution). No duplication of the attribute model.
+  </goal>
+
+  <hard-invariant>
+    The Opportunity path MUST remain behaviorally identical. All attributes assigned today are
+    Opportunity attributes; the migration backfills every existing attribute_category row to
+    context = 'opportunity'. ApplicableAttributesResolver, OpportunityResource, RequestManagement
+    work-panel and its tests keep producing the same output. Any regression there is a failure.
+  </hard-invariant>
+
+  <decisions source="user 2026-07-24">
+    <d>Two-section model = context DISCRIMINATOR on the pivot. Two independent lists; the same
+       catalogue attribute may be assigned to Product, Opportunity, or both (two pivot rows).</d>
+    <d>Product attribute VALUES = JSON column products.attribute_values, mirroring
+       opportunities.attribute_values. Reuse AttributeValueValidator / AttributeValueNormalizer.
+       Do NOT recreate the removed product_attribute_values EAV table.</d>
+  </decisions>
+
+  <enum>
+    App\Enums\AttributeContext : Product = 'product', Opportunity = 'opportunity'.
+    Default context everywhere = Opportunity (backward compatible).
+  </enum>
+
+  <backend owner="backend agent" root="backend/">
+
+    <migrations>
+      <m1 file="add_context_to_attribute_category_table">
+        Add string column `context` (default 'opportunity') to `attribute_category`.
+        Drop the existing composite unique (attribute_id, category_id) — VERIFY the real index
+        name from 2026_07_07_110300_create_attribute_category_table.php before dropUnique.
+        Add unique (attribute_id, category_id, context). Existing rows keep 'opportunity' via
+        default. down() reverses both (restore old unique). Must be reversible on SQLite + MySQL.
+      </m1>
+      <m2 file="add_attribute_values_to_products_table">
+        Add nullable json column `attribute_values` to `products`. down() drops it.
+      </m2>
+    </migrations>
+
+    <models>
+      <Attribute>categories() BelongsToMany: add 'context' to withPivot.</Attribute>
+      <ProductCategory>
+        attributes() BelongsToMany: add 'context' to withPivot (keep is_required, sort_order).
+      </ProductCategory>
+      <Product>
+        Add cast 'attribute_values' => 'array'. Keep it OUT of #[Fillable] (mass-assignment guard,
+        same discipline as Opportunity.attribute_values); write it via the service with forceFill.
+        Update the class docblock (it currently states products carry no attribute values).
+      </Product>
+    </models>
+
+    <resolution>
+      <CategoryHierarchy>
+        effectiveAttributes(ProductCategory $c, AttributeContext $context = Opportunity) and
+        ancestorAttributes(...) gain a context parameter and filter pivot rows by context.
+        Inheritance / barrier / most-specific-wins logic UNCHANGED, just scoped per context.
+        Default = Opportunity so every current caller is unaffected.
+      </CategoryHierarchy>
+      <shared-value-pipeline>
+        Reuse App\RequestManagement\ApplicableAttribute, AttributeValueValidator,
+        AttributeValueNormalizer AS-IS (they are already generic over an attribute collection).
+        Import them from the product path; do NOT duplicate. Do NOT move/rename them (keeps the
+        Opportunity path untouched). New: App\Products\ProductAttributeResolver::resolve(Product)
+        -> Collection<ApplicableAttribute> built from
+        CategoryHierarchy::effectiveAttributes($product->category, Product).
+      </shared-value-pipeline>
+    </resolution>
+
+    <sync>
+      ProductCategoryService::syncAttributes MUST stop using BelongsToMany::sync() (it keys by
+      attribute_id only and cannot represent the same attribute in two contexts). Replace with a
+      wholesale pivot rewrite for the category: detach all, then insert rows carrying
+      (attribute_id, is_required, sort_order, context). Idempotent, transaction-wrapped.
+    </sync>
+
+    <contract frozen="true">
+      <product-categories>
+        Store/Update payload: attributes[] rows gain `context` in ['product','opportunity']
+        (required, validated). DTOs carry context. StoreProductCategoryRequest /
+        UpdateProductCategoryRequest rules updated.
+        ProductCategoryResource: each own-attribute row and each inherited-attribute row carries
+        `context`. Shape stays a FLAT list (FE splits by context) — do not nest. Controller keeps
+        merging inherited_attributes + effective_business_function, now context-tagged for both.
+      </product-categories>
+      <effective-attributes>
+        GET product-categories/{productCategory}/effective-attributes?context=product|opportunity
+        Validate context against the enum; default 'opportunity'. Authorization unchanged.
+      </effective-attributes>
+      <products>
+        Product store/update accept additive `attribute_values`: { attribute_code: value }.
+        Deep validation in ProductService via AttributeValueValidator against the PRODUCT-context
+        effective attributes of the product's category (unknown code / required / per-type rules).
+        Then AttributeValueNormalizer, then forceFill+save. FormRequest does shallow `array` check.
+        ProductResource: additive `attribute_values` + `applicable_attributes` (product context,
+        via ProductAttributeResolver). Envelope { success, message, ... } unchanged.
+      </products>
+    </contract>
+
+    <authz>
+      Existing product-categories.* and products.* policies apply unchanged. No new permissions.
+      Attribute field-level gating mirrors the Opportunity path (MetaField metaKey pattern) — no
+      new server rules beyond what AttributeValueValidator already enforces.
+    </authz>
+
+    <tests>
+      - Backfill/regression: after migration, existing assignments are context='opportunity';
+        ApplicableAttributesResolver + request-management work-panel output UNCHANGED (assert).
+      - Category sync stores both contexts; effective-attributes endpoint filters by context;
+        inheritance resolves per context (barrier + most-specific still honored).
+      - Product create/update with attribute_values: happy path, unknown code -> 422,
+        missing required -> 422, wrong type -> 422, authz (no permission -> 403).
+      Coverage targets per backend.md. Run Pest for real.
+    </tests>
+  </backend>
+
+  <frontend owner="frontend agent" root="frontend/src/">
+
+    <product-categories>
+      types.ts: add context:'product'|'opportunity' to ProductCategoryAttributeAssignment,
+        ProductCategoryInheritedAttribute, AttributeAssignmentInput, EffectiveAttribute.
+      product-category-schema.ts: attributes[] object gains context.
+      attribute-assignment-editor.tsx: render TWO clearly separated sections/cards
+        ("Attributi Prodotto" / "Attributi Opportunita'") each with its own list (filtered by
+        context), add/remove/is_required/sort_order, and its own inherited read-only list.
+        The picker in each section assigns with that section's context. Compact enterprise style
+        per ui-design.md (small, cards/sections graphically distinct, each with a short
+        description of where the attributes are used). Reuse components/ui + existing sub-parts;
+        keep file under 300/500 limits (split if needed).
+      product-category-form-body.tsx: wire the two sections.
+      api.ts: fetchEffectiveAttributes(categoryId, context) -> ?context=.
+      use-effective-attributes.ts: accept context, include in query key.
+    </product-categories>
+
+    <products>
+      New dynamic-fields block in the Product form driven by
+      useEffectiveAttributes(category_id, 'product'). REUSE the proven bridge: the pure adapter
+      toCustomFieldDescriptor (features/request-management/request-attribute-adapter.ts) +
+      CUSTOM_FIELD_COMPONENT_REGISTRY. Map EffectiveAttribute -> descriptor (same rich shape as
+      ApplicableAttribute). Do NOT modify request-management files (Opportunity path untouched):
+      import the pure adapter, or extract a shared component under features/attributes/ that
+      products use and request-management is left as-is.
+      product-form-body.tsx: insert the block (after the category picker; alongside the existing
+      CustomFieldsSection). React to category_id via useWatch; empty when no category.
+      use-product-form.ts / product-schema.ts: dynamic Zod schema + seeded defaults for
+      attribute_values, mirroring buildRequestWorkSchema / seedAttributeValues.
+      product-form-payload.ts: include attribute_values in the create/update payload.
+      types.ts: Product gains attribute_values + applicable_attributes (additive).
+      Product detail: render product attribute values read-only (additive).
+    </products>
+
+    <i18n>
+      product-categories namespace: titles + descriptions for the two sections.
+      products namespace: dynamic-fields title/empty. it + en. Respect the 500-line file limit
+      (split a locale file if an addition would exceed it, as done previously).
+    </i18n>
+
+    <tests>
+      Vitest: attribute-assignment-editor two-section behavior; product dynamic fields render +
+      submit attribute_values; effective-attributes context wiring. Run for real.
+    </tests>
+  </frontend>
+
+  <verification owner="verifier">
+    Pest (products + product-categories + REGRESSION opportunities/request-management),
+    Vitest, tsc -b, Pint, ESLint. The single most important AC: the Opportunity / request
+    preliminary-info path is byte-for-byte unchanged. Report green/red with evidence.
+  </verification>
+
+  <git>Per CLAUDE.md 3.6: agents MUST NOT commit or change branch. Stop at green, update HANDOFF.</git>
+</spec>

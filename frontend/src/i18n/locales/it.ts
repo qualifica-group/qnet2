@@ -26,6 +26,7 @@ import { productLines } from './it-product-lines'
 import { opportunityStatuses } from './it-opportunity-statuses'
 import { opportunityWorkflows } from './it-opportunity-workflows'
 import { rewardTypes } from './it-reward-types'
+import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { requestManagement } from './it-request-management'
 import { notes } from './it-notes'
@@ -99,6 +100,7 @@ export const it: TranslationResources = {
     requestManagement: 'Gestione Richieste',
     rewards: 'Premi e Incentivi',
     rewardTypes: 'Buoni, Premi e Incentivi',
+    rewardStatuses: 'Stati Buoni Collegati',
     rewardedReferents: 'Referenti con Buoni',
     opportunitiesAndCommesse: 'Opportunità e Commesse',
     imports: 'Importa lead',
@@ -474,6 +476,7 @@ export const it: TranslationResources = {
   opportunityWorkflows,
   requestManagement,
   rewardTypes,
+  rewardStatuses,
   rewardedReferents,
   notes,
   importRuns: { stats: moduleStats.importRuns },

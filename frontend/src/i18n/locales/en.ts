@@ -33,6 +33,7 @@ import { productLines } from './en-product-lines'
 import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { rewardTypes } from './en-reward-types'
+import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
 import { navigation } from './en-navigation'
 import { requestManagement } from './en-request-management'
@@ -453,6 +454,7 @@ export const en = {
   opportunityWorkflows,
   requestManagement,
   rewardTypes,
+  rewardStatuses,
   rewardedReferents,
   notes,
   importRuns: { stats: moduleStats.importRuns },

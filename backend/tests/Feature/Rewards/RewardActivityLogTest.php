@@ -4,6 +4,7 @@ use App\ActivityLog\ActivityLogRegistry;
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Models\Activity;
@@ -38,6 +39,7 @@ it('create/update/delete produce activity-log entries with subject_type = reward
     $reward = new Reward([
         'referent_id' => $referent->id,
         'reward_type_id' => $rewardType->id,
+        'reward_status_id' => RewardStatus::factory()->create()->id,
         'assigned_at' => now()->toDateString(),
         'notes' => 'Initial note',
     ]);

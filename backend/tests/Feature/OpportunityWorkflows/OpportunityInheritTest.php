@@ -142,9 +142,9 @@ it('create: with no matching workflow, opportunity_workflow_status_id resolves t
         ->and($response->json('data.workflow_status.system_key'))->toBe('open')
         ->and($response->json('data.workflow_status.name'))->toBe($globalOpen->name);
 
-    // AC-003: the resolved set is exposed too (the global set's 3 system rows).
+    // AC-003: the resolved set is exposed too (the global set's 4 system rows).
     $statusKeys = collect($response->json('data.workflow_statuses'))->pluck('system_key')->all();
-    expect($statusKeys)->toEqualCanonicalizing(['open', 'closed_won', 'closed_lost']);
+    expect($statusKeys)->toEqualCanonicalizing(['open', 'validated', 'closed_won', 'closed_lost']);
 
     $this->assertDatabaseHas('opportunities', [
         'id' => $response->json('data.id'),

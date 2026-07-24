@@ -5,6 +5,37 @@ import i18n from '@/i18n'
 import { RewardCard, type RewardCardLabels } from '@/features/rewards/reward-card'
 import type { RewardDetailItem } from '@/features/rewards/types'
 
+/**
+ * The status field's own component test coverage (AC-029/030/031) stubs the
+ * shared `AsyncPaginatedSelect` — the for-select network/pagination behavior
+ * is that component's own responsibility; here only the card's wiring
+ * (picking a value forwards it, the trigger is an accessible combobox) is
+ * under test, mirroring `review-operator-editor.test.tsx`.
+ */
+vi.mock('@/components/ui/async-paginated-select', () => ({
+  AsyncPaginatedSelect: ({
+    value,
+    onChange,
+    labels,
+    disabled,
+  }: {
+    value: number | null
+    onChange: (value: number | null) => void
+    labels: { triggerLabel: string }
+    disabled?: boolean
+  }) => (
+    <button
+      type="button"
+      role="combobox"
+      aria-label={labels.triggerLabel}
+      disabled={disabled}
+      onClick={() => onChange(99)}
+    >
+      {value ?? 'none'}
+    </button>
+  ),
+}))
+
 const LABELS: RewardCardLabels = {
   assignedAt: 'Assigned on',
   sourceRemoved: 'Origin no longer available',
@@ -13,6 +44,13 @@ const LABELS: RewardCardLabels = {
   commercialStatus: 'Commercial status',
   workflowStatus: 'Workflow status',
   operator: 'Operator',
+  status: 'Status',
+  statusPlaceholder: 'Select a status',
+  statusSearchPlaceholder: 'Search a status',
+  statusEmpty: 'No statuses found',
+  statusError: 'Unable to load statuses',
+  statusClearLabel: 'Remove status',
+  statusRetry: 'Retry',
 }
 
 const FULL_REWARD: RewardDetailItem = {
@@ -31,6 +69,7 @@ const FULL_REWARD: RewardDetailItem = {
     workflow_status: { id: 2, name: 'Delivered', color: 'teal' },
     operator: { id: 7, name: 'Mario Rossi', avatar_url: null },
   },
+  reward_status: { id: 3, name: 'Approved', color: 'green' },
 }
 
 const NULL_FIELDS_REWARD: RewardDetailItem = {
@@ -40,6 +79,7 @@ const NULL_FIELDS_REWARD: RewardDetailItem = {
   reward_type: { id: 1, name: 'Amazon voucher', color: 'blue' },
   source: null,
   context: null,
+  reward_status: null,
 }
 
 function renderCard(reward: RewardDetailItem) {
@@ -94,5 +134,85 @@ describe('RewardCard', () => {
     expect(screen.queryByText('Commercial status')).not.toBeInTheDocument()
     expect(screen.queryByText('Workflow status')).not.toBeInTheDocument()
     expect(screen.queryByText('Operator')).not.toBeInTheDocument()
+  })
+})
+
+describe('RewardCard — inline status edit (spec 0060)', () => {
+  it('shows the status as a readonly badge, no select, without an edit permission (AC-030)', () => {
+    renderCard(FULL_REWARD)
+
+    expect(screen.getByText('Approved')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it('shows the status as a readonly badge, no select, when the field is not editable even with canEditStatus unset (AC-030)', () => {
+    render(
+      <MemoryRouter>
+        <RewardCard reward={FULL_REWARD} labels={LABELS} canEditStatus={false} onStatusChange={vi.fn()} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Approved')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it('renders an accessible select and forwards the picked status id when editable (AC-029/AC-031)', () => {
+    const onStatusChange = vi.fn()
+    render(
+      <MemoryRouter>
+        <RewardCard
+          reward={FULL_REWARD}
+          labels={LABELS}
+          canEditStatus
+          onStatusChange={onStatusChange}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText('Approved')).not.toBeInTheDocument()
+    const select = screen.getByRole('combobox', { name: 'Status' })
+
+    fireEvent.click(select)
+
+    expect(onStatusChange).toHaveBeenCalledTimes(1)
+    expect(onStatusChange).toHaveBeenCalledWith(99)
+  })
+
+  it('disables the select while the status update is in flight', () => {
+    render(
+      <MemoryRouter>
+        <RewardCard
+          reward={FULL_REWARD}
+          labels={LABELS}
+          canEditStatus
+          onStatusChange={vi.fn()}
+          isStatusUpdating
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Status' })).toBeDisabled()
+  })
+
+  it('still offers a select for a reward with no status yet (D-5 transitional null)', () => {
+    render(
+      <MemoryRouter>
+        <RewardCard
+          reward={NULL_FIELDS_REWARD}
+          labels={LABELS}
+          canEditStatus
+          onStatusChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Status' })).toBeInTheDocument()
+  })
+
+  it('renders nothing for the status field when there is no status and the user cannot edit it', () => {
+    renderCard(NULL_FIELDS_REWARD)
+
+    expect(screen.queryByText('Status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 })

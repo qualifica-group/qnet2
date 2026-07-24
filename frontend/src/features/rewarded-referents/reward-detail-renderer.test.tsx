@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { RewardDetailRenderer } from '@/features/rewarded-referents/reward-detail-renderer'
+import { apiClient } from '@/api/client'
 import type { RewardDetailItem } from '@/features/rewards/types'
 import type { TableRow } from '@/features/table/types'
 
@@ -20,6 +21,41 @@ const fetchReferentRewardsMock = vi.fn<(referentId: number) => Promise<RewardDet
 
 vi.mock('@/features/rewarded-referents/api', () => ({
   fetchReferentRewards: (...args: [number]) => fetchReferentRewardsMock(...args),
+}))
+
+// Spec 0060 D-8: the card's inline status edit is gated on `rewarded-referents.update`.
+const canMock = vi.fn<(permission: string) => boolean>()
+
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({
+    can: (permission: string) => canMock(permission),
+    hasRole: () => false,
+    roles: [],
+    isLoading: false,
+  }),
+}))
+
+// The status select's own network/pagination behavior is `AsyncPaginatedSelect`'s
+// responsibility (its own test file); here only the wiring into the PATCH
+// mutation is under test, mirroring `reward-card.test.tsx`.
+vi.mock('@/components/ui/async-paginated-select', () => ({
+  AsyncPaginatedSelect: ({
+    onChange,
+    labels,
+  }: {
+    onChange: (value: number | null) => void
+    labels: { triggerLabel: string }
+  }) => (
+    <button type="button" role="combobox" aria-label={labels.triggerLabel} onClick={() => onChange(5)}>
+      pick
+    </button>
+  ),
+}))
+
+// The PATCH itself: only the network boundary is mocked, the real
+// `useUpdateRewardStatus` mutation and invalidation run for real.
+vi.mock('@/api/client', () => ({
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
 }))
 
 // The open-mode resolution (modal Sheet vs page navigation) lives in
@@ -52,6 +88,7 @@ const REWARD: RewardDetailItem = {
     workflow_status: { id: 3, name: 'In lavorazione', color: 'amber' },
     operator: { id: 7, name: 'Mario Rossi', avatar_url: null },
   },
+  reward_status: { id: 1, name: 'In attesa', color: 'amber' },
 }
 
 const ROW: TableRow = { id: 1, actions: [] }
@@ -73,6 +110,9 @@ beforeAll(async () => {
 beforeEach(() => {
   fetchReferentRewardsMock.mockReset()
   openViewMock.mockReset()
+  canMock.mockReset()
+  canMock.mockReturnValue(false)
+  vi.mocked(apiClient.patch).mockReset()
 })
 
 describe('RewardDetailRenderer — lazy load and caching (AC-026)', () => {
@@ -187,5 +227,44 @@ describe('RewardDetailRenderer — auto-height re-measure on lazy load', () => {
     } finally {
       globalThis.ResizeObserver = original
     }
+  })
+})
+
+describe('RewardDetailRenderer — inline status edit (spec 0060 AC-029/AC-030)', () => {
+  it('shows the status as a readonly badge, no select, without rewarded-referents.update', async () => {
+    canMock.mockReturnValue(false)
+    fetchReferentRewardsMock.mockResolvedValue([REWARD])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('Amazon voucher')).toBeInTheDocument())
+    expect(screen.getByText('In attesa')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(apiClient.patch).not.toHaveBeenCalled()
+  })
+
+  it('sends the PATCH with the picked reward_status_id and invalidates the list on success', async () => {
+    canMock.mockReturnValue(true)
+    fetchReferentRewardsMock.mockResolvedValue([REWARD])
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: {
+        success: true,
+        message: 'ok',
+        data: { ...REWARD, reward_status: { id: 5, name: 'Approvato', color: 'green' } },
+      },
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('Amazon voucher')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('combobox', { name: 'Status' }))
+
+    await waitFor(() =>
+      expect(apiClient.patch).toHaveBeenCalledWith('/rewards/10', { reward_status_id: 5 }),
+    )
+    // Invalidation refetches the still-mounted, active query (spec 0060 AC-029).
+    await waitFor(() => expect(fetchReferentRewardsMock).toHaveBeenCalledTimes(2))
   })
 })

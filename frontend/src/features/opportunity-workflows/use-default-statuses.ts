@@ -6,7 +6,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { fetchDefaultStatuses, updateDefaultStatuses } from '@/features/opportunity-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/opportunity-workflows/opportunity-workflow-form-payload'
 import {
-  isClosedWorkflowSystemKey,
+  isTailWorkflowSystemKey,
   type OpportunityWorkflowStatusItem,
   type WorkflowStatusFormRow,
   type WorkflowStatusRowPatch,
@@ -82,8 +82,8 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
       requires_note: false,
     }
     setRows((current) => {
-      const closedIndex = current.findIndex((row) => isClosedWorkflowSystemKey(row.system_key))
-      const insertAt = closedIndex === -1 ? current.length : closedIndex
+      const tailIndex = current.findIndex((row) => isTailWorkflowSystemKey(row.system_key))
+      const insertAt = tailIndex === -1 ? current.length : tailIndex
       return [...current.slice(0, insertAt), newRow, ...current.slice(insertAt)]
     })
   }

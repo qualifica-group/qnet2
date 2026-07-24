@@ -3,6 +3,8 @@
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
+use App\Http\Controllers\RewardStatuses\RewardStatusController;
+use App\Http\Controllers\RewardStatuses\RewardStatusForSelectController;
 use App\Http\Controllers\RewardTypes\RewardTypeController;
 use App\Http\Controllers\RewardTypes\RewardTypeForSelectController;
 use App\Http\Controllers\Sectors\SectorController;
@@ -133,6 +135,27 @@ Route::get('reward-types/{rewardType}', [RewardTypeController::class, 'show']);
 Route::post('reward-types', [RewardTypeController::class, 'store']);
 Route::match(['put', 'patch'], 'reward-types/{rewardType}', [RewardTypeController::class, 'update']);
 Route::delete('reward-types/{rewardType}', [RewardTypeController::class, 'destroy']);
+
+// Reward statuses CRUD (spec 0060): the STATE of an assigned reward
+// (BR-4 delete-guard lives in RewardStatusService). Authorization
+// (reward-statuses.view/create/update/delete) is enforced server-side in
+// RewardStatusController via RewardStatusPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011,
+// BR-5). Declared ABOVE reward-statuses/{rewardStatus} so the literal
+// `for-select` segment wins over the bound wildcard. Gated by
+// reward-statuses.viewAny server-side in RewardStatusForSelectController.
+Route::get('reward-statuses/for-select', RewardStatusForSelectController::class);
+
+// Custom-row resequencing (D-3): `sort_order` is server-managed, this is the
+// only way to change it. Declared ABOVE the bound wildcard for the same
+// literal-segment reason as `for-select`. Gated on reward-statuses.update
+// directly in RewardStatusController::reorder.
+Route::post('reward-statuses/reorder', [RewardStatusController::class, 'reorder']);
+
+Route::get('reward-statuses/{rewardStatus}', [RewardStatusController::class, 'show']);
+Route::post('reward-statuses', [RewardStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'reward-statuses/{rewardStatus}', [RewardStatusController::class, 'update']);
+Route::delete('reward-statuses/{rewardStatus}', [RewardStatusController::class, 'destroy']);
 
 // VAT rates CRUD: a standalone lookup used to assign a VAT percentage to a
 // Product. Authorization (vat-rates.view/create/update/delete) is enforced

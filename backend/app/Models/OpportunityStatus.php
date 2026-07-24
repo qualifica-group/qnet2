@@ -30,6 +30,13 @@ class OpportunityStatus extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
+     * The system row pinned to sort_order=0 (StatusOrderManager::reorder(),
+     * spec 0039 D-5; genericized by spec 0060 for App\Models\RewardStatus'
+     * own single-head shape).
+     */
+    public const StatusSystemKey SYSTEM_HEAD_KEY = StatusSystemKey::New;
+
+    /**
      * The system rows that pin to the tail of the sort_order sequence
      * (StatusOrderManager, spec 0039 D-5), in the order they must appear:
      * "Chiusa con successo" then "Persa" — the latter is ALWAYS last (D-2).

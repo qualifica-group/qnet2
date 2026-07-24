@@ -12,34 +12,21 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
-import { FIELD_TYPE_ICONS } from '@/features/custom-fields/field-type-icons'
-import type { ProductCategoryAttributeAssignment, ProductCategoryDetailWithPermissions, ProductCategoryInheritedAttribute } from '@/features/product-categories/types'
+import { CategoryAttributesContextSection } from '@/features/product-categories/product-category-detail-attributes'
+import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 
 interface ProductCategoryDetailViewProps {
   category: ProductCategoryDetailWithPermissions
 }
 
-interface AttributeTypeBadgeProps {
-  attribute: ProductCategoryAttributeAssignment | ProductCategoryInheritedAttribute
-}
-
-/** The assigned attribute's type glyph + label (shared with the custom fields catalogue). */
-function AttributeTypeBadge({ attribute }: AttributeTypeBadgeProps) {
-  const { t } = useTranslation()
-  const Icon = FIELD_TYPE_ICONS[attribute.type]
-  return (
-    <Badge variant="outline" className="gap-1 text-xs">
-      <Icon className="size-3.5" aria-hidden="true" />
-      {t(`customFields.types.${attribute.type}`)}
-    </Badge>
-  )
-}
-
 /**
  * Read-only detail of a single product category. Purely presentational: the
  * caller (the table's "view" sheet) fetches the fresh detail and passes it
- * down (mirrors `AttributeDetailView`/`ProductDetailView`). Lists both the
- * category's own attribute assignments and what it inherits from its ancestry.
+ * down (mirrors `AttributeDetailView`/`ProductDetailView`). Attributes (spec
+ * 0061: own assignments + what the category inherits) render as TWO
+ * context-scoped sections — "Attributi Prodotto" / "Attributi Opportunità" —
+ * the same split `AttributeAssignmentEditor` uses in the form, so a category
+ * with attributes assigned to both contexts never shows them merged.
  */
 export function ProductCategoryDetailView({ category }: ProductCategoryDetailViewProps) {
   const { t } = useTranslation()
@@ -83,39 +70,19 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         </DetailSection>
       )}
 
-      {category.attributes.length > 0 && (
-        <DetailSection title={t('productCategories.form.attributes')}>
-          <ul className="flex flex-col gap-1.5">
-            {category.attributes.map((attribute) => (
-              <li key={attribute.attribute_id} className="flex items-center gap-2 text-sm">
-                <AttributeTypeBadge attribute={attribute} />
-                <span className="text-foreground">{attribute.name}</span>
-                {attribute.is_required && (
-                  <Badge variant="outline" className="text-xs">
-                    {t('productCategories.form.isRequired')}
-                  </Badge>
-                )}
-              </li>
-            ))}
-          </ul>
-        </DetailSection>
-      )}
+      <CategoryAttributesContextSection
+        title={t('productCategories.form.sections.productAttributes.title')}
+        description={t('productCategories.form.sections.productAttributes.description')}
+        own={category.attributes.filter((attribute) => attribute.context === 'product')}
+        inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'product')}
+      />
 
-      {category.inherited_attributes.length > 0 && (
-        <DetailSection title={t('productCategories.form.inheritedAttributes')}>
-          <ul className="flex flex-col gap-1.5">
-            {category.inherited_attributes.map((attribute) => (
-              <li
-                key={attribute.attribute_id}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <AttributeTypeBadge attribute={attribute} />
-                <span>{attribute.name}</span>
-              </li>
-            ))}
-          </ul>
-        </DetailSection>
-      )}
+      <CategoryAttributesContextSection
+        title={t('productCategories.form.sections.opportunityAttributes.title')}
+        description={t('productCategories.form.sections.opportunityAttributes.description')}
+        own={category.attributes.filter((attribute) => attribute.context === 'opportunity')}
+        inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'opportunity')}
+      />
 
       {category.permissions.actions.view_activity ? (
         <DetailSection title={t('activityLog.title')} icon={<History />}>

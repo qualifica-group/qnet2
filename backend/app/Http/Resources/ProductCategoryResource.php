@@ -39,6 +39,10 @@ class ProductCategoryResource extends JsonResource
                 'type' => $attribute->type,
                 'is_required' => (bool) $attribute->pivot->is_required,
                 'sort_order' => (int) $attribute->pivot->sort_order,
+                // Spec 0061: which section ("Attributi Prodotto" vs
+                // "Attributi Opportunita'") this OWN assignment belongs to —
+                // the frontend splits this single flat list by the tag.
+                'context' => (string) $attribute->pivot->context,
             ])->all(),
             'created_at' => $this->created_at,
         ];

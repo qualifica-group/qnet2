@@ -144,6 +144,14 @@ export const productCategories = {
         title: 'Attributi',
         description: 'Attributi assegnati a questa categoria, più quelli ereditati.',
       },
+      productAttributes: {
+        title: 'Attributi Prodotto',
+        description: 'Caricati nella scheda Prodotto (creazione/modifica) per i prodotti di questa categoria.',
+      },
+      opportunityAttributes: {
+        title: 'Attributi Opportunità',
+        description: 'Caricati nelle informazioni preliminari della richiesta per questa categoria.',
+      },
     },
   },
 }
@@ -245,6 +253,10 @@ export const products = {
         title: 'Dettagli',
         description: 'Nome, descrizione, prezzi e categoria del prodotto.',
       },
+    },
+    dynamicFields: {
+      title: 'Attributi',
+      empty: 'Seleziona una categoria per vedere i suoi attributi.',
     },
   },
 }

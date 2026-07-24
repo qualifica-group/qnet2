@@ -3,6 +3,7 @@
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -20,6 +21,7 @@ it('associates a Reward to an Opportunity storing the morph alias, not the FQCN 
     $reward = new Reward([
         'referent_id' => Referent::factory()->create()->id,
         'reward_type_id' => RewardType::factory()->create()->id,
+        'reward_status_id' => RewardStatus::factory()->create()->id,
         'assigned_at' => now()->toDateString(),
     ]);
     $reward->source()->associate($opportunity);

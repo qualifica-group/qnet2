@@ -33,6 +33,10 @@ use App\Models\OpportunityWorkflowStatus;
  * gap, but the frontend widget has no live autocomplete source until a
  * future task adds it (flagged to the team, out of this module's write
  * surface).
+ *
+ * `reward_status` (spec 0060 §5) is a plain, direct-column set filter on the
+ * `rewards` row itself — same shape as `reward_type`, MIRRORED exactly (id
+ * source `reward-statuses/for-select`, target `reward_status_id`).
  */
 final class RewardedReferentAdvancedFilterCatalog
 {
@@ -112,6 +116,18 @@ final class RewardedReferentAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => false,
                 'target' => 'assigned_at',
+            ],
+            [
+                'name' => 'reward_status',
+                'label' => 'rewardedReferents.advancedFilters.rewardStatus',
+                'type' => AdvancedFilterType::Relation,
+                'order' => 7,
+                'required' => false,
+                'visible' => true,
+                'width' => 'md',
+                'multiple' => true,
+                'source' => ['resource' => 'reward-statuses'],
+                'target' => 'reward_status_id',
             ],
         ];
     }

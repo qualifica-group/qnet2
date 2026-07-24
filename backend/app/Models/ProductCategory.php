@@ -64,7 +64,7 @@ class ProductCategory extends BaseModel
     public function attributes(): BelongsToMany
     {
         return $this->belongsToMany(Attribute::class, 'attribute_category', 'category_id', 'attribute_id')
-            ->withPivot(['is_required', 'sort_order'])
+            ->withPivot(['is_required', 'sort_order', 'context'])
             ->withTimestamps();
     }
 

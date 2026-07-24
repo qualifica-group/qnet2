@@ -45,6 +45,7 @@ final class RewardedReferentAdvancedFilterApplier
     {
         return match ($name) {
             'reward_type' => $this->applyRewardType($query, $value),
+            'reward_status' => $this->applyRewardStatus($query, $value),
             'opportunity' => $this->applyOpportunity($query, $value),
             'opportunity_status' => $this->applyOpportunityStatus($query, $value),
             'workflow_status' => $this->applyWorkflowStatus($query, $value),
@@ -67,6 +68,27 @@ final class RewardedReferentAdvancedFilterApplier
         if ($ids !== []) {
             $query->whereHas('rewards', static function (Builder $rewards) use ($ids): void {
                 $rewards->whereIn('reward_type_id', $ids);
+            });
+        }
+
+        return true;
+    }
+
+    /**
+     * `reward_status` (spec 0060 §5) — a plain, direct-column set filter on
+     * the `rewards` row itself, MIRRORED exactly from `reward_type` above (no
+     * morph crossing needed: the persisted status lives on `rewards` itself,
+     * spec 0060 D-5).
+     *
+     * @param  Builder<Referent>  $query
+     */
+    private function applyRewardStatus(Builder $query, mixed $value): bool
+    {
+        $ids = $this->intIds($value);
+
+        if ($ids !== []) {
+            $query->whereHas('rewards', static function (Builder $rewards) use ($ids): void {
+                $rewards->whereIn('reward_status_id', $ids);
             });
         }
 

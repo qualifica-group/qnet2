@@ -3,13 +3,17 @@
 namespace App\Http\Requests\ProductCategories;
 
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
+use App\Enums\AttributeContext;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
- * Validates the payload for POST /api/product-categories (spec 0017).
+ * Validates the payload for POST /api/product-categories (spec 0017; spec
+ * 0061 for `attributes.*.context`).
  *
  * A cycle is structurally impossible on create (the category has no id yet),
  * so no cycle guard is needed here (unlike UpdateProductCategoryRequest's
@@ -21,7 +25,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class StoreProductCategoryRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesAttributeContextAssignments;
 
     public function authorize(): bool
     {
@@ -41,7 +45,8 @@ class StoreProductCategoryRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],
             'attributes' => ['sometimes', 'array'],
-            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id', 'distinct'],
+            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
+            'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],
             'attributes.*.is_required' => ['sometimes', 'boolean'],
             'attributes.*.sort_order' => ['sometimes', 'integer'],
         ];
@@ -50,6 +55,7 @@ class StoreProductCategoryRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->validateAttributeContextAssignments($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

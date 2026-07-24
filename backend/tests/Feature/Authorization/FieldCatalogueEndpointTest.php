@@ -92,6 +92,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // aggregated, READ-ONLY view, D-6 — registered so GET /api/meta/rewarded-referents resolves,
         // but `fields()` is empty: the module has no dedicated write surface).
         'rewarded-referents',
+        // spec 0060 `reward-statuses` (RewardStatusesAuthorization: the "Stati Buoni Collegati"
+        // lookup — name/color mandatory, description/is_active optional, D-4).
+        'reward-statuses',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

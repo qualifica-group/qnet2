@@ -23,8 +23,14 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * `$reward->source()->associate($opportunity)`), never from raw request
  * input (RewardAssignmentWriter is the only writer, per the nested-sync
  * precedent).
+ *
+ * `reward_status_id` (spec 0060, D-5): NOT NULL, defaulted to the system
+ * `pending` row on create by RewardAssignmentWriter::createAdded() (BR-6),
+ * mutated ONLY through `PATCH /api/rewards/{reward}`
+ * (RewardController::updateStatus, D-1) — never part of the Opportunity/
+ * Gestione Richiesta chip payload.
  */
-#[Fillable(['referent_id', 'reward_type_id', 'assigned_at', 'notes'])]
+#[Fillable(['referent_id', 'reward_type_id', 'reward_status_id', 'assigned_at', 'notes'])]
 class Reward extends BaseModel
 {
     /** @use HasFactory<RewardFactory> */
@@ -48,6 +54,11 @@ class Reward extends BaseModel
     public function rewardType(): BelongsTo
     {
         return $this->belongsTo(RewardType::class);
+    }
+
+    public function rewardStatus(): BelongsTo
+    {
+        return $this->belongsTo(RewardStatus::class);
     }
 
     public function source(): MorphTo

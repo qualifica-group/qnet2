@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Enums\StatusSystemKey;
 use App\Models\Opportunity;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
@@ -43,10 +45,12 @@ class DemoRewardSeeder extends Seeder
             ->get();
 
         $rewardTypes = RewardType::query()->orderBy('id')->get();
+        $pendingStatusId = $this->resolvePendingStatusId();
 
-        if ($opportunities->isEmpty() || $rewardTypes->isEmpty()) {
-            // Nothing sensible to seed without a reporter to reward or a
-            // catalogue to reward it from.
+        if ($opportunities->isEmpty() || $rewardTypes->isEmpty() || $pendingStatusId === null) {
+            // Nothing sensible to seed without a reporter to reward, a
+            // catalogue to reward it from, or the system status every new
+            // reward starts on (spec 0060, BR-6).
             return;
         }
 
@@ -54,14 +58,25 @@ class DemoRewardSeeder extends Seeder
         $faker->seed(20260723);
 
         foreach ($opportunities as $opportunity) {
-            $this->assignRewards($opportunity, $rewardTypes, $faker);
+            $this->assignRewards($opportunity, $rewardTypes, $pendingStatusId, $faker);
         }
+    }
+
+    /**
+     * The system `pending` row's id (spec 0060, BR-6), resolved by
+     * `system_key` exactly like RewardAssignmentWriter — never a hardcoded id.
+     */
+    private function resolvePendingStatusId(): ?int
+    {
+        $id = RewardStatus::query()->where('system_key', StatusSystemKey::Pending->value)->value('id');
+
+        return $id === null ? null : (int) $id;
     }
 
     /**
      * @param  Collection<int, RewardType>  $rewardTypes
      */
-    private function assignRewards(Opportunity $opportunity, Collection $rewardTypes, Generator $faker): void
+    private function assignRewards(Opportunity $opportunity, Collection $rewardTypes, int $pendingStatusId, Generator $faker): void
     {
         $count = $faker->numberBetween(1, min(self::MAX_REWARD_TYPES_PER_OPPORTUNITY, $rewardTypes->count()));
         $pickedRewardTypeIds = $faker->randomElements($rewardTypes->pluck('id')->all(), $count);
@@ -75,6 +90,7 @@ class DemoRewardSeeder extends Seeder
                     'source_id' => $opportunity->id,
                 ],
                 [
+                    'reward_status_id' => $pendingStatusId,
                     'assigned_at' => $faker->dateTimeBetween('-3 months', 'now')->format('Y-m-d'),
                     'notes' => $faker->optional()->sentence(),
                 ],

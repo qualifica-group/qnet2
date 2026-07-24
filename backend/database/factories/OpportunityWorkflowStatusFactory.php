@@ -35,13 +35,14 @@ class OpportunityWorkflowStatusFactory extends Factory
     }
 
     /**
-     * Marks the row as one of the three mandatory system rows ('open'/
-     * 'closed_won'/'closed_lost', spec 0047 AC-004), mirroring
+     * Marks the row as one of the four mandatory system rows ('open'/
+     * 'validated'/'closed_won'/'closed_lost', spec 0047 AC-004), mirroring
      * OpportunityStatusFactory::system().
      */
     public function system(string $key): static
     {
         return $this->state(fn () => match ($key) {
+            'validated' => ['system_key' => 'validated', 'name' => 'Validato', 'sort_order' => 997, 'group' => WorkflowStatusGroup::Validated],
             'closed_won' => ['system_key' => 'closed_won', 'name' => 'Chiusa positiva', 'sort_order' => 998, 'group' => WorkflowStatusGroup::ClosedWon],
             'closed_lost' => ['system_key' => 'closed_lost', 'name' => 'Chiusa negativa', 'sort_order' => 999, 'group' => WorkflowStatusGroup::ClosedLost],
             default => ['system_key' => 'open', 'name' => 'Aperta', 'sort_order' => 0, 'group' => WorkflowStatusGroup::Open],

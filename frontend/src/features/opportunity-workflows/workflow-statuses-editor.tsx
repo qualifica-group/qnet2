@@ -42,14 +42,16 @@ const STATUS_DESCRIPTION_MAX_LENGTH = 500
 const GROUP_LABEL_KEYS: Record<WorkflowStatusGroupValue, string> = {
   open: 'opportunityWorkflows.form.statuses.group.open',
   pending: 'opportunityWorkflows.form.statuses.group.pending',
+  validated: 'opportunityWorkflows.form.statuses.group.validated',
   closed_won: 'opportunityWorkflows.form.statuses.group.closed_won',
   closed_lost: 'opportunityWorkflows.form.statuses.group.closed_lost',
 }
 
-/** Soft-badge color per group: open=green (active), pending=orange (waiting), closed_won=emerald (positive outcome), closed_lost=red (negative outcome). */
+/** Soft-badge color per group: open=green (active), pending=orange (waiting), validated=violet (accertato, non chiuso), closed_won=emerald (positive outcome), closed_lost=red (negative outcome). */
 const GROUP_BADGE_CLASSES: Record<WorkflowStatusGroupValue, string> = {
   open: BADGE_COLOR_CLASSES.green,
   pending: BADGE_COLOR_CLASSES.orange,
+  validated: BADGE_COLOR_CLASSES.violet,
   closed_won: BADGE_COLOR_CLASSES.emerald,
   closed_lost: BADGE_COLOR_CLASSES.red,
 }

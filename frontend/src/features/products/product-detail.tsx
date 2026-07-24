@@ -14,6 +14,7 @@ import { enumLabelOf } from '@/features/config/enum-label'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatDecimal } from '@/features/products/column-renderers'
+import { ProductAttributeValuesSection } from '@/features/products/product-attribute-values-section'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
 interface ProductDetailViewProps {
@@ -66,6 +67,11 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
           )}
         </DetailGrid>
       </DetailSection>
+
+      <ProductAttributeValuesSection
+        attributes={product.applicable_attributes ?? []}
+        values={product.attribute_values ?? {}}
+      />
 
       {product.permissions.actions.view_activity ? (
         <DetailSection title={t('activityLog.title')} icon={<History />}>

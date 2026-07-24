@@ -18,6 +18,8 @@ import { AttributeAssignmentEditor } from '@/features/product-categories/attribu
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
+  AttributeContext,
+  EffectiveAttribute,
   ProductCategoryDetail,
   ProductCategoryFormMode,
   ProductCategoryInheritedAttribute,
@@ -31,6 +33,23 @@ interface ProductCategoryFormBodyProps {
 
 /** Sentinel id representing "no parent" in the parent picker (no real category has id 0). */
 const ROOT_PARENT_VALUE = 0
+
+/** Tags each effective-attributes result with the context it was fetched for, into the flat shape `AttributeAssignmentEditor` splits (spec 0061). */
+function toInheritedAttributes(
+  product: EffectiveAttribute[] | undefined,
+  opportunity: EffectiveAttribute[] | undefined,
+): ProductCategoryInheritedAttribute[] {
+  const tag = (attributes: EffectiveAttribute[] | undefined, context: AttributeContext) =>
+    (attributes ?? []).map((attribute) => ({
+      attribute_id: attribute.id,
+      code: attribute.code,
+      name: attribute.name,
+      type: attribute.type,
+      is_required: attribute.is_required,
+      context,
+    }))
+  return [...tag(product, 'product'), ...tag(opportunity, 'opportunity')]
+}
 
 /**
  * The category create/edit form UI: identity fields (name, parent,
@@ -46,21 +65,15 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
 
   const parentId = form.watch('parent_id')
   const inheritsAttributes = form.watch('inherits_attributes')
-  const inheritedQuery = useEffectiveAttributes(parentId)
+  const inheritedProductQuery = useEffectiveAttributes(parentId, 'product')
+  const inheritedOpportunityQuery = useEffectiveAttributes(parentId, 'opportunity')
   // Opting out is a barrier: the category inherits nothing, so the read-only
   // inherited list must reflect that immediately (not just after save).
+  // Flat, both contexts (spec 0061) — `AttributeAssignmentEditor` splits it.
   const inherited: ProductCategoryInheritedAttribute[] = useMemo(
     () =>
-      inheritsAttributes
-        ? (inheritedQuery.data ?? []).map((attribute) => ({
-            attribute_id: attribute.id,
-            code: attribute.code,
-            name: attribute.name,
-            type: attribute.type,
-            is_required: attribute.is_required,
-          }))
-        : [],
-    [inheritedQuery.data, inheritsAttributes],
+      inheritsAttributes ? toInheritedAttributes(inheritedProductQuery.data, inheritedOpportunityQuery.data) : [],
+    [inheritedProductQuery.data, inheritedOpportunityQuery.data, inheritsAttributes],
   )
 
   const parentOptions = useMemo(() => {

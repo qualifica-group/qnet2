@@ -2,6 +2,189 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0061 — ATTRIBUTI CATEGORIA PRODOTTO: CONTESTI PRODOTTO/OPPORTUNITA' (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0061-product-category-attribute-contexts.xml` (contratto congelato). Estende il
+sistema attributi della Categoria Prodotto a DUE contesti d'uso, configurati come due sezioni distinte:
+"Attributi Prodotto" (scheda Prodotto) e "Attributi Opportunita'" (info preliminari Opportunita').
+
+DECISIONI UTENTE (AskUserQuestion 2026-07-24), vincolanti:
+1. Separazione = DISCRIMINATORE `context` sul pivot `attribute_category` (due liste indipendenti; lo
+   stesso attributo del catalogo puo' stare in Prodotto, Opportunita', o entrambi = due righe pivot).
+2. Valori attributi Prodotto = colonna JSON `products.attribute_values` (come `opportunities.
+   attribute_values`), riusa `AttributeValueValidator`/`AttributeValueNormalizer`. NIENTE ricreazione
+   dell'EAV `product_attribute_values` (era stato rimosso).
+
+INVARIANTE HARD (verificata): la strada Opportunita'/request-management resta IDENTICA.
+`app/RequestManagement/` e `frontend/src/features/request-management/` hanno ZERO diff. Il param
+`context` di `CategoryHierarchy::effectiveAttributes()` DEFAULTA a `Opportunity`, quindi ogni chiamante
+attuale (ApplicableAttributesResolver, OpportunityResource) e' invariato. La migration fa BACKFILL di
+tutte le righe esistenti a `context='opportunity'`. Test di regressione dedicato:
+`ProductCategoryAttributeContextTest::"regression: ApplicableAttributesResolver never sees a
+Product-context attribute"`.
+
+BACKEND (owner agent, solo backend/): nuovo enum `App\Enums\AttributeContext` (Product/Opportunity);
+migration `add_context_to_attribute_category_table` (col `context` default opportunity, unique ->
+(attribute_id,category_id,context)) + `add_attribute_values_to_products_table` (json nullable);
+`CategoryHierarchy` effectiveAttributes/ancestorAttributes/ownAttributeRows con param `$context =
+Opportunity` (filtro `wherePivot('context',...)`, riga taggata col context); `ProductCategoryService::
+syncAttributes` RISCRITTO da `->sync()` a delete+insert transazionale (sync() non regge lo stesso
+attributo in due contesti); `App\Products\ProductAttributeResolver::resolve(Product)` (riusa
+`ApplicableAttribute`, NON duplica); `Product` cast `attribute_values`=>array FUORI da #[Fillable],
+scritto via `ProductService` forceFill dopo Validator(product-context)+Normalizer; endpoint
+`effective-attributes?context=` (nuovo `EffectiveAttributesRequest`, default opportunity);
+`ProductCategoryResource` tagga own+inherited con `context` (lista FLAT); Product store/update
+additivi `attribute_values`; `ProductResource` additivo `attribute_values`+`applicable_attributes`.
+GOTCHA contratto: errore duplicato (attribute_id,context) riportato sul SECONDO indice
+(`attributes.{lastIndex}.attribute_id`); `attribute_values` risponde `{}` mai `null`.
+Test: `ProductCategoryAttributeContextTest` (9) + `ProductAttributeValuesTest` (9). Pest 942 pass
+(3 rossi PREESISTENTI navigation section-key, estranei, riproducibili sotto git stash); Pint ok.
+
+FRONTEND (owner agent, solo frontend/src/): `product-categories` types+schema con `context`;
+`attribute-assignment-editor.tsx` riscritto -> due sezioni card graficamente distinte (nuovi
+`attribute-assignment-section.tsx`, `attribute-assignment-row-controls.tsx`); `fetchEffectiveAttributes
+(categoryId, context)` + query-key col context; `product-category-form-body.tsx` fetcha entrambi i
+contesti dal parent e concatena la lista `inherited` flat. `product-category-detail.tsx` SPLITTATO per
+context (nuovo `product-category-detail-attributes.tsx`) con le stesse due sezioni etichettate.
+`products`: nuovo bridge RIUSABILE `features/attributes/{effective-attribute-adapter.ts,
+attribute-control-bridge.tsx}` (NON tocca request-management/request-attribute-adapter.ts); nuovo
+`product-dynamic-fields.tsx` guidato da `useEffectiveAttributes(category_id,'product')`; schema Zod
+dinamico in `product-schema.ts`; `categoryId` aggiornato via EVENT HANDLER `onCategoryChange` (non
+useEffect, per react-compiler eslint); payload `attribute_values` additivo/sparse scopato ai code
+della categoria CORRENTE; `product-attribute-values-section.tsx` read-only nella scheda. i18n it/en:
+`productCategories.form.sections.productAttributes|opportunityAttributes`, `products.form.dynamicFields
+.title|empty`. Vitest 193 pass (product-categories+products+attributes+request-management); tsc -b
+pulito; eslint pulito. (baseline nota: `features/table/cell-renderers.test.tsx` 3 rossi i18n leak,
+estranei.)
+
+ADVISORY (non bloccanti, sotto 500 hard): `ProductCategoryService.php` 361, `CategoryHierarchy.php`
+458, `product-form-body.tsx` 305 righe (soft 300 superato).
+
+PROSSIMO PASSO: chiedere all'utente se committare (regola §3.6 — NON committato). NB i 3 rossi backend
+navigation section-key sono un problema PREESISTENTE di altri teammate (config/navigation.php vs
+*SecurityTest attesi), da segnalare a chi possiede la navigation, non a 0061.
+
+## MODULO 0060 — STATI BUONI COLLEGATI (reward-statuses) + INTEGRAZIONE CARD (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0060-reward-statuses-module.xml` (approvata + costruita via /build-feature, 4 lane +
+verifier indipendente). Nuovo configuratore di stato `reward-statuses` ("Stati Buoni Collegati"), clone
+di `opportunity-statuses` SENZA `group`, PIU' `description`(500 nullable) e `is_active`(bool, Switch/
+BooleanBadgeCell), UNA riga di sistema `pending` ("In attesa", color `amber`, sort_order 0), riordino
+drag&drop riusando la feature condivisa `status-reorder`. Integra i buoni (`rewards`) con la FK
+`reward_status_id` e rende lo Stato modificabile INLINE nella card del buono.
+
+DECISIONI recepite dall'utente (AskUserQuestion 2026-07-24):
+- Edit Stato SOLO inline nella card (nuovo `PATCH /api/rewards/{reward}`), chip Opportunita'/Request NON
+  toccato (D-1); il buono nasce col default `pending`.
+- Default = riga di SISTEMA `pending` non eliminabile, editabile solo name+color (D-2).
+- Riordino drag&drop come gli altri configuratori (D-3).
+- D-8 RISOLTA: gate del PATCH sul solo permesso di risorsa `rewarded-referents.update` (nessun
+  field-permission dedicato per `reward_status`). DA CONFERMARE dall'owner (vedi spec open_questions).
+
+BACKEND (Lane A + B, teammate `backend`):
+- Migrazioni: `2026_07_24_150000_create_reward_statuses_table` (seed `pending`), `..._150100_add_reward_
+  status_id_to_rewards` (nullable+FK restrict), `..._170000_backfill_and_require_reward_status_id_on_
+  rewards` (backfill a pending per system_key + `->change()` NOT NULL). NB migrazioni separate: la 150100
+  additiva NON e' stata modificata (regola: mai toccare una migrazione gia' presente).
+- Model `RewardStatus` (`#[Fillable(['name','description','color','sort_order','is_active'])]`, system_key
+  NON fillable, morph `reward_status`, `rewards()` HasMany). `Reward` +`reward_status_id` in Fillable +
+  `rewardStatus()` BelongsTo.
+- Service/DTO/Request/Controller/Resource/TableDefinition/ColumnCatalog/AdvancedFilterCatalog/
+  Authorization/Factory/DemoRewardStatusSeeder clonati da opportunity-statuses (senza group).
+- REORDER generalizzato a blast-radius minimo: const `SYSTEM_HEAD_KEY` per-model (New per Opp/Pipeline,
+  Pending per RewardStatus) in `StatusOrderManager::reorder()`; `SystemStatusGuard::assertUpdatable()`
+  ora "rifiuta ogni chiave submitted fuori da {name,color}" (byte-identico per Opp/Pipeline il cui unico
+  altro campo e' group; blocca description/is_active/sort_order per RewardStatus); `SYSTEM_TAIL_KEYS=[]`
+  su RewardStatus (no-op sui loop esistenti). +case `Pending` in `StatusSystemKey`.
+- Integrazione rewards: `RewardAssignmentWriter::createAdded()` scrive default `pending` (risolto per
+  system_key una volta per batch, `resolvePendingStatusId()`, no id hardcoded); `RewardResource` +blocco
+  `reward_status:{id,name,color}|null` + `static eagerLoad()` (unica fonte eager-load, riusata dai due
+  controller); `ReferentRewardsController` usa `RewardResource::eagerLoad()`; filtro avanzato
+  `reward_status` in `RewardedReferentAdvancedFilter{Catalog,Applier}` (mirror `reward_type`, name
+  `reward_status` -> chiave FE `rewardedReferents.advancedFilters.rewardStatus`).
+- PATCH: `routes/api/rewards.php` (`require` in routes/api.php dopo referents.php, gruppo auth:sanctum) ->
+  `RewardController@updateStatus` -> `RewardService::updateStatus`; `UpdateRewardStatusRequest`
+  (`reward_status_id required|integer|exists reward_statuses where is_active=true`); authz
+  `rewarded-referents.update`; risposta = INTERA `RewardResource` in `{success,message,data}`.
+- Registrazione: routes/api/lookups.php, config/{tables,authorization,activity-log,navigation}.php,
+  AppServiceProvider morph, DemoDataSeeder, `FieldCatalogueEndpointTest` array atteso (+reward-statuses,
+  adeguamento legittimo del registry).
+
+FRONTEND (Lane C + D, due teammate `frontend`):
+- Feature `features/reward-statuses/` (clone opportunity-statuses, no group, +description Textarea,
+  +is_active Switch, `StatusReorderToggle resource="reward-statuses"`, `moduleScreen` glob-registered,
+  OPEN_MODE_MODAL). page + router + breadcrumbs + icon `list-checks` (ListChecks). i18n it/en-reward-
+  statuses + navigation.rewardStatuses ("Stati Buoni Collegati"/"Reward Statuses").
+- Card: `features/rewards/types.ts` +`RewardStatusRef` +`reward_status`; `reward-card.tsx` sezione Stato
+  (Select `AsyncPaginatedSelect resource="reward-statuses"` se editabile, altrimenti badge readonly);
+  `features/rewards/{api,use-update-reward-status}.ts` (`PATCH /rewards/{id}` body `{reward_status_id}`);
+  `rewarded-referents/reward-detail-renderer.tsx` gate `can('rewarded-referents.update')` fail-closed +
+  invalidazione `rewardedReferentsKeys.rewards(referentId)`; i18n it/en-rewarded-referents (Stato +
+  filtro reward_status).
+
+VERIFICA (verifier indipendente, output reale): RewardStatus 78/78, Reward 190/191, RewardedReferent
+19/19, OpportunityStatus 67/67, PipelineStatus 52/52, Opportunit 404/404, RequestManagement 218/218,
+Authorization 148/148; Pint/ESLint/`tsc --noEmit` puliti (tutto il repo FE); Vitest 0060 55/55;
+`permissions:sync` -> 8 permessi reward-statuses; schema mysql reale: `rewards.reward_status_id` NOT NULL
+FK restrict, riga pending seedata id=1. ESITO: 0060 VERDE, zero regressioni reali.
+
+BASELINE ESTRANEI (NON 0060, da altre sessioni in-flight — non toccare in questa feature):
+`RewardTypeSecurityTest::navigation` + cluster navigation-section (~10 moduli) da modifiche a
+config/navigation.php; spec 0061 attributes (`CustomFieldWritePipelineTest` VAT, migrazione
+`2026_07_24_160000_add_context_to_attribute_category_table` che blocca `migrate:fresh --seed`);
+refactor company-sites `responsible_rda_id`; `cell-renderers.test.tsx` leak i18n. `migrate:fresh --seed`
+via CLI fallisce su `locations:add` (dominio geografico, pre-esistente su sqlite).
+
+PROSSIMO PASSO: attesa via libera esplicito per il commit (§3.6). Confermare la decisione D-8
+(gating binario risorsa vs field-permission granulare).
+
+## STATO DI LAVORAZIONE — NUOVO STATO DI SISTEMA "VALIDATO" (2026-07-24) — VERDE, NON COMMITTATO
+
+Richiesta utente: nel configuratore "Stato di lavorazione" (OpportunityWorkflowStatus, spec 0047)
+aggiungere uno STATO DI SISTEMA FISSO chiamato "Validato", tra la fase pending e le chiusure
+positiva/negativa. Scelta esplicita utente: riga di sistema mandatoria (non un semplice gruppo
+selezionabile ne' uno stato demo), presente e non cancellabile in OGNI set, posizionata DOPO tutti
+gli stati custom e PRIMA di Chiusa positiva/negativa. Ordine tail pinned: validated -> closed_won ->
+closed_lost (open resta pinned primo).
+
+Backend:
+- `app/Enums/WorkflowStatusSystemKey.php`: aggiunto case `Validated = 'validated'`; RINOMINATO
+  `closedKeys()` -> `tailKeys()` = [Validated, ClosedWon, ClosedLost] (unico consumer: WorkflowStatusWriter).
+- `app/Enums/WorkflowStatusGroup.php`: aggiunto case `Validated = 'validated'` (tra Pending e ClosedWon).
+- `app/Services/OpportunityWorkflows/WorkflowStatusWriter.php`: `createWithCustoms()` ora ha param
+  `$validatedOverride` (tra open e closed); `forceCreateSystemRow` match arm Validated => ['Validato',
+  Validated]; `resequence()` itera `tailKeys()`.
+- `app/DataObjects/OpportunityWorkflows/CreateOpportunityWorkflowData.php`: prop `validatedStatus`
+  (+ extractSystemStatus in fromValidated).
+- `app/Services/OpportunityWorkflowService.php`: create() passa `$data->validatedStatus`.
+- `database/factories/OpportunityWorkflowStatusFactory.php`: system('validated') sort_order 997.
+- `database/migrations/2026_07_24_160000_add_validated_system_row_to_opportunity_workflow_statuses.php`
+  (NUOVA, reversibile — testata up/down/up su sqlite scratch): inserisce 'Validato' dove sta oggi
+  closed_won e spinge closed_won/closed_lost di +STEP(10) in OGNI set (workflow_id null + per-workflow).
+- `database/seeders/DemoOpportunityWorkflowSeeder.php`: aggiunta chiave 'validated' a SYSTEM_STATUSES
+  (obbligatoria: describedDefaultSystemRows itera TUTTE le righe system del default set) + passato
+  `validatedStatus: systemStatusSeed('validated')` ai due create() dei workflow demo.
+
+Frontend:
+- `types.ts`: WORKFLOW_STATUS_GROUPS +'validated' (tra pending e closed_won); WorkflowStatusSystemKey
+  +'validated'; RINOMINATO helper `isClosedWorkflowSystemKey` -> `isTailWorkflowSystemKey`
+  (validated|closed_won|closed_lost) = anchor di inserimento dei nuovi custom (prima del tail).
+- `use-opportunity-workflow-form.ts` + `use-default-statuses.ts`: import + uso `isTailWorkflowSystemKey`;
+  initialSystemStatusRows (create mode) aggiunge la riga pinned `system-validated` tra open e closed.
+- `workflow-statuses-editor.tsx`: GROUP_LABEL_KEYS + GROUP_BADGE_CLASSES entry `validated` (badge `violet`).
+- i18n `it/en-opportunity-workflows.ts`: `defaultValidatedName` + `group.validated`.
+
+GOTCHA: il gruppo `validated` NON e' "closed" — nessuna logica opportunity/resolver lo tratta come
+chiusura (il resolver mappa solo per system_key; ogni set ora ha la riga validated -> carry-over ok).
+
+VERIFICA: BE workflow suite 84/84 verde (assert count 3->4 system rows aggiornate: Foundation0047,
+CrudTest, MetaTest, SystemRowTest, TableTest, OpportunityInheritTest); RequestManagement workflow +
+DemoOpportunityWorkflowSeeder verdi; Pint pulito. FE: opportunity-workflows 32/32, opportunities +
+request-management 231/231; tsc pulito; eslint pulito. I 14 fallimenti del full BE suite sono BASELINE
+del branch (nav restructuring, VAT, product-category attribute contexts, migration-source description),
+NON toccano gli workflow. MIGRAZIONE DEV NON APPLICATA: il DB dev ha decine di migrazioni del branch
+pending (l'intera WIP) -> lasciato all'utente `php artisan migrate`. §3.6: NON committato.
+
 ## NAV — NUOVA SEZIONE "PREMI E INCENTIVI" (2026-07-24) — VERDE, NON COMMITTATO
 
 Richiesta utente: promuovere `reward-types` ("Buoni, Premi e Incentivi") e `rewarded-referents`

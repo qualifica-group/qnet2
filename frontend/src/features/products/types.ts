@@ -6,6 +6,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /** Product classification (spec 0017). SERVICE-only for now; mirrors the `ProductType` enum. */
 export type ProductType = 'SERVICE'
@@ -65,6 +66,19 @@ export interface ProductDetail {
   supplier: ProductSupplierSummary | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
+  /**
+   * Attribute values keyed by attribute `code` (spec 0061), additive like
+   * `custom_fields` above. Optional for the same fixture-compatibility
+   * convention used elsewhere on this resource.
+   */
+  attribute_values?: Record<string, CustomFieldValue>
+  /**
+   * The product's category's PRODUCT-context effective attributes, additive
+   * (spec 0061): built server-side by `ProductAttributeResolver` from the
+   * SAME `ApplicableAttribute` DTO the Opportunity work panel uses — reused
+   * here rather than duplicated, since the wire shape is identical.
+   */
+  applicable_attributes?: ApplicableAttribute[]
 }
 
 /**
@@ -88,6 +102,8 @@ export interface CreateProductPayload {
   supplier_id: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
+  /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */
+  attribute_values?: Record<string, CustomFieldValue>
 }
 
 /** Payload for PATCH /products/{id} (partial update). Generic fields are sparse (only what changed). */

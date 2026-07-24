@@ -42,6 +42,7 @@ const OpportunityStatusesPage = lazy(() => import('@/pages/opportunity-statuses-
 const OpportunityWorkflowsPage = lazy(() => import('@/pages/opportunity-workflows-page'))
 const RequestManagementPage = lazy(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazy(() => import('@/pages/reward-types-page'))
+const RewardStatusesPage = lazy(() => import('@/pages/reward-statuses-page'))
 const RewardedReferentsPage = lazy(() => import('@/pages/rewarded-referents-page'))
 const RequestManagementDetailPage = lazy(() => import('@/pages/request-management-detail-page'))
 const LeadImportPage = lazy(() => import('@/pages/lead-import-page'))
@@ -210,6 +211,10 @@ export const router = createBrowserRouter([
           {
             path: 'reward-types',
             element: <RewardTypesPage />,
+          },
+          {
+            path: 'reward-statuses',
+            element: <RewardStatusesPage />,
           },
           {
             path: 'rewarded-referents',

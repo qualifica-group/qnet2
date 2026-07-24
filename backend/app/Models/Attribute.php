@@ -55,7 +55,7 @@ class Attribute extends BaseModel
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(ProductCategory::class, 'attribute_category', 'attribute_id', 'category_id')
-            ->withPivot(['is_required', 'sort_order'])
+            ->withPivot(['is_required', 'sort_order', 'context'])
             ->withTimestamps();
     }
 }

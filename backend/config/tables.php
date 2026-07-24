@@ -21,6 +21,7 @@ use App\Tables\ReferentTypesTableDefinition;
 use App\Tables\RegistriesTableDefinition;
 use App\Tables\RequestManagementTableDefinition;
 use App\Tables\RewardedReferentsTableDefinition;
+use App\Tables\RewardStatusesTableDefinition;
 use App\Tables\RewardTypesTableDefinition;
 use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
@@ -78,6 +79,7 @@ return [
         'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
         'reward-types' => RewardTypesTableDefinition::class,
+        'reward-statuses' => RewardStatusesTableDefinition::class,
         'rewarded-referents' => RewardedReferentsTableDefinition::class,
         'vat-rates' => VatRatesTableDefinition::class,
     ],

@@ -52,16 +52,16 @@ it('criterion-fields: 200 with the 4 allow-listed fields and correct for_select_
 // default-statuses — GET/PUT (AC-005/AC-010, happy + system-row guard)
 // ---------------------------------------------------------------------------
 
-it('default-statuses: GET 200 always exposes the 3 global system rows, ordered (AC-005)', function () {
+it('default-statuses: GET 200 always exposes the 4 global system rows, ordered (AC-005)', function () {
     $actor = opportunityWorkflowUserWith(['view']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson('/api/opportunity-workflows/default-statuses')->assertOk()->json('data');
 
-    expect(collect($data)->pluck('system_key')->all())->toBe(['open', 'closed_won', 'closed_lost']);
+    expect(collect($data)->pluck('system_key')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
 });
 
-it('default-statuses: PUT syncs custom rows, pinning open first / closed_won + closed_lost last', function () {
+it('default-statuses: PUT syncs custom rows, pinning open first / validated + closed_won + closed_lost last', function () {
     $actor = opportunityWorkflowUserWith(['view', 'update']);
     Sanctum::actingAs($actor);
 
@@ -73,7 +73,7 @@ it('default-statuses: PUT syncs custom rows, pinning open first / closed_won + c
 
     $data = collect($response->json('data'));
 
-    expect($data)->toHaveCount(4)
+    expect($data)->toHaveCount(5)
         ->and($data->first()['system_key'])->toBe('open')
         ->and($data->last()['system_key'])->toBe('closed_lost')
         ->and($data->firstWhere('name', 'In corso'))->not->toBeNull();

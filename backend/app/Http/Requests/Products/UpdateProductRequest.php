@@ -12,12 +12,14 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the payload for PUT/PATCH /api/products/{product} (spec 0017).
- * Generic fields are `sometimes` — a product carries no attribute values of
- * its own (see StoreProductRequest's docblock). Authorization is
- * intentionally NOT handled here (it stays in the controller via
- * authorize('update', $product)). EnforcesFieldPermissions (spec 0004)
- * rejects any submitted field the actor cannot edit on this specific model.
+ * Validates the payload for PUT/PATCH /api/products/{product} (spec 0017;
+ * spec 0061 for `attribute_values`). Generic fields are `sometimes`.
+ * `attribute_values` gets only a shallow `array` check here — see
+ * StoreProductRequest's docblock for why its deep validation lives in
+ * ProductService instead. Authorization is intentionally NOT handled here
+ * (it stays in the controller via authorize('update', $product)).
+ * EnforcesFieldPermissions (spec 0004) rejects any submitted field the actor
+ * cannot edit on this specific model.
  */
 class UpdateProductRequest extends FormRequest
 {
@@ -43,6 +45,7 @@ class UpdateProductRequest extends FormRequest
             'product_type' => ['sometimes', 'required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['sometimes', 'nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:registries,id'],
+            'attribute_values' => ['sometimes', 'array'],
         ];
     }
 

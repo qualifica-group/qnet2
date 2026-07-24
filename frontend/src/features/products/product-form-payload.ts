@@ -1,3 +1,5 @@
+import { isEmptyCustomFieldValue, isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   CreateProductPayload,
   ProductDetail,
@@ -6,9 +8,45 @@ import type {
 import type { ProductFormValues } from '@/features/products/use-product-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
-/** Builds the create payload: generic fields + valued custom fields. */
-export function buildCreatePayload(values: ProductFormValues): CreateProductPayload {
+type AttributeValues = Record<string, CustomFieldValue>
+
+/** Additive (spec 0061): every VALUED code among the CURRENT category's PRODUCT attributes, empty/unset ones omitted. */
+function buildAttributeValuesCreate(values: AttributeValues, codes: string[]): AttributeValues {
+  const payload: AttributeValues = {}
+  for (const code of codes) {
+    const value = values[code] ?? null
+    if (!isEmptyCustomFieldValue(value)) {
+      payload[code] = value
+    }
+  }
+  return payload
+}
+
+/** Sparse PATCH: only codes whose value actually changed from the loaded product. */
+function buildAttributeValuesUpdate(values: AttributeValues, original: AttributeValues, codes: string[]): AttributeValues {
+  const payload: AttributeValues = {}
+  for (const code of codes) {
+    const value = values[code] ?? null
+    if (!isEqualCustomFieldValue(value, original[code] ?? null)) {
+      payload[code] = value
+    }
+  }
+  return payload
+}
+
+/**
+ * Builds the create payload: generic fields + valued custom fields + valued
+ * attribute values. `productAttributeCodes` is the selected category's
+ * CURRENT PRODUCT-context attribute set — the only codes ever sent, so a
+ * stale code left over from a since-abandoned category never reaches the
+ * server.
+ */
+export function buildCreatePayload(
+  values: ProductFormValues,
+  productAttributeCodes: string[],
+): CreateProductPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
+  const attributeValues = buildAttributeValuesCreate(values.attribute_values, productAttributeCodes)
   return {
     name: values.name,
     description: values.description,
@@ -21,16 +59,19 @@ export function buildCreatePayload(values: ProductFormValues): CreateProductPayl
     vat_rate_id: values.vat_rate_id,
     supplier_id: values.supplier_id,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
+    ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
 }
 
 /**
  * Builds a partial PATCH payload carrying only fields that changed from the
- * original product (spec 0017 AC-024).
+ * original product (spec 0017 AC-024), plus any changed attribute value
+ * (spec 0061).
  */
 export function buildUpdatePayload(
   values: ProductFormValues,
   original: ProductDetail,
+  productAttributeCodes: string[],
 ): UpdateProductPayload {
   const payload: UpdateProductPayload = {}
 
@@ -64,6 +105,15 @@ export function buildUpdatePayload(
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})
   if (Object.keys(customFields).length > 0) {
     payload.custom_fields = customFields
+  }
+
+  const attributeValues = buildAttributeValuesUpdate(
+    values.attribute_values,
+    original.attribute_values ?? {},
+    productAttributeCodes,
+  )
+  if (Object.keys(attributeValues).length > 0) {
+    payload.attribute_values = attributeValues
   }
 
   return payload

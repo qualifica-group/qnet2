@@ -7,14 +7,21 @@ use App\DataObjects\Products\UpdateProductData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Product;
+use App\Products\ProductAttributeResolver;
+use App\RequestManagement\ApplicableAttribute;
+use App\RequestManagement\AttributeValueNormalizer;
+use App\RequestManagement\AttributeValueValidator;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
 
 /**
- * Business logic for the `products` resource (spec 0017): create/update
- * (generic fields only — the category-driven `attributes` catalogue is a
- * reusable template, never coupled to a product's own values) and delete.
- * The controller stays thin; this Service is the single authority.
+ * Business logic for the `products` resource (spec 0017; spec 0061 for its
+ * own `attribute_values`): create/update (generic fields, plus the
+ * PRODUCT-context attribute values validated/normalized against
+ * ProductAttributeResolver — reusing the SAME
+ * AttributeValueValidator/AttributeValueNormalizer pipeline as the Opportunity
+ * path, App\RequestManagement) and delete. The controller stays thin; this
+ * Service is the single authority.
  */
 class ProductService
 {
@@ -26,7 +33,12 @@ class ProductService
      */
     private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier'];
 
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly ProductAttributeResolver $attributeResolver,
+        private readonly AttributeValueValidator $attributeValueValidator,
+        private readonly AttributeValueNormalizer $attributeValueNormalizer,
+    ) {}
 
     /**
      * The product's category's EFFECTIVE business function (spec 0023),
@@ -54,8 +66,7 @@ class ProductService
 
     public function create(CreateProductData $data): Product
     {
-        /** @var Product $product */
-        $product = Product::create([
+        $product = new Product([
             'name' => $data->name,
             'description' => $data->description,
             'cost' => $data->cost,
@@ -66,6 +77,12 @@ class ProductService
             'supplier_id' => $data->supplierId,
         ]);
 
+        if ($data->hasAttributeValues()) {
+            $this->applyAttributeValues($product, $data->attributeValues);
+        }
+
+        $product->save();
+
         return $product->fresh(self::HYDRATED_RELATIONS);
     }
 
@@ -73,10 +90,19 @@ class ProductService
     {
         $attributes = $data->submittedAttributes();
 
+        // category_id (if submitted) is filled BEFORE resolving applicable
+        // attributes below, so a same-request category change validates
+        // attribute_values against the NEW category, never the stale one.
+        $product->fill($attributes);
+
+        if ($data->hasAttributeValues()) {
+            $this->applyAttributeValues($product, $data->attributeValues);
+        }
+
         // Unconditional save: fire the model's saved event even when no native
         // attribute changed, so the HasCustomFields write pipeline (spec 0021)
         // persists a custom-fields-only edit. A clean save runs no UPDATE query.
-        $product->fill($attributes)->save();
+        $product->save();
 
         return $product->fresh(self::HYDRATED_RELATIONS);
     }
@@ -84,6 +110,45 @@ class ProductService
     public function delete(Product $product): void
     {
         $product->delete();
+    }
+
+    /**
+     * The product's PRODUCT-context applicable attribute set (spec 0061),
+     * for the create/edit form's dynamic fields.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function applicableAttributes(Product $product): array
+    {
+        return $this->attributeResolver->resolve($product)
+            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Validates $submitted against the product's PRODUCT-context applicable
+     * set (unknown code / required / per-type rules — the SAME
+     * AttributeValueValidator the Opportunity path uses), normalizes it, and
+     * merges it into the persisted map (sparse: an unset code keeps its
+     * current value). $product is NOT saved here — the caller (create/update)
+     * saves once, alongside its other native-field changes.
+     *
+     * @param  array<string, mixed>  $submitted
+     */
+    private function applyAttributeValues(Product $product, array $submitted): void
+    {
+        $applicable = $this->attributeResolver->resolve($product);
+        $validated = $this->attributeValueValidator->validate($applicable, $submitted);
+        $normalized = $this->attributeValueNormalizer->normalize($applicable, $validated);
+
+        $current = $product->attribute_values ?? [];
+        $merged = array_merge($current, $normalized);
+
+        // `attribute_values` is NOT in Product::$fillable (mass-assignment
+        // guard, same discipline as Opportunity.attribute_values): forceFill
+        // is the deliberate, single write path.
+        $product->forceFill(['attribute_values' => $merged]);
     }
 
     /**

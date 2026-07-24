@@ -239,7 +239,7 @@ describe('OpportunityWorkflowForm — statuses editor (AC-025)', () => {
     expect(payload.statuses.map((status: { id?: number }) => status.id)).toEqual([10, 12, 11, 13])
   })
 
-  it('seeds editable open/closed_won/closed_lost rows and sends them with the added custom row in the create payload', async () => {
+  it('seeds editable open/validated/closed_won/closed_lost rows and sends them with the added custom row in the create payload', async () => {
     createOpportunityWorkflowMock.mockResolvedValue(opportunityWorkflow())
     const onSuccess = vi.fn()
 
@@ -248,13 +248,15 @@ describe('OpportunityWorkflowForm — statuses editor (AC-025)', () => {
       { wrapper: wrapper() },
     )
 
-    // The 3 pinned rows are present and editable from the start (seeded).
+    // The 4 pinned rows are present and editable from the start (seeded).
     expect(screen.getByDisplayValue('Open')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Validated')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Closed (won)')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Closed (lost)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add status' }))
-    // 4 name inputs now: open (0), the new custom (1), closed_won (2), closed_lost (3).
+    // 5 name inputs now: open (0), the new custom (1, inserted before the pinned
+    // tail), validated (2), closed_won (3), closed_lost (4).
     const nameInputs = screen.getAllByRole('textbox', { name: 'Status name' })
     fireEvent.change(nameInputs[1], { target: { value: 'In review' } })
 
@@ -270,6 +272,7 @@ describe('OpportunityWorkflowForm — statuses editor (AC-025)', () => {
     expect(payload.statuses).toEqual([
       { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, requires_note: false },
       { name: 'In review', color: null, group: 'pending', system_key: null, description: null, requires_note: false },
+      { name: 'Validated', color: null, group: 'validated', system_key: 'validated', description: null, requires_note: false },
       { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
       { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
     ])

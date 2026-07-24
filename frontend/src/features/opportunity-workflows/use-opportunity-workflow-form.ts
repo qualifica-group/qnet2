@@ -22,7 +22,7 @@ import {
   type CreateOpportunityWorkflowFormValues,
 } from '@/features/opportunity-workflows/opportunity-workflow-schema'
 import {
-  isClosedWorkflowSystemKey,
+  isTailWorkflowSystemKey,
   type OpportunityWorkflowDetail,
   type OpportunityWorkflowFormMode,
   type WorkflowStatusFormRow,
@@ -41,11 +41,13 @@ export type OpportunityWorkflowFormValues = CreateOpportunityWorkflowFormValues
 const EMPTY_CRITERION_ROW = { field: null, value_id: null }
 
 /**
- * The three pinned system rows before a workflow exists (AC-004): editable
- * from the start, pre-filled with the default open / closed-won / closed-lost
- * labels. The user may rename them up front; they are sent in the create
- * payload (`buildCreatePayload`) so the backend seeds the auto-created rows
- * with these names. Non-deletable/non-reorderable (enforced by the editor).
+ * The four pinned system rows before a workflow exists (AC-004): editable
+ * from the start, pre-filled with the default open / validated / closed-won /
+ * closed-lost labels, in pinned order (open first, then the validated ->
+ * closed-won -> closed-lost tail). The user may rename them up front; they are
+ * sent in the create payload (`buildCreatePayload`) so the backend seeds the
+ * auto-created rows with these names. Non-deletable/non-reorderable (enforced
+ * by the editor).
  */
 function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
   return [
@@ -56,6 +58,15 @@ function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
       color: null,
       group: 'open',
       system_key: 'open',
+      requires_note: false,
+    },
+    {
+      id: 'system-validated',
+      name: t('opportunityWorkflows.form.statuses.defaultValidatedName'),
+      description: null,
+      color: null,
+      group: 'validated',
+      system_key: 'validated',
       requires_note: false,
     },
     {
@@ -165,8 +176,8 @@ export function useOpportunityWorkflowForm({ mode, onSuccess }: UseOpportunityWo
       requires_note: false,
     }
     setStatusRows((rows) => {
-      const closedIndex = rows.findIndex((row) => isClosedWorkflowSystemKey(row.system_key))
-      const insertAt = closedIndex === -1 ? rows.length : closedIndex
+      const tailIndex = rows.findIndex((row) => isTailWorkflowSystemKey(row.system_key))
+      const insertAt = tailIndex === -1 ? rows.length : tailIndex
       return [...rows.slice(0, insertAt), newRow, ...rows.slice(insertAt)]
     })
   }

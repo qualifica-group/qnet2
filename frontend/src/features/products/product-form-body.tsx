@@ -20,6 +20,7 @@ import { useEnumOptions } from '@/features/config/use-config'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { flattenCategoryTree } from '@/features/product-categories/flatten-tree'
 import { useProductForm } from '@/features/products/use-product-form'
+import { ProductDynamicFields } from '@/features/products/product-dynamic-fields'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
@@ -48,9 +49,14 @@ function numberInputValue(value: number | null): string {
  */
 export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useProductForm({ mode, onSuccess })
+  const { field: fieldPermission, canResource } = useResourcePermissions()
+  const { form, serverError, onSubmit, productAttributes, productAttributesLoading, onCategoryChange } =
+    useProductForm({ mode, onSuccess })
   const treeQuery = useProductCategoryTree()
+  // Attribute values are authorized at the resource level, not per field
+  // (see `useProductFormMeta`'s docblock) — gate the whole dynamic block on
+  // the same ability the save button itself requires.
+  const attributesEditable = canResource(mode.type === 'edit' ? 'update' : 'create')
   const productTypeOptions = useEnumOptions('product_type')
 
   const categoryOptions = useMemo(
@@ -181,7 +187,10 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
                   <FormControl>
                     <SearchableSelect
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(next) => {
+                        field.onChange(next)
+                        onCategoryChange(next)
+                      }}
                       options={categoryOptions}
                       isPending={treeQuery.isPending}
                       isError={treeQuery.isError}
@@ -260,6 +269,13 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
               </MetaField>
             </FormSection>
           )}
+
+          <ProductDynamicFields
+            control={form.control}
+            attributes={productAttributes}
+            isLoading={productAttributesLoading}
+            disabled={!attributesEditable}
+          />
 
           <CustomFieldsSection resource="products" control={form.control} />
 

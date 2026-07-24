@@ -34,7 +34,7 @@ if (! function_exists('opportunityWorkflowUserWith')) {
 // create — POST /api/opportunity-workflows (AC-004)
 // ---------------------------------------------------------------------------
 
-it('create: 201, persists, and auto-creates exactly the 3 system rows open/closed_won/closed_lost (AC-004)', function () {
+it('create: 201, persists, and auto-creates exactly the 4 system rows open/validated/closed_won/closed_lost (AC-004)', function () {
     $actor = opportunityWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -55,19 +55,20 @@ it('create: 201, persists, and auto-creates exactly the 3 system rows open/close
         ->assertJsonCount(1, 'data.criteria')
         ->assertJsonPath('data.criteria.0.field', 'source_id')
         ->assertJsonPath('data.criteria.0.value_id', $source->id)
-        ->assertJsonCount(4, 'data.statuses');
+        ->assertJsonCount(5, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'Regione Nord')->sole();
 
-    expect($workflow->statuses()->count())->toBe(4)
+    expect($workflow->statuses()->count())->toBe(5)
         ->and($workflow->statuses()->where('system_key', 'open')->sole()->sort_order)->toBe(0)
+        ->and($workflow->statuses()->where('system_key', 'validated')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->where('system_key', 'closed_won')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->where('system_key', 'closed_lost')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->whereNull('system_key')->sole()->name)->toBe('In lavorazione')
         ->and($workflow->criteria_signature)->toBe("source_id:{$source->id}");
 });
 
-it('create: 201 with statuses omitted still creates the 3 system rows only', function () {
+it('create: 201 with statuses omitted still creates the 4 system rows only', function () {
     $actor = opportunityWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -75,14 +76,14 @@ it('create: 201 with statuses omitted still creates the 3 system rows only', fun
     $this->postJson('/api/opportunity-workflows', [
         'name' => 'No customs',
         'criteria' => [['field' => 'source_id', 'value_id' => $source->id]],
-    ])->assertCreated()->assertJsonCount(3, 'data.statuses');
+    ])->assertCreated()->assertJsonCount(4, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'No customs')->sole();
-    expect($workflow->statuses()->count())->toBe(3)
-        ->and($workflow->statuses()->pluck('system_key')->sort()->values()->all())->toBe(['closed_lost', 'closed_won', 'open']);
+    expect($workflow->statuses()->count())->toBe(4)
+        ->and($workflow->statuses()->pluck('system_key')->sort()->values()->all())->toBe(['closed_lost', 'closed_won', 'open', 'validated']);
 });
 
-it('create: seeds the 3 pinned rows with the names/colors the client tagged with system_key (AC-004)', function () {
+it('create: seeds the pinned rows with the names/colors the client tagged with system_key (AC-004)', function () {
     $actor = opportunityWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -96,7 +97,7 @@ it('create: seeds the 3 pinned rows with the names/colors the client tagged with
             ['name' => 'Chiuso vinto', 'color' => 'green', 'group' => 'closed_won', 'system_key' => 'closed_won'],
             ['name' => 'Chiuso perso', 'color' => 'red', 'group' => 'closed_lost', 'system_key' => 'closed_lost'],
         ],
-    ])->assertCreated()->assertJsonCount(4, 'data.statuses');
+    ])->assertCreated()->assertJsonCount(5, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'Named systems')->sole();
 
@@ -258,7 +259,7 @@ it('update: PATCH partial {name, is_active} leaves criteria/statuses untouched',
         ->assertJsonPath('data.name', 'After')
         ->assertJsonPath('data.is_active', false)
         ->assertJsonCount(1, 'data.criteria')
-        ->assertJsonCount(4, 'data.statuses');
+        ->assertJsonCount(5, 'data.statuses');
 });
 
 it('update: submitting criteria re-syncs and recomputes criteria_signature, revalidates uniqueness excluding self', function () {

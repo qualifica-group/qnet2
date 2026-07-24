@@ -1,0 +1,18 @@
+import { DateTimeCell } from '@/features/table/cell-renderers'
+import { BooleanBadgeCell, ColorSwatchCell } from '@/features/table/rich-cells'
+import type { TableRendererMap } from '@/features/table/renderer-registry'
+
+/**
+ * Custom cell renderers keyed by the backend column `id`, built from the
+ * shared cross-module cell library so the swatch/boolean cells match other
+ * configurators (spec 0060 AC-025). `name`/`description`/`sort_order` fall
+ * back to the AG Grid default cells; `color` renders a swatch dot +
+ * localized token name; `is_active` renders a colored yes/no badge;
+ * `created_at`/`updated_at` reuse the shared datetime renderer.
+ */
+export const rewardStatusColumnRenderers: TableRendererMap = {
+  color: (params) => <ColorSwatchCell {...params} />,
+  is_active: (params) => <BooleanBadgeCell {...params} />,
+  created_at: (params) => <DateTimeCell {...params} />,
+  updated_at: (params) => <DateTimeCell {...params} />,
+}

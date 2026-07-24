@@ -29,6 +29,7 @@ function baseFields(t: TFunction) {
     attributes: z.array(
       z.object({
         attribute_id: z.number(),
+        context: z.enum(['product', 'opportunity']),
         is_required: z.boolean(),
         sort_order: z.number().int(),
       }),

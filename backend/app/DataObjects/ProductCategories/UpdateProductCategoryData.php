@@ -21,7 +21,7 @@ namespace App\DataObjects\ProductCategories;
 final readonly class UpdateProductCategoryData
 {
     /**
-     * @param  array<int, array{attribute_id: int, is_required?: bool, sort_order?: int}>|null  $attributes
+     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, sort_order?: int}>|null  $attributes
      */
     public function __construct(
         public ?string $name = null,

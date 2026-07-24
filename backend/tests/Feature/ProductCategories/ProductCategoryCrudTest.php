@@ -80,14 +80,15 @@ it('create: 201 + persists, syncing attribute assignments with pivot data', func
 
     $response = $this->postJson('/api/product-categories', [
         'name' => 'Electronics',
-        'attributes' => [['attribute_id' => $attribute->id, 'is_required' => true, 'sort_order' => 2]],
+        'attributes' => [['attribute_id' => $attribute->id, 'context' => 'opportunity', 'is_required' => true, 'sort_order' => 2]],
     ])->assertCreated()->assertJsonPath('data.name', 'Electronics');
 
     expect($response->json('data.attributes.0.attribute_id'))->toBe($attribute->id)
         ->and($response->json('data.attributes.0.is_required'))->toBeTrue()
-        ->and($response->json('data.attributes.0.sort_order'))->toBe(2);
+        ->and($response->json('data.attributes.0.sort_order'))->toBe(2)
+        ->and($response->json('data.attributes.0.context'))->toBe('opportunity');
 
-    $this->assertDatabaseHas('attribute_category', ['attribute_id' => $attribute->id, 'is_required' => 1, 'sort_order' => 2]);
+    $this->assertDatabaseHas('attribute_category', ['attribute_id' => $attribute->id, 'context' => 'opportunity', 'is_required' => 1, 'sort_order' => 2]);
 });
 
 it('create: inherits_attributes defaults to true and can be opted out', function () {
@@ -114,7 +115,7 @@ it('create: 403 without product-categories.create', function () {
     $this->postJson('/api/product-categories', ['name' => 'Nope'])->assertForbidden();
 });
 
-it('create: 422 with a non-existent parent_id or a duplicated attribute_id', function () {
+it('create: 422 with a non-existent parent_id or a duplicated attribute_id/context pair', function () {
     $actor = productCategoryUserWith(['create']);
     $attribute = Attribute::factory()->create();
     Sanctum::actingAs($actor);
@@ -125,10 +126,38 @@ it('create: 422 with a non-existent parent_id or a duplicated attribute_id', fun
     $this->postJson('/api/product-categories', [
         'name' => 'X',
         'attributes' => [
-            ['attribute_id' => $attribute->id],
-            ['attribute_id' => $attribute->id],
+            ['attribute_id' => $attribute->id, 'context' => 'opportunity'],
+            ['attribute_id' => $attribute->id, 'context' => 'opportunity'],
         ],
-    ])->assertStatus(422)->assertJsonValidationErrors('attributes.0.attribute_id');
+    ])->assertStatus(422)->assertJsonValidationErrors('attributes.1.attribute_id');
+});
+
+it('create: the SAME attribute may be assigned to both contexts in one request', function () {
+    $actor = productCategoryUserWith(['create']);
+    $attribute = Attribute::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/product-categories', [
+        'name' => 'Both',
+        'attributes' => [
+            ['attribute_id' => $attribute->id, 'context' => 'product'],
+            ['attribute_id' => $attribute->id, 'context' => 'opportunity'],
+        ],
+    ])->assertCreated();
+
+    expect(collect($response->json('data.attributes'))->pluck('context')->sort()->values()->all())
+        ->toBe(['opportunity', 'product']);
+});
+
+it('create: 422 when an attributes row is missing context', function () {
+    $actor = productCategoryUserWith(['create']);
+    $attribute = Attribute::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/product-categories', [
+        'name' => 'X',
+        'attributes' => [['attribute_id' => $attribute->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors('attributes.0.context');
 });
 
 // ---------------------------------------------------------------------------
@@ -144,11 +173,11 @@ it('update: attributes is a full-replace sync preserving pivot data', function (
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/product-categories/{$category->id}", [
-        'attributes' => [['attribute_id' => $newAttribute->id, 'is_required' => true, 'sort_order' => 5]],
+        'attributes' => [['attribute_id' => $newAttribute->id, 'context' => 'opportunity', 'is_required' => true, 'sort_order' => 5]],
     ])->assertOk();
 
     expect($category->fresh()->attributes->pluck('id')->all())->toBe([$newAttribute->id]);
-    $this->assertDatabaseHas('attribute_category', ['attribute_id' => $newAttribute->id, 'is_required' => 1, 'sort_order' => 5]);
+    $this->assertDatabaseHas('attribute_category', ['attribute_id' => $newAttribute->id, 'context' => 'opportunity', 'is_required' => 1, 'sort_order' => 5]);
 });
 
 it('update: toggling inherits_attributes off empties the inherited_attributes side list', function () {

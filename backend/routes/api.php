@@ -342,6 +342,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // the same context.
     require __DIR__.'/api/referents.php';
 
+    // Reward inline status edit (spec 0060 §4): extracted into
+    // routes/api/rewards.php (file-size split, engineering.md §6). Required
+    // INSIDE this auth:sanctum group so this route inherits the same context.
+    require __DIR__.'/api/rewards.php';
+
     // Registries CRUD (spec 0020, "Anagrafiche"): extracted into
     // routes/api/registries.php (file-size split, engineering.md §6) so this
     // file stays within the 500-line hard limit. Required INSIDE this

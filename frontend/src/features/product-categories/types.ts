@@ -26,6 +26,14 @@ export interface ProductCategoryTreeNode {
   business_function_id: number | null
 }
 
+/**
+ * The two attribute-catalogue usage contexts (spec 0061): the same catalogue
+ * attribute can be assigned to a category for Product, for Opportunity, or
+ * both (two separate pivot rows). Default everywhere is `'opportunity'`
+ * (backward compatible with every assignment that predates this spec).
+ */
+export type AttributeContext = 'product' | 'opportunity'
+
 /** A category's own attribute assignment (pivot `attribute_category`). */
 export interface ProductCategoryAttributeAssignment {
   attribute_id: number
@@ -34,6 +42,7 @@ export interface ProductCategoryAttributeAssignment {
   type: CustomFieldType
   is_required: boolean
   sort_order: number
+  context: AttributeContext
 }
 
 /** An attribute inherited from an ancestor category (read-only in the form). */
@@ -43,6 +52,7 @@ export interface ProductCategoryInheritedAttribute {
   name: string
   type: CustomFieldType
   is_required: boolean
+  context: AttributeContext
 }
 
 /** A category's own business function relation, hydrated (spec 0023). */
@@ -117,6 +127,7 @@ export interface EffectiveAttribute {
   is_required: boolean
   sort_order: number
   inherited: boolean
+  context: AttributeContext
   options: {
     value: string
     label: string
@@ -127,9 +138,10 @@ export interface EffectiveAttribute {
   }[]
 }
 
-/** A single attribute-to-category assignment sent to the backend (full-replace sync). */
+/** A single attribute-to-category assignment sent to the backend (full-replace sync per category). */
 export interface AttributeAssignmentInput {
   attribute_id: number
+  context: AttributeContext
   is_required?: boolean
   sort_order?: number
 }

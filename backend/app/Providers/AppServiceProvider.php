@@ -33,6 +33,7 @@ use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
@@ -130,6 +131,7 @@ class AppServiceProvider extends ServiceProvider
             'opportunity_workflow_status' => OpportunityWorkflowStatus::class,
             'reward' => Reward::class,
             'reward_type' => RewardType::class,
+            'reward_status' => RewardStatus::class,
             'vat_rate' => VatRate::class,
         ]);
 

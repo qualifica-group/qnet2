@@ -3,7 +3,11 @@ import { buildCreatePayload, buildUpdatePayload } from '@/features/products/prod
 import type { ProductDetail } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
-/** Spec 0017 AC-024: create payload shape, sparse PATCH of changed generic fields. */
+/**
+ * Spec 0017 AC-024: create payload shape, sparse PATCH of changed generic
+ * fields. Spec 0061 adds `attribute_values`, additive and scoped to the
+ * CURRENT category's product-attribute codes.
+ */
 
 function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
   return {
@@ -35,13 +39,14 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     vat_rate_id: null,
     supplier_id: null,
     custom_fields: {},
+    attribute_values: {},
     ...overrides,
   }
 }
 
 describe('buildCreatePayload', () => {
   it('builds the create payload with the generic fields', () => {
-    expect(buildCreatePayload(values())).toEqual({
+    expect(buildCreatePayload(values(), [])).toEqual({
       name: 'ThinkPad X1',
       description: null,
       cost: 800,
@@ -54,33 +59,70 @@ describe('buildCreatePayload', () => {
   })
 
   it('includes the selected VAT rate and supplier ids', () => {
-    expect(buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11 }))).toMatchObject({
+    expect(buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11 }), [])).toMatchObject({
       vat_rate_id: 4,
       supplier_id: 11,
     })
+  })
+
+  it('includes valued attribute_values for the current category codes', () => {
+    expect(
+      buildCreatePayload(values({ attribute_values: { ram_gb: 16, color: null } }), ['ram_gb', 'color']),
+    ).toMatchObject({
+      attribute_values: { ram_gb: 16 },
+    })
+  })
+
+  it('omits attribute_values entirely when none of the current codes are valued', () => {
+    expect(
+      buildCreatePayload(values({ attribute_values: { ram_gb: null } }), ['ram_gb']),
+    ).not.toHaveProperty('attribute_values')
+  })
+
+  it('ignores a stale code left in form state that no longer belongs to the current category', () => {
+    expect(
+      buildCreatePayload(values({ attribute_values: { ram_gb: 16, old_code: 'x' } }), ['ram_gb']),
+    ).toMatchObject({ attribute_values: { ram_gb: 16 } })
   })
 })
 
 describe('buildUpdatePayload', () => {
   it('omits everything when nothing changed', () => {
-    expect(buildUpdatePayload(values(), original())).toEqual({})
+    expect(buildUpdatePayload(values(), original(), [])).toEqual({})
   })
 
   it('includes only the changed generic field', () => {
-    expect(buildUpdatePayload(values({ name: 'ThinkPad X1 Gen 2' }), original())).toEqual({
+    expect(buildUpdatePayload(values({ name: 'ThinkPad X1 Gen 2' }), original(), [])).toEqual({
       name: 'ThinkPad X1 Gen 2',
     })
   })
 
   it('includes only the changed VAT rate id', () => {
-    expect(buildUpdatePayload(values({ vat_rate_id: 4 }), original())).toEqual({
+    expect(buildUpdatePayload(values({ vat_rate_id: 4 }), original(), [])).toEqual({
       vat_rate_id: 4,
     })
   })
 
   it('includes only the changed supplier id', () => {
-    expect(buildUpdatePayload(values({ supplier_id: 11 }), original())).toEqual({
+    expect(buildUpdatePayload(values({ supplier_id: 11 }), original(), [])).toEqual({
       supplier_id: 11,
     })
+  })
+
+  it('includes only the changed attribute_values code, sparse (spec 0061)', () => {
+    const withAttributes = original({ attribute_values: { ram_gb: 8, color: 'black' } })
+    expect(
+      buildUpdatePayload(values({ attribute_values: { ram_gb: 16, color: 'black' } }), withAttributes, [
+        'ram_gb',
+        'color',
+      ]),
+    ).toEqual({ attribute_values: { ram_gb: 16 } })
+  })
+
+  it('omits attribute_values when nothing among the current codes changed', () => {
+    const withAttributes = original({ attribute_values: { ram_gb: 8 } })
+    expect(
+      buildUpdatePayload(values({ attribute_values: { ram_gb: 8 } }), withAttributes, ['ram_gb']),
+    ).toEqual({})
   })
 })

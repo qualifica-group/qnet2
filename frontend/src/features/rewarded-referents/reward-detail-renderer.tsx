@@ -1,13 +1,25 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RewardCard } from '@/features/rewards/reward-card'
+import { useUpdateRewardStatus } from '@/features/rewards/use-update-reward-status'
 import { useReferentRewards } from '@/features/rewarded-referents/use-referent-rewards'
+import { rewardedReferentsKeys } from '@/features/rewarded-referents/query-keys'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
+import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableRow } from '@/features/table/types'
+
+/**
+ * The card's inline status edit is gated on the module's own update ability
+ * (spec 0060 D-8: no dedicated `reward_status` field-permission plumbed down
+ * to this generic master/detail renderer yet — the UI hides, the backend
+ * PATCH is the actual authorization boundary regardless).
+ */
+const REWARDED_REFERENTS_UPDATE_PERMISSION = 'rewarded-referents.update'
 
 /** Origin type whose module page/modal we know how to open (spec 0059: only Opportunity today). */
 const OPPORTUNITY_SOURCE_TYPE = 'opportunity'
@@ -74,6 +86,20 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
     enabled: referentId != null,
   })
 
+  // Inline status edit (spec 0060 D-1, AC-029/AC-030): one shared mutation
+  // for every card in this panel, gated on the module's update ability while
+  // abilities are still loading (fail closed, no edit-affordance flash).
+  const queryClient = useQueryClient()
+  const { can, isLoading: abilitiesLoading } = useAbilities()
+  const canEditStatus = !abilitiesLoading && can(REWARDED_REFERENTS_UPDATE_PERMISSION)
+  const updateStatus = useUpdateRewardStatus({
+    onSuccess: () => {
+      if (referentId != null) {
+        void queryClient.invalidateQueries({ queryKey: rewardedReferentsKeys.rewards(referentId) })
+      }
+    },
+  })
+
   // AG Grid measures a detail row's auto-height when the detail cell first
   // mounts. This panel loads lazily, so on the FIRST expand it mounts as a
   // short skeleton, is measured, then grows once the cards arrive — leaving
@@ -127,6 +153,13 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
     commercialStatus: t('rewardedReferents.detail.commercialStatus'),
     workflowStatus: t('rewardedReferents.detail.workflowStatus'),
     operator: t('rewardedReferents.detail.operator'),
+    status: t('rewardedReferents.detail.status'),
+    statusPlaceholder: t('rewardedReferents.detail.statusPlaceholder'),
+    statusSearchPlaceholder: t('rewardedReferents.detail.statusSearchPlaceholder'),
+    statusEmpty: t('rewardedReferents.detail.statusEmpty'),
+    statusError: t('rewardedReferents.detail.statusError'),
+    statusClearLabel: t('rewardedReferents.detail.statusClearLabel'),
+    statusRetry: t('rewardedReferents.detail.statusRetry'),
   }
 
   return (
@@ -143,8 +176,20 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
             source?.type === OPPORTUNITY_SOURCE_TYPE
               ? () => openView({ id: source.id } as TableRow)
               : undefined
+          const isStatusUpdating =
+            updateStatus.isPending && updateStatus.variables?.rewardId === reward.id
           return (
-            <RewardCard key={reward.id} reward={reward} labels={labels} onOpenSource={onOpenSource} />
+            <RewardCard
+              key={reward.id}
+              reward={reward}
+              labels={labels}
+              onOpenSource={onOpenSource}
+              canEditStatus={canEditStatus}
+              onStatusChange={(rewardStatusId) =>
+                updateStatus.mutate({ rewardId: reward.id, rewardStatusId })
+              }
+              isStatusUpdating={isStatusUpdating}
+            />
           )
         })}
       </div>

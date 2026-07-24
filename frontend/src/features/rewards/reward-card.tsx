@@ -6,10 +6,19 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { UserAvatar } from '@/components/user-avatar'
+import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { badgeColorClass } from '@/features/table/cell-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { RewardChip } from '@/features/rewards/reward-chip'
 import type { RewardDetailItem } from '@/features/rewards/types'
+
+/**
+ * For-select resource segment behind the inline status picker (spec 0060
+ * D-7: `/reward-statuses/for-select` returns only active statuses, ordered).
+ * The `reward-statuses` module itself belongs to another feature and is
+ * intentionally never imported here — only its resource name is needed.
+ */
+const REWARD_STATUS_RESOURCE = 'reward-statuses'
 
 /**
  * Field labels the caller passes already translated (this component takes no
@@ -25,6 +34,14 @@ export interface RewardCardLabels {
   commercialStatus: string
   workflowStatus: string
   operator: string
+  /** Term label for the reward's own status field, and the select's trigger aria-label. */
+  status: string
+  statusPlaceholder: string
+  statusSearchPlaceholder: string
+  statusEmpty: string
+  statusError: string
+  statusClearLabel: string
+  statusRetry: string
 }
 
 interface RewardCardProps {
@@ -38,6 +55,17 @@ interface RewardCardProps {
    * `Link` — keeping this component free of any module/open-mode dependency.
    */
   onOpenSource?: () => void
+  /**
+   * Whether the current user may change the reward's own status inline
+   * (spec 0060 D-1/D-8: `rewarded-referents.update` permission, checked by
+   * the caller). Defaults to `false` (readonly badge) so an omitted prop
+   * never accidentally exposes the edit affordance.
+   */
+  canEditStatus?: boolean
+  /** Fired with the newly picked, active status id once the user selects it. */
+  onStatusChange?: (rewardStatusId: number) => void
+  /** True while this card's own status PATCH is in flight — disables the select. */
+  isStatusUpdating?: boolean
 }
 
 /** Shared visual language for the origin affordance, whether it is a link or a button. */
@@ -65,6 +93,60 @@ function StatusBadge({ name, color }: { name: string; color: string | null }) {
   )
 }
 
+interface RewardStatusFieldProps {
+  reward: RewardDetailItem
+  labels: RewardCardLabels
+  canEditStatus: boolean
+  onStatusChange?: (rewardStatusId: number) => void
+  isStatusUpdating: boolean
+}
+
+/**
+ * The reward's own persisted status (spec 0060 D-1, AC-029/AC-030): editable
+ * inline via the generic for-select when the caller grants it, a readonly
+ * badge otherwise — never both, and never a select for a value the user is
+ * not allowed to change. The select's trigger is tinted with the current
+ * status color (`badgeColorClass`) so it keeps reading as a status pill even
+ * while it doubles as the edit control.
+ */
+function RewardStatusField({
+  reward,
+  labels,
+  canEditStatus,
+  onStatusChange,
+  isStatusUpdating,
+}: RewardStatusFieldProps) {
+  const status = reward.reward_status
+
+  if (!canEditStatus || !onStatusChange) {
+    return status ? <StatusBadge name={status.name} color={status.color} /> : null
+  }
+
+  return (
+    <AsyncPaginatedSelect
+      resource={REWARD_STATUS_RESOURCE}
+      value={status?.id ?? null}
+      onChange={(next) => {
+        if (next !== null) {
+          onStatusChange(next)
+        }
+      }}
+      selectedItem={status ? { id: status.id, label: status.name } : null}
+      disabled={isStatusUpdating}
+      className={cn('h-8 w-auto text-xs', badgeColorClass(status?.color ?? null))}
+      labels={{
+        placeholder: labels.statusPlaceholder,
+        searchPlaceholder: labels.statusSearchPlaceholder,
+        empty: labels.statusEmpty,
+        error: labels.statusError,
+        clearLabel: labels.statusClearLabel,
+        triggerLabel: labels.status,
+        retry: labels.statusRetry,
+      }}
+    />
+  )
+}
+
 /** Localized, date-only (no time) formatting for `assigned_at`. */
 function formatAssignedAt(value: string): string {
   const date = new Date(value)
@@ -81,12 +163,21 @@ function formatAssignedAt(value: string): string {
  * (context itself can be null when the origin was deleted) — each section
  * renders only when it has something to show, never an empty row.
  */
-export function RewardCard({ reward, labels, className, onOpenSource }: RewardCardProps) {
+export function RewardCard({
+  reward,
+  labels,
+  className,
+  onOpenSource,
+  canEditStatus = false,
+  onStatusChange,
+  isStatusUpdating = false,
+}: RewardCardProps) {
   const context = reward.context
   const categories = context?.product_categories ?? []
   const categoriesLabel = categories.map((category) => category.name).join(', ')
   const hasStatus = Boolean(context?.opportunity_status ?? context?.workflow_status)
   const hasMeta = Boolean(context?.registry) || categories.length > 0 || Boolean(context?.operator)
+  const hasOwnStatus = canEditStatus || Boolean(reward.reward_status)
 
   return (
     <Card className={cn('gap-3 py-3', className)}>
@@ -98,6 +189,18 @@ export function RewardCard({ reward, labels, className, onOpenSource }: RewardCa
             {formatAssignedAt(reward.assigned_at)}
           </span>
         </div>
+
+        {hasOwnStatus ? (
+          <Field term={labels.status}>
+            <RewardStatusField
+              reward={reward}
+              labels={labels}
+              canEditStatus={canEditStatus}
+              onStatusChange={onStatusChange}
+              isStatusUpdating={isStatusUpdating}
+            />
+          </Field>
+        ) : null}
 
         {reward.source ? (
           onOpenSource ? (

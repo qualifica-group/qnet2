@@ -6,6 +6,7 @@ use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
+use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
@@ -229,17 +230,24 @@ class ProductCategoryService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function effectiveAttributes(ProductCategory $category): Collection
+    public function effectiveAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
     {
-        return $this->hierarchy->effectiveAttributes($category);
+        return $this->hierarchy->effectiveAttributes($category, $context);
     }
 
     /**
+     * The category's inherited attributes across BOTH contexts, each row
+     * tagged `context` (spec 0061) — the config page's read-only side list
+     * feeds both the "Attributi Prodotto" and "Attributi Opportunita'"
+     * sections in one flat response, the frontend splitting by that tag.
+     *
      * @return Collection<int, array<string, mixed>>
      */
     public function inheritedAttributes(ProductCategory $category): Collection
     {
-        return $this->hierarchy->ancestorAttributes($category);
+        return $this->hierarchy->ancestorAttributes($category, AttributeContext::Opportunity)
+            ->merge($this->hierarchy->ancestorAttributes($category, AttributeContext::Product))
+            ->values();
     }
 
     /**
@@ -315,22 +323,39 @@ class ProductCategoryService
 
     /**
      * Full-replace sync of the category's OWN attribute assignments (pivot:
-     * is_required/sort_order), mirroring RoleService's field-permission sync
-     * pattern: delete-then-recreate semantics via Eloquent's sync().
+     * is_required/sort_order/context). Spec 0061: NOT Eloquent's
+     * BelongsToMany::sync() — it keys by attribute_id only and cannot
+     * represent the SAME attribute assigned to both the Product and
+     * Opportunity sections (two pivot rows). Wholesale rewrite instead:
+     * delete every row for this category, then insert the submitted set —
+     * idempotent (re-submitting the same set yields the same rows) and
+     * transaction-wrapped (a partial failure never leaves the category with
+     * only its old rows deleted).
      *
-     * @param  array<int, array{attribute_id: int, is_required?: bool, sort_order?: int}>  $attributes
+     * @param  array<int, array{attribute_id: int, context: string, is_required?: bool, sort_order?: int}>  $attributes
      */
     private function syncAttributes(ProductCategory $category, array $attributes): void
     {
-        $syncData = [];
+        DB::transaction(function () use ($category, $attributes): void {
+            DB::table('attribute_category')->where('category_id', $category->id)->delete();
 
-        foreach ($attributes as $row) {
-            $syncData[(int) $row['attribute_id']] = [
+            if ($attributes === []) {
+                return;
+            }
+
+            $now = now();
+
+            $rows = array_map(static fn (array $row): array => [
+                'attribute_id' => (int) $row['attribute_id'],
+                'category_id' => $category->id,
+                'context' => (string) $row['context'],
                 'is_required' => (bool) ($row['is_required'] ?? false),
                 'sort_order' => (int) ($row['sort_order'] ?? 0),
-            ];
-        }
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $attributes);
 
-        $category->attributes()->sync($syncData);
+            DB::table('attribute_category')->insert($rows);
+        });
     }
 }

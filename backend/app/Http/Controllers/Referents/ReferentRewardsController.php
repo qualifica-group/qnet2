@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Referents;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Resources\RewardResource;
-use App\Models\Opportunity;
 use App\Models\Referent;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -30,25 +28,7 @@ class ReferentRewardsController extends BaseApiController
             abort_unless($request->user()->can('rewarded-referents.view'), 403);
 
             $rewards = $referent->rewards()
-                ->with([
-                    'rewardType',
-                    // morphWith: the `source` bag holds mixed origin types
-                    // (today only Opportunity), so its OWN relation chain
-                    // must be declared here to stay N+1-free (AC-017) —
-                    // a plain nested eager-load string can't reach across
-                    // a MorphTo.
-                    'source' => function (MorphTo $morphTo): void {
-                        $morphTo->morphWith([
-                            Opportunity::class => [
-                                'registry',
-                                'productLines.productCategory',
-                                'opportunityStatus',
-                                'workflowStatus',
-                                'managers.avatar',
-                            ],
-                        ]);
-                    },
-                ])
+                ->with(RewardResource::eagerLoad())
                 ->orderByDesc('assigned_at')
                 ->orderByDesc('id')
                 ->get();

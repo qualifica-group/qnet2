@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\RewardType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -29,6 +30,7 @@ class RewardFactory extends Factory
         return [
             'referent_id' => Referent::factory(),
             'reward_type_id' => RewardType::factory(),
+            'reward_status_id' => RewardStatus::factory(),
             'source_type' => Relation::getMorphAlias(Opportunity::class),
             'source_id' => Opportunity::factory(),
             'assigned_at' => fake()->dateTimeBetween('-3 months', 'now')->format('Y-m-d'),

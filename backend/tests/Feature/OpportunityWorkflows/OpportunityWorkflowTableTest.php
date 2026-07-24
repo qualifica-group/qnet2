@@ -61,7 +61,7 @@ it('rows: 200 with the expected row shape when the actor has viewAny (AC-019)', 
         ->and($row['name'])->toBe('Table Row Target')
         ->and($row['criteria_fields'])->toBe(['opportunityWorkflows.criterionFields.source_id'])
         ->and($row['criteria_values'])->toBe(['Referral'])
-        ->and($row['statuses_count'])->toBe(4)
+        ->and($row['statuses_count'])->toBe(5)
         ->and($row['is_active'])->toBeTrue()
         ->and($row)->toHaveKey('updated_at')
         ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);

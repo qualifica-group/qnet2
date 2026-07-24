@@ -32,6 +32,7 @@ export const navigation = {
   requestManagement: 'Request Management',
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',
+  rewardStatuses: 'Reward Statuses',
   rewardedReferents: 'Rewarded Referents',
   opportunitiesAndCommesse: 'Opportunities & Contracts',
   imports: 'Import Lead',

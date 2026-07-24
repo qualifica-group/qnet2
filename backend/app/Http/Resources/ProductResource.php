@@ -19,12 +19,17 @@ class ProductResource extends JsonResource
      * and passed in explicitly — never computed here — because it requires
      * CategoryHierarchy's ancestor walk, which stays out of the Resource
      * layer (Controller thin -> Service authoritative -> Resource pure
-     * output shape).
+     * output shape). $applicableAttributes (spec 0061) is the SAME kind of
+     * precomputed input, from ProductService::applicableAttributes().
      *
      * @param  array{id: int, name: string}|null  $effectiveBusinessFunction
+     * @param  array<int, array<string, mixed>>  $applicableAttributes
      */
-    public function __construct(Product $resource, private readonly ?array $effectiveBusinessFunction = null)
-    {
+    public function __construct(
+        Product $resource,
+        private readonly ?array $effectiveBusinessFunction = null,
+        private readonly array $applicableAttributes = [],
+    ) {
         parent::__construct($resource);
     }
 
@@ -49,6 +54,12 @@ class ProductResource extends JsonResource
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,
+            // Spec 0061: the product's own values against its category's
+            // PRODUCT-context effective attributes, and that same set
+            // (`applicable_attributes`) for the create/edit form's dynamic
+            // fields — mirrors the request-management work panel's shape.
+            'attribute_values' => $this->attribute_values ?? [],
+            'applicable_attributes' => $this->applicableAttributes,
             'created_at' => $this->created_at,
         ];
     }

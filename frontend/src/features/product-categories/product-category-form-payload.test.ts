@@ -6,7 +6,7 @@ import {
 import type { ProductCategoryDetail } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 
-/** Spec 0017 AC-010: create shape, update diffs generic fields + full-replace attributes sync. */
+/** Spec 0017 AC-010: create shape, update diffs generic fields + full-replace attributes sync (spec 0061 adds `context`). */
 
 function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCategoryDetail {
   return {
@@ -16,7 +16,9 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     parent: { id: 1, name: 'Electronics' },
     inherits_attributes: true,
     description: null,
-    attributes: [{ attribute_id: 9, code: 'ram', name: 'RAM', type: 'integer', is_required: true, sort_order: 0 }],
+    attributes: [
+      { attribute_id: 9, code: 'ram', name: 'RAM', type: 'integer', is_required: true, sort_order: 0, context: 'opportunity' },
+    ],
     inherited_attributes: [],
     created_at: '2026-01-01T00:00:00Z',
     business_function_id: null,
@@ -33,7 +35,7 @@ describe('buildCreatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
@@ -43,7 +45,7 @@ describe('buildCreatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
     })
   })
@@ -56,7 +58,7 @@ describe('buildUpdatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
@@ -70,7 +72,7 @@ describe('buildUpdatePayload', () => {
       parent_id: 2,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
@@ -84,7 +86,7 @@ describe('buildUpdatePayload', () => {
       parent_id: 1,
       inherits_attributes: false,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
@@ -98,13 +100,29 @@ describe('buildUpdatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: false, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: false, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
 
     expect(buildUpdatePayload(values, original())).toEqual({
-      attributes: [{ attribute_id: 9, is_required: false, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: false, sort_order: 0 }],
+    })
+  })
+
+  it('sends a full attributes replacement when only the context changed (same attribute, product instead of opportunity)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'product', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({
+      attributes: [{ attribute_id: 9, context: 'product', is_required: true, sort_order: 0 }],
     })
   })
 
@@ -114,7 +132,7 @@ describe('buildUpdatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: 5,
       custom_fields: {},
     }
@@ -128,7 +146,7 @@ describe('buildUpdatePayload', () => {
       parent_id: 1,
       inherits_attributes: true,
       description: null,
-      attributes: [{ attribute_id: 9, is_required: true, sort_order: 0 }],
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }

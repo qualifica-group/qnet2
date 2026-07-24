@@ -144,6 +144,14 @@ export const productCategories = {
         title: 'Attributes',
         description: 'Attributes assigned to this category, plus what it inherits.',
       },
+      productAttributes: {
+        title: 'Product attributes',
+        description: 'Loaded in the Product card (create/edit) for products in this category.',
+      },
+      opportunityAttributes: {
+        title: 'Opportunity attributes',
+        description: 'Loaded in the Opportunity preliminary info for requests in this category.',
+      },
     },
   },
 }
@@ -245,6 +253,10 @@ export const products = {
         title: 'Details',
         description: 'Name, description, pricing and category of the product.',
       },
+    },
+    dynamicFields: {
+      title: 'Attributes',
+      empty: 'Select a category to see its attributes.',
     },
   },
 }

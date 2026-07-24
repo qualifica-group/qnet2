@@ -80,6 +80,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         description: category.description,
         attributes: category.attributes.map((assignment) => ({
           attribute_id: assignment.attribute_id,
+          context: assignment.context,
           is_required: assignment.is_required,
           sort_order: assignment.sort_order,
         })),

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use App\Enums\StatusSystemKey;
 use App\Models\Opportunity;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 
 /**
  * The single write path for an opportunity's reward assignments (spec 0059,
@@ -21,6 +23,9 @@ use App\Models\Reward;
  * reporter-less opportunity BEFORE this runs — `referent_id` is NOT NULL at
  * schema level, so a caller that skips that guard fails loudly at the DB
  * rather than orphaning a row silently.
+ *
+ * `reward_status_id` (spec 0060, BR-6/D-2): every newly created row starts on
+ * the system `pending` row, resolved by `system_key` — never a hardcoded id.
  */
 final class RewardAssignmentWriter
 {
@@ -93,13 +98,24 @@ final class RewardAssignmentWriter
         }
 
         $assignedAt = now()->toDateString();
+        $pendingStatusId = $this->resolvePendingStatusId();
 
         foreach ($added as $rewardTypeId) {
             $opportunity->rewards()->create([
                 'referent_id' => $opportunity->reporter_id,
                 'reward_type_id' => $rewardTypeId,
+                'reward_status_id' => $pendingStatusId,
                 'assigned_at' => $assignedAt,
             ]);
         }
+    }
+
+    /**
+     * Resolved once per batch (not per row): the system `pending` row's id
+     * (BR-6), never hardcoded.
+     */
+    private function resolvePendingStatusId(): int
+    {
+        return (int) RewardStatus::query()->where('system_key', StatusSystemKey::Pending->value)->value('id');
     }
 }
