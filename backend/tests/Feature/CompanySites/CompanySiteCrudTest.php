@@ -207,7 +207,7 @@ it('create: 422 when name is missing', function () {
         ->assertStatus(422)->assertJsonValidationErrors(['name']);
 });
 
-it('create: 422 when a geo/user id does not exist', function () {
+it('create: 422 when a nested address city id does not exist', function () {
     $actor = userWithCompanySiteAbilities(['create']);
     Sanctum::actingAs($actor);
 
@@ -216,8 +216,7 @@ it('create: 422 when a geo/user id does not exist', function () {
         'personal_data' => companySiteCompanyProfile([
             'addresses' => [['line1' => 'Via X', 'city_id' => 999999]],
         ]),
-        'responsible_rda_id' => 999999,
-    ])->assertStatus(422)->assertJsonValidationErrors(['personal_data.addresses.0.city_id', 'responsible_rda_id']);
+    ])->assertStatus(422)->assertJsonValidationErrors(['personal_data.addresses.0.city_id']);
 });
 
 it('create: 422 when a nested address is missing city_id (product decision: geo-located on create)', function () {
@@ -246,16 +245,6 @@ it('create: 422 when personal_data.addresses carries more than one address (max 
     ])->assertStatus(422)->assertJsonValidationErrors('personal_data.addresses');
 });
 
-it('create: 422 on an invalid IBAN', function () {
-    $actor = userWithCompanySiteAbilities(['create']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/company-sites', [
-        'name' => 'X',
-        'banks' => [['name' => 'Bad Bank', 'iban' => 'not-an-iban']],
-    ])->assertStatus(422)->assertJsonValidationErrors('banks.0.iban');
-});
-
 it('create: only one bank stays primary when several are flagged (single-primary invariant)', function () {
     $actor = userWithCompanySiteAbilities(['create']);
     Sanctum::actingAs($actor);
@@ -269,6 +258,18 @@ it('create: only one bank stays primary when several are flagged (single-primary
     ])->assertCreated();
 
     expect(CompanySiteBank::where('is_primary', true)->count())->toBe(1);
+});
+
+it('create: 201 with a non-SEPA-shaped IBAN (product decision: free text, only length-capped)', function () {
+    $actor = userWithCompanySiteAbilities(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/company-sites', [
+        'name' => 'X',
+        'banks' => [['name' => 'Free Text Bank', 'iban' => 'not-an-iban']],
+    ])->assertCreated()->assertJsonPath('data.banks.0.name', 'Free Text Bank');
+
+    $this->assertDatabaseHas('company_site_banks', ['iban' => 'not-an-iban']);
 });
 
 it('create: 403 without company-sites.create', function () {

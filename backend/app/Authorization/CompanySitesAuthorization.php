@@ -10,25 +10,15 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * ResourceAuthorization for the `company-sites` resource (spec 0020).
  *
- * The former "Altro" section is gone: those attributes are now universal
- * custom fields (spec 0021, QualificaTemplateSeeder), authorized generically
- * by the custom-fields layer — not listed here. Every native field's ceiling
- * is the usual visible+editable-when-may-write / visible+readonly-otherwise
- * (mirrors CompaniesAuthorization), except `quotation_layout_id`/
- * `quotation_header_id`/`quotation_footer_id`: `settings`-group fields that are
- * ALSO always read-only (no target table yet, spec 0020) — the one exception
- * inside an otherwise writable group.
+ * The former "Altro" section AND the client-specific ERP settings
+ * (responsible_*, proforma/invoice progressives, quotation_*) are gone: those
+ * attributes are now universal custom fields (spec 0021, QualificaTemplateSeeder),
+ * authorized generically by the custom-fields layer — not listed here. Every
+ * native field's ceiling is the usual visible+editable-when-may-write /
+ * visible+readonly-otherwise (mirrors CompaniesAuthorization).
  */
 class CompanySitesAuthorization extends AbstractResourceAuthorization
 {
-    /**
-     * `settings`-group fields with NO target table yet (spec 0020): always
-     * read-only, unlike the rest of `settings`.
-     *
-     * @var array<int, string>
-     */
-    private const array READONLY_SETTINGS_FIELDS = ['quotation_layout_id', 'quotation_header_id', 'quotation_footer_id'];
-
     public function __construct(FieldPermissionRepository $fieldPermissionRepository)
     {
         parent::__construct($fieldPermissionRepository);
@@ -61,15 +51,6 @@ class CompanySitesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
             new FieldDefinition('company_id', 'select', 'settings'),
-            new FieldDefinition('responsible_rda_id', 'select', 'settings'),
-            new FieldDefinition('responsible_tickets_id', 'select', 'settings'),
-            new FieldDefinition('responsible_validation_contracts_id', 'select', 'settings'),
-            new FieldDefinition('responsible_validation_contracts_two_id', 'select', 'settings'),
-            new FieldDefinition('proforma_progressive', 'number', 'settings'),
-            new FieldDefinition('invoice_progressive', 'number', 'settings'),
-            new FieldDefinition('quotation_layout_id', 'number', 'settings'),
-            new FieldDefinition('quotation_header_id', 'number', 'settings'),
-            new FieldDefinition('quotation_footer_id', 'number', 'settings'),
             new FieldDefinition('banks', 'collection', 'banks'),
         ];
 
@@ -101,18 +82,8 @@ class CompanySitesAuthorization extends AbstractResourceAuthorization
             'personal_data.contacts' => $this->writableOrReadonly($actor, $model),
             'personal_data.addresses' => $this->writableOrReadonly($actor, $model),
             'company_id' => $this->writableOrReadonly($actor, $model),
-            'responsible_rda_id' => $this->writableOrReadonly($actor, $model),
-            'responsible_tickets_id' => $this->writableOrReadonly($actor, $model),
-            'responsible_validation_contracts_id' => $this->writableOrReadonly($actor, $model),
-            'responsible_validation_contracts_two_id' => $this->writableOrReadonly($actor, $model),
-            'proforma_progressive' => $this->writableOrReadonly($actor, $model),
-            'invoice_progressive' => $this->writableOrReadonly($actor, $model),
             'banks' => $this->writableOrReadonly($actor, $model),
         ];
-
-        foreach (self::READONLY_SETTINGS_FIELDS as $key) {
-            $ceiling[$key] = FieldPermission::visibleReadonly();
-        }
 
         return $ceiling;
     }

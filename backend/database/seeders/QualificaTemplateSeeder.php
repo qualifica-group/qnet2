@@ -9,7 +9,9 @@ use Illuminate\Database\Seeder;
  * Clean, idempotent reference seed: provisions the per-module custom field
  * "template" as universal custom field definitions (spec 0021). One entry per
  * entity_type in TEMPLATES:
- *   - company-sites: the former flat "Altro" columns, now dynamic fields;
+ *   - company-sites: the former flat "Altro" columns, PLUS the former
+ *     client-specific ERP settings (responsible_*, proforma/invoice
+ *     progressives, quotation_*), now dynamic fields;
  *   - products: the expiration date.
  *
  * Definitions only — no values are written (that is per-row user data).
@@ -68,6 +70,18 @@ class QualificaTemplateSeeder extends Seeder
             ['key' => 'status', 'label' => 'Stato', 'type' => 'integer'],
             ['key' => 'color', 'label' => 'Colore', 'type' => 'text'],
             ['key' => 'surface_sqm', 'label' => 'Superficie (mq)', 'type' => 'integer'],
+            // De-verticalization: former `responsible_*_id` FKs and ERP
+            // settings columns (proforma/invoice progressives, quotation_*),
+            // now dynamic fields.
+            ['key' => 'responsible_rda', 'label' => 'Responsabile RDA', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
+            ['key' => 'responsible_tickets', 'label' => 'Responsabile Ticket', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
+            ['key' => 'responsible_validation_contracts', 'label' => 'Responsabile Validazione contratti', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
+            ['key' => 'responsible_validation_contracts_two', 'label' => 'Responsabile Validazione contratti 2', 'type' => 'relation', 'relation_target' => self::MANAGER_RELATION_TARGET],
+            ['key' => 'proforma_progressive', 'label' => 'Progressivo proforma', 'type' => 'integer'],
+            ['key' => 'invoice_progressive', 'label' => 'Progressivo fattura', 'type' => 'integer'],
+            ['key' => 'quotation_layout', 'label' => 'Layout preventivo', 'type' => 'integer'],
+            ['key' => 'quotation_header', 'label' => 'Header preventivo', 'type' => 'integer'],
+            ['key' => 'quotation_footer', 'label' => 'Footer preventivo', 'type' => 'integer'],
         ],
         'products' => [
             ['key' => 'expiration_date', 'label' => 'Data scadenza', 'type' => 'date'],

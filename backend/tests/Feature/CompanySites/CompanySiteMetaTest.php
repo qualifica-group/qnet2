@@ -54,25 +54,12 @@ it('200: field catalogue is grouped profile/personal_data/settings/banks, mandat
         ->and($fields['personal_data.addresses']['group'])->toBe('personal_data')
         ->and($fields['personal_data.addresses']['type'])->toBe('collection')
         ->and($fields['company_id']['group'])->toBe('settings')
-        ->and($fields['responsible_rda_id']['group'])->toBe('settings')
         ->and($fields['banks']['group'])->toBe('banks')
         ->and($fields['banks']['type'])->toBe('collection');
 
     foreach ($response->json('permissions.fields') as $field) {
         expect($field)->toHaveKeys(['visible', 'hidden', 'editable', 'readonly', 'required', 'disabled']);
     }
-});
-
-it('200: quotation_* settings fields are always visibleReadonly, even when the actor may create', function () {
-    $actor = userWithCompanySiteAbilities(['viewAny', 'create']);
-    Sanctum::actingAs($actor);
-
-    $this->getJson('/api/meta/company-sites')
-        ->assertOk()
-        ->assertJsonPath('permissions.fields.quotation_layout_id.editable', false)
-        ->assertJsonPath('permissions.fields.quotation_layout_id.readonly', true)
-        ->assertJsonPath('permissions.fields.quotation_header_id.editable', false)
-        ->assertJsonPath('permissions.fields.quotation_footer_id.editable', false);
 });
 
 it('200: profile/settings fields are editable when the actor may create', function () {
@@ -84,7 +71,6 @@ it('200: profile/settings fields are editable when the actor may create', functi
         ->assertJsonPath('permissions.fields.name.editable', true)
         ->assertJsonPath('permissions.fields.name.required', true)
         ->assertJsonPath('permissions.fields.company_id.editable', true)
-        ->assertJsonPath('permissions.fields.responsible_rda_id.editable', true)
         ->assertJsonPath('permissions.fields.banks.editable', true);
 });
 

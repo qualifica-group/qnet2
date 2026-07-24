@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { History, IdCard, Landmark, MapPin, Phone, Receipt, Star, Users } from 'lucide-react'
+import { History, IdCard, Landmark, MapPin, Phone, Receipt, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
@@ -179,23 +179,6 @@ export function CompanySiteDetailView({ companySiteId, onDefaultChange }: Compan
 
       <DetailSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />}>
         <BanksBlock banks={site.banks} />
-      </DetailSection>
-
-      <DetailSection title={t('companySites.form.sections.responsibles.title')} icon={<Users />}>
-        <DetailGrid>
-          <DetailField label={t('companySites.form.responsibleRda')}>
-            {site.responsible_rda?.label || <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('companySites.form.responsibleTickets')}>
-            {site.responsible_tickets?.label || <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('companySites.form.responsibleValidationContracts')}>
-            {site.responsible_validation_contracts?.label || <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('companySites.form.responsibleValidationContractsTwo')}>
-            {site.responsible_validation_contracts_two?.label || <DetailEmpty />}
-          </DetailField>
-        </DetailGrid>
       </DetailSection>
 
       {site.permissions.actions.view_activity ? (

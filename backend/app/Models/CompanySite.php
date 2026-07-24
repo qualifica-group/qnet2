@@ -24,10 +24,11 @@ use Illuminate\Support\Facades\Storage;
  * Unlike Registry, `name` is the site's OWN required column (not derived from
  * the card).
  *
- * The former "Altro" section attributes (store, categories, payment statuses,
- * ...) are no longer columns/attributes here: they are universal custom fields
- * (spec 0021), provisioned by QualificaTemplateSeeder. Only `company_id` (the
- * owning società) remains a native attribute.
+ * The former "Altro" section attributes AND the client-specific ERP settings
+ * (responsible_*, proforma/invoice progressives, quotation_*) are no longer
+ * columns/attributes here: they are universal custom fields (spec 0021),
+ * provisioned by QualificaTemplateSeeder. Only `company_id` (the owning
+ * società) remains a native attribute.
  */
 class CompanySite extends BaseModel
 {
@@ -41,20 +42,11 @@ class CompanySite extends BaseModel
     public const string LOGO_COLLECTION = 'logo';
 
     protected $fillable = [
-        'name', 'notes', 'is_default',
-        'responsible_rda_id', 'responsible_tickets_id', 'responsible_validation_contracts_id',
-        'responsible_validation_contracts_two_id', 'proforma_progressive',
-        'invoice_progressive', 'quotation_layout_id', 'quotation_header_id', 'quotation_footer_id',
-        'company_id',
+        'name', 'notes', 'is_default', 'company_id',
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
-        'proforma_progressive' => 'integer',
-        'invoice_progressive' => 'integer',
-        'quotation_layout_id' => 'integer',
-        'quotation_header_id' => 'integer',
-        'quotation_footer_id' => 'integer',
         // Spec 0013 — external data migration: guarded (not in $fillable), only
         // ever set by property assignment post-create.
         'old_id' => 'integer',
@@ -63,26 +55,6 @@ class CompanySite extends BaseModel
     public function banks(): HasMany
     {
         return $this->hasMany(CompanySiteBank::class);
-    }
-
-    public function responsibleRda(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'responsible_rda_id');
-    }
-
-    public function responsibleTickets(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'responsible_tickets_id');
-    }
-
-    public function responsibleValidationContracts(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'responsible_validation_contracts_id');
-    }
-
-    public function responsibleValidationContractsTwo(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'responsible_validation_contracts_two_id');
     }
 
     public function company(): BelongsTo

@@ -73,12 +73,6 @@ export function buildCreatePayload(
     personal_data: toPersonalDataPayload(profileDraft, fieldPermission),
     ...(banks.length > 0 ? { banks: toBanksPayload(banks) } : {}),
     company_id: values.company_id,
-    responsible_rda_id: values.responsible_rda_id,
-    responsible_tickets_id: values.responsible_tickets_id,
-    responsible_validation_contracts_id: values.responsible_validation_contracts_id,
-    responsible_validation_contracts_two_id: values.responsible_validation_contracts_two_id,
-    proforma_progressive: values.proforma_progressive,
-    invoice_progressive: values.invoice_progressive,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -120,42 +114,6 @@ export function buildUpdatePayload(
   }
 
   assignIfChanged(payload, 'company_id', values.company_id, original.company?.id ?? null)
-  assignIfChanged(
-    payload,
-    'responsible_rda_id',
-    values.responsible_rda_id,
-    original.responsible_rda_id,
-  )
-  assignIfChanged(
-    payload,
-    'responsible_tickets_id',
-    values.responsible_tickets_id,
-    original.responsible_tickets_id,
-  )
-  assignIfChanged(
-    payload,
-    'responsible_validation_contracts_id',
-    values.responsible_validation_contracts_id,
-    original.responsible_validation_contracts_id,
-  )
-  assignIfChanged(
-    payload,
-    'responsible_validation_contracts_two_id',
-    values.responsible_validation_contracts_two_id,
-    original.responsible_validation_contracts_two_id,
-  )
-  assignIfChanged(
-    payload,
-    'proforma_progressive',
-    values.proforma_progressive,
-    original.proforma_progressive,
-  )
-  assignIfChanged(
-    payload,
-    'invoice_progressive',
-    values.invoice_progressive,
-    original.invoice_progressive,
-  )
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})
   if (Object.keys(customFields).length > 0) {

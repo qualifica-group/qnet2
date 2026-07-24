@@ -28,11 +28,7 @@ uses(TestCase::class, RefreshDatabase::class);
 it('creates the company_sites table with the expected columns (no flat contact columns)', function () {
     expect(Schema::hasTable('company_sites'))->toBeTrue();
     expect(Schema::hasColumns('company_sites', [
-        'id', 'old_id', 'name', 'notes', 'is_default',
-        'responsible_rda_id', 'responsible_tickets_id', 'responsible_validation_contracts_id',
-        'responsible_validation_contracts_two_id', 'proforma_progressive', 'invoice_progressive',
-        'quotation_layout_id', 'quotation_header_id', 'quotation_footer_id',
-        'company_id', 'created_at', 'updated_at',
+        'id', 'old_id', 'name', 'notes', 'is_default', 'company_id', 'created_at', 'updated_at',
     ]))->toBeTrue();
 
     // The former "Altro" columns are gone: those attributes are now universal
@@ -42,6 +38,18 @@ it('creates the company_sites table with the expected columns (no flat contact c
     expect(Schema::hasColumn('company_sites', 'surface_sqm'))->toBeFalse();
     expect(Schema::hasColumn('company_sites', 'other_category_id'))->toBeFalse();
     expect(Schema::hasColumn('company_sites', 'color'))->toBeFalse();
+
+    // De-verticalization: the former client-specific ERP settings columns are
+    // gone too (dropped by 2026_07_24_100000, re-provisioned as custom fields).
+    expect(Schema::hasColumn('company_sites', 'responsible_rda_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'responsible_tickets_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'responsible_validation_contracts_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'responsible_validation_contracts_two_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'proforma_progressive'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'invoice_progressive'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'quotation_layout_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'quotation_header_id'))->toBeFalse();
+    expect(Schema::hasColumn('company_sites', 'quotation_footer_id'))->toBeFalse();
 
     // The flattened contact columns were removed: contacts/address now live on
     // the personal-data card (HasPersonalData).
@@ -90,6 +98,51 @@ it('down() reverses both migrations, up() recreates them (in FK order)', functio
         ->and(Schema::hasTable('company_site_banks'))->toBeTrue();
 });
 
+it('the drop-ERP-columns migration backfills non-null values into custom_field_values, merging with any existing row, then drops the columns', function () {
+    $migration = require database_path('migrations/2026_07_24_100000_drop_erp_columns_from_company_sites.php');
+
+    $site = CompanySite::factory()->create();
+    $rda = User::factory()->create();
+
+    // An existing custom_field_values row (e.g. the former "Altro" section)
+    // must survive the merge untouched.
+    DB::table('custom_field_values')->insert([
+        'entity_type' => 'company-sites',
+        'entity_id' => $site->id,
+        'values' => json_encode(['color' => 'blue']),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Re-create the legacy columns (already dropped by the full migrate run)
+    // and populate a subset directly — they are no longer in $fillable.
+    $migration->down();
+    DB::table('company_sites')->where('id', $site->id)->update([
+        'responsible_rda_id' => $rda->id,
+        'proforma_progressive' => 42,
+        'quotation_layout_id' => 7,
+    ]);
+
+    $migration->up();
+
+    expect(Schema::hasColumn('company_sites', 'responsible_rda_id'))->toBeFalse()
+        ->and(Schema::hasColumn('company_sites', 'proforma_progressive'))->toBeFalse()
+        ->and(Schema::hasColumn('company_sites', 'quotation_layout_id'))->toBeFalse();
+
+    $row = DB::table('custom_field_values')
+        ->where('entity_type', 'company-sites')
+        ->where('entity_id', $site->id)
+        ->first();
+
+    $values = json_decode($row->values, true);
+
+    expect($values['color'])->toBe('blue')
+        ->and($values['responsible_rda'])->toBe($rda->id)
+        ->and($values['proforma_progressive'])->toBe(42)
+        ->and($values['quotation_layout'])->toBe(7)
+        ->and($values)->not->toHaveKey('invoice_progressive');
+});
+
 // ---------------------------------------------------------------------------
 // AC-002 — model relations, morph alias, cascade delete
 // ---------------------------------------------------------------------------
@@ -122,26 +175,12 @@ it('a bank can be flagged primary (is_primary cast to bool)', function () {
     expect($bank->fresh()->is_primary)->toBeTrue();
 });
 
-it('the 4 responsible relations and company() are BelongsTo(User)/(Company)', function () {
-    $rda = User::factory()->create();
-    $tickets = User::factory()->create();
-    $validation = User::factory()->create();
-    $validationTwo = User::factory()->create();
+it('company() is a BelongsTo(Company)', function () {
     $company = Company::factory()->create();
 
-    $companySite = CompanySite::factory()->create([
-        'responsible_rda_id' => $rda->id,
-        'responsible_tickets_id' => $tickets->id,
-        'responsible_validation_contracts_id' => $validation->id,
-        'responsible_validation_contracts_two_id' => $validationTwo->id,
-        'company_id' => $company->id,
-    ]);
+    $companySite = CompanySite::factory()->create(['company_id' => $company->id]);
 
-    expect($companySite->responsibleRda->is($rda))->toBeTrue()
-        ->and($companySite->responsibleTickets->is($tickets))->toBeTrue()
-        ->and($companySite->responsibleValidationContracts->is($validation))->toBeTrue()
-        ->and($companySite->responsibleValidationContractsTwo->is($validationTwo))->toBeTrue()
-        ->and($companySite->company->is($company))->toBeTrue();
+    expect($companySite->company->is($company))->toBeTrue();
 });
 
 it('deleting a site cascades its card (contacts + address), banks and logo', function () {

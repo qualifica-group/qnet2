@@ -14,8 +14,9 @@ namespace App\DataObjects\CompanySites;
  * handed to CompanySiteService as a ProfileData, mirroring Registry. `banks`
  * present is the AUTHORITATIVE list (add/update/delete diff, BankService::sync);
  * the "preferred bank" now lives on the bank rows themselves (`is_primary`),
- * not on the site. "Altro" and `is_default` are never accepted here (see
- * CreateCompanySiteData).
+ * not on the site. "Altro", the former ERP settings (responsible_*,
+ * proforma/invoice progressives, quotation_*) and `is_default` are never
+ * accepted here (see CreateCompanySiteData).
  */
 final readonly class UpdateCompanySiteData
 {
@@ -28,18 +29,6 @@ final readonly class UpdateCompanySiteData
         public bool $notesSubmitted = false,
         public ?int $companyId = null,
         public bool $companyIdSubmitted = false,
-        public ?int $responsibleRdaId = null,
-        public bool $responsibleRdaIdSubmitted = false,
-        public ?int $responsibleTicketsId = null,
-        public bool $responsibleTicketsIdSubmitted = false,
-        public ?int $responsibleValidationContractsId = null,
-        public bool $responsibleValidationContractsIdSubmitted = false,
-        public ?int $responsibleValidationContractsTwoId = null,
-        public bool $responsibleValidationContractsTwoIdSubmitted = false,
-        public ?int $proformaProgressive = null,
-        public bool $proformaProgressiveSubmitted = false,
-        public ?int $invoiceProgressive = null,
-        public bool $invoiceProgressiveSubmitted = false,
         public array $banks = [],
         public bool $banksSubmitted = false,
     ) {}
@@ -57,18 +46,6 @@ final readonly class UpdateCompanySiteData
             notesSubmitted: array_key_exists('notes', $data),
             companyId: self::nullableInt($data, 'company_id'),
             companyIdSubmitted: array_key_exists('company_id', $data),
-            responsibleRdaId: self::nullableInt($data, 'responsible_rda_id'),
-            responsibleRdaIdSubmitted: array_key_exists('responsible_rda_id', $data),
-            responsibleTicketsId: self::nullableInt($data, 'responsible_tickets_id'),
-            responsibleTicketsIdSubmitted: array_key_exists('responsible_tickets_id', $data),
-            responsibleValidationContractsId: self::nullableInt($data, 'responsible_validation_contracts_id'),
-            responsibleValidationContractsIdSubmitted: array_key_exists('responsible_validation_contracts_id', $data),
-            responsibleValidationContractsTwoId: self::nullableInt($data, 'responsible_validation_contracts_two_id'),
-            responsibleValidationContractsTwoIdSubmitted: array_key_exists('responsible_validation_contracts_two_id', $data),
-            proformaProgressive: self::nullableInt($data, 'proforma_progressive'),
-            proformaProgressiveSubmitted: array_key_exists('proforma_progressive', $data),
-            invoiceProgressive: self::nullableInt($data, 'invoice_progressive'),
-            invoiceProgressiveSubmitted: array_key_exists('invoice_progressive', $data),
             banks: array_key_exists('banks', $data) ? self::buildBanks((array) $data['banks']) : [],
             banksSubmitted: array_key_exists('banks', $data),
         );
@@ -92,12 +69,6 @@ final readonly class UpdateCompanySiteData
         foreach ([
             'notes' => ['notesSubmitted', 'notes'],
             'company_id' => ['companyIdSubmitted', 'companyId'],
-            'responsible_rda_id' => ['responsibleRdaIdSubmitted', 'responsibleRdaId'],
-            'responsible_tickets_id' => ['responsibleTicketsIdSubmitted', 'responsibleTicketsId'],
-            'responsible_validation_contracts_id' => ['responsibleValidationContractsIdSubmitted', 'responsibleValidationContractsId'],
-            'responsible_validation_contracts_two_id' => ['responsibleValidationContractsTwoIdSubmitted', 'responsibleValidationContractsTwoId'],
-            'proforma_progressive' => ['proformaProgressiveSubmitted', 'proformaProgressive'],
-            'invoice_progressive' => ['invoiceProgressiveSubmitted', 'invoiceProgressive'],
         ] as $column => [$submittedProperty, $valueProperty]) {
             if ($this->{$submittedProperty}) {
                 $attributes[$column] = $this->{$valueProperty};

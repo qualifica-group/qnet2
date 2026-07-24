@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0060-reward-statuses-module" status="draft" owner="nicola" date="2026-07-24">
+
+  <goal>
+    Introdurre il modulo configuratore `reward-statuses` ("Stati Buoni Collegati"): tabella di
+    supporto che descrive gli STATI applicabili ai buoni collegati (`rewards`) e, in futuro, ad
+    altri moduli. Campi: `name` (univoco), `description` (opzionale), `color` (token palette,
+    obbligatorio), `sort_order` (gestito via drag&amp;drop), `is_active` (attivo/disattivo), piu' una
+    riga di sistema non eliminabile `pending` ("In attesa"). Il modulo replica i flussi standard del
+    CRM (elenco SSRM, create/edit/show, delete guardata, riordino, permessi, field-permissions,
+    activity log, ricerca, filtri, ordinamento, paginazione, export, apertura modale/pagina, i18n).
+    In piu': aggiunge la FK `rewards.reward_status_id` e rende lo Stato modificabile inline dalla
+    card del buono nella pagina "Referenti con Buoni".
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono VERIFICATI sul codice reale (ricognizione 2026-07-24,
+         tre agenti Explore in parallelo), non ipotizzati. -->
+
+    <precedent_is_opportunity_statuses>
+      Il template di riferimento e' `opportunity-statuses` (spec 0043): anagrafica con COLORE +
+      `sort_order` + righe di SISTEMA (`system_key`) + riordino drag&amp;drop. Il nuovo modulo lo
+      clona integralmente, con TRE differenze deliberate:
+      (a) NIENTE `group` (`StatusGroup`): non esiste una semantica open/pending/closed da mostrare;
+      (b) AGGIUNGE `description` (string 500 nullable) — pattern preso da `OpportunityWorkflowStatus`
+          (migrazione `2026_07_22_140000_add_description_and_requires_note_...`, fillable, resource
+          `'description' => $this->description`);
+      (c) AGGIUNGE `is_active` (boolean default true) — pattern preso da `opportunity-workflows`
+          (form `<Switch>` su `MetaField name="is_active"`, colonna `BooleanBadgeCell`, request
+          `'is_active' => ['sometimes','boolean']`).
+      Una sola riga di sistema `pending` (NON due code Won/Lost come opportunity-statuses): e' la
+      TESTA fissa a `sort_order = 0`, l'equivalente di "Nuova"/`new`.
+      File template da leggere PRIMA di scrivere (verificati):
+      backend/app/Models/OpportunityStatus.php, app/Services/OpportunityStatusService.php,
+      app/Services/Statuses/{StatusOrderManager,SystemStatusGuard}.php,
+      app/Tables/OpportunityStatusesTableDefinition.php,
+      app/Tables/OpportunityStatuses/{OpportunityStatusColumnCatalog,OpportunityStatusAdvancedFilterCatalog}.php,
+      app/Authorization/OpportunityStatusesAuthorization.php, app/Policies/OpportunityStatusPolicy.php,
+      app/Http/{Controllers/OpportunityStatuses,Requests/OpportunityStatuses,Requests/Statuses/ReorderStatusesRequest,Resources/OpportunityStatusResource}.php,
+      app/DataObjects/OpportunityStatuses/*, backend/routes/api/lookups.php (righe 82-103),
+      migrazione `2026_07_17_200000_create_opportunity_statuses_table.php` (seed righe sistema),
+      frontend/src/features/opportunity-statuses/* (tutti), frontend/src/features/status-reorder/*,
+      frontend/src/features/opportunity-workflows/opportunity-workflow-form-body.tsx (Switch is_active),
+      frontend/src/features/table/rich-cells.tsx (BooleanBadgeCell, StatusBadgeCell, ColorSwatchCell).
+    </precedent_is_opportunity_statuses>
+
+    <system_row_pending>
+      Decisione utente (D-2): i nuovi buoni nascono con lo stato di sistema `pending`. La migrazione
+      del modulo seeda la riga come fa opportunity-statuses in `seedSystemRows()`: `name='In attesa'`,
+      `color='amber'`, `system_key='pending'`, `sort_order=0`, `is_active=true`. La riga di sistema:
+      - NON e' eliminabile (SystemStatusGuard::assertDeletable -> 422), ne' via row-action ne' via bulk;
+      - e' editabile SOLO in `name` e `color` (D-2): `description`, `is_active` e `sort_order` sono
+        bloccati per le righe di sistema (SystemStatusGuard::assertUpdatable esteso a questi campi);
+      - resta pinnata come testa a `sort_order=0` nel riordino (StatusOrderManager la rinormalizza a 0).
+      `is_active` non e' disattivabile sulla riga di sistema (e' il default dei nuovi buoni).
+    </system_row_pending>
+
+    <reward_is_already_implemented>
+      `App\Models\Reward` esiste (spec 0059): tabella `rewards`
+      (migrazione `2026_07_23_120000_create_rewards_table.php`), `#[Fillable(['referent_id',
+      'reward_type_id','assigned_at','notes'])]`, casts `['assigned_at' => 'date']`, relazioni
+      `referent()`, `rewardType()`, `source(): MorphTo`. Reward NON e' soggetto morph (nessun alias
+      `reward`). Il writer di sync e' `App\Services\Opportunities\RewardAssignmentWriter::sync(
+      Opportunity, array $rewardTypeIds)`: in `createAdded()` scrive `referent_id`, `reward_type_id`,
+      `assigned_at = now()->toDateString()`. QUI va scritto il default `reward_status_id` = id della
+      riga `pending` alla creazione. Il ramo 409 di `RewardTypeService::delete()` esiste gia' e va
+      replicato in `RewardStatusService::delete()`.
+    </reward_is_already_implemented>
+
+    <reward_card_is_read_only_today>
+      La card del singolo buono e' `frontend/src/features/rewards/reward-card.tsx`
+      (`RewardCard({reward, labels, className, onOpenSource})`, `reward: RewardDetailItem`), montata
+      da `frontend/src/features/rewarded-referents/reward-detail-renderer.tsx` (che costruisce
+      `RewardCardLabels` e fa la fetch via `useReferentRewards`). Oggi la card mostra badge di stato
+      DERIVATI e in sola lettura (`context.opportunity_status`, `context.workflow_status`, letti dalle
+      relazioni dell'Opportunita', MAI persistiti su `rewards`). Lo Stato del buono e' invece un valore
+      PERSISTITO nuovo (`reward_status_id`) e va reso EDITABILE inline nella card (D-1: "Solo card
+      inline"). Non esiste oggi alcun PATCH sul singolo reward: va creato (vedi data_contract §5).
+      Helper badge riusabile gia' nella card: `StatusBadge` locale (reward-card.tsx, usa
+      `badgeColorClass` + `swatchClassFor`). Select relazione riusabile:
+      `frontend/src/components/form/relation-select-field.tsx` (o `AsyncPaginatedSelect` diretto) che
+      fetcha via for-select (solo attivi/ordinati).
+      Tipi in `frontend/src/features/rewards/types.ts`: `RewardDetailItem`, `RewardTypeRef`,
+      `RewardSourceRef`, `RewardContext`. Backend: `RewardResource::toArray()`
+      (`app/Http/Resources/RewardResource.php`) e `ReferentRewardsController` (eager-load).
+    </reward_card_is_read_only_today>
+
+    <rewarded_referents_is_aggregated>
+      `rewarded-referents` (spec 0059) e' una vista AGGREGATA: UNA riga per Referente
+      (`RewardedReferentsTableDefinition`, `modelClass()=Referent`, `baseQuery()` con `whereHas('rewards')`,
+      `withCount`, contatori). Percio' lo Stato del singolo buono NON puo' essere una colonna della
+      griglia aggregata: entra come ADVANCED FILTER (`whereHas('rewards', reward_status_id in ...)`),
+      accanto ai filtri esistenti `reward_type`/`opportunity_status` (catalogo
+      `app/Tables/RewardedReferents/RewardedReferentAdvancedFilterCatalog.php` +
+      `RewardedReferentAdvancedFilterApplier.php`). Ricerca/ordinamento/export dello Stato vivono
+      invece PIENAMENTE nella tabella propria del configuratore `reward-statuses`.
+    </rewarded_referents_is_aggregated>
+
+    <permissions_and_registration_are_derived>
+      Permessi CRUD derivati da `SyncPermissions` (glob su Policy): basta `RewardStatusPolicy extends
+      BasePolicy` con `resource(): 'reward-statuses'`. Field-permissions in `RewardStatusesAuthorization`
+      (`fields()` + `fieldPermissionCeiling()`) registrata in config/authorization.php. Export gratis
+      dalla riga in config/tables.php (config/exports.php). Registro moduli FE glob-driven: esportare
+      `moduleScreen` da `features/reward-statuses/reward-status-screens.tsx` genera rotte/modale/sheet.
+      Registrare una resource in config/authorization.php ROMPE
+      `tests/Feature/Authorization/FieldCatalogueEndpointTest.php` (asserzione `toEqualCanonicalizing`):
+      aggiornare l'array atteso e' legittimo, non tampering (precedente HANDOFF 0058/0059).
+    </permissions_and_registration_are_derived>
+
+    <reorder_infrastructure>
+      Backend: `POST /api/opportunity-statuses/reorder` -> `OpportunityStatusService::reorder()` ->
+      `StatusOrderManager` (generico via class-string; STEP=10; rinormalizza testa/coda di sistema;
+      transazione; `assertValidReorderSet` -> 422). Request condivisa
+      `app/Http/Requests/Statuses/ReorderStatusesRequest.php` (`ordered_ids: required|array|min:1`,
+      `ordered_ids.*: integer|distinct`). Guard `SystemStatusGuard` (assertDeletable/assertUpdatable).
+      Frontend: feature CONDIVISA `frontend/src/features/status-reorder/` (`StatusReorderToggle` con
+      prop `resource`, `status-reorder-sheet.tsx`, `use-status-reorder.ts`, `api.ts`
+      `reorderStatuses(resource, orderedIds)`), gia' riusata da opportunity-statuses E pipeline-statuses
+      (prova che e' generica). `reward-statuses` la riusa passando `resource="reward-statuses"`.
+      NOTA IMPLEMENTATIVA (blast radius): `StatusOrderManager`/`SystemStatusGuard` sono oggi accoppiati
+      a modelli con testa+coda; `reward-statuses` ha SOLO una testa (`pending`) e nessuna coda. La
+      generalizzazione deve preservare INVARIATO il comportamento di opportunity-statuses e
+      pipeline-statuses (i loro test Pest sono il guard di non-regressione).
+    </reorder_infrastructure>
+  </context>
+
+  <decisions>
+    <!-- Decisioni prese dall'utente in pianificazione (AskUserQuestion 2026-07-24).
+         Non rinegoziabili senza emendamento della spec. -->
+    <decision id="D-1">
+      Edit dello Stato: SOLO inline nella card del buono (nuovo `PATCH /api/rewards/{reward}`). Il
+      chip control di Opportunita'/Gestione Richiesta NON viene toccato: nessuna modifica a
+      opportunity-schema, opportunity-form-payload, OpportunityRewardInput, RewardAssignmentField ne'
+      alla validazione `rewards.*` dei FormRequest Opportunita'/Request. Il buono nasce dal chip con
+      lo stato default `pending` e viene ristatuito dalla card.
+    </decision>
+    <decision id="D-2">
+      Stato iniziale dei nuovi buoni = riga di SISTEMA `pending` ("In attesa"), primo campo non
+      eliminabile, editabile solo in label e colore (come le righe di sistema degli altri configuratori
+      di stato). Questo reintroduce lo strato `system_key` + seed + SystemStatusGuard nel modulo.
+    </decision>
+    <decision id="D-3">
+      Riordino via drag&amp;drop riusando la feature condivisa `status-reorder` + endpoint `reorder`,
+      con `pending` pinnata come testa. `sort_order` e' server-managed (NON campo del form), come in
+      opportunity-statuses.
+    </decision>
+    <decision id="D-4">
+      `color` OBBLIGATORIO (token palette): colonna NOT NULL, `required` in Store, `sometimes|required`
+      in Update, `mandatory: true` nel `FieldDefinition`. Divergenza voluta dal template
+      opportunity-statuses (dove color e' nullable), coerente con reward-types.
+    </decision>
+    <decision id="D-5">
+      `reward_status_id` su `rewards` e' NOT NULL con FK `restrictOnDelete`. La migrazione fa il
+      BACKFILL dei reward esistenti alla riga `pending` prima di imporre NOT NULL. Ogni buono ha sempre
+      uno stato; un buono conserva il suo stato anche se lo stato viene disattivato (`is_active=false`).
+    </decision>
+    <decision id="D-6">
+      `defaultMode: OPEN_MODE_MODAL` nel `moduleScreen` (come reward-types/opportunity-statuses).
+      Collocazione in navigazione: gruppo `configuration`, accanto agli altri configuratori di stato.
+      Assunzione da confermare in approvazione.
+    </decision>
+    <decision id="D-7">
+      `forSelect()` di reward-statuses restituisce SOLO gli stati `is_active = true`, ordinati per
+      `sort_order, name, id`. Il PATCH della card accetta solo un `reward_status_id` di uno stato
+      attivo (uno stato disattivato non e' riselezionabile), ma i buoni gia' associati a uno stato poi
+      disattivato continuano a mostrarlo (badge in sola lettura del valore corrente).
+    </decision>
+    <decision id="D-8">
+      Il PATCH della card e' autorizzato server-side da `rewarded-referents.update` (la Policy del
+      modulo che espone la card ha gia' le 8 ability di BasePolicy). La visibilita'/editabilita' del
+      campo nella card rispetta il field-permission `reward_status` dichiarato in
+      `RewardStatusesAuthorization`... [DA VALIDARE: vedi open_questions] — in alternativa un field
+      permission dedicato sotto `rewarded-referents`.
+    </decision>
+  </decisions>
+
+  <business_rules>
+    <rule id="BR-1" name="unique-name">
+      `name` univoco (DB `unique` + `Rule::unique`, in update `->ignore($id)`). Salvare senza cambiare
+      il nome deve dare 200.
+    </rule>
+    <rule id="BR-2" name="mandatory-color">
+      `color` NOT NULL e `required` (D-4). POST/PATCH con `color` null o `''` => 422 sul campo `color`.
+    </rule>
+    <rule id="BR-3" name="system-row-protected">
+      La riga `pending`: delete => 422 (SystemStatusGuard); update di `description`/`is_active`/`sort_order`
+      => ignorato o 422 (solo `name`/`color` accettati); pinnata a `sort_order=0` nel riordino.
+    </rule>
+    <rule id="BR-4" name="delete-guard-409">
+      `RewardStatusService::delete()` su una riga NON di sistema referenziata da almeno un `reward`
+      (via `rewards.reward_status_id`) => 409 con messaggio esplicativo, senza cancellare (mirror
+      esatto di `RewardTypeService::delete()`). Precedenza: 422 sistema PRIMA del 409 riferimento.
+    </rule>
+    <rule id="BR-5" name="select-order-active-only">
+      `forSelect()` => solo `is_active=true`, ordinati `sort_order, name, id` (D-7). Idratazione degli
+      `ids` gia' selezionati via `appendHydratedIds()`.
+    </rule>
+    <rule id="BR-6" name="default-on-create">
+      `RewardAssignmentWriter::createAdded()` scrive `reward_status_id` = id della riga `pending` su
+      ogni nuovo buono. Nessun id hardcoded: risolto per `system_key='pending'`.
+    </rule>
+    <rule id="BR-7" name="activity-log">
+      `RewardStatus` usa `LogsModelActivity`. Per `GET /api/activity-log/reward-statuses/{id}`: riga in
+      `config/activity-log.php` (`'reward-statuses' => ['model' => RewardStatus::class]`) + morph map
+      `'reward_status' => RewardStatus::class` in AppServiceProvider. La modifica di
+      `rewards.reward_status_id` e' gia' loggata (Reward usa LogsModelActivity, `rewards` gia' in
+      config/activity-log.php da 0059).
+    </rule>
+    <rule id="BR-8" name="patch-status-authz-and-fieldperm">
+      `PATCH /api/rewards/{reward}` con `reward_status_id`: 403 senza `rewarded-referents.update`;
+      422 se `reward_status_id` non esiste o non e' attivo (D-7); rispetta il field-permission del
+      campo `reward_status` (utente con campo readonly => 403/422, non salva).
+    </rule>
+  </business_rules>
+
+  <scope>
+    <in>
+      <item>Backend, file NUOVI: migration `create_reward_statuses_table` (seed riga `pending`),
+        migration `add_reward_status_id_to_rewards` (nullable + backfill pending + NOT NULL + FK
+        restrict), Model `RewardStatus`, Policy `RewardStatusPolicy`, Service `RewardStatusService`,
+        DTO `Create/UpdateRewardStatusData`, FormRequest `Store/UpdateRewardStatusRequest` +
+        `RewardStatusForSelectRequest`, Controller `RewardStatusController` (+ reorder) +
+        `RewardStatusForSelectController`, Resource `RewardStatusResource` +
+        `RewardStatusForSelectResource`, `RewardStatusesTableDefinition`,
+        `RewardStatuses/{RewardStatusColumnCatalog,RewardStatusAdvancedFilterCatalog}`,
+        `RewardStatusesAuthorization`, `RewardStatusFactory`, `DemoRewardStatusSeeder`.</item>
+      <item>Backend, integrazione rewards (file ESISTENTI): `app/Models/Reward.php` (+`reward_status_id`
+        in Fillable, +`rewardStatus()` BelongsTo), `RewardAssignmentWriter` (default pending, BR-6),
+        `RewardResource` (+ blocco `reward_status`), `ReferentRewardsController` (eager-load
+        `rewardStatus`), `RewardedReferentAdvancedFilterCatalog` + `RewardedReferentAdvancedFilterApplier`
+        (+ filtro `reward_status`), NUOVI `RewardController@updateStatus` + `UpdateRewardStatusRequest`
+        + rotta `PATCH /api/rewards/{reward}` + `RewardPolicy` (o gate `rewarded-referents.update`).</item>
+      <item>Backend, riordino: generalizzazione minima di `StatusOrderManager`/`SystemStatusGuard` per
+        supportare un modello con sola testa di sistema, SENZA regressione su opportunity/pipeline.</item>
+      <item>Backend, touchpoint di registrazione: routes/api/lookups.php · config/tables.php ·
+        config/authorization.php (+ array atteso di `FieldCatalogueEndpointTest`) · config/activity-log.php ·
+        config/navigation.php (gruppo `configuration`) · AppServiceProvider (morph map) ·
+        database/seeders/DemoDataSeeder.php · routes/api/referents.php o nuovo routes/api/rewards.php
+        (rotta PATCH reward).</item>
+      <item>Frontend, feature NUOVA `features/reward-statuses/` (clone di opportunity-statuses + Switch
+        is_active + description, riuso status-reorder): api.ts, types.ts, reward-status-schema.ts,
+        reward-status-form-payload.ts, use-reward-status-form.ts, use-reward-status-form-meta.ts,
+        reward-status-form.tsx, reward-status-form-body.tsx, reward-status-detail.tsx,
+        column-renderers.tsx, reward-statuses-table.tsx (con `StatusReorderToggle`),
+        reward-status-screens.tsx, for-select-api.ts.</item>
+      <item>Frontend, integrazione card: `features/rewards/types.ts` (+`RewardStatusRef`, +`reward_status`
+        su `RewardDetailItem`), `features/rewards/reward-card.tsx` (+ Select Stato editabile + badge,
+        field-permission aware), `features/rewarded-referents/reward-detail-renderer.tsx` (label + wiring
+        PATCH + invalidazione), api PATCH + hook, i18n del filtro `reward_status` in rewarded-referents.</item>
+      <item>Frontend, file ESISTENTI: pages/reward-statuses-page.tsx (nuovo) · routes/router.tsx ·
+        routes/breadcrumbs.tsx · i18n it-reward-statuses.ts + en-reward-statuses.ts (nuovi) e it.ts/en.ts
+        (import + spread + `navigation.rewardStatuses`; label EN in en-navigation.ts) ·
+        features/navigation/icon-map.ts (icona lucide, es. `list-checks`).</item>
+      <item>Test Pest: `tests/Feature/RewardStatuses/` (Crud, ForSelect, Meta, Table, Security,
+        ActivityLog, Reorder, SystemRow) + `tests/Feature/Rewards/` (DefaultStatusOnCreate,
+        UpdateStatusEndpoint, DeleteGuard409, RewardedReferentsFilter).</item>
+      <item>Test Vitest: schema, payload, form, table del modulo; card Select (edit + readonly by
+        permission), payload PATCH.</item>
+    </in>
+    <out>
+      <item>Modifica del chip control rewards in Opportunita'/Gestione Richiesta e del payload `rewards`
+        (D-1): il campo annidato resta `[{reward_type_id}]`, nessun `reward_status_id` nel chip.</item>
+      <item>Colonna dello Stato del singolo buono nella griglia AGGREGATA `rewarded-referents` (entra
+        solo come advanced filter): la griglia e' per-Referente, non per-buono.</item>
+      <item>`group`/StatusGroup, code di sistema Won/Lost, endpoint di transizione stato, semantica
+        open/pending/closed: non pertinenti (una sola testa `pending`).</item>
+      <item>IMPORT del modulo (config/imports.php): fuori scope, come sources/opportunity-statuses.
+        L'EXPORT e' incluso perche' gratuito.</item>
+      <item>Custom fields universali (spec 0021): il modulo NON e' custom-fieldable.</item>
+      <item>CRUD autonomo dei buoni oltre al PATCH dello Stato: nessun POST/DELETE /api/rewards; i
+        buoni nascono/muoiono solo dal payload Opportunita' (spec 0059 invariata).</item>
+      <item>Riuso dello Stato buono da moduli diversi da rewards: la struttura lo permette, ma nessun
+        altro modulo viene collegato ora.</item>
+      <item>Nuove dipendenze npm/composer; nuovi componenti in `components/ui/`. Test E2E browser.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto (BaseApiController): { success, message, data }; okWithPermissions()
+         aggiunge il blocco `permissions`. Congelato: backend implementa, frontend consuma. -->
+
+    <!-- ============ 1. ENTITA' + SCHEMA ============ -->
+    <entity name="RewardStatus">
+      id: int · name: string(191, unique, NOT NULL) · description: string(500, nullable) ·
+      color: string(32, NOT NULL, token palette) · sort_order: int(NOT NULL, default 0, server-managed) ·
+      is_active: bool(NOT NULL, default true) · system_key: string(16, nullable, unique) ·
+      created_at: ISO8601 · updated_at: ISO8601
+    </entity>
+    <table name="reward_statuses">
+      id · string('name',191) unique · string('description',500) nullable · string('color',32) NOT NULL ·
+      integer('sort_order') default 0 · boolean('is_active') default true ·
+      string('system_key',16) nullable unique · timestamps.
+      Seed nella stessa migrazione (mirror seedSystemRows): { name:'In attesa', color:'amber',
+      system_key:'pending', sort_order:0, is_active:true }.
+    </table>
+    <migration name="add_reward_status_id_to_rewards">
+      1) `foreignId('reward_status_id')->nullable()->after('reward_type_id')->constrained('reward_statuses')->restrictOnDelete()`;
+      2) backfill: UPDATE rewards SET reward_status_id = (id di system_key='pending');
+      3) `->change()` a NOT NULL. `down()` reversibile. index su `reward_status_id`.
+    </migration>
+
+    <!-- ============ 2. CRUD CONFIGURATORE ============ -->
+    <endpoint method="GET" path="/api/reward-statuses/for-select">
+      <request>search?: string · offset?: int · limit?: int (max 100) · ids?: int[]</request>
+      <response status="200">paginatedResponse(): { items:[{id,label}], export_link, pagination{...} }.
+        `label`=name. SOLO `is_active=true` (BR-5); ordine `sort_order,name,id`; `ids` idratati anche se
+        inattivi/fuori pagina.</response>
+      <errors>401 · 403 senza `reward-statuses.viewAny` · 422 limit&gt;100</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/reward-statuses/{rewardStatus}">
+      <response status="200">{ success, message, data:{ id, name, description, color, sort_order,
+        is_active, system_key, created_at, updated_at }, permissions }</response>
+      <errors>403 senza `reward-statuses.view` · 404</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/reward-statuses">
+      <request>{ name: required|max191|unique, description?: nullable|max500, color: required|max32,
+        is_active?: boolean } — `sort_order` e `system_key` NON accettati (server-managed).</request>
+      <response status="201">{ ..., data:{...}, permissions } — sort_order assegnato da StatusOrderManager::placeNew, system_key null, is_active default true.</response>
+      <errors>403 senza `reward-statuses.create` · 422 (BR-1, BR-2)</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/reward-statuses/{rewardStatus}">
+      <request>Campi `sometimes`: { name?, description?, color?, is_active? }. `name`/`color`
+        `sometimes|required` (BR-2). PATCH parziale. Per la riga di sistema: solo name/color effettivi
+        (BR-3). DTO espone `submittedAttributes()`.</request>
+      <response status="200">{ ..., data:{...}, permissions }</response>
+      <errors>403 senza `reward-statuses.update` · 404 · 422 (BR-1/BR-2; sistema BR-3)</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/reward-statuses/{rewardStatus}">
+      <response status="204">nessun body</response>
+      <errors>403 senza `reward-statuses.delete` · 404 · 422 riga di sistema (BR-3) · 409 riga
+        referenziata da un reward (BR-4)</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/reward-statuses/reorder">
+      <request>{ ordered_ids: int[] (required, min1, distinct) } (ReorderStatusesRequest).</request>
+      <response status="200">array di { id, sort_order, system_key } dopo la rinormalizzazione; `pending`
+        resta a 0 (D-3, StatusOrderManager).</response>
+      <errors>403 senza `reward-statuses.update` · 422 set non valido</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/reward-statuses">
+      <response status="200">Catalogo campi FROZEN in quest'ordine: `name` (text, mandatory:true) ·
+        `description` (textarea) · `color` (color, mandatory:true) · `is_active` (boolean).
+        `permissions.fields` (visibleEditable/visibleReadonly) + `permissions.actions`
+        (delete, export, import, view_activity).</response>
+      <errors>403 senza i permessi della risorsa</errors>
+    </endpoint>
+
+    <endpoint method="GENERIC" path="framework tabellare, domain `reward-statuses`">
+      <request>Sola riga in config/tables.php: /api/tables/reward-statuses/{columns,rows,export,bulk-delete}.</request>
+      <response status="200">
+        Colonne (RewardStatusColumnCatalog), ordine: id(number,hidden) · name(text,visible,sortable,filterable,searchable) ·
+        description(text,visible,sortable:false,filterable:true) · color(text,visible,sortable:false,filterable:false → ColorSwatchCell) ·
+        sort_order(number,visible,sortable) · is_active(boolean,visible,sortable,filterable → BooleanBadgeCell) ·
+        created_at(datetime,sortable,filterable) · updated_at(datetime,sortable,filterable).
+        defaultSort=[{sort_order, asc}]. defaultPagination={limit:25}.
+        Advanced filters: name(Text), is_active(boolean/set), sort_order_range(NumberRange),
+        created_range(DateRange), updated_range(DateRange). `color` escluso.
+        Row actions via Gate: view · edit · delete (confirm; OMESSA per riga di sistema, BR-3) ·
+        viewActivity. mapRow()=shape del Resource.</response>
+      <errors>403 senza `reward-statuses.viewAny` (fail-safe authorizeViewAny)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/activity-log/reward-statuses/{id}">
+      <response status="200">Envelope activity log aggregato (spec 0034), alimentato da
+        LogsModelActivity + config/activity-log.php + morph map `reward_status` (BR-7).</response>
+      <errors>403 senza `reward-statuses.viewActivity`</errors>
+    </endpoint>
+
+    <!-- ============ 3. INTEGRAZIONE REWARDS: RESOURCE + DETTAGLIO ============ -->
+    <resource_change name="RewardResource">
+      `toArray()` acquisisce: `reward_status: { id:int, name:string, color:string } | null` (null solo
+      transitorio; a regime sempre valorizzato per D-5). `ReferentRewardsController` eager-load
+      `rewardStatus`. Nessun cambio alla shape di `source`/`context`.
+    </resource_change>
+
+    <!-- ============ 4. PATCH INLINE DELLO STATO DALLA CARD ============ -->
+    <endpoint method="PATCH" path="/api/rewards/{reward}">
+      <request>{ reward_status_id: required|integer|exists:reward_statuses,id (deve essere attivo, D-7) }.
+        FormRequest `UpdateRewardStatusRequest` + EnforcesFieldPermissions sul campo `reward_status`.</request>
+      <response status="200">{ success, message, data: RewardResource(reward) } — la card riflette il
+        nuovo `reward_status` e (via invalidazione) l'elenco.</response>
+      <errors>403 senza `rewarded-referents.update` o field `reward_status` readonly (BR-8) · 404 ·
+        422 `reward_status_id` inesistente o non attivo</errors>
+    </endpoint>
+
+    <!-- ============ 5. FILTRO STATO NELL'ELENCO AGGREGATO ============ -->
+    <advanced_filter domain="rewarded-referents" name="reward_status" type="relation"
+      source="reward-statuses" multiple="true" target="rewards.reward_status_id">
+      Applicato come `whereHas('rewards', reward_status_id IN ...)`. Cap MAX_FILTER_VALUES=200.
+    </advanced_filter>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Ogni AC mappa 1:1 su un test eseguibile. -->
+
+    <!-- Configuratore CRUD -->
+    <criterion id="AC-001">Con `reward-statuses.create`, POST { name:'Approvato', color:'green' } => 201, riga in `reward_statuses` con sort_order assegnato, system_key null, is_active true; response con { id, name, description, color, sort_order, is_active, system_key, created_at, updated_at } + `permissions`.</criterion>
+    <criterion id="AC-002">POST con name duplicato => 422 su `name` (BR-1). PATCH con il proprio name invariato => 200.</criterion>
+    <criterion id="AC-003">POST/PATCH con `color` mancante, null o '' => 422 su `color` (BR-2). `description` opzionale: POST senza description => 201.</criterion>
+    <criterion id="AC-004">Con `reward-statuses.delete`, DELETE di una riga NON di sistema e NON referenziata => 204 e la riga sparisce.</criterion>
+    <criterion id="AC-005">DELETE della riga di sistema `pending` => 422 (BR-3) e la riga resta. `edit` della riga di sistema aggiorna name/color ma NON description/is_active/sort_order; is_active resta true.</criterion>
+    <criterion id="AC-006">Con almeno un reward che referenzia lo stato X (non di sistema), DELETE /api/reward-statuses/X => 409, riga non cancellata (BR-4).</criterion>
+    <criterion id="AC-007">Utente senza permessi: show/POST/PATCH/DELETE/reorder/for-select/tables columns/export => 403 ciascuno (un'asserzione per ability); il 403 precede il 422.</criterion>
+    <criterion id="AC-008">Dopo `php artisan permissions:sync` esistono gli 8 permessi `reward-statuses.{viewAny,view,create,update,delete,export,import,viewActivity}` (verificato eseguendo il comando).</criterion>
+    <criterion id="AC-009">GET for-select: items {id,label} solo per stati attivi, ordinati per sort_order,name,id; rispetta `search`; idrata `ids` richiesti anche se inattivi o fuori pagina (BR-5); 422 con limit&gt;100.</criterion>
+    <criterion id="AC-010">POST /api/reward-statuses/reorder con un ordine valido rinormalizza i sort_order (STEP 10) mantenendo `pending` a 0; un set che omette/aggiunge id => 422 (D-3).</criterion>
+    <criterion id="AC-011">GET tables/reward-statuses/columns espone le 8 colonne del catalogo nell'ordine e coi flag congelati; rows applica ricerca su `name`, filtro su `name`/`description`/`is_active`, ordinamento su `name`/`sort_order`/`created_at`, paginazione (default 25) con `total` corretto.</criterion>
+    <criterion id="AC-012">Le row-action da /rows contengono view/edit/delete/viewActivity solo per chi ha il permesso; `delete` porta `confirm` ed e' ASSENTE sulla riga di sistema (BR-3).</criterion>
+    <criterion id="AC-013">L'export del dominio `reward-statuses` produce un file senza codice di export dedicato; 403 senza `reward-statuses.export`.</criterion>
+    <criterion id="AC-014">GET /api/meta/reward-statuses espone il catalogo frozen [name(mandatory), description, color(mandatory), is_active] in quest'ordine, con permissions.fields/actions coerenti.</criterion>
+    <criterion id="AC-015">Creando e aggiornando un reward_status, GET /api/activity-log/reward-statuses/{id} restituisce `created`+`updated` coi campi cambiati (BR-7: LogsModelActivity + config + morph map `reward_status`).</criterion>
+    <criterion id="AC-016">Il nodo di navigazione `reward-statuses` compare in GET /navigation solo per chi ha `reward-statuses.view`.</criterion>
+    <criterion id="AC-017">`migrate:fresh --seed` verde: il seed pulito crea la SOLA riga di sistema `pending` (nessun altro stato); `db:seed --class=DemoDataSeeder` due volte lascia lo stesso numero di righe (idempotenza `DemoRewardStatusSeeder`).</criterion>
+
+    <!-- Integrazione rewards -->
+    <criterion id="AC-018">Data la migrazione, `rewards.reward_status_id` esiste NOT NULL con FK restrict; i reward preesistenti sono backfillati a `pending` (D-5). Tentativo di cancellare lo stato `pending` referenziato => bloccato.</criterion>
+    <criterion id="AC-019">Creando un buono dal payload Opportunita' (RewardAssignmentWriter), la riga `rewards` nasce con `reward_status_id` = id di `pending` risolto per system_key (BR-6), nessun id hardcoded.</criterion>
+    <criterion id="AC-020">`GET /api/referents/{referent}/rewards` e la RewardResource espongono `reward_status:{id,name,color}` per ogni item; cambiando lo stato via PATCH il valore cambia senza toccare altri campi.</criterion>
+    <criterion id="AC-021">`PATCH /api/rewards/{reward}` con `reward_status_id` di uno stato attivo e utente con `rewarded-referents.update` => 200 e la riga aggiornata; con stato inattivo o inesistente => 422; senza permesso => 403; con field `reward_status` readonly => 403/422 (BR-8).</criterion>
+    <criterion id="AC-022">L'advanced filter `reward_status` in `POST /api/tables/rewarded-referents/rows` restringe l'elenco ai soli Referenti con almeno un reward in quegli stati (whereHas).</criterion>
+    <criterion id="AC-023">La suite Pest/Vitest esistente non regredisce (opportunity-statuses/pipeline-statuses reorder invariati dopo la generalizzazione di StatusOrderManager).</criterion>
+
+    <!-- Frontend configuratore -->
+    <criterion id="AC-024">(FE) Il form create mostra Nome(required), Descrizione(textarea opz), ColorTokenPicker(required), Switch is_active; submit con nome vuoto o colore non scelto mostra errore inline e non chiama l'API; un 422 server e' mappato sul campo. Per la riga di sistema i campi bloccati sono disabilitati.</criterion>
+    <criterion id="AC-025">(FE) La tabella rende `color` come ColorSwatchCell, `is_active` come BooleanBadgeCell, date come DateTimeCell; il pulsante di riordino (`StatusReorderToggle resource="reward-statuses"`) apre lo sheet drag&amp;drop e persiste l'ordine.</criterion>
+    <criterion id="AC-026">(FE) "Elimina" apre il dialog di conferma generico; i rami 409 (referenziato) e 422 (sistema) mostrano i toast dedicati; la riga di sistema non offre l'azione elimina.</criterion>
+    <criterion id="AC-027">(FE) Il modulo apre in MODALE col default (D-6), compare in MODULE_REGISTRY e nelle preferenze di apertura senza editare file di registro; la rotta /reward-statuses e' gated da `<Can permission="reward-statuses.viewAny">` con stati loading/empty/error.</criterion>
+    <criterion id="AC-028">(FE) Nessuna stringa hardcoded: tutte le etichette risolvono da i18n IT/EN, inclusa la voce di menu "Stati Buoni Collegati" / "Reward Statuses" e la label del filtro `reward_status`.</criterion>
+
+    <!-- Frontend card -->
+    <criterion id="AC-029">(FE) Nella card del buono, con permesso di update e field `reward_status` editabile, un Select mostra gli stati ATTIVI ordinati e, alla scelta, invia `PATCH /api/rewards/{reward}` e aggiorna la card (invalidazione della query dettaglio); il badge riflette nome+colore dello stato.</criterion>
+    <criterion id="AC-030">(FE) Senza permesso di update o con field `reward_status` readonly, la card mostra lo Stato come BADGE in sola lettura (nessun Select), anche se lo stato corrente e' disattivato.</criterion>
+    <criterion id="AC-031">(FE) A 375/768/1024px la card con il Select non produce scrollbar orizzontale ne' sovrapposizioni; il Select e' raggiungibile da tastiera con focus visibile (giudizio UI dichiarato + test RTL per ruolo accessibile).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>ZERO nuove dipendenze (composer/npm), nessun nuovo componente in `components/ui/`: riuso di
+      ColorTokenPicker, ColorSwatchCell, BooleanBadgeCell, StatusBadge(card), Switch, DateTimeCell,
+      RelationSelectField/AsyncPaginatedSelect, StatusReorderToggle, MetaField, TableView, confirm-dialog.</item>
+    <item>Authorization SEMPRE server-side: Policy su ogni endpoint; `viewAny` fail-safe sulla
+      TableDefinition (no override di authorizeViewAny); PATCH reward gated da `rewarded-referents.update`
+      + field-permission. L'UI nasconde, il backend autorizza.</item>
+    <item>Nessun `whereRaw`/`orderByRaw`/`groupByRaw` da input: SSRM da allow-list del ColumnCatalog;
+      il filtro `reward_status` da whereHas con cap MAX_FILTER_VALUES=200.</item>
+    <item>Layering: Controller (thin, try/catch + handleControllerException) → FormRequest
+      (+EnforcesFieldPermissions) → DTO → Service → Resource → Policy. Mai model raw in response, mai
+      array magico al Service.</item>
+    <item>`#[Fillable([...])]` su RewardStatus (`name,description,color,sort_order,is_active` — NON
+      system_key) e su Reward (+`reward_status_id`); `casts()` metodo (`sort_order:int, is_active:bool`);
+      estende BaseModel + LogsModelActivity.</item>
+    <item>Rotte esplicite in lookups.php: `for-select` e `reorder` PRIMA del wildcard `{rewardStatus}`.
+      La rotta PATCH reward su routes/api/referents.php o nuovo routes/api/rewards.php con
+      `Route::patch('rewards/{reward}', ...)`.</item>
+    <item>Migrazioni reversibili; backfill idempotente; seed pulito = sola riga `pending`; dati demo in
+      `DemoRewardStatusSeeder` richiamato SOLO da `DemoDataSeeder`, idempotente (updateOrCreate keyed by
+      name/system_key).</item>
+    <item>Generalizzazione StatusOrderManager/SystemStatusGuard a blast radius minimo: comportamento di
+      opportunity-statuses/pipeline-statuses INVARIATO, garantito dai loro test Pest.</item>
+    <item>Frontend: server state solo TanStack Query, client axios, RHF+Zod, nessun `any`, i18n per ogni
+      stringa; ternario (non `&&`) per condizioni; componenti non definiti dentro componenti.</item>
+    <item>File ≤ 300 (soft) / 500 (hard). Zero dead code/emoji; identificatori in INGLESE.</item>
+    <item>Definition of Done: Pint + Pest + ESLint + `tsc --noEmit` + Vitest ESEGUITI davvero. Nessun
+      test modificato per farlo passare (l'aggiornamento dell'array atteso di FieldCatalogueEndpointTest
+      e' un adeguamento legittimo del registry, non tampering).</item>
+    <item>Git: nessun commit/cambio branch senza via libera esplicito (CLAUDE.md §3.6). Allo stato verde
+      si aggiorna docs/HANDOFF.md e ci si ferma.</item>
+  </constraints>
+
+  <open_questions>
+    <item>D-8: il field-permission del campo `reward_status` va dichiarato sotto la resource
+      `rewarded-referents` (che espone la card) o sotto una nuova resource `rewards`? Proposta: sotto
+      `rewarded-referents` per non introdurre una resource in piu'; da confermare in build.</item>
+  </open_questions>
+
+</spec>

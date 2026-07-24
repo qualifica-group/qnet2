@@ -27,7 +27,7 @@ class CompanySiteService
     /**
      * Relations eager-loaded on every returned model, so CompanySiteResource
      * never N+1s while hydrating the card's contacts, the address' geo names,
-     * the banks and the responsible/company references. Mirrors
+     * the banks and the company reference. Mirrors
      * RegistryService::WRITE_RESULT_RELATIONS' card tree, plus the geo tree the
      * PersonalDataResource/AddressResource read.
      *
@@ -39,7 +39,6 @@ class CompanySiteService
         'personalData.addresses.country', 'personalData.addresses.state',
         'personalData.addresses.province', 'personalData.addresses.city',
         'banks',
-        'responsibleRda', 'responsibleTickets', 'responsibleValidationContracts', 'responsibleValidationContractsTwo',
         'company',
     ];
 

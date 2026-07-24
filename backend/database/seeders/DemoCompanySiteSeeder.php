@@ -8,7 +8,6 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\PersonalData;
-use App\Models\User;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -46,8 +45,6 @@ class DemoCompanySiteSeeder extends Seeder
         CompanySite::query()->get()->each(fn (CompanySite $site) => $site->delete());
 
         $companies = Company::query()->get();
-        /** @var Collection<int, int> $userIds */
-        $userIds = User::query()->pluck('id');
         $cities = City::query()
             ->with(['country', 'state', 'province'])
             ->inRandomOrder()
@@ -68,7 +65,7 @@ class DemoCompanySiteSeeder extends Seeder
 
             for ($site = 0; $site < $siteCount; $site++) {
                 $sequence++;
-                $this->seedSite($faker, $company, $cities, $userIds, $sequence, ! $defaultAssigned);
+                $this->seedSite($faker, $company, $cities, $sequence, ! $defaultAssigned);
                 $defaultAssigned = true;
             }
         }
@@ -76,45 +73,19 @@ class DemoCompanySiteSeeder extends Seeder
 
     /**
      * @param  Collection<int, City>  $cities
-     * @param  Collection<int, int>  $userIds
      */
-    private function seedSite(Generator $faker, Company $company, Collection $cities, Collection $userIds, int $sequence, bool $isDefault): void
+    private function seedSite(Generator $faker, Company $company, Collection $cities, int $sequence, bool $isDefault): void
     {
         $companySite = CompanySite::create([
             'name' => $faker->company().' - '.$faker->city(),
             'company_id' => $company->id,
             'is_default' => $isDefault,
-            ...$this->responsibleAttributes($faker, $userIds),
         ]);
 
         $card = $this->seedCard($faker, $companySite);
         $this->seedContacts($faker, $card);
         $this->seedAddress($faker, $card, $cities, $sequence);
         $this->seedBanks($faker, $companySite, $sequence);
-    }
-
-    /**
-     * The four "responsible user" FKs (RDA / tickets / validation contracts
-     * ×2), each independently present ~70% of the time so the demo exercises
-     * both the set and the nullable state. Empty when no users are seeded.
-     *
-     * @param  Collection<int, int>  $userIds
-     * @return array<string, int|null>
-     */
-    private function responsibleAttributes(Generator $faker, Collection $userIds): array
-    {
-        if ($userIds->isEmpty()) {
-            return [];
-        }
-
-        $pick = fn (): ?int => $faker->boolean(70) ? $faker->randomElement($userIds->all()) : null;
-
-        return [
-            'responsible_rda_id' => $pick(),
-            'responsible_tickets_id' => $pick(),
-            'responsible_validation_contracts_id' => $pick(),
-            'responsible_validation_contracts_two_id' => $pick(),
-        ];
     }
 
     /**

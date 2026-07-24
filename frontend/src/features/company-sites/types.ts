@@ -23,12 +23,6 @@ export interface CompanySiteBank {
   is_primary: boolean
 }
 
-/** A related user reference as returned inside a `responsible_*` field. */
-export interface CompanySiteResponsibleRef {
-  id: number
-  label: string
-}
-
 /**
  * Single company-site detail returned by GET/POST/PATCH /company-sites
  * (envelope `data`). Matches `CompanySiteResource`.
@@ -45,19 +39,6 @@ export interface CompanySiteDetail {
    */
   personal_data: PersonalDataCard | null
   banks: CompanySiteBank[]
-  responsible_rda_id: number | null
-  responsible_rda: CompanySiteResponsibleRef | null
-  responsible_tickets_id: number | null
-  responsible_tickets: CompanySiteResponsibleRef | null
-  responsible_validation_contracts_id: number | null
-  responsible_validation_contracts: CompanySiteResponsibleRef | null
-  responsible_validation_contracts_two_id: number | null
-  responsible_validation_contracts_two: CompanySiteResponsibleRef | null
-  proforma_progressive: number | null
-  invoice_progressive: number | null
-  quotation_layout_id: number | null
-  quotation_header_id: number | null
-  quotation_footer_id: number | null
   /** The company (società) this site belongs to, editable in the Impostazioni tab. */
   company: { id: number; label: string } | null
   created_at: string | null
@@ -97,12 +78,6 @@ export interface CreateCompanySitePayload {
   personal_data: PersonalDataPayload
   banks?: CreateCompanySiteBankPayload[]
   company_id?: number | null
-  responsible_rda_id?: number | null
-  responsible_tickets_id?: number | null
-  responsible_validation_contracts_id?: number | null
-  responsible_validation_contracts_two_id?: number | null
-  proforma_progressive?: number | null
-  invoice_progressive?: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }
@@ -121,12 +96,6 @@ export interface UpdateCompanySitePayload {
   personal_data?: PersonalDataPayload
   banks?: CreateCompanySiteBankPayload[]
   company_id?: number | null
-  responsible_rda_id?: number | null
-  responsible_tickets_id?: number | null
-  responsible_validation_contracts_id?: number | null
-  responsible_validation_contracts_two_id?: number | null
-  proforma_progressive?: number | null
-  invoice_progressive?: number | null
   /** Only the custom fields that changed, keyed by raw key (spec 0021, sparse diff). */
   custom_fields?: Record<string, CustomFieldValue>
 }

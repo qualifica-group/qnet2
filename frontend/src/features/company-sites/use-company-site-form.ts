@@ -47,17 +47,7 @@ export type CompanySiteFormValues = CreateCompanySiteFormValues & UpdateCompanyS
  * nested `personal_data.*` paths are NOT here — that buffer lives outside RHF —
  * their 422 messages surface in a banner (see `personalDataServerErrorMessage`).
  */
-const SERVER_ERROR_FIELDS = [
-  'name',
-  'notes',
-  'company_id',
-  'responsible_rda_id',
-  'responsible_tickets_id',
-  'responsible_validation_contracts_id',
-  'responsible_validation_contracts_two_id',
-  'proforma_progressive',
-  'invoice_progressive',
-] as const
+const SERVER_ERROR_FIELDS = ['name', 'notes', 'company_id'] as const
 
 /**
  * Collects every `personal_data.*` (or bare `personal_data`) message from a
@@ -157,12 +147,6 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
         name: site.name,
         notes: site.notes ?? '',
         company_id: site.company?.id ?? null,
-        responsible_rda_id: site.responsible_rda_id,
-        responsible_tickets_id: site.responsible_tickets_id,
-        responsible_validation_contracts_id: site.responsible_validation_contracts_id,
-        responsible_validation_contracts_two_id: site.responsible_validation_contracts_two_id,
-        proforma_progressive: site.proforma_progressive,
-        invoice_progressive: site.invoice_progressive,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -170,47 +154,16 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
       name: '',
       notes: '',
       company_id: null,
-      responsible_rda_id: null,
-      responsible_tickets_id: null,
-      responsible_validation_contracts_id: null,
-      responsible_validation_contracts_two_id: null,
-      proforma_progressive: null,
-      invoice_progressive: null,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])
 
-  // EDIT: pre-known {id, label} for the responsible selects (AC-016/AC-017), so
-  // each picker shows its label immediately without an extra hydration fetch.
-  const responsibleItem = (ref: { id: number; label: string } | null): ForSelectItem | null =>
-    ref ? { id: ref.id, label: ref.label } : null
-
   // EDIT: pre-known {id, label} for the company picker, so it shows its
   // current selection immediately without a hydration round-trip.
   const selectedCompanyItem = useMemo<ForSelectItem | null>(
-    () => (mode.type === 'edit' ? responsibleItem(mode.companySite.company) : null),
-    [mode],
-  )
-
-  const selectedResponsibleRdaItem = useMemo(
-    () => (mode.type === 'edit' ? responsibleItem(mode.companySite.responsible_rda) : null),
-    [mode],
-  )
-  const selectedResponsibleTicketsItem = useMemo(
-    () => (mode.type === 'edit' ? responsibleItem(mode.companySite.responsible_tickets) : null),
-    [mode],
-  )
-  const selectedResponsibleValidationContractsItem = useMemo(
     () =>
-      mode.type === 'edit'
-        ? responsibleItem(mode.companySite.responsible_validation_contracts)
-        : null,
-    [mode],
-  )
-  const selectedResponsibleValidationContractsTwoItem = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? responsibleItem(mode.companySite.responsible_validation_contracts_two)
+      mode.type === 'edit' && mode.companySite.company
+        ? { id: mode.companySite.company.id, label: mode.companySite.company.label }
         : null,
     [mode],
   )
@@ -358,10 +311,6 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
     banksDraft,
     setBanksDraft,
     selectedCompanyItem,
-    selectedResponsibleRdaItem,
-    selectedResponsibleTicketsItem,
-    selectedResponsibleValidationContractsItem,
-    selectedResponsibleValidationContractsTwoItem,
     onSubmit,
     handleLogoUpload,
     handleLogoRemove,

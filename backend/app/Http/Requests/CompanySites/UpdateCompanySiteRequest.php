@@ -45,21 +45,13 @@ class UpdateCompanySiteRequest extends FormRequest
             'banks' => ['sometimes', 'array'],
             'banks.*.id' => ['sometimes', 'integer', 'min:1'],
             'banks.*.name' => ['required', 'string', 'max:191'],
-            // ISO 13616 shape, aligned with the frontend's client-side regex
-            // (`^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$`) so client and server never
-            // diverge on what an IBAN "looks like" — case-insensitive here
-            // only to be at least as permissive as the client, never less.
-            'banks.*.iban' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z]{2}[0-9]{2}[A-Za-z0-9]{1,30}$/'],
+            // No SEPA/ISO-13616 shape constraint (product decision): a bank's
+            // IBAN is free text, only capped in length.
+            'banks.*.iban' => ['nullable', 'string', 'max:50'],
             'banks.*.notes' => ['nullable', 'string', 'max:191'],
             'banks.*.is_primary' => ['sometimes', 'boolean'],
 
             'company_id' => ['sometimes', 'nullable', 'integer', Rule::exists('companies', 'id')],
-            'responsible_rda_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            'responsible_tickets_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            'responsible_validation_contracts_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            'responsible_validation_contracts_two_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            'proforma_progressive' => ['sometimes', 'nullable', 'integer'],
-            'invoice_progressive' => ['sometimes', 'nullable', 'integer'],
         ], $this->cappedProfileRules());
     }
 

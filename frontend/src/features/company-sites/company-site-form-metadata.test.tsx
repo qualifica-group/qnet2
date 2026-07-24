@@ -135,12 +135,6 @@ describe('CompanySiteForm — metadata-driven authorization (spec 0020)', () => 
         resource: FULL_PERMISSIONS,
         fields: {
           company_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          responsible_rda_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          responsible_tickets_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          responsible_validation_contracts_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          responsible_validation_contracts_two_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          proforma_progressive: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          invoice_progressive: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
         },
         actions: {},
       },

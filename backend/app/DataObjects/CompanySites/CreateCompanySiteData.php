@@ -10,12 +10,14 @@ use Illuminate\Http\UploadedFile;
  * StoreCompanySiteRequest → CompanySiteService contract is explicit — see
  * standards/architecture.md → Data Transfer Objects.
  *
- * Only the site's OWN scalar fields (name/notes + Impostazioni) plus the banks
+ * Only the site's OWN scalar fields (name/notes/company_id) plus the banks
  * are carried here. The nested `personal_data` card (contacts + address) is
  * read separately by the controller via the request's toProfile()
  * (ValidatesUserProfile) and handed to CompanySiteService as a ProfileData,
- * mirroring Registry. The "Altro" section and `is_default` are never accepted
- * on this path (Altro is read-only; the default flag is set exclusively via
+ * mirroring Registry. The "Altro" section, the former ERP settings
+ * (responsible_*, proforma/invoice progressives, quotation_*) and
+ * `is_default` are never accepted on this path (Altro/ERP settings are now
+ * custom fields; the default flag is set exclusively via
  * POST /company-sites/{id}/set-default).
  */
 final readonly class CreateCompanySiteData
@@ -27,12 +29,6 @@ final readonly class CreateCompanySiteData
         public string $name,
         public ?string $notes = null,
         public ?int $companyId = null,
-        public ?int $responsibleRdaId = null,
-        public ?int $responsibleTicketsId = null,
-        public ?int $responsibleValidationContractsId = null,
-        public ?int $responsibleValidationContractsTwoId = null,
-        public ?int $proformaProgressive = null,
-        public ?int $invoiceProgressive = null,
         public array $banks = [],
         public ?UploadedFile $logo = null,
     ) {}
@@ -48,12 +44,6 @@ final readonly class CreateCompanySiteData
             name: (string) $data['name'],
             notes: $data['notes'] ?? null,
             companyId: isset($data['company_id']) ? (int) $data['company_id'] : null,
-            responsibleRdaId: isset($data['responsible_rda_id']) ? (int) $data['responsible_rda_id'] : null,
-            responsibleTicketsId: isset($data['responsible_tickets_id']) ? (int) $data['responsible_tickets_id'] : null,
-            responsibleValidationContractsId: isset($data['responsible_validation_contracts_id']) ? (int) $data['responsible_validation_contracts_id'] : null,
-            responsibleValidationContractsTwoId: isset($data['responsible_validation_contracts_two_id']) ? (int) $data['responsible_validation_contracts_two_id'] : null,
-            proformaProgressive: isset($data['proforma_progressive']) ? (int) $data['proforma_progressive'] : null,
-            invoiceProgressive: isset($data['invoice_progressive']) ? (int) $data['invoice_progressive'] : null,
             banks: self::buildBanks($data['banks'] ?? []),
             logo: $logo,
         );
@@ -75,12 +65,6 @@ final readonly class CreateCompanySiteData
             'name' => $this->name,
             'notes' => $this->notes,
             'company_id' => $this->companyId,
-            'responsible_rda_id' => $this->responsibleRdaId,
-            'responsible_tickets_id' => $this->responsibleTicketsId,
-            'responsible_validation_contracts_id' => $this->responsibleValidationContractsId,
-            'responsible_validation_contracts_two_id' => $this->responsibleValidationContractsTwoId,
-            'proforma_progressive' => $this->proformaProgressive,
-            'invoice_progressive' => $this->invoiceProgressive,
         ];
     }
 

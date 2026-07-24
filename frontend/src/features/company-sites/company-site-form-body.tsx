@@ -62,10 +62,6 @@ export function CompanySiteFormBody({
     banksDraft,
     setBanksDraft,
     selectedCompanyItem,
-    selectedResponsibleRdaItem,
-    selectedResponsibleTicketsItem,
-    selectedResponsibleValidationContractsItem,
-    selectedResponsibleValidationContractsTwoItem,
     onSubmit,
     setPendingLogo,
     handleLogoUpload,
@@ -78,19 +74,11 @@ export function CompanySiteFormBody({
   } = useCompanySiteForm({ mode, onSuccess, onSiteChange })
 
   const siteName = useWatch({ control: form.control, name: 'name' }) || ''
-  const companySite = mode.type === 'edit' ? mode.companySite : null
 
   // Whole-tab visibility, read from the same authorization context `MetaField`
   // uses: a tab is only worth rendering if at least one of its fields is
   // visible. Profilo has mandatory name/email, so it is always shown.
-  const settingsVisible =
-    fieldPermission('company_id').visible ||
-    fieldPermission('responsible_rda_id').visible ||
-    fieldPermission('responsible_tickets_id').visible ||
-    fieldPermission('responsible_validation_contracts_id').visible ||
-    fieldPermission('responsible_validation_contracts_two_id').visible ||
-    fieldPermission('proforma_progressive').visible ||
-    fieldPermission('invoice_progressive').visible
+  const settingsVisible = fieldPermission('company_id').visible
   const banksPermission = fieldPermission('banks')
   const banksVisible = banksPermission.visible
   const banksReadOnly = banksPermission.disabled || !banksPermission.editable
@@ -100,15 +88,7 @@ export function CompanySiteFormBody({
   // Profilo error = the mandatory company card is invalid (its buffer lives
   // outside RHF) or the site's own name/notes carry a validation error.
   const profileHasError = !profileValid || Boolean(errors.name || errors.notes)
-  const settingsHasError = Boolean(
-    errors.company_id ||
-      errors.responsible_rda_id ||
-      errors.responsible_tickets_id ||
-      errors.responsible_validation_contracts_id ||
-      errors.responsible_validation_contracts_two_id ||
-      errors.proforma_progressive ||
-      errors.invoice_progressive,
-  )
+  const settingsHasError = Boolean(errors.company_id)
 
   const tabItems: CompanySiteFormTab[] = [
     { value: 'profile', label: t('companySites.form.tabs.profile'), Icon: Building2, visible: true, hasError: profileHasError },
@@ -155,19 +135,7 @@ export function CompanySiteFormBody({
 
             {settingsVisible && (
               <TabsContent value="settings" className="flex flex-col gap-4">
-                <SettingsTabContent
-                  control={form.control}
-                  companySite={companySite}
-                  selectedCompanyItem={selectedCompanyItem}
-                  selectedResponsibleRdaItem={selectedResponsibleRdaItem}
-                  selectedResponsibleTicketsItem={selectedResponsibleTicketsItem}
-                  selectedResponsibleValidationContractsItem={
-                    selectedResponsibleValidationContractsItem
-                  }
-                  selectedResponsibleValidationContractsTwoItem={
-                    selectedResponsibleValidationContractsTwoItem
-                  }
-                />
+                <SettingsTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
               </TabsContent>
             )}
 
