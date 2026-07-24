@@ -132,6 +132,16 @@ export const requestManagement = {
       selectPlaceholder: 'Select',
       selectEmpty: 'No results',
       selectError: 'Could not load the options.',
+      rewards: {
+        fieldLabel: 'Assigned rewards',
+        add: 'Add reward',
+        remove: 'Remove {{name}}',
+        searchPlaceholder: 'Search a reward type…',
+        empty: 'No reward type found.',
+        error: 'Could not load the reward types.',
+        loadMore: 'Load more',
+        reporterRequiredHint: 'Select a reporter first to assign a reward.',
+      },
     },
     client: {
       title: 'Client details',

@@ -48,6 +48,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'opportunity-workflows': 'navigation.opportunityWorkflows',
   'request-management': 'navigation.requestManagement',
   'reward-types': 'navigation.rewardTypes',
+  'rewarded-referents': 'navigation.rewardedReferents',
   imports: 'navigation.imports',
   'pipeline-statuses': 'navigation.pipelineStatuses',
   // Namespaced key (`ns:key`): the migrations module registers its own

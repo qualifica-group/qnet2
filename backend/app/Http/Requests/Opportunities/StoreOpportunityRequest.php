@@ -7,6 +7,7 @@ use App\DataObjects\Opportunities\LeadOpportunityDefaults;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Lead;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
@@ -51,6 +52,7 @@ class StoreOpportunityRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
     use ValidatesProductLines;
+    use ValidatesRewards;
     use ValidatesWorkflowStatus;
 
     private ?LeadOpportunityDefaults $leadDefaultsCache = null;
@@ -100,7 +102,7 @@ class StoreOpportunityRequest extends FormRequest
             // unlocking the picker.
             'products_of_interest' => ['required', 'array', 'min:1'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
-        ], $this->managerSlotsRules(), $this->productLinesRules(required: true));
+        ], $this->managerSlotsRules(), $this->productLinesRules(required: true), $this->rewardsRules());
     }
 
     /**
@@ -149,6 +151,7 @@ class StoreOpportunityRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateManagerSlots($validator);
             $this->validateProductLines($validator);
+            $this->validateRewards($validator, null);
             $this->enforceFieldPermissions($validator);
             $this->validateWorkflowStatus($validator);
         });

@@ -80,6 +80,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     client_contacts: [],
     client_address: [],
     products_of_interest: [],
+    rewards: [],
     source_id: null,
     reporter_id: null,
     operator_id: null,
@@ -162,6 +163,70 @@ describe('buildRequestWorkPayload — products of interest (user directive 2026-
     )
 
     expect(payload).not.toHaveProperty('products_of_interest')
+  })
+})
+
+describe('buildRequestWorkPayload — rewards (spec 0059 D-3, AC-029/031)', () => {
+  it('sends the whole reward-type id set when it changed', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ rewards: [{ reward_type_id: 3 }, { reward_type_id: 7 }] }),
+      panel({
+        rewards: [
+          { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+        ],
+      }),
+    )
+
+    expect(payload.rewards).toEqual([{ reward_type_id: 3 }, { reward_type_id: 7 }])
+  })
+
+  it('sends [] when the last reward was removed', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ rewards: [] }),
+      panel({
+        rewards: [
+          { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+        ],
+      }),
+    )
+
+    expect(payload.rewards).toEqual([])
+  })
+
+  it('omits the key when the SET is unchanged, whatever the order', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ rewards: [{ reward_type_id: 7 }, { reward_type_id: 3 }] }),
+      panel({
+        rewards: [
+          { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+          { id: 901, reward_type: { id: 7, name: 'Buono spesa', color: 'green' }, assigned_at: '2026-01-02', notes: null },
+        ],
+      }),
+    )
+
+    expect(payload).not.toHaveProperty('rewards')
+  })
+
+  /**
+   * Data-loss guard: the three states of the sparse contract (spec 0059
+   * §4/`sync_semantics`) must never collapse. An untouched selection is a
+   * KEY ABSENT from the payload (server: no-op); a fully-cleared selection
+   * is `rewards: []` (server: delete every assignment). Sending `[]` for
+   * "untouched" would silently wipe every reward on any save that doesn't
+   * touch this field.
+   */
+  it('never collapses "untouched" (key absent) into an explicit clear ([])', () => {
+    const loadedRewards = {
+      rewards: [
+        { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+      ],
+    }
+
+    const untouched = buildRequestWorkPayload(formValues({ rewards: [{ reward_type_id: 3 }] }), panel(loadedRewards))
+    expect(untouched).not.toHaveProperty('rewards')
+
+    const explicitlyCleared = buildRequestWorkPayload(formValues({ rewards: [] }), panel(loadedRewards))
+    expect(explicitlyCleared).toHaveProperty('rewards', [])
   })
 })
 

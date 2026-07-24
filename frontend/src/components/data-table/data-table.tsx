@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgGridReact } from 'ag-grid-react'
 import {
@@ -15,14 +15,12 @@ import {
   type ModelUpdatedEvent,
   type RowSelectionOptions,
   type SelectionChangedEvent,
-  type SideBarDef,
 } from 'ag-grid-community'
 import {
   AG_GRID_LOCALE_EN,
   AG_GRID_LOCALE_IT,
 } from '@ag-grid-community/locale'
 import { toast } from 'sonner'
-import { Inbox } from 'lucide-react'
 import { buildColumnFilter } from '@/components/data-table/column-filters'
 import {
   defaultValueFormatter,
@@ -31,9 +29,14 @@ import {
   type CellRenderer,
 } from '@/components/data-table/column-defaults'
 import { setupAgGrid } from '@/components/data-table/ag-grid-setup'
+import {
+  ACTIONS_COLUMN_ID,
+  SIDE_BAR,
+  SkeletonLoadingCell,
+  TableEmptyOverlay,
+} from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
 import { buildRowSelectionOptions } from '@/components/data-table/row-selection'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { TableColumn, TableRow } from '@/features/table/types'
 import { MAX_COLUMN_WIDTH } from '@/features/table/use-table-preferences'
 import { useTableCellEdit } from '@/features/table/use-table-cell-edit'
@@ -43,12 +46,13 @@ import { useUiScale } from '@/features/appearance/ui-scale-context'
 // keep importing `CellRenderer` from this module; the type itself now lives in
 // `column-defaults.tsx` alongside the fallback-selection logic that uses it.
 export type { CellRenderer }
+// Re-exported so every existing `@/components/data-table/data-table` import
+// (this module's own tests included) keeps working unchanged; the
+// implementations now live in `data-table-overlays.tsx` (engineering.md §6).
+export { ACTIONS_COLUMN_ID, SkeletonLoadingCell, TableEmptyOverlay }
 
 // Register enterprise modules + license once, at module load.
 setupAgGrid()
-
-/** Column id of the synthetic, left-pinned row-actions column. */
-export const ACTIONS_COLUMN_ID = '__actions'
 
 /** Default minimum width for data columns without an explicit backend width. */
 const DEFAULT_MIN_WIDTH = 120
@@ -61,67 +65,6 @@ const DEFAULT_MIN_WIDTH = 120
  */
 const ACTIONS_COLUMN_WIDTH = 100
 const ACTIONS_COLUMN_WIDTH_WITH_OVERFLOW = 120
-
-/**
- * Right-hand tool panel listing every column with a checkbox to show/hide it and
- * drag handles to reorder. Closed on mount (opened from the vertical tab strip)
- * so the grid keeps its full width by default.
- *
- * Only the columns panel is exposed: the filters panel would duplicate the
- * per-header filter menus, and row-group/pivot/aggregation are meaningless under
- * the SSRM setup here, so their sections are suppressed rather than shown empty.
- */
-const SIDE_BAR: SideBarDef = {
-  toolPanels: [
-    {
-      id: 'columns',
-      labelDefault: 'Columns',
-      labelKey: 'columns',
-      iconKey: 'columns',
-      toolPanel: 'agColumnsToolPanel',
-      toolPanelParams: {
-        suppressRowGroups: true,
-        suppressValues: true,
-        suppressPivots: true,
-        suppressPivotMode: true,
-      },
-    },
-  ],
-  defaultToolPanel: undefined,
-}
-
-/**
- * Per-cell loading placeholder shown while an SSRM block streams in. Because AG
- * Grid renders it once per cell of every loading row, the skeleton naturally
- * follows the column layout (one bar per column) without us knowing the data.
- * The leading actions column gets a narrower bar so the row reads as content.
- */
-export function SkeletonLoadingCell({ colDef }: ICellRendererParams) {
-  const width = colDef?.colId === ACTIONS_COLUMN_ID ? 'w-12' : 'w-[70%]'
-  return (
-    <div className="flex h-full items-center">
-      <Skeleton className={`h-4 ${width}`} />
-    </div>
-  )
-}
-
-/**
- * "No rows" overlay: an inbox glyph in a soft disc plus a localized message,
- * replacing AG Grid's plain default text so an empty grid reads as an
- * intentional state rather than a blank surface. Rendered by AG Grid inside the
- * React tree, so `useTranslation` works and it tracks the active language.
- */
-export function TableEmptyOverlay() {
-  const { t } = useTranslation()
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center">
-      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Inbox aria-hidden="true" className="size-5" />
-      </span>
-      <p className="text-sm font-medium text-muted-foreground">{t('table.noRows')}</p>
-    </div>
-  )
-}
 
 /** Renders the per-row actions cell (left-most column). */
 export type RowActionsRenderer = (params: ICellRendererParams) => React.ReactNode
@@ -205,6 +148,19 @@ interface DataTableProps {
    * stays selectable exactly as before, so no other domain regresses.
    */
   isRowSelectable?: (row: TableRow) => boolean
+  /**
+   * Enables AG Grid's Master/Detail (spec 0059 D-4): a row expands into a
+   * custom detail panel instead of the row-grouping tree AG Grid normally
+   * uses for this control. Additive opt-in — every other domain leaves it
+   * `undefined` and sees no behavior change (`masterDetail` defaults to
+   * `false`). The pattern stays isolated to the one feature that needs it
+   * (`rewarded-referents`); this wrapper does not generalize it further.
+   */
+  masterDetail?: boolean
+  /** The detail panel's renderer. Required (by the caller) whenever `masterDetail` is true. */
+  detailCellRenderer?: (params: ICellRendererParams<TableRow>) => ReactNode
+  /** Detail row grows to fit its content instead of a fixed pixel height. */
+  detailRowAutoHeight?: boolean
 }
 
 /**
@@ -232,6 +188,9 @@ export function DataTable({
   enableSelection,
   onSelectionChanged,
   isRowSelectable,
+  masterDetail,
+  detailCellRenderer,
+  detailRowAutoHeight,
 }: DataTableProps) {
   const { t, i18n } = useTranslation()
 
@@ -469,8 +428,28 @@ export function DataTable({
       singleClickEdit: true,
       stopEditingWhenCellsLoseFocus: true,
       onCellValueChanged: handleCellValueChanged,
+      // Master/Detail (spec 0059 D-4), opt-in and additive: `masterDetail`
+      // defaults to `false`, so every domain that does not pass it sees no
+      // change at all. `detailCellRenderer` is wrapped the same way
+      // `renderRowActions` is above (a plain function AG Grid treats as a
+      // component).
+      masterDetail,
+      detailCellRenderer: detailCellRenderer
+        ? (params: ICellRendererParams<TableRow>) => detailCellRenderer(params)
+        : undefined,
+      detailRowAutoHeight,
     }),
-    [datasource, blockSize, enableSelection, getRowId, rowSelection, handleCellValueChanged],
+    [
+      datasource,
+      blockSize,
+      enableSelection,
+      getRowId,
+      rowSelection,
+      handleCellValueChanged,
+      masterDetail,
+      detailCellRenderer,
+      detailRowAutoHeight,
+    ],
   )
 
   return (

@@ -9,8 +9,10 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestRelationRef } from '@/features/request-management/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 interface RequestAttributionSectionProps {
   /**
@@ -24,6 +26,8 @@ interface RequestAttributionSectionProps {
   operator: RequestRelationRef | null
   /** Spec 0056: the operational site's `{id,label}` ref, converted to `{id,name}` by the caller (`toRelationFieldRef`). */
   operationalSite: RequestRelationRef | null
+  /** Spec 0059 D-3: the panel's persisted reward assignments, for the "abbinamento buono" control under the Segnalatore field. */
+  rewards: RewardAssignmentRef[]
 }
 
 /**
@@ -49,9 +53,12 @@ export function RequestAttributionSection({
   reporter,
   operator,
   operationalSite,
+  rewards,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
   const control = form.control
+  const reporterId = useWatch({ control, name: 'reporter_id' })
+  const rewardsValue = useWatch({ control, name: 'rewards' })
 
   // Baseline every auto-fill/clear below reasons against: it starts at the
   // panel's persisted Sede and only ever moves inside an event handler (never
@@ -125,18 +132,49 @@ export function RequestAttributionSection({
           {...selectLabels}
         />
 
-        <RelationSelectField
-          control={control}
-          name="reporter_id"
-          metaKey="reporter_id"
-          label={t('requestManagement.workPanel.attribution.reporter', { defaultValue: 'Reporter' })}
-          resource={REFERENTS_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('requestManagement.workPanel.attribution.reporterSearch', {
-            defaultValue: 'Search a reporter',
-          })}
-          selected={reporter}
-          {...selectLabels}
-        />
+        <div className="flex flex-col gap-1.5">
+          <RelationSelectField
+            control={control}
+            name="reporter_id"
+            metaKey="reporter_id"
+            label={t('requestManagement.workPanel.attribution.reporter', { defaultValue: 'Reporter' })}
+            resource={REFERENTS_FOR_SELECT_RESOURCE}
+            searchPlaceholder={t('requestManagement.workPanel.attribution.reporterSearch', {
+              defaultValue: 'Search a reporter',
+            })}
+            selected={reporter}
+            {...selectLabels}
+          />
+          <RewardAssignmentField
+            value={rewardsValue}
+            onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
+            initialAssignments={rewards}
+            reporterId={reporterId}
+            fieldLabel={t('requestManagement.workPanel.attribution.rewards.fieldLabel', {
+              defaultValue: 'Assigned rewards',
+            })}
+            disabledHint={t('requestManagement.workPanel.attribution.rewards.reporterRequiredHint', {
+              defaultValue: 'Select a reporter first to assign a reward.',
+            })}
+            addLabel={t('requestManagement.workPanel.attribution.rewards.add', { defaultValue: 'Add reward' })}
+            removeLabel={(name) =>
+              t('requestManagement.workPanel.attribution.rewards.remove', { name, defaultValue: `Remove ${name}` })
+            }
+            searchPlaceholder={t('requestManagement.workPanel.attribution.rewards.searchPlaceholder', {
+              defaultValue: 'Search a reward type…',
+            })}
+            emptyLabel={t('requestManagement.workPanel.attribution.rewards.empty', {
+              defaultValue: 'No reward type found.',
+            })}
+            errorLabel={t('requestManagement.workPanel.attribution.rewards.error', {
+              defaultValue: 'Could not load the reward types.',
+            })}
+            retryLabel={t('common.retry')}
+            loadMoreLabel={t('requestManagement.workPanel.attribution.rewards.loadMore', {
+              defaultValue: 'Load more',
+            })}
+          />
+        </div>
 
         <RelationSelectField
           control={control}

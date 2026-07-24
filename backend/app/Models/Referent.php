@@ -89,4 +89,17 @@ class Referent extends BaseModel
     {
         return $this->hasMany(Opportunity::class, 'reporter_id');
     }
+
+    /**
+     * The vouchers/rewards/incentives assigned to this referent as
+     * beneficiary (spec 0059, D-5 — a plain FK, not polymorphic; the
+     * polymorphism lives on `Reward::source()`). CASCADE on delete: a
+     * deleted referent takes its assignments with it (AC-003).
+     *
+     * @return HasMany<Reward, $this>
+     */
+    public function rewards(): HasMany
+    {
+        return $this->hasMany(Reward::class);
+    }
 }

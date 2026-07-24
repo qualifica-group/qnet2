@@ -25,6 +25,7 @@ function values(overrides: Record<string, unknown> = {}) {
     client_address: [],
     // Mandatory since the user directive 2026-07-23 (>=1 product).
     products_of_interest: [7],
+    rewards: [],
     source_id: null,
     reporter_id: null,
     operator_id: null,

@@ -88,6 +88,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0058 `reward-types` (RewardTypesAuthorization: the "Buoni, Premi e Incentivi" lookup
         // — name/color, both mandatory, D-5).
         'reward-types',
+        // spec 0059 `rewarded-referents` (RewardedReferentsAuthorization: the "Referenti con Buoni"
+        // aggregated, READ-ONLY view, D-6 — registered so GET /api/meta/rewarded-referents resolves,
+        // but `fields()` is empty: the module has no dedicated write surface).
+        'rewarded-referents',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

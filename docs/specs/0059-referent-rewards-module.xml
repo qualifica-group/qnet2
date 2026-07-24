@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0059-referent-rewards-module" status="draft" owner="nicola" date="2026-07-23">
+
+  <goal>
+    Introdurre l'assegnazione effettiva di buoni/premi/incentivi (`rewards`) con ORIGINE
+    POLIMORFICA riusabile, e il modulo operativo `rewarded-referents` ("Referenti con Buoni"):
+    una vista aggregata, una riga per Referente che possiede almeno un'assegnazione, con
+    contatori e riga espandibile (AG Grid master/detail) che elenca i buoni e il loro contesto
+    commerciale letto in tempo reale dall'Opportunita' collegata. In piu': un controllo di
+    abbinamento buono accanto al campo Segnalatore nel form Opportunita' e nella sezione
+    attribuzione del work panel Gestione Richiesta.
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono VERIFICATI sul codice reale (ricognizione 2026-07-23,
+         tre agenti Explore in parallelo), non ipotizzati. -->
+
+    <existing_reward_types>
+      Il modulo configurativo `reward-types` esiste gia' (spec 0058, commit 818c363): tabella
+      `reward_types` con SOLI `name` (191, unique) e `color` (32, NOT NULL, token di palette),
+      Model `App\Models\RewardType` (`#[Fillable(['name','color'])]`, nessuna relazione), alias
+      morph `reward_type`. Il nome `rewards` / `Reward` era stato DELIBERATAMENTE lasciato libero
+      per questa spec (HANDOFF 0058) — verificato: nessun model, tabella o feature lo occupa oggi.
+      Conseguenza diretta: `reward_types` acquisisce QUI la sua prima FK, quindi il ramo 409 di
+      `RewardTypeService::delete()` (gia' cablato nei toast del FE ma mai attivo) va finalmente
+      implementato. Vedi AC-021.
+    </existing_reward_types>
+
+    <opportunity_is_the_only_source_today>
+      `App\Models\Opportunity` — colonne reali: id, name, registry_id, referent_id, commercial_id,
+      reporter_id, supervisor_id, source_id, operational_site_id, lead_id, opportunity_status_id,
+      start_date, estimated_value, expected_close_date, success_probability, state_id,
+      opportunity_workflow_status_id, attribute_values, next_callback_at, next_callback_reminded_at.
+      Relazioni rilevanti: `registry()` -> Registry (il CLIENTE; si chiama Registry, non Company),
+      `reporter()` -> Referent via `reporter_id` (IL SEGNALATORE), `opportunityStatus()` ->
+      OpportunityStatus, `workflowStatus()` -> OpportunityWorkflowStatus (FK
+      `opportunity_workflow_status_id`, NULLABLE), `productLines()` -> HasMany
+      OpportunityProductLine (la CATEGORIA PRODOTTO vive su
+      `opportunity_product_lines.product_category_id`, NON su opportunities),
+      `managers()` BelongsToMany User via pivot `opportunity_user` withPivot `position` e
+      `operatorManager(): ?User` = il manager con `position === Opportunity::OPERATOR_MANAGER_POSITION`
+      (costante = 2) — questo, e solo questo, e' "l'operatore/gestore assegnato".
+      `state_id` -> State e' la REGIONE GEOGRAFICA, non uno stato di workflow: non usarla.
+      Non esiste alcuna relazione Opportunity -> PipelineStatus (PipelineStatus classifica solo
+      Project e Campaign).
+    </opportunity_is_the_only_source_today>
+
+    <two_status_dimensions_not_three>
+      Esistono DUE sole dimensioni di stato sull'Opportunita', non tre:
+      1. `OpportunityStatus` (tabella `opportunity_statuses`: name, color nullable, sort_order,
+         system_key nullable, `group` cast su `App\Enums\StatusGroup` = open|pending|closed) —
+         la pipeline commerciale. Righe di sistema: Nuova/`new`, Chiusa con successo/`won`,
+         Persa/`lost`.
+      2. `OpportunityWorkflowStatus` (tabella `opportunity_workflow_statuses`: name, color
+         nullable, description, requires_note, sort_order, system_key, `group` cast su
+         `App\Enums\WorkflowStatusGroup` = open|pending|closed_won|closed_lost, e
+         `opportunity_workflow_id` NULLABLE dove NULL = set globale di default) — lo stato di
+         lavorazione. Nota: l'enum del gruppo e' DIVERSO da StatusGroup.
+      Il brief ne nominava tre; D-1 chiude la mappatura.
+    </two_status_dimensions_not_three>
+
+    <referent_has_no_first_last_name>
+      `App\Models\Referent` (`#[Fillable(['name','referent_type_id','contact_scope','notes'])]`)
+      espone SOLO `name`, che e' un campo di display DENORMALIZZATO scritto da
+      `ReferentProfileWriter`. Nome e cognome reali stanno su `PersonalData` (`first_name`,
+      `last_name`, accessor `full_name`) agganciata via trait `HasPersonalData` (morphOne,
+      morph `personable`). I RECAPITI stanno su `Contact` (morph `contactable`) agganciati
+      A PERSONALDATA, non al Referent: la catena e' `Referent -> personalData -> contacts`
+      (colonne `type` su `ContactTypeEnum` = phone|mobile|fax|email|pec|website, `label`,
+      `value` [in `$hidden`], `is_primary`; helper `primaryContact(ContactTypeEnum)` in
+      `HasContacts`). Precedente d'uso: `ReferentForSelectResource` espone `meta.contacts`.
+      Relazioni gia' presenti: `registries()` BelongsToMany Registry via pivot
+      `referent_registry` (= "azienda/anagrafica collegata" del brief),
+      `opportunitiesAsReporter()` HasMany Opportunity su `reporter_id`.
+      IMPLICAZIONE VINCOLANTE: la ricerca "per nome o cognome del referente" NON puo' essere un
+      LIKE sulla sola `referents.name`; deve coprire anche
+      `personalData.first_name` / `personalData.last_name`.
+    </referent_has_no_first_last_name>
+
+    <request_management_is_a_view_over_opportunity>
+      `request-management` NON ha un model proprio: `RequestManagementTableDefinition::modelClass()`
+      ritorna `Opportunity::class`, e la definition OVERRIDE `authorizeViewAny/Update/Delete` con
+      `$actor->can('request-management.*')` perche' il permission set e' diverso da quello del
+      model. Il permesso nasce da `App\Policies\RequestManagementPolicy extends BasePolicy`
+      (`resource(): 'request-management'`, + abilities extra `viewAll`, `viewDocuments`), che NON
+      e' auto-discovered da Laravel (Opportunity risolve OpportunityPolicy) ma viene comunque
+      raccolta da `SyncPermissions` che fa glob su `app/Policies/*.php`. QUESTO E' IL PRECEDENTE
+      ESATTO da replicare per `rewarded-referents`, che e' anch'esso una vista (su Referent) con
+      permessi propri.
+      ATTENZIONE, correzione al brief: il FORM DI CREAZIONE richiesta
+      (`request-create-form.tsx`, schema `request-create-schema.ts` = solo `registry_id` +
+      `product_lines`) NON HA il campo Segnalatore. Il Segnalatore vive nel WORK PANEL, in
+      `frontend/src/features/request-management/request-attribution-section.tsx` (la sezione
+      "Fonte / Segnalatore / Operatore"). Il controllo buoni va li', non nel create form.
+      Endpoint di update: `PATCH /api/request-management/{opportunity}`
+      (`routes/api/request-management.php:29`).
+    </request_management_is_a_view_over_opportunity>
+
+    <table_framework>
+      Una riga in `config/tables.php` (`definitions`) sblocca insieme tabella SSRM, ricerca,
+      filtri, ordinamento, paginazione, row-actions, bulk-delete ED export: non si scrive codice
+      per questi. `TableDefinition` richiede `domain(), modelClass(), baseQuery(), columns(),
+      filters(), actions(), defaultSort(), defaultPagination(), mapRow(), actionsFor()`; tutto il
+      resto ha default in `AbstractTableDefinition` (che deriva le whitelist
+      `sortableColumnIds/filterableColumnIds/searchableColumnIds` dal catalogo colonne — ordinamento
+      e filtri NON arrivano mai dall'input grezzo).
+      Endpoint SSRM: `POST /api/tables/{domain}/rows` (request `{startRow,endRow,sortModel,
+      filterModel,search,advancedFilters}`, blocco &lt;= 100), risposta SENZA envelope:
+      `{items[], export_link, pagination{total,offset,limit,total_pages}}`;
+      `GET /api/tables/{domain}/columns` con envelope `{success,message,data}`.
+      Colonne aggregate su alias `withCount`: il SORT e' generico (ORDER BY sull'alias funziona),
+      ma FILTRO e DISTINCT vanno derivati — precedenti reali `app/Tables/Roles/RoleUsersCountColumn.php`
+      (filtro via `has('users', $operator, $n)`, distinct via `DB::query()->fromSub($query, ...)`)
+      e `app/Tables/ProductCategories/ProductCategoryCountColumn.php`. MySQL non vede l'alias in WHERE.
+      Sort su relazione = subquery correlata, precedente `RequestRelationColumns` (`DB::table($t)
+      ->select('name')->whereColumn("$t.id", "opportunities.$fk")->limit(1)` passata a `orderBy`).
+      Cap difensivo esistente da replicare: `MAX_FILTER_VALUES = 200`.
+    </table_framework>
+
+    <frontend_conventions>
+      Le colonne NON si definiscono nel frontend: sono server-driven (`TableView` riceve solo
+      `domain` e chiama `useTableConfig`). Il registro moduli e' GLOB-DRIVEN
+      (`module-registry.ts`: `import.meta.glob('../*/*-screens.tsx', {eager:true})`), quindi
+      esportare `moduleScreen` da `features/rewarded-referents/*-screens.tsx` genera gratis rotte,
+      preferenza modale/pagina e sheet: nessun file di registro va editato a mano.
+      Renderer gia' esistenti e RIUSABILI (non duplicarli): `features/table/cell-renderers.tsx`
+      (`BadgeCell`, `CountCell`, `DateTimeCell`, `ContactsCell`, `BADGE_COLOR_CLASSES` con i 14
+      token, `badgeColorClass`), `features/table/rich-cells.tsx` (`RelationCell`, `RefNamesCell`,
+      `StatusBadgeCell`, `DateCell`, `ColorSwatchCell`), `features/table/user-cell.tsx` (`UserCell`
+      con avatar). Select relazione + quick-create: `components/form/relation-select-field.tsx`
+      (+ `use-quick-create-action.tsx`, che impedisce il nesting di dialog via
+      `quick-create-depth-context`). i18n: moduli TS affiancati `i18n/locales/{it,en}-&lt;modulo&gt;.ts`
+      aggregati in `it.ts`/`en.ts`; `en.ts` definisce il tipo `TranslationResources`.
+      Le classi Tailwind dei token colore sono scritte per esteso (mai template string).
+      AG GRID E' ENTERPRISE (`ag-grid-setup.ts`: `ModuleRegistry.registerModules([AllEnterpriseModule])`
+      + `LicenseManager`), ma nel progetto NON esiste OGGI alcuna riga espandibile: `masterDetail`,
+      `detailCellRenderer`, `detailGridOptions`, `treeData` hanno ZERO occorrenze, e
+      `data-table.tsx:83-86` sopprime esplicitamente row-group/pivot. D-4 introduce il primo
+      master/detail del progetto: e' un pattern NUOVO, da isolare nella feature e non da spargere
+      in `components/data-table/`.
+      Difetto sistemico noto e GIA' CHIUSO in una sessione precedente: il prefisso i18n di
+      `module-form-page.tsx`. Non riaprirlo.
+    </frontend_conventions>
+
+    <morph_map_is_strict>
+      `AppServiceProvider::boot()` chiama `Relation::enforceMorphMap([...])` (riga 97): OGNI model
+      che puo' comparire in una colonna morph DEVE essere elencato, altrimenti la scrittura
+      fallisce. Alias gia' presenti e da usare: `opportunity`, `referent`, `reward_type`, `lead`,
+      `project`, `campaign`. Conseguenza: `rewards.source_type` conterra' la stringa `opportunity`,
+      mai un FQCN — ed e' proprio questo che rende la relazione riusabile per Lead/Campagne/Progetti
+      senza toccare la logica.
+    </morph_map_is_strict>
+
+    <nested_sync_precedent>
+      Il pattern per sincronizzare una relazione annidata nel payload dell'Opportunita' esiste gia':
+      `OpportunityService` inietta un writer dedicato e lo chiama dentro la transazione
+      (`$this->productInterestWriter->sync($opportunity, $data->productsOfInterest)`, righe 123 e 163,
+      sia in create che in update). `rewards` replica ESATTAMENTE questa forma con un
+      `RewardAssignmentWriter`. Nessun endpoint CRUD autonomo per le assegnazioni (vedi scope/out).
+    </nested_sync_precedent>
+
+    <authorization_test_will_break>
+      Registrare una nuova risorsa in `config/authorization.php` ROMPE
+      `tests/Feature/Authorization/FieldCatalogueEndpointTest.php`, che asserisce l'elenco canonico
+      delle resource-key con `toEqualCanonicalizing()`. Aggiungere la chiave all'array atteso e'
+      un aggiornamento LEGITTIMO del file che documenta il registry, non test tampering (precedente
+      documentato in HANDOFF per 0058). Vale anche qui.
+    </authorization_test_will_break>
+  </context>
+
+  <decisions>
+    <!-- Decisioni prese dall'utente in pianificazione (AskUserQuestion 2026-07-23).
+         Non rinegoziabili senza emendamento della spec. -->
+
+    <decision id="D-1">
+      DUE badge di stato, non tre: "Stato commerciale" = `opportunityStatus` (name + color) e
+      "Stato di lavorazione" = `workflowStatus` (name + color, puo' essere assente). Il `group`
+      NON viene mostrato come badge autonomo nella UI. Resta comunque nel contratto dati
+      (`opportunity_status.group`) perche' D-2 lo usa per i contatori.
+    </decision>
+
+    <decision id="D-2">
+      "Attivo" / "Completato" sono DERIVATI, non persistiti: un buono e' ATTIVO se
+      `opportunity_statuses.group IN ('open','pending')`, COMPLETATO se `= 'closed'`. Nessuna
+      colonna di stato sulla tabella `rewards`. Conseguenza esplicita e accettata: i contatori
+      sono definiti solo per origini che possiedono uno stato (oggi la sola Opportunity); un
+      futuro reward con origine priva di stato non incrementera' ne' attivi ne' completati, ma
+      incrementera' il totale. `rewards_count` resta quindi &gt;= attivi + completati.
+    </decision>
+
+    <decision id="D-3">
+      PIU' buoni per singola Opportunita' (nessun vincolo 1:1). Il BENEFICIARIO e' SEMPRE il
+      Segnalatore corrente dell'Opportunita' (`reporter_id`), non scegliibile: il controllo di
+      abbinamento e' disabilitato con hint quando il Segnalatore e' vuoto. La UI e' una riga di
+      chip colorati (uno per buono, colore dal token della tipologia) con azione di aggiunta e
+      rimozione, posizionata immediatamente sotto il campo Segnalatore.
+    </decision>
+
+    <decision id="D-4">
+      Riga espandibile = AG Grid `masterDetail` con `detailCellRenderer` custom sotto SSRM, con
+      caricamento LAZY dei buoni all'apertura della riga (endpoint dedicato), non eager nell'elenco.
+      E' il primo master/detail del progetto.
+    </decision>
+
+    <decision id="D-5">
+      Il beneficiario resta una FK semplice `referent_id`, NON polimorfica. Il requisito duro del
+      brief e' la polimorfia dell'ORIGINE; rendere polimorfico anche il beneficiario oggi
+      complicherebbe la query aggregata dell'elenco (che e' esattamente il valore della feature)
+      senza un secondo caso d'uso reale — YAGNI, ingegneria dichiarata in `engineering.md §1.3`.
+      Assunzione da confermare in approvazione.
+    </decision>
+
+    <decision id="D-6">
+      Naming: tabella `rewards` · Model `Reward` · alias morph `reward` · dominio/route/resource-key
+      del modulo aggregato `rewarded-referents` · permessi `rewarded-referents.{viewAny,view,create,
+      update,delete,export,import,viewActivity}` · namespace i18n FE `rewardedReferents` · label
+      di navigazione `navigation.rewardedReferents` = "Referenti con Buoni" (IT) / "Rewarded
+      Referents" (EN). Il modulo aggregato e' di sola LETTURA (vedi scope/out).
+      Assunzione da confermare in approvazione.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Tabella `rewards` con origine POLIMORFICA (`source_type` / `source_id` su morph map
+        stretta), beneficiario `referent_id`, tipologia `reward_type_id`, `assigned_at`, `notes`.</item>
+      <item>Model `Reward` con `LogsModelActivity`, alias morph `reward`, relazioni
+        `referent()`, `rewardType()`, `source()` (MorphTo); relazioni inverse `Referent::rewards()`
+        e `Opportunity::rewards()` (MorphMany).</item>
+      <item>Modulo tabellare SSRM `rewarded-referents`: una riga per Referente con almeno un
+        reward, contatori totale/attivi/completati, data ultima assegnazione, recapiti principali,
+        anagrafiche collegate. Ricerca, filtri avanzati, ordinamento, paginazione, export (gratis
+        dal framework), permessi propri, activity log.</item>
+      <item>Endpoint di dettaglio lazy `GET /api/referents/{referent}/rewards` per il master/detail.</item>
+      <item>Riga espandibile AG Grid master/detail con il dettaglio di ogni buono e il contesto
+        commerciale letto in tempo reale dall'Opportunita'.</item>
+      <item>Campo annidato `rewards` nel payload di create/update Opportunita' e nell'update
+        Gestione Richiesta, con writer di sync transazionale.</item>
+      <item>Controllo UI di abbinamento buono (chip) sotto il Segnalatore in
+        `opportunity-form-body.tsx` e in `request-attribution-section.tsx`.</item>
+      <item>Delete-guard 409 su `RewardTypeService::delete()`, ora che `reward_types` ha la sua
+        prima FK.</item>
+      <item>Seeder demo `DemoRewardSeeder` + factory, agganciati a `DemoDataSeeder` (mai a
+        `DatabaseSeeder`).</item>
+      <item>i18n it/en completa; stati di caricamento, errore ed empty; responsive 375/768/1024.</item>
+    </in>
+    <out>
+      <item>Flussi di approvazione, emissione, consegna, rifiuto, scadenza, utilizzo del buono.
+        Nessuna colonna di stato/valore/importo sulla tabella `rewards`.</item>
+      <item>CRUD autonomo delle assegnazioni: nessun endpoint `POST/PATCH/DELETE /api/rewards`,
+        nessun form dedicato, nessuna row-action di modifica nel modulo aggregato. Le assegnazioni
+        nascono e muoiono SOLO dal payload dell'Opportunita' (D-3, `nested_sync_precedent`).</item>
+      <item>Beneficiario polimorfico (D-5) e origini diverse da Opportunity: la struttura le
+        ammette, ma nessun'altra entita' viene collegata in questa versione.</item>
+      <item>Import CSV/Excel delle assegnazioni (richiederebbe una definition in `config/imports.php`).</item>
+      <item>Custom fields sul modulo `rewarded-referents`.</item>
+      <item>Modifica di `components/data-table/` per generalizzare il master/detail ad altri moduli:
+        il pattern resta isolato nella feature finche' non esiste un secondo caso d'uso.</item>
+      <item>Allow-list backend dei 14 token di colore (hardening cross-modulo gia' segnalato in
+        HANDOFF 0058, deliberatamente non affrontato qui).</item>
+      <item>Test E2E su browser reale.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ============ 1. SCHEMA ============ -->
+    <table name="rewards">
+      <column name="id" type="bigIncrements"/>
+      <column name="referent_id" type="foreignId" references="referents.id" onDelete="cascade"
+              null="false">
+        Il beneficiario (D-5). CASCADE e non RESTRICT: un'assegnazione senza beneficiario non ha
+        significato, e il Referente e' il soggetto della riga di elenco.
+      </column>
+      <column name="reward_type_id" type="foreignId" references="reward_types.id" onDelete="restrict"
+              null="false">
+        RESTRICT: e' questa FK a rendere finalmente attivo il ramo 409 di RewardTypeService::delete().
+      </column>
+      <column name="source_type" type="string(255)" null="false">Alias della morph map stretta (oggi sempre `opportunity`).</column>
+      <column name="source_id" type="unsignedBigInteger" null="false"/>
+      <column name="assigned_at" type="date" null="false">Data di assegnazione. Default applicativo: la data corrente alla creazione.</column>
+      <column name="notes" type="text" null="true"/>
+      <column name="timestamps"/>
+      <index columns="source_type,source_id" note="indice morph (via $table->morphs()/index)"/>
+      <index columns="referent_id" note="driver della query aggregata dell'elenco"/>
+      <index columns="reward_type_id"/>
+      <unique columns="referent_id,reward_type_id,source_type,source_id"
+              name="rewards_unique_assignment"
+              note="impedisce il doppio buono identico sulla stessa origine; e' la garanzia di AC-004"/>
+    </table>
+
+    <!-- ============ 2. ELENCO SSRM (framework generico, nessun endpoint nuovo) ============ -->
+    <endpoint method="POST" path="/api/tables/rewarded-referents/rows">
+      <request>
+        Shape standard del framework: { startRow:int, endRow:int (blocco &lt;= 100),
+        sortModel:[{colId,sort}], filterModel:{&lt;columnId&gt;:AGGridModel}, search:string (max 100),
+        advancedFilters:{&lt;name&gt;:value} }.
+        `colId` deve appartenere a `sortableColumnIds()`, ogni chiave di `filterModel` a
+        `filterableColumnIds()` — derivate dal catalogo colonne, mai dall'input.
+      </request>
+      <response status="200">
+        Nessun envelope (paginatedResponse): { items:[ ...riga..., actions:string[], editable:bool ],
+        export_link:null, pagination:{total,offset,limit,total_pages} }.
+        Shape di una riga:
+        {
+          id: int,                          // Referent.id
+          name: string,                     // referents.name (display denormalizzato)
+          full_name: string|null,           // personalData.full_name
+          registries: string|null,          // nomi delle anagrafiche collegate, comma-joined
+          email: string|null,               // primaryContact(email)->value
+          phone: string|null,               // primaryContact(phone) ?? primaryContact(mobile)
+          rewards_count: int,               // totale
+          active_rewards_count: int,        // D-2: opportunity_statuses.group IN (open,pending)
+          completed_rewards_count: int,     // D-2: opportunity_statuses.group = closed
+          last_assigned_at: string|null     // ISO date, MAX(rewards.assigned_at)
+        }
+      </response>
+      <errors>403 se l'attore non ha `rewarded-referents.viewAny`; 404 su dominio sconosciuto;
+        422 su colId/filtro fuori whitelist.</errors>
+    </endpoint>
+
+    <columns_catalog domain="rewarded-referents">
+      <column id="id" type="number" visible="false" sortable="true"/>
+      <column id="name" type="text" sortable="true" filterable="true" searchable="true">
+        Ricerca ESTESA (vedi `referent_has_no_first_last_name`): il match copre `referents.name`
+        OR `personalData.first_name` OR `personalData.last_name`. Implementata come
+        `applyDerivedSearch()`, con escape dei metacaratteri LIKE.
+      </column>
+      <column id="registries" type="text" sortable="false" filterable="true">
+        Aggregata su `referent_registry` -> `registries.name`. Filtro/distinct derivati
+        (precedente: RequestRelationColumns::AGGREGATED_RELATIONS). Non sortable.
+      </column>
+      <column id="email" type="text" sortable="false" filterable="false"/>
+      <column id="phone" type="text" sortable="false" filterable="false"/>
+      <column id="rewards_count" type="number" sortable="true" filterable="true">
+        Alias `withCount`. Sort generico; filtro e distinct DERIVATI (MySQL non vede l'alias in
+        WHERE) — precedente RoleUsersCountColumn.
+      </column>
+      <column id="active_rewards_count" type="number" sortable="true" filterable="false"/>
+      <column id="completed_rewards_count" type="number" sortable="true" filterable="false"/>
+      <column id="last_assigned_at" type="date" sortable="true" filterable="true" filterType="date"/>
+    </columns_catalog>
+
+    <advanced_filters domain="rewarded-referents">
+      <!-- Tutti applicati come whereHas sulla relazione `rewards`, MAI come colonne dell'elenco:
+           filtrano QUALI referenti compaiono, non cosa si vede nella riga. Cap MAX_FILTER_VALUES = 200. -->
+      <filter name="reward_type" type="relation" source="reward-types" multiple="true"
+              target="rewards.reward_type_id"/>
+      <filter name="opportunity" type="async_search" source="opportunities"
+              note="ricerca per Opportunita': whereHasMorph(source, Opportunity) su name/id"/>
+      <filter name="opportunity_status" type="multiselect" target="opportunityStatus.id"
+              note="stato commerciale (D-1)"/>
+      <filter name="workflow_status" type="multiselect" target="workflowStatus.id"
+              note="stato di lavorazione (D-1); set per NAME come fa RequestManagementTableDefinition,
+                    perche' lo stesso stato esiste replicato per workflow diversi"/>
+      <filter name="operator" type="relation" source="users" multiple="true"
+              note="pivot opportunity_user con position = Opportunity::OPERATOR_MANAGER_POSITION"/>
+      <filter name="assigned_at" type="date_range" target="rewards.assigned_at"/>
+    </advanced_filters>
+
+    <!-- ============ 3. DETTAGLIO LAZY DEL MASTER/DETAIL ============ -->
+    <endpoint method="GET" path="/api/referents/{referent}/rewards">
+      <request>Nessun parametro. Route model binding su Referent.</request>
+      <response status="200">
+        Envelope standard `ok()`: { success:true, message:"OK", data:{ items:[ ... ] } }.
+        Ordinamento: `assigned_at` DESC, poi `id` DESC.
+        Shape di un item:
+        {
+          id: int,
+          assigned_at: string,              // ISO date
+          notes: string|null,
+          reward_type: { id:int, name:string, color:string },   // color = token di palette
+          source: {
+            type: "opportunity",            // alias della morph map, mai un FQCN
+            id: int,
+            name: string,
+            path: "/opportunities/{id}"     // link diretto al dettaglio
+          } | null,                          // null se l'origine e' stata cancellata
+          context: {                         // blocco specifico dell'origine; null se assente
+            registry: { id:int, name:string } | null,             // cliente/anagrafica
+            product_categories: [ { id:int, name:string } ],      // da productLines
+            opportunity_status: { id:int, name:string, color:string|null, group:"open"|"pending"|"closed" } | null,
+            workflow_status:    { id:int, name:string, color:string|null } | null,
+            operator: { id:int, name:string, avatar_url:string|null } | null
+          } | null
+        }
+        NESSUN valore di stato e' persistito su `rewards`: sono tutti letti dalle relazioni correnti.
+      </response>
+      <errors>403 se l'attore non ha `rewarded-referents.view`; 404 su referent inesistente.</errors>
+    </endpoint>
+
+    <!-- ============ 4. ABBINAMENTO DAL FORM (nessun endpoint nuovo) ============ -->
+    <endpoint method="POST|PATCH" path="/api/opportunities  ·  /api/opportunities/{opportunity}  ·  /api/request-management/{opportunity}">
+      <request>
+        Nuovo campo ANNIDATO, opzionale e SPARSE (come tutti gli altri campi di questi payload):
+        "rewards": [ { "reward_type_id": int } ]
+        Semantica: sostituzione completa dell'insieme (sync), non append. Assente = nessuna modifica;
+        `[]` = rimuove tutte le assegnazioni di quell'Opportunita'.
+        Regole di validazione (FormRequest):
+          - rewards            -> sometimes|array|max:20
+          - rewards.*.reward_type_id -> required|integer|exists:reward_types,id|distinct
+          - se `rewards` e' un array NON vuoto e l'Opportunita' (dopo l'update) non ha
+            `reporter_id`, la richiesta e' respinta 422 con errore sul campo `rewards` (D-3).
+      </request>
+      <response status="200|201">
+        `OpportunityResource` acquisisce il blocco:
+        "rewards": [ { id:int, reward_type:{id,name,color}, assigned_at:string, notes:string|null } ]
+        ordinato per `reward_type.name`. Serve all'idratazione del form in edit.
+      </response>
+      <errors>
+        422 rewards mancante di reporter (chiave `rewards`), 422 reward_type_id inesistente o
+        duplicato, 403 senza permesso di update sul modulo di provenienza.
+      </errors>
+    </endpoint>
+
+    <sync_semantics>
+      `RewardAssignmentWriter::sync(Opportunity $opportunity, array $rewardTypeIds): void`, chiamato
+      da `OpportunityService` DENTRO la transazione esistente, esattamente dove viene chiamato
+      `productInterestWriter->sync()` (create e update).
+      - beneficiario = `$opportunity->reporter_id` (D-3);
+      - origine = morphMany sull'Opportunity, quindi `source_type = 'opportunity'`;
+      - `assigned_at` = data corrente alla CREAZIONE della riga; una riga gia' esistente e ancora
+        presente nell'insieme NON viene ritoccata (la data di assegnazione originale si conserva);
+      - le righe non piu' presenti nell'insieme vengono cancellate;
+      - se `reporter_id` cambia su un'Opportunita' che ha gia' dei reward, il beneficiario delle
+        righe esistenti viene AGGIORNATO al nuovo Segnalatore (l'assegnazione segue il Segnalatore);
+      - se `reporter_id` viene azzerato mentre esistono reward, la richiesta e' respinta 422
+        sulla chiave `reporter_id` (non si creano orfani silenziosi).
+    </sync_semantics>
+
+    <registration_touchpoints>
+      Backend (7 file esistenti da toccare, checklist HANDOFF 0058):
+      `config/tables.php` (+`rewarded-referents`), `config/authorization.php` (+ aggiornare
+      l'array atteso di `FieldCatalogueEndpointTest`), `config/activity-log.php` (+`rewards` con
+      `model => Reward::class`), `config/navigation.php` (+voce `rewarded-referents`, icona
+      `gift` gia' mappata in `icon-map.ts`), `AppServiceProvider` morph map (+`'reward' => Reward::class`),
+      `DemoDataSeeder` (+`DemoRewardSeeder`), `routes/api/referents.php` (+la rotta rewards).
+      Nessuna migrazione ne' seeder per i permessi: `permissions:sync` li deriva dalla sola Policy.
+      Frontend: il registro moduli e' glob-driven (nessun file di registro da editare); restano
+      `routes/router.tsx`, `routes/breadcrumbs.tsx`, `pages/rewarded-referents-page.tsx`,
+      `i18n/locales/{it,en}.ts` + i due nuovi `{it,en}-rewarded-referents.ts`.
+      Quick-create: NON si aggiunge un'entry (il modulo e' read-only, D-6).
+    </registration_touchpoints>
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- ---------- Schema e model ---------- -->
+    <criterion id="AC-001">Data la migrazione eseguita, la tabella `rewards` esiste con le colonne
+      e gli indici del contratto; l'unique `rewards_unique_assignment` esiste. Verifica: Pest su
+      `Schema::hasColumns` + tentativo di inserimento duplicato che solleva QueryException.</criterion>
+    <criterion id="AC-002">Dato un `Reward` creato con `source()` associato a un'Opportunity, la
+      colonna `source_type` contiene la stringa `opportunity` (alias della morph map) e NON un FQCN;
+      `$reward->source` risolve un'istanza di Opportunity. Verifica: Pest.</criterion>
+    <criterion id="AC-003">Dato un Referente cancellato, i suoi `rewards` vengono cancellati a
+      cascata; dato un `RewardType` referenziato da almeno un reward, `DELETE /api/reward-types/{id}`
+      risponde 409 e la riga NON viene cancellata. Verifica: Pest (due test).</criterion>
+    <criterion id="AC-004">Dato un payload Opportunita' con due volte lo stesso `reward_type_id`,
+      la risposta e' 422 sulla chiave `rewards.1.reward_type_id` (regola `distinct`) e nessuna riga
+      viene creata. Verifica: Pest.</criterion>
+
+    <!-- ---------- Elenco aggregato ---------- -->
+    <criterion id="AC-005">Dati 3 Referenti di cui 2 con reward, `POST /api/tables/rewarded-referents/rows`
+      ritorna esattamente 2 items e `pagination.total = 2`: il Referente senza reward NON compare.
+      Verifica: Pest.</criterion>
+    <criterion id="AC-006">Dato un Referente con 4 reward, l'elenco ritorna per lui UNA sola riga
+      (nessun duplicato) con `rewards_count = 4`. Verifica: Pest.</criterion>
+    <criterion id="AC-007">Dato un Referente con 3 reward su opportunita' in stato di gruppo
+      `open`, `pending` e `closed`, la riga espone `active_rewards_count = 2` e
+      `completed_rewards_count = 1` (D-2). Verifica: Pest.</criterion>
+    <criterion id="AC-008">Dato un Referente con reward assegnati in date diverse,
+      `last_assigned_at` e' la data MASSIMA. Verifica: Pest.</criterion>
+    <criterion id="AC-009">Dato un Referente il cui `personalData.last_name` e' "Bianchi" mentre
+      `referents.name` non contiene quella stringa, la ricerca globale `search=Bianchi` lo trova.
+      Verifica: Pest.</criterion>
+    <criterion id="AC-010">Dato `sortModel` su `rewards_count` desc, l'ordine degli items rispetta
+      il contatore; dato un `colId` NON presente in `sortableColumnIds()`, la risposta e' 422.
+      Verifica: Pest (due test).</criterion>
+    <criterion id="AC-011">Ogni advanced filter del contratto (`reward_type`, `opportunity`,
+      `opportunity_status`, `workflow_status`, `operator`, `assigned_at`) restringe l'elenco ai soli
+      Referenti che hanno ALMENO un reward corrispondente. Verifica: Pest, un test per filtro.</criterion>
+    <criterion id="AC-012">Un attore privo di `rewarded-referents.viewAny` riceve 403 su
+      `/rows` e su `/columns`, anche se possiede `referents.viewAny` (i due permission set sono
+      indipendenti). Verifica: Pest.</criterion>
+    <criterion id="AC-013">Dato un elenco di N Referenti con M reward ciascuno, il numero di query
+      eseguite dall'endpoint `/rows` e' COSTANTE rispetto a N e M. Verifica: Pest con
+      `DB::listen`/conteggio query su due dataset di dimensioni diverse, asserendo lo stesso conteggio.</criterion>
+
+    <!-- ---------- Dettaglio lazy ---------- -->
+    <criterion id="AC-014">`GET /api/referents/{referent}/rewards` ritorna l'envelope
+      `{success,message,data:{items}}` con la shape esatta del contratto, ordinata per `assigned_at`
+      desc, inclusi `reward_type.color`, `source.path` e i due badge di stato dal `context`.
+      Verifica: Pest con `assertJsonStructure` + asserzione sui valori.</criterion>
+    <criterion id="AC-015">Dato un reward la cui Opportunita' ha `opportunity_workflow_status_id`
+      NULL, l'item espone `context.workflow_status = null` senza errori; dato un reward la cui
+      Opportunita' non ha operatore (nessun manager con position 2), `context.operator = null`.
+      Verifica: Pest.</criterion>
+    <criterion id="AC-016">Cambiando lo stato dell'Opportunita' e ripetendo la GET, il badge
+      riflette il nuovo valore senza alcuna scrittura sulla tabella `rewards` (nessuna colonna di
+      stato duplicata). Verifica: Pest.</criterion>
+    <criterion id="AC-017">Il numero di query dell'endpoint di dettaglio e' costante rispetto al
+      numero di reward del Referente. Verifica: Pest con conteggio query su 2 e su 10 reward.</criterion>
+    <criterion id="AC-018">Un attore privo di `rewarded-referents.view` riceve 403. Verifica: Pest.</criterion>
+
+    <!-- ---------- Abbinamento dal form ---------- -->
+    <criterion id="AC-019">`POST /api/opportunities` con `rewards:[{reward_type_id:X}]` e
+      `reporter_id` valorizzato crea una riga `rewards` con `referent_id = reporter_id`,
+      `source_type = 'opportunity'`, `source_id` = id dell'opportunita' creata e `assigned_at` = oggi;
+      la risposta contiene il blocco `rewards`. Verifica: Pest.</criterion>
+    <criterion id="AC-020">`PATCH` con `rewards` che rimuove un elemento e ne aggiunge un altro
+      cancella solo la riga rimossa, crea solo quella aggiunta e LASCIA INVARIATO l'`assigned_at`
+      della riga sopravvissuta; `rewards: []` cancella tutto; `rewards` assente non modifica nulla.
+      Verifica: Pest (quattro asserzioni).</criterion>
+    <criterion id="AC-021">`POST/PATCH` con `rewards` non vuoto e `reporter_id` nullo risponde 422
+      sulla chiave `rewards` e non crea nulla; `PATCH` che azzera `reporter_id` su un'opportunita'
+      con reward esistenti risponde 422 sulla chiave `reporter_id`. Verifica: Pest (due test).</criterion>
+    <criterion id="AC-022">`PATCH` che cambia `reporter_id` su un'opportunita' con reward esistenti
+      aggiorna il `referent_id` di quelle righe al nuovo Segnalatore. Verifica: Pest.</criterion>
+    <criterion id="AC-023">`PATCH /api/request-management/{opportunity}` accetta lo stesso campo
+      `rewards` con identica semantica e identici codici di errore. Verifica: Pest.</criterion>
+    <criterion id="AC-024">Ogni create/update/delete di un `Reward` produce una voce di activity
+      log recuperabile dal log aggregato. Verifica: Pest.</criterion>
+
+    <!-- ---------- Frontend ---------- -->
+    <criterion id="AC-025">La pagina `/rewarded-referents` monta `TableView` sul dominio corretto e
+      mostra il fallback di permesso negato quando l'utente non ha `rewarded-referents.viewAny`.
+      Verifica: Vitest/RTL con query per ruolo accessibile.</criterion>
+    <criterion id="AC-026">Espandendo una riga, il detail renderer chiama l'endpoint di dettaglio
+      UNA sola volta, mostra lo stato di caricamento durante la fetch, e poi una card per buono con
+      nome tipologia, pallino del colore configurato, nome Opportunita' come link a
+      `/opportunities/{id}`, cliente, categorie prodotto, data, i due badge di stato, operatore e
+      note. Collassando e riespandendo non rifa' la richiesta. Verifica: Vitest/RTL con mock
+      dell'api client, asserendo il conteggio delle chiamate.</criterion>
+    <criterion id="AC-027">Se l'endpoint di dettaglio fallisce, il detail renderer mostra un
+      messaggio di errore con azione di ritenta, non uno spinner infinito ne' una riga vuota.
+      Verifica: Vitest/RTL.</criterion>
+    <criterion id="AC-028">Un Referente con zero buoni nel dettaglio (caso di corsa: reward
+      cancellati fra elenco ed espansione) mostra l'empty state tradotto. Verifica: Vitest/RTL.</criterion>
+    <criterion id="AC-029">Nel form Opportunita', con `reporter_id` valorizzato, il controllo buoni
+      e' abilitato: aggiungendo una tipologia compare un chip col colore del token, rimuovendolo il
+      chip sparisce, e il payload inviato contiene l'array `rewards` corrispondente. Verifica:
+      Vitest/RTL + test sul builder di payload.</criterion>
+    <criterion id="AC-030">Con `reporter_id` vuoto il controllo buoni e' disabilitato e comunica il
+      motivo con testo accessibile (non solo colore); i chip eventualmente presenti restano visibili
+      in sola lettura. Verifica: Vitest/RTL.</criterion>
+    <criterion id="AC-031">La stessa interazione di AC-029/AC-030 funziona in
+      `request-attribution-section.tsx` del work panel Gestione Richiesta. Verifica: Vitest/RTL.</criterion>
+    <criterion id="AC-032">Nessuna stringa e' hard-coded: tutte le etichette del modulo e del
+      controllo passano da i18next e sono presenti in `it` e in `en` (nessuna chiave grezza a
+      schermo). Verifica: Vitest/RTL asserendo testi tradotti + `tsc --noEmit` sul tipo
+      `TranslationResources`.</criterion>
+    <criterion id="AC-033">Nessuna logica del modulo dipende dalla stringa "Amazon" o da un id di
+      tipologia hard-coded: la tipologia e' sempre letta da `reward_types`. Verifica: grep di
+      `Amazon` sui file della feature (backend e frontend) con zero occorrenze fuori dai seeder demo
+      e dalle fixture di test.</criterion>
+    <criterion id="AC-034">A 375px la pagina non produce scrollbar orizzontale, la riga espansa
+      impila le informazioni del buono in colonna e i testi lunghi sono troncati; a 768 e 1024px il
+      layout si adatta senza sovrapposizioni. Verifica: review manuale UI (giudizio umano
+      dichiarato), non automatizzabile.</criterion>
+
+    <!-- ---------- Non regressione ---------- -->
+    <criterion id="AC-035">La suite Pest e la suite Vitest INTERE non introducono alcun rosso nuovo
+      rispetto alla baseline pre-modifica (i rossi pre-esistenti documentati in HANDOFF restano tali
+      e vanno isolati con `git stash`); Pint `--test`, `tsc --noEmit` ed ESLint sui file toccati sono
+      puliti. Verifica: esecuzione reale da parte del verifier, con evidenza dei conteggi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>NESSUNA nuova dipendenza npm o composer. AG Grid Enterprise e' gia' presente e
+      licenziato: `masterDetail` usa moduli gia' registrati.</item>
+    <item>Authorization SERVER-SIDE su ogni endpoint: `rewarded-referents.viewAny` per l'elenco,
+      `rewarded-referents.view` per il dettaglio, il permesso di update del modulo di provenienza
+      per il campo `rewards`. L'UI nasconde, il backend autorizza.</item>
+    <item>Ordinamento, filtri e ricerca costruiti ESCLUSIVAMENTE da allow-list di colonne derivate
+      dal catalogo: nessun `orderByRaw`/`whereRaw` alimentato da input utente. Cap
+      `MAX_FILTER_VALUES = 200` come nelle definition esistenti.</item>
+    <item>Mass assignment: `#[Fillable]` esplicito su `Reward`. Validazione via FormRequest e
+      `$request->safe()->only()`, mai `$request->only()` da solo.</item>
+    <item>Zero N+1: l'elenco usa `withCount` con vincoli sulla relazione (nessuna query per riga);
+      il dettaglio usa eager loading esplicito. AC-013 e AC-017 lo verificano contando le query,
+      non a vista. `Model::preventLazyLoading()` e' attivo fuori produzione: un lazy load
+      dimenticato fallisce rumorosamente in test.</item>
+    <item>Nessun valore di stato duplicato su `rewards`: gli stati si leggono sempre dalle relazioni
+      correnti dell'origine (requisito esplicito del brief, verificato da AC-016).</item>
+    <item>Il master/detail resta ISOLATO nella feature `rewarded-referents`; `components/data-table/`
+      non viene generalizzato finche' non esiste un secondo consumatore.</item>
+    <item>File entro 300 righe (soft) / 500 (hard): la TableDefinition delega a collaboratori
+      (ColumnCatalog, AdvancedFilterCatalog, RowMapper, RelationColumns) come Opportunities e
+      RequestManagement.</item>
+    <item>Seeder: `DemoRewardSeeder` va SOLO in `DemoDataSeeder`, mai in `DatabaseSeeder`;
+      idempotente (`firstOrCreate`).</item>
+    <item>Identificatori in INGLESE ovunque (tabelle, colonne, rotte, chiavi); italiano solo nei
+      valori i18n esposti a UI.</item>
+    <item>Git: nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in
+      quel momento (CLAUDE.md §3.6). Allo stato verde si aggiorna `docs/HANDOFF.md` e ci si ferma.</item>
+  </constraints>
+
+</spec>

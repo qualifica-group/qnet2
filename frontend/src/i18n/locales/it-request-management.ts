@@ -132,6 +132,16 @@ export const requestManagement = {
       selectPlaceholder: 'Seleziona',
       selectEmpty: 'Nessun risultato',
       selectError: 'Impossibile caricare le opzioni.',
+      rewards: {
+        fieldLabel: 'Buoni assegnati',
+        add: 'Aggiungi buono',
+        remove: 'Rimuovi {{name}}',
+        searchPlaceholder: 'Cerca una tipologia…',
+        empty: 'Nessuna tipologia trovata.',
+        error: 'Impossibile caricare le tipologie.',
+        loadMore: 'Carica altri',
+        reporterRequiredHint: 'Seleziona prima un segnalatore per assegnare un buono.',
+      },
     },
     client: {
       title: 'Anagrafica',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Opportunities\OpportunityController;
+use App\Http\Controllers\Opportunities\OpportunityForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,9 +14,13 @@ use Illuminate\Support\Facades\Route;
 | routes/api.php INSIDE the existing `auth:sanctum` group, so every route
 | below inherits that same middleware/prefix context.
 |
-| No for-select for the opportunities resource itself (out of scope, spec
-| 0040): no other module consumes an Opportunity as a select.
+| for-select (spec 0059/MT-10): initially out of scope (spec 0040), added to
+| feed the `rewarded-referents` "opportunity" advanced filter. Declared
+| ABOVE opportunities/{opportunity} so the literal segment wins over the
+| route-model-binding wildcard (mirrors leads/for-select, products/for-select).
 */
+
+Route::get('opportunities/for-select', OpportunityForSelectController::class);
 
 // Opportunities CRUD. Authorization (opportunities.view/create/update/
 // delete) is enforced server-side in OpportunityController via

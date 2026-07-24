@@ -91,6 +91,11 @@ function baseFields(t: TFunction) {
     // line, after the picker's unlock dialog), so there is nothing else to
     // cross-validate against `product_lines` here.
     products_of_interest: z.array(z.number()).min(1, t('products.ofInterest.required')),
+    // Spec 0059 D-3: reward assignments for the reporter (chips under the
+    // field). Only the type id travels — beneficiary/date are server-derived.
+    // Duplicates are prevented client-side (the add control excludes
+    // already-picked types), so there is nothing left to cross-validate here.
+    rewards: z.array(z.object({ reward_type_id: z.number() })),
     // Ordered, gap-aware "G.A. n" manager slots: index+1 = G.A. number, `null`
     // = an intentionally empty slot. At most MAX_MANAGERS filled.
     manager_slots: z

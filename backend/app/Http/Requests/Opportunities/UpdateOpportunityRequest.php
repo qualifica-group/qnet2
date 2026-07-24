@@ -6,6 +6,7 @@ use App\DataObjects\Opportunities\UpdateOpportunityData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -56,6 +57,7 @@ class UpdateOpportunityRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
     use ValidatesProductLines;
+    use ValidatesRewards;
     use ValidatesWorkflowStatus;
 
     public function authorize(): bool
@@ -103,7 +105,7 @@ class UpdateOpportunityRequest extends FormRequest
             // unlocking the picker.
             'products_of_interest' => ['sometimes', 'array', 'min:1'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
-        ], $this->managerSlotsRules(), $this->productLinesRules(required: false));
+        ], $this->managerSlotsRules(), $this->productLinesRules(required: false), $this->rewardsRules());
     }
 
     /**
@@ -159,6 +161,7 @@ class UpdateOpportunityRequest extends FormRequest
 
             $this->validateManagerSlots($validator);
             $this->validateProductLines($validator);
+            $this->validateRewards($validator, $opportunity);
             $this->enforceFieldPermissions($validator);
             $this->validateWorkflowStatus($validator, $opportunity);
         });

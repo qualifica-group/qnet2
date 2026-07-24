@@ -208,6 +208,22 @@ return [
                     'permission' => 'referent-types.view',
                 ],
                 [
+                    // Rewarded referents (spec 0059): the "Referenti con Buoni"
+                    // aggregated, READ-ONLY view (D-6) over Referenti holding at
+                    // least one Reward. Gated by its OWN
+                    // `rewarded-referents.*` permission set, never
+                    // `referents.*` (precedent request-management). Icon
+                    // deliberately NOT `gift` (already reward-types', the
+                    // configuration lookup this view aggregates ASSIGNMENTS
+                    // of): `handshake` (Opportunities' own icon) instead —
+                    // the commercial context every reward's origin belongs to.
+                    'key' => 'rewarded-referents',
+                    'label' => 'navigation.rewardedReferents',
+                    'icon' => 'handshake',
+                    'route' => '/rewarded-referents',
+                    'permission' => 'rewarded-referents.view',
+                ],
+                [
                     'key' => 'companies',
                     'label' => 'navigation.companies',
                     'icon' => 'building',

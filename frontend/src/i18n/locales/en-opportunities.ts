@@ -98,6 +98,16 @@ export const opportunities = {
     productLines: {
       fieldLabel: 'Function/category rows',
     },
+    rewards: {
+      fieldLabel: 'Assigned rewards',
+      add: 'Add reward',
+      remove: 'Remove {{name}}',
+      searchPlaceholder: 'Search a reward type…',
+      empty: 'No reward type found.',
+      error: 'Could not load the reward types.',
+      loadMore: 'Load more',
+      reporterRequiredHint: 'Select a reporter first to assign a reward.',
+    },
     supervisor: 'Supervisor',
     supervisorSearch: 'Search supervisors…',
     managers: 'Account managers',

@@ -2,6 +2,93 @@
 
 > Injected at session start. Update at every green state.
 
+## MODULO 0059 — "REFERENTI CON BUONI" + ASSEGNAZIONE POLIMORFICA (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec CONGELATA E APPROVATA: `docs/specs/0059-referent-rewards-module.xml`. Costruita con team di
+teammate a ownership disgiunta (MT-1..MT-8 + MT-10). Consegna: la tabella `rewards` (assegnazione
+effettiva) con ORIGINE POLIMORFICA, il modulo SSRM read-only `rewarded-referents`, l'endpoint di
+dettaglio lazy per il master/detail, e il controllo di abbinamento buono nei form Opportunita' e nel
+work panel Gestione Richiesta.
+
+DECISIONI UTENTE (AskUserQuestion 2026-07-23), non deducibili dal codice:
+- D-1: DUE badge di stato, non tre. "Stato commerciale" = `opportunityStatus`, "Stato di lavorazione"
+  = `workflowStatus`. Sull'Opportunity esistono SOLO due dimensioni di stato (opportunity_status_id +
+  opportunity_workflow_status_id NULLABLE); il brief ne nominava tre. Il `group` NON e' un badge.
+- D-2: "attivo"/"completato" sono DERIVATI a read-time dal group dell'OpportunityStatus
+  (open,pending=attivo; closed=completato), MAI persistiti su rewards. Vale solo per origini con stato
+  (oggi Opportunity), quindi rewards_count >= attivi+completati e' un invariante accettato.
+- D-3: PIU' buoni per opportunita'; beneficiario SEMPRE il Segnalatore (reporter_id), non scegliibile;
+  controllo disabilitato con hint accessibile se reporter vuoto.
+- D-4: riga espandibile = AG Grid masterDetail (IL PRIMO del progetto), detail lazy on-expand.
+- D-5: beneficiario FK semplice `referent_id`, NON polimorfico (la polimorfia e' solo sull'origine).
+- D-6: naming `rewards`/`Reward`/alias morph `reward`; modulo aggregato `rewarded-referents`,
+  READ-ONLY (nessun CRUD autonomo: le assegnazioni nascono/muoiono solo dal payload Opportunita').
+
+CONTRATTO CHIAVE (congelato nella spec, rispettato da BE e FE senza rinegoziare): campo annidato
+`rewards: [{reward_type_id}]` nel payload di POST/PATCH opportunities E PATCH request-management, con
+semantica SPARSE A TRE STATI — chiave ASSENTE = non toccare; `[]` = cancella tutto; array pieno =
+sostituzione completa (sync). Collassare "assente" e "vuoto" = perdita dati silenziosa: c'e' un test
+esplicito su entrambi i lati (BE AC-020, FE opportunity/request-work payload). Endpoint dettaglio:
+`GET /api/referents/{referent}/rewards`, envelope ok(), stati letti dalle relazioni correnti (nessun
+valore duplicato su rewards). Elenco SSRM: dominio `rewarded-referents`, permessi PROPRI
+(`rewarded-referents.*` via RewardedReferentPolicy, precedente esatto RequestManagementPolicy: la
+TableDefinition override authorizeViewAny con can('rewarded-referents.*') perche' modelClass e'
+Referent e il default risolverebbe ReferentPolicy).
+
+FILE NUOVI PRINCIPALI: Model `Reward` (source() MorphTo, referent/rewardType BelongsTo);
+`RewardAssignmentWriter` (sync/retarget/deleteRemoved PER-MODELLO, non bulk, per non saltare gli
+eventi di LogsModelActivity — necessario ad AC-024); `RewardedReferentsTableDefinition` + 6
+collaboratori in app/Tables/RewardedReferents/; `RewardedReferentPolicy`; `RewardedReferentsAuthorization`;
+`ReferentRewardsController` + `RewardResource` (context estendibile via match su getMorphClass, una
+sola arm Opportunity oggi); componenti FE condivisi in `features/rewards/` (RewardChip/RewardChipList/
+RewardCard, etichette via props non i18n interno); modulo FE `features/rewarded-referents/` col PRIMO
+detailCellRenderer del progetto; `features/opportunities/reward-assignment-field.tsx`.
+
+PROP CONDIVISE AGGIUNTE (additive, retrocompatibili, default invariato per gli altri 25 moduli):
+`masterDetail?`/`detailCellRenderer?`/`detailRowAutoHeight?` opzionali su DataTable e TableView. Due
+file condivisi hanno superato le 500 righe e sono stati SPLITTATI per pura estrazione (zero cambi di
+comportamento, provato dalle suite): data-table.tsx -> data-table-overlays.tsx; table-view.tsx ->
+use-table-layout-persistence.ts. Il master/detail resta ISOLATO in rewarded-referents (vincolo spec).
+
+POLIMORFIA D-2: i due withCount attivi/completati e 3 dei 6 advanced filter usano
+`whereHasMorph('source', [Opportunity::class], ...)`, cosi' un'origine futura priva di stato non
+sporca i contatori; il filtro `opportunity` usa where source_type=alias esplicito. Alias sempre dalla
+morph map stretta, mai FQCN.
+
+MT-10 (rotta GET /api/opportunities/for-select, clone di LeadForSelectController): serve al filtro
+"ricerca per Opportunita'" (async_search) del modulo. Lato FE il campo advanced-filter e' GENERICO
+(costruisce l'URL dal nome resource), quindi MT-10 e' solo-backend. COMPLETO E VERDE (4 test).
+NB: OpportunityService.php ora a 357 righe (sopra soft-limit 300, sotto hard 500) — stesso follow-up
+di RequestManagementService.
+
+GATE FINALE AC-035 (eseguito dal lead sullo stato finale, evidenza reale, XDEBUG_MODE=off):
+- Pest INTERA: 3719 test, 3706 passati, 12 falliti = ESATTAMENTE i 12 pre-esistenti della baseline
+  (AbstractMigrationSourcePreviewTest, 10x *SecurityTest::navigation, CustomFieldWritePipelineTest sul
+  VAT). +40 test nuovi tutti verdi rispetto alla baseline 3679. ZERO regressioni.
+- Vitest INTERA: 2296 test, 2293 passati, 3 falliti = i 3 pre-esistenti (cell-renderers.test.tsx,
+  ContactsCell i18n). ZERO regressioni.
+- tsc -b: 0 errori. Pint --test (intero backend): passed. ESLint (dir toccate): pulito.
+Tutti gli AC-001..AC-035 verdi; AC-034 (resa 375/768/1024px) resta review umana non eseguita.
+
+TRAPPOLE CONFERMATE (gia' note da 0058, non reintrodurle): (1) `use App\Models\Reward;` obbligatorio
+in config/activity-log.php altrimenti la costante risolve alla stringa e l'activity log fallisce in
+silenzio; (2) registrare la resource in config/authorization.php ROMPE FieldCatalogueEndpointTest
+(`toEqualCanonicalizing`): aggiungere la chiave all'array atteso e' legittimo. Entrambe gestite.
+
+DUE INCIDENTI DI PROCESSO in questa sessione (chiusi, ma da ricordare per il lavoro multi-sessione su
+albero CONDIVISO): (1) `migrate:fresh --env=testing` ha azzerato il MySQL di sviluppo `qnet2` perche'
+NON esiste backend/.env.testing e artisan cade su .env (mysql); phpunit.xml usa sqlite :memory: SOLO
+per il runner. (2) un `git stash` NON scopato su working tree condiviso ha risucchiato il WIP tracked
+di piu' teammate (i file untracked sono sopravvissuti). REGOLE PERMANENTI ADOTTATE: eseguire Pest solo
+con `XDEBUG_MODE=off` (Xdebug e' mode=debug su questa macchina e fa SIGSEGV sui run lunghi); NESSUN
+comando git in scrittura in sessione multi-teammate (per confronti baseline usare `git show HEAD:path`,
+mai stash); mai `php artisan --env=testing` su questa macchina.
+
+FOLLOW-UP APERTI: (a) `RequestManagementService.php` a 492 righe, 8 dal hard-limit 500 -> split
+dedicato (es. estrarre un RequestRewardWriter), NON dentro questa feature; (b) resa visiva reale
+375/768/1024px (AC-034, review umana) ed E2E browser non verificati; (c) valutare `.env.testing`
+sqlite per rendere innocuo `artisan --env=testing` (decisione utente, non fatta unilateralmente).
+
 ## MODULO REWARD-TYPES "BUONI, PREMI E INCENTIVI" (2026-07-23) — GREEN, NON COMMITTATO
 
 Spec CONGELATA E APPROVATA: `docs/specs/0058-reward-types-module.xml`. Anagrafica configurativa pura

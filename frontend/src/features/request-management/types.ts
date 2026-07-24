@@ -8,6 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { Address, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
@@ -194,6 +195,13 @@ export interface RequestWorkPanel {
   /** Next follow-up call the operator scheduled, `"Y-m-d\TH:i"` local format or null (spec 0052 D-1/D-5). */
   next_callback_at: string | null
   context: RequestWorkContext
+  /**
+   * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
+   * `reward_type.name`. Optional for the same fixture-compatibility reason
+   * as `operational_site`/`workflow_status` elsewhere in this resource —
+   * treat a missing key the same as `[]`.
+   */
+  rewards?: RewardAssignmentRef[]
 }
 
 /**
@@ -269,12 +277,25 @@ export interface UpdateRequestWorkPayload {
   client_identity?: RequestClientIdentityPayload
   client_contacts?: RequestClientContactPayload[]
   client_address?: RequestClientAddressPayload
+  /** Spec 0059 D-3: reward assignments for the reporter, full-replace sync when sent. */
+  rewards?: RequestRewardInput[]
 }
 
 /** One `product_lines` row of the create payload: both ids are mandatory on the wire (D-3), unlike the form's in-progress rows. */
 export interface CreateRequestProductLinePayload {
   business_function_id: number
   product_category_id: number
+}
+
+/**
+ * One `rewards` row of the update payload (spec 0059 §4): only the type id
+ * travels — the beneficiary (the reporter) and `assigned_at` are derived
+ * server-side by `RewardAssignmentWriter`. Kept LOCAL rather than imported
+ * from `features/opportunities` (same module-decoupling reason as
+ * `ApplicableAttributeSummary`/`RequestProductLine`).
+ */
+export interface RequestRewardInput {
+  reward_type_id: number
 }
 
 /**

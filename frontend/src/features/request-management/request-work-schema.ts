@@ -188,6 +188,11 @@ export function buildRequestWorkSchema(
       // channels write the same collection). The other membership rules
       // (existence, category coverage) stay server-side only.
       products_of_interest: z.array(z.number()).min(1, t('products.ofInterest.required')),
+      // Spec 0059 D-3: reward assignments for the reporter (chips under the
+      // field). Only the type id travels — beneficiary/date are
+      // server-derived. Duplicates are prevented client-side (the add
+      // control excludes already-picked types).
+      rewards: z.array(z.object({ reward_type_id: z.number() })),
       // Attribution (user directive 2026-07-22): plain nullable relation ids
       // — existence is a server-side rule, there is nothing to mirror here.
       source_id: z.number().nullable(),

@@ -165,6 +165,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 reporter={panel.reporter}
                 operator={panel.operator}
                 operationalSite={toRelationFieldRef(panel.operational_site)}
+                rewards={panel.rewards ?? []}
               />
 
               <RequestDynamicFields control={form.control} attributes={panel.applicable_attributes} />

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Opportunity entity (spec 0040): a commercial deal against an Anagrafica
@@ -241,5 +242,18 @@ class Opportunity extends BaseModel
     protected function operatorId(): Attribute
     {
         return Attribute::get(fn (): ?int => $this->operatorManager()?->id);
+    }
+
+    /**
+     * The vouchers/rewards/incentives whose origin is this opportunity
+     * (spec 0059, `Reward::source()`, morph alias `opportunity`). Written
+     * exclusively by `RewardAssignmentWriter::sync()`, mirroring the
+     * `productsOfInterest()` nested-sync precedent.
+     *
+     * @return MorphMany<Reward, $this>
+     */
+    public function rewards(): MorphMany
+    {
+        return $this->morphMany(Reward::class, 'source');
     }
 }

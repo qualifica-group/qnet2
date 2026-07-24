@@ -44,6 +44,11 @@ namespace App\DataObjects\Opportunities;
  * input anywhere (form or request-management create). OpportunityService
  * derives it as `OPP_{id}` right after the insert, mirroring
  * RegistryService's own placeholder-then-derive pattern for `registries.name`.
+ *
+ * Spec 0059: `rewards` — the reward-type ids to assign, synced by
+ * RewardAssignmentWriter — follows the SAME null-means-untouched/out-of-
+ * attributes() convention as `productsOfInterest` (D-3: the beneficiary is
+ * always the opportunity's `reporterId`, never part of this collection).
  */
 final readonly class CreateOpportunityData
 {
@@ -51,6 +56,7 @@ final readonly class CreateOpportunityData
      * @param  array<int, int|null>|null  $managerSlots
      * @param  array<int, array{business_function_id: int, product_category_id: int}>|null  $productLines
      * @param  array<int, int>|null  $productsOfInterest  "prodotti di interesse" (user directive 2026-07-22): a to-many reference synced by OpportunityProductInterestWriter, never mass-assigned — out of attributes() like the two collections above
+     * @param  array<int, int>|null  $rewards  reward-type ids (spec 0059), synced by RewardAssignmentWriter — out of attributes() like the collection above
      */
     public function __construct(
         public ?int $registryId,
@@ -71,6 +77,7 @@ final readonly class CreateOpportunityData
         public ?int $workflowStatusId = null,
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
+        public ?array $rewards = null,
     ) {}
 
     /**
@@ -101,6 +108,7 @@ final readonly class CreateOpportunityData
             workflowStatusId: isset($data['opportunity_workflow_status_id']) ? (int) $data['opportunity_workflow_status_id'] : null,
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
+            rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
         );
     }
 
@@ -112,9 +120,25 @@ final readonly class CreateOpportunityData
         return array_values(array_unique(array_map(static fn ($id): int => (int) $id, (array) $ids)));
     }
 
+    /**
+     * @return array<int, int>
+     */
+    private static function normalizeRewardTypeIds(mixed $rows): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['reward_type_id'],
+            (array) $rows,
+        )));
+    }
+
     public function hasProductsOfInterest(): bool
     {
         return $this->productsOfInterest !== null;
+    }
+
+    public function hasRewards(): bool
+    {
+        return $this->rewards !== null;
     }
 
     /**

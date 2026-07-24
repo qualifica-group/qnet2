@@ -18,6 +18,7 @@ import { OpportunityPlanningSection } from '@/features/opportunities/opportunity
 import { OpportunityFromLeadBanner } from '@/features/opportunities/opportunity-from-lead-banner'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
 import { OpportunityLeadField } from '@/features/opportunities/opportunity-lead-field'
+import { OpportunityReporterField } from '@/features/opportunities/opportunity-reporter-field'
 import {
   NO_LEAD_SUBMISSION,
   useOpportunityForm,
@@ -27,6 +28,10 @@ import {
 import { useOpportunityLeadSelection } from '@/features/opportunities/use-opportunity-lead-selection'
 import { useOpportunitySelectedItems } from '@/features/opportunities/use-opportunity-selected-items'
 import type { OpportunityDetail, OpportunityFormMode, OpportunityProductLine } from '@/features/opportunities/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
+
+/** Stable empty default: create mode has no persisted reward assignments to hydrate. */
+const EMPTY_REWARDS: RewardAssignmentRef[] = []
 
 interface OpportunityFormBodyProps {
   mode: OpportunityFormMode
@@ -134,6 +139,8 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
   const referentId = useWatch({ control: form.control, name: 'referent_id' })
   const commercialId = useWatch({ control: form.control, name: 'commercial_id' })
   const reporterId = useWatch({ control: form.control, name: 'reporter_id' })
+  const rewards = useWatch({ control: form.control, name: 'rewards' })
+  const initialRewards = mode.type === 'edit' ? (mode.opportunity.rewards ?? EMPTY_REWARDS) : EMPTY_REWARDS
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -204,23 +211,14 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
                 <OpportunityContactRecap referentId={commercialId} />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <RelationSelectField
-                  control={form.control}
-                  name="reporter_id"
-                  metaKey="reporter_id"
-                  label={t('opportunities.form.reporter')}
-                  resource={REFERENTS_FOR_SELECT_RESOURCE}
-                  searchPlaceholder={t('opportunities.form.reporterSearch')}
-                  selected={selectedItems.reporter}
-                  placeholder={t('opportunities.form.selectPlaceholder')}
-                  emptyLabel={t('opportunities.form.selectEmpty')}
-                  errorLabel={t('opportunities.form.selectError')}
-                  clearLabel={t('common.clear')}
-                  retryLabel={t('common.retry')}
-                />
-                <OpportunityContactRecap referentId={reporterId} />
-              </div>
+              <OpportunityReporterField
+                control={form.control}
+                selected={selectedItems.reporter}
+                reporterId={reporterId}
+                rewards={rewards}
+                onRewardsChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
+                initialRewards={initialRewards}
+              />
             </div>
           </FormSection>
 

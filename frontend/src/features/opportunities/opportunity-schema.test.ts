@@ -33,6 +33,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     // products_of_interest is mandatory too (>=1 product, user directive
     // 2026-07-23): the base happy-path carries one; the empty case overrides it.
     products_of_interest: [7],
+    rewards: [],
     manager_slots: [],
     start_date: null,
     expected_close_date: null,

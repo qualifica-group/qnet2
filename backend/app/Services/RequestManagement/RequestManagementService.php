@@ -18,6 +18,7 @@ use App\RequestManagement\AttributeValueValidator;
 use App\Services\Notes\NoteService;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
+use App\Services\Opportunities\RewardAssignmentWriter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -104,6 +105,7 @@ final class RequestManagementService
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly NoteService $noteService,
         private readonly RequestOperatorWriter $operatorWriter,
+        private readonly RewardAssignmentWriter $rewardAssignmentWriter,
     ) {}
 
     /**
@@ -125,7 +127,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{opportunity_workflow_status_id?: int|null, note?: string|null, attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
+     * @param  array{opportunity_workflow_status_id?: int|null, note?: string|null, attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
      * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>}
      */
     public function updateWork(Opportunity $opportunity, User $actor, array $data): array
@@ -133,6 +135,10 @@ final class RequestManagementService
         return DB::transaction(function () use ($opportunity, $actor, $data): array {
             $changed = [];
             $old = [];
+            // spec 0059, D-3/AC-022: captured BEFORE Step 0 mutates
+            // reporter_id in-memory, so applyRewards() can tell a genuine
+            // change apart from an untouched/no-op submission.
+            $previousReporterId = $opportunity->reporter_id;
 
             // Step 0: attribution (user directive 2026-07-22) — applied
             // BEFORE the working-state step on purpose: `source_id` is one of
@@ -191,6 +197,14 @@ final class RequestManagementService
             if (array_key_exists('products_of_interest', $data)) {
                 $this->applyProductsOfInterest($opportunity, (array) $data['products_of_interest'], $changed, $old);
             }
+
+            // Step 4-bis: reward assignments (spec 0059, AC-023) — identical
+            // semantics to the opportunities payload (D-3): the retarget half
+            // runs whenever `reporter_id` genuinely changed, INDEPENDENT of
+            // whether `rewards` itself was submitted; the sync half only when
+            // `rewards` was submitted. Both operate on the writer shared with
+            // OpportunityService, so the two channels can never diverge.
+            $this->applyRewards($opportunity, $previousReporterId, $data, $changed, $old);
 
             // Step 5: client anagraphic (spec 0049 amendment; spec 0055 D-7 for
             // the inline channel's four sparse single-field keys) — identity,
@@ -280,6 +294,44 @@ final class RequestManagementService
         if ($addedLines !== []) {
             $changed['product_lines_added'] = $addedLines;
         }
+    }
+
+    /**
+     * Reward assignments (spec 0059, AC-023): identical D-3 semantics to
+     * OpportunityService::update() — the FormRequest (ValidatesRewards) has
+     * already rejected the two invalid combinations (non-empty `rewards`
+     * without a reporter; a `reporter_id` clear while rewards exist), so no
+     * extra guard runs here.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    private function applyRewards(Opportunity $opportunity, ?int $previousReporterId, array $data, array &$changed, array &$old): void
+    {
+        $reporterChanged = array_key_exists('reporter_id', $data) && $opportunity->reporter_id !== $previousReporterId;
+
+        if ($reporterChanged) {
+            $this->rewardAssignmentWriter->retarget($opportunity);
+        }
+
+        if (! array_key_exists('rewards', $data)) {
+            return;
+        }
+
+        $current = $opportunity->rewards()->pluck('reward_type_id')->map(intval(...))->sort()->values()->all();
+        $next = collect((array) $data['rewards'])
+            ->map(static fn (array $row): int => (int) $row['reward_type_id'])
+            ->unique()->sort()->values()->all();
+
+        if ($current === $next) {
+            return;
+        }
+
+        $this->rewardAssignmentWriter->sync($opportunity, $next);
+
+        $old['rewards'] = $current;
+        $changed['rewards'] = $next;
     }
 
     /**

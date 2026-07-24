@@ -158,6 +158,14 @@ export function buildRequestWorkPayload(
     payload.products_of_interest = values.products_of_interest
   }
 
+  // Spec 0059 D-3: same authoritative-replace idiom as products of interest,
+  // diffed as an unordered SET of reward-type ids.
+  const currentRewardTypeIds = values.rewards.map((reward) => reward.reward_type_id).sort((a, b) => a - b)
+  const originalRewardTypeIds = (panel.rewards ?? []).map((reward) => reward.reward_type.id).sort((a, b) => a - b)
+  if (clientBlockChanged(currentRewardTypeIds, originalRewardTypeIds)) {
+    payload.rewards = values.rewards
+  }
+
   // Attribution (user directive 2026-07-22): each id is sent on its own, only
   // when it changed — the endpoint is sparse per key, so an untouched picker
   // never reaches the server.

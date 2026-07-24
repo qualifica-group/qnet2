@@ -1,17 +1,14 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GridApi, GridReadyEvent } from 'ag-grid-community'
+import type { GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community'
 import { Download } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,20 +31,9 @@ import {
   type RowActionsOptions,
 } from '@/features/table/row-actions'
 import { useTableConfig } from '@/features/table/use-table-config'
-import {
-  toColumnPreferences,
-  useResetTablePreferences,
-  useSaveTablePreferences,
-} from '@/features/table/use-table-preferences'
-import { useResetTableFilters, useSaveTableFilters } from '@/features/table/use-table-filters'
+import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { TableRow } from '@/features/table/types'
-
-/** Debounce window for persisting layout changes after the user stops editing. */
-const PERSIST_DEBOUNCE_MS = 500
-
-/** Stable empty filter model (module-level so its identity never changes). */
-const EMPTY_FILTER_MODEL: Record<string, unknown> = {}
 
 /** Imperative handle exposed by the generic table to its domain adapter. */
 export interface TableViewHandle {
@@ -91,6 +77,16 @@ interface TableViewProps extends RowActionsOptions {
    * this is supplied.
    */
   getBulkActions?: (selection: TableSelection) => BulkAction[]
+  /**
+   * Enables AG Grid's Master/Detail (spec 0059 D-4), forwarded verbatim to
+   * `DataTable`. Additive opt-in: omitted, every other domain is unaffected.
+   * The pattern stays isolated to `rewarded-referents`, its one consumer.
+   */
+  masterDetail?: boolean
+  /** The detail panel's renderer, required (by the caller) whenever `masterDetail` is true. */
+  detailCellRenderer?: (params: ICellRendererParams<TableRow>) => ReactNode
+  /** Detail row grows to fit its content instead of a fixed pixel height. */
+  detailRowAutoHeight?: boolean
 }
 
 /**
@@ -109,7 +105,20 @@ interface TableViewProps extends RowActionsOptions {
  */
 export const TableView = forwardRef<TableViewHandle, TableViewProps>(
   function TableView(
-    { domain, renderers, onAction, isBusy, decorateRow, iconMap, importSlot, isRowSelectable, getBulkActions },
+    {
+      domain,
+      renderers,
+      onAction,
+      isBusy,
+      decorateRow,
+      iconMap,
+      importSlot,
+      isRowSelectable,
+      getBulkActions,
+      masterDetail,
+      detailCellRenderer,
+      detailRowAutoHeight,
+    },
     ref,
   ) {
     const { t } = useTranslation()
@@ -120,28 +129,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const { can } = useAbilities()
     const canExport = can(`${domain}.export`)
     const [exportOpen, setExportOpen] = useState(false)
-
-    const savePreferences = useSaveTablePreferences(domain)
-    const resetPreferences = useResetTablePreferences(domain)
-    const saveFilters = useSaveTableFilters(domain)
-    const resetFilters = useResetTableFilters(domain)
-
-    // Bumped on reset (layout or filters) to force a clean grid remount with the
-    // refetched config, so AG Grid drops the user's in-memory column/filter state
-    // deterministically.
-    const [layoutVersion, setLayoutVersion] = useState(0)
-
-    // Reflects whether the user has changed columns THIS session, for immediate
-    // feedback; combined with the persisted `config.customized` (true after a
-    // reload when a saved layout exists). The "Reset layout" action shows only
-    // when the layout is customized.
-    const [customizedLocally, setCustomizedLocally] = useState(false)
-    const isCustomized = customizedLocally || (config?.customized ?? false)
-
-    // Same immediate-feedback pattern for the saved filter state: a "Reset
-    // filters" action shows whenever filters are active (this session or persisted).
-    const [filtersCustomizedLocally, setFiltersCustomizedLocally] = useState(false)
-    const isFilterCustomized = filtersCustomizedLocally || (config?.filtersCustomized ?? false)
 
     // The saved filterModel replayed into the grid on mount. Stable identity per
     // config load so it can seed the persisted-baseline ref below.
@@ -228,69 +215,28 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       [config?.columns],
     )
 
-    // Persist the user's column layout, debounced so a drag/resize burst yields a
-    // single save. The full current state is read from the grid and sent to the
-    // backend, which computes the sparse delta (the frontend never diffs).
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const handleColumnStateChanged = useCallback(() => {
-      if (!gridApi) {
-        return
-      }
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-      // The user just changed columns → offer reset immediately, before the
-      // debounced save round-trips.
-      setCustomizedLocally(true)
-      debounceRef.current = setTimeout(() => {
-        const preferences = toColumnPreferences(
-          gridApi.getColumnState(),
-          knownColumnIds,
-        )
-        savePreferences.mutate(preferences)
-      }, PERSIST_DEBOUNCE_MS)
-    }, [gridApi, knownColumnIds, savePreferences])
-
-    // Debounce filter persistence, and hold the last-persisted model (serialized)
-    // so the grid's own echo of the saved filters on mount is not re-saved.
-    const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const lastPersistedFilterRef = useRef<string>(JSON.stringify(EMPTY_FILTER_MODEL))
-    useEffect(() => {
-      lastPersistedFilterRef.current = JSON.stringify(initialFilterModel)
-    }, [initialFilterModel])
-
-    const handleFilterChanged = useCallback(() => {
-      if (!gridApi) {
-        return
-      }
-      const model = gridApi.getFilterModel()
-      const serialized = JSON.stringify(model)
-      // Skip echoes and no-op refires: only a real change is persisted.
-      if (serialized === lastPersistedFilterRef.current) {
-        return
-      }
-      lastPersistedFilterRef.current = serialized
-      setFiltersCustomizedLocally(Object.keys(model).length > 0)
-      if (filterDebounceRef.current) {
-        clearTimeout(filterDebounceRef.current)
-      }
-      filterDebounceRef.current = setTimeout(() => {
-        saveFilters.mutate({ filterModel: model })
-      }, PERSIST_DEBOUNCE_MS)
-    }, [gridApi, saveFilters])
-
-    // Flush any pending debounce on unmount so the last change is not lost.
-    useEffect(
-      () => () => {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current)
-        }
-        if (filterDebounceRef.current) {
-          clearTimeout(filterDebounceRef.current)
-        }
-      },
-      [],
-    )
+    // Debounced column-layout/filter persistence and their "reset to default"
+    // flows (spec 0003/0009) — see `use-table-layout-persistence.ts`.
+    const {
+      layoutVersion,
+      isCustomized,
+      isFilterCustomized,
+      setFiltersCustomizedLocally,
+      handleColumnStateChanged,
+      handleFilterChanged,
+      handleResetLayout,
+      handleResetFilters,
+      resettingLayout,
+      resettingFilters,
+    } = useTableLayoutPersistence({
+      domain,
+      gridApi,
+      knownColumnIds,
+      initialFilterModel,
+      configCustomized: config?.customized ?? false,
+      configFiltersCustomized: config?.filtersCustomized ?? false,
+      refetchConfig: refetch,
+    })
 
     // Placeholder built from the searchable columns' localized labels, mirroring
     // the backend allow-list (e.g. "Cerca nome/email…").
@@ -304,39 +250,6 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         .map((column) => t(column.label))
       return t('table.searchPlaceholder', { columns: labels.join('/') })
     }, [config, searchable, t])
-
-    const handleResetLayout = useCallback(async () => {
-      try {
-        await resetPreferences.mutateAsync()
-        // Refetch defaults BEFORE remounting so the new grid mounts on the pure
-        // PHP default layout, then bump the key to rebuild it cleanly.
-        await refetch()
-        setCustomizedLocally(false)
-        setLayoutVersion((version) => version + 1)
-        toast.success(t('table.layoutReset'))
-      } catch {
-        toast.error(t('table.layoutError'))
-      }
-    }, [resetPreferences, refetch, t])
-
-    const handleResetFilters = useCallback(async () => {
-      try {
-        // Drop any pending save so it can't re-persist the filters we are clearing.
-        if (filterDebounceRef.current) {
-          clearTimeout(filterDebounceRef.current)
-        }
-        await resetFilters.mutateAsync()
-        // Refetch BEFORE remounting so the grid mounts with an empty filterModel,
-        // then bump the key to rebuild it cleanly (SSRM re-queries unfiltered).
-        await refetch()
-        lastPersistedFilterRef.current = JSON.stringify(EMPTY_FILTER_MODEL)
-        setFiltersCustomizedLocally(false)
-        setLayoutVersion((version) => version + 1)
-        toast.success(t('table.filtersReset'))
-      } catch {
-        toast.error(t('table.filtersError'))
-      }
-    }, [resetFilters, refetch, t])
 
     const renderRowActions = useMemo(() => {
       if (!config) {
@@ -393,6 +306,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           enableSelection={enableSelection}
           onSelectionChanged={handleSelectionChanged}
           isRowSelectable={isRowSelectable}
+          masterDetail={masterDetail}
+          detailCellRenderer={detailCellRenderer}
+          detailRowAutoHeight={detailRowAutoHeight}
         />
       )
     }
@@ -440,10 +356,10 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
               bulkActionsSlot={bulkActionsSlot}
               filtersActive={isFilterCustomized}
               onResetFilters={() => void handleResetFilters()}
-              resettingFilters={resetFilters.isPending}
+              resettingFilters={resettingFilters}
               layoutCustomized={isCustomized}
               onResetLayout={() => void handleResetLayout()}
-              resettingLayout={resetPreferences.isPending}
+              resettingLayout={resettingLayout}
               fullscreen={toolbar.fullscreen}
               onToggleFullscreen={toolbar.toggleFullscreen}
               advancedFiltersEnabled={advancedFilterDescriptors.length > 0}

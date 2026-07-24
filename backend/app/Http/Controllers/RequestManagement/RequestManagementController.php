@@ -121,6 +121,9 @@ class RequestManagementController extends BaseApiController
                         'operator_id',
                         // Spec 0056: the Sede operativa, same attribution block.
                         'operational_site_id',
+                        // Spec 0059, AC-023: same sparse rule — absent means
+                        // untouched, `[]` clears every reward assignment.
+                        'rewards',
                     ]),
                     // Typed DTOs (ContactInput/AddressInput), not raw arrays:
                     // the client anagraphic block never reaches the service as

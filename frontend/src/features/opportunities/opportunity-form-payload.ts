@@ -65,6 +65,13 @@ export function buildCreatePayload(
     payload.source_id = values.source_id
   }
 
+  // Spec 0059 D-3: nothing to sync away on a fresh create, so an empty set is
+  // simply omitted (identical server-side outcome to sending `[]`); a
+  // non-empty set is sent in full, mirroring `product_lines`.
+  if (values.rewards.length > 0) {
+    payload.rewards = values.rewards
+  }
+
   if (fromLead) {
     payload.lead_id = fromLead.leadId
   }
@@ -134,6 +141,12 @@ export function buildUpdatePayload(
   const originalProducts = (original.products_of_interest ?? []).map((product) => product.id)
   if (!sameIdSet(values.products_of_interest, originalProducts)) {
     payload.products_of_interest = values.products_of_interest
+  }
+  // Spec 0059 D-3: same authoritative-replace idiom, diffed as an unordered
+  // SET of reward-type ids (the chip row's order carries no meaning).
+  const originalRewardTypeIds = (original.rewards ?? []).map((reward) => reward.reward_type.id)
+  if (!sameIdSet(values.rewards.map((reward) => reward.reward_type_id), originalRewardTypeIds)) {
+    payload.rewards = values.rewards
   }
   // Manager slots are ORDER- and GAP-sensitive (a slot's G.A. position is
   // meaningful), so compare positionally, not as an unordered set.

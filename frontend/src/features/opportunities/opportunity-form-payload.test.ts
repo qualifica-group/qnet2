@@ -23,6 +23,7 @@ function values(overrides: Partial<OpportunityFormValues> = {}): OpportunityForm
     opportunity_workflow_status_id: null,
     product_lines: [],
     products_of_interest: [],
+    rewards: [],
     manager_slots: [],
     start_date: null,
     expected_close_date: null,
@@ -152,6 +153,21 @@ describe('buildCreatePayload', () => {
     expect(payload.start_date).toBe('2026-01-01')
     expect(payload.estimated_value).toBe(5000)
     expect(payload.success_probability).toBe(40)
+  })
+
+  /** Spec 0059 D-3: nothing to sync away on create, so an empty set is a no-op like an omitted key. */
+  describe('rewards (spec 0059 D-3)', () => {
+    it('omits rewards when nothing was assigned', () => {
+      const payload = buildCreatePayload(createValues())
+      expect(payload).not.toHaveProperty('rewards')
+    })
+
+    it('sends the assigned reward types in full', () => {
+      const payload = buildCreatePayload(
+        createValues({ rewards: [{ reward_type_id: 3 }, { reward_type_id: 7 }] }),
+      )
+      expect(payload.rewards).toEqual([{ reward_type_id: 3 }, { reward_type_id: 7 }])
+    })
   })
 
   /** AC-075: creating from a Lead appends `lead_id` and OMITS every locked field entirely (BR-1/BR-2), never merely repeats it. */
@@ -324,6 +340,60 @@ describe('buildUpdatePayload', () => {
           original({ products_of_interest: [{ id: 3, name: 'Fibra', product_category: null }] }),
         ),
       ).toEqual({ products_of_interest: [] })
+    })
+  })
+
+  describe('rewards (unordered set diff, spec 0059 D-3)', () => {
+    it('omits the key when the set is unchanged, even reordered', () => {
+      const payload = buildUpdatePayload(
+        values({ rewards: [{ reward_type_id: 7 }, { reward_type_id: 3 }] }),
+        original({
+          rewards: [
+            { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+            { id: 901, reward_type: { id: 7, name: 'Buono spesa', color: 'green' }, assigned_at: '2026-01-02', notes: null },
+          ],
+        }),
+      )
+      expect(payload).toEqual({})
+    })
+
+    it('includes the whole set when a reward was added or removed', () => {
+      expect(
+        buildUpdatePayload(values({ rewards: [{ reward_type_id: 3 }] }), original({ rewards: [] })),
+      ).toEqual({ rewards: [{ reward_type_id: 3 }] })
+
+      expect(
+        buildUpdatePayload(
+          values({ rewards: [] }),
+          original({
+            rewards: [
+              { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+            ],
+          }),
+        ),
+      ).toEqual({ rewards: [] })
+    })
+
+    /**
+     * Data-loss guard: the three states of the sparse contract (spec 0059
+     * §4/`sync_semantics`) must never collapse. An untouched selection is a
+     * KEY ABSENT from the payload (server: no-op); a fully-cleared selection
+     * is `rewards: []` (server: delete every assignment). Sending `[]` for
+     * "untouched" would silently wipe every reward on any save that doesn't
+     * touch this field.
+     */
+    it('never collapses "untouched" (key absent) into an explicit clear ([])', () => {
+      const originalRewards = {
+        rewards: [
+          { id: 900, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-01-01', notes: null },
+        ],
+      }
+
+      const untouched = buildUpdatePayload(values({ rewards: [{ reward_type_id: 3 }] }), original(originalRewards))
+      expect(untouched).not.toHaveProperty('rewards')
+
+      const explicitlyCleared = buildUpdatePayload(values({ rewards: [] }), original(originalRewards))
+      expect(explicitlyCleared).toHaveProperty('rewards', [])
     })
   })
 

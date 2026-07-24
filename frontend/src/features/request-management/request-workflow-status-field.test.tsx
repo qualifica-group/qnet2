@@ -33,6 +33,7 @@ function Harness({ onSubmit }: { onSubmit: () => void }) {
       client_contacts: [],
       client_address: [],
       products_of_interest: [700],
+      rewards: [],
       source_id: null,
       reporter_id: null,
       operator_id: null,

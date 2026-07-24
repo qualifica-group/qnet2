@@ -83,6 +83,9 @@ class DemoDataSeeder extends Seeder
         // 0043, opportunity_status_id is mandatory) — must run after all of
         // them.
         $this->call(DemoOpportunitySeeder::class);
+        // Depends on DemoRewardTypeSeeder (catalogue) and DemoOpportunitySeeder
+        // (reporters to reward, D-3) — must run after both.
+        $this->call(DemoRewardSeeder::class);
         // Needs users (avatars) and company sites (logos) already seeded above;
         // attaches demo files through the real HasAttachments write path.
         $this->call(DemoAttachmentSeeder::class);

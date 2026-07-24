@@ -54,6 +54,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * resolver the request-management module uses). Relies on
  * OpportunityService::loadDetail() already eager-loading
  * `productLines.productCategory`, so resolving it here never N+1s.
+ *
+ * Spec 0059: `rewards`, ordered by `reward_type.name` (data contract), feeds
+ * the form's edit-mode hydration for the "abbinamento buono" control. Relies
+ * on OpportunityService::DETAIL_RELATIONS eager-loading `rewards.rewardType`.
  */
 class OpportunityResource extends JsonResource
 {
@@ -88,6 +92,7 @@ class OpportunityResource extends JsonResource
             'workflow_statuses' => $this->resolveWorkflowStatuses(),
             'product_lines' => $this->summarizeProductLines($this->productLines),
             'products_of_interest' => $this->summarizeProductsOfInterest($this->productsOfInterest),
+            'rewards' => $this->summarizeRewards($this->rewards),
             'lead_id' => $this->lead_id,
             'lead' => $this->summarizeLead($this->lead),
             'managers' => $this->summarizeManagers($this->managers),
@@ -160,6 +165,30 @@ class OpportunityResource extends JsonResource
                 'product_category' => $this->summarizeByName($product->category),
             ])
             ->values()
+            ->all();
+    }
+
+    /**
+     * Reward assignments (spec 0059), ordered by `reward_type.name` (data
+     * contract).
+     *
+     * @return array<int, array{id: int, reward_type: array{id: int, name: string, color: string}, assigned_at: string|null, notes: string|null}>
+     */
+    private function summarizeRewards(iterable $rewards): array
+    {
+        return collect($rewards)
+            ->sortBy(fn (Model $reward): string => $reward->rewardType->name)
+            ->values()
+            ->map(fn (Model $reward): array => [
+                'id' => $reward->id,
+                'reward_type' => [
+                    'id' => $reward->rewardType->id,
+                    'name' => $reward->rewardType->name,
+                    'color' => $reward->rewardType->color,
+                ],
+                'assigned_at' => $reward->assigned_at?->toDateString(),
+                'notes' => $reward->notes,
+            ])
             ->all();
     }
 

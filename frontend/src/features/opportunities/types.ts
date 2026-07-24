@@ -9,6 +9,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { WorkflowStatusGroupValue } from '@/features/opportunity-workflows/types'
 import type { ProductLine } from '@/features/product-lines/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** A hydrated `{id, name}` relation projection, shared by every plain single-relation field. */
 export interface OpportunityRelationRef {
@@ -130,6 +131,15 @@ export interface OpportunityProductLineInput {
 }
 
 /**
+ * One `rewards` row of the create/update payload (spec 0059 §4): only the
+ * type id travels — the beneficiary (the reporter) and `assigned_at` are
+ * derived server-side by `RewardAssignmentWriter`.
+ */
+export interface OpportunityRewardInput {
+  reward_type_id: number
+}
+
+/**
  * Single opportunity detail returned by GET/POST/PATCH /opportunities
  * (envelope `data`). Matches `OpportunityResource`.
  */
@@ -218,6 +228,12 @@ export interface OpportunityDetail {
    * Optional for the same fixture-compatibility reason; treat missing as `[]`.
    */
   applicable_attributes?: ApplicableAttributeSummary[]
+  /**
+   * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
+   * `reward_type.name`. Optional for the same fixture-compatibility reason
+   * as `state`/`workflow_status` above — treat a missing key the same as `[]`.
+   */
+  rewards?: RewardAssignmentRef[]
 }
 
 /**
@@ -275,6 +291,12 @@ export interface CreateOpportunityPayload {
    * row, which is what the picker's unlock dialog warns about.
    */
   products_of_interest?: number[]
+  /**
+   * Spec 0059 D-3/`sync_semantics`: reward assignments for the reporter, a
+   * full-replace sync (like `product_lines`). Always sent in full on create,
+   * even empty; the update builder only includes it when the id SET changed.
+   */
+  rewards?: OpportunityRewardInput[]
 }
 
 /**

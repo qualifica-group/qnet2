@@ -26,9 +26,6 @@ use App\Http\Controllers\OperationalSites\OperationalSiteController;
 use App\Http\Controllers\OperationalSites\OperationalSiteForSelectController;
 use App\Http\Controllers\PersonalData\PersonalDataController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
-use App\Http\Controllers\Referents\ReferentController;
-use App\Http\Controllers\Referents\ReferentDuplicateCheckController;
-use App\Http\Controllers\Referents\ReferentForSelectController;
 use App\Http\Controllers\ReferentTypes\ReferentTypeController;
 use App\Http\Controllers\ReferentTypes\ReferentTypeForSelectController;
 use App\Http\Controllers\Roles\RoleController;
@@ -338,30 +335,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // auth:sanctum group so every route there inherits the same context.
     require __DIR__.'/api/lookups.php';
 
-    // Referents CRUD (spec 0016): a contact person/entity reusing the `users`
-    // anagraphic stack (personal-data card + contacts + addresses) unchanged
-    // via HasPersonalData. Authorization (referents.view/create/update/delete)
-    // is enforced server-side in ReferentController via ReferentPolicy on
-    // every endpoint.
-    // Minimal searchable/paginated referent list for entity-backed
-    // selects (for-select standard, ADR 0011, spec 0020 — first producer:
-    // the Registries form). Declared ABOVE referents/{referent} so the
-    // literal `for-select` segment wins over the bound wildcard. Gated
-    // by referents.viewAny server-side in ReferentForSelectController.
-    Route::get('referents/for-select', ReferentForSelectController::class);
-
-    // Live, non-blocking duplicate check for the referent create form (spec
-    // 0037): given a tax_code and/or email/phone/mobile contacts, returns
-    // the existing referents that collide. Declared ABOVE
-    // referents/{referent} for the same literal-segment-wins reason as
-    // for-select. Gated by referents.create server-side in
-    // ReferentDuplicateCheckController.
-    Route::post('referents/duplicate-check', ReferentDuplicateCheckController::class);
-
-    Route::get('referents/{referent}', [ReferentController::class, 'show']);
-    Route::post('referents', [ReferentController::class, 'store']);
-    Route::match(['put', 'patch'], 'referents/{referent}', [ReferentController::class, 'update']);
-    Route::delete('referents/{referent}', [ReferentController::class, 'destroy']);
+    // Referents CRUD (spec 0016) + rewards lazy detail (spec 0059):
+    // extracted into routes/api/referents.php (file-size split,
+    // engineering.md §6) so this file stays within the 500-line hard limit.
+    // Required INSIDE this auth:sanctum group so every route there inherits
+    // the same context.
+    require __DIR__.'/api/referents.php';
 
     // Registries CRUD (spec 0020, "Anagrafiche"): extracted into
     // routes/api/registries.php (file-size split, engineering.md §6) so this

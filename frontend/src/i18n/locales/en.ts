@@ -33,6 +33,7 @@ import { productLines } from './en-product-lines'
 import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { rewardTypes } from './en-reward-types'
+import { rewardedReferents } from './en-rewarded-referents'
 import { requestManagement } from './en-request-management'
 import { notes } from './en-notes'
 import { notifications } from './en-notifications'
@@ -104,6 +105,7 @@ export const en = {
     opportunityWorkflows: 'Workflow Configurator',
     requestManagement: 'Request Management',
     rewardTypes: 'Vouchers, Rewards and Incentives',
+    rewardedReferents: 'Rewarded Referents',
     opportunitiesAndCommesse: 'Opportunities & Contracts',
     imports: 'Import Lead',
     pipelineStatuses: 'Project/Campaign Statuses',
@@ -487,6 +489,7 @@ export const en = {
   opportunityWorkflows,
   requestManagement,
   rewardTypes,
+  rewardedReferents,
   notes,
   importRuns: { stats: moduleStats.importRuns },
   attachments,

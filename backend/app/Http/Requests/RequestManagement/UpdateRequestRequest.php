@@ -6,6 +6,7 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Opportunity;
 use Illuminate\Contracts\Validation\Validator;
@@ -42,10 +43,16 @@ use Illuminate\Foundation\Http\FormRequest;
  * ValidatesRequestClientProfile: the client anagraphic block the panel edits
  * inline, written on the Registry's PersonalData card. Same sparse rule as
  * every other key — absent means untouched.
+ *
+ * `rewards` (spec 0059, AC-023) reuses ValidatesRewards verbatim: identical
+ * shape/semantics/error codes to the opportunities payload — the two D-3
+ * cross-field guards (non-empty `rewards` needs a reporter; `reporter_id`
+ * cannot clear while rewards exist) are checked against THIS route's
+ * persisted opportunity.
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesRequestClientProfile, ValidatesWorkflowStatus;
+    use EnforcesFieldPermissions, ValidatesRequestClientProfile, ValidatesRewards, ValidatesWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -85,6 +92,7 @@ class UpdateRequestRequest extends FormRequest
             // Spec 0056: the Sede operativa, same attribution block, same
             // sparse rule — absent means untouched, `null` clears it.
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
+            ...$this->rewardsRules(),
             ...$this->clientProfileRules(),
         ];
     }
@@ -106,6 +114,7 @@ class UpdateRequestRequest extends FormRequest
             $opportunity = $this->route('opportunity');
 
             $this->validateWorkflowStatus($validator, $opportunity);
+            $this->validateRewards($validator, $opportunity);
             $this->validateClientProfile($validator);
             // Write-path counterpart of the `permissions` block (spec 0004/
             // 0008): a field the actor's role may not edit is rejected 422

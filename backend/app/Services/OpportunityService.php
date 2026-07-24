@@ -6,13 +6,17 @@ namespace App\Services;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Opportunities\UpdateOpportunityData;
+use App\DataObjects\Shared\ForSelectQuery;
+use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
+use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Statuses\SystemStatusGuard;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -50,6 +54,7 @@ class OpportunityService
         'productLines.businessFunction',
         'productLines.productCategory',
         'productsOfInterest.category',
+        'rewards.rewardType',
         'managers',
         'lead.registry',
         'lead.operationalSite.addresses.city',
@@ -68,11 +73,78 @@ class OpportunityService
         private readonly SystemStatusGuard $systemStatusGuard,
         private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
+        private readonly RewardAssignmentWriter $rewardAssignmentWriter,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
     {
         return $opportunity->load(self::DETAIL_RELATIONS);
+    }
+
+    /**
+     * Minimal, searchable, paginated opportunity list for the for-select
+     * standard (ADR 0011, MT-10/spec 0059 — feeds the `rewarded-referents`
+     * "opportunity" advanced filter). Searches on `name` directly: unlike
+     * Lead, an Opportunity owns its own descriptive column (spec 0057, D-5:
+     * `OPP_{id}`), so no registry subquery is needed.
+     */
+    public function forSelect(ForSelectQuery $query): ForSelectResult
+    {
+        $base = Opportunity::query()->select(['id', 'name']);
+
+        if ($query->hasSearch()) {
+            $base->where('name', 'like', '%'.$query->search.'%');
+        }
+
+        $total = (clone $base)->count();
+
+        /** @var Collection<int, Opportunity> $page */
+        $page = $base->orderBy('name')
+            ->orderBy('id')
+            ->offset($query->offset)
+            ->limit($query->limit)
+            ->get();
+
+        $items = $this->appendHydratedForSelectIds($page, $query);
+
+        return new ForSelectResult(
+            items: $items,
+            total: $total,
+            offset: $query->offset,
+            limit: $query->limit,
+        );
+    }
+
+    /**
+     * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
+     * not already on the page, deduplicated. They bypass search and the same
+     * id/name projection applies. Total is unaffected.
+     *
+     * @param  Collection<int, Opportunity>  $page
+     * @return Collection<int, Opportunity>
+     */
+    private function appendHydratedForSelectIds(Collection $page, ForSelectQuery $query): Collection
+    {
+        if (! $query->hasIds()) {
+            return $page;
+        }
+
+        $presentIds = $page->pluck('id')->all();
+        $missingIds = array_values(array_diff($query->ids, $presentIds));
+
+        if ($missingIds === []) {
+            return $page;
+        }
+
+        /** @var Collection<int, Opportunity> $hydrated */
+        $hydrated = Opportunity::query()
+            ->select(['id', 'name'])
+            ->whereIn('id', $missingIds)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+
+        return $page->concat($hydrated);
     }
 
     /**
@@ -123,6 +195,13 @@ class OpportunityService
                 $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
             }
 
+            // spec 0059: `reporter_id` is part of the initial insert (not a
+            // "change" on create), so a sync here already targets the right
+            // beneficiary — no retarget() step is needed, unlike update().
+            if ($data->hasRewards()) {
+                $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
+            }
+
             // spec 0047 (AC-015/017): an explicit, already-validated override
             // wins; otherwise the resolver derives the 'open' row of the
             // resolved set — product lines are already synced above, so
@@ -150,6 +229,15 @@ class OpportunityService
             // (spec 0021) persists a custom-fields-only edit.
             $opportunity->fill($data->submittedAttributes())->save();
 
+            // spec 0059, D-3/AC-022: a genuine `reporter_id` change retargets
+            // EVERY existing reward row, independent of whether `rewards`
+            // itself was submitted in this same request. Checked right after
+            // THIS save() — resolveWorkflowStatus() below may save() again
+            // and reset wasChanged()'s diff.
+            if ($data->reporterIdSubmitted && $opportunity->wasChanged('reporter_id')) {
+                $this->rewardAssignmentWriter->retarget($opportunity);
+            }
+
             if ($data->hasManagerSlots()) {
                 $opportunity->managers()->sync($this->managerSyncMap($data->managerSlots));
             }
@@ -161,6 +249,10 @@ class OpportunityService
             // See create(): same ordering, same writer, same rule.
             if ($data->hasProductsOfInterest()) {
                 $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
+            }
+
+            if ($data->hasRewards()) {
+                $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
             }
 
             // spec 0047 (AC-016/017): re-resolve after any change to the

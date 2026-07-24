@@ -98,6 +98,16 @@ export const opportunities = {
     productLines: {
       fieldLabel: 'Righe funzione/categoria',
     },
+    rewards: {
+      fieldLabel: 'Buoni assegnati',
+      add: 'Aggiungi buono',
+      remove: 'Rimuovi {{name}}',
+      searchPlaceholder: 'Cerca una tipologia…',
+      empty: 'Nessuna tipologia trovata.',
+      error: 'Impossibile caricare le tipologie.',
+      loadMore: 'Carica altri',
+      reporterRequiredHint: 'Seleziona prima un segnalatore per assegnare un buono.',
+    },
     supervisor: 'Supervisore',
     supervisorSearch: 'Cerca supervisori…',
     managers: 'Gestori account',

@@ -43,6 +43,11 @@ namespace App\DataObjects\Opportunities;
  *
  * Spec 0057, D-5: `name` is REMOVED entirely — it is immutable server-side
  * (derived once at create as `OPP_{id}`), never part of a PATCH payload.
+ *
+ * Spec 0059: `rewards` follows the SAME null-means-untouched convention as
+ * `productsOfInterest`, but — UNLIKE it — CAN be cleared to `[]` (AC-020):
+ * an opportunity is allowed to carry zero rewards, so its FormRequest rule
+ * has no `min:1`. Synced by RewardAssignmentWriter.
  */
 final readonly class UpdateOpportunityData
 {
@@ -50,6 +55,7 @@ final readonly class UpdateOpportunityData
      * @param  array<int, int|null>|null  $managerSlots
      * @param  array<int, array{business_function_id: int, product_category_id: int}>|null  $productLines
      * @param  array<int, int>|null  $productsOfInterest  "prodotti di interesse" (user directive 2026-07-22): same null-means-untouched convention as the two collections above, synced by OpportunityProductInterestWriter
+     * @param  array<int, int>|null  $rewards  reward-type ids (spec 0059), synced by RewardAssignmentWriter — same null-means-untouched convention, `[]` clears every assignment
      */
     public function __construct(
         public ?int $registryId = null,
@@ -83,6 +89,7 @@ final readonly class UpdateOpportunityData
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
+        public ?array $rewards = null,
     ) {}
 
     /**
@@ -126,6 +133,7 @@ final readonly class UpdateOpportunityData
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
+            rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
         );
     }
 
@@ -137,9 +145,25 @@ final readonly class UpdateOpportunityData
         return array_values(array_unique(array_map(static fn ($id): int => (int) $id, (array) $ids)));
     }
 
+    /**
+     * @return array<int, int>
+     */
+    private static function normalizeRewardTypeIds(mixed $rows): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['reward_type_id'],
+            (array) $rows,
+        )));
+    }
+
     public function hasProductsOfInterest(): bool
     {
         return $this->productsOfInterest !== null;
+    }
+
+    public function hasRewards(): bool
+    {
+        return $this->rewards !== null;
     }
 
     public function hasManagerSlots(): bool
