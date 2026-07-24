@@ -7,6 +7,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { Address, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
@@ -192,6 +193,13 @@ export interface RequestWorkPanel {
   applicable_attributes: ApplicableAttribute[]
   /** Current values keyed by attribute `code`; `{}` when none. */
   attribute_values: Record<string, unknown>
+  /**
+   * The merged, multi-category resolved attribute layout for the panel's
+   * form mode, additive (spec 0062). `null`/absent falls back to the flat
+   * rendering of `applicable_attributes` (AC-007) — optional for the same
+   * fixture-compatibility convention as `rewards` below.
+   */
+  attribute_layout?: LayoutBlob | null
   /** Next follow-up call the operator scheduled, `"Y-m-d\TH:i"` local format or null (spec 0052 D-1/D-5). */
   next_callback_at: string | null
   context: RequestWorkContext

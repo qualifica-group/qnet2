@@ -43,6 +43,13 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
+// Spec 0062: this suite is not about the attribute layout, so no layout is
+// ever configured — keeps edit mode's immediate category id deterministic
+// (no real network round-trip) without touching the relation-picker assertions below.
+vi.mock('@/features/products/use-product-attribute-layout', () => ({
+  useProductAttributeLayout: () => ({ data: null, isLoading: false }),
+}))
+
 const useForSelectMock = vi.fn()
 vi.mock('@/features/for-select/use-for-select', async () => {
   const actual = await vi.importActual<

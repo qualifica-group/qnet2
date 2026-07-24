@@ -60,6 +60,12 @@ export const attributes = {
     relationEntityTypeRequired: 'The relation target module is required.',
     relationForSelectResourceRequired: 'The picker resource is required.',
   },
+  layout: {
+    // Title of the synthetic "Other information" section `AttributeLayoutRenderer`
+    // (spec 0062) generates at runtime for effective attributes not placed in
+    // any section of the configured layout — never persisted.
+    otherInformation: 'Other information',
+  },
 }
 
 export const productCategories = {

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { CategoryAttributesContextSection } from '@/features/product-categories/product-category-detail-attributes'
+import { ProductCategoryAttributeLayoutPreview } from '@/features/product-categories/product-category-attribute-layout-preview'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 
 interface ProductCategoryDetailViewProps {
@@ -83,6 +84,8 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         own={category.attributes.filter((attribute) => attribute.context === 'opportunity')}
         inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'opportunity')}
       />
+
+      <ProductCategoryAttributeLayoutPreview categoryId={category.id} />
 
       {category.permissions.actions.view_activity ? (
         <DetailSection title={t('activityLog.title')} icon={<History />}>

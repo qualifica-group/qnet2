@@ -25,6 +25,7 @@ use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\OperationalSites\OperationalSiteController;
 use App\Http\Controllers\OperationalSites\OperationalSiteForSelectController;
 use App\Http\Controllers\PersonalData\PersonalDataController;
+use App\Http\Controllers\ProductCategories\AttributeLayoutController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\ReferentTypes\ReferentTypeController;
 use App\Http\Controllers\ReferentTypes\ReferentTypeForSelectController;
@@ -379,6 +380,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // server-side in ProductCategoryController via ProductCategoryPolicy.
     Route::get('product-categories/tree', [ProductCategoryController::class, 'tree']);
     Route::get('product-categories/{productCategory}/effective-attributes', [ProductCategoryController::class, 'effectiveAttributes']);
+
+    // Attribute layout configurator (spec 0062): GET/PUT the category's
+    // configured (context, form_mode) layout blob. Declared ABOVE the plain
+    // `{productCategory}` show route, same literal-segment-wins-over-wildcard
+    // reasoning as `effective-attributes` above. Authorization (product-
+    // categories.view/update, no new permission) is enforced server-side in
+    // AttributeLayoutController via ProductCategoryPolicy.
+    Route::get('product-categories/{productCategory}/attribute-layouts', [AttributeLayoutController::class, 'show']);
+    Route::put('product-categories/{productCategory}/attribute-layouts', [AttributeLayoutController::class, 'update']);
 
     Route::get('product-categories/{productCategory}', [ProductCategoryController::class, 'show']);
     Route::post('product-categories', [ProductCategoryController::class, 'store']);

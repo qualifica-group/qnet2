@@ -7,6 +7,7 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\Registry;
@@ -42,7 +43,7 @@ final class RequestCreationService
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>}
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
      */
     public function create(User $actor, CreateRequestData $data): array
     {
@@ -78,7 +79,9 @@ final class RequestCreationService
                 rewards: $data->rewards,
             ));
 
-            return $this->panel->loadWorkPanel($opportunity);
+            // Spec 0062, D3: the distinct "new request" form, never the full
+            // edit work panel's own layout.
+            return $this->panel->loadWorkPanel($opportunity, FormMode::Create);
         });
     }
 

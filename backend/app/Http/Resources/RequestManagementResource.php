@@ -29,11 +29,15 @@ use Illuminate\Support\Collection;
  * Referent are NOT valid `contactable_type`s (`config/personal_data.php`
  * `contactable_types` lists only `personal_data`), so the ref must point at
  * the PersonalData card, never the entity.
+ *
+ * `attribute_layout` (spec 0062) is additive: the merged, multi-category
+ * resolved layout (or null, flat fallback) — `applicable_attributes` stays
+ * the untouched value-pipeline authority.
  */
 class RequestManagementResource extends JsonResource
 {
     /**
-     * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>}  $resource
+     * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}  $resource
      */
     public function __construct(array $resource)
     {
@@ -78,6 +82,7 @@ class RequestManagementResource extends JsonResource
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
             'referent_contacts' => $this->summarizeContacts($opportunity->referent),
             'applicable_attributes' => $this->summarizeApplicableAttributes($this->resource['applicable_attributes']),
+            'attribute_layout' => $this->resource['attribute_layout'],
             'attribute_values' => $opportunity->attribute_values ?? [],
             'next_callback_at' => $opportunity->next_callback_at?->format('Y-m-d\TH:i'),
             'context' => [

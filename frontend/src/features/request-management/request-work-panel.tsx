@@ -168,7 +168,11 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 rewards={panel.rewards ?? []}
               />
 
-              <RequestDynamicFields control={form.control} attributes={panel.applicable_attributes} />
+              <RequestDynamicFields
+                control={form.control}
+                attributes={panel.applicable_attributes}
+                layout={panel.attribute_layout}
+              />
 
               {/* Right after the preliminary information: the products of
                   interest are collected in the same phone call (user directive

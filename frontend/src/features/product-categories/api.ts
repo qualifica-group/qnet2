@@ -1,8 +1,10 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob, LayoutFormMode } from '@/features/attributes/attribute-layout-types'
 import type {
   AttributeContext,
+  AttributeLayoutData,
   CreateProductCategoryPayload,
   EffectiveAttribute,
   ProductCategoryDetail,
@@ -75,4 +77,39 @@ export async function updateProductCategory(
 /** Deletes a category. Backend responds 204 with no body (409/422 if in use). */
 export async function deleteProductCategory(id: number): Promise<void> {
   await apiClient.delete(`/product-categories/${id}`)
+}
+
+/**
+ * Fetches the persisted attribute layout (or `null`, flat fallback) for one
+ * (category, context, form_mode), plus its effective attribute catalogue —
+ * the configurator's load (spec 0062 `data_contract`).
+ */
+export async function fetchAttributeLayout(
+  categoryId: number,
+  context: AttributeContext,
+  formMode: LayoutFormMode,
+): Promise<AttributeLayoutData> {
+  const { data } = await apiClient.get<ApiResponse<AttributeLayoutData>>(
+    `/product-categories/${categoryId}/attribute-layouts`,
+    { params: { context, form_mode: formMode } },
+  )
+  return data.data
+}
+
+/**
+ * Upserts (or, sending an empty `sections` array, deletes) the attribute
+ * layout for one (category, context, form_mode). Returns the persisted,
+ * normalized layout (`null` once deleted).
+ */
+export async function saveAttributeLayout(
+  categoryId: number,
+  context: AttributeContext,
+  formMode: LayoutFormMode,
+  layout: LayoutBlob,
+): Promise<LayoutBlob | null> {
+  const { data } = await apiClient.put<ApiResponse<{ layout: LayoutBlob | null }>>(
+    `/product-categories/${categoryId}/attribute-layouts`,
+    { context, form_mode: formMode, layout },
+  )
+  return data.data.layout
 }

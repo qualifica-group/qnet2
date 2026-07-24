@@ -146,6 +146,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
       },
     ],
     attribute_values: { notes: 'Some notes', priority: 'low' },
+    attribute_layout: null,
     next_callback_at: null,
     context: { estimated_value: 1234.5, expected_close_date: '2026-08-01', success_probability: null },
     permissions: FULL_PERMISSIONS,
@@ -397,6 +398,47 @@ describe('RequestWorkPanelScreen — bounded controls (spec 0049 AC-063)', () =>
 
     expect(label).toBeDefined()
     expect(label).toHaveTextContent('*')
+  })
+})
+
+describe('RequestWorkPanelScreen — resolved attribute layout (spec 0062 AC-015)', () => {
+  it('renders the panel sectioned when the opportunity carries a resolved layout', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({
+        attribute_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Qualification',
+              description: null,
+              variant: 'default',
+              collapsible: false,
+              default_collapsed: false,
+              is_advanced: false,
+              columns: 1,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'notes', width: 'full' }] }],
+            },
+          ],
+        },
+      }),
+    )
+
+    renderPanel()
+
+    expect(await screen.findByRole('heading', { name: 'Qualification' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('Some notes')
+    // The code left unplaced by the layout still renders, in the synthetic trailing section.
+    expect(screen.getByRole('button', { name: 'Other information' })).toBeInTheDocument()
+  })
+
+  it('falls back to the flat list when the opportunity carries no resolved layout (AC-007)', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ attribute_layout: null }))
+
+    renderPanel()
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument())
+    expect(screen.queryByRole('heading', { name: 'Qualification' })).not.toBeInTheDocument()
   })
 })
 

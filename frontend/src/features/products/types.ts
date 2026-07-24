@@ -5,6 +5,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
@@ -79,6 +80,13 @@ export interface ProductDetail {
    * here rather than duplicated, since the wire shape is identical.
    */
   applicable_attributes?: ApplicableAttribute[]
+  /**
+   * The category's configured (context=product, form_mode=view) attribute
+   * layout, additive (spec 0062). `null`/absent falls back to the flat
+   * rendering of `applicable_attributes` (AC-007) — same fixture-compatibility
+   * convention as `applicable_attributes` above.
+   */
+  attribute_layout?: LayoutBlob | null
 }
 
 /**

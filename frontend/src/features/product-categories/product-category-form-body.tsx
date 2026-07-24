@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FolderTree, ListChecks } from 'lucide-react'
+import { FolderTree, LayoutGrid, ListChecks } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import { collectSubtreeIds, flattenCategoryTree } from '@/features/product-categ
 import { useProductCategoryForm } from '@/features/product-categories/use-product-category-form'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
+import { ProductCategoryAttributeLayoutEditor } from '@/features/product-categories/product-category-attribute-layout-editor'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
   AttributeContext,
@@ -248,6 +249,27 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
           </div>
         </form>
       </Form>
+
+      {/* Independent Save (its own PUT), mounted OUTSIDE the RHF <form> above
+          so it never doubles as a category-form submit trigger. Edit only —
+          the layout is authored per-category, so it needs a saved category
+          to attach to (spec 0062). */}
+      <div className="px-4 pb-4">
+        {mode.type === 'edit' ? (
+          <ProductCategoryAttributeLayoutEditor
+            categoryId={mode.category.id}
+            canEdit={mode.category.permissions.resource.update}
+          />
+        ) : (
+          <FormSection
+            icon={LayoutGrid}
+            title={t('attributeLayout:section.title')}
+            description={t('attributeLayout:section.description')}
+          >
+            <p className="text-xs text-muted-foreground italic">{t('attributeLayout:section.createHint')}</p>
+          </FormSection>
+        )}
+      </div>
     </div>
   )
 }

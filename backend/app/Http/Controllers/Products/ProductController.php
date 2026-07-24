@@ -50,7 +50,7 @@ class ProductController extends BaseApiController
             $product->loadMissing('category', 'vatRate', 'supplier');
 
             return $this->okWithPermissions(
-                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product)),
+                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product), $this->service->attributeLayout($product)),
                 $this->buildPermissions($request->user(), $product),
             );
         } catch (Throwable $exception) {
@@ -69,7 +69,7 @@ class ProductController extends BaseApiController
             $product = $this->service->create($request->toData());
 
             return $this->okWithPermissions(
-                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product)),
+                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product), $this->service->attributeLayout($product)),
                 $this->buildPermissions($request->user(), $product),
                 'Created',
                 HttpStatusEnum::CREATED,
@@ -90,7 +90,7 @@ class ProductController extends BaseApiController
             $product = $this->service->update($product, $request->toData());
 
             return $this->okWithPermissions(
-                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product)),
+                new ProductResource($product, $this->service->effectiveBusinessFunction($product), $this->service->applicableAttributes($product), $this->service->attributeLayout($product)),
                 $this->buildPermissions($request->user(), $product),
             );
         } catch (Throwable $exception) {

@@ -8,6 +8,7 @@ use App\DataObjects\Notes\CreateNoteData;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\User;
@@ -15,6 +16,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Notes\NoteService;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
@@ -33,9 +35,9 @@ use Illuminate\Validation\ValidationException;
  * and their own write rules (D-4/D-5).
  *
  * `loadWorkPanel()`/`updateWork()` both return the SAME shape —
- * {opportunity, applicable_attributes, workflow_statuses} — consumed directly
- * by RequestManagementResource, so show/update render identically (data
- * contract: "Response identica alla GET").
+ * {opportunity, applicable_attributes, workflow_statuses, attribute_layout} —
+ * consumed directly by RequestManagementResource, so show/update render
+ * identically (data contract: "Response identica alla GET").
  *
  * Activity logging: `opportunity_workflow_status_id`, `attribute_values` and
  * (spec 0052 D-2) `next_callback_at` are ALL deliberately excluded from
@@ -98,6 +100,7 @@ final class RequestManagementService
 
     public function __construct(
         private readonly ApplicableAttributesResolver $attributesResolver,
+        private readonly OpportunityAttributeLayoutResolver $attributeLayoutResolver,
         private readonly AttributeValueValidator $attributeValueValidator,
         private readonly AttributeValueNormalizer $attributeValueNormalizer,
         private readonly OpportunityWorkflowResolver $workflowResolver,
@@ -109,9 +112,9 @@ final class RequestManagementService
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>}
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
      */
-    public function loadWorkPanel(Opportunity $opportunity): array
+    public function loadWorkPanel(Opportunity $opportunity, FormMode $formMode = FormMode::Edit): array
     {
         $opportunity->loadMissing(self::WORK_PANEL_RELATIONS);
 
@@ -119,6 +122,7 @@ final class RequestManagementService
             'opportunity' => $opportunity,
             'applicable_attributes' => $this->attributesResolver->resolve($opportunity),
             'workflow_statuses' => $this->resolveWorkflowStatuses($opportunity),
+            'attribute_layout' => $this->attributeLayoutResolver->resolve($opportunity, $formMode),
         ];
     }
 
@@ -128,7 +132,7 @@ final class RequestManagementService
      * loadWorkPanel(), post-save.
      *
      * @param  array{opportunity_workflow_status_id?: int|null, note?: string|null, attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>}
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
      */
     public function updateWork(Opportunity $opportunity, User $actor, array $data): array
     {

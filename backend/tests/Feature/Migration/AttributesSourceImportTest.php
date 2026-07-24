@@ -120,6 +120,140 @@ it('imports an ENUM attribute with its options', function () {
     expect($run->fresh()->created_rows)->toBe(1);
 });
 
+it('carries color, icon and is_default on ENUM options', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                [
+                    'id' => 21,
+                    'code' => 'status_color',
+                    'name' => 'Status color',
+                    'type' => 'enum',
+                    'options' => [
+                        ['value' => 'open', 'label' => 'Open', 'color' => '#22c55e', 'icon' => 'circle', 'is_default' => true],
+                        ['value' => 'closed', 'label' => 'Closed'],
+                    ],
+                ],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
+
+    $open = Attribute::query()->where('old_id', 21)->first()->options()->where('value', 'open')->first();
+    expect($open->color)->toBe('#22c55e')
+        ->and($open->icon)->toBe('circle')
+        ->and((bool) $open->is_default)->toBeTrue();
+});
+
+it('isolates an ENUM row with duplicate option values', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                [
+                    'id' => 22, 'code' => 'dup', 'name' => 'Dup', 'type' => 'enum',
+                    'options' => [
+                        ['value' => 'x', 'label' => 'X one'],
+                        ['value' => 'x', 'label' => 'X two'],
+                    ],
+                ],
+                ['id' => 23, 'code' => 'weight2', 'name' => 'Weight', 'type' => 'decimal'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect(Attribute::query()->where('code', 'dup')->exists())->toBeFalse()
+        ->and(Attribute::query()->where('code', 'weight2')->exists())->toBeTrue()
+        ->and($run->fresh()->failed_rows)->toBe(1);
+});
+
+it('forwards the per-type config blob', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                ['id' => 24, 'code' => 'ratio', 'name' => 'Ratio', 'type' => 'decimal', 'config' => ['min' => 0, 'max' => 100, 'decimals' => 2]],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
+
+    expect(Attribute::query()->where('old_id', 24)->value('config'))->toBe(['min' => 0, 'max' => 100, 'decimals' => 2]);
+});
+
+it('imports a RELATION attribute with its relation_target', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                [
+                    'id' => 25, 'code' => 'supplier', 'name' => 'Supplier', 'type' => 'relation',
+                    'relation_target' => ['entity_type' => 'referents', 'cardinality' => 'one', 'for_select_resource' => 'referents'],
+                ],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
+
+    $supplier = Attribute::query()->where('old_id', 25)->first();
+    expect($supplier->type)->toBe('relation')
+        ->and($supplier->relation_target)->toBe(['entity_type' => 'referents', 'cardinality' => 'one', 'for_select_resource' => 'referents']);
+});
+
+it('isolates a RELATION row with an invalid entity_type', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                [
+                    'id' => 26, 'code' => 'bad_rel', 'name' => 'Bad relation', 'type' => 'relation',
+                    'relation_target' => ['entity_type' => 'not_an_entity', 'cardinality' => 'one', 'for_select_resource' => 'x'],
+                ],
+                ['id' => 27, 'code' => 'ok_text', 'name' => 'Ok text', 'type' => 'text'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect(Attribute::query()->where('code', 'bad_rel')->exists())->toBeFalse()
+        ->and(Attribute::query()->where('code', 'ok_text')->exists())->toBeTrue()
+        ->and($run->fresh()->failed_rows)->toBe(1);
+});
+
+it('exposes a sample response covering every attribute type with its extras', function () {
+    seedMigrationsConfig();
+
+    $sample = app(App\Migrations\Sources\AttributesSource::class)->sampleResponse();
+    $types = array_column($sample['items'], 'type');
+
+    expect($types)->toEqualCanonicalizing(app(App\CustomFields\FieldTypeRegistry::class)->all());
+
+    $enum = collect($sample['items'])->firstWhere('type', 'enum');
+    expect($enum['options'][0])->toHaveKeys(['value', 'label', 'color', 'icon', 'sort_order', 'is_default']);
+
+    $relation = collect($sample['items'])->firstWhere('type', 'relation');
+    expect($relation['relation_target'])->toBe(['entity_type' => 'referents', 'cardinality' => 'one', 'for_select_resource' => 'referents']);
+});
+
 it('re-importing the same attributes is idempotent (skip, no duplicate)', function () {
     seedMigrationsConfig();
     Http::fake([

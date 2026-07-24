@@ -6,11 +6,14 @@ use App\DataObjects\Products\CreateProductData;
 use App\DataObjects\Products\UpdateProductData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
+use App\Enums\AttributeContext;
+use App\Enums\FormMode;
 use App\Models\Product;
 use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
 
@@ -38,6 +41,7 @@ class ProductService
         private readonly ProductAttributeResolver $attributeResolver,
         private readonly AttributeValueValidator $attributeValueValidator,
         private readonly AttributeValueNormalizer $attributeValueNormalizer,
+        private readonly AttributeLayoutService $attributeLayoutService,
     ) {}
 
     /**
@@ -124,6 +128,25 @@ class ProductService
             ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
             ->values()
             ->all();
+    }
+
+    /**
+     * The product's category's configured layout (spec 0062), always
+     * FormMode::View — ProductResource is the detail shape; the create/edit
+     * form resolves its OWN (context=product, form_mode=create|edit) layout
+     * directly against the category picker via GET attribute-layouts, never
+     * through this Resource. Null when the product has no category or none
+     * is configured (flat fallback, AC-007).
+     *
+     * @return array{sections: array<int, array<string, mixed>>}|null
+     */
+    public function attributeLayout(Product $product): ?array
+    {
+        if ($product->category === null) {
+            return null;
+        }
+
+        return $this->attributeLayoutService->resolveForProduct($product->category, AttributeContext::Product, FormMode::View);
     }
 
     /**

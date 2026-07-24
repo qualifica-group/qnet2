@@ -7,6 +7,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type {
   CustomFieldConfig,
   CustomFieldRelationTarget,
@@ -136,6 +137,17 @@ export interface EffectiveAttribute {
     sort_order: number
     is_default: boolean
   }[]
+}
+
+/**
+ * Response of `GET /product-categories/{id}/attribute-layouts` (spec 0062
+ * `data_contract`): the persisted layout (`null` = flat fallback) for the
+ * requested (context, form_mode), plus the palette source — the SAME
+ * effective-attributes catalogue `EffectiveAttribute` already models.
+ */
+export interface AttributeLayoutData {
+  layout: LayoutBlob | null
+  attributes: EffectiveAttribute[]
 }
 
 /** A single attribute-to-category assignment sent to the backend (full-replace sync per category). */

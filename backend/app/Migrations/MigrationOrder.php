@@ -29,21 +29,30 @@ final class MigrationOrder
      */
     public const PHASES = [
         // Phase 1 — independent anchor entities that later phases link to.
-        // `sources`, `tags` and `attributes` are plain lookups with no
-        // cross-source reference; `sectors` and `product-categories` reference
-        // only themselves (parent_id remapped via old_id, relinked within their
-        // own run), so they belong here too.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'attributes', 'product-categories'],
+        // `sources` and `tags` are plain lookups with no cross-source reference;
+        // `sectors` references only itself (parent_id remapped via old_id,
+        // relinked within its own run); `roles` are adopted/created by name and
+        // are referenced by `users` via old_id, so they anchor here too.
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'roles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
-        // users (companies/sites/functions), referents (referent-types) and
-        // products (product-categories; vat_rate/supplier are not remapped).
-        ['users', 'referents', 'products'],
+        // users (companies/sites/functions/roles) and referents (referent-types).
+        ['users', 'referents'],
 
         // Phase 3 — associations that link phase 2 users onto phase 1 entities:
         // business-function operators (pivot) + responsible (manager_id) need
         // both the function and its users already migrated.
         ['business-function-members'],
+
+        // Phase 4 — product anchors imported right before products: `attributes`
+        // are custom-field definitions and `product-categories` reference only
+        // themselves (parent_id remapped within their own run). Nothing in the
+        // earlier phases references either, so they sit here next to `products`.
+        ['attributes', 'product-categories'],
+
+        // Phase 5 — products reference the phase 4 product-categories via old_id
+        // (vat_rate/supplier are not remapped).
+        ['products'],
     ];
 
     /**

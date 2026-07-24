@@ -63,6 +63,13 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
+// Spec 0062: this suite is not about the attribute layout, so no layout is
+// ever configured — keeps the category-picked flow deterministic (no real
+// network round-trip) without touching the custom-fields assertions below.
+vi.mock('@/features/products/use-product-attribute-layout', () => ({
+  useProductAttributeLayout: () => ({ data: null, isLoading: false }),
+}))
+
 const FULL_ACCESS: ResourcePermissions['resource'] = {
   view: true,
   create: true,

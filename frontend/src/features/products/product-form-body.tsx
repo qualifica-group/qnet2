@@ -50,8 +50,16 @@ function numberInputValue(value: number | null): string {
 export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission, canResource } = useResourcePermissions()
-  const { form, serverError, onSubmit, productAttributes, productAttributesLoading, onCategoryChange } =
-    useProductForm({ mode, onSuccess })
+  const {
+    form,
+    serverError,
+    onSubmit,
+    productAttributes,
+    productAttributesLoading,
+    productLayout,
+    layoutFormMode,
+    onCategoryChange,
+  } = useProductForm({ mode, onSuccess })
   const treeQuery = useProductCategoryTree()
   // Attribute values are authorized at the resource level, not per field
   // (see `useProductFormMeta`'s docblock) — gate the whole dynamic block on
@@ -273,6 +281,8 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
           <ProductDynamicFields
             control={form.control}
             attributes={productAttributes}
+            layout={productLayout}
+            mode={layoutFormMode}
             isLoading={productAttributesLoading}
             disabled={!attributesEditable}
           />

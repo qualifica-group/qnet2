@@ -72,6 +72,34 @@ it('throws a 502 ExternalApiException on a non-2xx response', function () {
     }
 });
 
+it('throws a 502 ExternalApiException on an auth redirect instead of importing an empty payload', function () {
+    fakeExternalConfig();
+    Http::fake([
+        fakeExternalBaseUrl().'/roles*' => Http::response('', 302, ['Location' => fakeExternalBaseUrl().'/login']),
+    ]);
+
+    try {
+        app(ExternalApiClient::class)->get('roles');
+        $this->fail('Expected ExternalApiException.');
+    } catch (ExternalApiException $exception) {
+        expect($exception->status())->toBe(502);
+    }
+});
+
+it('throws a 502 ExternalApiException on a non-JSON (HTML) 2xx response', function () {
+    fakeExternalConfig();
+    Http::fake([
+        fakeExternalBaseUrl().'/roles*' => Http::response('<!DOCTYPE html><html><body>login</body></html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    try {
+        app(ExternalApiClient::class)->get('roles');
+        $this->fail('Expected ExternalApiException.');
+    } catch (ExternalApiException $exception) {
+        expect($exception->status())->toBe(502);
+    }
+});
+
 it('throws a 502 ExternalApiException on a connection failure', function () {
     fakeExternalConfig();
     Http::fake(function () {

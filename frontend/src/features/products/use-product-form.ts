@@ -6,18 +6,24 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import type { LayoutFormMode } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
-import { createProduct, updateProduct } from '@/features/products/api'
+import { createProduct, productDetailQueryKey, updateProduct } from '@/features/products/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/products/product-form-payload'
 import {
   buildCreateProductSchema,
   buildUpdateProductSchema,
   type CreateProductFormValues,
 } from '@/features/products/product-schema'
-import type { ProductDetail, ProductFormMode } from '@/features/products/types'
+import type {
+  ProductDetail,
+  ProductDetailWithPermissions,
+  ProductFormMode,
+} from '@/features/products/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
+import { useProductAttributeLayout } from '@/features/products/use-product-attribute-layout'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 
 /** Server-side generic field names mapped onto the form for 422 handling. */
@@ -89,6 +95,13 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
   )
   const productAttributesQuery = useEffectiveAttributes(categoryId, 'product')
   const productAttributes = productAttributesQuery.data ?? EMPTY_ATTRIBUTES
+
+  // Spec 0062: the selected category's configured PRODUCT-context layout for
+  // this form's own mode (create/edit are independent layouts, D3) — additive
+  // to `productAttributes` above, never a replacement for it.
+  const layoutFormMode: LayoutFormMode = isEdit ? 'edit' : 'create'
+  const productLayoutQuery = useProductAttributeLayout(categoryId, layoutFormMode)
+  const productLayout = productLayoutQuery.data ?? null
 
   // Custom fields (spec 0021): the single reusable integration — builds the
   // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
@@ -172,7 +185,16 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
           mode.product.id,
           buildUpdatePayload(values, mode.product, attributeCodes),
         )
-        queryClient.setQueryData(['products', 'detail', mode.product.id], saved)
+        // Overlay the saved fields onto the cached entry instead of replacing
+        // it: `saved` is a bare `ProductDetail` without the `permissions`
+        // envelope sibling, and the detail page reads `permissions.resource`.
+        // Replacing would strip `permissions` and crash on navigation. When
+        // nothing is cached, leave it untouched — the page's
+        // `invalidateQueries` refetches the full `ProductDetailWithPermissions`.
+        queryClient.setQueryData<ProductDetailWithPermissions>(
+          productDetailQueryKey(mode.product.id),
+          (previous) => (previous ? { ...previous, ...saved } : previous),
+        )
         toast.success(t('products.form.updated'))
         invalidateStats()
         onSuccess(saved)
@@ -197,7 +219,9 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
     serverError,
     onSubmit,
     productAttributes,
-    productAttributesLoading: productAttributesQuery.isLoading,
+    productAttributesLoading: productAttributesQuery.isLoading || productLayoutQuery.isLoading,
+    productLayout,
+    layoutFormMode,
     /** Wire the category field's `onChange` to also call this, alongside `field.onChange` — see `categoryId` above. */
     onCategoryChange: setCategoryId,
   }

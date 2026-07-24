@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
@@ -8,7 +8,27 @@ import type { ProductCategoryDetailWithPermissions } from '@/features/product-ca
  * Spec 0061 follow-up: the read-only detail view splits `attributes` +
  * `inherited_attributes` into the SAME two context-scoped sections the
  * editor uses, instead of one flat, context-unlabeled list.
+ *
+ * Spec 0062 (MT-3.2) added `ProductCategoryAttributeLayoutSection` to this
+ * same view; its own fetch/save wiring is covered by
+ * `product-category-attribute-layout-section.test.tsx`, so here its data
+ * hook is stubbed to keep this suite focused on the attribute sections above
+ * it (and QueryClient-free, since the stub replaces the only `useQuery` call
+ * in the tree).
  */
+vi.mock('@/features/product-categories/use-attribute-layout', () => ({
+  useAttributeLayout: () => ({
+    attributes: [],
+    draft: { sections: [] },
+    setDraft: vi.fn(),
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+    isSaving: false,
+    error: null,
+    save: vi.fn(async () => true),
+  }),
+}))
 
 const PERMISSIONS: ProductCategoryDetailWithPermissions['permissions'] = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },

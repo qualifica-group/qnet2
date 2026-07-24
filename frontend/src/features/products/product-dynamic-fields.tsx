@@ -1,12 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { SlidersHorizontal } from 'lucide-react'
-import type { Control, FieldPath } from 'react-hook-form'
+import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { AttributeControlBridge } from '@/features/attributes/attribute-control-bridge'
-import { toCustomFieldDescriptor } from '@/features/attributes/effective-attribute-adapter'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
+import type { LayoutBlob, LayoutFormMode } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
@@ -14,6 +12,10 @@ interface ProductDynamicFieldsProps {
   control: Control<ProductFormValues>
   /** The selected category's PRODUCT-context effective attributes (own + inherited), spec 0061. */
   attributes: EffectiveAttribute[]
+  /** The selected category's configured PRODUCT-context layout for this form mode, spec 0062; `null` -> flat. */
+  layout: LayoutBlob | null
+  /** `'create'`/`'edit'` — the form's own mode (D3: independent layouts), never `'view'` here. */
+  mode: LayoutFormMode
   isLoading: boolean
   /**
    * Resource-level gate: attribute values are authorized at the
@@ -25,14 +27,16 @@ interface ProductDynamicFieldsProps {
 }
 
 /**
- * The product form's dynamic-fields section: one control per PRODUCT-context
- * effective attribute of the selected category (spec 0061), dispatched by
- * `type` through `CUSTOM_FIELD_COMPONENT_REGISTRY` via `toCustomFieldDescriptor`
- * — mirrors `RequestDynamicFields`'s bridge for the Opportunity path exactly,
- * without touching that file. Empty (with a hint) until a category is picked
- * or when the picked category carries no product attribute.
+ * The product form's dynamic-fields section: rendered through the
+ * module-agnostic `AttributeLayoutRenderer` (spec 0062). No configured
+ * layout -> the SAME `FormSection` wrapper (icon/title) as before, hosting
+ * the renderer's flat fallback — byte-for-byte the prior `ProductDynamicField`
+ * markup (AC-007). A configured layout renders its sections directly: each
+ * section already carries its own card chrome (`ConfigSection`), so nesting
+ * it inside another `bg-card` `FormSection` would stack two cards on the same
+ * surface (ui-design.md §1-bis) — this wrapper is skipped in that branch.
  */
-export function ProductDynamicFields({ control, attributes, isLoading, disabled }: ProductDynamicFieldsProps) {
+export function ProductDynamicFields({ control, attributes, layout, mode, isLoading, disabled }: ProductDynamicFieldsProps) {
   const { t } = useTranslation()
   const title = t('products.form.dynamicFields.title')
 
@@ -52,46 +56,27 @@ export function ProductDynamicFields({ control, attributes, isLoading, disabled 
     )
   }
 
-  const sorted = [...attributes].sort((a, b) => a.sort_order - b.sort_order)
+  if (!layout || layout.sections.length === 0) {
+    return (
+      <FormSection icon={SlidersHorizontal} title={title}>
+        <AttributeLayoutRenderer
+          layout={null}
+          attributes={attributes}
+          control={control}
+          mode={mode}
+          disabled={disabled}
+        />
+      </FormSection>
+    )
+  }
 
   return (
-    <FormSection icon={SlidersHorizontal} title={title}>
-      {sorted.map((attribute) => (
-        <ProductDynamicField key={attribute.code} control={control} attribute={attribute} disabled={disabled} />
-      ))}
-    </FormSection>
-  )
-}
-
-interface ProductDynamicFieldProps {
-  control: Control<ProductFormValues>
-  attribute: EffectiveAttribute
-  disabled: boolean
-}
-
-/** One Attribute-backed field, rendered via the registry bridge; required marker follows the attribute's own `is_required`. */
-function ProductDynamicField({ control, attribute, disabled }: ProductDynamicFieldProps) {
-  const name = `attribute_values.${attribute.code}` as FieldPath<ProductFormValues>
-  const descriptor = toCustomFieldDescriptor(attribute)
-
-  return (
-    <FormField
+    <AttributeLayoutRenderer
+      layout={layout}
+      attributes={attributes}
       control={control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel required={attribute.is_required}>{attribute.name}</FormLabel>
-          <AttributeControlBridge
-            descriptor={descriptor}
-            value={field.value as CustomFieldValue}
-            onChange={field.onChange as (value: CustomFieldValue) => void}
-            disabled={disabled}
-            readOnly={false}
-          />
-          {attribute.help_text ? <FormDescription>{attribute.help_text}</FormDescription> : null}
-          <FormMessage />
-        </FormItem>
-      )}
+      mode={mode}
+      disabled={disabled}
     />
   )
 }

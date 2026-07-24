@@ -60,6 +60,12 @@ export const attributes = {
     relationEntityTypeRequired: 'Il modulo di destinazione della relazione è obbligatorio.',
     relationForSelectResourceRequired: 'La risorsa del selettore è obbligatoria.',
   },
+  layout: {
+    // Titolo della sezione sintetica "Altre informazioni" generata a runtime
+    // da `AttributeLayoutRenderer` (spec 0062) per gli attributi effettivi
+    // non piazzati in nessuna sezione del layout configurato — mai persistita.
+    otherInformation: 'Altre informazioni',
+  },
 }
 
 export const productCategories = {

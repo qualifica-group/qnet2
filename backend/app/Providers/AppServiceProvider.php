@@ -9,6 +9,7 @@ use App\CustomFields\CustomFieldRequestBag;
 use App\Models\Address;
 use App\Models\Attachment;
 use App\Models\Attribute;
+use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Company;
@@ -112,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
             'referent' => Referent::class,
             'referent_type' => ReferentType::class,
             'attribute' => Attribute::class,
+            'attribute_layout' => AttributeLayout::class,
             'product_category' => ProductCategory::class,
             'product' => Product::class,
             'source' => Source::class,

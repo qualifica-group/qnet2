@@ -61,18 +61,32 @@ class ExternalApiClient
     public function get(string $path, array $query = []): array
     {
         try {
-            $response = $this->client()->get($path, $query);
+            // Never follow redirects: an auth/session redirect (e.g. to a
+            // login page) must surface as an error, not be followed to a 200
+            // HTML page that silently decodes to an empty payload — otherwise
+            // every import "succeeds" with zero rows.
+            $response = $this->client()->withoutRedirecting()->get($path, $query);
         } catch (ConnectionException $exception) {
             throw $this->isTimeout($exception)
                 ? new ExternalApiException('The external system timed out.', 504, $exception)
                 : new ExternalApiException('Could not reach the external system.', 502, $exception);
         }
 
+        if ($response->redirect()) {
+            throw new ExternalApiException('The external system rejected the request (authentication required).', 502);
+        }
+
         if ($response->failed()) {
             throw new ExternalApiException('The external system returned an error.', 502);
         }
 
-        return (array) $response->json();
+        $decoded = $response->json();
+
+        if (! is_array($decoded)) {
+            throw new ExternalApiException('The external system returned an invalid (non-JSON) response.', 502);
+        }
+
+        return $decoded;
     }
 
     private function client(): PendingRequest

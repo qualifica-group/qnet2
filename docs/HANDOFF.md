@@ -2,6 +2,504 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0062 — CONFIGURATORE SPOSTATO NEL FORM EDIT + ANTEPRIMA READ-ONLY NEL DETTAGLIO (2026-07-24) — VERDE, NON COMMITTATO
+
+Owner: teammate `frontend`, scope `frontend/src/features/product-categories/` (+2 chiavi i18n in
+`i18n/locales/{en,it}-attribute-layout.ts`, namespace `attributeLayout`, NON toccati `en.ts`/`it.ts`).
+NON toccati (lane `ui-design`, solo importati): `features/attributes/layout-configurator/*`,
+`components/ui/config-section.tsx`.
+
+Il configuratore drag-and-drop (montato finora nel DETTAGLIO categoria, con Save proprio) e' stato
+spostato nel FORM DI EDIT; il dettaglio ora mostra solo un'anteprima READ-ONLY dello stesso layout
+persistito. `product-category-attribute-layout-section.tsx` (vecchio mount, autoring nel dettaglio)
+e' stato **rimosso** e sostituito da 4 file nuovi che condividono selettore (context×form_mode) +
+fetch (`useAttributeLayout`, invariato) e differenziano solo il corpo:
+
+- `product-category-attribute-layout-shared.ts` — `ATTRIBUTE_LAYOUT_CONTEXTS`/`_FORM_MODES` +
+  `buildAttributeLayoutLabels(t)`; `.ts` puro (niente JSX) per non far scattare
+  `react-refresh/only-export-components` insieme a un export-componente.
+- `product-category-attribute-layout-context-mode-selector.tsx` — `AttributeLayoutContextModeSelector`,
+  UI pura (Tabs contesto + Select form_mode + slot `trailing` opzionale per il bottone Save),
+  riusata identica da editor e preview.
+- `product-category-attribute-layout-editor.tsx` — `ProductCategoryAttributeLayoutEditor` (ex
+  `...-section.tsx`, stessa logica/markup, wrapper `FormSection` invece di `DetailSection`, stessa
+  label bottone `'Save layout'`/`t('section.save')`). Montato SOLO in `ProductCategoryFormBody`
+  quando `mode.type === 'edit'`, **fuori** dall'elemento `<form>` RHF (sibling dopo `</Form>`, dentro
+  lo stesso div scrollabile) — cosi' il suo Save (PUT indipendente su
+  `/product-categories/{id}/attribute-layouts`) non puo' mai fare da submit trigger del form
+  categoria. In CREATE al suo posto c'e' una card `FormSection` con l'hint
+  `attributeLayout:section.createHint` ("Save the category to configure the attribute layout.").
+  Helper text `attributeLayout:section.editorHint` sopra il selettore chiarisce il salvataggio
+  separato.
+- `product-category-attribute-layout-preview.tsx` — `ProductCategoryAttributeLayoutPreview`, NUOVO:
+  stesso selettore + `useAttributeLayout` (labels costruite ma mai usate — save non e' mai invocato),
+  corpo = `AttributeLayoutRenderer` (`@/features/attributes/attribute-layout-renderer`) con
+  `readOnly` + un `useForm<AttributeLayoutFormShape>` locale usa-e-getta (mai submesso, mirror di
+  `AttributeLayoutPreviewPanel` della lane ui-design). Quando `draft.sections.length === 0` NON
+  cade nel fallback flat del renderer: mostra invece lo stato vuoto dedicato
+  `attributeLayout:section.previewEmpty` ("No layout configured for this combination."). Montato in
+  `product-category-detail.tsx` al posto del vecchio editor, SENZA `canEdit` (nessun controllo di
+  permesso: la view non autorizza mai un'azione, solo il form).
+- `use-attribute-layout.ts`: unico delta, `UseAttributeLayoutLabels` ora **esportata** (era privata)
+  cosi' il modulo shared puo' tipizzare `buildAttributeLayoutLabels` senza ridefinire la forma.
+
+Test (Vitest, eseguiti):
+`product-category-attribute-layout-editor.test.tsx` (5, porting 1:1 del vecchio
+`...-section.test.tsx`), `product-category-attribute-layout-preview.test.tsx` (5 nuovi: fetch
+default/cambio combinazione, nessun bottone Save mai renderizzato, stato vuoto, rendering read-only
+di un layout con sezioni — campo `readonly`), `product-category-form-body.test.tsx` (2 nuovi: edit
+monta l'editor e il suo bottone `.closest('form')` e' `null` mentre quello del form categoria non lo
+e'; create NON monta l'editor, mostra l'hint, zero fetch layout). `product-category-detail.test.tsx`
+INVARIATO (il mock esistente di `useAttributeLayout` — via `vi.mock('.../use-attribute-layout')` —
+resta valido as-is per il nuovo componente preview, stessa shape).
+
+Verifica: `npx vitest run` → 2434/2437 verdi, 3 rossi preesistenti isolati in
+`features/table/cell-renderers.test.tsx` (i18n badge label IT vs EN, non toccato da questo lavoro,
+baseline nota). `npx tsc -b` pulito. `npx eslint src/features/product-categories/` pulito (0
+problemi); `npx eslint .` sul resto del repo mostra solo problemi preesistenti fuori scope
+(`referents`/`registries` test `_omit` non usato, warning React Compiler su `imports/wizard`).
+
+RICHIESTE AD ALTRE LANE: nessuna — contratto consumato as-is (`AttributeLayoutRenderer`,
+`useAttributeLayout`, `AttributeLayoutConfigurator`, tipi `attribute-layout-types.ts`), nessun delta
+di shape richiesto a backend/ui-design.
+
+PROSSIMI PASSI: nessuno aperto per questo task. NON COMMITTATO — in attesa di via libera esplicito
+(CLAUDE.md §3.6).
+
+## MIGRATION — AttributesSource: relation_target + config + enum options completi (2026-07-24) — VERDE, NON COMMITTATO
+
+File: `backend/app/Migrations/Sources/AttributesSource.php` (+ test
+`backend/tests/Feature/Migration/AttributesSourceImportTest.php`). L'import attributi
+ora inoltra l'INTERO payload di presentazione, non solo code/name/type/options:
+- `mapConfig`: inoltra `config` verbatim (array non vuoto → altrimenti null). Nessuna
+  validazione per-chiave (come StoreAttributeRequest, che valida `config` solo come nullable array).
+- `mapRelationTarget($record, $type)`: attivo SOLO per `type='relation'`. Valida la
+  stessa shape del FormRequest bypassato (`ValidatesFieldTypeDefinition`): `entity_type`
+  custom-fieldable (via `CustomFieldEntityRegistry`, iniettato nel costruttore), `cardinality`
+  in `one|many`, `for_select_resource` non vuoto. Target mancante → null → Service 422;
+  target malformato → RuntimeException → riga fallita con motivo preciso. Per i tipi non-relation
+  ritorna null (un target vagante viene scartato).
+- `mapOptions`: aggiunti `color`/`icon`/`is_default` sulle opzioni enum + check unicità
+  dei `value` (il Service guarda solo il COUNT, non l'unicità → replico la regola del FormRequest).
+  Value duplicati → RuntimeException → riga fallita.
+Costruttore: aggiunta dep `CustomFieldEntityRegistry` (source risolto via container, DI ok).
+Test: 11 pass / 41 assert (nuovi: color/icon/is_default, dup values isolata, config forward,
+relation import valido, relation entity_type invalido isolato, + sample copre tutti i tipi). Pint clean.
+GAP CHIUSI: i due che erano fuori scope prima (relation non importabile, config non inoltrato).
+
+ESEMPIO DI RISPOSTA (pagina /migrations): override di `sampleResponse()` in AttributesSource
+— sostituisce il template generico single-record di AbstractMigrationSource con 13 item, UNO
+per ogni tipo registrato (`FieldTypeRegistry::all()`), ciascuno con gli extra type-specific reali
+(`config` per text/integer/decimal/date/enum, `options` complete color/icon/is_default/sort_order
+per enum, `relation_target` per relation). Il frontend NON e' toccato: `MigrationTemplatePanel`
+gia' renderizza `sample` (= `sampleResponse()`, via `GET /migrations/{source}/columns`) come JSON
+copiabile nel blocco `SampleBlock`. File a 318 righe (soft-limit 300 superato: warning hook,
+non blocco; e' un literal di dati coeso, split non giustificato).
+
+## SPEC 0062 — RUNTIME RICABLATO: PRODOTTO (MT-4.1) + OPPORTUNITA' (MT-4.2) (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0062-attribute-layout-configurator.xml` (`data_contract/rendering-payload`, AC-014/015/007).
+Owner: teammate `frontend`, scope disgiunto `frontend/src/features/products/` +
+`frontend/src/features/request-management/` + la chiave i18n `attributes.layout.otherInformation`.
+NON toccati: `features/attributes/*` (API congelate, solo importate), `features/product-categories/*`
+(altra lane, in-flight in parallelo su questa stessa working tree — `product-category-attribute-layout-section.*`,
+`use-attribute-layout.ts`, diff su `product-categories/api.ts`/`types.ts`/`query-keys.ts` NON sono miei).
+
+FILE CREATI:
+- `features/products/use-product-attribute-layout.ts`: `useProductAttributeLayout(categoryId, formMode)`
+  — query React Query dedicata (chiave `['product-categories', id, 'attribute-layouts', 'product', formMode]`)
+  su `GET /product-categories/{id}/attribute-layouts?context=product&form_mode=create|edit`, legge SOLO
+  `data.layout` (il campo `attributes` della stessa risposta e' ignorato di proposito: `useEffectiveAttributes`
+  spec 0061 resta l'unica fonte del catalogo attributi, invariata — meno rischio di drift, zero rewrite di
+  `use-product-form.ts` oltre l'aggiunta). `enabled: categoryId !== null`, stessa authz (`product-categories.view`)
+  gia' verificata su `effective-attributes`. Fallimento/loading -> `null` -> fallback flat, mai bloccante.
+- `features/request-management/applicable-attribute-adapter.ts`: `toEffectiveAttribute(ApplicableAttribute,
+  context='opportunity')` — adapter CONDIVISO (DRY) tra il work-panel (context='opportunity') e il product
+  detail (context='product', vedi sotto) dato che `ProductResource.applicable_attributes` E
+  `RequestManagementResource.applicable_attributes` sono lo STESSO DTO. `relation_target` risolto
+  difensivamente (code malformato -> nessuna relation, non crash); `entity_type` lasciato vuoto
+  (mai letto da `toCustomFieldDescriptor`, che legge solo `for_select_resource`/`cardinality`).
+  Test dedicato `applicable-attribute-adapter.test.ts` (4/4).
+- `features/products/product-attribute-values-section.test.tsx`, `use-product-attribute-layout.ts` — vedi sopra.
+
+FILE MODIFICATI (chirurgici):
+- `features/products/product-dynamic-fields.tsx`: montaggio sostituito da `AttributeLayoutRenderer`. Nuove
+  prop `layout: LayoutBlob|null`, `mode: LayoutFormMode` ('create'|'edit', mai 'view' qui). REGOLA DI
+  COMPOSIZIONE (nuova, vale anche per request-management sotto): `FormSection` (icona+titolo, skeleton,
+  empty-hint) avvolge SOLO lo stato di loading/empty e il fallback flat (byte-per-byte l'markup pre-0062,
+  AC-007) — quando un layout con sezioni e' configurato, il renderer monta DIRETTO, senza wrapper: le sue
+  sezioni sono gia' una `ConfigSection` propria (`variant:'default'` = STESSO `bg-card` di `FormSection`),
+  quindi annidarla dentro un'altra card impilerebbe due superfici identiche (ui-design.md §1-bis, card-su-card).
+- `features/products/use-product-form.ts`: +`useProductAttributeLayout(categoryId, layoutFormMode)`,
+  `layoutFormMode = isEdit ? 'edit' : 'create'` (D3, layout indipendente create/edit); `productAttributesLoading`
+  ora combina ANCHE il loading del layout (`|| productLayoutQuery.isLoading`) cosi' lo skeleton copre entrambe
+  le fetch prima di mostrare i campi, evitando un reflow "flat poi sezionato". Ritorna `productLayout`,
+  `layoutFormMode` in piu' (nessun altro campo toccato).
+- `features/products/product-form-body.tsx`: passa `layout`/`mode` in piu' a `ProductDynamicFields`.
+- `features/products/types.ts`: +`ProductDetail.attribute_layout?: LayoutBlob|null` (additivo, stessa
+  convenzione fixture-compat di `applicable_attributes?`/`custom_fields?`).
+- `features/products/product-detail.tsx`: passa `layout={product.attribute_layout ?? null}` in piu' a
+  `ProductAttributeValuesSection`.
+- `features/products/product-attribute-values-section.tsx`: split in due branch. `layout=null` (o
+  `sections:[]`) -> `ProductAttributeValuesFlat`, la implementazione PRE-ESISTENTE INTOCCATA (DetailField
+  per attributo VALORIZZATO, `null` se nessuno) — AC-007 letterale, non "flat del renderer" (che mostra TUTTI
+  gli attributi anche vuoti: scelta deliberata per non alterare il detail quando non c'e' alcun layout
+  configurato). `layout` con sezioni -> `ProductAttributeLayoutView`, monta `AttributeLayoutRenderer`
+  `mode="view"` `readOnly` dentro un `useForm`/`<Form>` locale "usa e getta" (nessun submit, solo display) seedato
+  da `values`; adatta `product.applicable_attributes` (`ApplicableAttribute[]`) via
+  `toEffectiveAttribute(attr, 'product')`. Qui la sezione MOSTRA anche gli attributi non valorizzati
+  (struttura del layout configurato dall'admin, non solo cio' che e' stato compilato) — divergenza
+  intenzionale dal comportamento flat, delimitata al SOLO branch con layout.
+- `features/request-management/request-dynamic-fields.tsx`: riscritto. `attributes.length===0` -> invariato
+  (empty hint in `FormSection`). Altrimenti: UN SOLO `<MetaField control name="attribute_values"
+  metaKey="attribute_values" label={title}>` avvolge l'output di `AttributeLayoutRenderer` (mode="edit") —
+  sostituisce gli N `<MetaField>` per-campo di prima (stessa metaKey su tutti, quindi stesso esito di
+  visibilita'/disabled/readOnly, ora calcolato una volta sola), mirror ESATTO del pattern gia' in uso in
+  `RequestProductsOfInterest` (`<MetaField>` block-level attorno a un controllo complesso, niente
+  `<FormControl>`, `htmlFor` orfano tollerato — precedente gia' in produzione). Stessa regola di composizione
+  di cui sopra: `FormSection` avvolge SOLO empty-state e fallback flat; layout con sezioni -> il gate
+  (`MetaField`+renderer) monta diretto, niente card-su-card. Adapter locale `toEffectiveAttribute` (vedi sopra)
+  per il bridge `ApplicableAttribute -> EffectiveAttribute` richiesto dal renderer.
+- `features/request-management/request-work-panel.tsx`: passa `layout={panel.attribute_layout}` in piu'.
+- `features/request-management/types.ts`: +`RequestWorkPanel.attribute_layout?: LayoutBlob|null` (additivo,
+  stessa convenzione fixture-compat di `rewards?`).
+- `i18n/locales/{it,en}-products.ts`: aggiunta `attributes.layout.otherInformation` ("Altre informazioni"/
+  "Other information") richiesta esplicitamente dalla lane attributes/renderer nel loro HANDOFF precedente —
+  namespace `attributes` (NON `attributeLayout`, quello e' un namespace separato del configuratore).
+
+FILE RIMOSSO: `features/request-management/request-attribute-adapter.ts` — dead code dopo il rewire (era
+l'UNICO consumer, `request-dynamic-fields.tsx`, ora passa dal registry via `AttributeLayoutRenderer`).
+
+CONFERME ESPLICITE RICHIESTE:
+- Wrapper `<MetaField metaKey="attribute_values">` PRESERVATO attorno al blocco attributi del work-panel
+  (una sola istanza ora, stessa metaKey, stesso esito di gating — vedi sopra).
+  Payload `attribute_values` (submit prodotto E work-panel) INVARIATO: nessun file payload/schema toccato
+  (`product-form-payload.ts`, `request-work-payload.ts`, `request-work-schema.ts` non modificati).
+- Authz fetch layout form Prodotto: NESSUN problema. Stessa Policy (`product-categories.view`) del GET
+  `effective-attributes` gia' chiamato dal form prodotto oggi — verificato leggendo
+  `AttributeLayoutController::show()`/`ProductCategoryPolicy` (nessun override, stesso `BasePolicy`
+  auto-discovery). Non serve un nuovo permesso.
+
+TEST ESEGUITI (Vitest, comandi reali):
+- `npx vitest run src/features/products src/features/request-management` -> **22 file, 140/140 verdi**
+  (copertura AC-014 in `product-dynamic-fields.test.tsx` + nuovo `product-attribute-values-section.test.tsx`;
+  AC-015 in `request-work-panel.test.tsx`; AC-007 in entrambi come test espliciti + regressione dei test 0061
+  preesistenti rimasti verdi SENZA modificarne le asserzioni).
+- `npx vitest run` (suite intera): **352/353 file, 2427/2430 test verdi** — i 3 falliti sono
+  `features/table/cell-renderers.test.tsx` (ContactsCell, aria-label lingua-dipendente), PRE-ESISTENTI,
+  baseline nota, file mai toccato da questa lane.
+- `npx tsc -b --noEmit`: **0 errori** su tutto il progetto (un errore transitorio visto a meta' sessione in
+  `features/attributes/layout-configurator/attribute-layout-configurator.test.tsx`, NON mio — file dell'altra
+  lane in-flight sulla stessa working tree, autorisolto dal loro stesso lavoro concorrente prima della verifica
+  finale).
+- ESLint sui file toccati: **pulito** (exit 0).
+
+PROSSIMI PASSI (fuori da questo giro): nessuno per MT-4.1/4.2, entrambi chiusi. Resta da coordinare con la
+lane `product-categories`/`attributes` il proprio configuratore drag-and-drop (AC-009/010/011/016) e la
+sezione di mount nel detail categoria — non tocca `features/products`/`features/request-management`.
+NIENTE COMMIT (attesa via libera §3.6).
+
+## SPEC 0062 — CONFIGURATORE DRAG-AND-DROP + MOUNT (MT-3.1 + MT-3.2) (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0062-attribute-layout-configurator.xml` (`layout-contract`/`data_contract` congelati).
+Owner: teammate `frontend`, scope disgiunto: `frontend/src/features/attributes/layout-configurator/`
+(nuovo), `frontend/src/features/product-categories/` (mount+api+hook), `frontend/src/i18n/locales/
+{it,en}-attribute-layout.ts` (nuovo namespace). NON toccati: `features/attributes/*` alla radice
+(API congelate, solo importate), `features/products`, `features/request-management`, i18n
+`{it,en}-products.ts`/`{it,en}-request-management.ts` (altre lane in corso in parallelo, verificato via
+`git status` prima e dopo). Consuma il contratto backend GIA' implementato e verificato (vedi sezione
+0062 BACKEND sotto): `GET/PUT /api/product-categories/{id}/attribute-layouts?context=&form_mode=`.
+
+FILE CREATI — `features/attributes/layout-configurator/` (motore del configuratore, agnostico rispetto
+al mount):
+- `layout-configurator-tree.ts`: TUTTE le mutazioni pure e immutabili sull'albero `LayoutBlob`
+  (`addSection/removeSection/updateSection/moveSection`, `addRow/removeRow/moveRow`,
+  `placeAttribute` — la mossa unica dietro ogni esito drag-and-drop: piazzamento da palette, spostamento
+  tra righe/sezioni, unplace —, `updateItemWidth`, `collectPlacedCodes`/`unplacedAttributes`,
+  `locateAttribute`/`locateRow`). Zero dipendenza React/dnd-kit: testato in isolamento (20 test).
+- `layout-configurator-dnd.ts`: convenzioni id dnd-kit (`attribute_code` = id draggable, univoco
+  nell'intero blob dato che un attributo e' o in palette o piazzato UNA volta) + `resolveDropTarget(blob,
+  overId)` che traduce un `over.id` di dnd-kit (palette | contenitore riga | altro item) nel `DropTarget`
+  semantico per `placeAttribute`.
+- `use-layout-configurator-actions.ts`: hook "fully controlled" (`{blob, onChange}` → azioni) — nessuno
+  stato locale, wrapper sottile sulle funzioni pure di cui sopra + `handleDragEnd(event: DragEndEvent)`
+  cablato nel `DndContext`.
+- `attribute-layout-configurator.tsx` (componente pubblico) + sotto-componenti `attribute-layout-
+  palette.tsx`, `attribute-layout-section-editor.tsx`, `attribute-layout-row-editor.tsx`,
+  `attribute-layout-item-editor.tsx`, `attribute-layout-preview-panel.tsx` (monta l'esistente
+  `AttributeLayoutRenderer` in `readOnly`, alimentato dallo STESSO `blob` in editing → AC-011 anteprima
+  live). **Riordino sezioni/righe = bottoni su/giù, non drag**: unico `DndContext` scoping ridotto al
+  solo posizionamento attributi (AC-009), id univoci per costruzione, niente namespace multipli a
+  rischio collisione — scelta di semplificazione dichiarata, righe/sezioni restano riordinabili
+  (AC-010) senza introdurre una seconda superficie di drag.
+- `i18n.ts`: registra il namespace i18next `attributeLayout` come side-effect (mirror ESATTO di
+  `features/migrations/i18n.ts` — pattern gia' in uso per non toccare `en.ts`/`it.ts`, vicini al limite
+  dimensione e posseduti da altre lane).
+- Test: `layout-configurator-tree.test.ts` (20), `layout-configurator-dnd.test.ts` (4),
+  `use-layout-configurator-actions.test.ts` (4, `handleDragEnd` con eventi dnd-kit sintetici — un vero
+  drag puntatore su jsdom e' impraticabile, si testa lo stesso handler che dnd-kit invoca),
+  `attribute-layout-configurator.test.tsx` (7, CRUD sezioni/righe end-to-end + AC-011 live + cambio
+  larghezza AC-009 end-to-end via RTL+Radix Select).
+
+FILE CREATI/MODIFICATI — `features/product-categories/` (mount MT-3.2):
+- `api.ts` (+`fetchAttributeLayout`/`saveAttributeLayout`), `query-keys.ts`
+  (+`attributeLayout(categoryId,context,formMode)`), `types.ts` (+`AttributeLayoutData`).
+- `use-attribute-layout.ts` (nuovo): fetch (TanStack Query, key = categoria+context+form_mode) + draft
+  locale risincronizzato ad ogni nuova risposta (pattern "fresh load, local draft, explicit save" —
+  mirror di `useDefaultStatuses` in `opportunity-workflows`) + `save()` che valida col GIA' congelato
+  `attributeLayoutBlobSchema` prima del PUT (mai fidarsi del blob client) e aggiorna la cache via
+  `queryClient.setQueryData`.
+- `product-category-attribute-layout-section.tsx` (nuovo): sezione "Attribute layout" nel dettaglio
+  Categoria Prodotto — selettore CONTESTO (Tabs, `FORM_TAB_LIST_CLASS`/`FORM_TAB_TRIGGER_CLASS`
+  condivisi) × MODALITA' (Select create/edit/view), ognuna delle 6 combinazioni carica/salva il proprio
+  layout indipendente; bottone Save gated su `category.permissions.resource.update` (autorizzazione
+  server-side resta il PUT stesso, il gate qui e' solo UX). Monta `AttributeLayoutConfigurator`.
+- `product-category-detail.tsx`: +1 riga, monta `<ProductCategoryAttributeLayoutSection
+  categoryId={category.id} canEdit={category.permissions.resource.update} />` dopo le due sezioni
+  attributi esistenti (Prodotto/Opportunita').
+- `product-category-detail.test.tsx`: aggiornato con `vi.mock('.../use-attribute-layout')` (stub fisso)
+  perche' l'albero ora contiene un `useQuery` in piu' — senza lo stub servirebbe un `QueryClientProvider`
+  che questa suite (focalizzata sulle due sezioni attributi pre-esistenti) non aveva mai avuto bisogno di
+  montare; nessun assert esistente toccato/indebolito.
+- `product-category-attribute-layout-section.test.tsx` (nuovo): 5 test, `QueryClient` per-test
+  (`wrapper()` fresco ad ogni `render`, mai riusato tra render), api mockata — load default (product,
+  create), switch contesto/mode ri-fetcha con la query-key giusta, Save chiama `saveAttributeLayout` col
+  draft corrente, Save nascosto se `canEdit=false`. **Gotcha scoperto**: `@radix-ui/react-tabs` cambia
+  tab su `onMouseDown`, NON `onClick` — `fireEvent.click` su un `role=tab` non fa nulla in test, serve
+  `fireEvent.mouseDown` (annotato nel test per chi lo riusa altrove).
+
+FILE CREATI — i18n:
+- `i18n/locales/{en,it}-attribute-layout.ts`: namespace `attributeLayout` (`configurator.*` per il
+  configuratore, `section.*` per il mount) — nessuna stringa hardcoded nel JSX.
+
+CONTRATTO CONSUMATO — invariato, nessun delta: `AttributeLayoutRenderer`, `attribute-layout-types.ts`,
+`attribute-layout-schema.ts`, `attribute-layout-grid.ts`, `EffectiveAttribute`, `ConfigSection` — TUTTI
+importati as-is dalla lane backend/motore-rendering (vedi sezioni 0062 sotto), zero modifica.
+
+TEST ESEGUITI (Vitest, comandi reali):
+- `npx vitest run src/features/attributes/layout-configurator/ src/features/product-categories/` →
+  **13 file, 80 test, tutti verdi**.
+- `npx vitest run` (suite INTERA frontend): **352/353 file verdi, 2427/2430 test verdi** — i 3 rossi
+  sono `features/table/cell-renderers.test.tsx` (ContactsCell, aria-label i18n-dipendente),
+  PRE-ESISTENTI e fuori scope (baseline nota, comunicata dal lead, riprodotta identica isolando il file).
+- `npx tsc -b` → **pulito, 0 errori** (intero progetto, incluse le altre lane in corso).
+- `npx eslint` sui file toccati/creati → **pulito, 0 warning/errori**.
+
+PROSSIMI PASSI (fuori da questo giro, altre lane): ricablaggio `product-dynamic-fields.tsx`/
+`product-attribute-values-section.tsx`/`request-dynamic-fields.tsx` sul renderer (AC-014/AC-015, gia' in
+corso in parallelo per quanto visto in `git status`); chiave i18n formale
+`attributes.layout.otherInformation` in `{it,en}-products.ts` (richiesta aperta dalla lane motore-
+rendering, non di mia competenza). Nessun altro delta richiesto al backend: il contratto GET/PUT e' stato
+consumato esattamente come congelato.
+
+## SPEC 0062 — BACKEND: SCHEMA + ENDPOINT + RISOLUZIONE LAYOUT (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0062-attribute-layout-configurator.xml` (`layout-contract`/`data_contract` congelati).
+Owner: teammate `backend`, scope disgiunto `backend/` (nessun file `frontend/` toccato). Task svolto:
+1.1→1.4 completi (schema+model, validazione+service, endpoint GET/PUT, risoluzione Opportunita' +
+payload additivi Prodotto/work-panel). Configuratore FE drag-and-drop e anteprima live restano fuori
+(lane frontend, vedi sezione sotto per il motore di rendering gia' pronto).
+
+FILE CREATI:
+- `app/Enums/FormMode.php` (`create|edit|view`), `app/Enums/LayoutSectionVariant.php`
+  (`default|highlighted|informative|secondary`), `app/Enums/LayoutItemWidth.php`
+  (`full|two_thirds|half|third`) — string-backed, mirror ESATTO del `layout-contract` congelato (i type
+  TS gia' scritti dalla lane frontend in `attribute-layout-types.ts` li rispecchiano).
+- `database/migrations/2026_07_24_180000_create_attribute_layouts_table.php`: `product_category_id`
+  (FK `product_categories` cascadeOnDelete), `context`, `form_mode` (stringhe, non FK enum — cast lato
+  Model), `layout` (json nullable), unique(`product_category_id`,`context`,`form_mode`). Migrata pulita
+  su SQLite (test) e reversibile.
+- `app/Models/AttributeLayout.php`: `#[Fillable(['product_category_id','context','form_mode','layout'])]`,
+  cast `layout=>array`, `context=>AttributeContext`, `form_mode=>FormMode`; `belongsTo(ProductCategory)`;
+  `LogsModelActivity` (stesso pattern di `Attribute`/`CustomFieldDefinition`). **Registrato nel morph map
+  di `AppServiceProvider::boot()`** (`'attribute_layout' => AttributeLayout::class`) — omissione causava
+  `ClassMorphViolationException`/500 su ogni PUT (enforceMorphMap e' strict, ogni model auditato deve
+  esserci: nota per chi tocchera' ANCORA questo file, e per chi audita nuovi model in futuro).
+- `database/factories/AttributeLayoutFactory.php`: stato `withCodes(array $codes, string $title)` che
+  costruisce un blob minimale contract-valid (una sezione, una riga per code, width `full`) — usato dai
+  test invece di ricostruire lo shape a mano ovunque.
+- `app/Services/ProductCategories/AttributeLayoutValidator.php`: valida il blob (shape via
+  `ValidatorFacade` con regole dotted `layout.sections.*...` + ALLOW-LIST dei `code` effettivi via
+  `CategoryHierarchy::effectiveAttributes($category, $context)` + no-duplicati). Mirror ESATTO del
+  pattern `App\RequestManagement\AttributeValueValidator` (classe standalone invocata dal Service, MAI
+  dentro il FormRequest — un FormRequest statico non puo' vedere l'allow-list per-categoria). Errori
+  "code sconosciuto"/"duplicato" -> `ValidationException` chiave **`attribute_layout`** (AC-003/004);
+  violazioni di shape/enum -> path dotted naturali di Laravel.
+- `app/Services/ProductCategories/AttributeLayoutService.php`: `resolveForProduct(ProductCategory,
+  AttributeContext, FormMode): ?array` (blob raw persistito o null) e `upsert(...): ?array` (valida via
+  AttributeLayoutValidator, poi in transazione: `layout=null` o `sections=[]` -> DELETE riga -> null;
+  altrimenti `updateOrCreate` con un blob **ri-normalizzato campo-per-campo** — cast espliciti, droppa
+  qualsiasi chiave fuori contratto, difesa in profondita' "mai fidarsi del blob client" — idempotente,
+  AC-002). Nome `resolveForProduct` e' quello richiesto dal contratto congelato anche se e' usato ANCHE
+  per Opportunita' (context-agnostico, il nome riflette il caller primario).
+- `app/Http/Requests/ProductCategories/AttributeLayoutQueryRequest.php` (GET: `context` default
+  `opportunity`, `form_mode` default `create`, `Rule::enum`) e
+  `app/Http/Requests/ProductCategories/UpdateAttributeLayoutRequest.php` (PUT: `context`/`form_mode`
+  required enum, `layout` **shallow** `nullable|array` — stesso split di `UpdateRequestRequest`/
+  `UpdateProductRequest` per `attribute_values`: la validazione profonda vive nel Validator/Service).
+- `app/Http/Controllers/ProductCategories/AttributeLayoutController.php` (nuovo, dedicato):
+  `show()`/`update()`, thin, authz `$this->authorize('view'|'update', $productCategory)` via
+  `ProductCategoryPolicy` esistente (NESSUN nuovo permesso — `product-categories.view`/`.update`).
+- `app/RequestManagement/OpportunityAttributeLayoutResolver.php`:
+  `resolve(Opportunity, FormMode): ?array` — merge multi-categoria (spec `opportunity-layout-resolution`):
+  categorie distinte in ordine product-line (STESSA logica di dedup di
+  `ApplicableAttributesResolver::distinctCategories`, duplicata ~10 righe apposta per NON esporre il
+  metodo privato dell'altra classe — `ApplicableAttributesResolver` resta intoccata), concatena le
+  sezioni per categoria, dedup `attribute_code` first-wins, filtra al set applicabile MERGED (via
+  `ApplicableAttributesResolver::resolve()`, la STESSA istanza/autorita' della value-pipeline), sezione
+  sintetica finale "Altre informazioni" (`is_advanced:true`, un item per riga, `width:'full'`) per i code
+  applicabili mai piazzati. **Nessuna categoria con layout configurato per quel `form_mode` -> null**
+  (flat, AC-007), anche se il merged applicable set non e' vuoto.
+
+FILE MODIFICATI (additivi, chirurgici):
+- `routes/api.php`: +2 route (`GET`/`PUT .../attribute-layouts`), dichiarate SOPRA la route
+  `{productCategory}` show (stesso motivo di `effective-attributes`: segmento letterale prima del
+  wildcard). Nessuna route esistente toccata.
+- `app/Providers/AppServiceProvider.php`: `AttributeLayout` aggiunta a `Relation::enforceMorphMap()`
+  (vedi sopra — necessaria, non opzionale, per via di `LogsModelActivity`).
+- `app/Services/ProductService.php`: +`AttributeLayoutService` iniettato, +metodo
+  `attributeLayout(Product): ?array` (sempre `context=Product, form_mode=View` — il form create/edit
+  risolve il SUO layout via GET diretta sulla categoria selezionata, non attraverso questo Resource, per
+  come da spec).
+- `app/Http/Resources/ProductResource.php`: +parametro costruttore `?array $attributeLayout`, +chiave
+  output `attribute_layout` (additiva). `attribute_values`/`applicable_attributes` INVARIATI.
+- `app/Http/Controllers/Products/ProductController.php`: le 3 istanze `new ProductResource(...)`
+  (show/store/update) passano il 4° argomento `$this->service->attributeLayout($product)`.
+- `app/Services/RequestManagement/RequestManagementService.php`: `loadWorkPanel(Opportunity, FormMode
+  $formMode = FormMode::Edit): array` (nuovo param con default — show/update restano Edit senza cambiare
+  chiamata), +chiave `attribute_layout` nel panel array via `OpportunityAttributeLayoutResolver`
+  (iniettato). `applicable_attributes`/value-pipeline INVARIATI. **File era gia' a ridosso del limite
+  hard 500 righe** (pre-esistente) — i docblock aggiunti sono stati tenuti al MINIMO indispensabile
+  (una riga sola nei `@return`) per restare sotto soglia senza toccare commenti pre-esistenti: 496 righe
+  finali. Se un prossimo task tocca ancora questo file, valutare lo split (fuori scope qui).
+- `app/Services/RequestManagement/RequestCreationService.php`: la chiamata finale a `loadWorkPanel()`
+  passa esplicitamente `FormMode::Create` (D3: il form "nuova richiesta" e' un layout indipendente da
+  quello del pannello di modifica).
+- `app/Http/Resources/RequestManagementResource.php`: +chiave output `attribute_layout` (additiva),
+  letta da `$this->resource['attribute_layout']`.
+
+CONTRATTO — NESSUN DELTA rispetto alla spec congelata: nomi di campo, enum, shape, envelope
+`{success,message,data}` tutti come da `data_contract`/`layout-contract`. Unico dettaglio da segnalare
+alla lane frontend (non un delta, un chiarimento implementativo): `resolveForProduct()` e' il nome
+INTERNO del metodo Service (irrilevante per il contratto HTTP, che espone solo `GET/PUT
+.../attribute-layouts` con lo shape gia' congelato).
+
+TEST ESEGUITI (Pest, comandi reali):
+- `AttributeLayoutTest.php` (AC-001..006 + PUT layout=null->delete): **14/14 verdi**.
+- `OpportunityAttributeLayoutResolverTest.php` (AC-008, unit): **4/4 verdi**.
+- `ProductAttributeLayoutTest.php` (AC-007 regressione Prodotto + form_mode=view-only): **3/3 verdi**.
+- `RequestManagementAttributeLayoutTest.php` (AC-007 regressione work-panel + merge + create-vs-edit
+  mode): **5/5 verdi**.
+- Suite di regressione mirata: `RequestManagement*` **222/222 verdi** (invariata byte-per-byte),
+  `Product*`/`ProductCategor*` **294/296** (2 falliti = PRE-ESISTENTI, vedi sotto).
+- **Suite completa** (`XDEBUG_MODE=off php artisan test`, Xdebug causava un segfault del runner):
+  **3868 test, 3854 verdi, 13 falliti, 1 skipped** — TUTTI E 13 I FALLITI SONO PRE-ESISTENTI E FUORI
+  SCOPE, verificato non toccano nessun file di questa lane: 10 test `navigation: ... only shows with
+  ...` (attributes/companies/company-sites/custom-fields/operational-sites/product-categories/products/
+  referent-types/referents/reward-types) fallano perche' `config/navigation.php` NON ha piu' una chiave
+  top-level `management` che l'helper `navigationSectionKeys()` in `tests/Pest.php` si aspetta (verificato
+  con un test di debug ad-hoc: la vera struttura e' piatta, item diretti tipo `products-group`) — bug di
+  config/test preesistente, non introdotto qui, NON riparato (fuori ownership/scope di questa lane,
+  segnalato non implementato); `AbstractMigrationSourcePreviewTest` (mismatch chiave `description`) e
+  `CustomFieldWritePipelineTest` (VAT number fake non valido) idem, domini mai toccati da questa sessione.
+- Pint: `./vendor/bin/pint` — 1 file (`AttributeLayoutTest.php`) auto-fixato (import order/spacing), poi
+  `--test` **pulito**. Nessuna config toccata.
+
+PROSSIMI PASSI (fuori da questo giro, altra lane):
+- FE: configuratore drag-and-drop multi-container (dnd-kit) su `AttributeLayoutQueryRequest`/
+  `UpdateAttributeLayoutRequest` (GET/PUT `.../attribute-layouts`), anteprima live sullo stesso
+  `AttributeLayoutRenderer` gia' pronto (vedi sezione sotto), ricablaggio `product-dynamic-fields.tsx`/
+  `product-attribute-values-section.tsx`/`request-dynamic-fields.tsx` sul renderer + consumo dei nuovi
+  campi additivi `attribute_layout` (ProductResource, RequestManagementResource) — AC-009..016.
+- i18n: chiave `attributes.layout.otherInformation` (richiesta gia' aperta dalla lane frontend sotto).
+
+## SPEC 0062 — MOTORE DI RENDERING AGNOSTICO ATTRIBUTI (MT-2.1 + MT-2.2) (2026-07-24) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0062-attribute-layout-configurator.xml` (`layout-contract` congelato). Task svolto:
+SOLO il motore di rendering agnostico (drag-and-drop/configuratore/endpoint BE = fuori da questo giro).
+Owner: teammate `frontend`, scope disgiunto `frontend/src/features/attributes/` +
+`frontend/src/components/ui/config-section.tsx`. NON toccati: `features/products`,
+`features/request-management`, `features/product-categories`, i18n locali (altre lane, per design —
+vedi sotto la richiesta esplicita alla lane i18n).
+
+FILE CREATI:
+- `components/ui/config-section.tsx` (MT-2.2): primitivo `ConfigSection` — shell riusabile sopra
+  `FormSection` (a11y/focus/aria del collapsible ereditati intatti, non reimplementati). Props
+  frozen: `{ title: string; description?: string|null; variant: 'default'|'highlighted'|
+  'informative'|'secondary'; collapsible?: boolean; defaultCollapsed?: boolean; children }`.
+  Varianti SOLO token `index.css` (ui-design.md §1-bis): default = `border bg-card` di FormSection
+  invariato; highlighted = `border-primary/30 bg-primary/5`; informative = `border-border
+  bg-muted/40` (il wash "subtle block inside a card" gia' documentato per `--muted`); secondary =
+  `border-border bg-surface` (un rung sotto `--card`, letto come enfasi minore). Esporta anche il
+  type `ConfigSectionVariant`.
+- `features/attributes/attribute-layout-types.ts`: type TS del blob layout — `LayoutSectionVariant`,
+  `LayoutItemWidth`, `LayoutColumns` (1|2|3|4), `LayoutItem`, `LayoutRow`, `LayoutSection`,
+  `LayoutBlob`, `LayoutFormMode` ('create'|'edit'|'view', mirror di `App\Enums\FormMode`),
+  `AttributeLayoutFormShape` ({ attribute_values: Record<string, CustomFieldValue> }, NON
+  `custom_fields` namespaced). Nessun `any`.
+- `features/attributes/attribute-layout-schema.ts`: schema Zod `attributeLayoutBlobSchema` (stessa
+  shape, single source of truth per il configuratore che lo importera'); `superRefine` che rifiuta
+  `attribute_code` duplicati nell'intero blob (semantica `layout-contract`). L'allow-list dei code
+  effettivi (richiede dati runtime della categoria) resta a carico del configuratore/BE, non e'
+  nello schema statico.
+- `features/attributes/attribute-layout-grid.ts`: mappa STATICA (no interpolazione, requisito
+  Tailwind JIT) `gridColsClass(columns)` / `itemSpanClass(columns, width)`. Formula width→span
+  (full=columns, two_thirds=ceil(2c/3), half=ceil(c/2), third=ceil(c/3)) precalcolata per le 16
+  combinazioni (columns 1-4 × width 4), collasso mobile-first: mobile sempre 1 col, `sm:` =
+  min(columns,2), `lg:` = columns; un breakpoint e' emesso solo quando il suo valore CAMBIA rispetto
+  al precedente (cascata Tailwind, niente ripetizioni ridondanti). `LAYOUT_GRID_GAP_CLASS='gap-3'`.
+- `features/attributes/attribute-layout-field.tsx`: leaf `AttributeLayoutField<TFieldValues extends
+  AttributeLayoutFormShape>` — bind `attribute_values.<code>` via `AttributeControlBridge`/
+  `toCustomFieldDescriptor` (RIUSATI, non duplicata la mappa type→controllo). Markup identico a
+  `ProductDynamicField` (byte-per-byte) cosi' il fallback flat resta un vero match di regressione.
+- `features/attributes/attribute-layout-section.tsx`: `AttributeLayoutSection` — una `LayoutSection`
+  -> `ConfigSection` -> per ogni `row` un `<div grid ...>` (classi da `attribute-layout-grid.ts`) ->
+  per ogni `item` un wrapper `col-span-*` -> `AttributeLayoutField`. Un `attribute_code` che non
+  risolve piu' contro `attributesByCode` (layout stantio) viene saltato, non fa crashare il form.
+- `features/attributes/attribute-layout-renderer.tsx`: orchestratore `AttributeLayoutRenderer
+  <TFieldValues extends AttributeLayoutFormShape>({ layout, attributes, control, mode, disabled?,
+  readOnly? })`. `layout=null|sections=[]` -> fallback FLAT (un `AttributeLayoutField` per
+  attributo, ordinati per `sort_order`, AC-007). Layout presente -> sezioni ordinate per
+  `sort_order` + sezione sintetica finale "Altre informazioni" (id
+  `attribute-layout-renderer:other-information`, non persistita, collassata di default,
+  `variant:'secondary'`, un attributo per riga a `width:'full'`) per gli attributi effettivi non
+  piazzati in nessuna sezione. `mode==='view'` forza `readOnly=true` su ogni controllo (oltre al
+  prop `readOnly` esplicito); `disabled` passa invariato. Titolo sezione sintetica:
+  `t('attributes.layout.otherInformation', { defaultValue: 'Altre informazioni' })` — stesso
+  pattern gia' in uso in `features/notes/note-item.tsx` per chiavi non ancora nel bundle.
+
+RICHIESTA ALLA LANE I18N (non fatta qui, fuori scope): aggiungere in modo formale
+`attributes.layout.otherInformation` = "Altre informazioni" / "Other information" a
+`i18n/locales/{it,en}-products.ts` (namespace `attributes`), cosi' il default inline in
+`attribute-layout-renderer.tsx` diventa ridondante e puo' restare solo come rete di sicurezza.
+
+TEST ESEGUITI (Vitest, comando reale, non "dovrebbe passare"):
+`npx vitest run src/components/ui/config-section.test.tsx src/features/attributes/attribute-layout-
+grid.test.ts src/features/attributes/attribute-layout-renderer.test.tsx` → **20/20 verdi**.
+Copertura AC: AC-011 (stesso renderer per due istanze "runtime"+"preview" side-by-side), AC-012
+(sezioni/griglia/dispatch registry/marker required/"Altre informazioni"), AC-013 (classi statiche +
+collasso, formula width→span verificata per le 16 combinazioni in `attribute-layout-grid.test.ts`),
+AC-016 (collassabile, `aria-expanded`/`data-state`, `defaultCollapsed`). AC-007 coperto a livello di
+QUESTO renderer (fallback flat testato standalone); l'AC-007 "byte-identical a ProductDynamicFields
+in produzione" resta da riverificare quando un futuro task ricablera' `product-dynamic-fields.tsx`/
+`request-dynamic-fields.tsx` su questo motore (fuori scope qui, quei file non sono stati toccati).
+
+VERIFICA FINALE: `tsc -b` pulito (0 errori, intero progetto). ESLint pulito sui file `features/
+attributes/*` nuovi; `components/ui/config-section.tsx` e' sotto `globalIgnores(['src/components/
+ui/**'])` in `eslint.config.js` (shadcn vendored dir, gia' cosi' per ogni file in quella cartella —
+non una deroga introdotta qui). `vitest run` INTERO progetto: 2379 passati, 3 falliti — SOLO
+`features/table/cell-renderers.test.tsx` (ContactsCell, aria-label lingua-dipendente), confermato
+PRE-ESISTENTE e indipendente da questa modifica (fallisce identico anche isolato, file mai toccato).
+NIENTE COMMIT (attesa via libera §3.6).
+
+PROSSIMI PASSI (fuori da questo giro, per task successivi): backend (`attribute_layouts` migration +
+model + enum `FormMode` + endpoint GET/PUT + `OpportunityAttributeLayoutResolver`); configuratore FE
+drag-and-drop multi-container (dnd-kit) che scrive il blob via `attribute-layout-schema.ts`; anteprima
+live che monta lo stesso `AttributeLayoutRenderer` esportato qui (AC-011, gia' pronto per questo);
+ricablaggio di `product-dynamic-fields.tsx`/`product-attribute-values-section.tsx`/
+`request-dynamic-fields.tsx` sul renderer (AC-014/AC-015, tocca `features/products`/
+`features/request-management` — fuori dallo scope disgiunto di questa sessione).
+
 ## SPEC 0061 — ATTRIBUTI CATEGORIA PRODOTTO: CONTESTI PRODOTTO/OPPORTUNITA' (2026-07-24) — VERDE, NON COMMITTATO
 
 Spec: `docs/specs/0061-product-category-attribute-contexts.xml` (contratto congelato). Estende il
@@ -9915,3 +10413,63 @@ suite allargata a opportunities 206/206, `tsc -b --noEmit` pulito, ESLint pulito
   `@Nome` ma il bottone accessibile "View X's profile"; i test di sicurezza XSS restano intatti.
   VERIFICA: 82/82 verdi su notes + user-cell + request-management, tsc + eslint puliti. I 3 rossi
   di `cell-renderers.test.tsx` (ContactsCell) restano PRE-ESISTENTI: verificato con git stash.
+
+## 0062 UPDATE — ARMONIZZAZIONE COLORI CONFIGURATORE LAYOUT ATTRIBUTI (2026-07-24) — VERDE, NON COMMITTATO
+
+Il configuratore (`features/attributes/layout-configurator/*`) ora vive dentro il form di edit
+della Categoria, in una `FormSection` `bg-card` (ui-design.md §1-bis, rung 3 = frontmost), a sua
+volta dentro uno Sheet modale `bg-background` (rung 1). Gli interni usavano `bg-surface` (rung 2,
+PIU' BASSO del `bg-card` che li ospita ora) e la variante `secondary` di `ConfigSection` scendeva
+allo stesso rung: entrambi leggevano come pozzo rientrato invertito. Sopra `--card` non esiste un
+rung superiore a cui salire, quindi la gerarchia interna passa da RUNG a TINT/HAIRLINE (`--muted`,
+`border-border`), che sono per definizione indipendenti dal contenitore che li ospita.
+
+- `attribute-layout-palette.tsx`, `attribute-layout-section-editor.tsx`,
+  `attribute-layout-preview-panel.tsx`: contenitore `bg-surface`/`bg-card` -> `bg-muted/40`
+  (era `bg-card` nel caso della section-editor, un repeat esatto della card che lo ospita). I
+  "pozzi" droppabili (palette, righe) restano trasparenti + `border-dashed`: ereditano il tint del
+  blocco che li contiene, la delimitazione la fa il bordo tratteggiato, non un secondo layer di
+  tint (doppio blend misurato troppo debole, ~1.07-1.12:1, per reggere da solo). Le chip
+  (`bg-card`) restano invariate: la card e' il rung piu' avanzato, valida sopra qualsiasi tint a
+  prescindere da quanti livelli di tint la separano dalla card che la ospita — nessuna modifica li.
+- `components/ui/config-section.tsx`: variante `secondary` da `border-border bg-surface` a
+  `border-border bg-transparent shadow-none`. MOTIVO: `ConfigSection` e' usato SIA a diretto
+  contatto con la pagina (`product-dynamic-fields.tsx`/`request-dynamic-fields.tsx`, rung 1: li
+  `bg-surface` sarebbe stato corretto) SIA annidato nel tray della preview qui sopra (rung 3): una
+  resa a rung fisso e' giusta in un host e sbagliata nell'altro. `bg-transparent` e' agnostica alla
+  profondita' di nesting per costruzione (nessun fill proprio, lascia trasparire l'host), coerente
+  col principio "TINT non e' un rung, vive sopra qualunque superficie la ospiti".
+  Aggiornata l'unica asserzione di classe in `config-section.test.tsx` (`bg-surface` ->
+  `bg-transparent`); nessuna logica toccata.
+- Rimossa l'opacita' `/70` dai testi di stato vuoto (`text-muted-foreground/70 italic` in palette e
+  row-editor): su `bg-muted/40`-su-card il rapporto scendeva a 3.25:1 (light) / 3.55:1 (dark),
+  sotto la soglia AA 4.5:1 per testo normale. Ora `text-muted-foreground` pieno: 6.30:1 light /
+  5.50:1 dark, l'italic resta a segnalare lo stato vuoto senza indebolire il contrasto.
+- Contrasti ricalcolati (WCAG, formula relativa luminanza) sulle coppie introdotte:
+  - `bg-muted/40` su `--card`: fg 8.81:1 (light) / 9.01:1 (dark); muted-foreground 6.30:1 (light) /
+    5.50:1 (dark). Tutti ampiamente sopra 4.5:1.
+  - `border-border` su `bg-muted/40`-su-card: 1.64:1 (light) / 1.56:1 (dark) — hairline visibile
+    (soglia UI/decorativa 3:1 non richiesta per un bordo di contenimento, coerente col resto del
+    design system: `border` su `--card` diretto e' gia' 2.00:1/1.77:1).
+  - `ConfigSection secondary` (`bg-transparent`): sul rung diretto della pagina (`--background`)
+    fg 6.68:1 (light) / 16.5:1 (dark), muted-foreground 4.78:1 (light) / 10.07:1 (dark); annidato
+    nel tray (`--card` puro, nessun blend) i rapporti sono ancora piu' alti. AA rispettato in
+    ENTRAMBI gli host possibili.
+- SOLO token da `index.css` (`--muted`, `--border`, `--card`), nessun grigio Tailwind arbitrario,
+  nessun colore hard-coded. Densita' invariata (era gia' compatta: `text-xs`, `p-2`/`p-3`, icone
+  `size-3`/`size-3.5`). Nessuna modifica a logica/stato/DnD: solo classi.
+
+VERIFICA ESEGUITA: `npx tsc -b` pulito; `npx eslint` pulito sui file toccati (i `components/ui/**`
+sono globalmente esclusi dal lint via `eslint.config.ts`, invariato); `npx vitest run
+src/features/attributes src/components/ui/config-section.test.tsx` 72/72 verdi (nessuna asserzione
+di logica toccata, solo la classe attesa per `secondary`). NIENTE COMMIT (attesa via libera §3.6).
+
+File toccati: `frontend/src/components/ui/config-section.tsx`,
+`frontend/src/components/ui/config-section.test.tsx`,
+`frontend/src/features/attributes/layout-configurator/attribute-layout-palette.tsx`,
+`frontend/src/features/attributes/layout-configurator/attribute-layout-row-editor.tsx`,
+`frontend/src/features/attributes/layout-configurator/attribute-layout-section-editor.tsx`,
+`frontend/src/features/attributes/layout-configurator/attribute-layout-preview-panel.tsx`.
+`attribute-layout-item-editor.tsx`, `attribute-layout-configurator.tsx` e
+`attribute-layout-field.tsx` verificati, nessuna modifica necessaria (gia' coerenti: le chip
+usano `bg-card`, valido su qualunque tint).

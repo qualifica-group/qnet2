@@ -1,11 +1,19 @@
+import { useMemo } from 'react'
 import type { TFunction } from 'i18next'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { DetailField, DetailGrid, DetailSection } from '@/components/detail/detail-panel'
+import { Form } from '@/components/ui/form'
+import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
+import type { AttributeLayoutFormShape, LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 interface ProductAttributeValuesSectionProps {
+  /** The category's configured (context=product, form_mode=view) layout, spec 0062; `null` -> flat. */
+  layout: LayoutBlob | null
   /** Reused as-is: the same `ApplicableAttribute` DTO the Opportunity work panel reads (spec 0061). */
   attributes: ApplicableAttribute[]
   values: Record<string, CustomFieldValue>
@@ -37,12 +45,13 @@ function formatAttributeValue(attribute: ApplicableAttribute, value: CustomField
 }
 
 /**
- * Read-only "Attributes" section of the product detail view (spec 0061):
- * one `DetailField` per PRODUCT-context attribute that actually has a value.
+ * Read-only "Attributes" section of the product detail view (spec 0061): one
+ * `DetailField` per PRODUCT-context attribute that actually has a value.
  * Renders nothing when the product carries no attribute value (additive
- * feature, zero-code for a product predating attribute assignment).
+ * feature, zero-code for a product predating attribute assignment). This is
+ * the FLAT fallback (AC-007) — byte-for-byte the pre-0062 markup, untouched.
  */
-export function ProductAttributeValuesSection({ attributes, values }: ProductAttributeValuesSectionProps) {
+function ProductAttributeValuesFlat({ attributes, values }: Omit<ProductAttributeValuesSectionProps, 'layout'>) {
   const { t } = useTranslation()
   const valued = attributes.filter((attribute) => !isEmptyCustomFieldValue(values[attribute.code] ?? null))
 
@@ -61,4 +70,43 @@ export function ProductAttributeValuesSection({ attributes, values }: ProductAtt
       </DetailGrid>
     </DetailSection>
   )
+}
+
+/**
+ * Configured-layout branch (spec 0062 AC-014): mounts the SAME agnostic
+ * renderer the create/edit form uses, `mode="view"`/`readOnly`, seeded from a
+ * throwaway RHF instance — this is a display-only mount, nothing here ever
+ * submits. Shows every effective attribute of the configured sections (not
+ * only the valued ones), matching the admin-configured structure.
+ */
+function ProductAttributeLayoutView({
+  layout,
+  attributes,
+  values,
+}: Required<Pick<ProductAttributeValuesSectionProps, 'layout' | 'attributes' | 'values'>>) {
+  const form = useForm<AttributeLayoutFormShape>({ defaultValues: { attribute_values: values } })
+  const effectiveAttributes = useMemo(
+    () => attributes.map((attribute) => toEffectiveAttribute(attribute, 'product')),
+    [attributes],
+  )
+
+  return (
+    <Form {...form}>
+      <AttributeLayoutRenderer
+        layout={layout}
+        attributes={effectiveAttributes}
+        control={form.control}
+        mode="view"
+        readOnly
+      />
+    </Form>
+  )
+}
+
+export function ProductAttributeValuesSection({ layout, attributes, values }: ProductAttributeValuesSectionProps) {
+  if (layout && layout.sections.length > 0) {
+    return <ProductAttributeLayoutView layout={layout} attributes={attributes} values={values} />
+  }
+
+  return <ProductAttributeValuesFlat attributes={attributes} values={values} />
 }

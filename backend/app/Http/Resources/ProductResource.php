@@ -24,11 +24,13 @@ class ProductResource extends JsonResource
      *
      * @param  array{id: int, name: string}|null  $effectiveBusinessFunction
      * @param  array<int, array<string, mixed>>  $applicableAttributes
+     * @param  array{sections: array<int, array<string, mixed>>}|null  $attributeLayout
      */
     public function __construct(
         Product $resource,
         private readonly ?array $effectiveBusinessFunction = null,
         private readonly array $applicableAttributes = [],
+        private readonly ?array $attributeLayout = null,
     ) {
         parent::__construct($resource);
     }
@@ -60,6 +62,10 @@ class ProductResource extends JsonResource
             // fields — mirrors the request-management work panel's shape.
             'attribute_values' => $this->attribute_values ?? [],
             'applicable_attributes' => $this->applicableAttributes,
+            // Spec 0062: the category's configured (context=product,
+            // form_mode=view) layout, additive — null falls back to the
+            // pre-existing flat rendering (AC-007).
+            'attribute_layout' => $this->attributeLayout,
             'created_at' => $this->created_at,
         ];
     }

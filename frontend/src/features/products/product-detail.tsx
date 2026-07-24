@@ -69,6 +69,7 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
       </DetailSection>
 
       <ProductAttributeValuesSection
+        layout={product.attribute_layout ?? null}
         attributes={product.applicable_attributes ?? []}
         values={product.attribute_values ?? {}}
       />

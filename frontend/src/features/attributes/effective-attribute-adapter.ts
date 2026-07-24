@@ -11,11 +11,10 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
  * Bridges a category's `EffectiveAttribute` (spec 0061, the product form's
  * dynamic-fields source) onto the `CUSTOM_FIELD_COMPONENT_REGISTRY`
  * type→component contract — the SAME bridge idea as
- * `features/request-management/request-attribute-adapter.ts`'s
- * `toCustomFieldDescriptor`, sourced from a different (but equally frozen)
- * backend shape so it stays independent of the Opportunity path (which must
- * not be touched, CLAUDE.md hard-invariant). Pure read adapter: never writes
- * back to the custom-fields feature.
+ * `features/request-management/applicable-attribute-adapter.ts`, sourced from a
+ * different (but equally frozen) backend shape so it stays independent of the
+ * Opportunity path (which must not be touched, CLAUDE.md hard-invariant). Pure
+ * read adapter: never writes back to the custom-fields feature.
  */
 
 function toOption(option: EffectiveAttribute['options'][number]): CustomFieldOption {

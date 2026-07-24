@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0062-attribute-layout-configurator" status="draft" owner="tu" date="2026-07-24">
+
+  <goal>
+    Dare all'amministratore un configuratore visuale (drag and drop, con anteprima live) per
+    organizzare gli attributi di una Categoria Prodotto in sezioni e griglie, invece della
+    lista piatta un-attributo-per-riga attuale. Il layout e' salvato per (categoria, contesto,
+    modalita' form) e viene applicato al rendering dei form/scheda di Prodotti e Opportunita'.
+    Il motore di rendering e' agnostico rispetto al modulo e riusabile in futuro altrove.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo (grounding 2026-07-24), NON ipotizzati -->
+    <attribute-system>
+      Attributi = catalogo `attributes` + pivot `attribute_category`
+      (colonne reali: attribute_id, category_id, is_required, sort_order, context).
+      Enum App\Enums\AttributeContext = { Product='product', Opportunity='opportunity' }.
+      Risoluzione: App\Services\ProductCategories\CategoryHierarchy::effectiveAttributes(
+      ProductCategory $c, AttributeContext $ctx = Opportunity): Collection&lt;array&gt; — emette
+      righe per-attributo { id, code, name, type, ..., is_required, sort_order, inherited,
+      context, options }. Dedup per id, most-specific-wins, ordine flat per sort_order.
+      Valori: colonne JSON `products.attribute_values` e `opportunities.attribute_values`
+      (keyed by attribute `code`). ApplicableAttribute (DTO), AttributeValueValidator,
+      AttributeValueNormalizer restano invariati (value-pipeline di spec 0061).
+    </attribute-system>
+    <opportunity-merge>
+      VINCOLO CHIAVE: App\RequestManagement\ApplicableAttributesResolver::resolve(Opportunity)
+      UNISCE gli attributi effettivi di PIU' categorie (distinct productLines.productCategory),
+      dedup per `code`, required strictest-wins, sort finale [sortOrder, code]. Un Prodotto ha
+      UNA sola categoria (ProductAttributeResolver::resolve(Product)). Questa spec NON modifica
+      ApplicableAttributesResolver / la value-pipeline: risolve il layout a parte.
+    </opportunity-merge>
+    <current-rendering>
+      FE flat, uno-per-riga, ordinato per sort_order:
+      - Prodotto form: features/products/product-dynamic-fields.tsx (ProductDynamicFields),
+        montato in product-form-body.tsx; detail read-only product-attribute-values-section.tsx.
+      - Opportunita': features/request-management/request-dynamic-fields.tsx (RequestDynamicFields),
+        montato in request-work-panel.tsx (panel.applicable_attributes).
+      Bridge type->controllo: CUSTOM_FIELD_COMPONENT_REGISTRY
+      (features/custom-fields/field-component-registry.tsx). Adapter attributo->descriptor:
+      features/attributes/effective-attribute-adapter.ts (toCustomFieldDescriptor) +
+      features/attributes/attribute-control-bridge.tsx (AttributeControlBridge).
+      Il descriptor porta gia' group/tab ma gli adapter li forzano a null (punto di estensione).
+    </current-rendering>
+    <reusable-building-blocks>
+      - Drag and drop: @dnd-kit (core ^6.3.1, sortable ^10, utilities ^3.2.2). Primitiva
+        components/ui/sortable-list.tsx (SortableList) per lista singola con righe pinnate.
+        NB: il configuratore richiede dnd MULTI-CONTAINER (spostare item tra righe/sezioni) —
+        SortableList da solo non basta, serve un DndContext dedicato con piu' SortableContext.
+      - FormSection: frontend/src/components/form-section (accordion collassabile).
+      - Precedente configuratore inline drag and drop: features/opportunity-workflows/
+        workflow-statuses-editor.tsx (stato locale, non RHF).
+      - Storage config JSON: precedente UserTablePreference / UserTableFilter (cast 'array',
+        blob rivalidato contro la definizione, mai SQL sink). Attribute.config cast 'array'.
+      - Validazione blob JSON: pattern StoreCustomFieldRequest (regole dotted annidate +
+        withValidator().after() per check semantici cross-field).
+      - Split form: create/edit condividono *-form(-body); view = *-detail separato.
+      - Registry: FE features/modules/module-registry.ts; BE Tables/TableRegistry (non usati qui:
+        il configuratore e' ancorato alla categoria, non e' un modulo tabellare autonomo).
+    </reusable-building-blocks>
+    <decisions source="user 2026-07-24 AskUserQuestion">
+      <d id="D1">Ancoraggio config = PER CATEGORIA PRODOTTO (non profilo globale). Layout salvato
+        su (product_category_id, context, form_mode). Conseguenza: il form Opportunita', che
+        unisce piu' categorie, richiede una regola di risoluzione multi-categoria (vedi
+        &lt;opportunity-layout-resolution&gt;, punto #1 da confermare in approvazione).</d>
+      <d id="D2">Visibilita' condizionale = STATICA in v1 (per contesto/modulo + per modalita' +
+        flag sezione "avanzata"/"Altre informazioni"). Il rules-engine su valore di altri campi
+        (show_if) e' ESPLICITAMENTE FUORI SCOPE — spec successiva.</d>
+      <d id="D3">Modalita' form = TRE layout INDIPENDENTI per create / edit / view.
+        Enum App\Enums\FormMode = { Create='create', Edit='edit', View='view' }.</d>
+      <d id="D4">Responsive = collasso automatico progressivo (desktop N col -> tablet -> mobile 1
+        col), derivato dalle colonne configurate. NESSUN override manuale per breakpoint in v1.</d>
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuova tabella `attribute_layouts` (per categoria x contesto x modalita') + Model + enum FormMode.</item>
+      <item>Contratto layout JSON congelato (sezioni -> righe -> item con larghezza), con enum di variante e larghezza.</item>
+      <item>Validazione server del blob layout tramite ALLOW-LIST dei code effettivi della categoria per quel contesto.</item>
+      <item>Endpoint GET/PUT layout ancorati alla categoria; risoluzione layout esposta a Prodotto e Opportunita'.</item>
+      <item>Configuratore FE drag and drop multi-container: sezioni (titolo, descrizione, ordine, variante, collassabile, N colonne, flag avanzata), righe con interruzioni manuali e configurazioni miste, item con larghezza (full/2-3/1-2/1-3), palette attributi non piazzati.</item>
+      <item>Anteprima live in tempo reale del layout in costruzione.</item>
+      <item>Motore di rendering AGNOSTICO riusabile (features/attributes/attribute-layout-renderer.tsx) applicato a: Prodotto form (create/edit) + detail (view), Opportunita' work-panel.</item>
+      <item>Responsive automatico via classi Tailwind statiche (mappa colonne x larghezza).</item>
+      <item>Fallback backward-compatible: nessun layout configurato -> rendering flat attuale INVARIATO.</item>
+      <item>i18n it/en, test Pest + Vitest per fase.</item>
+    </in>
+    <out>
+      <item>Rules-engine di visibilita' su valore di altri campi (show_if / depends_on) — spec successiva (D2).</item>
+      <item>Override manuale per breakpoint desktop/tablet/mobile (D4) — solo collasso automatico in v1.</item>
+      <item>Ereditarieta' del LAYOUT lungo la gerarchia categorie (il layout NON eredita; ogni categoria
+        configura i propri attributi effettivi; assenza layout -> flat). L'ereditarieta' degli ATTRIBUTI resta com'e'.</item>
+      <item>Qualsiasi modifica a ApplicableAttributesResolver / AttributeValueValidator / AttributeValueNormalizer
+        / colonne attribute_values (value-pipeline 0061 invariata).</item>
+      <item>Layout per il motore custom-fields (features/custom-fields) — fuori scope: qui solo ATTRIBUTI.</item>
+      <item>Nuovo modulo tabellare / voce di navigazione autonoma: il configuratore vive ancorato alla categoria.</item>
+      <item>Drag and drop degli attributi tra CATEGORIE (resta l'assegnazione per-categoria esistente).</item>
+    </out>
+  </scope>
+
+  <layout-contract frozen="true">
+    <!-- Blob JSON salvato in attribute_layouts.layout. Backend valida, FE consuma, IDENTICO. -->
+    <enums>
+      App\Enums\LayoutSectionVariant = { Default='default', Highlighted='highlighted',
+        Informative='informative', Secondary='secondary' }.
+      App\Enums\LayoutItemWidth = { Full='full', TwoThirds='two_thirds', Half='half', Third='third' }.
+      section.columns: integer in {1,2,3,4}.
+    </enums>
+    <shape>
+{
+  "sections": [
+    {
+      "id": "string (uuid client-generated, stabile)",
+      "title": "string (max 191, raw; i18n a carico dell'admin come per workflow status group)",
+      "description": "string|null (max 500)",
+      "variant": "default|highlighted|informative|secondary",
+      "collapsible": true|false,
+      "default_collapsed": true|false,
+      "is_advanced": true|false,
+      "columns": 1|2|3|4,
+      "sort_order": 0,
+      "rows": [
+        {
+          "id": "string (uuid)",
+          "items": [
+            { "attribute_code": "string (deve esistere tra i code effettivi)", "width": "full|two_thirds|half|third" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+    </shape>
+    <semantics>
+      - section.columns definisce la griglia base (grid-cols-N su desktop). item.width e' uno span
+        frazionario risolto DENTRO quella griglia (full=N, two_thirds=ceil(2N/3), half=ceil(N/2),
+        third=ceil(N/3)), via mappa di classi Tailwind STATICHE (no concatenazione dinamica).
+      - rows[] = interruzioni di riga MANUALI (ogni row e' una nuova riga). Una row con item di
+        larghezza mista = "riga con configurazione mista" (es. [two_thirds, third]).
+      - is_advanced = sezione "Altre informazioni"/avanzata (resa collassata di default se collapsible).
+      - Ogni attribute_code compare AL PIU' una volta nell'intero layout (validato, no duplicati).
+      - Attributi effettivi non piazzati in alcuna sezione -> resi in una sezione sintetica trailing
+        "Altre informazioni" (is_advanced, generata dal renderer, NON persistita). Nessun attributo perso.
+      - Nessun layout salvato per (categoria,contesto,modalita') -> il renderer fa fallback FLAT
+        (comportamento attuale byte-per-byte).
+    </semantics>
+    <opportunity-layout-resolution note="PUNTO #1 DA CONFERMARE (conseguenza di D1)">
+      Il form Opportunita' unisce piu' categorie. Risoluzione v1 (server-side, NON tocca la
+      value-pipeline): per la data form_mode, itera le categorie contribuenti in ordine
+      deterministico (ordine delle product line, poi category_id); per ciascuna carica il suo
+      AttributeLayout(context=opportunity, form_mode); concatena le sezioni in ordine di categoria;
+      DEDUP per attribute_code first-wins (un code piazzato da una categoria precedente e' saltato
+      nelle successive). Filtra ai soli code presenti nel set applicabile merged (rispetta required/
+      dedup dei VALORI gia' calcolati). Code applicabili non piazzati da nessun layout -> "Altre
+      informazioni" trailing. Se NESSUNA categoria ha layout -> flat (invariato). Limite noto v1:
+      titoli di sezione possono ripetersi tra categorie (accettato).
+    </opportunity-layout-resolution>
+  </layout-contract>
+
+  <data_contract>
+    <!-- Envelope progetto { success, message, data }. Authz: policy product-categories.* / products.* esistenti, nessun nuovo permesso. -->
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>
+        Query: context in {product,opportunity} (default opportunity, validato vs AttributeContext),
+        form_mode in {create,edit,view} (default create, validato vs FormMode).
+      </request>
+      <response status="200">
+        data: {
+          layout: { sections: [...] } | null,   // null = nessuna config -> FE flat
+          attributes: EffectiveAttribute[]       // catalogo effettivo (own+inherited) per (categoria,context): alimenta la palette
+        }
+      </response>
+      <errors>403 senza product-categories.view; 404 categoria inesistente; 422 context/form_mode fuori enum.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>
+        Body: { context, form_mode, layout: { sections:[...] } }.
+        Upsert per (product_category_id, context, form_mode). layout=null (o sections vuoto) elimina la riga (ritorno a flat).
+        Validazione: enum context/form_mode/variant/width; columns in {1,2,3,4}; ogni attribute_code
+        DEVE appartenere ai code effettivi della categoria per quel context (allow-list); nessun code
+        duplicato nell'intero blob; titoli/descrizioni entro i limiti. Regole dotted annidate +
+        withValidator().after() (pattern StoreCustomFieldRequest).
+      </request>
+      <response status="200">
+        data: { layout: { sections:[...] } | null }   // stato persistito normalizzato
+      </response>
+      <errors>403 senza product-categories.update; 404 categoria; 422 (code sconosciuto -> attribute_layout con chiave code; duplicato; enum/limiti).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/effective-attributes" note="ESISTENTE (0061), invariato">
+      Riusato dalla palette del configuratore se serve un fetch separato per context.
+    </endpoint>
+
+    <rendering-payload note="additivi, backward-compatible">
+      <products>
+        ProductResource: additivo `attribute_layout` = layout risolto della categoria del prodotto
+        per (context=product, form_mode) — MA il form ha bisogno del layout PRIMA di avere il record:
+        il form Prodotto risolve via GET attribute-layouts?context=product&amp;form_mode=create|edit sulla
+        categoria selezionata (reattivo al category picker, gia' presente useEffectiveAttributes).
+        Il detail (view) usa form_mode=view. `applicable_attributes` resta invariato.
+      </products>
+      <opportunities>
+        RequestWorkPanel payload: additivo `attribute_layout` = layout risolto merge-multicategoria
+        (context=opportunity, form_mode corrente del pannello). `applicable_attributes` INVARIATO.
+        Nessun altro campo del work-panel cambia (invariante 0061 sul resto del pannello).
+      </opportunities>
+    </rendering-payload>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Ogni AC osservabile, mappato su test Pest/Vitest. -->
+    <criterion id="AC-001">Migrazione: creata `attribute_layouts` (product_category_id FK cascade,
+      context, form_mode, layout json nullable, unique(product_category_id,context,form_mode));
+      reversibile su SQLite+MySQL. Pest migration/schema test.</criterion>
+    <criterion id="AC-002">PUT layout valido -> 200, riga upsert; GET successivo ritorna lo stesso
+      blob normalizzato. Idempotente (due PUT identici = una riga). Pest feature test.</criterion>
+    <criterion id="AC-003">PUT con attribute_code NON tra i code effettivi della categoria per quel
+      context -> 422 con chiave errore `attribute_layout` sul code offending; nessuna scrittura. Pest.</criterion>
+    <criterion id="AC-004">PUT con code DUPLICATO nel blob -> 422; con variant/width/columns fuori
+      enum -> 422. Pest (un caso per ciascuno).</criterion>
+    <criterion id="AC-005">PUT senza permesso product-categories.update -> 403; GET senza
+      product-categories.view -> 403; categoria altrui/inesistente -> 404. Pest authz.</criterion>
+    <criterion id="AC-006">GET su categoria SENZA layout -> data.layout=null e data.attributes = set
+      effettivo per context. Pest.</criterion>
+    <criterion id="AC-007">REGRESSIONE: con attribute_layouts vuota, Product form/detail e Opportunity
+      work-panel rendono la lista flat IDENTICA a prima; ApplicableAttributesResolver + value-pipeline
+      0061 output invariato. Pest regression (request-management) + Vitest snapshot flat.</criterion>
+    <criterion id="AC-008">Risoluzione Opportunita' multi-categoria: date 2 categorie con layout,
+      le sezioni si concatenano in ordine categoria; un code presente in entrambe compare UNA volta
+      (first-wins); code applicabile non piazzato -> "Altre informazioni". Pest OpportunityAttributeLayoutResolver.</criterion>
+    <criterion id="AC-009">Configuratore FE: drag di un attributo dalla palette in una riga di una
+      sezione lo piazza; drag tra righe/sezioni lo sposta; interruzione di riga (nuova row) rispettata;
+      cambio larghezza item aggiorna lo span. Vitest interazione dnd-kit.</criterion>
+    <criterion id="AC-010">Configuratore: aggiungere/rinominare/riordinare/eliminare sezioni; impostare
+      variante, collassabile, N colonne (1-4), flag avanzata; PUT invia il blob conforme al contratto. Vitest.</criterion>
+    <criterion id="AC-011">Anteprima live: modificando il layout in editor, il pannello di anteprima
+      riflette immediatamente sezioni/colonne/larghezze/varianti usando lo STESSO renderer di runtime. Vitest.</criterion>
+    <criterion id="AC-012">Renderer agnostico: dato (layout, attributes, mode) rende sezioni con le
+      classi grid corrette; ogni attributo va nel controllo giusto via CUSTOM_FIELD_COMPONENT_REGISTRY;
+      attributi non piazzati in "Altre informazioni"; required marker da is_required. Vitest.</criterion>
+    <criterion id="AC-013">Responsive: le classi generate sono statiche e collassano N->..->1 col ai
+      breakpoint (grid-cols-1 sm:.. lg:..). Vitest sulle classi + verifica manuale 375/768/1024.</criterion>
+    <criterion id="AC-014">Prodotto: selezionando una categoria con layout(context=product,mode), il
+      form rende gli attributi secondo il layout; il detail usa mode=view; submit di attribute_values
+      invariato (payload 0061). Vitest.</criterion>
+    <criterion id="AC-015">Opportunita' work-panel: con layout(context=opportunity) sulle categorie,
+      il pannello rende il layout risolto; senza layout, flat. Vitest.</criterion>
+    <criterion id="AC-016">Sezioni collassabili: collapsible+default_collapsed rispettati a runtime
+      (FormSection), a11y focus/aria preservati. Vitest.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo @dnd-kit gia' presente, shadcn/ui, Tailwind 4, RHF+Zod, TanStack Query.</item>
+    <item>Authz server-side su ogni endpoint (policy product-categories.*/products.* esistenti). Nessun nuovo permesso.</item>
+    <item>Layout JSON validato SEMPRE via allow-list dei code effettivi: mai fidarsi del blob client (no injection di code arbitrari). Cast 'array', mai raw SQL.</item>
+    <item>Value-pipeline 0061 (ApplicableAttributesResolver, AttributeValueValidator/Normalizer, attribute_values) INTOCCATA. request-management resta invariato salvo il campo additivo attribute_layout nel payload del work-panel e il renderer.</item>
+    <item>Classi Tailwind STATICHE (mappa (columns,width)->classe), mai stringhe dinamiche (JIT purge). File entro 300 soft / 500 hard: splittare configuratore e renderer in sotto-componenti.</item>
+    <item>Backward-compat assoluta: assenza di layout -> rendering flat identico (AC-007). Migrazione additiva, nessun backfill.</item>
+    <item>Identificatori in inglese (tabelle/colonne/rotte/type). Titoli/descrizioni sezione = contenuto utente (raw), non identificatori.</item>
+    <item>Git: nessun commit/cambio branch dagli agenti (CLAUDE.md 3.6). Stop al verde, aggiorna HANDOFF.</item>
+  </constraints>
+
+</spec>

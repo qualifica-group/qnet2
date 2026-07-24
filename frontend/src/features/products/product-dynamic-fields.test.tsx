@@ -60,6 +60,17 @@ vi.mock('@/features/product-categories/api', () => ({
   fetchEffectiveAttributes: (...args: unknown[]) => fetchEffectiveAttributesMock(...args),
 }))
 
+/**
+ * Spec 0062: the layout query is a SEPARATE hook (`useProductAttributeLayout`)
+ * from `useEffectiveAttributes` above — mocked independently so this suite
+ * controls the layout each test sees without a real network round-trip.
+ * Defaults to "no layout configured" (AC-007 flat fallback).
+ */
+const productAttributeLayoutMock = vi.fn()
+vi.mock('@/features/products/use-product-attribute-layout', () => ({
+  useProductAttributeLayout: (...args: unknown[]) => productAttributeLayoutMock(...args),
+}))
+
 const FULL_ACCESS: ResourcePermissions['resource'] = {
   view: true,
   create: true,
@@ -129,6 +140,8 @@ beforeEach(() => {
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissions() })
   fetchEffectiveAttributesMock.mockReset()
   fetchEffectiveAttributesMock.mockResolvedValue([])
+  productAttributeLayoutMock.mockReset()
+  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
 })
 
 describe('ProductForm — dynamic attribute fields (spec 0061)', () => {
@@ -189,5 +202,97 @@ describe('ProductForm — dynamic attribute fields (spec 0061)', () => {
     )
 
     expect(await screen.findByRole('spinbutton', { name: 'RAM (GB)' })).toHaveValue(8)
+  })
+})
+
+describe('ProductForm — configured attribute layout (spec 0062 AC-014)', () => {
+  it('renders the selected category attributes sectioned when a layout is configured', async () => {
+    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
+    productAttributeLayoutMock.mockReturnValue({
+      data: {
+        sections: [
+          {
+            id: 's1',
+            title: 'Specifications',
+            description: null,
+            variant: 'default',
+            collapsible: false,
+            default_collapsed: false,
+            is_advanced: false,
+            columns: 1,
+            sort_order: 0,
+            rows: [{ id: 'r1', items: [{ attribute_code: 'ram_gb', width: 'full' }] }],
+          },
+        ],
+      },
+      isLoading: false,
+    })
+
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    fireEvent.click(await screen.findByText('select-category-3'))
+
+    await waitFor(() =>
+      expect(productAttributeLayoutMock).toHaveBeenCalledWith(3, 'create'),
+    )
+    expect(await screen.findByRole('heading', { name: 'Specifications' })).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'RAM (GB)' })).toBeInTheDocument()
+  })
+
+  it('AC-007: falls back to the flat list when no layout is configured for the category', async () => {
+    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
+    productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
+
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    fireEvent.click(await screen.findByText('select-category-3'))
+
+    expect(await screen.findByRole('spinbutton', { name: 'RAM (GB)' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Specifications' })).not.toBeInTheDocument()
+  })
+
+  it('submits attribute_values unchanged (spec 0061 payload) when a layout is configured', async () => {
+    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
+    productAttributeLayoutMock.mockReturnValue({
+      data: {
+        sections: [
+          {
+            id: 's1',
+            title: 'Specifications',
+            description: null,
+            variant: 'default',
+            collapsible: false,
+            default_collapsed: false,
+            is_advanced: false,
+            columns: 1,
+            sort_order: 0,
+            rows: [{ id: 'r1', items: [{ attribute_code: 'ram_gb', width: 'full' }] }],
+          },
+        ],
+      },
+      isLoading: false,
+    })
+    createProductMock.mockResolvedValue(product())
+
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
+    fireEvent.click(screen.getByText('select-category-3'))
+    fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '800' } })
+    fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
+
+    const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
+    fireEvent.change(ramField, { target: { value: '16' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
+    const payload = createProductMock.mock.calls[0][0]
+    expect(payload.attribute_values).toEqual({ ram_gb: 16 })
   })
 })
