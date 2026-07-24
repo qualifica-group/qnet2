@@ -2,8 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\DataObjects\Products\CreateProductData;
+use App\Enums\ProductType;
 use App\Models\CustomFieldDefinition;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Source;
+use App\Services\ProductService;
 use Illuminate\Database\Seeder;
 
 /**
@@ -18,9 +23,16 @@ use Illuminate\Database\Seeder;
  * Plus the client's source catalogue (spec 0018): the fixed provenance list
  * used to classify registry/lead/opportunity records.
  *
- * Definitions only — no values are written (that is per-row user data).
- * `updateOrCreate` on (entity_type, key) keeps custom-field re-runs from
- * duplicating; `firstOrCreate` on the source name does the same for sources.
+ * Plus the client's reference product catalogue (spec 0017): a two-root
+ * category tree (Formazione / Consulenza) with its leaf subcategories and one
+ * reference SERVICE product per populated subcategory. Products carry no
+ * cost/price yet (both 0) — those are edited later through the CRUD modules.
+ *
+ * Custom-field/source definitions write no per-row values (that is user data);
+ * the catalogue does create ProductCategory/Product rows, all idempotent:
+ * `updateOrCreate` on (entity_type, key) for custom fields, `firstOrCreate`
+ * on the natural name key for sources, categories and products — a re-run
+ * never duplicates rows nor overwrites manual edits.
  * Adding a module's template = one more entry in TEMPLATES.
  */
 class QualificaTemplateSeeder extends Seeder
@@ -111,6 +123,29 @@ class QualificaTemplateSeeder extends Seeder
         'Spontaneo',
     ];
 
+    /**
+     * The client's reference product catalogue (spec 0017): root category =>
+     * (leaf subcategory => list of reference product names). Every product is
+     * a SERVICE with cost/price 0 (filled in later via the CRUD modules); a
+     * subcategory with an empty list carries no product. Names are the natural
+     * keys used for idempotent `firstOrCreate` on re-run.
+     *
+     * @var array<string, array<string, list<string>>>
+     */
+    private const array CATALOG = [
+        'Formazione' => [
+            'GOL' => ['Catalogo GOL'],
+            'Autoimpiego' => ['Autoimpiego'],
+            'Yisu' => ['Yisu'],
+            'Autofinanziato' => ['Catalogo Autofinanziato'],
+            'DIL' => ['Catalogo DIL'],
+        ],
+        'Consulenza' => [
+            'Trattative in Corso' => ['Servizi Consulenza'],
+            'Presa Appuntamenti' => [],
+        ],
+    ];
+
     public function run(): void
     {
         foreach (self::TEMPLATES as $entityType => $fields) {
@@ -118,12 +153,49 @@ class QualificaTemplateSeeder extends Seeder
         }
 
         $this->seedSources();
+        $this->seedCatalog();
     }
 
     private function seedSources(): void
     {
         foreach (self::SOURCES as $name) {
             Source::firstOrCreate(['name' => $name]);
+        }
+    }
+
+    private function seedCatalog(): void
+    {
+        $service = app(ProductService::class);
+
+        foreach (self::CATALOG as $rootName => $subcategories) {
+            $root = ProductCategory::firstOrCreate(['name' => $rootName], ['parent_id' => null]);
+
+            foreach ($subcategories as $subName => $productNames) {
+                $subcategory = ProductCategory::firstOrCreate(['name' => $subName], ['parent_id' => $root->id]);
+                $this->seedCatalogProducts($service, $subcategory, $productNames);
+            }
+        }
+    }
+
+    /**
+     * @param  list<string>  $productNames
+     */
+    private function seedCatalogProducts(ProductService $service, ProductCategory $category, array $productNames): void
+    {
+        foreach ($productNames as $name) {
+            // Natural key (name): a product already present is left untouched.
+            if (Product::where('name', $name)->exists()) {
+                continue;
+            }
+
+            $service->create(new CreateProductData(
+                name: $name,
+                description: null,
+                cost: 0.0,
+                price: 0.0,
+                categoryId: $category->id,
+                productType: ProductType::Service,
+            ));
         }
     }
 

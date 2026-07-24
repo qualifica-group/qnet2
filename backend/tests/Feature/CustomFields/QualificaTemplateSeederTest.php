@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CustomFieldDefinition;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Source;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,4 +56,39 @@ it('provisions the client source catalogue, idempotently', function (): void {
 
     expect(Source::query()->whereIn('name', $expected)->count())->toBe(count($expected));
     expect(Source::query()->count())->toBe(count($expected));
+});
+
+it('provisions the reference product catalogue tree, idempotently', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->first();
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->first();
+
+    expect($formazione)->not->toBeNull()
+        ->and($consulenza)->not->toBeNull();
+
+    $formazioneSubs = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL'];
+    foreach ($formazioneSubs as $name) {
+        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->exists())->toBeTrue();
+    }
+
+    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
+        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->exists())->toBeTrue();
+    }
+
+    // Presa Appuntamenti carries no product (empty list in CATALOG).
+    $presaAppuntamenti = ProductCategory::query()->where('name', 'Presa Appuntamenti')->first();
+    expect(Product::query()->where('category_id', $presaAppuntamenti->id)->count())->toBe(0);
+
+    $expectedProducts = [
+        'Catalogo GOL', 'Autoimpiego', 'Yisu', 'Catalogo Autofinanziato',
+        'Catalogo DIL', 'Servizi Consulenza',
+    ];
+    foreach ($expectedProducts as $name) {
+        expect(Product::query()->where('name', $name)->count())->toBe(1);
+    }
+
+    $trattative = ProductCategory::query()->where('name', 'Trattative in Corso')->first();
+    expect(Product::query()->where('name', 'Servizi Consulenza')->where('category_id', $trattative->id)->exists())->toBeTrue();
 });
