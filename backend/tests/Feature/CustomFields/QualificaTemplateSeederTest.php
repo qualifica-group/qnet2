@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CustomFieldDefinition;
+use App\Models\Source;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -40,4 +41,17 @@ it('provisions the 9 de-verticalized ERP fields for company-sites, idempotently'
         expect($definitions[$key]->type)->toBe('integer')
             ->and($definitions[$key]->is_active)->toBeTrue();
     }
+});
+
+it('provisions the client source catalogue, idempotently', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
+
+    $expected = [
+        'Diretto', 'Passaparola', 'Social', 'Sito', 'Spoki',
+        'Centralino', 'In Sede', 'Segnalatore', 'Spontaneo',
+    ];
+
+    expect(Source::query()->whereIn('name', $expected)->count())->toBe(count($expected));
+    expect(Source::query()->count())->toBe(count($expected));
 });

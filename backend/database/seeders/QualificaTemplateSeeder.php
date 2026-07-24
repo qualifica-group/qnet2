@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CustomFieldDefinition;
+use App\Models\Source;
 use Illuminate\Database\Seeder;
 
 /**
@@ -14,8 +15,12 @@ use Illuminate\Database\Seeder;
  *     progressives, quotation_*), now dynamic fields;
  *   - products: the expiration date.
  *
+ * Plus the client's source catalogue (spec 0018): the fixed provenance list
+ * used to classify registry/lead/opportunity records.
+ *
  * Definitions only — no values are written (that is per-row user data).
- * `updateOrCreate` on (entity_type, key) keeps re-runs from duplicating.
+ * `updateOrCreate` on (entity_type, key) keeps custom-field re-runs from
+ * duplicating; `firstOrCreate` on the source name does the same for sources.
  * Adding a module's template = one more entry in TEMPLATES.
  */
 class QualificaTemplateSeeder extends Seeder
@@ -88,10 +93,37 @@ class QualificaTemplateSeeder extends Seeder
         ],
     ];
 
+    /**
+     * The client's fixed source catalogue (spec 0018): user-facing domain
+     * values, kept in their original language. Seeded in order.
+     *
+     * @var list<string>
+     */
+    private const array SOURCES = [
+        'Diretto',
+        'Passaparola',
+        'Social',
+        'Sito',
+        'Spoki',
+        'Centralino',
+        'In Sede',
+        'Segnalatore',
+        'Spontaneo',
+    ];
+
     public function run(): void
     {
         foreach (self::TEMPLATES as $entityType => $fields) {
             $this->seedTemplate($entityType, $fields);
+        }
+
+        $this->seedSources();
+    }
+
+    private function seedSources(): void
+    {
+        foreach (self::SOURCES as $name) {
+            Source::firstOrCreate(['name' => $name]);
         }
     }
 
