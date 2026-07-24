@@ -14,15 +14,24 @@ use App\DataObjects\Users\ProfileData;
  * `client_address`) — StoreRequestRequest's own rules already enforce the XOR,
  * so exactly one of the two is non-null here. `productLines` is always
  * present (D-3, at least one row).
+ *
+ * `sourceId`/`reporterId` are the request's initial attribution (Fonte,
+ * Segnalatore); `rewards` are the reward-type ids assigned to that reporter
+ * (spec 0059), already reduced to a deduplicated id list by
+ * StoreRequestRequest — `null` means the key was absent (nothing to assign).
  */
 final readonly class CreateRequestData
 {
     /**
      * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
+     * @param  array<int, int>|null  $rewards  reward-type ids synced by RewardAssignmentWriter (beneficiary = the created Opportunity's reporter)
      */
     public function __construct(
         public ?int $registryId,
         public ?ProfileData $clientProfile,
         public array $productLines,
+        public ?int $sourceId = null,
+        public ?int $reporterId = null,
+        public ?array $rewards = null,
     ) {}
 }

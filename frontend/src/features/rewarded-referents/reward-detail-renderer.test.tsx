@@ -22,6 +22,23 @@ vi.mock('@/features/rewarded-referents/api', () => ({
   fetchReferentRewards: (...args: [number]) => fetchReferentRewardsMock(...args),
 }))
 
+// The open-mode resolution (modal Sheet vs page navigation) lives in
+// `useModuleOpener` and is covered by its own tests; here we only assert the
+// panel wires the origin's id into `openView`, so the hook is mocked to keep
+// this a focused unit test (no AuthProvider / module registry needed).
+const openViewMock = vi.fn()
+
+vi.mock('@/features/modules/use-module-opener', () => ({
+  useModuleOpener: () => ({
+    openView: openViewMock,
+    openCreate: vi.fn(),
+    openCreateWith: vi.fn(),
+    openEdit: vi.fn(),
+    openDuplicate: vi.fn(),
+    sheet: null,
+  }),
+}))
+
 const REWARD: RewardDetailItem = {
   id: 10,
   assigned_at: '2026-06-01',
@@ -39,11 +56,11 @@ const REWARD: RewardDetailItem = {
 
 const ROW: TableRow = { id: 1, actions: [] }
 
-function renderDetail(client: QueryClient) {
+function renderDetail(client: QueryClient, params?: Partial<ICellRendererParams<TableRow>>) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <RewardDetailRenderer {...({ data: ROW } as ICellRendererParams<TableRow>)} />
+        <RewardDetailRenderer {...({ data: ROW, ...params } as ICellRendererParams<TableRow>)} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -55,6 +72,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   fetchReferentRewardsMock.mockReset()
+  openViewMock.mockReset()
 })
 
 describe('RewardDetailRenderer — lazy load and caching (AC-026)', () => {
@@ -69,8 +87,10 @@ describe('RewardDetailRenderer — lazy load and caching (AC-026)', () => {
     expect(fetchReferentRewardsMock).toHaveBeenCalledTimes(1)
     expect(fetchReferentRewardsMock).toHaveBeenCalledWith(1)
 
-    const link = screen.getByRole('link', { name: /Fornitura uffici/ })
-    expect(link).toHaveAttribute('href', '/opportunities/42')
+    // The origin opens via the module opener (open-mode aware), not a raw link.
+    const sourceButton = screen.getByRole('button', { name: /Fornitura uffici/ })
+    fireEvent.click(sourceButton)
+    expect(openViewMock).toHaveBeenCalledWith({ id: 42 })
     expect(screen.getByText('In corso')).toBeInTheDocument()
     expect(screen.getByText('In lavorazione')).toBeInTheDocument()
     expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
@@ -123,5 +143,49 @@ describe('RewardDetailRenderer — empty state (AC-028)', () => {
     await waitFor(() =>
       expect(screen.getByText('No rewards found for this referent.')).toBeInTheDocument(),
     )
+  })
+})
+
+describe('RewardDetailRenderer — auto-height re-measure on lazy load', () => {
+  it('pushes the loaded content height back to the grid so the first expand is not clipped', async () => {
+    // A controllable ResizeObserver: fires its callback the moment it starts
+    // observing, mirroring the browser's initial delivery.
+    let observed = false
+    class FakeResizeObserver {
+      cb: () => void
+      constructor(cb: () => void) {
+        this.cb = cb
+      }
+      observe() {
+        observed = true
+        this.cb()
+      }
+      disconnect() {}
+      unobserve() {}
+    }
+    const original = globalThis.ResizeObserver
+    globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      fetchReferentRewardsMock.mockResolvedValue([REWARD])
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const setRowHeight = vi.fn()
+      const onRowHeightChanged = vi.fn()
+
+      renderDetail(client, {
+        node: { setRowHeight } as never,
+        api: { onRowHeightChanged } as never,
+      })
+
+      await waitFor(() => expect(screen.getByText('Amazon voucher')).toBeInTheDocument())
+
+      // The observer only attaches once the cards are on screen (not for the
+      // skeleton), and drives the grid re-measure.
+      expect(observed).toBe(true)
+      expect(setRowHeight).toHaveBeenCalled()
+      expect(onRowHeightChanged).toHaveBeenCalled()
+    } finally {
+      globalThis.ResizeObserver = original
+    }
   })
 })

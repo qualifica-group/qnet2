@@ -2,6 +2,112 @@
 
 > Injected at session start. Update at every green state.
 
+## NAV — NUOVA SEZIONE "PREMI E INCENTIVI" (2026-07-24) — VERDE, NON COMMITTATO
+
+Richiesta utente: promuovere `reward-types` ("Buoni, Premi e Incentivi") e `rewarded-referents`
+("Referenti con Buoni") in una sezione principale autonoma (come Prodotti/Marketing), nome a scelta.
+NOME SCELTO: "Premi e Incentivi" (EN "Rewards & Incentives"), icona `award`.
+
+- `backend/config/navigation.php`: rimosse le due voci dalle sezioni attuali (`reward-types` era in
+  Configurazione, `rewarded-referents` in Anagrafiche/registries-group) e create nuovo gruppo
+  top-level collassabile `rewards-group` (label `navigation.rewards`, icon `award`, route null),
+  figli: `rewarded-referents` poi `reward-types`. Inserito dopo `products-group`, prima di Configurazione.
+- i18n: aggiunta chiave `navigation.rewards` in it.ts ('Premi e Incentivi') e en.ts ('Rewards & Incentives').
+- Icona: aggiunto `Award` + mapping `award` in `frontend/src/features/navigation/icon-map.ts`.
+- SPLIT (hard-limit 500): l'aggiunta portava en.ts a 501 -> estratto il blocco `navigation` in NUOVO
+  `frontend/src/i18n/locales/en-navigation.ts` (import + `navigation,` shorthand). en.ts ora 463 righe.
+  it.ts NON estratto (482 righe, sotto il limite) -> asimmetria voluta/minimale, non un bug.
+VERIFICA: tsc pulito; php -l + Pint ok; Pest Navigation+RequestManagementNav+MigrationNav 18/18 verdi
+(iniettano config propria, non toccati dal file reale); eslint pulito. NON committato (§3.6).
+
+## MODULO 0059 — FIX ESPANSIONE RIGA + LINK OPEN-MODE + CAP BUONI (2026-07-24) — VERDE, NON COMMITTATO
+
+Tre interventi FE sul modulo `rewarded-referents`, tutti verdi (tsc pulito, test/lint puliti;
+i 3 fallimenti Vitest residui sono la baseline nota `ContactsCell` in cell-renderers.test.tsx).
+
+1. BUG ESPANSIONE (il master/detail non era apribile): `masterDetail: true` era cablato end-to-end
+   (RewardedReferentsTable -> TableView -> DataTable -> AllEnterpriseModule registrato) MA mancava la
+   colonna col chevron. In AG Grid il pannello detail si apre solo tramite una cella
+   `cellRenderer: 'agGroupCellRenderer'`; nessuna colonna la montava -> riga non espandibile.
+   FIX: colonna sintetica di espansione (id `__expand`, pinned left, width 44) aggiunta SOLO quando
+   `masterDetail` e' true, in `buildColDefs`. Zero impatto sugli altri 25 moduli (default invariato).
+
+2. SPLIT (hard-limit 500): il fix portava data-table.tsx a 509 righe. Estratta la costruzione colonne
+   in NUOVO file `components/data-table/column-def-builder.ts` (`buildColDefs` + costanti geometria,
+   `DEFAULT_MIN_WIDTH` esportata e re-importata). data-table.tsx ora 406 righe. Pura estrazione,
+   zero cambi comportamento (test data-table verdi).
+
+3. LINK ORIGINE OPEN-MODE (richiesta utente): la card del buono apriva l'opportunita' con un `<Link>`
+   raw (sempre pagina). Ora rispetta la modalita' del modulo (spec 0042) via `useModuleOpener('opportunities')`
+   -> `openView({id})` (modale Sheet o pagina secondo setting). `RewardCard` resta SENZA dipendenze di
+   dominio: nuova prop opzionale `onOpenSource?` -> se presente rende un `<button>`, altrimenti resta
+   `<Link>` (retrocompatibile). Wiring open-mode nel `RewardDetailRenderer` (domain-aware), che rende
+   anche il `{sheet}`. Test detail renderer: `useModuleOpener` mockato (evita AuthProvider/registry nel
+   unit del pannello lazy), asserisce `openView` chiamato con `{id}`.
+
+4. CAP MOLTI BUONI (richiesta utente: referente con ~50 buoni non deve esplodere la riga): pannello
+   detail ora `max-h-[28rem] overflow-y-auto` attorno alla griglia di card -> riga master compatta,
+   scroll interno, auto-height AG Grid misura altezza finita.
+
+5. BUG AUTO-HEIGHT PRIMA APERTURA (card tagliate alla prima espansione, ok dopo chiudi/riapri):
+   classico lazy-load + detailRowAutoHeight — AG Grid misura la riga quando il detail monta (skeleton
+   corto), poi i dati arrivano e cresce ma NON rimisura; alla 2a apertura i dati sono in cache e il
+   contenuto pieno monta subito -> misura giusta. FIX in `reward-detail-renderer.tsx`: `ResizeObserver`
+   sul contenitore delle card caricate (ref, effetto ri-eseguito via `hasContent`) che spinge l'altezza
+   reale al grid (`node.setRowHeight(el.offsetHeight)` + `api.onRowHeightChanged()`). Guardato
+   (node/api/ResizeObserver assenti = no-op) cosi' gli unit test coi param mockati non lo toccano; test
+   dedicato con FakeResizeObserver + node/api spy (5 test totali nel file, verdi). NB: `node`/`api`
+   ora destrutturati da ICellRendererParams.
+
+6. BUG TRADUZIONI COLONNE/FILTRI (utente: "colonne non tradotte bene"): MISMATCH chiave i18n. La
+   TableDefinition backend usa label camelCase (`rewardedReferents.columns.rewardsCount`,
+   `.activeRewardsCount`, `.completedRewardsCount`, `.lastAssignedAt`; advancedFilters `.rewardType`,
+   `.opportunityStatus`, `.workflowStatus`, `.assignedAt`) MA i file i18n definivano le stesse in
+   snake_case (`rewards_count`, `reward_type`, ...) -> non risolvevano, mostravano la chiave grezza.
+   Le parole singole (name/email/phone/opportunity/operator) combaciavano, per questo solo ALCUNE
+   colonne apparivano non tradotte. FIX: rinominate le chiavi in it-rewarded-referents.ts ed
+   en-rewarded-referents.ts a camelCase per combaciare col backend. GOTCHA GENERALE: le chiavi i18n
+   di colonna/filtro devono combaciare col SUFFISSO camelCase della label nella TableDefinition, NON
+   con l'`id` snake_case della colonna.
+
+NB regola §3.6: NON committato, in attesa di ok esplicito.
+
+## GESTIONE RICHIESTE — ATTRIBUZIONE IN CREAZIONE (Fonte/Segnalatore/Buono) (2026-07-24) — VERDE, NON COMMITTATO
+
+Direttiva utente: nel FORM DI CREAZIONE di Gestione Richieste aggiungere anche Fonte, Segnalatore e
+Buono (rewards), "come sta in scheda view". La 0057 li aveva messi ESPLICITAMENTE fuori scope in
+creazione; questa richiesta li reintroduce. Estende il contratto congelato `POST /api/request-management`
+con tre chiavi OPZIONALI, indipendenti dallo XOR anagrafica (D-2): `source_id`, `reporter_id`,
+`rewards: [{reward_type_id}]`. Riusa il codice esistente senza duplicare: la Opportunity viene creata
+dallo stesso `OpportunityService::create` (che gia' sincronizza rewards via `RewardAssignmentWriter`),
+quindi il beneficiario e' sempre il `reporter_id` dell'insert (nessun retarget in creazione).
+
+DECISIONE AUTHZ (non deducibile): la creazione resta gated INTERAMENTE da `request-management.create`;
+NON si applica `EnforcesFieldPermissions` per-campo in creazione (coerente con la 0057). La matrice
+readonly per-campo (`RequestManagementAuthorization::fields()`) governa solo l'EDIT successivo dal work
+panel. Docblock di `StoreRequestRequest` aggiornato di conseguenza.
+
+REGOLA D-3 riusata verbatim via trait `ValidatesRewards`: `rewards` non vuoto richiede un `reporter_id`
+(su create `validateRewards($validator, null)` — solo questa meta' della guardia puo' scattare, l'altra
+serve un record persistito). FE: il campo reward e' disabilitato con hint accessibile finche' il
+Segnalatore non e' scelto (stesso `RewardAssignmentField` del work panel e del form opportunita').
+
+FILE TOCCATI. BE: `StoreRequestRequest` (regole source_id/reporter_id + `rewardsRules()`, `validateRewards`,
+`toData()` con `normalizeRewardTypeIds`), `CreateRequestData` (+sourceId/reporterId/rewards con default),
+`RequestCreationService` (passa i tre valori a `CreateOpportunityData`). FE: nuovo
+`request-create-attribution-section.tsx` (usa `AsyncPaginatedSelect` diretto, NON `RelationSelectField`,
+perche' il create non ha envelope `permissions`); `request-create-schema.ts`, `request-create-payload.ts`
+(attribution spread in entrambi i rami, `rewards` inviato solo se non vuoto), `use-request-create-form.ts`
+(default + banner `rewardsError` per 422 D-3), `request-create-form.tsx`, `types.ts` (`CreateRequestPayload`),
+i18n it/en (`create.attribution.*`).
+
+VERIFICHE ESEGUITE (evidenza reale, XDEBUG_MODE=off): Pest `RequestManagement`+`Rewards` = 220 passati
+(3 nuovi test in `RequestManagementCreateTest`: create con source/reporter/rewards -> beneficiario=reporter;
+rewards senza reporter -> 422; source_id inesistente -> 422). Vitest `request-management` = 88 passati
+(2 nuovi in `use-request-create-form.test.ts`: attribution inviata quando valorizzata; banner rewards su
+422 D-3; aggiornata l'asserzione del ramo registry con `source_id:null/reporter_id:null`). `tsc --noEmit`
+pulito; Pint --test pulito; ESLint sui file toccati pulito. PROSSIMO PASSO: chiedere se committare.
+
 ## MODULO 0059 — "REFERENTI CON BUONI" + ASSEGNAZIONE POLIMORFICA (2026-07-24) — VERDE, NON COMMITTATO
 
 Spec CONGELATA E APPROVATA: `docs/specs/0059-referent-rewards-module.xml`. Costruita con team di

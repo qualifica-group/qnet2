@@ -31,7 +31,18 @@ interface RewardCardProps {
   reward: RewardDetailItem
   labels: RewardCardLabels
   className?: string
+  /**
+   * Opens the reward's origin. When provided, the origin name renders as an
+   * action button (the caller decides modal vs page via the module open mode)
+   * instead of a plain router `Link`. Omitted, the card stays a self-contained
+   * `Link` — keeping this component free of any module/open-mode dependency.
+   */
+  onOpenSource?: () => void
 }
+
+/** Shared visual language for the origin affordance, whether it is a link or a button. */
+const SOURCE_LINK_CLASS =
+  'inline-flex min-w-0 items-center gap-1 text-left text-sm font-medium text-primary hover:underline'
 
 /** A small uppercase caption above its value; omitted entirely when there is nothing to show. */
 function Field({ term, children, className }: { term: string; children: ReactNode; className?: string }) {
@@ -70,7 +81,7 @@ function formatAssignedAt(value: string): string {
  * (context itself can be null when the origin was deleted) — each section
  * renders only when it has something to show, never an empty row.
  */
-export function RewardCard({ reward, labels, className }: RewardCardProps) {
+export function RewardCard({ reward, labels, className, onOpenSource }: RewardCardProps) {
   const context = reward.context
   const categories = context?.product_categories ?? []
   const categoriesLabel = categories.map((category) => category.name).join(', ')
@@ -89,13 +100,17 @@ export function RewardCard({ reward, labels, className }: RewardCardProps) {
         </div>
 
         {reward.source ? (
-          <Link
-            to={reward.source.path}
-            className="inline-flex min-w-0 items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            <span className="truncate">{reward.source.name}</span>
-            <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
-          </Link>
+          onOpenSource ? (
+            <button type="button" onClick={onOpenSource} className={SOURCE_LINK_CLASS}>
+              <span className="truncate">{reward.source.name}</span>
+              <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
+            </button>
+          ) : (
+            <Link to={reward.source.path} className={SOURCE_LINK_CLASS}>
+              <span className="truncate">{reward.source.name}</span>
+              <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
+            </Link>
+          )
         ) : (
           <span className="text-sm text-muted-foreground">{labels.sourceRemoved}</span>
         )}

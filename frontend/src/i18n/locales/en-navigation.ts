@@ -1,0 +1,45 @@
+/**
+ * Sidebar navigation labels (English). Extracted from `en.ts` to keep it within
+ * the engineering size limit (see `.claude/rules/engineering.md` §6). Keys mirror
+ * the `label` slugs the backend navigation config resolves (`navigation.*`).
+ */
+
+export const navigation = {
+  dashboard: 'Dashboard',
+  users: 'Users',
+  roles: 'Roles',
+  companies: 'Companies',
+  companySites: 'Company Sites',
+  businessFunctions: 'Business Functions',
+  referents: 'Referents',
+  referentTypes: 'Referent Types',
+  registries: 'Registries',
+  operationalSites: 'Operational Sites',
+  attributes: 'Attributes',
+  customFields: 'Custom Fields',
+  productCategories: 'Product Categories',
+  sectors: 'Sectors',
+  products: 'Products',
+  sources: 'Sources',
+  vatRates: 'VAT',
+  tags: 'Tags',
+  projects: 'Projects',
+  campaigns: 'Campaigns',
+  leads: 'Leads',
+  opportunities: 'Opportunities',
+  opportunityStatuses: 'Opportunity Statuses',
+  opportunityWorkflows: 'Workflow Configurator',
+  requestManagement: 'Request Management',
+  rewards: 'Rewards & Incentives',
+  rewardTypes: 'Vouchers, Rewards and Incentives',
+  rewardedReferents: 'Rewarded Referents',
+  opportunitiesAndCommesse: 'Opportunities & Contracts',
+  imports: 'Import Lead',
+  pipelineStatuses: 'Project/Campaign Statuses',
+  marketingLeads: 'Marketing & Leads',
+  management: 'Management',
+  configuration: 'Configuration',
+  administration: 'Administration',
+  settings: 'Settings',
+  toggleSidebar: 'Toggle sidebar',
+}

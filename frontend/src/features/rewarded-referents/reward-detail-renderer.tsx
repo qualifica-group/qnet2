@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Inbox } from 'lucide-react'
@@ -5,7 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RewardCard } from '@/features/rewards/reward-card'
 import { useReferentRewards } from '@/features/rewarded-referents/use-referent-rewards'
+import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { TableRow } from '@/features/table/types'
+
+/** Origin type whose module page/modal we know how to open (spec 0059: only Opportunity today). */
+const OPPORTUNITY_SOURCE_TYPE = 'opportunity'
+const OPPORTUNITIES_DOMAIN = 'opportunities'
 
 /** Skeleton placeholder mirroring the card grid's shape while the lazy fetch is in flight. */
 function DetailLoadingState() {
@@ -55,13 +61,41 @@ function DetailEmptyState({ message }: { message: string }) {
  * `RewardCard`s. Isolated to this feature (constraints: the pattern is not
  * generalized into `components/data-table/`).
  */
-export function RewardDetailRenderer({ data }: ICellRendererParams<TableRow>) {
+export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<TableRow>) {
   const { t } = useTranslation()
   const referentId = typeof data?.id === 'number' ? data.id : null
+
+  // Opening the origin honors the Opportunity module's open mode (spec 0042):
+  // modal mounts the Sheet returned here, page mode navigates. Hooks stay
+  // unconditional (rules-of-hooks) — the early returns below come after.
+  const { openView, sheet } = useModuleOpener(OPPORTUNITIES_DOMAIN)
 
   const { data: rewards, isPending, isError, refetch } = useReferentRewards(referentId ?? 0, {
     enabled: referentId != null,
   })
+
+  // AG Grid measures a detail row's auto-height when the detail cell first
+  // mounts. This panel loads lazily, so on the FIRST expand it mounts as a
+  // short skeleton, is measured, then grows once the cards arrive — leaving
+  // them clipped until a collapse/re-expand (the second time the data is
+  // already cached and renders full-height on mount). Observing the loaded
+  // content and pushing its real height back to the grid keeps the row fitted
+  // on the first open too. Only wired once the cards are on screen (`hasContent`
+  // re-runs the effect); guarded so the mocked-params unit tests never touch it.
+  const contentRef = useRef<HTMLDivElement>(null)
+  const hasContent = !isPending && !isError && (rewards?.length ?? 0) > 0
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el || !node || !api || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(() => {
+      node.setRowHeight(el.offsetHeight)
+      api.onRowHeightChanged()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [node, api, hasContent])
 
   if (referentId == null) {
     return null
@@ -96,10 +130,25 @@ export function RewardDetailRenderer({ data }: ICellRendererParams<TableRow>) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-      {rewards.map((reward) => (
-        <RewardCard key={reward.id} reward={reward} labels={labels} />
-      ))}
+    // Bounded, internally-scrollable card grid: a referent can accumulate many
+    // rewards, and an uncapped panel would blow up the expanded row's height
+    // (all cards at once). The cap keeps the master row compact and lets AG
+    // Grid's detail auto-height measure a stable, finite height; the list
+    // scrolls inside.
+    <div ref={contentRef} className="max-h-[28rem] overflow-y-auto">
+      <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
+        {rewards.map((reward) => {
+          const source = reward.source
+          const onOpenSource =
+            source?.type === OPPORTUNITY_SOURCE_TYPE
+              ? () => openView({ id: source.id } as TableRow)
+              : undefined
+          return (
+            <RewardCard key={reward.id} reward={reward} labels={labels} onOpenSource={onOpenSource} />
+          )
+        })}
+      </div>
+      {sheet}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Form, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
+import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
@@ -36,6 +37,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     serverError,
     clientBlockError,
     productLinesError,
+    rewardsError,
   } = useRequestCreateForm({ onSuccess })
 
   return (
@@ -79,6 +81,8 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               </div>
             )}
           </FormSection>
+
+          <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
 
           {serverError && (
             <div

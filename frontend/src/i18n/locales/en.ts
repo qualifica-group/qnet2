@@ -34,6 +34,7 @@ import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { rewardTypes } from './en-reward-types'
 import { rewardedReferents } from './en-rewarded-referents'
+import { navigation } from './en-navigation'
 import { requestManagement } from './en-request-management'
 import { notes } from './en-notes'
 import { notifications } from './en-notifications'
@@ -78,44 +79,7 @@ export const en = {
       retry: 'Retry',
     },
   },
-  navigation: {
-    dashboard: 'Dashboard',
-    users: 'Users',
-    roles: 'Roles',
-    companies: 'Companies',
-    companySites: 'Company Sites',
-    businessFunctions: 'Business Functions',
-    referents: 'Referents',
-    referentTypes: 'Referent Types',
-    registries: 'Registries',
-    operationalSites: 'Operational Sites',
-    attributes: 'Attributes',
-    customFields: 'Custom Fields',
-    productCategories: 'Product Categories',
-    sectors: 'Sectors',
-    products: 'Products',
-    sources: 'Sources',
-    vatRates: 'VAT',
-    tags: 'Tags',
-    projects: 'Projects',
-    campaigns: 'Campaigns',
-    leads: 'Leads',
-    opportunities: 'Opportunities',
-    opportunityStatuses: 'Opportunity Statuses',
-    opportunityWorkflows: 'Workflow Configurator',
-    requestManagement: 'Request Management',
-    rewardTypes: 'Vouchers, Rewards and Incentives',
-    rewardedReferents: 'Rewarded Referents',
-    opportunitiesAndCommesse: 'Opportunities & Contracts',
-    imports: 'Import Lead',
-    pipelineStatuses: 'Project/Campaign Statuses',
-    marketingLeads: 'Marketing & Leads',
-    management: 'Management',
-    configuration: 'Configuration',
-    administration: 'Administration',
-    settings: 'Settings',
-    toggleSidebar: 'Toggle sidebar',
-  },
+  navigation,
   theme: {
     toggle: 'Toggle theme',
     light: 'Light',

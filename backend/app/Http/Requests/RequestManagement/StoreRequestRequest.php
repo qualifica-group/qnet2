@@ -8,6 +8,7 @@ use App\DataObjects\RequestManagement\CreateRequestData;
 use App\DataObjects\Users\ProfileData;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,17 +25,20 @@ use Illuminate\Validation\Rule;
  * Authorization is intentionally NOT handled here (it stays in the
  * controller, mirroring every other action of this module —
  * `request-management.create`). This request deliberately does NOT compose
- * EnforcesFieldPermissions: every field the form's own catalogue would gate
- * (`opportunity_workflow_status_id`, `attribute_values`, the attribution
- * block, etc. — RequestManagementAuthorization::fields()) belongs to the
- * work panel's PATCH, not to this create-only payload; none of THIS payload's
- * fields (registry_id, client_* blocks, product_lines) are in that
- * catalogue, so calling it here would be a no-op.
+ * EnforcesFieldPermissions: creation is gated WHOLESALE by
+ * `request-management.create`, which is what authorizes setting a request's
+ * INITIAL attribution — `source_id` (Fonte), `reporter_id` (Segnalatore) and
+ * the `rewards` block (buono, beneficiary = reporter). The per-field readonly
+ * matrix (RequestManagementAuthorization::fields()) governs who may LATER edit
+ * those fields on an existing record through the work panel's PATCH, a
+ * distinct lifecycle concern; enforcing it here would need a persisted model
+ * that does not exist yet at create time.
  */
 class StoreRequestRequest extends FormRequest
 {
     use ValidatesProductLines;
     use ValidatesRequestClientProfile;
+    use ValidatesRewards;
 
     public function authorize(): bool
     {
@@ -64,9 +68,19 @@ class StoreRequestRequest extends FormRequest
                     $hasIdentity ? 'prohibited' : 'required',
                     'nullable', 'integer', Rule::exists('registries', 'id'),
                 ],
+                // Initial attribution, independent of the anagrafica XOR: the
+                // request's Fonte and Segnalatore. Optional and nullable —
+                // absent/null leaves the created Opportunity's slot empty, the
+                // same semantics the opportunities create payload carries.
+                'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
+                'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             ],
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
+            // Spec 0059: reward assignments for the reporter. Same shape/rules
+            // as the opportunities create payload; the D-3 "rewards need a
+            // reporter" invariant runs in withValidator() against THIS request.
+            $this->rewardsRules(),
         );
 
         // D-2: "i blocchi client_* sono rifiutati" when an existing registry
@@ -83,6 +97,11 @@ class StoreRequestRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateClientProfile($validator);
             $this->validateProductLines($validator);
+            // null opportunity: on create there is nothing persisted, so only
+            // the "non-empty rewards require a submitted reporter_id" half of
+            // the D-3 guard can fire here (the "cannot clear a reporter that
+            // still has rewards" half needs an existing record).
+            $this->validateRewards($validator, null);
         });
     }
 
@@ -99,6 +118,9 @@ class StoreRequestRequest extends FormRequest
             registryId: isset($validated['registry_id']) ? (int) $validated['registry_id'] : null,
             clientProfile: $this->buildClientProfile(),
             productLines: self::normalizeProductLines((array) $validated['product_lines']),
+            sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
+            reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
+            rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
         );
     }
 
@@ -121,6 +143,22 @@ class StoreRequestRequest extends FormRequest
             contacts: $payload['client_contacts'] ?? null,
             addresses: isset($payload['client_address']) ? [$payload['client_address']] : null,
         );
+    }
+
+    /**
+     * The submitted `{reward_type_id}` rows reduced to a deduplicated id list
+     * — the shape CreateOpportunityData/RewardAssignmentWriter consume (the
+     * beneficiary is derived from the Opportunity's reporter, never here).
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, int>
+     */
+    private static function normalizeRewardTypeIds(array $rows): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['reward_type_id'],
+            $rows,
+        )));
     }
 
     /**

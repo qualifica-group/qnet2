@@ -44,6 +44,15 @@ export function buildRequestCreateSchema(t: TFunction) {
   return z.object({
     registry_id: z.number().nullable(),
     product_lines: buildProductLinesSchema(t),
+    // Initial attribution (Fonte/Segnalatore): plain nullable relation ids —
+    // existence is a server-side rule, there is nothing to mirror here (same
+    // as the work panel's own attribution schema).
+    source_id: z.number().nullable(),
+    reporter_id: z.number().nullable(),
+    // Spec 0059 D-3: reward assignments for the reporter. Only the type id
+    // travels (beneficiary/date are server-derived); duplicates are prevented
+    // by the add control, which excludes already-picked types.
+    rewards: z.array(z.object({ reward_type_id: z.number() })),
   })
 }
 

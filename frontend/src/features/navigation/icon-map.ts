@@ -1,4 +1,5 @@
 import {
+  Award,
   BookUser,
   Briefcase,
   Building2,
@@ -34,6 +35,7 @@ import {
  */
 const iconMap: Record<string, LucideIcon> = {
   'layout-dashboard': LayoutDashboard,
+  award: Award,
   users: Users,
   'shield-check': ShieldCheck,
   briefcase: Briefcase,

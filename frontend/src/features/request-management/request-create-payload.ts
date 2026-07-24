@@ -6,6 +6,7 @@ import type {
   RequestClientAddressPayload,
   RequestClientContactPayload,
   RequestClientIdentityPayload,
+  RequestRewardInput,
 } from '@/features/request-management/types'
 
 /** The wire shape of the client's identity (full create, no `id`: the server always makes a new card). */
@@ -57,6 +58,9 @@ export interface BuildRequestCreatePayloadArgs {
   contacts: ContactDraft[]
   address: AddressDraft | null
   productLines: ProductLineRow[]
+  sourceId: number | null
+  reporterId: number | null
+  rewards: RequestRewardInput[]
 }
 
 /**
@@ -72,11 +76,24 @@ export function buildRequestCreatePayload({
   contacts,
   address,
   productLines,
+  sourceId,
+  reporterId,
+  rewards,
 }: BuildRequestCreatePayloadArgs): CreateRequestPayload {
   const product_lines = toProductLinesPayload(productLines)
 
+  // Initial attribution rides along with EITHER anagrafica branch (it is
+  // independent of the D-2 XOR): the Fonte/Segnalatore slots are always sent
+  // (null clears them), and `rewards` only when at least one is picked — an
+  // empty array would be a no-op the server need not process.
+  const attribution = {
+    source_id: sourceId,
+    reporter_id: reporterId,
+    ...(rewards.length > 0 ? { rewards } : {}),
+  }
+
   if (registryId !== null) {
-    return { registry_id: registryId, product_lines }
+    return { registry_id: registryId, product_lines, ...attribution }
   }
 
   return {
@@ -84,5 +101,6 @@ export function buildRequestCreatePayload({
     client_contacts: contacts.map(toClientContactPayload),
     ...(address ? { client_address: toClientAddressPayload(address) } : {}),
     product_lines,
+    ...attribution,
   }
 }

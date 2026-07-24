@@ -92,8 +92,64 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock).toHaveBeenCalledWith({
       registry_id: 10,
       product_lines: [COMPLETE_ROW],
+      // Attribution slots ride along with either branch; empty by default,
+      // `rewards` omitted entirely until at least one is picked.
+      source_id: null,
+      reporter_id: null,
     })
     expect(onSuccess).toHaveBeenCalledWith(42)
+  })
+
+  it('sends the initial attribution (source/reporter/rewards) when set (user directive 2026-07-24)', async () => {
+    createRequestMock.mockResolvedValue({ id: 44 })
+    const onSuccess = vi.fn()
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', 7)
+      result.current.form.setValue('reporter_id', 3)
+      result.current.form.setValue('rewards', [{ reward_type_id: 5 }])
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock).toHaveBeenCalledWith({
+      registry_id: 10,
+      product_lines: [COMPLETE_ROW],
+      source_id: 7,
+      reporter_id: 3,
+      rewards: [{ reward_type_id: 5 }],
+    })
+    expect(onSuccess).toHaveBeenCalledWith(44)
+  })
+
+  it('collects a rewards D-3 422 (reward without a reporter) into the rewards banner', async () => {
+    createRequestMock.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 422,
+        data: { errors: { rewards: ['Rewards require the opportunity to have a reporter (Segnalatore).'] } },
+      },
+    })
+    const onSuccess = vi.fn()
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('rewards', [{ reward_type_id: 5 }])
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(result.current.rewardsError).toBe('Rewards require the opportunity to have a reporter (Segnalatore).')
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 
   it('submits the new-client branch with the buffered identity/contacts/address', async () => {

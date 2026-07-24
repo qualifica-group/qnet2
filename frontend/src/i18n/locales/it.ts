@@ -97,6 +97,7 @@ export const it: TranslationResources = {
     opportunityStatuses: 'Stati Opportunità',
     opportunityWorkflows: 'Configuratore Stati Lavorazione',
     requestManagement: 'Gestione Richieste',
+    rewards: 'Premi e Incentivi',
     rewardTypes: 'Buoni, Premi e Incentivi',
     rewardedReferents: 'Referenti con Buoni',
     opportunitiesAndCommesse: 'Opportunità e Commesse',

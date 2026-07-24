@@ -3,7 +3,10 @@
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
+use App\Models\Referent;
 use App\Models\Registry;
+use App\Models\RewardType;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -200,6 +203,67 @@ it('AC-007: the created opportunity name is OPP_{id}', function () {
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
     expect($opportunity->name)->toBe('OPP_'.$opportunity->id);
     expect($response->json('data.name'))->toBe('OPP_'.$opportunity->id);
+});
+
+// ---------------------------------------------------------------------------
+// Initial attribution (user directive 2026-07-24): Fonte, Segnalatore and the
+// reward assignments accepted at create — same fields/semantics the work panel
+// already carries, set up front on the created Opportunity.
+// ---------------------------------------------------------------------------
+
+it('creates with source_id, reporter_id and rewards -> 201, all persisted and the reward targets the reporter', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    $source = Source::factory()->create();
+    $reporter = Referent::factory()->create();
+    $rewardType = RewardType::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => $source->id,
+        'reporter_id' => $reporter->id,
+        'rewards' => [['reward_type_id' => $rewardType->id]],
+    ])->assertCreated();
+
+    $opportunity = Opportunity::with('rewards')->findOrFail($response->json('data.id'));
+    expect($opportunity->source_id)->toBe($source->id);
+    expect($opportunity->reporter_id)->toBe($reporter->id);
+    expect($opportunity->rewards)->toHaveCount(1);
+    $reward = $opportunity->rewards->first();
+    expect($reward->reward_type_id)->toBe($rewardType->id);
+    // D-3: the beneficiary is always the opportunity's reporter, never chosen.
+    expect($reward->referent_id)->toBe($reporter->id);
+});
+
+it('rejects rewards without a reporter_id -> 422 (D-3), no row created', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    $rewardType = RewardType::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'rewards' => [['reward_type_id' => $rewardType->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors('rewards');
+
+    expect(Opportunity::count())->toBe(0);
+});
+
+it('rejects a non-existent source_id -> 422, no row created', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => 999999,
+    ])->assertStatus(422)->assertJsonValidationErrors('source_id');
+
+    expect(Opportunity::count())->toBe(0);
 });
 
 // ---------------------------------------------------------------------------

@@ -208,22 +208,6 @@ return [
                     'permission' => 'referent-types.view',
                 ],
                 [
-                    // Rewarded referents (spec 0059): the "Referenti con Buoni"
-                    // aggregated, READ-ONLY view (D-6) over Referenti holding at
-                    // least one Reward. Gated by its OWN
-                    // `rewarded-referents.*` permission set, never
-                    // `referents.*` (precedent request-management). Icon
-                    // deliberately NOT `gift` (already reward-types', the
-                    // configuration lookup this view aggregates ASSIGNMENTS
-                    // of): `handshake` (Opportunities' own icon) instead —
-                    // the commercial context every reward's origin belongs to.
-                    'key' => 'rewarded-referents',
-                    'label' => 'navigation.rewardedReferents',
-                    'icon' => 'handshake',
-                    'route' => '/rewarded-referents',
-                    'permission' => 'rewarded-referents.view',
-                ],
-                [
                     'key' => 'companies',
                     'label' => 'navigation.companies',
                     'icon' => 'building',
@@ -290,6 +274,44 @@ return [
             ],
         ],
 
+        // "Premi e Incentivi": the reward domain promoted to its own top-level
+        // collapsible group (user decision 2026-07-24). Gathers the read-only
+        // "Referenti con Buoni" aggregated view (spec 0059) and the "Buoni,
+        // Premi e Incentivi" type catalogue (spec 0058) — previously scattered
+        // under Anagrafiche and Configurazione respectively. Route-less parent:
+        // renders collapsible, dropped when the actor can see no child.
+        [
+            'key' => 'rewards-group',
+            'label' => 'navigation.rewards',
+            'icon' => 'award',
+            'route' => null,
+            'permission' => null,
+            'children' => [
+                [
+                    // Rewarded referents (spec 0059): the aggregated, READ-ONLY
+                    // view (D-6) over Referenti holding at least one Reward.
+                    // Gated by its OWN `rewarded-referents.*` set, never
+                    // `referents.*` (precedent request-management).
+                    'key' => 'rewarded-referents',
+                    'label' => 'navigation.rewardedReferents',
+                    'icon' => 'handshake',
+                    'route' => '/rewarded-referents',
+                    'permission' => 'rewarded-referents.view',
+                ],
+                [
+                    // Reward types (spec 0058): the "Buoni, Premi e Incentivi"
+                    // configuration pick-list — the type catalogue for the
+                    // reward-assignment flows (D-1/D-7), not the assigned
+                    // rewards themselves.
+                    'key' => 'reward-types',
+                    'label' => 'navigation.rewardTypes',
+                    'icon' => 'gift',
+                    'route' => '/reward-types',
+                    'permission' => 'reward-types.view',
+                ],
+            ],
+        ],
+
         // "Configurazione": cross-cutting lookup tables not tied to a single
         // domain. Product/registry pick-lists moved into their domain groups
         // above; custom fields moved to Amministrazione (user decision
@@ -329,17 +351,6 @@ return [
                     'icon' => 'waypoints',
                     'route' => '/sources',
                     'permission' => 'sources.view',
-                ],
-                [
-                    // Reward types (spec 0058): the "Buoni, Premi e Incentivi"
-                    // configuration pick-list — the type catalogue for the
-                    // future reward-assignment flows (D-1/D-7), not the
-                    // assigned rewards themselves.
-                    'key' => 'reward-types',
-                    'label' => 'navigation.rewardTypes',
-                    'icon' => 'gift',
-                    'route' => '/reward-types',
-                    'permission' => 'reward-types.view',
                 ],
             ],
         ],

@@ -20,14 +20,11 @@ import {
   AG_GRID_LOCALE_EN,
   AG_GRID_LOCALE_IT,
 } from '@ag-grid-community/locale'
-import { toast } from 'sonner'
-import { buildColumnFilter } from '@/components/data-table/column-filters'
+import { type CellRenderer } from '@/components/data-table/column-defaults'
 import {
-  defaultValueFormatter,
-  resolveCellRenderer,
-  resolveEditableColumnProps,
-  type CellRenderer,
-} from '@/components/data-table/column-defaults'
+  buildColDefs,
+  DEFAULT_MIN_WIDTH,
+} from '@/components/data-table/column-def-builder'
 import { setupAgGrid } from '@/components/data-table/ag-grid-setup'
 import {
   ACTIONS_COLUMN_ID,
@@ -53,18 +50,6 @@ export { ACTIONS_COLUMN_ID, SkeletonLoadingCell, TableEmptyOverlay }
 
 // Register enterprise modules + license once, at module load.
 setupAgGrid()
-
-/** Default minimum width for data columns without an explicit backend width. */
-const DEFAULT_MIN_WIDTH = 120
-
-/**
- * Fixed width of the row-actions column. The default holds up to three compact
- * icon buttons; when the domain exposes more actions a fourth (overflow) button
- * appears, so the column gets a bit wider to fit it. Kept narrow either way
- * because it only holds those controls.
- */
-const ACTIONS_COLUMN_WIDTH = 100
-const ACTIONS_COLUMN_WIDTH_WITH_OVERFLOW = 120
 
 /** Renders the per-row actions cell (left-most column). */
 export type RowActionsRenderer = (params: ICellRendererParams) => React.ReactNode
@@ -213,84 +198,29 @@ export function DataTable({
     [i18n.language],
   )
 
-  const colDefs = useMemo<ColDef[]>(() => {
-    const mapped: ColDef[] = columns.map((column) => {
-      // Generic, domain-agnostic renderer selection (badge/enum fallback) and
-      // value-formatter selection (custom boolean/number) — see
-      // column-defaults.tsx. No per-id renderer needed even for dynamic
-      // `custom.<key>` columns.
-      const renderer = resolveCellRenderer(column, cellRenderers)
-      const valueFormatter = renderer ? undefined : defaultValueFormatter(column, t)
-      // A column with a persisted width uses it as a fixed width (flex:0 opts it
-      // out of the flex layout); columns without one keep flexing to fill space
-      // via defaultColDef.flex. Columns arrive already ordered by `order`.
-      const hasWidth = column.width != null
-      // Every Set Filter (standalone or nested in the Multi Filter) gets its
-      // values from the server, never a backend one-off list or the paged
-      // client rows (0004) — see `buildColumnFilter`.
-      const { filter, filterParams } = buildColumnFilter(
+  const colDefs = useMemo<ColDef[]>(
+    () =>
+      buildColDefs({
         domain,
-        column,
-        () => toast.info(t('table.filterValuesTruncated')),
+        columns,
+        cellRenderers,
+        renderRowActions,
+        actionsHeaderLabel,
+        actionsColumnHasOverflow,
+        masterDetail,
         t,
-      )
-      return {
-        colId: column.id,
-        field: column.id,
-        headerName: t(column.label),
-        hide: !column.visible,
-        width: hasWidth ? column.width! : undefined,
-        // Let an intentionally-narrow backend width take effect: without this the
-        // global DEFAULT_MIN_WIDTH would clamp it (e.g. the small avatar column).
-        minWidth: hasWidth ? Math.min(DEFAULT_MIN_WIDTH, column.width!) : undefined,
-        flex: hasWidth ? 0 : undefined,
-        sortable: column.sortable,
-        filter,
-        filterParams,
-        cellRenderer: renderer
-          ? (params: ICellRendererParams) => renderer(params)
-          : undefined,
-        valueFormatter: valueFormatter
-          ? (params) => valueFormatter(params.value)
-          : undefined,
-        ...resolveEditableColumnProps(column),
-      }
-    })
-
-    if (renderRowActions) {
-      const actionsWidth = actionsColumnHasOverflow
-        ? ACTIONS_COLUMN_WIDTH_WITH_OVERFLOW
-        : ACTIONS_COLUMN_WIDTH
-      // Leading column: pinned left and placed before every data column so the
-      // row actions stay reachable without scrolling to the end of a wide table.
-      mapped.unshift({
-        colId: ACTIONS_COLUMN_ID,
-        headerName: actionsHeaderLabel ? t(actionsHeaderLabel) : '',
-        sortable: false,
-        filter: false,
-        resizable: false,
-        pinned: 'left',
-        width: actionsWidth,
-        minWidth: actionsWidth,
-        flex: 0,
-        // Synthetic column, not part of the domain schema: hiding it from the
-        // tool panel keeps the list to real, persistable columns (its id is not
-        // in the server's allow-list, so it is dropped on save anyway).
-        suppressColumnsToolPanel: true,
-        cellRenderer: (params: ICellRendererParams) => renderRowActions(params),
-      })
-    }
-
-    return mapped
-  }, [
-    domain,
-    columns,
-    cellRenderers,
-    renderRowActions,
-    actionsHeaderLabel,
-    actionsColumnHasOverflow,
-    t,
-  ])
+      }),
+    [
+      domain,
+      columns,
+      cellRenderers,
+      renderRowActions,
+      actionsHeaderLabel,
+      actionsColumnHasOverflow,
+      masterDetail,
+      t,
+    ],
+  )
 
   // Persist only USER-driven layout changes. AG Grid also emits these events for
   // its own programmatic updates (`api`, e.g. when we apply new columnDefs) and

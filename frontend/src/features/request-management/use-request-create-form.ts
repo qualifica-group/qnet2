@@ -23,11 +23,13 @@ interface UseRequestCreateFormArgs {
 }
 
 /** Server-side field names mapped directly onto an RHF field. */
-const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = ['registry_id']
+const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = ['registry_id', 'source_id', 'reporter_id']
 
 /** 422 error groups whose sections live OUTSIDE this form's RHF tree (see below). */
 const CLIENT_ERROR_PREFIXES = ['client_identity', 'client_contacts', 'client_address']
 const PRODUCT_LINES_ERROR_PREFIXES = ['product_lines']
+/** The `rewards`/`rewards.*` D-3 cross-field 422 (reward without a reporter), surfaced as a block banner. */
+const REWARDS_ERROR_PREFIXES = ['rewards']
 
 /**
  * Collects every 422 message whose key is one of `prefixes` (exact) or starts
@@ -67,6 +69,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const [serverError, setServerError] = useState<string | null>(null)
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
   const [productLinesError, setProductLinesError] = useState<string | null>(null)
+  const [rewardsError, setRewardsError] = useState<string | null>(null)
   const [identityDraft, setIdentityDraft] = useState<PersonalDataDraft>(() => emptyPersonalDataDraft())
   const [contactsDraft, setContactsDraft] = useState<ContactDraft[]>([])
   const [addressDraft, setAddressDraft] = useState<AddressDraft[]>([])
@@ -74,7 +77,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const schema = useMemo(() => buildRequestCreateSchema(t), [t])
   const form = useForm<RequestCreateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { registry_id: null, product_lines: [] },
+    defaultValues: { registry_id: null, product_lines: [], source_id: null, reporter_id: null, rewards: [] },
   })
 
   const registryId = useWatch({ control: form.control, name: 'registry_id' })
@@ -102,6 +105,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     setServerError(null)
     setClientBlockError(null)
     setProductLinesError(null)
+    setRewardsError(null)
 
     if (!usingExistingRegistry) {
       if (!identityValid) {
@@ -124,6 +128,9 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       contacts: contactsDraft,
       address: addressDraft[0] ?? null,
       productLines: values.product_lines,
+      sourceId: values.source_id,
+      reporterId: values.reporter_id,
+      rewards: values.rewards,
     })
 
     try {
@@ -134,9 +141,11 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       const mappedScalar = applyServerValidationErrors(error, form.setError, SCALAR_ERROR_FIELDS)
       const clientMessage = collectPrefixedServerErrors(error, CLIENT_ERROR_PREFIXES)
       const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
+      const rewardsMessage = collectPrefixedServerErrors(error, REWARDS_ERROR_PREFIXES)
       setClientBlockError(clientMessage)
       setProductLinesError(productLinesMessage)
-      if (!mappedScalar && !clientMessage && !productLinesMessage) {
+      setRewardsError(rewardsMessage)
+      if (!mappedScalar && !clientMessage && !productLinesMessage && !rewardsMessage) {
         setServerError(t('requestManagement.form.create.errors.generic'))
       }
     }
@@ -156,5 +165,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     serverError,
     clientBlockError,
     productLinesError,
+    rewardsError,
   }
 }

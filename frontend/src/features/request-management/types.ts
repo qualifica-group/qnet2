@@ -313,6 +313,11 @@ export interface CreateRequestPayload {
   client_contacts?: RequestClientContactPayload[]
   client_address?: RequestClientAddressPayload
   product_lines: CreateRequestProductLinePayload[]
+  /** Initial attribution (Fonte/Segnalatore), independent of the anagrafica XOR; `null` leaves the slot empty. */
+  source_id?: number | null
+  reporter_id?: number | null
+  /** Spec 0059: reward assignments for the reporter, sent only when at least one is picked. */
+  rewards?: RequestRewardInput[]
 }
 
 /**

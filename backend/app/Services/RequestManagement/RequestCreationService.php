@@ -54,15 +54,19 @@ final class RequestCreationService
                 ? Registry::findOrFail($data->registryId)
                 : $this->registryService->create($actor, $this->newClientRegistryData(), $data->clientProfile);
 
-            // Step 2: the Opportunity itself, through the shared service —
-            // every other relation stays unset (out of scope, D-4).
+            // Step 2: the Opportunity itself, through the shared service. The
+            // initial attribution (source/reporter) and reward assignments
+            // travel with it; every other relation stays unset (out of scope,
+            // D-4). `reporterId` is part of the insert, so RewardAssignmentWriter
+            // (invoked by OpportunityService::create) already targets the right
+            // beneficiary — no retarget step needed.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
                 commercialId: null,
-                reporterId: null,
+                reporterId: $data->reporterId,
                 supervisorId: null,
-                sourceId: null,
+                sourceId: $data->sourceId,
                 leadId: null,
                 opportunityStatusId: null,
                 managerSlots: null,
@@ -71,6 +75,7 @@ final class RequestCreationService
                 estimatedValue: null,
                 expectedCloseDate: null,
                 successProbability: null,
+                rewards: $data->rewards,
             ));
 
             return $this->panel->loadWorkPanel($opportunity);

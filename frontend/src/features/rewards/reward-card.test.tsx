@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { RewardCard, type RewardCardLabels } from '@/features/rewards/reward-card'
@@ -68,6 +68,19 @@ describe('RewardCard', () => {
     expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
     expect(screen.getByText('Handed over at the trade fair.')).toBeInTheDocument()
     expect(screen.getByText(/Jul 1, 2026/)).toBeInTheDocument()
+  })
+
+  it('renders the origin as an open-mode button (not a link) when onOpenSource is given', () => {
+    const onOpenSource = vi.fn()
+    render(
+      <MemoryRouter>
+        <RewardCard reward={FULL_REWARD} labels={LABELS} onOpenSource={onOpenSource} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('link', { name: /Big Deal/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Big Deal/ }))
+    expect(onOpenSource).toHaveBeenCalledTimes(1)
   })
 
   it('handles every nullable field without crashing or leaving dangling rows', () => {
