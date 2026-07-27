@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\VatRate;
 use App\Services\MigrationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -106,7 +107,30 @@ it('creates a product, remapping the required category_id via old_id', function 
         ->and($fresh->report)->toBeNull();
 });
 
-it('warns and nulls the un-remappable vat_rate_id / supplier_id references', function () {
+it('remaps vat_rate_id onto the migrated VAT rate via old_id', function () {
+    seedMigrationsConfig();
+    ProductCategory::factory()->create(['old_id' => 5]);
+    $vatRate = VatRate::factory()->create(['old_id' => 9]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [
+                ['id' => 3, 'name' => 'Audit', 'category_id' => 5, 'vat_rate_id' => 9],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'products']);
+
+    runMigrationJobFor($run);
+
+    expect(Product::query()->where('old_id', 3)->value('vat_rate_id'))->toBe($vatRate->id)
+        ->and($run->fresh()->report)->toBeNull();
+});
+
+it('warns and nulls an unmigrated vat_rate_id and the un-remappable supplier_id', function () {
     seedMigrationsConfig();
     ProductCategory::factory()->create(['old_id' => 5]);
 

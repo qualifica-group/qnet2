@@ -73,19 +73,6 @@ final class ProductColumnCatalog
                 'filterType' => 'set',
             ],
             [
-                // The product's category's EFFECTIVE (own or inherited)
-                // business function name (spec 0023), read-only, resolved by
-                // CategoryHierarchy. NOT SORTABLE (see BusinessFunctionColumn
-                // docblock).
-                'id' => 'business_function',
-                'label' => 'products.columns.business_function',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => false,
-                'filterable' => true,
-                'filterType' => 'set',
-            ],
-            [
                 // The Regione, derived from the state() relation (geo
                 // reference data, localized in ProductsTableDefinition
                 // mirroring ProjectsTableDefinition's GEO_COLUMN_IDS).
@@ -131,7 +118,6 @@ final class ProductColumnCatalog
             ['columnId' => 'cost', 'type' => 'number'],
             ['columnId' => 'price', 'type' => 'number'],
             ['columnId' => 'category', 'type' => 'set'],
-            ['columnId' => 'business_function', 'type' => 'set'],
             ['columnId' => 'state', 'type' => 'set'],
             ['columnId' => 'product_type', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],

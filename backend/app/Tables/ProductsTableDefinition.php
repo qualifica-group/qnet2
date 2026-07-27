@@ -9,7 +9,6 @@ use App\Models\State;
 use App\Models\User;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Tables\Products\ProductColumnCatalog;
-use App\Tables\Shared\BusinessFunctionColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -36,8 +35,6 @@ class ProductsTableDefinition extends AbstractTableDefinition
      * the WHERE IN cardinality (defence in depth); excess values ignored.
      */
     private const int MAX_FILTER_VALUES = 200;
-
-    public function __construct(private readonly BusinessFunctionColumn $businessFunctionColumn) {}
 
     public function domain(): string
     {
@@ -147,7 +144,6 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'cost' => $row->cost === null ? null : (float) $row->cost,
             'price' => $row->price === null ? null : (float) $row->price,
             'category' => $this->categorySummary($row->category),
-            'business_function' => $this->businessFunctionColumn->nameFor($row->category_id),
             'state' => $this->stateSummary($row->state),
             'product_type' => $row->product_type,
             'created_at' => $row->created_at,
@@ -219,12 +215,6 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        if ($columnId === 'business_function') {
-            $this->businessFunctionColumn->applyCategoryReferenceFilter($query, $filter);
-
-            return true;
-        }
-
         if ($columnId === 'state') {
             $this->applyStateFilter($query, $filter);
 
@@ -334,11 +324,6 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'category' => $this->distinctCategoryNames($search, $query, $limit),
-            'business_function' => $this->businessFunctionColumn->distinctValues(
-                (clone $query)->whereNotNull('category_id')->pluck('category_id')->unique(),
-                $search,
-                $limit,
-            ),
             'state' => $this->distinctStateNames($search, $query, $limit),
             'product_type' => $this->distinctProductTypes($search, $query, $limit),
             default => null,

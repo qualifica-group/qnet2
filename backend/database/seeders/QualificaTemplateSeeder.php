@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Models\CustomFieldDefinition;
+use App\Models\CustomFieldOption;
+use App\Models\CustomFieldValue;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
@@ -19,7 +21,7 @@ use Illuminate\Database\Seeder;
  *   - company-sites: the former flat "Altro" columns, PLUS the former
  *     client-specific ERP settings (responsible_*, proforma/invoice
  *     progressives, quotation_*), now dynamic fields;
- *   - products: the expiration date.
+ *   - products: the validity in months and the filing folder.
  *
  * Plus the client's source catalogue (spec 0018): the fixed provenance list
  * used to classify registry/lead/opportunity records.
@@ -63,7 +65,9 @@ class QualificaTemplateSeeder extends Seeder
      * entity_type => ordered list of field specs [key, label, type, ?relation_target].
      * Everything company-site is `integer` (former numeric reference/status
      * columns) except `color` (free text) and `accounting_manager_id` (a
-     * one-to-one relation to a user). The product expiration is a `date`.
+     * one-to-one relation to a user). On products the expiration is a
+     * duration in months (`integer`), not a fixed date, and the folder is an
+     * `enum` whose discrete options are seeded with the definition.
      *
      * @var array<string, list<array{key: string, label: string, type: string, relation_target?: array<string, mixed>}>>
      */
@@ -110,8 +114,25 @@ class QualificaTemplateSeeder extends Seeder
             ['key' => 'quotation_footer', 'label' => 'Footer preventivo', 'type' => 'integer'],
         ],
         'products' => [
-            ['key' => 'expiration_date', 'label' => 'Data scadenza', 'type' => 'date'],
+            ['key' => 'expiration_months', 'label' => 'Mesi scadenza', 'type' => 'integer'],
+            ['key' => 'folder', 'label' => 'Cartella', 'type' => 'enum', 'options' => [
+                ['value' => 'ente', 'label' => 'Ente'],
+                ['value' => 'consulenza', 'label' => 'Consulenza'],
+            ]],
         ],
+    ];
+
+    /**
+     * Template fields replaced by a later revision: the definition is dropped
+     * and the key stripped from the stored JSON payloads, so a re-seed
+     * converges instead of leaving an orphan field on the module.
+     * `products.expiration_date` (a date) became `expiration_months` (a
+     * duration): the old values are NOT convertible, hence discarded.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array SUPERSEDED_FIELDS = [
+        'products' => ['expiration_date'],
     ];
 
     /**
@@ -155,14 +176,14 @@ class QualificaTemplateSeeder extends Seeder
      */
     private const array CATALOG = [
         'Formazione' => [
-            'GOL' => ['Catalogo GOL'],
-            'Autoimpiego' => ['Autoimpiego'],
-            'Yisu' => ['Yisu'],
-            'Autofinanziato' => ['Catalogo Autofinanziato'],
-            'DIL' => ['Catalogo DIL'],
+            'GOL' => ['Prodotto per formazione GOL'],
+            'Autoimpiego' => ['Prodotto per formazione Autoimpiego'],
+            'Yisu' => ['Prodotto per formazione Yisu'],
+            'Autofinanziato' => ['Prodotto per formazione Autofinanziato'],
+            'DIL' => ['Prodotto per formazione DIL'],
         ],
         'Consulenza' => [
-            'Trattative in Corso' => ['Servizi Consulenza'],
+            'Trattative in Corso' => ['Prodotto per consulenza Trattative in Corso'],
             'Presa Appuntamenti' => [],
         ],
     ];
@@ -172,6 +193,8 @@ class QualificaTemplateSeeder extends Seeder
         foreach (self::TEMPLATES as $entityType => $fields) {
             $this->seedTemplate($entityType, $fields);
         }
+
+        $this->pruneSupersededFields();
 
         $this->seedSources();
         $this->seedRewardTypes();
@@ -234,14 +257,14 @@ class QualificaTemplateSeeder extends Seeder
     }
 
     /**
-     * @param  list<array{key: string, label: string, type: string, relation_target?: array<string, mixed>}>  $fields
+     * @param  list<array{key: string, label: string, type: string, relation_target?: array<string, mixed>, options?: list<array{value: string, label: string}>}>  $fields
      */
     private function seedTemplate(string $entityType, array $fields): void
     {
         $sortOrder = 0;
 
         foreach ($fields as $field) {
-            CustomFieldDefinition::updateOrCreate(
+            $definition = CustomFieldDefinition::updateOrCreate(
                 ['entity_type' => $entityType, 'key' => $field['key']],
                 [
                     'type' => $field['type'],
@@ -252,6 +275,49 @@ class QualificaTemplateSeeder extends Seeder
                     'relation_target' => $field['relation_target'] ?? null,
                 ],
             );
+
+            $this->seedOptions($definition, $field['options'] ?? []);
+        }
+    }
+
+    /**
+     * @param  list<array{value: string, label: string}>  $options
+     */
+    private function seedOptions(CustomFieldDefinition $definition, array $options): void
+    {
+        $sortOrder = 0;
+
+        foreach ($options as $option) {
+            CustomFieldOption::updateOrCreate(
+                ['definition_id' => $definition->id, 'value' => $option['value']],
+                ['label' => $option['label'], 'sort_order' => $sortOrder++],
+            );
+        }
+    }
+
+    private function pruneSupersededFields(): void
+    {
+        foreach (self::SUPERSEDED_FIELDS as $entityType => $keys) {
+            // Step 1: drop the definitions (options cascade on delete).
+            CustomFieldDefinition::query()
+                ->where('entity_type', $entityType)
+                ->whereIn('key', $keys)
+                ->get()
+                ->each->delete();
+
+            // Step 2: strip the keys from the stored per-entity payloads, so
+            // no value survives its definition.
+            CustomFieldValue::query()
+                ->where('entity_type', $entityType)
+                ->each(function (CustomFieldValue $row) use ($keys): void {
+                    $values = (array) $row->values;
+
+                    if (empty(array_intersect_key($values, array_flip($keys)))) {
+                        return;
+                    }
+
+                    $row->update(['values' => array_diff_key($values, array_flip($keys))]);
+                });
         }
     }
 }

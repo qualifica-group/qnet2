@@ -4,7 +4,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { TableToolbar, type TableToolbarProps } from '@/features/table/table-toolbar'
+import {
+  SEARCH_MAX_LENGTH,
+  TableToolbar,
+  type TableToolbarProps,
+} from '@/features/table/table-toolbar'
 
 // Assert against the English catalogue (the app default locale is Italian).
 beforeAll(async () => {
@@ -60,6 +64,15 @@ describe('TableToolbar', () => {
     renderToolbar({ searchEnabled: false })
 
     expect(screen.queryByPlaceholderText('Search name/email…')).not.toBeInTheDocument()
+  })
+
+  it('caps the search field at the server-side max length', () => {
+    renderToolbar()
+
+    expect(screen.getByPlaceholderText('Search name/email…')).toHaveAttribute(
+      'maxlength',
+      String(SEARCH_MAX_LENGTH),
+    )
   })
 
   it('emits every keystroke through onSearchChange', () => {

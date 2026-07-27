@@ -29,6 +29,14 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+/**
+ * Hard cap of the quick-search field, mirroring the server-side
+ * `TableRowsRequest::SEARCH_MAX_LENGTH`. Enforced here so pasting a longer term
+ * can never produce a 422 the SSRM datasource can only report as a row of "ERR"
+ * cells — the two values must stay in lockstep.
+ */
+export const SEARCH_MAX_LENGTH = 255
+
 export interface TableToolbarProps {
   /** Whether the domain exposes a global quick-search (config `searchable`). */
   searchEnabled: boolean
@@ -184,6 +192,7 @@ export function TableToolbar({
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
               autoComplete="off"
+              maxLength={SEARCH_MAX_LENGTH}
               className="h-9 border-transparent bg-muted/60 pl-8 pr-14 shadow-none focus-visible:border-ring focus-visible:bg-card [&::-webkit-search-cancel-button]:hidden"
             />
             {searchValue ? (

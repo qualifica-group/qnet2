@@ -2,6 +2,187 @@
 
 > Injected at session start. Update at every green state.
 
+## MIGRAZIONE — NUOVO SOURCE `vat-rates` (IVA) + REMAP PRODOTTI (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: nuova /migration per la tabella di setting IVA. Decisione utente (AskUserQuestion):
+(a) tocco SOLO qnet-2, il lato legacy lo scrive l'utente; (b) SI al remap di `products.vat_rate_id`.
+
+CONTRATTO ESTERNO (congelato, il legacy deve rispettarlo): `GET {base}/vat-rates` con la solita busta
+`{items:[{id,name,rate}], pagination:{total,...}}` e i parametri `offset`/`limit`. Sorgente legacy
+verificata leggendo il repo `/Users/Repository/qnet`: la tabella IVA li' e' **`rates`** (`id`,
+`description` string, `rate` int) e il controller da clonare e' `TagMigrationController`
+(mappa `name <- description`, `rate <- rate`), piu' una riga in `routes/apiV2.php` dentro
+`Route::prefix('migration')`. **Finche' quella rotta non esiste, l'import di questo source risponde
+502**: oggi `/api/v2/migration/` espone 13 rotte e nessuna per l'IVA (verificato via curl).
+
+qnet-2 — 5 tocchi, sul modello esatto di `tags` (lookup piatto):
+migrazione additiva `2026_07_27_180000_add_old_id_to_vat_rates_table` (old_id nullable + unique,
+gia' applicata al DB di sviluppo) · `App\Migrations\Sources\VatRatesSource` (key/endpoint
+`vat-rates`, crea via `VatRateService` + `CreateVatRateData`, skip per old_id) · riga in
+`config/migrations.php` `definitions` · `MigrationOrder::PHASES` fase 1 (deve precedere `products`
+in fase 5) · `VatRatesSourceImportTest`.
+`rate` NON ha default: assente o non numerico = errore di riga (isolato), perche' inventare
+un'aliquota fiscale e' peggio che fallire. Zero e' legittimo (esente) ed e' testato.
+
+`ProductsSource`: `vat_rate_id` ora e' rimappato via `old_id` (`resolveVatRate`), ma **OPZIONALE** —
+a differenza di `category_id`, un riferimento non migrato lascia null + warning e NON fa fallire la
+riga. `supplier_id` resta l'unico non rimappabile (`registries` non ha `old_id` ne' un source):
+`unresolvableReference()` esiste ancora solo per lui.
+
+NON in `OldIdSchemaTest`: quel dataset e' fermo alle 10 tabelle originali della spec 0013 e non e'
+stato esteso nemmeno per attributes/product_categories/products — ho seguito il precedente invece di
+riaprirlo.
+
+Verifica ESEGUITA (`XDEBUG_MODE=off`): `tests/Feature/Migration` 195/195 verde (190 preesistenti + 4
+nuovi casi vat-rates + 1 sul remap prodotti). `tests/Feature/VatRates`+`Products` 103/105: i 2 rossi
+sono `VatRateSecurityTest`/`ProductSecurityTest` "navigation node", famiglia PRE-ESISTENTE gia'
+tracciata qui sotto (non tocco la navigazione). Pint pulito. Nessuna modifica frontend: la pagina
+/migrations e' generica e prende il nuovo source da `definitions`.
+
+DA DECIDERE, NON FATTO: `QualificaLegacyImportSeeder::SOURCES` non include `vat-rates`. Se le
+aliquote fanno parte del template cliente va aggiunto in fase 1, ma e' una scelta di contenuto del
+template, non una conseguenza tecnica.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## LEGACY IMPORT — AGGIUNTO `vat-rates` ALLA LISTA SORGENTI (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: il seed deve importare anche le aliquote IVA dal gestionale legacy.
+
+`QualificaLegacyImportSeeder::SOURCES` ha ora `'vat-rates'` dopo `'sectors'`, dentro il gruppo di
+fase 1 — stessa posizione che occupa in `MigrationOrder::PHASES[0]`, ed e' un anchor indipendente
+(nessuna referenza incrociata), quindi la posizione nel gruppo non e' vincolante. `VatRatesSource`
+esisteva gia' (endpoint `vat-rates`, campi id/name/rate, create via `VatRateService`); non e' stato
+toccato. Idempotenza garantita dalla sorgente stessa (skip per `old_id`), come per tutte le altre.
+
+Nota: `products` NON e' nella lista (dati operativi, non di template), quindi il remap
+`vat_rate_id` → `old_id` della fase 5 qui non si esercita: le aliquote arrivano come lookup di
+settings, pronte per essere referenziate.
+
+Test: `QualificaLegacyImportSeederTest` ha ora il fake dell'endpoint `vat-rates` in
+`fakeLegacyCatalogues()` (id 61, "IVA 22%", rate 22) + un caso nuovo che verifica import e doppio run
+senza duplicati. Verifica ESEGUITA: 8/8 verde su quel file; `tests/Feature/Migration` +
+`tests/Feature/CustomFields` 288/290, i 2 rossi sono i PRE-ESISTENTI gia' noti
+(`CustomFieldAdminSecurityTest` navigation node, `CustomFieldWritePipelineTest` 422 su `vat_number`
+da faker). Pint pulito sui file toccati (il fail su `AttributesSourceImportTest.php` e' pre-esistente,
+file non modificato da noi).
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## TEMPLATE QUALIFICA / CATALOGO — RINOMINATI I PRODOTTI DI RIFERIMENTO (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: nel seed del catalogo, al posto di "Catalogo ..." un nome del tipo "Prodotto per
+formazione GOL", per tutti i prodotti del seeder.
+
+Convenzione applicata in `QualificaTemplateSeeder::CATALOG`: **`Prodotto per <root minuscola> <sottocategoria>`**.
+Formazione → `Prodotto per formazione GOL` / `... Autoimpiego` / `... Yisu` / `... Autofinanziato` /
+`... DIL`; Consulenza → `Prodotto per consulenza Trattative in Corso` (era `Servizi Consulenza`).
+`Presa Appuntamenti` resta senza prodotti (lista vuota). I nomi delle CATEGORIE non cambiano.
+
+ATTENZIONE su un DB gia' seedato: il prodotto ha come chiave naturale il NOME
+(`seedCatalogProducts` fa `Product::where('name', ...)->exists()`), quindi il seeder **non rinomina**
+le righe esistenti — crea i 6 nuovi accanto ai vecchi `Catalogo GOL`/`Autoimpiego`/`Yisu`/
+`Catalogo Autofinanziato`/`Catalogo DIL`/`Servizi Consulenza`. I vecchi vanno rinominati o cancellati
+a mano (o si aggiunge una convergenza tipo `SUPERSEDED_FIELDS`, non fatta: fuori scope).
+
+Verifica ESEGUITA: `QualificaTemplateSeederTest` 6/6 verde (aggiornata l'asserzione sui nomi prodotto),
+Pint pulito. Nessun altro riferimento a quei nomi nel repo (grep su backend/frontend/docs).
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## TEMPLATE QUALIFICA / PRODOTTI — `expiration_months` + `folder` (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: nel template Qualifica, sui prodotti, la "data di scadenza" diventa "mesi di
+scadenza" (int); in piu' un nuovo campo `folder` con le opzioni Ente e Consulenza.
+
+CONTRATTO: `QualificaTemplateSeeder::TEMPLATES['products']` ora ha due voci —
+`expiration_months` (type `integer`, label "Mesi scadenza") e `folder` (type `enum`, label
+"Cartella") con opzioni `ente`/"Ente" e `consulenza`/"Consulenza" in quest'ordine (i valori sono
+domain values in lingua originale, come SOURCES/CATALOG dello stesso seeder). Il campo `date`
+`expiration_date` NON esiste piu'.
+
+`seedTemplate()` ora accetta la chiave opzionale `options` sulla field spec e delega a
+`seedOptions()`: `CustomFieldOption::updateOrCreate` su (definition_id, value), `sort_order`
+progressivo — idempotente come il resto del seed.
+
+CONVERGENZA DEL SEED (decisione utente via AskUserQuestion, "Sostituisci e pulisci"): nuova costante
+`SUPERSEDED_FIELDS = ['products' => ['expiration_date']]` + `pruneSupersededFields()` chiamato in
+`run()` subito dopo i template. Cancella la definizione (le opzioni cascadano via FK) e toglie la
+chiave dal JSON `custom_field_values.values` riga per riga, cosi' nessun valore sopravvive alla sua
+definizione. Una data NON e' convertibile in una durata: i valori vecchi si perdono per scelta
+esplicita (nel DB di sviluppo erano 422 prodotti con date reali). Se in futuro un altro campo del
+template viene rimpiazzato, si aggiunge la chiave a `SUPERSEDED_FIELDS`, non si scrive altro codice.
+
+Verifica ESEGUITA (`XDEBUG_MODE=off`): `QualificaTemplateSeederTest` 6/6 verde (2 casi nuovi: template
+prodotti con opzioni enum in ordine + doppio run senza duplicati; prune della definizione superata,
+delle sue opzioni e della chiave nei valori). `tests/Feature/CustomFields` + `tests/Feature/Products`
++ `tests/Unit/Models/CompanySiteTest` + `QualificaLegacyImportSeederTest` verdi tranne i rossi
+PRE-ESISTENTI gia' noti: famiglia "navigation node" (`CustomFieldAdminSecurityTest`,
+`ProductSecurityTest`) e `CustomFieldWritePipelineTest` 422 su `vat_number` da faker. Pint pulito.
+
+DA FARE sul DB di sviluppo (non eseguito, richiede via libera): `php artisan db:seed --class=QualificaTemplateSeeder`
+applica conversione e prune — attenzione, quel seeder chiama anche `QualificaLegacyImportSeeder`
+(import di massa dal gestionale legacy).
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## RICERCA TABELLE — TERMINE LUNGO = GRIGLIA DI "ERR" (2026-07-27) — VERDE, NON COMMITTATO
+
+Bug utente: cercando in Prodotti il nome completo "ISO _ Attivita di consulenza ... UNI EN ISO
+14001:2004 _ 1° Anno" (115 caratteri) la griglia mostrava "ERR" in ogni cella.
+
+ROOT CAUSE (non era la ricerca ne' il nome): `TableRowsRequest::SEARCH_MAX_LENGTH` valeva 100, il
+termine ne aveva 115 → 422. Il datasource SSRM (`ssrm-datasource.ts`) su qualunque rejection chiama
+`params.fail()`, e AG Grid rende le righe fallite col `localeText.loadingError`, il cui default e'
+letteralmente "ERR". Quindi "ERR" = richiesta righe fallita, MAI un errore di cella: quando ricompare,
+guarda lo status della POST `/api/tables/{domain}/rows`, non il renderer.
+
+FIX: cap portato a **255** (`TableRowsRequest::SEARCH_MAX_LENGTH`), che era gia' il valore di
+`TableValuesRequest` e di tutte le `*ForSelectRequest` — il 100 era l'outlier. `CreateExportRequest`
+NON ridichiara piu' la propria costante: referenzia `TableRowsRequest::SEARCH_MAX_LENGTH` (porta lo
+stesso termine della griglia, i due cap non devono poter divergere). Lato FE il campo di ricerca ha
+ora `maxLength={SEARCH_MAX_LENGTH}` (costante esportata da `features/table/table-toolbar.tsx`, 255):
+il 422 per lunghezza non e' piu' raggiungibile dalla UI, nemmeno incollando. **Le due costanti vanno
+tenute allineate a mano** — se cambia una, cambia l'altra.
+
+Spec 0009 aggiornata (riga della tabella `search`: `max:100` → `max:255`).
+
+Test: `TableRowsSearchTest` ora ha il caso "accetta 255" oltre a quello di rifiuto, entrambi scritti
+sulla costante invece che sul numero magico; stessa cosa per `ExportStoreTest`. Verifica ESEGUITA:
+`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Table tests/Feature/Exports` 265/265 verde,
+`vitest run table-toolbar.test.tsx` 14/14 (incluso il nuovo caso sul maxLength), `tsc --noEmit`
+pulito, Pint pulito.
+
+NOTO, NON FATTO (fuori scope, da decidere): ogni fallimento della POST rows resta un muro di "ERR"
+senza messaggio. Un `catch` che legge lo status e mostra un toast renderebbe diagnosticabile la
+prossima occorrenza.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## TABELLA PRODOTTI — RIMOSSA LA COLONNA `business_function` (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: eliminare la colonna "funzione aziendale" dalla tabella Prodotti.
+
+Scope: SOLO la tabella `products`. Rimosso da `ProductColumnCatalog` (voce colonna + voce filtro
+avanzato) e da `ProductsTableDefinition` (chiave in `mapRow`, ramo `applyDerivedFilter`, ramo
+`distinctValues`); con essi e' caduta l'unica dipendenza del costruttore (`BusinessFunctionColumn`),
+quindi il costruttore e' stato eliminato e l'import con lui. `App\Tables\Shared\BusinessFunctionColumn`
+RESTA in uso da `ProductCategoriesTableDefinition` — non toccarla.
+
+NON toccati (fuori scope, dichiarati): la colonna omonima della tabella **Categorie prodotto**
+(spec 0023 AC-014 li' e' ancora valida), il campo `business_function` di `ProductResource` e la sua
+riga nel dettaglio prodotto (`frontend/src/features/products/product-detail.tsx`) — per questo la
+chiave i18n `products.columns.business_function` resta viva e NON va cancellata.
+
+Test: rimossi i 3 casi `business_function` di `ProductTableTest` (rows/filter/values) e aggiornata
+l'asserzione sull'elenco colonne (ora 9: id, name, description, cost, price, category, state,
+product_type, created_at). Verifica ESEGUITA: `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Products`
+69/70, unico rosso `ProductSecurityTest` "navigation: the products node only shows with products.view"
+= rosso PRE-ESISTENTE della famiglia "navigation node" gia' tracciata qui sotto, non correlato
+(non tocca colonne). Pint pulito. Nessuna modifica frontend, quindi nessun typecheck necessario.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## TEMPLATE QUALIFICA — IMPORT LEGACY DEI CATALOGHI CLIENTE (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: `QualificaTemplateSeeder` deve importare anche funzioni aziendali, societa
@@ -12,13 +193,24 @@ loro indirizzo, gestito dai rispettivi Source).
 
 CONTRATTO: nuovo `Database\Seeders\QualificaLegacyImportSeeder`, chiamato in coda a
 `QualificaTemplateSeeder::run()` (i cataloghi statici sono la baseline, il legacy e' il delta sopra).
-La lista sorgenti e' la costante pubblica `QualificaLegacyImportSeeder::SOURCES` = i 7 anchor di
-fase 1 di `MigrationOrder` nell'ordine: `business-functions`, `companies`, `operational-sites`,
-`referent-types`, `sources`, `tags`, `sectors`. NON e' il piano di massa: users/referents/prodotti
-sono dati operativi, non template. Due precondizioni opzionali (mai fatali, solo warning + skip):
+La lista sorgenti e' la costante pubblica `QualificaLegacyImportSeeder::SOURCES`, in ordine di fase
+`MigrationOrder`: fase 1 `business-functions`, `companies`, `operational-sites`, `referent-types`,
+`sources`, `tags`, `sectors`; fase 4 `attributes`, `product-categories`; fase 5
+`product-category-attributes` (il pass che back-filla il pivot `attribute_category`, rileggendo lo
+stesso endpoint `product-categories`). NON e' il piano di massa: users, referents e `products`
+restano fuori (dati operativi, non template). Due precondizioni opzionali (mai fatali, warning + skip):
 `config('migrations.base_url')` valorizzata e almeno un utente `super-admin` come attore.
 Il super-admin si cerca con `whereHas('roles', ...)`, NON con lo scope `User::role()` — quello lancia
 se il ruolo non esiste ancora (DB senza `RolePermissionSeeder`).
+
+ANNIDAMENTO TASSONOMIA (vincolante): `nestImportedCategories()` gira DOPO il mass run e sposta sotto
+la root **"Consulenza"** (costante `LEGACY_CATEGORY_ROOT`, deve combaciare con una root di
+`QualificaTemplateSeeder::CATALOG`) ogni `ProductCategory` con `old_id` NOT NULL e `parent_id` NULL —
+cioe' le root legacy e quelle rimaste staccate perche' il loro padre non e' migrato (il report del run
+porta il warning). Le categorie senza `old_id` sono l'albero del template statico e non si toccano,
+quindi un re-run non sposta nulla una seconda volta. Scrittura diretta di `parent_id` per-model
+(non mass update, cosi' l'activity log registra), stessa convenzione del relink di
+`ProductCategoriesSource::afterImport`; l'albero e' adjacency list pura, nessuna colonna derivata.
 
 `MigrationService`: estratto `createMassRun()` privato + nuovo `runMassSync(User $actor, array
 $sources)` — stesso orchestratore di "Importa tutto" (`RunMassMigrationJob`: un `MigrationRun` figlio
@@ -33,13 +225,15 @@ referent-types, sectors, business-functions) NON hanno adozione: il template pul
 quindi non collidono — se un domani le si pre-seeda, serve la stessa logica.
 
 Verifica ESEGUITA (`XDEBUG_MODE=off`, con xdebug attivo l'intera dir segfaulta — signal 11):
-`tests/Feature/Migration` 188/188 verde, incluso il nuovo
-`QualificaLegacyImportSeederTest` (5 casi: mass run inline completo con i 7 figli in ordine, adozione
-fonte + import della sola nuova, doppio run senza duplicati, skip senza base_url, skip senza
-super-admin) e i 2 nuovi casi di adozione in `SourcesSourceImportTest`. Pint pulito.
-`tests/Feature/CustomFields`+`Sources` 124/126: i 2 rossi sono PRE-ESISTENTI e non toccano il seeder
-(`CustomFieldAdminSecurityTest` nodo navigazione `custom-fields`; `CustomFieldWritePipelineTest` 422
-su `vat_number` generato da faker) — nessuno dei due file referenzia `QualificaTemplateSeeder`.
+`tests/Feature/Migration` 190/190 verde, incluso il nuovo `QualificaLegacyImportSeederTest` (7 casi:
+mass run inline coi 10 figli in ordine, adozione fonte + import della sola nuova, annidamento sotto
+Consulenza con gerarchia legacy preservata, pivot attributo/categoria nel context dichiarato, doppio
+run senza duplicati ne' secondo spostamento, skip senza base_url, skip senza super-admin) e i 2 nuovi
+casi di adozione in `SourcesSourceImportTest`. Pint pulito.
+Rossi PRE-ESISTENTI incontrati e verificati non correlati (nessuno di questi file referenzia il
+seeder): famiglia "navigation node" (`CustomFieldAdminSecurityTest`, `ProductSecurityTest`,
+`AttributeSecurityTest`, `ProductCategorySecurityTest`) e `CustomFieldWritePipelineTest` 422 su
+`vat_number` generato da faker.
 
 NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
 

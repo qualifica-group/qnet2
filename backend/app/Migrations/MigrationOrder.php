@@ -29,11 +29,12 @@ final class MigrationOrder
      */
     public const PHASES = [
         // Phase 1 — independent anchor entities that later phases link to.
-        // `sources` and `tags` are plain lookups with no cross-source reference;
-        // `sectors` references only itself (parent_id remapped via old_id,
-        // relinked within its own run); `roles` are adopted/created by name and
-        // are referenced by `users` via old_id, so they anchor here too.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'roles'],
+        // `sources`, `tags` and `vat-rates` are plain lookups with no
+        // cross-source reference; `sectors` references only itself (parent_id
+        // remapped via old_id, relinked within its own run); `roles` are
+        // adopted/created by name and are referenced by `users` via old_id, so
+        // they anchor here too.
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'roles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
         // users (companies/sites/functions/roles) and referents (referent-types).
@@ -50,10 +51,11 @@ final class MigrationOrder
         // earlier phases references either, so they sit here next to `products`.
         ['attributes', 'product-categories'],
 
-        // Phase 5 — products reference the phase 4 product-categories via old_id
-        // (vat_rate/supplier are not remapped); the attribute/category pivot is
-        // the association pass that needs BOTH phase 4 anchors migrated. The two
-        // have no cross-dependency, so they share the phase.
+        // Phase 5 — products reference the phase 4 product-categories AND the
+        // phase 1 vat-rates via old_id (only `supplier` is left unremapped); the
+        // attribute/category pivot is the association pass that needs BOTH phase
+        // 4 anchors migrated. The two have no cross-dependency, so they share
+        // the phase.
         ['product-category-attributes', 'products'],
     ];
 

@@ -10,6 +10,7 @@ use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\VatRate;
 use App\Services\ProductService;
 use RuntimeException;
 
@@ -22,10 +23,13 @@ use RuntimeException;
  * ProductCategoriesSource). `product_type` maps to the ProductType enum, falling
  * back to the default case on an absent/unknown value with a non-fatal warning.
  *
- * `vat_rate_id` and `supplier_id` are NOT remapped: `vat_rates`/`registries`
- * carry no `old_id` and have no migration source, so their external references
- * cannot be resolved. They are left null; a non-fatal warning is surfaced when
- * the external record carries one, so the operator knows the link was dropped.
+ * `vat_rate_id` IS remapped via `old_id` (vat-rates must be migrated first),
+ * but unlike the category it is OPTIONAL: an unmigrated reference leaves the
+ * column null with a non-fatal warning instead of failing the row.
+ * `supplier_id` is still NOT remapped: `registries` carries no `old_id` and has
+ * no migration source, so its external reference cannot be resolved. It is left
+ * null; a non-fatal warning is surfaced when the external record carries one,
+ * so the operator knows the link was dropped.
  */
 class ProductsSource extends AbstractMigrationSource
 {
@@ -64,7 +68,7 @@ class ProductsSource extends AbstractMigrationSource
             ['id' => 'price', 'label' => 'Price', 'type' => 'number'],
             ['id' => 'category_id', 'label' => 'Category (external id)', 'type' => 'number'],
             ['id' => 'product_type', 'label' => 'Product type', 'type' => 'string'],
-            ['id' => 'vat_rate_id', 'label' => 'VAT rate (external id, not remapped)', 'type' => 'number'],
+            ['id' => 'vat_rate_id', 'label' => 'VAT rate (external id)', 'type' => 'number'],
             ['id' => 'supplier_id', 'label' => 'Supplier (external id, not remapped)', 'type' => 'number'],
         ];
     }
@@ -120,7 +124,7 @@ class ProductsSource extends AbstractMigrationSource
             price: (float) ($record['price'] ?? 0),
             categoryId: $this->resolveCategory($record['category_id'] ?? null),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
-            vatRateId: $this->unresolvableReference('vat_rate_id', $record['vat_rate_id'] ?? null, $warnings),
+            vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
         ));
 
@@ -177,9 +181,34 @@ class ProductsSource extends AbstractMigrationSource
     }
 
     /**
-     * `vat_rate_id`/`supplier_id` cannot be remapped (their target tables carry
-     * no `old_id` and have no migration source). The external reference is
-     * dropped to null; a non-fatal warning records that the link was not carried.
+     * Remap the OPTIONAL external VAT rate reference to the qnet vat_rate id via
+     * `old_id`. Absent/blank → null (no warning: the legacy row simply carries
+     * none); a reference that resolves to no migrated rate → null plus a
+     * non-fatal warning, never a failed row — a product is perfectly valid
+     * without a VAT rate, and failing here would block the whole catalogue on a
+     * missing lookup.
+     *
+     * @param  array<int, string>  $warnings
+     */
+    private function resolveVatRate(mixed $externalRef, array &$warnings): ?int
+    {
+        if ($externalRef === null || $externalRef === '') {
+            return null;
+        }
+
+        $id = $this->resolveOldId(VatRate::class, $externalRef);
+
+        if ($id === null) {
+            $warnings[] = "Unresolved vat_rate_id (external id {$externalRef}); left empty, migrate vat-rates first.";
+        }
+
+        return $id;
+    }
+
+    /**
+     * `supplier_id` cannot be remapped (`registries` carries no `old_id` and has
+     * no migration source). The external reference is dropped to null; a
+     * non-fatal warning records that the link was not carried.
      *
      * @param  array<int, string>  $warnings
      */

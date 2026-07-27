@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Requests\Table\TableRowsRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -95,12 +96,21 @@ it('treats a blank/whitespace search term as no search', function () {
     expect($response->json('pagination.total'))->toBe(5);
 });
 
+it('accepts a search term as long as a full record name (255 chars)', function () {
+    $actor = userWithUserAbilities(['viewAny']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tables/users/rows', rowsPayload([
+        'search' => str_repeat('a', TableRowsRequest::SEARCH_MAX_LENGTH),
+    ]))->assertOk();
+});
+
 it('rejects a search term over the max length (422)', function () {
     $actor = userWithUserAbilities(['viewAny']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/tables/users/rows', rowsPayload([
-        'search' => str_repeat('a', 101),
+        'search' => str_repeat('a', TableRowsRequest::SEARCH_MAX_LENGTH + 1),
     ]))->assertStatus(422)->assertJsonValidationErrors('search');
 });
 

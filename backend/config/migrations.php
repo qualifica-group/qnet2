@@ -15,6 +15,7 @@ use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\UsersSource;
+use App\Migrations\Sources\VatRatesSource;
 
 return [
 
@@ -72,6 +73,7 @@ return [
         'sources' => SourcesSource::class,
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
+        'vat-rates' => VatRatesSource::class,
         'attributes' => AttributesSource::class,
         'product-categories' => ProductCategoriesSource::class,
         'product-category-attributes' => ProductCategoryAttributesSource::class,

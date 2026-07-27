@@ -25,7 +25,7 @@ Request gains one optional field:
 
 | field | type | rules |
 |---|---|---|
-| `search` | string \| null | `nullable, string, max:100` (`TableRowsRequest::SEARCH_MAX_LENGTH`) |
+| `search` | string \| null | `nullable, string, max:255` (`TableRowsRequest::SEARCH_MAX_LENGTH`) |
 
 Applied server-side as a single **grouped OR-`LIKE`** over the definition's
 `searchableColumnIds()` allow-list, **AND-combined** with `filterModel`. The term

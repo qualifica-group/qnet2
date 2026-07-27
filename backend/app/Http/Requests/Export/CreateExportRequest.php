@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Export;
 
+use App\Http\Requests\Table\TableRowsRequest;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,9 +26,6 @@ use Illuminate\Validation\Validator;
  */
 class CreateExportRequest extends FormRequest
 {
-    /** Max length of the global quick-search term, mirrors TableRowsRequest. */
-    private const int SEARCH_MAX_LENGTH = 100;
-
     private ?TableDefinition $resolvedDefinition = null;
 
     public function authorize(): bool
@@ -57,7 +55,9 @@ class CreateExportRequest extends FormRequest
             'filterModel' => ['sometimes', 'array'],
             'filterModel.*' => ['array'],
 
-            'search' => ['sometimes', 'nullable', 'string', 'max:'.self::SEARCH_MAX_LENGTH],
+            // Same cap as the rows endpoint: the export carries the very term
+            // the grid is filtered by, so the two must never diverge.
+            'search' => ['sometimes', 'nullable', 'string', 'max:'.TableRowsRequest::SEARCH_MAX_LENGTH],
         ];
     }
 

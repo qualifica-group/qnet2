@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\State;
@@ -50,7 +49,7 @@ it('returns the 10 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'description', 'cost', 'price', 'category', 'business_function', 'state', 'product_type', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'description', 'cost', 'price', 'category', 'state', 'product_type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -60,8 +59,6 @@ it('returns the 10 columns in order with the declared flags, 403 without viewAny
         ->and($columns['id']['visible'])->toBeFalse()
         ->and($columns['description']['sortable'])->toBeFalse()
         ->and($columns['category']['filterType'])->toBe('set')
-        ->and($columns['business_function']['filterType'])->toBe('set')
-        ->and($columns['business_function']['sortable'])->toBeFalse()
         ->and($columns['state']['filterType'])->toBe('set')
         ->and($columns['state']['sortable'])->toBeTrue()
         ->and($columns['product_type']['type'])->toBe('badge')
@@ -169,57 +166,6 @@ it('sort: rows ordered by the derived category name', function () {
 
     $names = collect($response->json('items'))->pluck('name')->all();
     expect($names)->toBe(['FromAlpha', 'FromZebra']);
-});
-
-// ---------------------------------------------------------------------------
-// derived `business_function` column (spec 0023, AC-014)
-// ---------------------------------------------------------------------------
-
-it('rows: business_function shows the category\'s EFFECTIVE (own or inherited) function name', function () {
-    $actor = productUserWith(['viewAny']);
-    $function = BusinessFunction::factory()->create(['name' => 'Sales']);
-    $root = ProductCategory::factory()->create(['business_function_id' => $function->id]);
-    $child = ProductCategory::factory()->childOf($root)->create();
-    $otherCategory = ProductCategory::factory()->create();
-    Product::factory()->create(['name' => 'Inherits', 'category_id' => $child->id]);
-    Product::factory()->create(['name' => 'Other', 'category_id' => $otherCategory->id]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $rows = collect($response->json('items'))->keyBy('name');
-
-    expect($rows['Inherits']['business_function'])->toBe('Sales')
-        ->and($rows['Other']['business_function'])->toBeNull();
-});
-
-it('filter: business_function set filter narrows the rows to those whose category EFFECTIVELY has it', function () {
-    $actor = productUserWith(['viewAny']);
-    $function = BusinessFunction::factory()->create(['name' => 'Sales']);
-    $root = ProductCategory::factory()->create(['business_function_id' => $function->id]);
-    $child = ProductCategory::factory()->childOf($root)->create();
-    $other = ProductCategory::factory()->create();
-    Product::factory()->create(['name' => 'Inherits', 'category_id' => $child->id]);
-    Product::factory()->create(['name' => 'Other', 'category_id' => $other->id]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/rows', [
-        'startRow' => 0, 'endRow' => 25,
-        'filterModel' => ['business_function' => ['filterType' => 'set', 'values' => ['Sales']]],
-    ])->assertOk();
-
-    expect(collect($response->json('items'))->pluck('name')->all())->toBe(['Inherits']);
-});
-
-it('values: business_function → distinct EFFECTIVE names', function () {
-    $actor = productUserWith(['viewAny']);
-    $function = BusinessFunction::factory()->create(['name' => 'Sales']);
-    $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
-    Product::factory()->create(['category_id' => $category->id]);
-    Product::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/values', ['columnId' => 'business_function'])->assertOk();
-    expect($response->json('data.values'))->toBe(['Sales']);
 });
 
 it('filter: category set filter narrows the rows via whereHas', function () {

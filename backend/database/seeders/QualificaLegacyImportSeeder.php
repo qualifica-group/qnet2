@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\MigrationStatus;
 use App\Models\MassMigrationRun;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\MigrationService;
 use App\Services\UserService;
@@ -16,7 +17,9 @@ use Illuminate\Database\Seeder;
  * MigrationRun per source, run inline via MigrationService::runMassSync. No
  * catalogue is hard-coded here: the values are whatever the legacy system
  * holds, and the run is visible in the Migrazioni history like a UI-launched
- * one.
+ * one. The one shape decision the seed does impose is where the imported
+ * product taxonomy lands — under the template's "Consulenza" root, see
+ * nestImportedCategories().
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
  * already imported, and `sources` — the one catalogue the static template
@@ -31,14 +34,15 @@ use Illuminate\Database\Seeder;
 class QualificaLegacyImportSeeder extends Seeder
 {
     /**
-     * The catalogues the template imports, in MigrationOrder phase-1 order —
-     * they are independent anchors, none references another via `old_id`.
-     * Deliberately a fixed subset of the mass-import plan: users, referents
-     * and the product tree are operational data, not template data.
+     * The catalogues the template imports, in MigrationOrder phase order — a
+     * later entry resolves its references against the earlier ones via
+     * `old_id`. Deliberately a fixed subset of the mass-import plan: users,
+     * referents and `products` are operational data, not template data.
      *
      * @var list<string>
      */
     public const array SOURCES = [
+        // Phase 1 — independent anchors, none references another.
         'business-functions',
         'companies',
         'operational-sites',
@@ -46,7 +50,23 @@ class QualificaLegacyImportSeeder extends Seeder
         'sources',
         'tags',
         'sectors',
+        'vat-rates',
+        // Phase 4 — product anchors: the attribute catalogue and the category
+        // tree, neither of which carries the pivot between them.
+        'attributes',
+        'product-categories',
+        // Phase 5 — the association pass that back-fills that pivot, once both
+        // anchors have their `old_id`.
+        'product-category-attributes',
     ];
+
+    /**
+     * Root the legacy product taxonomy is nested under: the client's imported
+     * categories hang below "Consulenza" (a root the static template seeds),
+     * never beside it at the top level. Must match a root name of
+     * QualificaTemplateSeeder's CATALOG.
+     */
+    private const string LEGACY_CATEGORY_ROOT = 'Consulenza';
 
     public function run(): void
     {
@@ -76,7 +96,59 @@ class QualificaLegacyImportSeeder extends Seeder
         }
 
         // Step 3: one mass run over the fixed source list, executed inline.
-        $this->report(app(MigrationService::class)->runMassSync($actor, self::SOURCES));
+        $run = app(MigrationService::class)->runMassSync($actor, self::SOURCES);
+
+        // Step 4: reparent the freshly imported taxonomy under the client root.
+        $this->nestImportedCategories();
+
+        $this->report($run);
+    }
+
+    /**
+     * Move every migrated product category still sitting at top level under
+     * LEGACY_CATEGORY_ROOT: a legacy root, or one ProductCategoriesSource left
+     * detached because its own parent never migrated (the run report carries
+     * that warning) — neither belongs beside the template's own roots.
+     * Categories without an `old_id` are the static template's tree and are
+     * never touched, so re-running moves nothing a second time.
+     *
+     * A direct `parent_id` write, mirroring the engine's own relink pass
+     * (ProductCategoriesSource::afterImport): the tree is a plain adjacency
+     * list with no derived column to maintain.
+     */
+    private function nestImportedCategories(): void
+    {
+        $root = ProductCategory::query()
+            ->whereNull('parent_id')
+            ->where('name', self::LEGACY_CATEGORY_ROOT)
+            ->first();
+
+        if ($root === null) {
+            $this->command?->warn(sprintf(
+                'Imported product categories left at top level: no "%s" root category found.',
+                self::LEGACY_CATEGORY_ROOT,
+            ));
+
+            return;
+        }
+
+        $orphans = ProductCategory::query()
+            ->whereNotNull('old_id')
+            ->whereNull('parent_id')
+            ->whereKeyNot($root->getKey())
+            ->get();
+
+        // Per-model update (not a mass query update) so the activity log
+        // records the reparent, as every other write on this model does.
+        $orphans->each(fn (ProductCategory $category) => $category->update(['parent_id' => $root->getKey()]));
+
+        if ($orphans->isNotEmpty()) {
+            $this->command?->info(sprintf(
+                '%d imported product categories nested under "%s".',
+                $orphans->count(),
+                self::LEGACY_CATEGORY_ROOT,
+            ));
+        }
     }
 
     private function report(MassMigrationRun $run): void

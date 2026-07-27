@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Requests\Table\TableRowsRequest;
 use App\Jobs\GenerateExportJob;
 use App\Models\BusinessFunction;
 use App\Models\ExportRun;
@@ -175,13 +176,14 @@ it('422 when filterModel targets a non-filterable column', function () {
     ]))->assertStatus(422)->assertJsonValidationErrors('filterModel.tags');
 });
 
-it('422 when search exceeds 100 characters', function () {
+it('422 when search exceeds the rows endpoint cap', function () {
     registerStubExportDomain();
     $actor = stubExportActorWith(['export']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/exports/stub-exports', exportPayload(['search' => str_repeat('a', 101)]))
-        ->assertStatus(422)->assertJsonValidationErrors('search');
+    $this->postJson('/api/exports/stub-exports', exportPayload([
+        'search' => str_repeat('a', TableRowsRequest::SEARCH_MAX_LENGTH + 1),
+    ]))->assertStatus(422)->assertJsonValidationErrors('search');
 });
 
 it('never creates a run when validation fails', function () {

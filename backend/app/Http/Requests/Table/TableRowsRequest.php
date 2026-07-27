@@ -27,8 +27,13 @@ use Illuminate\Validation\Validator;
  */
 class TableRowsRequest extends FormRequest
 {
-    /** Max length of the global quick-search term (spec 0009). */
-    public const int SEARCH_MAX_LENGTH = 100;
+    /**
+     * Max length of the global quick-search term (spec 0009). 255, aligned with
+     * TableValuesRequest and the for-select requests: a shorter cap rejected the
+     * paste of a long record name (product names run past 100 chars), and the
+     * 422 surfaced in the grid as an opaque row of "ERR" cells.
+     */
+    public const int SEARCH_MAX_LENGTH = 255;
 
     private ?TableDefinition $resolvedDefinition = null;
 
