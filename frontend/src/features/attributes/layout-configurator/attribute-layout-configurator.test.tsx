@@ -50,7 +50,6 @@ const INITIAL_BLOB: LayoutBlob = {
       variant: 'default',
       collapsible: false,
       default_collapsed: false,
-      is_advanced: false,
       columns: 2,
       sort_order: 0,
       rows: [{ id: 'r1', items: [{ attribute_code: 'sku', width: 'full' }] }],

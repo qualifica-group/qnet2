@@ -38,7 +38,6 @@ export const layoutSectionSchema = z.object({
   variant: layoutSectionVariantSchema,
   collapsible: z.boolean(),
   default_collapsed: z.boolean(),
-  is_advanced: z.boolean(),
   columns: layoutColumnsSchema,
   sort_order: z.number().int().nonnegative(),
   rows: z.array(layoutRowSchema),

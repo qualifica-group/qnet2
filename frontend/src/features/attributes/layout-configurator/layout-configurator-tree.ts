@@ -18,7 +18,7 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
 
 /** Fields a caller may patch on a section — everything but its identity/rows/order. */
 export type SectionPatch = Partial<
-  Pick<LayoutSection, 'title' | 'description' | 'variant' | 'collapsible' | 'default_collapsed' | 'is_advanced' | 'columns'>
+  Pick<LayoutSection, 'title' | 'description' | 'variant' | 'collapsible' | 'default_collapsed' | 'columns'>
 >
 
 /** Where a dragged/removed attribute lands: back in the unplaced palette, or into a specific row. */
@@ -202,7 +202,6 @@ export function createSection(blob: LayoutBlob): LayoutSection {
     variant: 'default',
     collapsible: false,
     default_collapsed: false,
-    is_advanced: false,
     columns: DEFAULT_SECTION_COLUMNS,
     sort_order: blob.sections.length,
     rows: [],

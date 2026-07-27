@@ -64,7 +64,6 @@ function buildOtherInformationSection(unplaced: EffectiveAttribute[], title: str
     variant: 'secondary',
     collapsible: true,
     default_collapsed: true,
-    is_advanced: true,
     columns: 1,
     sort_order: Number.MAX_SAFE_INTEGER,
     rows: unplaced.map((attribute) => ({

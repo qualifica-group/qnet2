@@ -190,7 +190,6 @@ final class OpportunityAttributeLayoutResolver
             'variant' => 'default',
             'collapsible' => true,
             'default_collapsed' => true,
-            'is_advanced' => true,
             'columns' => 1,
             'sort_order' => $sortOrder,
             'rows' => array_map(

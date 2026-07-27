@@ -47,7 +47,6 @@ class AttributeLayoutFactory extends Factory
                     'variant' => 'default',
                     'collapsible' => false,
                     'default_collapsed' => false,
-                    'is_advanced' => false,
                     'columns' => 1,
                     'sort_order' => 0,
                     'rows' => array_map(

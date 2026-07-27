@@ -71,7 +71,6 @@ describe('section CRUD (AC-010)', () => {
       variant: 'highlighted',
       collapsible: true,
       default_collapsed: true,
-      is_advanced: true,
       columns: 3,
     })
 
@@ -80,7 +79,6 @@ describe('section CRUD (AC-010)', () => {
       variant: 'highlighted',
       collapsible: true,
       default_collapsed: true,
-      is_advanced: true,
       columns: 3,
     })
   })

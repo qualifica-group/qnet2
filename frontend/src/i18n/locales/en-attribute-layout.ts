@@ -23,7 +23,6 @@ export const attributeLayout = {
     sectionColumnsLabel: 'Columns',
     sectionCollapsibleLabel: 'Collapsible',
     sectionDefaultCollapsedLabel: 'Collapsed by default',
-    sectionAdvancedLabel: 'Advanced section',
     addRow: 'Add row',
     removeRowLabel: 'Remove row',
     moveRowUpLabel: 'Move row up',

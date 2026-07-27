@@ -65,7 +65,6 @@ const LAYOUT_WITH_ONE_SECTION: LayoutBlob = {
       variant: 'highlighted',
       collapsible: false,
       default_collapsed: false,
-      is_advanced: false,
       columns: 2,
       sort_order: 0,
       rows: [

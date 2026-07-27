@@ -79,7 +79,6 @@ final class AttributeLayoutValidator
             'layout.sections.*.variant' => ['required', Rule::enum(LayoutSectionVariant::class)],
             'layout.sections.*.collapsible' => ['required', 'boolean'],
             'layout.sections.*.default_collapsed' => ['required', 'boolean'],
-            'layout.sections.*.is_advanced' => ['required', 'boolean'],
             'layout.sections.*.columns' => ['required', 'integer', Rule::in([1, 2, 3, 4])],
             'layout.sections.*.sort_order' => ['required', 'integer'],
             'layout.sections.*.rows' => ['required', 'array'],

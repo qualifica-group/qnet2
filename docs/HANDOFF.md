@@ -2,6 +2,27 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0062 — RIMOZIONE FLAG MORTA `is_advanced` DALLE SEZIONI LAYOUT (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: "sezione avanzata a cosa serve? se non serve elimina quel booleano". Verificato:
+`is_advanced` era SCRITTO/validato/persistito e aveva un toggle nell'editor, ma NESSUN ramo lo
+leggeva mai (il renderer di sezione usa solo title/description/variant/collapsible/default_collapsed/
+columns/rows; la sezione sintetica "Altre informazioni" e' resa chiusa da `default_collapsed`, non da
+`is_advanced`). Flag morta -> rimossa ovunque.
+
+BE: `LayoutItemWidth` invariato; rimosso da `AttributeLayoutValidator` (regola), `AttributeLayoutService`
+(normalizeSection), `OpportunityAttributeLayoutResolver` (sezione sintetica), `AttributeLayoutFactory`.
+FE: rimosso da `attribute-layout-types.ts` (type), `attribute-layout-schema.ts` (zod), `layout-
+configurator-tree.ts` (SectionPatch + addSection default), `attribute-layout-renderer.tsx` (sezione
+sintetica), `attribute-layout-section-editor.tsx` (tolto Switch+Label+`advancedId`), i18n en/it
+(`sectionAdvancedLabel`). Rimosso dalle fixture di 8 file di test (BE+FE). Nessuna migration: e' un
+blob JSON, le righe vecchie con `is_advanced` vengono ignorate in lettura e ripulite al primo salvataggio
+(lo zod object non-strict scarta chiavi ignote).
+
+Verifica (eseguita): BE `php artisan test` sui 4 file layout/opportunity 30/30; Pint OK. FE `vitest`
+attributes+products+product-categories+request-management 266/266; `tsc -b` OK; `eslint` sui file
+toccati pulito. Zero residui `is_advanced`/`isAdvanced`/`sectionAdvancedLabel` nel repo.
+
 ## SPEC 0063 — SPOSTAMENTO MASSIVO CATEGORIE (bulk move) (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: spostare categorie in sottocategorie in modo massivo. Spec nuova:

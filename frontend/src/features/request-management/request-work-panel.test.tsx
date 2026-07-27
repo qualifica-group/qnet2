@@ -414,7 +414,6 @@ describe('RequestWorkPanelScreen — resolved attribute layout (spec 0062 AC-015
               variant: 'default',
               collapsible: false,
               default_collapsed: false,
-              is_advanced: false,
               columns: 1,
               sort_order: 0,
               rows: [{ id: 'r1', items: [{ attribute_code: 'notes', width: 'full' }] }],

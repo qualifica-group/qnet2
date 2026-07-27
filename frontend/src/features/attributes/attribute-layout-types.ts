@@ -47,8 +47,6 @@ export interface LayoutSection {
   variant: LayoutSectionVariant
   collapsible: boolean
   default_collapsed: boolean
-  /** "Advanced"/"Other information" section flag (spec D2). */
-  is_advanced: boolean
   columns: LayoutColumns
   sort_order: number
   rows: LayoutRow[]

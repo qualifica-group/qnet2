@@ -53,7 +53,6 @@ export function AttributeLayoutSectionEditor({
   const descriptionId = `attribute-layout-section-description-${section.id}`
   const collapsibleId = `attribute-layout-section-collapsible-${section.id}`
   const defaultCollapsedId = `attribute-layout-section-default-collapsed-${section.id}`
-  const advancedId = `attribute-layout-section-advanced-${section.id}`
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -189,17 +188,6 @@ export function AttributeLayoutSectionEditor({
           </Label>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Switch
-            id={advancedId}
-            checked={section.is_advanced}
-            disabled={disabled}
-            onCheckedChange={(checked) => actions.updateSection(section.id, { is_advanced: checked })}
-          />
-          <Label htmlFor={advancedId} className="text-xs font-normal text-muted-foreground">
-            {t('configurator.sectionAdvancedLabel')}
-          </Label>
-        </div>
       </div>
 
       <div className="flex flex-col gap-2">

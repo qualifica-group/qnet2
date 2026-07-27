@@ -82,7 +82,6 @@ it('concatenates two categories\' sections in category (product-line) order, ded
     expect($sections[0]['title'])->toBe('Section A');
     expect($sections[1]['title'])->toBe('Section B');
     expect($sections[2]['title'])->toBe('Altre informazioni');
-    expect($sections[2]['is_advanced'])->toBeTrue();
 
     $placedCodes = collect($sections)
         ->flatMap(fn (array $section): array => collect($section['rows'])->flatMap(fn (array $row): array => $row['items'])->all())

@@ -19,7 +19,6 @@ export const attributeLayout = {
     sectionColumnsLabel: 'Colonne',
     sectionCollapsibleLabel: 'Collassabile',
     sectionDefaultCollapsedLabel: 'Chiusa di default',
-    sectionAdvancedLabel: 'Sezione avanzata',
     addRow: 'Aggiungi riga',
     removeRowLabel: 'Rimuovi riga',
     moveRowUpLabel: 'Sposta riga in alto',

@@ -55,7 +55,6 @@ if (! function_exists('attributeLayoutBlob')) {
                 'variant' => 'default',
                 'collapsible' => true,
                 'default_collapsed' => false,
-                'is_advanced' => false,
                 'columns' => 2,
                 'sort_order' => 0,
                 'rows' => [[

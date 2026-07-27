@@ -166,7 +166,6 @@ final class AttributeLayoutService
             'variant' => LayoutSectionVariant::from($section['variant'])->value,
             'collapsible' => (bool) $section['collapsible'],
             'default_collapsed' => (bool) $section['default_collapsed'],
-            'is_advanced' => (bool) $section['is_advanced'],
             'columns' => (int) $section['columns'],
             'sort_order' => (int) $section['sort_order'],
             'rows' => array_values(array_map($this->normalizeRow(...), $section['rows'])),
