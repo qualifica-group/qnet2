@@ -2,6 +2,40 @@
 
 > Injected at session start. Update at every green state.
 
+## IMPORT LEGACY SGANCIATO DAL TEMPLATE (2026-07-27) — VERDE, NON COMMITTATO
+
+`QualificaLegacyImportSeeder` non e' piu' chiamato in coda a `QualificaTemplateSeeder::run()`:
+e' un seeder STANDALONE, `php artisan db:seed --class=QualificaLegacyImportSeeder`, da lanciare
+DOPO il template. Unica modifica di sostanza: rimossa quella `$this->call(...)`.
+
+DECISIONE UTENTE, arrivata in due passaggi — vale l'ULTIMA, non re-litigare: le categorie
+prodotto scritte a codice (Formazione/Consulenza, GOL, `GOL - <Regione>`), l'attributo
+`total_hours` e i 252 corsi RESTANO DENTRO `QualificaTemplateSeeder`. Esce SOLO l'import legacy.
+Un `QualificaProductCatalogSeeder` era stato creato in un giro intermedio e poi CANCELLATO:
+se ne trovi traccia in un diff o in un commento, e' morto, non resuscitarlo.
+
+PERCHE' l'ordine template -> legacy e' vincolante (due dipendenze reali, non stilistiche):
+1. `SourcesSource` ADOTTA per nome le fonti statiche del template invece di duplicarle;
+2. `nestImportedCategories()` annida la tassonomia importata sotto la radice `Consulenza`, che
+   nasce nel template. Lanciando il legacy da solo su un DB senza template, le categorie
+   importate restano a livello zero (warning esplicito, non un crash).
+
+TEST: `QualificaLegacyImportSeederTest` non seeda piu' il template come proxy dell'import.
+Nuovo helper `seedTemplateThenLegacy()` in cima al file, che esegue i due seeder nell'ordine
+documentato — l'ordine e' cosi' asserito in un punto solo. 8/8 verde.
+`QualificaTemplateSeederTest` torna a 12 test (i 7 sul catalogo erano stati spostati in un file
+separato nel giro intermedio, ora rifusi qui). 12/12 verde.
+
+DEBITO ANCORA APERTO, SEGNALATO E NON RISOLTO: `QualificaTemplateSeeder.php` e' a **464 righe su
+500 di hard limit** (`code-guard.js` blocca sopra). Lo split per file avrebbe risolto ma e' stato
+esplicitamente rifiutato dall'utente. Alternativa che NON sposta nulla di dominio fuori dal
+template: estrarre la sola costante `CATALOG` in `QualificaTemplate\CategoryCatalogue`, come gia'
+fatto per `TrainingCourseCatalogue` (i dati escono, la logica resta). Proposta, non implementata.
+
+Verifica ESEGUITA: suite allargata 884/889, invariata rispetto a prima di questo giro; i 5 rossi
+sono il solito cluster pre-esistente. Pint exit 0. README aggiornato (due comandi separati + il
+perche' dell'ordine).
+
 ## CATALOGO — SOLO CATEGORIE + DECLINAZIONI REGIONALI GOL (2026-07-27) — VERDE, NON COMMITTATO
 
 `QualificaTemplateSeeder` — il catalogo prodotti (spec 0017) e' ora un albero di SOLE CATEGORIE.
@@ -33,16 +67,63 @@
    `ProductCategoryService::syncAttributes()` che e' un full-replace e cancellerebbe le
    assegnazioni fatte a mano dal configuratore di categoria.
 
+4. CORSI GOL come PRODOTTI (252 righe). Nuovo file dati
+   `database/seeders/QualificaTemplate/TrainingCourseCatalogue.php` (classe `final`, sola
+   `public const array COURSES`), chiavata sul NOME COMPLETO della categoria (`'GOL - Molise'`,
+   non `'Molise'`): il legame col ramo GOL e' per identita', niente concatenazione di stringhe che
+   possa divergere. Nel seeder: `seedTrainingCourses()` + `disambiguate()` + `seedTrainingCourse()`,
+   che creano un `Product` SERVICE per corso via `ProductService::create()` con
+   `attributeValues: ['total_hours' => ore]` (cost/price 0, si compilano dai moduli CRUD).
+   Conteggi per regione, PINNATI DA TEST: Molise 14, Abruzzo 54, Calabria 9, Campania 68,
+   Lombardia 64, Lazio 35, Umbria 8 = 252. Sono gli UNICI prodotti seedati.
+   `ProductService` valida i valori contro gli attributi EFFETTIVI della categoria del prodotto
+   (`ProductAttributeResolver`), quindi `total_hours` passa solo grazie all'ereditarieta' dal
+   punto 3: se qualcuno stacca quell'assegnazione, i 252 corsi falliscono la validazione.
+   Categoria risolta con `firstOrFail()` di proposito: una divergenza fra le due liste deve
+   esplodere, non far sparire in silenzio i corsi di un'intera regione.
+
+   DECISIONI UTENTE su dati ambigui (AskUserQuestion, NON re-litigare):
+   (a) i 10 corsi lombardi con doppia durata ("150 / 140") tengono il PRIMO valore (150);
+   (b) un nome di corso ripetuto nella stessa regione con ore diverse (7 casi, tutti in Abruzzo:
+       Magazziniere 66/260, Aiuto Cuoco 50/463, Pizzaiolo 60/370, Saldatore ad Arco Elettrico
+       40/256, Addetto alle Vendite di Prodotti Alimentari 60/288, Operatore Funebre/Necroforo
+       36/44, Operatore Agricolo delle Produzioni Vegetali 42/322) e' un corso DISTINTO. Regola
+       uniforme scelta e implementata in `disambiguate()`: se un nome ricorre >1 volta nella
+       regione, TUTTE le sue occorrenze diventano `<nome> (<ore> ore)`; un nome unico resta
+       intatto. Le ore sono l'unico discriminante presente nella lista sorgente — non e' stata
+       inventata nessuna tassonomia tipo "Qualifica/Specializzazione". Verificato che non esistono
+       coppie (nome, ore) identiche nella stessa regione, quindi il suffisso disambigua sempre.
+   Normalizzazione cosmetica: apostrofi tipografici della lista incollata portati a `'` dritto.
+   Chiave naturale di idempotenza: (name, category_id) — NON il solo nome, perche' lo stesso
+   corso esiste in piu' regioni (es. "Italiano per Stranieri" in Molise 60, Lombardia 60,
+   Lazio 50: 3 prodotti distinti, pinnati da test).
+
+TEST ALTRUI CORRETTO (dichiarato, non e' test tampering): `QualificaLegacyImportSeederTest::
+re-running the template never duplicates an imported catalogue` asseriva
+`DB::table('attribute_category')->count() === 1`, un conteggio GLOBALE usato come proxy di "il
+legacy non si duplica". Ora esiste anche la riga `total_hours` su Formazione, estranea al legacy.
+Asserzione SCOPATA alla categoria legacy (`where('old_id', 51)`), come gia' fa il test sopra:
+l'intento e' preservato, non indebolito.
+
 ATTENZIONE — il seeder NON cancella i prodotti gia' creati da run precedenti su un DB esistente
 (sarebbe distruttivo e non e' stato chiesto). Su un DB gia' seedato quei 6 prodotti restano: se
 vanno via, e' una cancellazione manuale/una migrazione dedicata, da decidere con l'utente.
 
 Idempotenza invariata: `firstOrCreate` sul nome per le categorie (chiave naturale globale; i nomi
 regionali sono unici), sul `code` per l'attributo (un rename manuale sopravvive al re-seed).
-Verifica ESEGUITA: `QualificaTemplateSeederTest` 9/9 verde — albero categorie, 7 figli sotto GOL
-e solo quelli, `Product::count() === 0` dopo il seed, attributo unico + una sola riga di pivot in
-context `product`, ereditarieta' risolta su GOL / GOL - Molise / DIL con `inherited => true`,
-assente su Consulenza, doppio seed senza duplicati. Pint pulito (exit 0).
+Verifica ESEGUITA: `QualificaTemplateSeederTest` 12/12 verde — albero categorie, 7 figli sotto GOL
+e solo quelli, attributo unico + una sola riga di pivot in context `product`, ereditarieta'
+risolta su GOL / GOL - Molise / DIL con `inherited => true`, assente su Consulenza, 252 corsi coi
+conteggi per regione, `total_hours` valorizzato, disambiguazione Abruzzo, omonimi cross-regione
+separati, doppio seed senza duplicati ovunque. Suite allargata
+(`CustomFields`+`Products`+`Migration`+`ProductCategories`+`Attributes`+`Users`+`Unit/Models`)
+884/889, i 5 rossi sono il cluster pre-esistente qui sotto. Pint pulito (exit 0).
+
+DEBITO SEGNALATO, NON RISOLTO (fuori scope, serve il via libera): `QualificaTemplateSeeder.php` e'
+a **469 righe su 500 di hard limit** (`code-guard.js` blocca sopra 500). La prossima aggiunta non
+banale a quel file viene rifiutata dall'hook. Split naturale gia' individuato: i 4 blocchi sono
+custom-field templates (TEMPLATES/SUPERSEDED_FIELDS + prune), sources/reward types, catalogo
+categorie + attributi, corsi — il primo si stacca pulito come ha gia' fatto il catalogo corsi.
 
 NOTA PEST (ci sono gia' cascato): `expect($array)->toContain('x', $msg)` NON prende un messaggio —
 gli argomenti extra sono ULTERIORI valori attesi. Il messaggio esiste solo su `toBeTrue($msg)` &co.
@@ -61,6 +142,29 @@ eseguito dopo tenta di applicare `stash@{0}`, cioe' roba altrui. Qui git ha rifi
 metodo non distruttivo (eseguire i test sospetti in isolamento), non lo stash.
 
 NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## RUOLO `marketing` + UTENTE UMBERTO SANTAMARIA (2026-07-27) — VERDE, NON COMMITTATO
+
+Aggiunto a `TestUsersSeeder` (stesso file/test/README della sezione sotto, che resta valida).
+Nuovo ruolo `marketing` (identificatore INGLESE, `description` = "Marketing") + account
+`Umberto Santamaria` / `umberto.santamaria@qualificagroup.com`, stessa password condivisa.
+
+MATRICE: pieno possesso di `MARKETING_MODULES` = `projects`, `campaigns`, `leads`,
+`pipeline-statuses` — cioe' ESATTAMENTE il gruppo di navigazione `marketing-leads` di
+`config/navigation.php`, scritture incluse. `leads.import` (il wizard di import) e' un'abilita'
+del modulo lead, quindi entra da sola. Piu' `MARKETING_SELECT_ONLY_RESOURCES` col solo `viewAny`:
+`business-functions`, `referents`, `product-categories`, `operational-sites`, `registries`,
+`sources`, `users` — la lista NON e' inventata, e' ricavata leggendo gli import
+`*_FOR_SELECT_RESOURCE` di `features/{projects,campaigns,leads}/*-form-body.tsx`. Tutto il resto
+(opportunita', request-management, prodotti, premi, configurazione, amministrazione) e' 403.
+
+Il residuo noto dei `viewAny` di supporto vale identico anche qui (endpoint tabellare generico
+autorizzato sullo stesso `viewAny`) — vedi la sezione sotto, non e' un bug nuovo.
+
+Verifica ESEGUITA: `TestUsersSeederTest` 15/15 verde, inclusi 3 test nuovi (matrice permessi,
+menu = esattamente `['/dashboard','/projects','/campaigns','/leads','/imports','/pipeline-statuses']`
+via `NavigationService`, enforcement sugli endpoint reali + i 7 `for-select` che rispondono 200).
+Pint pulito. README aggiornato (tabella account, sezione "Ruolo `marketing`", lista `viewAny`).
 
 ## UTENTI TESTER + RUOLI `supervisor`/`commercial` (2026-07-27) — VERDE, NON COMMITTATO
 

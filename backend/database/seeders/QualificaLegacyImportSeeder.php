@@ -11,8 +11,14 @@ use App\Services\UserService;
 use Illuminate\Database\Seeder;
 
 /**
- * Legacy-import step of the Qualifica template seed (spec 0013 / 0046): pulls
- * the client's real catalogues from the external system through the SAME
+ * The legacy import (spec 0013 / 0046), a STANDALONE seeder: it is not
+ * chained by QualificaTemplateSeeder, it is launched on its own
+ * (`php artisan db:seed --class=QualificaLegacyImportSeeder`) and must run
+ * AFTER it — it adopts that seeder's source catalogue by name, and
+ * nestImportedCategories() needs the "Consulenza" root it creates.
+ *
+ * It pulls the client's real catalogues from the external system through the
+ * SAME
  * engine the "Migrazioni" section uses — one MassMigrationRun with one child
  * MigrationRun per source, run inline via MigrationService::runMassSync. No
  * catalogue is hard-coded here: the values are whatever the legacy system
@@ -22,10 +28,10 @@ use Illuminate\Database\Seeder;
  * nestImportedCategories().
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
- * already imported, and `sources` — the one catalogue the static template
- * also provisions by name — is adopted rather than duplicated
- * (SourcesSource). Re-running the template therefore only pulls in what the
- * legacy system has that qnet does not.
+ * already imported, and `sources` — the one catalogue the template also
+ * provisions by name — is adopted rather than duplicated (SourcesSource).
+ * Re-running therefore only pulls in what the legacy system has that qnet
+ * does not.
  *
  * Both preconditions are optional, never fatal: with no external system
  * configured, or no super-admin to act as, the static template stands on its
@@ -34,7 +40,7 @@ use Illuminate\Database\Seeder;
 class QualificaLegacyImportSeeder extends Seeder
 {
     /**
-     * The catalogues the template imports, in MigrationOrder phase order — a
+     * The catalogues imported here, in MigrationOrder phase order — a
      * later entry resolves its references against the earlier ones via
      * `old_id`. Deliberately a fixed subset of the mass-import plan: users,
      * referents and `products` are operational data, not template data.
@@ -62,7 +68,7 @@ class QualificaLegacyImportSeeder extends Seeder
 
     /**
      * Root the legacy product taxonomy is nested under: the client's imported
-     * categories hang below "Consulenza" (a root the static template seeds),
+     * categories hang below "Consulenza" (a root the static catalogue seeds),
      * never beside it at the top level. Must match a root name of
      * QualificaTemplateSeeder's CATALOG.
      */

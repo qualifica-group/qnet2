@@ -97,12 +97,23 @@ function fakeLegacyCatalogues(): void
     ]);
 }
 
+/**
+ * The documented run order: QualificaLegacyImportSeeder is standalone and runs
+ * AFTER the template, which owns the "Consulenza" root it nests under and the
+ * static source catalogue it must adopt.
+ */
+function seedTemplateThenLegacy(): void
+{
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaLegacyImportSeeder::class);
+}
+
 it('runs the fixed source list as one inline mass run and completes it', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     $massRun = MassMigrationRun::query()->sole();
 
@@ -119,8 +130,8 @@ it('imports the legacy vat rates as part of the fixed source list', function () 
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: skipped by old_id, never duplicated.
+    seedTemplateThenLegacy();
+    seedTemplateThenLegacy(); // re-run: skipped by old_id, never duplicated.
 
     expect(QualificaLegacyImportSeeder::SOURCES)->toContain('vat-rates')
         ->and(VatRate::query()->where('old_id', 61)->count())->toBe(1)
@@ -133,7 +144,7 @@ it('adopts a template source instead of duplicating it, and imports the legacy-o
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     expect(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(Source::query()->where('name', 'Passaparola')->value('old_id'))->toBe(81)
@@ -145,7 +156,7 @@ it('nests the imported product taxonomy under the Consulenza root, keeping its o
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
     $legacyRoot = ProductCategory::query()->where('old_id', 51)->sole();
@@ -164,7 +175,7 @@ it('links the imported attributes onto the imported category in the declared con
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     $attribute = Attribute::query()->where('old_id', 91)->sole();
     $category = ProductCategory::query()->where('old_id', 51)->sole();
@@ -177,15 +188,15 @@ it('links the imported attributes onto the imported category in the declared con
         ->and($links[0]->context)->toBe('product');
 });
 
-it('re-running the template never duplicates an imported catalogue', function () {
+it('re-running the seeders never duplicates an imported catalogue', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
     $afterFirst = Source::query()->count();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     expect(Source::query()->count())->toBe($afterFirst)
         ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
@@ -193,7 +204,10 @@ it('re-running the template never duplicates an imported catalogue', function ()
         // Already nested by the first run: the second one moves nothing.
         ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
         ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
-        ->and(DB::table('attribute_category')->count())->toBe(1)
+        // Scoped to the imported category: the template itself now owns an
+        // unrelated pivot row (the "Ore complessive" attribute on Formazione),
+        // so a global count no longer isolates the legacy import.
+        ->and(DB::table('attribute_category')->where('category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(1)
         ->and(MassMigrationRun::query()->count())->toBe(2)
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
@@ -203,7 +217,7 @@ it('skips the import when no external system is configured', function () {
     migrationsSuperAdminActor();
     Http::preventStrayRequests();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     // The static template still lands; only the legacy step is skipped.
     expect(MassMigrationRun::query()->count())->toBe(0)
@@ -214,7 +228,7 @@ it('skips the import when no super-admin exists to run it as', function () {
     seedMigrationsConfig();
     Http::preventStrayRequests();
 
-    test()->seed(QualificaTemplateSeeder::class);
+    seedTemplateThenLegacy();
 
     expect(MassMigrationRun::query()->count())->toBe(0);
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttributeContext;
+use App\Enums\ProductType;
 use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
@@ -192,8 +193,69 @@ it('assigns the "Ore complessive" product attribute to the whole Formazione bran
         ->not->toContain('total_hours');
 });
 
-it('seeds no product at all: the catalogue is categories only', function (): void {
+it('seeds every GOL training course under its own region, idempotently', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: natural key (name, category), no duplicates.
+
+    $expectedPerRegion = [
+        'GOL - Molise' => 14, 'GOL - Abruzzo' => 54, 'GOL - Calabria' => 9,
+        'GOL - Campania' => 68, 'GOL - Lombardia' => 64, 'GOL - Lazio' => 35,
+        'GOL - Umbria' => 8,
+    ];
+
+    foreach ($expectedPerRegion as $categoryName => $count) {
+        $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+
+        expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
+    }
+
+    // The courses are the ONLY products seeded: nothing lands outside a region.
+    expect(Product::query()->count())->toBe(array_sum($expectedPerRegion));
+});
+
+it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
 
-    expect(Product::query()->count())->toBe(0);
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+    $course = Product::query()->where('name', 'Alfabetizzazione Digitale')->where('category_id', $molise->id)->firstOrFail();
+
+    expect($course->attribute_values['total_hours'])->toEqual(60)
+        ->and($course->product_type)->toBe(ProductType::Service)
+        // Cost/price are filled in later through the CRUD modules.
+        ->and((float) $course->cost)->toBe(0.0)
+        ->and((float) $course->price)->toBe(0.0);
+
+    // The 10 Lombardia rows quoting "150 / 140" keep the first value.
+    $lombardia = ProductCategory::query()->where('name', 'GOL - Lombardia')->firstOrFail();
+    $cuoco = Product::query()->where('name', 'Cuoco')->where('category_id', $lombardia->id)->firstOrFail();
+
+    expect($cuoco->attribute_values['total_hours'])->toEqual(150);
+});
+
+it('keeps a course name repeated inside one region as two distinct products', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+
+    $abruzzo = ProductCategory::query()->where('name', 'GOL - Abruzzo')->firstOrFail();
+
+    // The 7 Abruzzo duplicates are disambiguated by their duration...
+    foreach ([['Magazziniere', 66, 260], ['Aiuto Cuoco', 50, 463], ['Pizzaiolo', 60, 370]] as [$name, $short, $long]) {
+        expect(Product::query()->where('name', $name)->where('category_id', $abruzzo->id)->exists())->toBeFalse($name)
+            ->and(Product::query()->where('name', "{$name} ({$short} ore)")->where('category_id', $abruzzo->id)->exists())->toBeTrue($name)
+            ->and(Product::query()->where('name', "{$name} ({$long} ore)")->where('category_id', $abruzzo->id)->exists())->toBeTrue($name);
+    }
+
+    // ...while a name occurring once keeps it untouched.
+    expect(Product::query()->where('name', 'Barista')->where('category_id', $abruzzo->id)->exists())->toBeTrue();
+});
+
+it('keeps the same course name in different regions as separate products', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+
+    $courses = Product::query()->where('name', 'Italiano per Stranieri')->with('category')->get();
+
+    expect($courses->pluck('category.name')->sort()->values()->all())
+        ->toBe(['GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise'])
+        // Same course, different regional duration: Lazio funds 50 hours, the other two 60.
+        ->and($courses->firstWhere('category.name', 'GOL - Lazio')->attribute_values['total_hours'])->toEqual(50)
+        ->and($courses->firstWhere('category.name', 'GOL - Molise')->attribute_values['total_hours'])->toEqual(60);
 });

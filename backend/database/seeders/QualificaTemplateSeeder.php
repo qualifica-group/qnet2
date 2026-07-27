@@ -2,14 +2,19 @@
 
 namespace Database\Seeders;
 
+use App\DataObjects\Products\CreateProductData;
 use App\Enums\AttributeContext;
+use App\Enums\ProductType;
 use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\CustomFieldValue;
+use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
+use App\Services\ProductService;
+use Database\Seeders\QualificaTemplate\TrainingCourseCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
@@ -29,22 +34,28 @@ use Illuminate\Database\Seeder;
  *
  * Plus the client's reference category catalogue (spec 0017): a two-root
  * category tree (Formazione / Consulenza) with its subcategories and the
- * regional declinations under GOL. Categories only — no product is seeded,
- * the catalogue is filled in later through the CRUD modules. The "Formazione"
- * branch also carries a product-context attribute ("Ore complessive", spec
- * 0061), assigned to the root and inherited by every descendant.
+ * regional declinations under GOL. The "Formazione" branch also carries a
+ * product-context attribute ("Ore complessive", spec 0061), assigned to the
+ * root and inherited by every descendant.
+ *
+ * Plus the GOL training courses (Database\Seeders\QualificaTemplate\
+ * TrainingCourseCatalogue): one SERVICE product per funded course, filed under
+ * its own region's `GOL - <Regione>` category and carrying its duration in
+ * that attribute. Cost/price stay 0 — they are edited later through the CRUD
+ * modules. No other product is seeded.
  *
  * Custom-field/source definitions write no per-row values (that is user data);
- * the catalogue does create ProductCategory rows, all idempotent:
- * `updateOrCreate` on (entity_type, key) for custom fields, `firstOrCreate`
- * on the natural name key for sources, reward types and categories
- * — a re-run never duplicates rows nor overwrites manual edits.
- * Adding a module's template = one more entry in TEMPLATES.
+ * the catalogue does create ProductCategory/Product rows, all idempotent:
+ * `updateOrCreate` on (entity_type, key) for custom fields, `firstOrCreate` on
+ * the natural name key for sources, reward types, categories and courses — a
+ * re-run never duplicates rows nor overwrites manual edits. Adding a module's
+ * template = one more entry in TEMPLATES.
  *
- * Plus, last, the client's real catalogues pulled from the legacy system
- * (business functions, companies, operational sites, referent types, sources,
- * tags, sectors) through the migration engine — see
- * QualificaLegacyImportSeeder, a no-op when no external system is configured.
+ * What is NOT here: the legacy import. QualificaLegacyImportSeeder is a
+ * separate, standalone step (`php artisan db:seed
+ * --class=QualificaLegacyImportSeeder`), run AFTER this one — it adopts the
+ * source catalogue provisioned below and nests its imported taxonomy under the
+ * "Consulenza" root created below.
  */
 class QualificaTemplateSeeder extends Seeder
 {
@@ -168,10 +179,9 @@ class QualificaTemplateSeeder extends Seeder
     /**
      * The client's reference category catalogue (spec 0017): root category =>
      * (subcategory => list of leaf children, empty when the subcategory is
-     * itself a leaf). The tree has no depth limit; only categories are
-     * seeded — products are created later through the CRUD modules. Names are
-     * user-facing domain values, kept in their original language, and are the
-     * natural keys used for idempotent `firstOrCreate` on re-run.
+     * itself a leaf). The tree has no depth limit. Names are user-facing
+     * domain values, kept in their original language, and are the natural
+     * keys used for idempotent `firstOrCreate` on re-run.
      *
      * @var array<string, array<string, list<string>>>
      */
@@ -214,9 +224,15 @@ class QualificaTemplateSeeder extends Seeder
      */
     private const array CATALOG_PRODUCT_ATTRIBUTES = [
         'Formazione' => [
-            ['code' => 'total_hours', 'name' => 'Ore complessive', 'type' => 'integer'],
+            ['code' => self::TOTAL_HOURS_ATTRIBUTE, 'name' => 'Ore complessive', 'type' => 'integer'],
         ],
     ];
+
+    /**
+     * `attribute_values` key (an Attribute `code`) holding a training course's
+     * duration — shared by the definition above and by the course seed.
+     */
+    private const string TOTAL_HOURS_ATTRIBUTE = 'total_hours';
 
     public function run(): void
     {
@@ -229,11 +245,7 @@ class QualificaTemplateSeeder extends Seeder
         $this->seedSources();
         $this->seedRewardTypes();
         $this->seedCatalog();
-
-        // Last: the static catalogues above are the baseline, the legacy
-        // system is the delta on top of them (an existing source is adopted,
-        // not duplicated).
-        $this->call(QualificaLegacyImportSeeder::class);
+        $this->seedTrainingCourses();
     }
 
     private function seedSources(): void
@@ -311,6 +323,78 @@ class QualificaTemplateSeeder extends Seeder
             'is_required' => false,
             'sort_order' => 0,
         ]);
+    }
+
+    /**
+     * The GOL training courses (TrainingCourseCatalogue): one product per row,
+     * in its own region's `GOL - <Regione>` category, carrying its duration in
+     * the `total_hours` attribute the Formazione root hands down.
+     */
+    private function seedTrainingCourses(): void
+    {
+        $service = app(ProductService::class);
+
+        foreach (TrainingCourseCatalogue::COURSES as $categoryName => $courses) {
+            // The category is created by seedCatalog() above: a miss means the
+            // two lists drifted apart, which must fail loudly rather than
+            // silently drop a whole region's courses.
+            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+
+            foreach ($this->disambiguate($courses) as $course) {
+                $this->seedTrainingCourse($service, $category, $course);
+            }
+        }
+    }
+
+    /**
+     * A course name repeating inside one region is a DISTINCT course with its
+     * own duration (user decision 2026-07-27): every occurrence of a repeated
+     * name takes an "(N ore)" suffix — the duration is the only discriminator
+     * the source list carries — so the two survive as separate products
+     * instead of collapsing onto the same natural key. A name occurring once
+     * is left untouched.
+     *
+     * @param  list<array{name: string, hours: int}>  $courses
+     * @return list<array{name: string, hours: int}>
+     */
+    private function disambiguate(array $courses): array
+    {
+        $occurrences = array_count_values(array_column($courses, 'name'));
+
+        return array_map(
+            static fn (array $course): array => $occurrences[$course['name']] > 1
+                ? ['name' => sprintf('%s (%d ore)', $course['name'], $course['hours']), 'hours' => $course['hours']]
+                : $course,
+            $courses,
+        );
+    }
+
+    /**
+     * @param  array{name: string, hours: int}  $course
+     */
+    private function seedTrainingCourse(ProductService $service, ProductCategory $category, array $course): void
+    {
+        // Natural key (name, category) — scoped to the category because the
+        // SAME course runs in several regions. An already-seeded course is
+        // left untouched, so a manual edit survives the re-run.
+        $exists = Product::query()
+            ->where('name', $course['name'])
+            ->where('category_id', $category->id)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $service->create(new CreateProductData(
+            name: $course['name'],
+            description: null,
+            cost: 0.0,
+            price: 0.0,
+            categoryId: $category->id,
+            productType: ProductType::Service,
+            attributeValues: [self::TOTAL_HOURS_ATTRIBUTE => $course['hours']],
+        ));
     }
 
     /**

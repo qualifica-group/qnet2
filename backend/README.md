@@ -57,15 +57,30 @@ php artisan serve   # http://127.0.0.1:8000
 # Crea dati fake per prove
 php artisan db:seed --class=DemoDataSeeder
 
-# Crea campi personalizzate in base al modello di qualifica group
+# Crea il modello di qualifica group: campi personalizzati, fonti, tipi premio,
+# categorie prodotto (Formazione/Consulenza + GOL regionali), attributo
+# "Ore complessive" e i corsi GOL
 php artisan db:seed --class=QualificaTemplateSeeder
- 
+
+# Importa i cataloghi reali dal gestionale legacy. Va lanciato A PARTE e DOPO
+# il template. No-op se EXTERNAL_MIGRATION_BASE_URL non è configurato
+php artisan db:seed --class=QualificaLegacyImportSeeder
+
 # Crea ambiente pulito solo con un utente superadmin
 php artisan db:seed 
 
 # Crea gli utenti tester + i ruoli supervisor/commercial/marketing
 php artisan db:seed --class=TestUsersSeeder
 ```
+
+I due seeder di Qualifica sono **standalone e idempotenti**. Il template
+provvisiona tutto ciò che è statico e scritto a codice; l'import legacy è un
+passo separato, da lanciare a mano **dopo**, perché:
+
+- adotta per nome il catalogo fonti che il template provvisiona, invece di
+  duplicarlo;
+- annida la tassonomia importata sotto la radice `Consulenza`, creata dal
+  template. Senza, le categorie importate restano a livello zero con un warning.
 
 ## Utenti di test (`TestUsersSeeder`)
 
