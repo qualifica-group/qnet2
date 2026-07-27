@@ -11,6 +11,7 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\PersonalDataFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|null $last_name
  * @property string|null $company_name
  * @property string|null $sdi_code
+ * @property int|null $birth_city_id
  * @property GenderEnum|null $gender
  */
 class PersonalData extends BaseModel
@@ -52,6 +54,7 @@ class PersonalData extends BaseModel
         'vat_number',
         'sdi_code',
         'birth_date',
+        'birth_city_id',
         'gender',
     ];
 
@@ -64,6 +67,7 @@ class PersonalData extends BaseModel
         'vat_number' => 'string',
         'sdi_code' => 'string',
         'birth_date' => 'date',
+        'birth_city_id' => 'int',
         'gender' => GenderEnum::class,
     ];
 
@@ -90,6 +94,15 @@ class PersonalData extends BaseModel
     public function personable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * The comune of birth, taken from the geo catalogue. Null for a company
+     * card and for an individual whose place of birth was never captured.
+     */
+    public function birthCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'birth_city_id');
     }
 
     /*

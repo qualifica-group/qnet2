@@ -42,10 +42,15 @@ it('criterion-fields: 200 with the 4 allow-listed fields and correct for_select_
 
     $byField = collect($data)->keyBy('field');
     expect($byField['state_id']['for_select_resource'])->toBe('states')
+        ->and($byField['state_id']['source'])->toBe('native')
         ->and($byField['source_id']['for_select_resource'])->toBe('sources')
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()
         ->and($byField['product_category_id']['for_select_resource'])->toBe('product-categories');
+
+    foreach ($data as $field) {
+        expect($field['source'])->toBe('native');
+    }
 });
 
 // ---------------------------------------------------------------------------

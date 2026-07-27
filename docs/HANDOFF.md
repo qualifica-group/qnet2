@@ -2,6 +2,90 @@
 
 > Injected at session start. Update at every green state.
 
+## DATI ANAGRAFICI — LUOGO DI NASCITA (`personal_data.birth_city_id`) (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: aggiungere il luogo di nascita ai dati anagrafici. Decisione utente
+(AskUserQuestion): NON testo libero ma **relazione al catalogo geo** — colonna
+`personal_data.birth_city_id`, FK a `cities`, nullable, `nullOnDelete` (come `addresses.city_id`).
+Migrazione additiva `2026_07_27_160000_add_birth_city_id_to_personal_data_table` (reversibile).
+
+CONTRATTO (vincolante per chi tocca la card): il campo e' **individual-only** come `birth_date`/
+`gender` — il form lo azzera su una card `company`. Il wire porta SOLO l'id (`birth_city_id`); il
+nome del comune viaggia in sola lettura come `birth_city: {id, name}` ed e' emesso **solo con la
+relazione eager-loaded** (`whenLoaded('birthCity')`, convenzione di `AddressResource`). Chiave del
+catalogo permessi: `personal_data.birth_city_id`, tipo `select` — i tre cataloghi passano da 11 a
+**12 chiavi `personal_data.*`**.
+
+BE: `PersonalData` (fillable/cast/relazione `birthCity()`; NON in `$hidden` — e' una FK a un
+catalogo pubblico, resta nell'activity log, a differenza di `birth_date`) · `PersonalDataResource` ·
+`CreatePersonalData` (`birthCityId`, tutti i call site usano argomenti nominati) ·
+`StorePersonalDataRequest` · `ValidatesUserProfile` · `ValidatesRequestClientProfile` ·
+`RequestClientProfileWriter::identityWith` (senza, una modifica inline di un altro campo avrebbe
+azzerato il luogo di nascita) · `RequestManagementResource` · `PersonalDataController` (eager load) ·
+Users/Referents/Registries Authorization · eager load in `UserService`/`RegistryService`/
+`ReferentService`/`RequestManagementService` · `PersonalDataFactory` (default null).
+
+FE: nuovo `features/personal-data/birth-city-field.tsx` — **una sola combobox** "Comune di nascita"
+con ricerca server-side (`useCities(null, null, term)`, il livello city-first del cascade geo). NON
+si usa `GeoSelect`: la card salva solo il comune, i livelli padre non sono persistiti e non
+potrebbero essere reidratati. Il componente ricorda localmente l'ultimo comune scelto perche' alla
+chiusura del popover il termine si azzera e la pagina di risultati che lo conteneva sparisce.
+Toccati: `types.ts`, `drafts.ts`, `personal-data-schema.ts`, `personal-data-card-form.tsx`,
+`registry-detail.tsx`, request-management (`types`, `use-request-work-form`, i due payload builder;
+`RequestClientIdentityPayload` ora e' `Omit<RequestClientIdentity, 'id' | 'birth_city'>`), i18n it/en.
+
+CONSEGUENZA sui test FE: la card ora fa una query TanStack, quindi chi la monta nudo ha bisogno di un
+`QueryClientProvider` (aggiunto in `personal-data-card-form-formatting.test.tsx` e
+`personal-data-section.test.tsx`, un client per test).
+
+Verifica ESEGUITA: Pest `PersonalData`+`Authorization` 191/191, `Users`+`Registries` 183/183,
+`Referents`+`RequestManagement` 281/282 — l'unico rosso e' `ReferentSecurityTest` navigazione,
+PRE-ESISTENTE (dipende da `backend/config/navigation.php` modificato in working tree, non da questo
+diff). Nuovo `tests/Feature/PersonalData/PersonalDataBirthCityTest.php` 4/4 (store, 422 su comune
+inesistente, azzeramento su update, write annidato utente). Pint pulito. Vitest suite completa
+2470/2473 (i 3 rossi sono i `ContactsCell` pre-esistenti), nuovo `birth-city-field.test.tsx` 3/3,
+`tsc -b` pulito, ESLint pulito sui file toccati (i due `_omit` in `*-form-metadata.test.tsx` sono
+pre-esistenti a HEAD, verificato).
+
+NOTA: i mapping di migrazione esterna (`app/Migrations/Sources/UsersSource|ReferentsSource`) NON
+espongono il luogo di nascita: servirebbe una colonna sorgente legacy, fuori scope qui.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## NAV — "STATI BUONI COLLEGATI" SPOSTATO SOTTO "PREMI E INCENTIVI" (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: la pagina `reward-statuses` ("Stati Buoni Collegati") deve stare nel gruppo padre
+"Premi e Incentivi", non piu' in "Configurazione".
+
+Modificati: `backend/config/navigation.php` (nodo `reward-statuses` spostato da `configuration` a
+`rewards-group`, terzo figlio dopo `rewarded-referents` e `reward-types`; chiave, route, permesso e
+icona invariati) · `backend/tests/Feature/RewardStatuses/RewardStatusSecurityTest.php` (AC-016 ora
+interroga `rewards-group`) · `docs/specs/0060-reward-statuses-module.xml` (D-6 e la lista file
+aggiornate alla nuova collocazione). Nessuna modifica frontend: la sidebar renderizza l'albero da
+GET /navigation, route e breadcrumb non cambiano.
+
+Verifica ESEGUITA: Pest `tests/Feature/RewardStatuses` 78/78, Pint pulito. Il run `--filter=Navigation`
+mostra 11 rossi "navigation node" (attributes, companies, products, reward-types, ...) PRE-ESISTENTI:
+baseline con `config/navigation.php` stashato = 12 rossi, cioe' gli stessi piu' RewardStatus, che ora
+passa.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## TEMPLATE QUALIFICA — CATALOGO BUONI: "Buono Amazon" (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: inserire il "Buono Amazon" tra i buoni del template Qualifica (seed pulito), non
+solo nei dati demo. "Buoni" = modulo Reward Types (spec 0058, UI "Buoni, Premi e Incentivi").
+
+`QualificaTemplateSeeder`: nuova costante `REWARD_TYPES` (name => token palette) con
+`'Buono Amazon' => 'orange'` + `seedRewardTypes()` chiamato da `run()`. Usa `firstOrCreate` sulla
+chiave naturale `name` (come sources/categorie/prodotti nello stesso seeder): re-run non duplica e
+non sovrascrive un colore modificato a mano. Il colore e' un TOKEN di `BADGE_COLOR_TOKENS`, mai hex.
+`DemoRewardTypeSeeder` NON toccato: contiene lo stesso nome ma e' dati demo con `updateOrCreate`,
+quindi convive senza duplicare righe.
+
+Verifica ESEGUITA: Pest `tests/Feature/CustomFields/QualificaTemplateSeederTest.php` 4/4 (nuovo caso
+"provisions the client reward type catalogue, idempotently"), Pint pulito. Nessuna modifica frontend.
+
 ## SPEC 0062 — MODALITA' FORM FLESSIBILE: SCOPE CONDIVISO + OVERRIDE (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: nel configuratore layout della categoria prodotto la "modalita' form" deve essere

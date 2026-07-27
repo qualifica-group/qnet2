@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * ResourceAuthorization for the `registries` resource (spec 0020).
  *
- * The 11 `personal_data.*` keys mirror ReferentsAuthorization/
+ * The 12 `personal_data.*` keys mirror ReferentsAuthorization/
  * UsersAuthorization's field catalogue verbatim (dot-path shape of the write
  * payload, spec 0008). Duplicated here (not extracted into a shared
  * trait/base) to keep the Referents/Users modules completely untouched
@@ -59,6 +59,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.vat_number', 'text', 'personal_data'),
             new FieldDefinition('personal_data.sdi_code', 'text', 'personal_data'),
             new FieldDefinition('personal_data.birth_date', 'date', 'personal_data'),
+            new FieldDefinition('personal_data.birth_city_id', 'select', 'personal_data'),
             new FieldDefinition('personal_data.gender', 'select', 'personal_data'),
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
@@ -99,7 +100,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 11 `personal_data.*` keys: editable whenever the actor
+     * Ceiling for the 12 `personal_data.*` keys: editable whenever the actor
      * may write the registry at all, else readonly — same write/read
      * boundary as every other registry field, and the same rule
      * ReferentsAuthorization/UsersAuthorization apply to their own
@@ -123,6 +124,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
             'personal_data.vat_number' => $permission,
             'personal_data.sdi_code' => $permission,
             'personal_data.birth_date' => $permission,
+            'personal_data.birth_city_id' => $permission,
             'personal_data.gender' => $permission,
             'personal_data.contacts' => $permission,
             'personal_data.addresses' => $permission,

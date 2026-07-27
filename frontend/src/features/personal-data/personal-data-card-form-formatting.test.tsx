@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { useState } from 'react'
+import { useState, type ReactElement } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import type { EnumOption } from '@/features/config/types'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
@@ -37,6 +38,15 @@ function CardHost({ initial }: { initial?: Partial<PersonalDataDraft> }) {
   return <PersonalDataCardForm value={draft} onChange={setDraft} />
 }
 
+/**
+ * The card form looks the comune of birth up through TanStack Query, so every
+ * render needs a client; one per test keeps the cache from leaking across them.
+ */
+function renderCard(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -47,7 +57,7 @@ describe('PersonalDataCardForm formatting', () => {
     [/^Last name/, "DELL'ACQUA", "Dell'Acqua"],
     [/^Tax code/, ' lvldaa80a01h501v ', 'LVLDAA80A01H501V'],
   ])('canonicalizes %s on blur', async (label, typed, expected) => {
-    render(<CardHost />)
+    renderCard(<CardHost />)
 
     const input = screen.getByLabelText(label)
     fireEvent.change(input, { target: { value: typed } })
@@ -57,7 +67,7 @@ describe('PersonalDataCardForm formatting', () => {
   })
 
   it('drops the IT prefix from a VAT number on blur', async () => {
-    render(<CardHost initial={{ type: 'company' }} />)
+    renderCard(<CardHost initial={{ type: 'company' }} />)
 
     const input = screen.getByLabelText(/^VAT number/)
     fireEvent.change(input, { target: { value: 'IT 12345678903' } })
@@ -67,7 +77,7 @@ describe('PersonalDataCardForm formatting', () => {
   })
 
   it('leaves a company name casing alone and only collapses its spacing', async () => {
-    render(<CardHost initial={{ type: 'company' }} />)
+    renderCard(<CardHost initial={{ type: 'company' }} />)
 
     const input = screen.getByLabelText(/^Company name/)
     fireEvent.change(input, { target: { value: '  ACME   S.R.L. ' } })

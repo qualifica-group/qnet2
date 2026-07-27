@@ -30,7 +30,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * The 11 `personal_data.*` keys mirror the dot-path shape of the write
+     * The 12 `personal_data.*` keys mirror the dot-path shape of the write
      * payload (spec 0008): the morph card's own scalar fields, plus the
      * `contacts`/`addresses` sections as a SINGLE key each (D1 — no
      * per-column granularity for their child rows).
@@ -58,6 +58,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.vat_number', 'text', 'personal_data'),
             new FieldDefinition('personal_data.sdi_code', 'text', 'personal_data'),
             new FieldDefinition('personal_data.birth_date', 'date', 'personal_data'),
+            new FieldDefinition('personal_data.birth_city_id', 'select', 'personal_data'),
             new FieldDefinition('personal_data.gender', 'select', 'personal_data'),
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
@@ -107,7 +108,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 11 `personal_data.*` keys: editable whenever the actor
+     * Ceiling for the 12 `personal_data.*` keys: editable whenever the actor
      * may write the user at all, else readonly — same write/read boundary as
      * every other user field. `required` always false here: the per-type
      * (individual/company) required-ness is validation-layer business logic
@@ -129,6 +130,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'personal_data.vat_number' => $permission,
             'personal_data.sdi_code' => $permission,
             'personal_data.birth_date' => $permission,
+            'personal_data.birth_city_id' => $permission,
             'personal_data.gender' => $permission,
             'personal_data.contacts' => $permission,
             'personal_data.addresses' => $permission,

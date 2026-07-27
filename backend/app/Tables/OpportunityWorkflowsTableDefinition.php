@@ -20,7 +20,11 @@ use Illuminate\Support\Facades\Gate;
  */
 class OpportunityWorkflowsTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly OpportunityWorkflowService $service) {}
+    public function __construct(
+        private readonly OpportunityWorkflowService $service,
+        private readonly CriterionFieldRegistry $criterionFieldRegistry,
+        private readonly CriterionValueLabelResolver $valueLabelResolver,
+    ) {}
 
     public function domain(): string
     {
@@ -95,8 +99,8 @@ class OpportunityWorkflowsTableDefinition extends AbstractTableDefinition
     public function mapRow(User $actor, Model $row): array
     {
         /** @var OpportunityWorkflow $row */
-        $fieldLabels = collect(CriterionFieldRegistry::allowedFields())->keyBy('field');
-        $valueLabels = CriterionValueLabelResolver::resolve($row->criteria);
+        $fieldLabels = collect($this->criterionFieldRegistry->allowedFields())->keyBy('field');
+        $valueLabels = $this->valueLabelResolver->resolve($row->criteria);
 
         return [
             'id' => $row->id,

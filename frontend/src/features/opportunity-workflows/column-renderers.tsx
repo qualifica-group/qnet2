@@ -21,18 +21,31 @@ import { BooleanBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
- * Renders `criteria_fields` — an array of i18n label KEYS (e.g.
- * "opportunityWorkflows.criterionFields.state_id"), not display strings —
- * as a compact count badge with a tooltip listing every LOCALIZED field
- * name. Mirrors `TagsCountCell`'s shape but resolves each entry through
- * `t()` first, since the backend cannot localize on its own.
+ * Prefix marking a `criteria_fields` entry as a native field's i18n key
+ * (spec 0047 amendment 2026-07-27, AC-038). Only entries starting with it are
+ * translated; a custom field's literal label never carries this prefix, so it
+ * always passes through as-is — even on the (constructed) coincidence of a
+ * custom label matching some unrelated real i18n key. Relying on i18next's
+ * missing-key fallback instead would silently translate that coincidence.
+ */
+const NATIVE_CRITERION_FIELD_KEY_PREFIX = 'opportunityWorkflows.criterionFields.'
+
+/**
+ * Renders `criteria_fields` — a MIXED array of native i18n label keys (e.g.
+ * "opportunityWorkflows.criterionFields.state_id") and literal custom-field
+ * labels (D9: custom labels are free text, never a key) — as a compact count
+ * badge with a tooltip listing every resolved field name. Mirrors
+ * `TagsCountCell`'s shape; only entries carrying
+ * `NATIVE_CRITERION_FIELD_KEY_PREFIX` go through `t()`, the rest render as-is.
  */
 function CriteriaFieldsCell({ value }: ICellRendererParams) {
   const { t } = useTranslation()
   if (!Array.isArray(value) || value.length === 0) {
     return <EmptyCell />
   }
-  const labels = (value as string[]).map((key) => t(key))
+  const labels = (value as string[]).map((entry) =>
+    entry.startsWith(NATIVE_CRITERION_FIELD_KEY_PREFIX) ? t(entry) : entry,
+  )
 
   return (
     <div className={CELL_WRAPPER}>
@@ -50,8 +63,8 @@ function CriteriaFieldsCell({ value }: ICellRendererParams) {
           </TooltipTrigger>
           <TooltipContent side="top" variant="light" className="max-w-64 p-0">
             <ul className="flex flex-col divide-y">
-              {labels.map((label) => (
-                <li key={label} className="px-3 py-1.5 text-sm">
+              {labels.map((label, index) => (
+                <li key={index} className="px-3 py-1.5 text-sm">
                   {label}
                 </li>
               ))}

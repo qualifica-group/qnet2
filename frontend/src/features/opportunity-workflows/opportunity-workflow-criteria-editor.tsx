@@ -95,7 +95,7 @@ export function OpportunityWorkflowCriteriaEditor({
                       <SelectContent>
                         {fieldOptionsFor(index).map((option) => (
                           <SelectItem key={option.field} value={option.field}>
-                            {t(option.label)}
+                            {option.source === 'custom' ? option.label : t(option.label)}
                           </SelectItem>
                         ))}
                       </SelectContent>

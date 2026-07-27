@@ -291,6 +291,19 @@
         --></response>
       </endpoint>
 
+      <endpoint method="POST" path="/api/tables/opportunity-workflows/rows">
+        <response status="200"><!--
+          La colonna derivata `criteria_fields` (string[]) resta string[] ma diventa un array MISTO:
+            - criterio nativo  -> chiave i18n 'opportunityWorkflows.criterionFields.<field>' (invariato)
+            - criterio custom  -> LABEL LETTERALE della CustomFieldDefinition (nessuna chiave i18n esiste)
+            - field non piu' nell'allow-list (D10) -> il `field` raw
+          Discriminante lato FE = il PREFISSO 'opportunityWorkflows.criterionFields.': la cella
+          CriteriaFieldsCell traduce solo le entry con quel prefisso, le altre le rende come testo.
+          Motivo per cui NON basta il fallback di i18next (che ripiega sulla chiave raw): una label
+          utente che coincidesse con una chiave i18n esistente verrebbe tradotta in silenzio.
+        --></response>
+      </endpoint>
+
       <endpoint method="POST|PUT|PATCH" path="/api/opportunity-workflows(/{opportunityWorkflow})">
         <request><!--
           criteria[].field accetta ora anche 'custom.<key>' (Rule::in sull'allow-list estesa).
@@ -308,10 +321,13 @@
       <criterion id="AC-030">POST/PATCH workflow con criteria=[{field:'custom.&lt;key&gt;', value_id: id esistente nella tabella target}] → 201/200 e la riga è persistita con field='custom.&lt;key&gt;'. Con value_id inesistente nella tabella target → 422. [Pest]</criterion>
       <criterion id="AC-031">Un'opportunità il cui custom field relazionale `one` vale V matcha un workflow con criterio {field:'custom.&lt;key&gt;', value_id: V}; non matcha se vale altro o è null. Con cardinalità `many`, matcha se V è contenuto nell'array (D7). [Pest]</criterion>
       <criterion id="AC-032">La risoluzione del workflow su un criterio custom NON introduce query per-riga: `custom_field_values` è caricata una sola volta per opportunità (loadMissing), come già avviene per productLines. [Pest]</criterion>
+      <criterion id="AC-032b">Il vincolo di AC-032 vale anche sui chiamanti BATCH, che risolvono N opportunità una per volta: `App\Tables\RequestManagement\RequestRowMapper::allowedWorkflowStatusIds()` (una `resolve()` per RIGA di griglia) e `App\Services\OpportunityWorkflowService::delete()` (una `resolveAndAssign()` per opportunità impattata). Poiché `resolve()` fa `loadMissing(['productLines','customFieldValueRow'])` INCONDIZIONATAMENTE — anche quando nessun criterio custom è in gioco — ogni chiamante batch deve eager-caricare `customFieldValueRow` a monte, così che il loadMissing resti sempre un no-op. Test: il numero di query su una pagina di griglia con N righe non cresce con N. Regressione reale osservata: +1 query per riga (+25 su una pagina di default) perché `RequestManagementTableDefinition::baseQuery()` eager-caricava solo `productLines.productCategory`. [Pest]</criterion>
       <criterion id="AC-033">Alla CREAZIONE di un'opportunità con custom field relazionali valorizzati nel payload, lo stato di lavorazione assegnato è quello del workflow che matcha sul criterio custom (i valori dei custom field sono persistiti dall'hook `saved` di HasCustomFields: la risoluzione deve avvenire quando sono già leggibili, altrimenti va ri-risolta). [Pest]</criterion>
       <criterion id="AC-034">Disattivando o eliminando la CustomFieldDefinition referenziata da un criterio esistente: GET show del workflow risponde 200 (field_label = field raw, value_label = value_id stringificato), la tabella dei workflow risponde 200, e il resolver considera quel criterio NON matchante senza sollevare eccezioni (D10). [Pest]</criterion>
       <criterion id="AC-035">Nel select dei campi-criterio del form, le opzioni con source='custom' sono renderizzate con la label letterale (nessun t()), quelle native tradotte via i18n; il select del valore usa il for_select_resource dell'opzione custom scelta. [Vitest]</criterion>
       <criterion id="AC-036">La vista di dettaglio del workflow mostra la label corretta anche per un criterio custom, usando field_label/field_source invece di ricostruire la chiave i18n. [Vitest]</criterion>
+      <criterion id="AC-037">La colonna `criteria_fields` della tabella workflow emette la chiave i18n per i criteri nativi e la label letterale per quelli custom, senza N+1 sulle definizioni. [Pest]</criterion>
+      <criterion id="AC-038">CriteriaFieldsCell traduce SOLO le entry con prefisso 'opportunityWorkflows.criterionFields.'; una label custom passa come testo letterale anche quando coincide con una chiave i18n esistente. [Vitest]</criterion>
     </acceptance_criteria>
 
     <constraints>

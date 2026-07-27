@@ -15,6 +15,16 @@ use Tests\TestCase;
 // explicitly (Unit suite has no default RefreshDatabase binding).
 uses(TestCase::class, RefreshDatabase::class);
 
+if (! function_exists('criterionFieldRegistry')) {
+    // CriterionFieldRegistry stopped being static-only (spec 0047 amendment
+    // 2026-07-27: it now depends on CustomFieldProvider/CustomFieldEntityRegistry) —
+    // resolved through the container like every other consumer.
+    function criterionFieldRegistry(): CriterionFieldRegistry
+    {
+        return app(CriterionFieldRegistry::class);
+    }
+}
+
 // ============ AC-005: global default set seeded by the migration ============
 
 it('seeds exactly 4 global default rows (workflow_id null) with system_key open/validated/closed_won/closed_lost (AC-005)', function () {
@@ -55,8 +65,8 @@ it('isSystem() is true only for a row carrying a system_key', function () {
 
 // ============ AC-022 (partial): CriterionFieldRegistry allow-list ============
 
-it('allowedFields() returns the 4 allow-listed fields with correct for_select_resource (AC-022)', function () {
-    $fields = CriterionFieldRegistry::allowedFields();
+it('allowedFields() returns the 4 native fields (source native) with correct for_select_resource (AC-022/AC-027)', function () {
+    $fields = criterionFieldRegistry()->allowedFields();
 
     expect($fields)->toHaveCount(4);
 
@@ -64,6 +74,7 @@ it('allowedFields() returns the 4 allow-listed fields with correct for_select_re
 
     expect($byField['state_id']['for_select_resource'])->toBe('states')
         ->and($byField['state_id']['multi_valued'])->toBeFalse()
+        ->and($byField['state_id']['source'])->toBe('native')
         ->and($byField['source_id']['for_select_resource'])->toBe('sources')
         ->and($byField['source_id']['multi_valued'])->toBeFalse()
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
@@ -72,29 +83,32 @@ it('allowedFields() returns the 4 allow-listed fields with correct for_select_re
         ->and($byField['product_category_id']['multi_valued'])->toBeTrue();
 
     foreach ($fields as $field) {
-        expect($field['label'])->toBe("opportunityWorkflows.criterionFields.{$field['field']}");
+        expect($field['source'])->toBe('native')
+            ->and($field['label'])->toBe("opportunityWorkflows.criterionFields.{$field['field']}");
     }
 });
 
 it('isAllowed()/existsTable() are consistent with the allow-list', function () {
-    expect(CriterionFieldRegistry::isAllowed('state_id'))->toBeTrue()
-        ->and(CriterionFieldRegistry::isAllowed('not_a_field'))->toBeFalse()
-        ->and(CriterionFieldRegistry::existsTable('state_id'))->toBe('states')
-        ->and(CriterionFieldRegistry::existsTable('source_id'))->toBe('sources')
-        ->and(CriterionFieldRegistry::existsTable('business_function_id'))->toBe('business_functions')
-        ->and(CriterionFieldRegistry::existsTable('product_category_id'))->toBe('product_categories');
+    $registry = criterionFieldRegistry();
+
+    expect($registry->isAllowed('state_id'))->toBeTrue()
+        ->and($registry->isAllowed('not_a_field'))->toBeFalse()
+        ->and($registry->existsTable('state_id'))->toBe('states')
+        ->and($registry->existsTable('source_id'))->toBe('sources')
+        ->and($registry->existsTable('business_function_id'))->toBe('business_functions')
+        ->and($registry->existsTable('product_category_id'))->toBe('product_categories');
 });
 
 it('existsTable() rejects a field outside the allow-list', function () {
-    CriterionFieldRegistry::existsTable('not_a_field');
+    criterionFieldRegistry()->existsTable('not_a_field');
 })->throws(InvalidArgumentException::class);
 
 it('opportunityValues() reads a direct column for state_id/source_id, empty when null', function () {
     $source = Source::factory()->create();
     $opportunity = Opportunity::factory()->create(['source_id' => $source->id, 'state_id' => null]);
 
-    expect(CriterionFieldRegistry::opportunityValues($opportunity, 'source_id'))->toBe([$source->id])
-        ->and(CriterionFieldRegistry::opportunityValues($opportunity, 'state_id'))->toBe([]);
+    expect(criterionFieldRegistry()->opportunityValues($opportunity, 'source_id'))->toBe([$source->id])
+        ->and(criterionFieldRegistry()->opportunityValues($opportunity, 'state_id'))->toBe([]);
 });
 
 it('opportunityValues() extracts distinct values from productLines for business_function_id/product_category_id (AC-013 groundwork)', function () {
@@ -113,8 +127,8 @@ it('opportunityValues() extracts distinct values from productLines for business_
 
     $opportunity->load('productLines');
 
-    $businessFunctionValues = CriterionFieldRegistry::opportunityValues($opportunity, 'business_function_id');
-    $productCategoryValues = CriterionFieldRegistry::opportunityValues($opportunity, 'product_category_id');
+    $businessFunctionValues = criterionFieldRegistry()->opportunityValues($opportunity, 'business_function_id');
+    $productCategoryValues = criterionFieldRegistry()->opportunityValues($opportunity, 'product_category_id');
 
     expect($businessFunctionValues)->toEqualCanonicalizing([$functionA->id, $functionB->id])
         ->and($productCategoryValues)->toEqualCanonicalizing([$categoryA->id, $categoryB->id]);
@@ -124,5 +138,5 @@ it('opportunityValues() returns an empty array when the opportunity has no produ
     $opportunity = Opportunity::factory()->create();
     $opportunity->load('productLines');
 
-    expect(CriterionFieldRegistry::opportunityValues($opportunity, 'business_function_id'))->toBe([]);
+    expect(criterionFieldRegistry()->opportunityValues($opportunity, 'business_function_id'))->toBe([]);
 });

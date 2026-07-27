@@ -276,9 +276,10 @@ return [
 
         // "Premi e Incentivi": the reward domain promoted to its own top-level
         // collapsible group (user decision 2026-07-24). Gathers the read-only
-        // "Referenti con Buoni" aggregated view (spec 0059) and the "Buoni,
-        // Premi e Incentivi" type catalogue (spec 0058) — previously scattered
-        // under Anagrafiche and Configurazione respectively. Route-less parent:
+        // "Referenti con Buoni" aggregated view (spec 0059), the "Buoni,
+        // Premi e Incentivi" type catalogue (spec 0058) and the "Stati Buoni
+        // Collegati" state pick-list (spec 0060) — previously scattered under
+        // Anagrafiche and Configurazione. Route-less parent:
         // renders collapsible, dropped when the actor can see no child.
         [
             'key' => 'rewards-group',
@@ -308,6 +309,17 @@ return [
                     'icon' => 'gift',
                     'route' => '/reward-types',
                     'permission' => 'reward-types.view',
+                ],
+                [
+                    // Reward statuses (spec 0060): the STATE pick-list for
+                    // assigned rewards, delete-guarded (BR-4). Moved here from
+                    // `configuration` (user decision 2026-07-27): it belongs to
+                    // the reward domain, next to its type catalogue.
+                    'key' => 'reward-statuses',
+                    'label' => 'navigation.rewardStatuses',
+                    'icon' => 'list-checks',
+                    'route' => '/reward-statuses',
+                    'permission' => 'reward-statuses.view',
                 ],
             ],
         ],
@@ -351,15 +363,6 @@ return [
                     'icon' => 'waypoints',
                     'route' => '/sources',
                     'permission' => 'sources.view',
-                ],
-                [
-                    // Reward statuses (spec 0060): the STATE pick-list for
-                    // assigned rewards, delete-guarded (BR-4).
-                    'key' => 'reward-statuses',
-                    'label' => 'navigation.rewardStatuses',
-                    'icon' => 'list-checks',
-                    'route' => '/reward-statuses',
-                    'permission' => 'reward-statuses.view',
                 ],
             ],
         ],

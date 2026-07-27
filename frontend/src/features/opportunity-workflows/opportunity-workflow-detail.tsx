@@ -56,7 +56,7 @@ export function OpportunityWorkflowDetailView({ opportunityWorkflow }: Opportuni
             {opportunityWorkflow.criteria.map((criterion) => (
               <DetailField
                 key={criterion.id}
-                label={t(`opportunityWorkflows.criterionFields.${criterion.field}`)}
+                label={criterion.field_source === 'custom' ? criterion.field_label : t(criterion.field_label)}
               >
                 {criterion.value_label}
               </DetailField>

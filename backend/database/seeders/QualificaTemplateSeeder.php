@@ -7,6 +7,7 @@ use App\Enums\ProductType;
 use App\Models\CustomFieldDefinition;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\RewardType;
 use App\Models\Source;
 use App\Services\ProductService;
 use Illuminate\Database\Seeder;
@@ -23,6 +24,9 @@ use Illuminate\Database\Seeder;
  * Plus the client's source catalogue (spec 0018): the fixed provenance list
  * used to classify registry/lead/opportunity records.
  *
+ * Plus the client's reward type catalogue (spec 0058): the voucher/reward
+ * types actually in use.
+ *
  * Plus the client's reference product catalogue (spec 0017): a two-root
  * category tree (Formazione / Consulenza) with its leaf subcategories and one
  * reference SERVICE product per populated subcategory. Products carry no
@@ -31,8 +35,8 @@ use Illuminate\Database\Seeder;
  * Custom-field/source definitions write no per-row values (that is user data);
  * the catalogue does create ProductCategory/Product rows, all idempotent:
  * `updateOrCreate` on (entity_type, key) for custom fields, `firstOrCreate`
- * on the natural name key for sources, categories and products — a re-run
- * never duplicates rows nor overwrites manual edits.
+ * on the natural name key for sources, reward types, categories and products
+ * — a re-run never duplicates rows nor overwrites manual edits.
  * Adding a module's template = one more entry in TEMPLATES.
  */
 class QualificaTemplateSeeder extends Seeder
@@ -124,6 +128,18 @@ class QualificaTemplateSeeder extends Seeder
     ];
 
     /**
+     * The client's reward type catalogue (spec 0058): name => palette token
+     * from `BADGE_COLOR_TOKENS` (the grid badge resolves the value by TOKEN
+     * NAME, never an arbitrary hex). Names are user-facing domain values,
+     * kept in their original language.
+     *
+     * @var array<string, string>
+     */
+    private const array REWARD_TYPES = [
+        'Buono Amazon' => 'orange',
+    ];
+
+    /**
      * The client's reference product catalogue (spec 0017): root category =>
      * (leaf subcategory => list of reference product names). Every product is
      * a SERVICE with cost/price 0 (filled in later via the CRUD modules); a
@@ -153,6 +169,7 @@ class QualificaTemplateSeeder extends Seeder
         }
 
         $this->seedSources();
+        $this->seedRewardTypes();
         $this->seedCatalog();
     }
 
@@ -160,6 +177,13 @@ class QualificaTemplateSeeder extends Seeder
     {
         foreach (self::SOURCES as $name) {
             Source::firstOrCreate(['name' => $name]);
+        }
+    }
+
+    private function seedRewardTypes(): void
+    {
+        foreach (self::REWARD_TYPES as $name => $color) {
+            RewardType::firstOrCreate(['name' => $name], ['color' => $color]);
         }
     }
 

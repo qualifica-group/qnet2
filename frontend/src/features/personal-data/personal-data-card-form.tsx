@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
+import { BirthCityField } from '@/features/personal-data/birth-city-field'
 import { formatOnBlur } from '@/lib/formatting/format-on-blur'
 import { formatIdentityField } from '@/lib/formatting/input-format'
 import {
@@ -112,6 +113,7 @@ export function PersonalDataCardForm({
       vat_number: value.vat_number ?? '',
       sdi_code: value.sdi_code ?? '',
       birth_date: value.birth_date ?? '',
+      birth_city_id: value.birth_city_id ?? null,
       // Individual cards always carry a gender (default male); company: none.
       gender: value.gender ?? 'male',
     },
@@ -130,6 +132,7 @@ export function PersonalDataCardForm({
   const vatNumberGate = resolveGate(fieldPermission, 'personal_data.vat_number', false)
   const sdiCodeGate = resolveGate(fieldPermission, 'personal_data.sdi_code', false)
   const birthDateGate = resolveGate(fieldPermission, 'personal_data.birth_date', false)
+  const birthCityGate = resolveGate(fieldPermission, 'personal_data.birth_city_id', false)
   const genderGate = resolveGate(fieldPermission, 'personal_data.gender', false)
 
   // Mirror the current field values into the parent buffer (in an effect, so the
@@ -145,6 +148,9 @@ export function PersonalDataCardForm({
     vat_number: watched.vat_number || null,
     sdi_code: watched.sdi_code || null,
     birth_date: watched.birth_date || null,
+    // The comune of birth belongs to an individual, like the gender above.
+    birth_city_id: isCompany ? null : (watched.birth_city_id ?? null),
+    birth_city: value.birth_city,
     // Gender is an individual-only attribute: a company card carries none.
     gender: isCompany ? null : (watched.gender ?? 'male'),
     contacts: value.contacts,
@@ -416,6 +422,29 @@ export function PersonalDataCardForm({
             )}
           </div>
         )}
+
+        {!isCompany && birthCityGate.visible && (
+          <FormField
+            control={form.control}
+            name="birth_city_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required={birthCityGate.required}>
+                  {t('personalData.form.birthCity')}
+                </FormLabel>
+                <FormControl>
+                  <BirthCityField
+                    value={field.value ?? null}
+                    hydrated={value.birth_city}
+                    onChange={field.onChange}
+                    disabled={birthCityGate.disabled || birthCityGate.readOnly}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       </div>
     </Form>
   )
@@ -432,6 +461,7 @@ function sameCardFields(a: PersonalDataDraft, b: PersonalDataDraft): boolean {
     a.vat_number === b.vat_number &&
     a.sdi_code === b.sdi_code &&
     a.birth_date === b.birth_date &&
+    a.birth_city_id === b.birth_city_id &&
     a.gender === b.gender
   )
 }

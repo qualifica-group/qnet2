@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { PersonalDataSection } from '@/features/personal-data/personal-data-section'
@@ -15,7 +16,14 @@ import type {
 
 /** `ContactsManager`/`AddressesManager` call `useConfirm()`, so every render needs the provider. */
 function renderSection(ui: ReactElement) {
-  return render(<ConfirmDialogProvider>{ui}</ConfirmDialogProvider>)
+  // The card's comune-of-birth lookup runs through TanStack Query: one client
+  // per render keeps each test's cache isolated.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <ConfirmDialogProvider>{ui}</ConfirmDialogProvider>
+    </QueryClientProvider>,
+  )
 }
 
 /**
@@ -78,6 +86,7 @@ function draft(overrides: Partial<PersonalDataDraft> = {}): PersonalDataDraft {
     vat_number: null,
     sdi_code: null,
     birth_date: null,
+    birth_city_id: null,
     gender: null,
     contacts: [contact()],
     addresses: [address()],

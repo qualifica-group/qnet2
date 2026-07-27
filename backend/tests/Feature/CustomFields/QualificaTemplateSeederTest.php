@@ -3,6 +3,7 @@
 use App\Models\CustomFieldDefinition;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\RewardType;
 use App\Models\Source;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,6 +57,14 @@ it('provisions the client source catalogue, idempotently', function (): void {
 
     expect(Source::query()->whereIn('name', $expected)->count())->toBe(count($expected));
     expect(Source::query()->count())->toBe(count($expected));
+});
+
+it('provisions the client reward type catalogue, idempotently', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
+
+    expect(RewardType::query()->where('name', 'Buono Amazon')->count())->toBe(1)
+        ->and(RewardType::query()->where('name', 'Buono Amazon')->value('color'))->toBe('orange');
 });
 
 it('provisions the reference product catalogue tree, idempotently', function (): void {

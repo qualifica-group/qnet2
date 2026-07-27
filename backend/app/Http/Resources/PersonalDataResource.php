@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\PersonalData;
+use App\Support\Geo\GeoNameLocalizer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,6 +42,12 @@ class PersonalDataResource extends JsonResource
             'vat_number' => $this->vat_number,
             'sdi_code' => $this->sdi_code,
             'birth_date' => $this->birth_date,
+            'birth_city_id' => $this->birth_city_id,
+            // The comune NAME is emitted only when eager-loaded (AddressResource
+            // convention): a consumer that needs no label pays no extra query.
+            'birth_city' => $this->whenLoaded('birthCity', fn (): ?array => $this->birthCity !== null
+                ? ['id' => $this->birthCity->id, 'name' => GeoNameLocalizer::toItalian($this->birthCity->name)]
+                : null),
             'gender' => $this->gender,
             'personable_type' => $this->personable_type,
             'personable_id' => $this->personable_id,

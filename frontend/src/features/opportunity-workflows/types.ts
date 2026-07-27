@@ -35,11 +35,18 @@ export function isTailWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
   return key === 'validated' || key === 'closed_won' || key === 'closed_lost'
 }
 
-/** One allow-listed criterion field, as returned by GET /opportunity-workflows/criterion-fields (AC-022). */
+/**
+ * One allow-listed criterion field, as returned by GET
+ * /opportunity-workflows/criterion-fields (AC-022, extended by AC-027/AC-035
+ * with custom relational fields). `source` discriminates how `label` must be
+ * rendered: an i18n key for `native`, already-readable text for `custom`
+ * (D9) — never `t()` a custom label.
+ */
 export interface CriterionFieldOption {
   field: string
-  /** i18n key (e.g. "opportunityWorkflows.criterionFields.state_id"), not a display string. */
+  /** i18n key for `source: 'native'`; literal display text for `source: 'custom'`. */
   label: string
+  source: 'native' | 'custom'
   /** for-select resource segment used to pick this field's `value_id`. */
   for_select_resource: string
   multi_valued: boolean
@@ -51,6 +58,9 @@ export interface OpportunityWorkflowCriterion {
   field: string
   value_id: number
   value_label: string
+  /** Same shape as `CriterionFieldOption.label`: an i18n key for `field_source: 'native'`, literal text for `'custom'`. Falls back to the raw `field` (as `native`) if the field left the allow-list (D10). */
+  field_label: string
+  field_source: 'native' | 'custom'
 }
 
 /** One status row of a workflow's (or the global default's) set. */

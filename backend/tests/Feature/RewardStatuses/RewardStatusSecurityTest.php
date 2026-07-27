@@ -193,12 +193,12 @@ it('navigation: the reward-statuses node only shows with reward-statuses.view (A
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'rewards-group'))
         ->not->toContain('reward-statuses');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('reward-statuses.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'rewards-group'))
         ->toContain('reward-statuses');
 });

@@ -40,6 +40,7 @@ class OpportunityWorkflowController extends BaseApiController
         private readonly OpportunityWorkflowService $service,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
+        private readonly CriterionFieldRegistry $criterionFieldRegistry,
     ) {}
 
     /**
@@ -128,7 +129,7 @@ class OpportunityWorkflowController extends BaseApiController
         try {
             $this->authorize('opportunity-workflows.view');
 
-            return $this->ok(CriterionFieldRegistry::allowedFields());
+            return $this->ok($this->criterionFieldRegistry->allowedFields());
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

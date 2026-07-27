@@ -156,8 +156,9 @@
     </decision>
     <decision id="D-6">
       `defaultMode: OPEN_MODE_MODAL` nel `moduleScreen` (come reward-types/opportunity-statuses).
-      Collocazione in navigazione: gruppo `configuration`, accanto agli altri configuratori di stato.
-      Assunzione da confermare in approvazione.
+      Collocazione in navigazione: gruppo `rewards-group` ("Premi e Incentivi"), accanto a
+      `reward-types` e `rewarded-referents` (decisione utente 2026-07-27, sostituisce la collocazione
+      iniziale nel gruppo `configuration`).
     </decision>
     <decision id="D-7">
       `forSelect()` di reward-statuses restituisce SOLO gli stati `is_active = true`, ordinati per
@@ -241,7 +242,7 @@
         supportare un modello con sola testa di sistema, SENZA regressione su opportunity/pipeline.</item>
       <item>Backend, touchpoint di registrazione: routes/api/lookups.php · config/tables.php ·
         config/authorization.php (+ array atteso di `FieldCatalogueEndpointTest`) · config/activity-log.php ·
-        config/navigation.php (gruppo `configuration`) · AppServiceProvider (morph map) ·
+        config/navigation.php (gruppo `rewards-group`) · AppServiceProvider (morph map) ·
         database/seeders/DemoDataSeeder.php · routes/api/referents.php o nuovo routes/api/rewards.php
         (rotta PATCH reward).</item>
       <item>Frontend, feature NUOVA `features/reward-statuses/` (clone di opportunity-statuses + Switch

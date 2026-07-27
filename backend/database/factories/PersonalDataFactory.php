@@ -69,6 +69,9 @@ class PersonalDataFactory extends Factory
             'vat_number' => null,
             'sdi_code' => null,
             'birth_date' => $this->faker->dateTimeBetween('-80 years', '-18 years')->format('Y-m-d'),
+            // Left to the caller: seeding it would create a city row for every
+            // card, and the place of birth is not needed to make one valid.
+            'birth_city_id' => null,
             'gender' => $this->faker->randomElement(GenderEnum::cases())->value,
         ];
     }
@@ -90,6 +93,7 @@ class PersonalDataFactory extends Factory
             'vat_number' => (string) $this->faker->numerify('###########'),
             'sdi_code' => strtoupper($this->faker->bothify('???####')),
             'birth_date' => null,
+            'birth_city_id' => null,
             'gender' => null,
         ];
     }

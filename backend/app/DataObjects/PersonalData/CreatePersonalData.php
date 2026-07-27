@@ -24,6 +24,7 @@ final readonly class CreatePersonalData
         public ?string $vatNumber = null,
         public ?string $sdiCode = null,
         public ?string $birthDate = null,
+        public ?int $birthCityId = null,
         public ?string $gender = null,
     ) {}
 
@@ -62,6 +63,7 @@ final readonly class CreatePersonalData
             'vat_number' => $this->vatNumber,
             'sdi_code' => $this->sdiCode,
             'birth_date' => $this->birthDate,
+            'birth_city_id' => $this->birthCityId,
             'gender' => $this->gender,
         ];
     }

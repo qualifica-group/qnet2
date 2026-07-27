@@ -43,6 +43,8 @@ final class OpportunityWorkflowResolver
      */
     private array $statusesCache = [];
 
+    public function __construct(private readonly CriterionFieldRegistry $fieldRegistry) {}
+
     /**
      * The active workflow that matches $opportunity (AC-010/011/012/013/014):
      * every one of a workflow's criteria must match (AND), the workflow with
@@ -52,10 +54,11 @@ final class OpportunityWorkflowResolver
      */
     public function resolve(Opportunity $opportunity): ?OpportunityWorkflow
     {
-        // Step 1: make sure productLines is available for the
-        // business_function_id/product_category_id criteria (AC-013) without
+        // Step 1: make sure productLines (business_function_id/
+        // product_category_id, AC-013) and customFieldValueRow (a custom
+        // relation criterion, AC-031/AC-032) are available without
         // triggering a query per workflow candidate.
-        $opportunity->loadMissing('productLines');
+        $opportunity->loadMissing(['productLines', 'customFieldValueRow']);
 
         // Step 2: every active workflow, with its criteria eager-loaded (no
         // N+1 across the candidate set) — memoized (see class docblock).
@@ -176,7 +179,9 @@ final class OpportunityWorkflowResolver
      * Whether EVERY one of $workflow's criteria matches $opportunity (AND,
      * AC-013). A workflow with no criteria never matches (defense in depth:
      * the write path already requires min:1, AC-008, but an empty AND would
-     * otherwise vacuously match everything).
+     * otherwise vacuously match everything). A criterion whose `field` is no
+     * longer allow-listed (its custom field definition was disabled/
+     * deleted, D10) never matches rather than throwing.
      */
     private function matches(Opportunity $opportunity, OpportunityWorkflow $workflow): bool
     {
@@ -185,11 +190,12 @@ final class OpportunityWorkflowResolver
         }
 
         return $workflow->criteria->every(
-            fn (OpportunityWorkflowCriterion $criterion): bool => in_array(
-                $criterion->value_id,
-                CriterionFieldRegistry::opportunityValues($opportunity, $criterion->field),
-                true,
-            ),
+            fn (OpportunityWorkflowCriterion $criterion): bool => $this->fieldRegistry->isAllowed($criterion->field)
+                && in_array(
+                    $criterion->value_id,
+                    $this->fieldRegistry->opportunityValues($opportunity, $criterion->field),
+                    true,
+                ),
         );
     }
 

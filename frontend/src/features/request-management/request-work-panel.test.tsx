@@ -102,6 +102,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
       vat_number: 'IT01234567897',
       sdi_code: null,
       birth_date: null,
+      birth_city_id: null,
+      birth_city: null,
       gender: null,
     },
     client_contacts: {
@@ -281,6 +283,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
         vat_number: 'IT01234567897',
         sdi_code: null,
         birth_date: null,
+        birth_city_id: null,
         gender: null,
       },
     })

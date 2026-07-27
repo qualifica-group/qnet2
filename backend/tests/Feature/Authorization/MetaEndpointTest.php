@@ -72,7 +72,7 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
-        'personal_data.gender',
+        'personal_data.birth_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',
         'employment.business_function_id', 'employment.relationship_type', 'employment.company_id',

@@ -59,7 +59,7 @@ if (! function_exists('actorWithFieldPermissionRole')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-002 — permissions.fields includes the 11 personal_data.* keys, ceiling
+// AC-002 — permissions.fields includes the 12 personal_data.* keys, ceiling
 // editable by default for an actor who may update, readonly otherwise.
 //
 // NOTE: each key IS the flat JSON property name (e.g. "personal_data.tax_code"),
@@ -68,7 +68,7 @@ if (! function_exists('actorWithFieldPermissionRole')) {
 // and index it directly with the full key string.
 // ---------------------------------------------------------------------------
 
-it('AC-002: permissions.fields includes the 11 personal_data.* keys, editable when the actor may update', function () {
+it('AC-002: permissions.fields includes the 12 personal_data.* keys, editable when the actor may update', function () {
     $actor = userWithUserAbilities(['view', 'update']);
     $target = User::factory()->create();
     PersonalData::factory()->for($target, 'personable')->create();
@@ -81,6 +81,7 @@ it('AC-002: permissions.fields includes the 11 personal_data.* keys, editable wh
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
+        'personal_data.birth_city_id',
         'personal_data.contacts', 'personal_data.addresses',
     ];
 

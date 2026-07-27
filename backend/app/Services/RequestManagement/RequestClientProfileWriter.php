@@ -276,6 +276,7 @@ final class RequestClientProfileWriter
             vatNumber: $card->vat_number,
             sdiCode: $card->sdi_code,
             birthDate: $card->birth_date?->format('Y-m-d'),
+            birthCityId: $card->birth_city_id,
             gender: $card->gender?->value,
         );
     }

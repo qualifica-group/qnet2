@@ -73,9 +73,18 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 }))
 
 const CRITERION_FIELDS: CriterionFieldOption[] = [
-  { field: 'state_id', label: 'opportunityWorkflows.criterionFields.state_id', for_select_resource: 'states', multi_valued: false },
-  { field: 'source_id', label: 'opportunityWorkflows.criterionFields.source_id', for_select_resource: 'sources', multi_valued: false },
+  { field: 'state_id', label: 'opportunityWorkflows.criterionFields.state_id', source: 'native', for_select_resource: 'states', multi_valued: false },
+  { field: 'source_id', label: 'opportunityWorkflows.criterionFields.source_id', source: 'native', for_select_resource: 'sources', multi_valued: false },
 ]
+
+/** A custom relational field option (AC-027/D9): `label` is already literal display text, never an i18n key. */
+const CUSTOM_CRITERION_FIELD: CriterionFieldOption = {
+  field: 'custom.preferred_supplier',
+  label: 'Preferred supplier',
+  source: 'custom',
+  for_select_resource: 'suppliers',
+  multi_valued: false,
+}
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -118,7 +127,16 @@ function opportunityWorkflow(
     id: 9,
     name: 'EMEA workflow',
     is_active: true,
-    criteria: [{ id: 1, field: 'state_id', value_id: 5, value_label: 'Lombardy' }],
+    criteria: [
+      {
+        id: 1,
+        field: 'state_id',
+        value_id: 5,
+        value_label: 'Lombardy',
+        field_label: 'opportunityWorkflows.criterionFields.state_id',
+        field_source: 'native',
+      },
+    ],
     statuses: [
       { id: 10, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', description: null, requires_note: false },
       { id: 11, name: 'Alpha', color: 'blue', sort_order: 10, system_key: null, group: 'pending', description: null, requires_note: false },
@@ -185,6 +203,23 @@ describe('OpportunityWorkflowForm — criteria editor (AC-024)', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'Region' }))
 
     await waitFor(() => expect(screen.getByText(/^Value:states:.*:enabled$/)).toBeInTheDocument())
+  })
+
+  it('renders a custom field option with its literal label (no t()), a native one translated, and scopes the value select to it (AC-035)', async () => {
+    fetchCriterionFieldsMock.mockResolvedValue([...CRITERION_FIELDS, CUSTOM_CRITERION_FIELD])
+
+    render(
+      <OpportunityWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
+    expect(await screen.findByRole('option', { name: 'Region' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Preferred supplier' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option', { name: 'Preferred supplier' }))
+
+    await waitFor(() => expect(screen.getByText(/^Value:suppliers:.*:enabled$/)).toBeInTheDocument())
   })
 })
 

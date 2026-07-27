@@ -30,6 +30,8 @@ export function buildPersonalDataSchema(t: TFunction) {
       sdi_code: z.string().max(32).optional(),
       // Empty string = "no date"; a value must be a real, non-future date.
       birth_date: z.string().optional(),
+      // Individual only: the comune of birth, referenced by id (geo catalogue).
+      birth_city_id: z.number().nullable().optional(),
       // Individual only (default male); a company card carries no gender.
       gender: z.enum(['male', 'female']).optional(),
     })

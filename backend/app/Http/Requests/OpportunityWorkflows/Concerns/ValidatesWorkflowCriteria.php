@@ -32,7 +32,12 @@ trait ValidatesWorkflowCriteria
      */
     protected function criteriaRules(bool $required): array
     {
-        $allowedFields = array_column(CriterionFieldRegistry::allowedFields(), 'field');
+        // CriterionFieldRegistry is no longer static-only (spec 0047
+        // amendment 2026-07-27), so it needs the container — resolved via
+        // app() rather than constructor injection, mirroring the existing
+        // FormRequest-concern precedent (ValidatesFieldTypeDefinition ->
+        // CustomFieldEntityRegistry).
+        $allowedFields = array_column(app(CriterionFieldRegistry::class)->allowedFields(), 'field');
 
         return [
             'criteria' => $required ? ['required', 'array', 'min:1'] : ['sometimes', 'array', 'min:1'],
@@ -122,6 +127,8 @@ trait ValidatesWorkflowCriteria
      */
     private function assertValueIdsExist(Validator $validator, array $criteria): void
     {
+        $registry = app(CriterionFieldRegistry::class);
+
         foreach ($criteria as $index => $criterion) {
             if (! is_array($criterion)) {
                 continue;
@@ -130,11 +137,11 @@ trait ValidatesWorkflowCriteria
             $field = $criterion['field'] ?? null;
             $valueId = $criterion['value_id'] ?? null;
 
-            if (! is_string($field) || ! CriterionFieldRegistry::isAllowed($field) || $valueId === null) {
+            if (! is_string($field) || ! $registry->isAllowed($field) || $valueId === null) {
                 continue;
             }
 
-            $exists = DB::table(CriterionFieldRegistry::existsTable($field))->where('id', $valueId)->exists();
+            $exists = DB::table($registry->existsTable($field))->where('id', $valueId)->exists();
 
             if (! $exists) {
                 $validator->errors()->add("criteria.{$index}.value_id", 'The selected value does not exist for this field.');

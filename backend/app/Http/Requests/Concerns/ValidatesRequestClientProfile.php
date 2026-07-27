@@ -127,6 +127,7 @@ trait ValidatesRequestClientProfile
             'client_identity.vat_number' => ['nullable', 'string', 'max:32', new VatNumber],
             'client_identity.sdi_code' => ['nullable', 'string', 'max:32'],
             'client_identity.birth_date' => ['nullable', 'date', 'before:today'],
+            'client_identity.birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
             'client_identity.gender' => ['nullable', Rule::enum(GenderEnum::class)],
         ];
     }
@@ -204,6 +205,7 @@ trait ValidatesRequestClientProfile
             vatNumber: $row['vat_number'] ?? null,
             sdiCode: $row['sdi_code'] ?? null,
             birthDate: $row['birth_date'] ?? null,
+            birthCityId: isset($row['birth_city_id']) ? (int) $row['birth_city_id'] : null,
             gender: $row['gender'] ?? null,
         );
     }

@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
+use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -235,6 +236,10 @@ class RequestManagementResource extends JsonResource
             'vat_number' => $card->vat_number,
             'sdi_code' => $card->sdi_code,
             'birth_date' => $card->birth_date?->format('Y-m-d'),
+            'birth_city_id' => $card->birth_city_id,
+            'birth_city' => $card->relationLoaded('birthCity') && $card->birthCity !== null
+                ? ['id' => $card->birthCity->id, 'name' => GeoNameLocalizer::toItalian($card->birthCity->name)]
+                : null,
             'gender' => $card->gender?->value,
         ];
     }

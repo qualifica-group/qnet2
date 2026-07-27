@@ -73,6 +73,7 @@ class StorePersonalDataRequest extends FormRequest
             'vat_number' => ['nullable', 'string', 'max:32', new VatNumber],
             'sdi_code' => ['nullable', 'string', 'max:32'],
             'birth_date' => ['nullable', 'date', 'before:today'],
+            'birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
             'gender' => ['nullable', Rule::enum(GenderEnum::class)],
         ];
     }
@@ -132,6 +133,7 @@ class StorePersonalDataRequest extends FormRequest
             vatNumber: $this->input('vat_number'),
             sdiCode: $this->input('sdi_code'),
             birthDate: $this->input('birth_date'),
+            birthCityId: $this->filled('birth_city_id') ? (int) $this->input('birth_city_id') : null,
             gender: $this->input('gender'),
         );
     }

@@ -29,6 +29,7 @@ function completeIdentity(): PersonalDataDraft {
     vat_number: null,
     sdi_code: null,
     birth_date: null,
+    birth_city_id: null,
     gender: 'male',
     contacts: [],
     addresses: [],

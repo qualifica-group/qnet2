@@ -8,7 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
-import type { Address, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
+import type { Address, GeoRef, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -106,6 +106,9 @@ export interface RequestClientIdentity {
   vat_number: string | null
   sdi_code: string | null
   birth_date: string | null
+  birth_city_id: number | null
+  /** Hydrated comune of birth, read-only label for the select (never sent back). */
+  birth_city: GeoRef | null
   gender: Gender | null
 }
 
@@ -225,7 +228,7 @@ export interface RequestWorkPanelWithPermissions extends RequestWorkPanel {
  * fields (no `id` — the server resolves the card from the request's client).
  * Saving it also re-derives the client's display name server-side.
  */
-export type RequestClientIdentityPayload = Omit<RequestClientIdentity, 'id'>
+export type RequestClientIdentityPayload = Omit<RequestClientIdentity, 'id' | 'birth_city'>
 
 /** One contact row of the `client_contacts` write set (`id` present = update). */
 export interface RequestClientContactPayload {

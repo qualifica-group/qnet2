@@ -26,6 +26,8 @@ class UserService
     private const array WRITE_RESULT_RELATIONS = [
         'personalData.contacts',
         'personalData.addresses',
+        // The comune of birth, so PersonalDataResource can emit its name.
+        'personalData.birthCity',
         'employment.reportsTo',
         'employment.businessFunction',
         'employment.company',

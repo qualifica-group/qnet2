@@ -75,6 +75,8 @@ final class RequestManagementService
      */
     private const array WORK_PANEL_RELATIONS = [
         'registry.personalData.contacts',
+        // The client's comune of birth, shown in the identity block.
+        'registry.personalData.birthCity',
         // The client's address is edited inline in the panel's "anagrafica"
         // section, with its geo names hydrated for the cascading selects.
         'registry.personalData.addresses.city',
