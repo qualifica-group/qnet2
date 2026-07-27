@@ -91,7 +91,9 @@ export async function fetchAttributeLayout(
 ): Promise<AttributeLayoutData> {
   const { data } = await apiClient.get<ApiResponse<AttributeLayoutData>>(
     `/product-categories/${categoryId}/attribute-layouts`,
-    { params: { context, form_mode: formMode } },
+    // `exact`: the configurator authors one mode at a time and must see the
+    // raw per-mode row, never the cross-mode fallback the product form gets.
+    { params: { context, form_mode: formMode, exact: 1 } },
   )
   return data.data
 }

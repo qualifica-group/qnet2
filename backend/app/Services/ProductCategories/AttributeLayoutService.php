@@ -24,19 +24,67 @@ use Illuminate\Validation\ValidationException;
  */
 final class AttributeLayoutService
 {
+    /**
+     * Cross-mode fallback precedence (spec 0062 revised): a single layout is
+     * meant to drive every form mode, so when the requested mode has no row of
+     * its own the first configured mode in this order is used instead. Only the
+     * CONSUMPTION paths (product form/detail) resolve with fallback; authoring
+     * (the configurator) and the Opportunity path stay exact via
+     * resolveForProduct.
+     */
+    private const FALLBACK_ORDER = [FormMode::Create, FormMode::Edit, FormMode::View];
+
     public function __construct(
         private readonly AttributeLayoutValidator $validator,
     ) {}
 
     /**
-     * The persisted, raw blob for (category, context, form_mode) — or null
-     * when none is configured (fall back to flat, AC-007).
+     * The persisted, raw blob for the EXACT (category, context, form_mode) —
+     * or null when that specific row is not configured. Used by the
+     * configurator's authoring load and the Opportunity resolver, which both
+     * need the raw per-mode row, never a cross-mode inheritance.
      *
      * @return array{sections: array<int, array<string, mixed>>}|null
      */
     public function resolveForProduct(ProductCategory $category, AttributeContext $context, FormMode $formMode): ?array
     {
         return $this->find($category, $context, $formMode)?->layout;
+    }
+
+    /**
+     * The layout to RENDER for (category, context, form_mode): the exact mode
+     * when configured, otherwise the first configured mode in FALLBACK_ORDER —
+     * so one saved layout applies across create/edit/view. Null only when the
+     * category has no layout in this context at all (flat fallback, AC-007).
+     * All fallback candidates share the same context, so their attribute_code
+     * references stay valid for the consuming form.
+     *
+     * @return array{sections: array<int, array<string, mixed>>}|null
+     */
+    public function resolveWithFallback(ProductCategory $category, AttributeContext $context, FormMode $formMode): ?array
+    {
+        // Step 1: one query for every mode row in this context, keyed by mode value
+        $byMode = AttributeLayout::query()
+            ->where('product_category_id', $category->id)
+            ->where('context', $context->value)
+            ->get()
+            ->keyBy(fn (AttributeLayout $row): string => $row->form_mode->value);
+
+        // Step 2: the requested mode wins when it carries a layout
+        $exact = $byMode->get($formMode->value)?->layout;
+        if ($exact !== null) {
+            return $exact;
+        }
+
+        // Step 3: otherwise the first configured mode in canonical precedence
+        foreach (self::FALLBACK_ORDER as $mode) {
+            $layout = $byMode->get($mode->value)?->layout;
+            if ($layout !== null) {
+                return $layout;
+            }
+        }
+
+        return null;
     }
 
     /**

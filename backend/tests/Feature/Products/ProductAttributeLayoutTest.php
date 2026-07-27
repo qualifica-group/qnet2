@@ -68,7 +68,10 @@ it('the category\'s (product, view) configured layout is resolved and exposed on
     expect($response->json('data.attribute_layout.sections.0.rows.0.items.0.attribute_code'))->toBe('material');
 });
 
-it('a layout configured for form_mode=create does NOT leak into the detail (form_mode=view only)', function () {
+it('a layout configured only for form_mode=create drives the detail too via cross-mode fallback (spec 0062 revised)', function () {
+    // Requirement change: a single saved layout is meant to apply across every
+    // form mode. With no dedicated `view` row, the `create` layout resolves for
+    // the read-only detail instead of the previous flat fallback.
     $actor = productAttributeUserWith(['view']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material', 'type' => 'text']);
@@ -79,5 +82,26 @@ it('a layout configured for form_mode=create does NOT leak into the detail (form
     $product = Product::factory()->create(['category_id' => $category->id]);
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/products/{$product->id}")->assertOk()->assertJsonPath('data.attribute_layout', null);
+    $this->getJson("/api/products/{$product->id}")->assertOk()
+        ->assertJsonPath('data.attribute_layout.sections.0.rows.0.items.0.attribute_code', 'material');
+});
+
+it('a dedicated form_mode=view layout wins over the create fallback (exact mode precedence)', function () {
+    $actor = productAttributeUserWith(['view']);
+    $category = ProductCategory::factory()->create();
+    foreach (['material', 'colour'] as $code) {
+        $attribute = Attribute::factory()->create(['code' => $code, 'type' => 'text']);
+        $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+    }
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['material'])
+        ->create(['context' => 'product', 'form_mode' => 'create']);
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['colour'])
+        ->create(['context' => 'product', 'form_mode' => 'view']);
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/products/{$product->id}")->assertOk()
+        ->assertJsonPath('data.attribute_layout.sections.0.rows.0.items.0.attribute_code', 'colour');
 });

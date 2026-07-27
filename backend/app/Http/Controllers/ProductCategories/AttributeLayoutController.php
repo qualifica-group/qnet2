@@ -46,9 +46,17 @@ class AttributeLayoutController extends BaseApiController
             $this->authorize('view', $productCategory);
 
             $context = $request->context();
+            $formMode = $request->formMode();
+
+            // Authoring (configurator) asks for the exact per-mode row; the
+            // product form omits `exact` and gets the cross-mode fallback so
+            // one saved layout drives every mode (spec 0062 revised).
+            $layout = $request->exact()
+                ? $this->service->resolveForProduct($productCategory, $context, $formMode)
+                : $this->service->resolveWithFallback($productCategory, $context, $formMode);
 
             return $this->ok([
-                'layout' => $this->service->resolveForProduct($productCategory, $context, $request->formMode()),
+                'layout' => $layout,
                 'attributes' => $this->hierarchy->effectiveAttributes($productCategory, $context)->values(),
             ]);
         } catch (Throwable $exception) {

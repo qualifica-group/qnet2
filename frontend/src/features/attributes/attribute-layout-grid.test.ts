@@ -5,8 +5,9 @@ import { LAYOUT_COLUMNS_OPTIONS, LAYOUT_ITEM_WIDTHS, type LayoutColumns } from '
 /**
  * Spec 0062 AC-013: classes are STATIC (this test only reads literal strings
  * from the lookup, never builds one), and the grid collapses N -> .. -> 1
- * column at the documented breakpoints. Numeric spans are cross-checked
- * against the frozen formula (`layout-contract` semantics):
+ * column at the documented CONTAINER-query breakpoints (`@`-variants — the
+ * grid responds to the panel width, not the viewport). Numeric spans are
+ * cross-checked against the frozen formula (`layout-contract` semantics):
  * full=columns, two_thirds=ceil(2*columns/3), half=ceil(columns/2),
  * third=ceil(columns/3).
  */
@@ -18,10 +19,8 @@ function expectedFraction(columns: number, width: (typeof LAYOUT_ITEM_WIDTHS)[nu
   return Math.ceil(columns / 3)
 }
 
-/** Extracts the `lg:col-span-N` (or, absent that, the last `col-span-N`) value — the effective span once every breakpoint has cascaded. */
+/** The effective span once every tier has cascaded: the LAST `col-span-N` (tiers are listed ascending, base -> @md -> wide). */
 function largestSpan(className: string): number {
-  const lgMatch = className.match(/lg:col-span-(\d+)/)
-  if (lgMatch) return Number(lgMatch[1])
   const matches = [...className.matchAll(/col-span-(\d+)/g)]
   return Number(matches.at(-1)?.[1])
 }
@@ -39,8 +38,8 @@ describe('attribute-layout-grid', () => {
     expect(gridColsClass(1)).toBe('grid-cols-1')
   })
 
-  it('columns=4 collapses through an intermediate 2-col tablet step before the 4-col desktop grid', () => {
-    expect(gridColsClass(4)).toBe('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4')
+  it('columns=4 collapses through an intermediate 2-col step before the 4-col wide-container grid', () => {
+    expect(gridColsClass(4)).toBe('grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-4')
   })
 
   it('every (columns, width) pair starts at col-span-1 on mobile', () => {

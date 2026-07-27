@@ -2,6 +2,71 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0062 — FIX: DEFAULT WIDTH ITEM PER-COLONNE (le colonne sezione ora hanno effetto) (2026-07-27) — VERDE, NON COMMITTATO
+
+Sintomo utente: "se setto una sezione a due colonne il sistema mi ritorna sempre colonne singole
+una sopra e una sotto". Causa: ogni attributo piazzato nasceva con `width='full'`
+(`layout-configurator-tree.ts:150`), e `full` = span di TUTTE le colonne; quindi cambiare
+`columns` della sezione non aveva alcun effetto visivo (due item `full` in griglia 2-col si impilano,
+identico a 1-col). Il modello width e' frazionario (full/two_thirds/half/third), non a celle assolute.
+
+Fix (solo FE, lane layout-configurator):
+- `layout-configurator-tree.ts`: nuova `defaultWidthForColumns(columns)` (1->full, 2->half,
+  3->third, 4->third: 4 non ha una width a cella singola nell'enum, prende la piu' stretta) +
+  import `LayoutColumns`. In `placeAttribute` il piazzamento NUOVO dalla palette usa questo default
+  in base a `columns` della sezione target; lo SPOSTAMENTO di un item esistente mantiene la sua
+  width (`removed?.width` invariato). Nessuna modifica al renderer/grid (le classi Tailwind statiche
+  erano gia' corrette).
+- Dato esistente: sezione della categoria 173 (layout id=1) "healed" via tinker — i 2 item `full`
+  della sezione a 2 colonne portati a `half` (sezione a 1 colonna lasciata `full`). Ora si affiancano.
+
+Test (eseguiti): `layout-configurator-tree.test.ts` — aggiornate le aspettative incidentali del
+vecchio default `full` al nuovo (`half` in sezione 2-col; requisito cambiato, dichiarato) + nuovo
+test che blocca il default per-colonne (1->full, 3->third). `use-layout-configurator-actions.test.ts`
+aggiornato (drag: `half`). `vitest src/features/attributes` 65/65, `tsc -b` pulito, `eslint` sui file
+toccati pulito. (Fixture hardcoded in renderer/configurator test con `width:'full'` NON toccate:
+testano il rendering di un blob dato, non il default di placement.)
+
+NOTE: comportamento invariato per lo spostamento (preserva width) e per sezioni a 1 colonna. 4 colonne
+resta senza width a cella singola (limite pre-esistente dell'enum frazionario). NON COMMITTATO.
+
+## SPEC 0062 — FIX: LAYOUT UNICO CROSS-MODE (fallback create/edit/view) (2026-07-24) — VERDE, NON COMMITTATO
+
+Sintomo utente: "il layout si salva ma non si vedono gli effetti sul form del prodotto". Causa: i
+tre `form_mode` (create/edit/view) erano layout INDIPENDENTI senza eredita'; l'utente configurava
+solo `create` (default del selettore) e il form di modifica (`edit`) / il dettaglio (`view`)
+cadevano sul fallback flat. Requisito CAMBIATO su decisione utente: un unico layout salvato deve
+guidare tutti i mode (fallback tra mode), lato CONSUMO. Autoring del configuratore e path Opportunity
+restano ESATTI per-mode (invariante Opportunity non toccata).
+
+Modifiche (backend + 1 FE):
+- `AttributeLayoutService`: nuovo `resolveWithFallback(category, context, formMode)` — mode esatto,
+  altrimenti primo configurato in `FALLBACK_ORDER = [Create, Edit, View]`, una sola query
+  (`keyBy` su `form_mode->value`). `resolveForProduct` (match esatto) INVARIATO: continua a servire
+  autoring e Opportunity.
+- `AttributeLayoutQueryRequest`: aggiunto param `exact` (boolean) + accessor `exact()`.
+- `AttributeLayoutController::show`: `exact()` -> `resolveForProduct` (autoring), altrimenti
+  `resolveWithFallback` (form prodotto).
+- `ProductService::attributeLayout` (detail, view): ora `resolveWithFallback`.
+- FE `product-categories/api.ts::fetchAttributeLayout`: il configuratore invia `exact: 1` (deve
+  vedere la riga raw del mode, mai il fallback). `fetchProductAttributeLayout` (form prodotto)
+  invariato -> ottiene il fallback. Nessun'altra modifica FE (i mock dei test intercettano la
+  funzione api, non i params axios).
+
+Test (eseguiti):
+- Backend `php artisan test` sui 4 file layout: 29/29 verdi. `ProductAttributeLayoutTest`: il vecchio
+  "create NON trapela nel detail" RISCRITTO in "create guida il detail via fallback" (requisito
+  cambiato, dichiarato) + nuovo test precedenza (view esatto vince su create). `AttributeLayoutTest`:
+  +2 test endpoint (GET senza exact -> fallback; GET con `exact=1` -> null per mode non configurato).
+- Pint pulito sui file backend. FE: `vitest` product-categories/products 102/102, `tsc -b` pulito.
+- Verifica dati reali (cat 173, solo `create`): `resolveWithFallback` ritorna 2 sezioni per
+  create/edit/view; `resolveForProduct` null per edit/view (autoring corretto).
+
+PROSSIMI PASSI: opzionale UX — il selettore `form_mode` nel configuratore resta a 3 tab ma edit/view
+mostrano vuoto (autoring esatto); se si vuole nascondere del tutto la distinzione mode nella UI del
+configuratore e' un follow-up separato. Opportunity NON coinvolta (resta per-mode esatta). NON
+COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## SPEC 0062 — CONFIGURATORE SPOSTATO NEL FORM EDIT + ANTEPRIMA READ-ONLY NEL DETTAGLIO (2026-07-24) — VERDE, NON COMMITTATO
 
 Owner: teammate `frontend`, scope `frontend/src/features/product-categories/` (+2 chiavi i18n in

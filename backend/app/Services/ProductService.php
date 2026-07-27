@@ -131,12 +131,11 @@ class ProductService
     }
 
     /**
-     * The product's category's configured layout (spec 0062), always
-     * FormMode::View — ProductResource is the detail shape; the create/edit
-     * form resolves its OWN (context=product, form_mode=create|edit) layout
-     * directly against the category picker via GET attribute-layouts, never
-     * through this Resource. Null when the product has no category or none
-     * is configured (flat fallback, AC-007).
+     * The product's category's configured layout for the detail shape (spec
+     * 0062 revised): FormMode::View with cross-mode fallback, so a single
+     * saved layout (typically authored under `create`) also drives the
+     * read-only detail. Null when the product has no category or the category
+     * has no PRODUCT-context layout in any mode (flat fallback, AC-007).
      *
      * @return array{sections: array<int, array<string, mixed>>}|null
      */
@@ -146,7 +145,7 @@ class ProductService
             return null;
         }
 
-        return $this->attributeLayoutService->resolveForProduct($product->category, AttributeContext::Product, FormMode::View);
+        return $this->attributeLayoutService->resolveWithFallback($product->category, AttributeContext::Product, FormMode::View);
     }
 
     /**

@@ -38,7 +38,7 @@ describe('useLayoutConfiguratorActions.handleDragEnd', () => {
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        sections: [expect.objectContaining({ rows: [{ id: rowId, items: [{ attribute_code: 'company_name', width: 'full' }] }] })],
+        sections: [expect.objectContaining({ rows: [{ id: rowId, items: [{ attribute_code: 'company_name', width: 'half' }] }] })],
       }),
     )
   })

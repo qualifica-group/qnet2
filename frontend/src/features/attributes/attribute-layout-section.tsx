@@ -37,7 +37,8 @@ export function AttributeLayoutSection<TFieldValues extends AttributeLayoutFormS
       collapsible={section.collapsible}
       defaultCollapsed={section.default_collapsed}
     >
-      <div className="flex flex-col gap-3">
+      {/* `@container`: the row grids collapse on THIS panel's width, not the viewport (attribute-layout-grid.ts). */}
+      <div className="@container flex flex-col gap-3">
         {section.rows.map((row) => (
           <div key={row.id} className={cn('grid', LAYOUT_GRID_GAP_CLASS, gridColsClass(section.columns))}>
             {row.items.map((item) => {

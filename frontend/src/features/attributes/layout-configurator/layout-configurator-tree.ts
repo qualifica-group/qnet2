@@ -1,5 +1,6 @@
 import type {
   LayoutBlob,
+  LayoutColumns,
   LayoutItem,
   LayoutItemWidth,
   LayoutSection,
@@ -146,13 +147,34 @@ function insertIntoRow(
   }))
 }
 
+/**
+ * The width a freshly placed attribute takes so it fills a SINGLE cell of the
+ * target section instead of the whole row — otherwise setting a section to N
+ * columns has no visible effect (the default would still span every column).
+ * 4 columns has no single-cell width in the fractional enum, so it takes the
+ * narrowest available (`third`, span 2); the user can still refine per item.
+ */
+function defaultWidthForColumns(columns: LayoutColumns): LayoutItemWidth {
+  switch (columns) {
+    case 1:
+      return 'full'
+    case 2:
+      return 'half'
+    default:
+      return 'third'
+  }
+}
+
 /** Moves (or unplaces) one attribute — the single mutation backing every drag-and-drop outcome (AC-009). */
 export function placeAttribute(blob: LayoutBlob, attributeCode: string, target: DropTarget): LayoutBlob {
   const { blob: withoutItem, removed } = removeAttribute(blob, attributeCode)
   if (target.type === 'palette') {
     return withoutItem
   }
-  const width: LayoutItemWidth = removed?.width ?? 'full'
+  // A moved item keeps its width; a brand-new placement from the palette tiles
+  // to the target section's column count (removed === undefined).
+  const targetColumns = withoutItem.sections.find((section) => section.id === target.sectionId)?.columns ?? 1
+  const width: LayoutItemWidth = removed?.width ?? defaultWidthForColumns(targetColumns)
   return insertIntoRow(withoutItem, target.sectionId, target.rowId, { attribute_code: attributeCode, width }, target.beforeCode)
 }
 

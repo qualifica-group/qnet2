@@ -30,7 +30,18 @@ class AttributeLayoutQueryRequest extends FormRequest
         return [
             'context' => ['sometimes', Rule::enum(AttributeContext::class)],
             'form_mode' => ['sometimes', Rule::enum(FormMode::class)],
+            'exact' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * The configurator's authoring load sets this to request the RAW row for
+     * the exact mode (no cross-mode inheritance); consumers (product form)
+     * leave it off and get the cross-mode fallback resolution.
+     */
+    public function exact(): bool
+    {
+        return $this->boolean('exact');
     }
 
     public function context(): AttributeContext

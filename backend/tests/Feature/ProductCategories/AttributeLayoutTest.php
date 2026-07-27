@@ -287,6 +287,41 @@ it('AC-006: GET on a category with no layout -> data.layout is null, data.attrib
 });
 
 // ---------------------------------------------------------------------------
+// Cross-mode fallback (spec 0062 revised) — one saved layout drives every mode
+// ---------------------------------------------------------------------------
+
+it('GET for a mode with no row falls back to another configured mode (product form path)', function () {
+    $actor = productCategoryUserWith(['view']);
+    $category = ProductCategory::factory()->create();
+    $attribute = Attribute::factory()->create(['code' => 'material']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['material'])
+        ->create(['context' => 'product', 'form_mode' => 'create']);
+    Sanctum::actingAs($actor);
+
+    // No dedicated `edit` row: the product edit form still receives the `create` layout.
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit")
+        ->assertOk()
+        ->assertJsonPath('data.layout.sections.0.rows.0.items.0.attribute_code', 'material');
+});
+
+it('GET with exact=1 returns null for an unconfigured mode even when another mode is configured (authoring path)', function () {
+    $actor = productCategoryUserWith(['view']);
+    $category = ProductCategory::factory()->create();
+    $attribute = Attribute::factory()->create(['code' => 'material']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['material'])
+        ->create(['context' => 'product', 'form_mode' => 'create']);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit&exact=1")
+        ->assertOk()
+        ->assertJsonPath('data.layout', null);
+});
+
+// ---------------------------------------------------------------------------
 // PUT with layout=null (or empty sections) deletes the row (back to flat)
 // ---------------------------------------------------------------------------
 

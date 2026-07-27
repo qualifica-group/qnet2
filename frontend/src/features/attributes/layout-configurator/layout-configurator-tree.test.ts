@@ -162,7 +162,9 @@ describe('row CRUD (AC-010)', () => {
 })
 
 describe('placeAttribute — drag placement/move/row-break (AC-009)', () => {
-  it('places a palette attribute into a row', () => {
+  it('places a palette attribute into a row, tiling to the section column count', () => {
+    // A default section is 2 columns, so a fresh placement takes `half` (one
+    // cell) — not `full` — otherwise the column setting would have no effect.
     let blob = addSection(EMPTY_BLOB)
     const sectionId = blob.sections[0].id
     blob = addRow(blob, sectionId)
@@ -170,7 +172,23 @@ describe('placeAttribute — drag placement/move/row-break (AC-009)', () => {
 
     blob = placeAttribute(blob, 'company_name', { type: 'row', sectionId, rowId, beforeCode: null })
 
-    expect(blob.sections[0].rows[0].items).toEqual([{ attribute_code: 'company_name', width: 'full' }])
+    expect(blob.sections[0].rows[0].items).toEqual([{ attribute_code: 'company_name', width: 'half' }])
+  })
+
+  it('a fresh palette placement takes the single-cell width for the section columns (1->full, 3->third)', () => {
+    let one = addSection(EMPTY_BLOB)
+    const oneId = one.sections[0].id
+    one = updateSection(one, oneId, { columns: 1 })
+    one = addRow(one, oneId)
+    one = placeAttribute(one, 'a', { type: 'row', sectionId: oneId, rowId: one.sections[0].rows[0].id, beforeCode: null })
+    expect(one.sections[0].rows[0].items[0].width).toBe('full')
+
+    let three = addSection(EMPTY_BLOB)
+    const threeId = three.sections[0].id
+    three = updateSection(three, threeId, { columns: 3 })
+    three = addRow(three, threeId)
+    three = placeAttribute(three, 'b', { type: 'row', sectionId: threeId, rowId: three.sections[0].rows[0].id, beforeCode: null })
+    expect(three.sections[0].rows[0].items[0].width).toBe('third')
   })
 
   it('moves a placed item to a different row, preserving its width', () => {
@@ -201,7 +219,8 @@ describe('placeAttribute — drag placement/move/row-break (AC-009)', () => {
     blob = placeAttribute(blob, 'weight', { type: 'row', sectionId: sectionB.id, rowId: rowB.id, beforeCode: null })
 
     expect(blob.sections[0].rows[0].items).toEqual([])
-    expect(blob.sections[1].rows[0].items).toEqual([{ attribute_code: 'weight', width: 'full' }])
+    // Placed into a default 2-column section (`half`), then moved — the move preserves that width.
+    expect(blob.sections[1].rows[0].items).toEqual([{ attribute_code: 'weight', width: 'half' }])
   })
 
   it('inserting before an existing item keeps a manual row break intact (two rows stay distinct)', () => {
@@ -242,11 +261,12 @@ describe('updateItemWidth (AC-009: "cambio larghezza item aggiorna lo span")', (
     blob = placeAttribute(blob, 'a', { type: 'row', sectionId, rowId, beforeCode: null })
     blob = placeAttribute(blob, 'b', { type: 'row', sectionId, rowId, beforeCode: null })
 
-    blob = updateItemWidth(blob, 'a', 'half')
+    // Both start at the 2-column default (`half`); updating one to `third` must not touch the other.
+    blob = updateItemWidth(blob, 'a', 'third')
 
     expect(blob.sections[0].rows[0].items).toEqual([
-      { attribute_code: 'a', width: 'half' },
-      { attribute_code: 'b', width: 'full' },
+      { attribute_code: 'a', width: 'third' },
+      { attribute_code: 'b', width: 'half' },
     ])
   })
 })
