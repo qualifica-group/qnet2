@@ -16,7 +16,9 @@ use RuntimeException;
  * (id, name) created through SourceService, mirroring ReferentTypesSource.
  * An independent phase-1 anchor: registry records reference their source via
  * `old_id` once that relation exists (spec 0018 scope). Re-import is
- * idempotent (skip by old_id); the name is NOT unique, so no adoption logic.
+ * idempotent (skip by old_id); a source already provisioned by name — the
+ * clean template seed ships the client's fixed catalogue — is ADOPTED rather
+ * than duplicated (mirrors RolesSource), since `name` carries no unique index.
  */
 class SourcesSource extends AbstractMigrationSource
 {
@@ -86,6 +88,18 @@ class SourcesSource extends AbstractMigrationSource
 
         if ($name === '') {
             throw new RuntimeException('name is required.');
+        }
+
+        // Adopt a source already present under this name and not yet claimed
+        // by another external id (the template seed's catalogue): a second row
+        // with the same name would be an unusable duplicate in every select.
+        $adopted = Source::query()->where('name', $name)->whereNull('old_id')->first();
+
+        if ($adopted !== null) {
+            $adopted->old_id = $externalId;
+            $adopted->save();
+
+            return MigrationRowOutcome::created(model: $adopted);
         }
 
         $source = $this->service->create(new CreateSourceData(name: $name));

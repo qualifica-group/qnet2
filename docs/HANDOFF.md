@@ -2,6 +2,47 @@
 
 > Injected at session start. Update at every green state.
 
+## TEMPLATE QUALIFICA — IMPORT LEGACY DEI CATALOGHI CLIENTE (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: `QualificaTemplateSeeder` deve importare anche funzioni aziendali, societa
+aziendali, sedi operative, tipi di referente, fonti, tag e settori. Decisione utente
+(AskUserQuestion): NON cataloghi hardcoded nel seeder ma **import dal gestionale legacy tramite
+`App\Migrations\Sources`**, "come si fa da /migrations" (incluse companies e sedi operative con il
+loro indirizzo, gestito dai rispettivi Source).
+
+CONTRATTO: nuovo `Database\Seeders\QualificaLegacyImportSeeder`, chiamato in coda a
+`QualificaTemplateSeeder::run()` (i cataloghi statici sono la baseline, il legacy e' il delta sopra).
+La lista sorgenti e' la costante pubblica `QualificaLegacyImportSeeder::SOURCES` = i 7 anchor di
+fase 1 di `MigrationOrder` nell'ordine: `business-functions`, `companies`, `operational-sites`,
+`referent-types`, `sources`, `tags`, `sectors`. NON e' il piano di massa: users/referents/prodotti
+sono dati operativi, non template. Due precondizioni opzionali (mai fatali, solo warning + skip):
+`config('migrations.base_url')` valorizzata e almeno un utente `super-admin` come attore.
+Il super-admin si cerca con `whereHas('roles', ...)`, NON con lo scope `User::role()` — quello lancia
+se il ruolo non esiste ancora (DB senza `RolePermissionSeeder`).
+
+`MigrationService`: estratto `createMassRun()` privato + nuovo `runMassSync(User $actor, array
+$sources)` — stesso orchestratore di "Importa tutto" (`RunMassMigrationJob`: un `MigrationRun` figlio
+per sorgente, il primo fallimento ferma la catena) ma `dispatchSync`. Il run seedato compare nello
+storico Migrazioni come uno lanciato da UI. `startMass()` invariato nel comportamento.
+
+`SourcesSource`: aggiunta **adozione per nome** (specchio di `RolesSource`): una source gia' presente
+con quel nome e `old_id` NULL viene adottata (le si scrive `old_id`) invece di crearne una seconda.
+Senza, il template — che seeda 9 fonti per nome — avrebbe duplicato "Diretto" & co. al primo import.
+Una source gia' rivendicata da un altro `old_id` non e' adottabile. Le altre lookup (tags,
+referent-types, sectors, business-functions) NON hanno adozione: il template pulito non le pre-seeda,
+quindi non collidono — se un domani le si pre-seeda, serve la stessa logica.
+
+Verifica ESEGUITA (`XDEBUG_MODE=off`, con xdebug attivo l'intera dir segfaulta — signal 11):
+`tests/Feature/Migration` 188/188 verde, incluso il nuovo
+`QualificaLegacyImportSeederTest` (5 casi: mass run inline completo con i 7 figli in ordine, adozione
+fonte + import della sola nuova, doppio run senza duplicati, skip senza base_url, skip senza
+super-admin) e i 2 nuovi casi di adozione in `SourcesSourceImportTest`. Pint pulito.
+`tests/Feature/CustomFields`+`Sources` 124/126: i 2 rossi sono PRE-ESISTENTI e non toccano il seeder
+(`CustomFieldAdminSecurityTest` nodo navigazione `custom-fields`; `CustomFieldWritePipelineTest` 422
+su `vat_number` generato da faker) — nessuno dei due file referenzia `QualificaTemplateSeeder`.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## OPPORTUNITA — "NOTE GENERALI" EREDITATE DAL LEAD (`opportunities.general_notes`) (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: aggiungere un campo "note generali" in Opportunita che eredita dal campo `notes`

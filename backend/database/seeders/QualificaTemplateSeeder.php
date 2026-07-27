@@ -38,6 +38,11 @@ use Illuminate\Database\Seeder;
  * on the natural name key for sources, reward types, categories and products
  * — a re-run never duplicates rows nor overwrites manual edits.
  * Adding a module's template = one more entry in TEMPLATES.
+ *
+ * Plus, last, the client's real catalogues pulled from the legacy system
+ * (business functions, companies, operational sites, referent types, sources,
+ * tags, sectors) through the migration engine — see
+ * QualificaLegacyImportSeeder, a no-op when no external system is configured.
  */
 class QualificaTemplateSeeder extends Seeder
 {
@@ -171,6 +176,11 @@ class QualificaTemplateSeeder extends Seeder
         $this->seedSources();
         $this->seedRewardTypes();
         $this->seedCatalog();
+
+        // Last: the static catalogues above are the baseline, the legacy
+        // system is the delta on top of them (an existing source is adopted,
+        // not duplicated).
+        $this->call(QualificaLegacyImportSeeder::class);
     }
 
     private function seedSources(): void

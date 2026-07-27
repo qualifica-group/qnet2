@@ -105,6 +105,52 @@ it('re-importing the same sources is idempotent (skip, no duplicate)', function 
         ->and($secondRun->fresh()->created_rows)->toBe(0);
 });
 
+it('adopts a source already provisioned under the same name (no duplicate)', function () {
+    seedMigrationsConfig();
+    // What the static template seed leaves behind: a name, no old_id.
+    $existing = Source::query()->create(['name' => 'Passaparola']);
+    Http::fake([
+        fakeMigrationsBaseUrl().'/sources*' => Http::response([
+            'items' => [
+                ['id' => 21, 'name' => 'Passaparola'],
+                ['id' => 22, 'name' => 'Fiera'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'sources']);
+
+    runMigrationJobFor($run);
+
+    expect(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
+        ->and($existing->fresh()->old_id)->toBe(21)
+        // The legacy-only name is still created alongside the adopted one.
+        ->and(Source::query()->where('old_id', 22)->value('name'))->toBe('Fiera')
+        ->and($run->fresh()->created_rows)->toBe(2);
+});
+
+it('never adopts a source already claimed by another external id', function () {
+    seedMigrationsConfig();
+    $claimed = Source::query()->create(['name' => 'Sito']);
+    $claimed->old_id = 30;
+    $claimed->save();
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/sources*' => Http::response([
+            'items' => [['id' => 31, 'name' => 'Sito']],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'sources']));
+
+    expect(Source::query()->where('name', 'Sito')->count())->toBe(2)
+        ->and($claimed->fresh()->old_id)->toBe(30);
+});
+
 it('isolates a failed source row (missing name) without blocking the valid one', function () {
     seedMigrationsConfig();
     Http::fake([
