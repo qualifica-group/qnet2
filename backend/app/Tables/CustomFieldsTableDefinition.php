@@ -109,6 +109,17 @@ class CustomFieldsTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Same rationale as AttributesTableDefinition::enumKeyFor(): the shared
+     * type catalogue is config-driven, but the frontend owns its copy — so cell
+     * badge AND Set Filter both localize from `enums.custom_field_type.<value>`
+     * instead of showing the raw label key.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'type' ? FieldTypeRegistry::ENUM_KEY : null;
+    }
+
+    /**
      * Map a CustomFieldDefinition to the row payload. `actions` is attached by
      * the generic TableService via actionsFor().
      *

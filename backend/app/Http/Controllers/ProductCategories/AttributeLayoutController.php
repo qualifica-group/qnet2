@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\ProductCategories;
 
+use App\Enums\AttributeContext;
+use App\Enums\LayoutFormScope;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\ProductCategories\AttributeLayoutQueryRequest;
 use App\Http\Requests\ProductCategories\UpdateAttributeLayoutRequest;
@@ -38,7 +40,10 @@ class AttributeLayoutController extends BaseApiController
      * GET /api/product-categories/{productCategory}/attribute-layouts —
      * the persisted layout (or null) plus the category's effective
      * attribute catalogue for that context, feeding the configurator's
-     * palette.
+     * palette. `inherited` carries the shared `all` layout on an authoring
+     * load of a per-mode scope, so the configurator can show what that mode
+     * currently inherits without a second request; it is null everywhere
+     * else (spec 0062, D3 revised).
      */
     public function show(AttributeLayoutQueryRequest $request, ProductCategory $productCategory): JsonResponse
     {
@@ -46,17 +51,17 @@ class AttributeLayoutController extends BaseApiController
             $this->authorize('view', $productCategory);
 
             $context = $request->context();
-            $formMode = $request->formMode();
 
-            // Authoring (configurator) asks for the exact per-mode row; the
-            // product form omits `exact` and gets the cross-mode fallback so
+            // Authoring (configurator) asks for the exact scope's own row; the
+            // product form omits `exact` and gets the shared-layout fallback so
             // one saved layout drives every mode (spec 0062 revised).
-            $layout = $request->exact()
-                ? $this->service->resolveForProduct($productCategory, $context, $formMode)
-                : $this->service->resolveWithFallback($productCategory, $context, $formMode);
+            [$layout, $inherited] = $request->exact()
+                ? $this->authoredLayout($productCategory, $context, $request->scope())
+                : [$this->service->resolveWithFallback($productCategory, $context, $request->formMode()), null];
 
             return $this->ok([
                 'layout' => $layout,
+                'inherited' => $inherited,
                 'attributes' => $this->hierarchy->effectiveAttributes($productCategory, $context)->values(),
             ]);
         } catch (Throwable $exception) {
@@ -77,7 +82,7 @@ class AttributeLayoutController extends BaseApiController
             $layout = $this->service->upsert(
                 $productCategory,
                 $request->context(),
-                $request->formMode(),
+                $request->scope(),
                 $request->layout(),
             );
 
@@ -85,5 +90,21 @@ class AttributeLayoutController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['productCategory' => $productCategory->id]);
         }
+    }
+
+    /**
+     * The authoring pair for one scope: its own row, and — for a per-mode
+     * scope — the shared layout it falls back to while it has none.
+     *
+     * @return array{0: array{sections: array<int, array<string, mixed>>}|null, 1: array{sections: array<int, array<string, mixed>>}|null}
+     */
+    private function authoredLayout(ProductCategory $productCategory, AttributeContext $context, LayoutFormScope $scope): array
+    {
+        return [
+            $this->service->resolveExact($productCategory, $context, $scope),
+            $scope === LayoutFormScope::All
+                ? null
+                : $this->service->resolveExact($productCategory, $context, LayoutFormScope::All),
+        ];
     }
 }

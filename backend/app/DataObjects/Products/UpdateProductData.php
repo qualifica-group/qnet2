@@ -40,6 +40,8 @@ final readonly class UpdateProductData
         public bool $vatRateIdSubmitted = false,
         public ?int $supplierId = null,
         public bool $supplierIdSubmitted = false,
+        public ?int $stateId = null,
+        public bool $stateIdSubmitted = false,
         public ?array $attributeValues = null,
     ) {}
 
@@ -66,6 +68,8 @@ final readonly class UpdateProductData
             vatRateIdSubmitted: array_key_exists('vat_rate_id', $data),
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
             supplierIdSubmitted: array_key_exists('supplier_id', $data),
+            stateId: array_key_exists('state_id', $data) && $data['state_id'] !== null ? (int) $data['state_id'] : null,
+            stateIdSubmitted: array_key_exists('state_id', $data),
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
     }
@@ -115,6 +119,10 @@ final readonly class UpdateProductData
 
         if ($this->supplierIdSubmitted) {
             $attributes['supplier_id'] = $this->supplierId;
+        }
+
+        if ($this->stateIdSubmitted) {
+            $attributes['state_id'] = $this->stateId;
         }
 
         return $attributes;

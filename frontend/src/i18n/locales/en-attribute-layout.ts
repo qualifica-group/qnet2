@@ -1,10 +1,10 @@
 /**
  * Localized strings for the attribute-layout configurator (spec 0062,
- * `features/attributes/layout-configurator/`) and its mount inside the
- * Product Category detail (`features/product-categories/
- * product-category-attribute-layout-section.tsx`). Registered as its own
- * i18next namespace (`attributeLayout`), mirroring `en-migrations.ts` —
- * `en.ts`/`it.ts` stay untouched (owned by other in-flight lanes).
+ * `features/attributes/layout-configurator/`) and its dedicated Sheet
+ * (`features/product-categories/product-category-attribute-layout-sheet.tsx`),
+ * opened from the "layout" row action on the Product Categories table.
+ * Registered as its own i18next namespace (`attributeLayout`), mirroring
+ * `en-migrations.ts`.
  */
 export const attributeLayout = {
   configurator: {
@@ -59,12 +59,23 @@ export const attributeLayout = {
     },
     modeLabel: 'Form mode',
     mode: {
+      all: 'All modes',
       create: 'Create',
       edit: 'Edit',
       view: 'View',
     },
+    inheritsShared: 'This mode uses the “All modes” layout.',
+    customize: 'Customize this mode',
+    overrideUnsaved: 'Customization not saved yet: save to apply it to this mode only.',
+    overrideActive: 'Layout customized for “{{mode}}”.',
+    resetToShared: 'Back to all modes',
+    resetTitle: 'Remove the customized layout?',
+    resetDescription: 'The “{{mode}}” mode goes back to the “All modes” layout. Its own configuration is deleted.',
+    resetConfirm: 'Remove',
+    resetDone: 'Customized layout removed: back to the “All modes” layout.',
     save: 'Save layout',
     saving: 'Saving…',
+    cancel: 'Cancel',
     saved: 'Layout saved.',
     loadError: 'Unable to load the layout.',
     saveError: 'Unable to save the layout.',
@@ -73,7 +84,6 @@ export const attributeLayout = {
     empty: 'No layout configured: the plain attribute list is used instead.',
     retry: 'Retry',
     editorHint: 'The layout is saved separately from the category’s own data.',
-    createHint: 'Save the category to configure the attribute layout.',
     previewEmpty: 'No layout configured for this combination.',
   },
 }

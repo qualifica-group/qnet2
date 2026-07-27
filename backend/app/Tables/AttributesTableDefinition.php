@@ -97,7 +97,10 @@ class AttributesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Badge metadata for the `type` column, driven by FieldTypeRegistry.
+     * Badge metadata for the `type` column, driven by FieldTypeRegistry. The
+     * label is the i18n key of the shared field-type catalogue (the same copy
+     * the custom fields admin uses — one catalogue, one set of labels); the
+     * frontend localizes it through `enumKeyFor()` below.
      *
      * @return array<int, array<string, mixed>>|null
      */
@@ -109,10 +112,22 @@ class AttributesTableDefinition extends AbstractTableDefinition
 
         return array_map(static fn (string $type): array => [
             'value' => $type,
-            'label' => "attributes.types.{$type}",
+            'label' => "customFields.types.{$type}",
             'color' => null,
             'icon' => null,
         ], $this->fieldTypeRegistry->all());
+    }
+
+    /**
+     * The `type` badge is not backed by a PHP enum (the catalogue is
+     * config-driven, config/custom-fields.php), but the frontend still owns its
+     * copy: declaring the enum key lets BOTH the cell badge and the Set Filter
+     * checklist localize from `enums.custom_field_type.<value>` instead of
+     * rendering the raw backend label key.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'type' ? FieldTypeRegistry::ENUM_KEY : null;
     }
 
     /**

@@ -65,6 +65,9 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
           {product.supplier && (
             <DetailField label={t('products.form.supplier')}>{product.supplier.name}</DetailField>
           )}
+          {product.state && (
+            <DetailField label={t('products.form.state')}>{product.state.name}</DetailField>
+          )}
         </DetailGrid>
       </DetailSection>
 

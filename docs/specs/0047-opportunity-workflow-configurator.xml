@@ -8,6 +8,13 @@
     D3 = al re-match, mappatura per system_key (open->open, closed->closed), altrimenti stato iniziale.
     D4 = tie-break a parità di specificità: workflow più vecchio (id asc). Nessun campo priority.
 
+  AMENDMENT 2026-07-27 (direttiva utente): i CAMPI PERSONALIZZATI dell'entità `opportunities`
+  (spec 0021) diventano selezionabili come campi-criterio, LIMITATAMENTE a quelli di tipo
+  `relation` — l'unico tipo il cui valore è un id intero verso una tabella, quindi l'unico
+  compatibile con la colonna `opportunity_workflow_criteria.value_id` e con la semantica
+  "value_id esiste nella tabella target". Nessun altro tipo di custom field entra nell'allow-list.
+  Vedi la sezione <amendment_2026_07_27_custom_field_criteria> in fondo per contratto e AC.
+
   AMENDMENT 2026-07-21 (direttiva utente "Creazione Opportunità da Lead"): D1 rivisto.
   La Regione (state_id) NON è più derivata read-only: è un INPUT UTENTE, sempre presente e
   modificabile, sia sul form Lead sia sul form Opportunità. Semantica backend "submitted wins":
@@ -227,5 +234,94 @@
     <item>Naming identificatori in inglese; label esposte all'utente via i18next (namespace opportunityWorkflows) it/en.</item>
     <item>Definition of Done: Pest + Vitest scritti ed ESEGUITI, Pint + ESLint puliti, tsc --noEmit pulito. Nessun commit senza ok esplicito (CLAUDE.md §3.6).</item>
   </constraints>
+
+  <!-- =====================================================================
+       AMENDMENT 2026-07-27 — CUSTOM FIELD RELAZIONALI COME CAMPI-CRITERIO
+       Contratto congelato PRIMA dell'implementazione. Estende (non sostituisce)
+       l'allow-list di <scope><in> riga "Allow-list dei campi-criterio".
+       ===================================================================== -->
+  <amendment_2026_07_27_custom_field_criteria>
+
+    <goal>
+      Nel configuratore, l'elenco dei campi selezionabili come criterio include, oltre ai 4 campi
+      nativi, ogni CustomFieldDefinition attiva con entity_type='opportunities' e type='relation'.
+      Gli altri tipi di custom field restano ESCLUSI: `value_id` è un unsignedBigInteger validato
+      con un exists sulla tabella target, contratto che solo `relation` soddisfa.
+    </goal>
+
+    <decisions>
+      <item id="D5">Chiave del campo-criterio custom = chiave namespacata già in uso nel sistema custom fields: `custom.&lt;key&gt;` (App\CustomFields\CustomFieldProvider::KEY_PREFIX). Nessun nuovo schema di naming.</item>
+      <item id="D6">`custom_field_definitions.key` è validata `max:64`, quindi `custom.` + key può arrivare a 71 char mentre `opportunity_workflow_criteria.field` è varchar(64): serve una NUOVA migrazione che allarga la colonna a varchar(191). Mai modificare la migrazione già committata.</item>
+      <item id="D7">Cardinalità `many` ammessa: mappa su `multi_valued: true` con semantica "matcha se il value_id scelto è contenuto nell'array di valori dell'opportunità" — identica a business_function_id/product_category_id sulle productLines. Cardinalità `one` → `multi_valued: false`.</item>
+      <item id="D8">Una definizione è esclusa dall'allow-list (come se non esistesse) se: is_active=false, oppure `relation_target.entity_type` non risolve a un model registrato (nessuna tabella target su cui fare l'exists), oppure `relation_target.for_select_resource` è vuoto (il FE non potrebbe popolare la select del valore).</item>
+      <item id="D9">Il `label` di un campo custom NON è una chiave i18n (è testo libero inserito dall'utente). Il contratto guadagna quindi un discriminante `source: 'native'|'custom'`: il FE traduce solo quando `source === 'native'`. Nessun `t()` applicato a una label custom.</item>
+      <item id="D10">Un criterio che punta a un custom field poi disattivato/eliminato NON deve far esplodere nulla: il resolver lo tratta come "non matcha" e il label resolver ripiega sul value_id stringificato. Il workflow resta leggibile e modificabile.</item>
+      <item id="D11">L'allow-list resta l'UNICA fonte di tabelle/colonne usate in query (anti-SQLi): la tabella target di un custom field arriva da CustomFieldEntityRegistry::modelClassFor()->getTable(), mai da input di richiesta.</item>
+    </decisions>
+
+    <data_contract>
+      <endpoint method="GET" path="/api/opportunity-workflows/criterion-fields">
+        <response status="200"><!--
+          {
+            success, message,
+            data: [
+              // nativi (invariati, in testa, nell'ordine del registry)
+              { field: 'state_id', label: 'opportunityWorkflows.criterionFields.state_id',
+                source: 'native', for_select_resource: 'states', multi_valued: false },
+              ...
+              // custom relazionali, ordinati per sort_order poi id
+              { field: 'custom.<key>', label: '<CustomFieldDefinition.label testuale>',
+                source: 'custom', for_select_resource: '<relation_target.for_select_resource>',
+                multi_valued: <relation_target.cardinality === 'many'> }
+            ]
+          }
+          NOVITÀ rispetto al contratto originale: la chiave `source`. `label` resta i18n key per
+          i nativi, diventa testo già leggibile per i custom.
+        --></response>
+        <errors><!-- 403 senza opportunity-workflows.view (invariato) --></errors>
+      </endpoint>
+
+      <endpoint method="GET" path="/api/opportunity-workflows/{opportunityWorkflow}">
+        <response status="200"><!--
+          data.criteria[] guadagna due chiavi, così la vista di dettaglio e la tabella non devono
+          ricostruire la label del campo dal solo `field` (per un custom field non esiste chiave i18n):
+            { id, field, value_id, value_label, field_label: string, field_source: 'native'|'custom' }
+          field_label = stessa label dell'endpoint criterion-fields; per un field non più
+          nell'allow-list (D10) field_label = field (raw) e field_source = 'native'.
+        --></response>
+      </endpoint>
+
+      <endpoint method="POST|PUT|PATCH" path="/api/opportunity-workflows(/{opportunityWorkflow})">
+        <request><!--
+          criteria[].field accetta ora anche 'custom.<key>' (Rule::in sull'allow-list estesa).
+          criteria[].value_id continua a essere validato con un exists sulla tabella target
+          risolta DAL REGISTRY per quel field. Invarianti invariati: field distinti nel payload
+          (AC-008), criteria_signature univoca (AC-009).
+        --></request>
+      </endpoint>
+    </data_contract>
+
+    <acceptance_criteria>
+      <criterion id="AC-027">GET /api/opportunity-workflows/criterion-fields restituisce i 4 nativi con source='native' PIÙ una entry per ogni CustomFieldDefinition attiva con entity_type='opportunities' e type='relation', con field='custom.&lt;key&gt;', source='custom', label = label testuale della definizione, for_select_resource e multi_valued derivati da relation_target. [Pest]</criterion>
+      <criterion id="AC-028">Custom field di entity_type diverso da 'opportunities', o di type diverso da 'relation', o con is_active=false, NON compaiono nell'allow-list. [Pest]</criterion>
+      <criterion id="AC-029">Una definizione relation il cui relation_target.entity_type non risolve a un model registrato, o con for_select_resource vuoto, è esclusa dall'allow-list e un POST che la usa come field restituisce 422 (D8). [Pest]</criterion>
+      <criterion id="AC-030">POST/PATCH workflow con criteria=[{field:'custom.&lt;key&gt;', value_id: id esistente nella tabella target}] → 201/200 e la riga è persistita con field='custom.&lt;key&gt;'. Con value_id inesistente nella tabella target → 422. [Pest]</criterion>
+      <criterion id="AC-031">Un'opportunità il cui custom field relazionale `one` vale V matcha un workflow con criterio {field:'custom.&lt;key&gt;', value_id: V}; non matcha se vale altro o è null. Con cardinalità `many`, matcha se V è contenuto nell'array (D7). [Pest]</criterion>
+      <criterion id="AC-032">La risoluzione del workflow su un criterio custom NON introduce query per-riga: `custom_field_values` è caricata una sola volta per opportunità (loadMissing), come già avviene per productLines. [Pest]</criterion>
+      <criterion id="AC-033">Alla CREAZIONE di un'opportunità con custom field relazionali valorizzati nel payload, lo stato di lavorazione assegnato è quello del workflow che matcha sul criterio custom (i valori dei custom field sono persistiti dall'hook `saved` di HasCustomFields: la risoluzione deve avvenire quando sono già leggibili, altrimenti va ri-risolta). [Pest]</criterion>
+      <criterion id="AC-034">Disattivando o eliminando la CustomFieldDefinition referenziata da un criterio esistente: GET show del workflow risponde 200 (field_label = field raw, value_label = value_id stringificato), la tabella dei workflow risponde 200, e il resolver considera quel criterio NON matchante senza sollevare eccezioni (D10). [Pest]</criterion>
+      <criterion id="AC-035">Nel select dei campi-criterio del form, le opzioni con source='custom' sono renderizzate con la label letterale (nessun t()), quelle native tradotte via i18n; il select del valore usa il for_select_resource dell'opzione custom scelta. [Vitest]</criterion>
+      <criterion id="AC-036">La vista di dettaglio del workflow mostra la label corretta anche per un criterio custom, usando field_label/field_source invece di ricostruire la chiave i18n. [Vitest]</criterion>
+    </acceptance_criteria>
+
+    <constraints>
+      <item>CriterionFieldRegistry smette di essere una classe di soli metodi statici e diventa un servizio iniettabile (ha bisogno di CustomFieldProvider + CustomFieldEntityRegistry). Nomi dei metodi invariati; aggiornare i call site (controller, ValidatesWorkflowCriteria, OpportunityWorkflowResolver, CriterionValueLabelResolver, TableDefinition, Resource) — dove l'iniezione non è possibile (Resource/contesti statici) risolvere via app().</item>
+      <item>La lista dei custom field è già memoizzata per-request da CustomFieldProvider: NON aggiungere una seconda cache.</item>
+      <item>Nessuna nuova dipendenza. Nessuna modifica al modulo custom-fields (spec 0021): questo amendment ne è solo consumatore.</item>
+      <item>Nessun nuovo endpoint: si estende solo il payload di quelli esistenti.</item>
+      <item>Definition of Done invariata: Pest + Vitest scritti ed ESEGUITI, Pint + ESLint puliti, tsc --noEmit pulito, nessun commit senza ok esplicito (CLAUDE.md §3.6).</item>
+    </constraints>
+
+  </amendment_2026_07_27_custom_field_criteria>
 
 </spec>

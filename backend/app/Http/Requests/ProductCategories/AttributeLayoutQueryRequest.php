@@ -4,6 +4,7 @@ namespace App\Http\Requests\ProductCategories;
 
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,9 +12,13 @@ use Illuminate\Validation\Rule;
  * Validates the query for
  * GET /api/product-categories/{productCategory}/attribute-layouts (spec
  * 0062, data_contract): `context` defaults to Opportunity (same default as
- * the pre-existing effective-attributes endpoint), `form_mode` defaults to
- * Create. Authorization is intentionally NOT handled here (it stays in the
- * controller via authorize('view', $productCategory)).
+ * the pre-existing effective-attributes endpoint). `form_mode` means two
+ * different things on the two callers, so it is validated against two
+ * different enums: an authoring load (`exact`) addresses a
+ * LayoutFormScope — including the shared `all` — while a consuming load
+ * addresses the concrete FormMode being rendered, for which `all` is not a
+ * valid value. Authorization is intentionally NOT handled here (it stays in
+ * the controller via authorize('view', $productCategory)).
  */
 class AttributeLayoutQueryRequest extends FormRequest
 {
@@ -29,19 +34,30 @@ class AttributeLayoutQueryRequest extends FormRequest
     {
         return [
             'context' => ['sometimes', Rule::enum(AttributeContext::class)],
-            'form_mode' => ['sometimes', Rule::enum(FormMode::class)],
+            'form_mode' => [
+                'sometimes',
+                $this->boolean('exact') ? Rule::enum(LayoutFormScope::class) : Rule::enum(FormMode::class),
+            ],
             'exact' => ['sometimes', 'boolean'],
         ];
     }
 
     /**
      * The configurator's authoring load sets this to request the RAW row for
-     * the exact mode (no cross-mode inheritance); consumers (product form)
-     * leave it off and get the cross-mode fallback resolution.
+     * the exact scope (no shared-layout inheritance); consumers (product
+     * form) leave it off and get the shared-layout fallback resolution.
      */
     public function exact(): bool
     {
         return $this->boolean('exact');
+    }
+
+    /** The authored scope: the shared layout unless a specific mode is asked for. */
+    public function scope(): LayoutFormScope
+    {
+        $value = $this->validated('form_mode');
+
+        return $value === null ? LayoutFormScope::All : LayoutFormScope::from($value);
     }
 
     public function context(): AttributeContext

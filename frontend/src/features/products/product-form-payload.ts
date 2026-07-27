@@ -58,6 +58,7 @@ export function buildCreatePayload(
     product_type: values.product_type,
     vat_rate_id: values.vat_rate_id,
     supplier_id: values.supplier_id,
+    state_id: values.state_id,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
     ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
@@ -81,12 +82,12 @@ export function buildUpdatePayload(
   if (values.description !== original.description) {
     payload.description = values.description
   }
-  if (values.cost !== original.cost) {
+  if (values.cost !== normalizeDecimal(original.cost)) {
     // See buildCreatePayload: validated non-null by the schema's
     // required-value superRefine before submit.
     payload.cost = values.cost as number
   }
-  if (values.price !== original.price) {
+  if (values.price !== normalizeDecimal(original.price)) {
     payload.price = values.price as number
   }
   if (values.category_id !== original.category_id) {
@@ -100,6 +101,9 @@ export function buildUpdatePayload(
   }
   if (values.supplier_id !== original.supplier_id) {
     payload.supplier_id = values.supplier_id
+  }
+  if (values.state_id !== original.state_id) {
+    payload.state_id = values.state_id
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})
@@ -117,4 +121,16 @@ export function buildUpdatePayload(
   }
 
   return payload
+}
+
+/**
+ * Normalizes a money field (`decimal:2` server-side, so serialized as the
+ * string `"12.00"`) to the number the form and its zod schema work with.
+ * Twin of `normalizeDecimal` in the opportunities feature.
+ */
+export function normalizeDecimal(value: string | number | null): number | null {
+  if (value === null) {
+    return null
+  }
+  return typeof value === 'number' ? value : Number(value)
 }

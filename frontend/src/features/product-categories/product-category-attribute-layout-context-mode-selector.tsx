@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -6,32 +5,30 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import {
   ATTRIBUTE_LAYOUT_CONTEXTS,
-  ATTRIBUTE_LAYOUT_FORM_MODES,
+  ATTRIBUTE_LAYOUT_FORM_SCOPES,
 } from '@/features/product-categories/product-category-attribute-layout-shared'
-import type { LayoutFormMode } from '@/features/attributes/attribute-layout-types'
+import type { LayoutFormScope } from '@/features/attributes/attribute-layout-types'
 import type { AttributeContext } from '@/features/product-categories/types'
 
 interface AttributeLayoutContextModeSelectorProps {
   context: AttributeContext
   onContextChange: (context: AttributeContext) => void
-  formMode: LayoutFormMode
-  onFormModeChange: (formMode: LayoutFormMode) => void
-  /** Right-aligned slot, e.g. the editor's Save button. Omitted in the read-only preview. */
-  trailing?: ReactNode
+  scope: LayoutFormScope
+  onScopeChange: (scope: LayoutFormScope) => void
 }
 
 /**
- * The (context × form_mode) picker shared by the attribute-layout EDITOR
- * (form) and its read-only PREVIEW (detail) — spec 0062: each combination is
- * an entirely separate `attribute_layouts` row, so switching either
- * dimension changes what is loaded underneath.
+ * The (context × scope) picker shared by the attribute-layout EDITOR (sheet)
+ * and its read-only PREVIEW (detail) — spec 0062, D3 revised: each
+ * combination is an entirely separate `attribute_layouts` row, so switching
+ * either dimension changes what is loaded underneath. The scope list leads
+ * with "all modes", the shared layout every mode falls back to.
  */
 export function AttributeLayoutContextModeSelector({
   context,
   onContextChange,
-  formMode,
-  onFormModeChange,
-  trailing,
+  scope,
+  onScopeChange,
 }: AttributeLayoutContextModeSelectorProps) {
   const { t } = useTranslation('attributeLayout')
 
@@ -51,12 +48,12 @@ export function AttributeLayoutContextModeSelector({
         <Label htmlFor="attribute-layout-form-mode" className="text-xs font-normal text-muted-foreground">
           {t('section.modeLabel')}
         </Label>
-        <Select value={formMode} onValueChange={(value) => onFormModeChange(value as LayoutFormMode)}>
-          <SelectTrigger id="attribute-layout-form-mode" size="sm" className="h-8 w-36 text-xs">
+        <Select value={scope} onValueChange={(value) => onScopeChange(value as LayoutFormScope)}>
+          <SelectTrigger id="attribute-layout-form-mode" size="sm" className="h-8 w-44 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ATTRIBUTE_LAYOUT_FORM_MODES.map((value) => (
+            {ATTRIBUTE_LAYOUT_FORM_SCOPES.map((value) => (
               <SelectItem key={value} value={value}>
                 {t(`section.mode.${value}`)}
               </SelectItem>
@@ -64,8 +61,6 @@ export function AttributeLayoutContextModeSelector({
           </SelectContent>
         </Select>
       </div>
-
-      {trailing ? <div className="ml-auto flex items-center gap-2">{trailing}</div> : null}
     </div>
   )
 }

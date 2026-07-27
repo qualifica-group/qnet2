@@ -7,6 +7,7 @@ use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\ProductCategoriesSource;
+use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -52,6 +53,7 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'sectors' => SectorsSource::class,
         'attributes' => AttributesSource::class,
         'product-categories' => ProductCategoriesSource::class,
+        'product-category-attributes' => ProductCategoryAttributesSource::class,
         'products' => ProductsSource::class,
     ]);
 });
@@ -59,10 +61,11 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(14)
+    expect($sources)->toHaveCount(15)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
-            'sources', 'tags', 'sectors', 'attributes', 'product-categories', 'products',
+            'sources', 'tags', 'sectors', 'attributes', 'product-categories',
+            'product-category-attributes', 'products',
         ]);
 });

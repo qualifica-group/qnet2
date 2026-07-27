@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * same discipline as Opportunity): written exclusively via
  * App\Services\ProductService, which forceFill()s it after validation.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'state_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -53,5 +53,10 @@ class Product extends BaseModel
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Registry::class, 'supplier_id');
+    }
+
+    public function state(): BelongsTo
+    {
+        return $this->belongsTo(State::class);
     }
 }

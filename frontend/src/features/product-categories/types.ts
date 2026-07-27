@@ -147,6 +147,8 @@ export interface EffectiveAttribute {
  */
 export interface AttributeLayoutData {
   layout: LayoutBlob | null
+  /** The shared `all` layout this scope falls back to while it has no override of its own (null on the shared scope itself). */
+  inherited: LayoutBlob | null
   attributes: EffectiveAttribute[]
 }
 

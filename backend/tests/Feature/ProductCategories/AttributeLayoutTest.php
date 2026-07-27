@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\ProductCategory;
@@ -304,38 +305,121 @@ it('accepts the quarter item width (single cell of a 4-column section) and round
 });
 
 // ---------------------------------------------------------------------------
-// Cross-mode fallback (spec 0062 revised) — one saved layout drives every mode
+// Shared scope vs per-mode override (spec 0062, D3 revised)
 // ---------------------------------------------------------------------------
 
-it('GET for a mode with no row falls back to another configured mode (product form path)', function () {
-    $actor = productCategoryUserWith(['view']);
-    $category = ProductCategory::factory()->create();
-    $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
-    AttributeLayout::factory()->for($category, 'productCategory')
-        ->withCodes(['material'])
-        ->create(['context' => 'product', 'form_mode' => 'create']);
-    Sanctum::actingAs($actor);
+if (! function_exists('categoryWithScopedLayout')) {
+    /**
+     * A category exposing $codes in the PRODUCT context, with those same codes
+     * laid out under the $scope row.
+     *
+     * @param  array<int, string>  $codes
+     */
+    function categoryWithScopedLayout(string $scope, array $codes = ['material']): ProductCategory
+    {
+        $category = ProductCategory::factory()->create();
 
-    // No dedicated `edit` row: the product edit form still receives the `create` layout.
+        foreach ($codes as $code) {
+            $attribute = Attribute::factory()->create(['code' => $code]);
+            $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+        }
+
+        AttributeLayout::factory()->for($category, 'productCategory')
+            ->withCodes($codes)
+            ->create(['context' => 'product', 'form_mode' => $scope]);
+
+        return $category;
+    }
+}
+
+it('GET for a mode with no override falls back to the shared layout (product form path)', function () {
+    $category = categoryWithScopedLayout('all');
+    Sanctum::actingAs(productCategoryUserWith(['view']));
+
     $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit")
         ->assertOk()
         ->assertJsonPath('data.layout.sections.0.rows.0.items.0.attribute_code', 'material');
 });
 
-it('GET with exact=1 returns null for an unconfigured mode even when another mode is configured (authoring path)', function () {
-    $actor = productCategoryUserWith(['view']);
-    $category = ProductCategory::factory()->create();
-    $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+it('a per-mode override wins over the shared layout (product form path)', function () {
+    $category = categoryWithScopedLayout('all', ['material', 'colour']);
     AttributeLayout::factory()->for($category, 'productCategory')
-        ->withCodes(['material'])
-        ->create(['context' => 'product', 'form_mode' => 'create']);
-    Sanctum::actingAs($actor);
+        ->withCodes(['colour'])
+        ->create(['context' => 'product', 'form_mode' => 'edit']);
+    Sanctum::actingAs(productCategoryUserWith(['view']));
+
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit")
+        ->assertOk()
+        ->assertJsonPath('data.layout.sections.0.rows.0.items.0.attribute_code', 'colour');
+});
+
+it('a layout scoped to ONE mode never leaks into another mode (no implicit cross-mode fallback)', function () {
+    $category = categoryWithScopedLayout('create');
+    Sanctum::actingAs(productCategoryUserWith(['view']));
+
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit")
+        ->assertOk()
+        ->assertJsonPath('data.layout', null);
+});
+
+it('GET with exact=1 on a mode with no override returns a null layout and the shared one as `inherited`', function () {
+    $category = categoryWithScopedLayout('all');
+    Sanctum::actingAs(productCategoryUserWith(['view']));
 
     $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=edit&exact=1")
         ->assertOk()
-        ->assertJsonPath('data.layout', null);
+        ->assertJsonPath('data.layout', null)
+        ->assertJsonPath('data.inherited.sections.0.rows.0.items.0.attribute_code', 'material');
+});
+
+it('GET with exact=1 on the shared scope returns its own layout and no `inherited`', function () {
+    $category = categoryWithScopedLayout('all');
+    Sanctum::actingAs(productCategoryUserWith(['view']));
+
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=all&exact=1")
+        ->assertOk()
+        ->assertJsonPath('data.layout.sections.0.rows.0.items.0.attribute_code', 'material')
+        ->assertJsonPath('data.inherited', null);
+});
+
+it('a consuming GET (no exact) rejects the shared scope: `all` is not a renderable form mode', function () {
+    $category = categoryWithScopedLayout('all');
+    Sanctum::actingAs(productCategoryUserWith(['view']));
+
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=product&form_mode=all")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('form_mode');
+});
+
+it('PUT persists the shared scope as its own row, alongside a per-mode override', function () {
+    $category = categoryWithScopedLayout('all');
+    Sanctum::actingAs(productCategoryUserWith(['update']));
+
+    $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
+        'context' => 'product',
+        'form_mode' => 'view',
+        'layout' => attributeLayoutBlob(['material']),
+    ])->assertOk();
+
+    expect(AttributeLayout::query()->where('product_category_id', $category->id)->pluck('form_mode')->all())
+        ->toEqualCanonicalizing([LayoutFormScope::All, LayoutFormScope::View]);
+});
+
+it('PUT with layout=null on a per-mode scope drops only that override, leaving the shared layout', function () {
+    $category = categoryWithScopedLayout('all');
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['material'])
+        ->create(['context' => 'product', 'form_mode' => 'view']);
+    Sanctum::actingAs(productCategoryUserWith(['update']));
+
+    $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
+        'context' => 'product',
+        'form_mode' => 'view',
+        'layout' => null,
+    ])->assertOk()->assertJsonPath('data.layout', null);
+
+    expect(AttributeLayout::query()->where('product_category_id', $category->id)->pluck('form_mode')->all())
+        ->toBe([LayoutFormScope::All]);
 });
 
 // ---------------------------------------------------------------------------

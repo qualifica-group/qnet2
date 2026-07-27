@@ -37,6 +37,12 @@ export interface ProductSupplierSummary {
   name: string
 }
 
+/** Minimal geo `State` ("Regione") projection hydrating the product's form/detail. */
+export interface ProductStateSummary {
+  id: number
+  name: string
+}
+
 /**
  * Single product detail returned by GET/POST/PATCH /products (envelope
  * `data`). Matches `ProductResource`.
@@ -45,8 +51,13 @@ export interface ProductDetail {
   id: number
   name: string
   description: string | null
-  cost: number | null
-  price: number | null
+  /**
+   * Money columns are `decimal:2` casts server-side: Laravel serializes them
+   * as STRINGS (`"12.00"`), so the form must normalize before validating.
+   * Same contract as `OpportunityDetail.estimated_value`.
+   */
+  cost: string | number | null
+  price: string | number | null
   category_id: number
   category: ProductCategorySummary | null
   product_type: ProductType
@@ -65,6 +76,9 @@ export interface ProductDetail {
   /** The product's supplier (a registry flagged `is_supplier`), if assigned. */
   supplier_id: number | null
   supplier: ProductSupplierSummary | null
+  /** The product's geo `State` ("Regione"), if assigned. */
+  state_id: number | null
+  state: ProductStateSummary | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
   /**
@@ -108,6 +122,7 @@ export interface CreateProductPayload {
   product_type: ProductType
   vat_rate_id: number | null
   supplier_id: number | null
+  state_id: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
   /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */

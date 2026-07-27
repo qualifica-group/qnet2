@@ -22,6 +22,13 @@ use Illuminate\Contracts\Container\Container;
  */
 class FieldTypeRegistry
 {
+    /**
+     * Enum key every `type` badge column declares (TableDefinition::enumKeyFor),
+     * so the frontend localizes the type catalogue from a single i18n namespace
+     * (`enums.custom_field_type.<value>`) instead of the raw backend label.
+     */
+    public const ENUM_KEY = 'custom_field_type';
+
     public function __construct(private readonly Container $container) {}
 
     /**

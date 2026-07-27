@@ -25,7 +25,9 @@ use Illuminate\Support\Str;
  *  1. distinct contributing categories, in product-line order (mirrors
  *     ApplicableAttributesResolver::distinctCategories — same dedup, so the
  *     two resolvers agree on "which categories contribute" and in what order);
- *  2. per category, load its own persisted layout for (opportunity, $formMode);
+ *  2. per category, load its own persisted layout for (opportunity, $formMode)
+ *     — the mode's own override when configured, else the category's shared
+ *     `all` layout (App\Enums\LayoutFormScope, spec 0062 D3 revised);
  *  3. concatenate sections in category order, dropping any item whose code
  *     was already placed by an EARLIER category (first-wins) or that fell
  *     outside the merged applicable set — pruning empty rows/sections along
@@ -69,7 +71,7 @@ final class OpportunityAttributeLayoutResolver
         // Step 2: concatenate each contributing category's own layout, in
         // order, deduping first-wins as we go.
         foreach ($categories as $category) {
-            $layout = $this->layoutService->resolveForProduct($category, AttributeContext::Opportunity, $formMode);
+            $layout = $this->layoutService->resolveWithFallback($category, AttributeContext::Opportunity, $formMode);
 
             if ($layout !== null && ($layout['sections'] ?? []) !== []) {
                 $anyLayoutConfigured = true;

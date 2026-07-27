@@ -1,7 +1,7 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { LayoutBlob, LayoutFormMode } from '@/features/attributes/attribute-layout-types'
+import type { LayoutBlob, LayoutFormScope } from '@/features/attributes/attribute-layout-types'
 import type {
   AttributeContext,
   AttributeLayoutData,
@@ -97,38 +97,41 @@ export async function deleteProductCategory(id: number): Promise<void> {
 }
 
 /**
- * Fetches the persisted attribute layout (or `null`, flat fallback) for one
- * (category, context, form_mode), plus its effective attribute catalogue —
- * the configurator's load (spec 0062 `data_contract`).
+ * Fetches the persisted attribute layout (or `null`) for one (category,
+ * context, scope), the shared layout it inherits while it has none, and the
+ * category's effective attribute catalogue — the configurator's load (spec
+ * 0062 `data_contract`).
  */
 export async function fetchAttributeLayout(
   categoryId: number,
   context: AttributeContext,
-  formMode: LayoutFormMode,
+  scope: LayoutFormScope,
 ): Promise<AttributeLayoutData> {
   const { data } = await apiClient.get<ApiResponse<AttributeLayoutData>>(
     `/product-categories/${categoryId}/attribute-layouts`,
-    // `exact`: the configurator authors one mode at a time and must see the
-    // raw per-mode row, never the cross-mode fallback the product form gets.
-    { params: { context, form_mode: formMode, exact: 1 } },
+    // `exact`: the configurator authors one scope at a time and must see that
+    // scope's OWN row — telling an override apart from the shared layout it
+    // would otherwise inherit — never the resolution the product form gets.
+    { params: { context, form_mode: scope, exact: 1 } },
   )
   return data.data
 }
 
 /**
  * Upserts (or, sending an empty `sections` array, deletes) the attribute
- * layout for one (category, context, form_mode). Returns the persisted,
- * normalized layout (`null` once deleted).
+ * layout for one (category, context, scope). Returns the persisted,
+ * normalized layout (`null` once deleted — on a per-mode scope that is the
+ * "back to the shared layout" reset).
  */
 export async function saveAttributeLayout(
   categoryId: number,
   context: AttributeContext,
-  formMode: LayoutFormMode,
+  scope: LayoutFormScope,
   layout: LayoutBlob,
 ): Promise<LayoutBlob | null> {
   const { data } = await apiClient.put<ApiResponse<{ layout: LayoutBlob | null }>>(
     `/product-categories/${categoryId}/attribute-layouts`,
-    { context, form_mode: formMode, layout },
+    { context, form_mode: scope, layout },
   )
   return data.data.layout
 }

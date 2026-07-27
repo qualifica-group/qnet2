@@ -8,10 +8,11 @@ import type { ProductDetailWithPermissions } from '@/features/products/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * The VAT rate + Supplier relation pickers added to the product form: both
- * render, the supplier picker scopes its `registries` for-select request to
- * `is_supplier`, and edit mode hydrates from the loaded product's
- * `vat_rate`/`supplier` projections.
+ * The VAT rate + Supplier + Region relation pickers added to the product
+ * form: all render, the supplier picker scopes its `registries` for-select
+ * request to `is_supplier`, the region picker requests the `states`
+ * for-select resource, and edit mode hydrates from the loaded product's
+ * `vat_rate`/`supplier`/`state` projections.
  */
 
 const createProductMock = vi.fn()
@@ -100,6 +101,8 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     vat_rate: null,
     supplier_id: null,
     supplier: null,
+    state_id: null,
+    state: null,
     permissions: FULL_ACCESS,
     ...overrides,
   }
@@ -186,5 +189,44 @@ describe('ProductFormBody — VAT rate + Supplier relation fields', () => {
 
     expect(await screen.findByRole('combobox', { name: 'VAT' })).toHaveTextContent('Standard 22%')
     expect(screen.getByRole('combobox', { name: 'Supplier' })).toHaveTextContent('ACME Supplies')
+  })
+
+  it('renders the region picker in create mode', async () => {
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    expect(await screen.findByRole('combobox', { name: 'Region' })).toBeInTheDocument()
+  })
+
+  it('requests the states resource when the region picker opens', async () => {
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Region' }))
+
+    await waitFor(() =>
+      expect(useForSelectMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'states' })),
+    )
+  })
+
+  it('hydrates the region trigger label in edit mode', async () => {
+    render(
+      <ProductForm
+        mode={{
+          type: 'edit',
+          product: product({
+            state_id: 7,
+            state: { id: 7, name: 'Lombardia' },
+          }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByRole('combobox', { name: 'Region' })).toHaveTextContent('Lombardia')
   })
 })

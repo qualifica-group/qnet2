@@ -24,6 +24,8 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     vat_rate: null,
     supplier_id: null,
     supplier: null,
+    state_id: null,
+    state: null,
     ...overrides,
   }
 }
@@ -38,6 +40,7 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     product_type: 'SERVICE',
     vat_rate_id: null,
     supplier_id: null,
+    state_id: null,
     custom_fields: {},
     attribute_values: {},
     ...overrides,
@@ -55,13 +58,17 @@ describe('buildCreatePayload', () => {
       product_type: 'SERVICE',
       vat_rate_id: null,
       supplier_id: null,
+      state_id: null,
     })
   })
 
-  it('includes the selected VAT rate and supplier ids', () => {
-    expect(buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11 }), [])).toMatchObject({
+  it('includes the selected VAT rate, supplier and region ids', () => {
+    expect(
+      buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11, state_id: 7 }), []),
+    ).toMatchObject({
       vat_rate_id: 4,
       supplier_id: 11,
+      state_id: 7,
     })
   })
 
@@ -97,6 +104,12 @@ describe('buildUpdatePayload', () => {
     })
   })
 
+  it('treats the decimal STRING the server returns for cost/price as unchanged', () => {
+    const serialized = original({ cost: '800.00', price: '1200.00' })
+
+    expect(buildUpdatePayload(values(), serialized, [])).toEqual({})
+  })
+
   it('includes only the changed VAT rate id', () => {
     expect(buildUpdatePayload(values({ vat_rate_id: 4 }), original(), [])).toEqual({
       vat_rate_id: 4,
@@ -106,6 +119,12 @@ describe('buildUpdatePayload', () => {
   it('includes only the changed supplier id', () => {
     expect(buildUpdatePayload(values({ supplier_id: 11 }), original(), [])).toEqual({
       supplier_id: 11,
+    })
+  })
+
+  it('includes only the changed region id', () => {
+    expect(buildUpdatePayload(values({ state_id: 7 }), original(), [])).toEqual({
+      state_id: 7,
     })
   })
 

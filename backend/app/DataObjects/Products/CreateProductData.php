@@ -26,6 +26,7 @@ final readonly class CreateProductData
         public ProductType $productType,
         public ?int $vatRateId = null,
         public ?int $supplierId = null,
+        public ?int $stateId = null,
         public ?array $attributeValues = null,
     ) {}
 
@@ -45,6 +46,7 @@ final readonly class CreateProductData
             productType: ProductType::from((string) $data['product_type']),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
+            stateId: array_key_exists('state_id', $data) && $data['state_id'] !== null ? (int) $data['state_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
     }

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AttributeContext;
-use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\AttributeLayoutFactory;
@@ -12,8 +12,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A category's configured visual layout for one (context, form_mode) pair
- * (spec 0062, D1/D3): sections -> rows -> items, always allow-list validated
+ * A category's configured visual layout for one (context, scope) pair (spec
+ * 0062, D1/D3 revised — the `form_mode` column holds an
+ * App\Enums\LayoutFormScope: the shared `all` layout or a per-mode override
+ * of it): sections -> rows -> items, always allow-list validated
  * against the category's effective attributes before persisting
  * (App\Services\ProductCategories\AttributeLayoutValidator). Absence of a row
  * for a given (product_category_id, context, form_mode) means "flat
@@ -34,7 +36,7 @@ class AttributeLayout extends BaseModel
         return [
             'layout' => 'array',
             'context' => AttributeContext::class,
-            'form_mode' => FormMode::class,
+            'form_mode' => LayoutFormScope::class,
         ];
     }
 

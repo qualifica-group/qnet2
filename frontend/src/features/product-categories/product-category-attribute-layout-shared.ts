@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { LayoutFormMode } from '@/features/attributes/attribute-layout-types'
+import type { LayoutFormMode, LayoutFormScope } from '@/features/attributes/attribute-layout-types'
 import type { UseAttributeLayoutLabels } from '@/features/product-categories/use-attribute-layout'
 import type { AttributeContext } from '@/features/product-categories/types'
 
@@ -14,8 +14,21 @@ import type { AttributeContext } from '@/features/product-categories/types'
 /** The two attribute usage contexts a layout can be configured for (spec 0061). */
 export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'opportunity']
 
-/** Mirrors backend `App\Enums\FormMode` (spec 0062 D3: three independent layouts per category). */
-export const ATTRIBUTE_LAYOUT_FORM_MODES: LayoutFormMode[] = ['create', 'edit', 'view']
+/**
+ * Mirrors backend `App\Enums\LayoutFormScope` (spec 0062 D3 revised): the
+ * shared layout first — it is the default and the common case — then the
+ * three per-mode overrides of it.
+ */
+export const ATTRIBUTE_LAYOUT_FORM_SCOPES: LayoutFormScope[] = ['all', 'create', 'edit', 'view']
+
+/**
+ * Which form mode the live preview renders a scope as. The shared scope has
+ * no single mode of its own, so it previews as `edit`: the editable shape it
+ * drives in both create and edit (`view` alone would render read-only).
+ */
+export function previewModeForScope(scope: LayoutFormScope): LayoutFormMode {
+  return scope === 'all' ? 'edit' : scope
+}
 
 /** Builds `useAttributeLayout`'s toast/error copy from the `attributeLayout` i18next namespace. */
 export function buildAttributeLayoutLabels(t: TFunction): UseAttributeLayoutLabels {
@@ -24,5 +37,6 @@ export function buildAttributeLayoutLabels(t: TFunction): UseAttributeLayoutLabe
     forbidden: t('section.forbidden'),
     saveError: t('section.saveError'),
     invalid: t('section.invalid'),
+    reset: t('section.resetDone'),
   }
 }

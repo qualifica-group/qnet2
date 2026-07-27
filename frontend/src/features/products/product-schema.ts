@@ -36,6 +36,9 @@ function baseFields(t: TFunction) {
     product_type: z.enum(['SERVICE']),
     vat_rate_id: z.number().nullable(),
     supplier_id: z.number().nullable(),
+    // Geo `State` ("Regione"): optional, mirrors vat_rate_id/supplier_id — no
+    // required-value rule below.
+    state_id: z.number().nullable(),
   }
 }
 

@@ -8,13 +8,12 @@ import type { AttributeLayoutData, ProductCategoryDetailWithPermissions, Product
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0062 relocation: the attribute-layout configurator moved from the
- * read-only category detail to the EDIT form, mounted only when a saved
- * category exists (edit mode) — create shows a compact hint instead. Its
- * own fetch/edit/save wiring is covered by
- * `product-category-attribute-layout-editor.test.tsx`; this suite only
- * asserts the mount condition and that it sits outside the RHF `<form>` (its
- * Save is an independent `PUT`, never the category form's submit).
+ * Spec 0062 revision: the attribute-layout configurator moved OFF the
+ * category form entirely, into a dedicated Sheet opened by a row action on
+ * the Product Categories table (`ProductCategoryAttributeLayoutSheet`). This
+ * suite asserts the negative: the form never mounts the layout editor, in
+ * either mode. The editor's own fetch/edit/save wiring is covered by
+ * `product-category-attribute-layout-editor.test.tsx`.
  */
 
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
@@ -94,29 +93,27 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchAttributeLayoutMock.mockReset()
-  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, attributes: [] })
+  fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, attributes: [] })
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
 })
 
-describe('ProductCategoryFormBody — attribute-layout mount (spec 0062)', () => {
-  it('edit mode: mounts the layout editor, OUTSIDE the category form’s <form> element', async () => {
+describe('ProductCategoryFormBody — attribute-layout NOT mounted (spec 0062 revision)', () => {
+  it('edit mode: does not mount the layout editor', async () => {
     render(
       <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    const saveLayoutButton = await screen.findByRole('button', { name: 'Save layout' })
-    expect(saveLayoutButton.closest('form')).toBeNull()
-
     // The category form's own submit button IS inside a <form>.
-    const saveButton = screen.getByRole('button', { name: 'Save' })
+    const saveButton = await screen.findByRole('button', { name: 'Save' })
     expect(saveButton.closest('form')).not.toBeNull()
 
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(4, 'product', 'create'))
+    expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
+    await waitFor(() => expect(fetchAttributeLayoutMock).not.toHaveBeenCalled())
   })
 
-  it('create mode: does not mount the editor, shows a compact hint instead', async () => {
+  it('create mode: does not mount the layout editor', async () => {
     render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -125,8 +122,5 @@ describe('ProductCategoryFormBody — attribute-layout mount (spec 0062)', () =>
 
     expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
     expect(fetchAttributeLayoutMock).not.toHaveBeenCalled()
-    expect(
-      screen.getByText('Save the category to configure the attribute layout.'),
-    ).toBeInTheDocument()
   })
 })

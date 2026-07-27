@@ -6,6 +6,7 @@ namespace App\Services\ProductCategories;
 
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use App\Enums\LayoutItemWidth;
 use App\Enums\LayoutSectionVariant;
 use App\Models\AttributeLayout;
@@ -15,97 +16,79 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Read/write for a category's configured layout, one row per (category,
- * context, form_mode) — spec 0062, D1/D3. The name (`resolveForProduct`)
- * reflects this class's primary caller (the Product form/detail, which
- * resolves ITS OWN category's layout); the SAME method resolves each
- * contributing category's layout for the Opportunity multi-category merge
- * (App\RequestManagement\OpportunityAttributeLayoutResolver) — this class is
- * otherwise context-agnostic.
+ * context, scope) — spec 0062, D1/D3 revised: a scope is either the SHARED
+ * `all` layout or a per-mode override of it (App\Enums\LayoutFormScope).
+ * Authoring (the configurator) always addresses one exact scope
+ * (`resolveExact`/`upsert`); every CONSUMPTION path — Product form/detail
+ * and each contributing category of the Opportunity merge
+ * (App\RequestManagement\OpportunityAttributeLayoutResolver) — resolves a
+ * concrete FormMode through `resolveWithFallback`.
  */
 final class AttributeLayoutService
 {
-    /**
-     * Cross-mode fallback precedence (spec 0062 revised): a single layout is
-     * meant to drive every form mode, so when the requested mode has no row of
-     * its own the first configured mode in this order is used instead. Only the
-     * CONSUMPTION paths (product form/detail) resolve with fallback; authoring
-     * (the configurator) and the Opportunity path stay exact via
-     * resolveForProduct.
-     */
-    private const FALLBACK_ORDER = [FormMode::Create, FormMode::Edit, FormMode::View];
-
     public function __construct(
         private readonly AttributeLayoutValidator $validator,
     ) {}
 
     /**
-     * The persisted, raw blob for the EXACT (category, context, form_mode) —
-     * or null when that specific row is not configured. Used by the
-     * configurator's authoring load and the Opportunity resolver, which both
-     * need the raw per-mode row, never a cross-mode inheritance.
+     * The persisted, raw blob for the EXACT (category, context, scope) — or
+     * null when that specific row is not configured. The configurator's
+     * authoring load, which must distinguish "this mode has its own
+     * override" from "this mode inherits the shared layout" and can never
+     * see one as the other.
      *
      * @return array{sections: array<int, array<string, mixed>>}|null
      */
-    public function resolveForProduct(ProductCategory $category, AttributeContext $context, FormMode $formMode): ?array
+    public function resolveExact(ProductCategory $category, AttributeContext $context, LayoutFormScope $scope): ?array
     {
-        return $this->find($category, $context, $formMode)?->layout;
+        return $this->find($category, $context, $scope)?->layout;
     }
 
     /**
-     * The layout to RENDER for (category, context, form_mode): the exact mode
-     * when configured, otherwise the first configured mode in FALLBACK_ORDER —
-     * so one saved layout applies across create/edit/view. Null only when the
-     * category has no layout in this context at all (flat fallback, AC-007).
-     * All fallback candidates share the same context, so their attribute_code
+     * The layout to RENDER for (category, context, form_mode): the mode's own
+     * override when configured, otherwise the shared `all` layout. Null only
+     * when the category has neither in this context (flat fallback, AC-007).
+     * Both candidates share the same context, so their attribute_code
      * references stay valid for the consuming form.
      *
      * @return array{sections: array<int, array<string, mixed>>}|null
      */
     public function resolveWithFallback(ProductCategory $category, AttributeContext $context, FormMode $formMode): ?array
     {
-        // Step 1: one query for every mode row in this context, keyed by mode value
-        $byMode = AttributeLayout::query()
+        // Step 1: one query for both candidate rows, keyed by their scope value
+        $byScope = AttributeLayout::query()
             ->where('product_category_id', $category->id)
             ->where('context', $context->value)
+            ->whereIn('form_mode', [$formMode->value, LayoutFormScope::All->value])
             ->get()
             ->keyBy(fn (AttributeLayout $row): string => $row->form_mode->value);
 
-        // Step 2: the requested mode wins when it carries a layout
-        $exact = $byMode->get($formMode->value)?->layout;
-        if ($exact !== null) {
-            return $exact;
-        }
-
-        // Step 3: otherwise the first configured mode in canonical precedence
-        foreach (self::FALLBACK_ORDER as $mode) {
-            $layout = $byMode->get($mode->value)?->layout;
-            if ($layout !== null) {
-                return $layout;
-            }
-        }
-
-        return null;
+        // Step 2: the per-mode override wins, the shared layout is the fallback
+        return $byScope->get($formMode->value)?->layout
+            ?? $byScope->get(LayoutFormScope::All->value)?->layout;
     }
 
     /**
      * Validates (allow-list + shape) and upserts $layout for (category,
-     * context, form_mode). A null layout, or one with no sections, DELETES
-     * the row instead — the documented "back to flat" reset — and returns
-     * null. Otherwise persists a canonical, type-normalized copy and returns
-     * it (idempotent: two identical PUTs leave exactly one row).
+     * context, scope). A null layout, or one with no sections, DELETES the
+     * row instead and returns null — both the documented "back to flat"
+     * reset of the shared scope and, on a per-mode scope, the "drop this
+     * override and go back to the shared layout" action. Otherwise persists
+     * a canonical, type-normalized copy and returns it (idempotent: two
+     * identical PUTs leave exactly one row).
      *
      * @param  array<string, mixed>|null  $layout
      * @return array{sections: array<int, array<string, mixed>>}|null
      *
      * @throws ValidationException
      */
-    public function upsert(ProductCategory $category, AttributeContext $context, FormMode $formMode, ?array $layout): ?array
+    public function upsert(ProductCategory $category, AttributeContext $context, LayoutFormScope $scope, ?array $layout): ?array
     {
         $this->validator->validate($category, $context, $layout);
 
-        return DB::transaction(function () use ($category, $context, $formMode, $layout): ?array {
+        return DB::transaction(function () use ($category, $context, $scope, $layout): ?array {
             if ($layout === null || ($layout['sections'] ?? []) === []) {
-                $this->find($category, $context, $formMode)?->delete();
+                $this->find($category, $context, $scope)?->delete();
 
                 return null;
             }
@@ -116,7 +99,7 @@ final class AttributeLayoutService
                 [
                     'product_category_id' => $category->id,
                     'context' => $context->value,
-                    'form_mode' => $formMode->value,
+                    'form_mode' => $scope->value,
                 ],
                 ['layout' => $normalized],
             );
@@ -125,12 +108,12 @@ final class AttributeLayoutService
         });
     }
 
-    private function find(ProductCategory $category, AttributeContext $context, FormMode $formMode): ?AttributeLayout
+    private function find(ProductCategory $category, AttributeContext $context, LayoutFormScope $scope): ?AttributeLayout
     {
         return AttributeLayout::query()
             ->where('product_category_id', $category->id)
             ->where('context', $context->value)
-            ->where('form_mode', $formMode->value)
+            ->where('form_mode', $scope->value)
             ->first();
     }
 

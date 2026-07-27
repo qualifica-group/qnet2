@@ -128,6 +128,7 @@ export const it: TranslationResources = {
     documents: 'Documenti',
     notes: 'Note',
     impersonate: 'Impersona',
+    layout: 'Layout attributi',
   },
   table,
   statsPanel,

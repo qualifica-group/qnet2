@@ -147,6 +147,14 @@ final class ProductCategoryColumnCatalog
                 'permission' => 'product-categories.update',
             ],
             [
+                'key' => 'layout',
+                'label' => 'actions.layout',
+                'icon' => 'layout-grid',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'product-categories.update',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

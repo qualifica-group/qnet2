@@ -34,7 +34,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier'];
+    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'state'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -79,6 +79,7 @@ class ProductService
             'product_type' => $data->productType,
             'vat_rate_id' => $data->vatRateId,
             'supplier_id' => $data->supplierId,
+            'state_id' => $data->stateId,
         ]);
 
         if ($data->hasAttributeValues()) {

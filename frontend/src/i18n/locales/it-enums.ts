@@ -1,3 +1,5 @@
+import { customFields } from './it-custom-fields'
+
 /**
  * Localized labels for backend domain enums. Keyed by the snake_case enum key
  * (config/config.php → form_enums) then by the enum value. The frontend owns
@@ -7,6 +9,10 @@
  * (see `.claude/rules/engineering.md` §6). Public API of `it.ts` is unchanged.
  */
 export const enums = {
+  // Catalogo dei tipi di campo condiviso da attributi e campi personalizzati
+  // (config/custom-fields.php, non un enum PHP). Alias della copy di
+  // `customFields`: una sola sorgente per le 13 etichette.
+  custom_field_type: customFields.types,
   locale: {
     en: 'Inglese',
     it: 'Italiano',

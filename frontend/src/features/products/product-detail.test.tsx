@@ -24,6 +24,8 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     vat_rate: null,
     supplier_id: null,
     supplier: null,
+    state_id: null,
+    state: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
@@ -59,5 +61,23 @@ describe('ProductDetailView — VAT rate + Supplier', () => {
 
     expect(screen.queryByText('VAT')).not.toBeInTheDocument()
     expect(screen.queryByText('Supplier')).not.toBeInTheDocument()
+  })
+})
+
+describe('ProductDetailView — Region', () => {
+  it('renders the region name when assigned', () => {
+    render(
+      <ProductDetailView
+        product={product({ state_id: 7, state: { id: 7, name: 'Lombardia' } })}
+      />,
+    )
+
+    expect(screen.getByText('Lombardia')).toBeInTheDocument()
+  })
+
+  it('omits the region field when unassigned', () => {
+    render(<ProductDetailView product={product()} />)
+
+    expect(screen.queryByText('Region')).not.toBeInTheDocument()
   })
 })

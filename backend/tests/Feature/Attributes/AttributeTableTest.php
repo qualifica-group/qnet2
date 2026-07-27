@@ -58,7 +58,11 @@ it('returns the 5 columns in order with the declared flags, 403 without viewAny'
         ->and($columns['id']['filterType'])->toBeNull()
         ->and($columns['type']['type'])->toBe('badge')
         ->and($columns['type']['filterType'])->toBe('set')
-        ->and($columns['type']['badges'])->toHaveCount(13);
+        ->and($columns['type']['badges'])->toHaveCount(13)
+        // The frontend owns the type catalogue copy: the column declares the
+        // enum key so cell badge and Set Filter localize instead of showing
+        // the raw label key.
+        ->and($columns['type']['enumKey'])->toBe('custom_field_type');
 });
 
 // ---------------------------------------------------------------------------

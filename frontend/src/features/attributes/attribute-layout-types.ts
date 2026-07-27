@@ -57,8 +57,16 @@ export interface LayoutBlob {
   sections: LayoutSection[]
 }
 
-/** Mirrors backend `App\Enums\FormMode`. */
+/** Mirrors backend `App\Enums\FormMode`: the lifecycle stage a record is actually rendered in. */
 export type LayoutFormMode = 'create' | 'edit' | 'view'
+
+/**
+ * Mirrors backend `App\Enums\LayoutFormScope`: which form modes a CONFIGURED
+ * layout applies to — `'all'` is the shared layout driving every mode, the
+ * other three are per-mode overrides of it. Only the configurator speaks this
+ * type; consumers (product form/detail) always request a `LayoutFormMode`.
+ */
+export type LayoutFormScope = 'all' | LayoutFormMode
 
 /**
  * Shape a host form must extend to mount `AttributeLayoutRenderer`: values

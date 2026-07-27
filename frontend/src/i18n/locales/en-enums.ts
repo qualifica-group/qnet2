@@ -1,3 +1,5 @@
+import { customFields } from './en-custom-fields'
+
 /**
  * Localized labels for backend domain enums. Keyed by the snake_case enum key
  * (config/config.php → form_enums) then by the enum value. The frontend owns
@@ -7,6 +9,11 @@
  * (see `.claude/rules/engineering.md` §6). Public API of `en.ts` is unchanged.
  */
 export const enums = {
+  // Field type catalogue shared by attributes and custom fields
+  // (config/custom-fields.php, not a PHP enum). Aliased to the `customFields`
+  // copy so the 13 labels have ONE source; both `type` badge columns declare
+  // this enum key, so cell and Set Filter resolve through the same path.
+  custom_field_type: customFields.types,
   locale: {
     en: 'English',
     it: 'Italiano',

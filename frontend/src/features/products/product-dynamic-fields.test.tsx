@@ -124,6 +124,8 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     vat_rate: null,
     supplier_id: null,
     supplier: null,
+    state_id: null,
+    state: null,
     permissions: permissions(),
     ...overrides,
   }

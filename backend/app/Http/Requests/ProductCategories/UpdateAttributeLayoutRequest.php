@@ -3,7 +3,7 @@
 namespace App\Http\Requests\ProductCategories;
 
 use App\Enums\AttributeContext;
-use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,7 +34,7 @@ class UpdateAttributeLayoutRequest extends FormRequest
     {
         return [
             'context' => ['required', Rule::enum(AttributeContext::class)],
-            'form_mode' => ['required', Rule::enum(FormMode::class)],
+            'form_mode' => ['required', Rule::enum(LayoutFormScope::class)],
             'layout' => ['nullable', 'array'],
         ];
     }
@@ -44,9 +44,10 @@ class UpdateAttributeLayoutRequest extends FormRequest
         return AttributeContext::from($this->validated('context'));
     }
 
-    public function formMode(): FormMode
+    /** The scope being authored: the shared `all` layout or a per-mode override of it. */
+    public function scope(): LayoutFormScope
     {
-        return FormMode::from($this->validated('form_mode'));
+        return LayoutFormScope::from($this->validated('form_mode'));
     }
 
     /**

@@ -7,10 +7,13 @@ import { Form } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
 import '@/features/attributes/layout-configurator/i18n'
 import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
-import type { AttributeLayoutFormShape, LayoutFormMode } from '@/features/attributes/attribute-layout-types'
+import type { AttributeLayoutFormShape, LayoutFormScope } from '@/features/attributes/attribute-layout-types'
 import { useAttributeLayout } from '@/features/product-categories/use-attribute-layout'
 import { AttributeLayoutContextModeSelector } from '@/features/product-categories/product-category-attribute-layout-context-mode-selector'
-import { buildAttributeLayoutLabels } from '@/features/product-categories/product-category-attribute-layout-shared'
+import {
+  buildAttributeLayoutLabels,
+  previewModeForScope,
+} from '@/features/product-categories/product-category-attribute-layout-shared'
 import type { AttributeContext } from '@/features/product-categories/types'
 
 interface ProductCategoryAttributeLayoutPreviewProps {
@@ -20,22 +23,24 @@ interface ProductCategoryAttributeLayoutPreviewProps {
 /**
  * Read-only counterpart of `ProductCategoryAttributeLayoutEditor` (spec
  * 0062): authoring/Save moved to the edit form, so the detail view only
- * renders the same (context × form_mode) selector feeding the persisted
- * layout into the structural `AttributeLayoutRenderer` (`readOnly`), backed
- * by a throwaway local RHF form — no submit, no real product values, purely
- * structural. Deliberately skips the renderer's own flat-fallback: when a
- * combination has no saved layout, an explicit empty state is shown instead.
+ * renders the same (context × scope) selector feeding the resolved layout
+ * into the structural `AttributeLayoutRenderer` (`readOnly`), backed by a
+ * throwaway local RHF form — no submit, no real product values, purely
+ * structural. A per-mode scope with no override shows the shared layout it
+ * inherits, flagged as such (D3 revised). Deliberately skips the renderer's
+ * own flat-fallback: when a combination resolves to nothing, an explicit
+ * empty state is shown instead.
  */
 export function ProductCategoryAttributeLayoutPreview({ categoryId }: ProductCategoryAttributeLayoutPreviewProps) {
   const { t } = useTranslation('attributeLayout')
   const [context, setContext] = useState<AttributeContext>('product')
-  const [formMode, setFormMode] = useState<LayoutFormMode>('create')
+  const [scope, setScope] = useState<LayoutFormScope>('all')
   const previewForm = useForm<AttributeLayoutFormShape>({ defaultValues: { attribute_values: {} } })
 
-  const { attributes, draft, isLoading, isError, refetch } = useAttributeLayout({
+  const { attributes, draft, hasOverride, isLoading, isError, refetch } = useAttributeLayout({
     categoryId,
     context,
-    formMode,
+    scope,
     labels: buildAttributeLayoutLabels(t),
   })
 
@@ -47,9 +52,13 @@ export function ProductCategoryAttributeLayoutPreview({ categoryId }: ProductCat
         <AttributeLayoutContextModeSelector
           context={context}
           onContextChange={setContext}
-          formMode={formMode}
-          onFormModeChange={setFormMode}
+          scope={scope}
+          onScopeChange={setScope}
         />
+
+        {scope !== 'all' && !hasOverride && draft.sections.length > 0 ? (
+          <p className="text-xs text-muted-foreground italic">{t('section.inheritsShared')}</p>
+        ) : null}
 
         {isLoading ? (
           <div className="flex flex-col gap-1.5" aria-hidden="true">
@@ -74,7 +83,7 @@ export function ProductCategoryAttributeLayoutPreview({ categoryId }: ProductCat
                 layout={draft}
                 attributes={attributes}
                 control={previewForm.control}
-                mode={formMode}
+                mode={previewModeForScope(scope)}
                 readOnly
               />
             </form>

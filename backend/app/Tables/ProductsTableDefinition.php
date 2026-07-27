@@ -5,7 +5,9 @@ namespace App\Tables;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\State;
 use App\Models\User;
+use App\Support\Geo\GeoNameLocalizer;
 use App\Tables\Products\ProductColumnCatalog;
 use App\Tables\Shared\BusinessFunctionColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +23,11 @@ use Illuminate\Support\Facades\Gate;
  * own (it is the related category's name) and is DERIVED: its set
  * filter/sort/distinct-values are resolved here against the related
  * category's name, mirroring BusinessFunctionsTableDefinition's `manager`
- * derived column. No dynamic attribute is ever a column (spec 0017 decision).
+ * derived column. `state` (the Regione) is the same DERIVED shape, but is
+ * geo reference data: its rendered name, set-filter matching and distinct
+ * values are localized to Italian via GeoNameLocalizer, mirroring
+ * ProjectsTableDefinition's GEO_COLUMN_IDS handling — the DB column itself
+ * stays English. No dynamic attribute is ever a column (spec 0017 decision).
  */
 class ProductsTableDefinition extends AbstractTableDefinition
 {
@@ -55,8 +61,8 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // Eager-load category to avoid N+1 when every row projects it.
-        return Product::query()->with('category');
+        // Eager-load category/state to avoid N+1 when every row projects them.
+        return Product::query()->with(['category', 'state']);
     }
 
     /**
@@ -142,6 +148,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'price' => $row->price === null ? null : (float) $row->price,
             'category' => $this->categorySummary($row->category),
             'business_function' => $this->businessFunctionColumn->nameFor($row->category_id),
+            'state' => $this->stateSummary($row->state),
             'product_type' => $row->product_type,
             'created_at' => $row->created_at,
         ];
@@ -157,6 +164,21 @@ class ProductsTableDefinition extends AbstractTableDefinition
         }
 
         return ['id' => $category->id, 'name' => $category->name];
+    }
+
+    /**
+     * The Regione's Italian DISPLAY name (geo reference data), mirroring
+     * ProjectsTableDefinition's summarize($related, geo: true).
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function stateSummary(?State $state): ?array
+    {
+        if ($state === null) {
+            return null;
+        }
+
+        return ['id' => $state->id, 'name' => GeoNameLocalizer::toItalian($state->name)];
     }
 
     /**
@@ -188,8 +210,8 @@ class ProductsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Handle the derived `category` set filter. Every other column id (the
-     * real columns) falls through to the generic engine.
+     * Handle the derived `category`/`state` set filters. Every other column
+     * id (the real columns) falls through to the generic engine.
      *
      * @param  Builder<Product>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -199,6 +221,12 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         if ($columnId === 'business_function') {
             $this->businessFunctionColumn->applyCategoryReferenceFilter($query, $filter);
+
+            return true;
+        }
+
+        if ($columnId === 'state') {
+            $this->applyStateFilter($query, $filter);
 
             return true;
         }
@@ -228,13 +256,57 @@ class ProductsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * ORDER BY the category's name via a correlated subquery, so sorting
-     * never needs a row-multiplying JOIN on the main query.
+     * The `state` set filter: values arrive as Italian display names (geo
+     * reference data), matched against `states.name` (English) via
+     * GeoNameLocalizer::filterMatchNames — mirrors ProjectsTableDefinition's
+     * GEO_COLUMN_IDS handling.
+     *
+     * @param  Builder<Product>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyStateFilter(Builder $query, array $filter): void
+    {
+        $values = $filter['values'] ?? null;
+
+        if (! is_array($values)) {
+            return;
+        }
+
+        $names = array_slice(array_values(array_filter(
+            $values,
+            static fn ($value): bool => is_string($value) && $value !== '',
+        )), 0, self::MAX_FILTER_VALUES);
+
+        if ($names === []) {
+            return;
+        }
+
+        $names = GeoNameLocalizer::filterMatchNames($names);
+
+        $query->whereHas('state', static function (Builder $relatedQuery) use ($names): void {
+            $relatedQuery->whereIn('name', $names);
+        });
+    }
+
+    /**
+     * ORDER BY the category's/state's name via a correlated subquery, so
+     * sorting never needs a row-multiplying JOIN on the main query.
      *
      * @param  Builder<Product>  $query
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === 'state') {
+            $subquery = State::query()
+                ->select('name')
+                ->whereColumn('states.id', 'products.state_id')
+                ->limit(1);
+
+            $query->orderBy($subquery, $direction);
+
+            return true;
+        }
+
         if ($columnId !== 'category') {
             return false;
         }
@@ -250,9 +322,9 @@ class ProductsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005) for the derived `category`
-     * column: distinct related category NAMES among the products matching
-     * `$query` (already scoped by every OTHER active filter).
+     * Excel-like distinct values (spec 0004/0005) for the derived
+     * `category`/`state` columns: distinct related NAMES among the products
+     * matching `$query` (already scoped by every OTHER active filter).
      *
      * @param  Builder<Product>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -267,6 +339,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
                 $search,
                 $limit,
             ),
+            'state' => $this->distinctStateNames($search, $query, $limit),
             'product_type' => $this->distinctProductTypes($search, $query, $limit),
             default => null,
         };
@@ -293,6 +366,32 @@ class ProductsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+    }
+
+    /**
+     * Distinct related state (Regione) names among the products matching
+     * `$query`, localized to Italian: the distinct ENGLISH names in use are
+     * translated, then filtered by the (Italian) search term, sorted and
+     * capped — mirrors ProjectsTableDefinition::geoDistinctValues.
+     *
+     * @param  Builder<Product>  $query
+     * @return array<int, string>
+     */
+    private function distinctStateNames(?string $search, Builder $query, int $limit): array
+    {
+        $stateIds = (clone $query)->whereNotNull('products.state_id')->select('products.state_id');
+
+        $localized = DB::table('states')
+            ->whereIn('id', $stateIds)
+            ->distinct()
+            ->pluck('name')
+            ->map(static fn (mixed $name): string => (string) GeoNameLocalizer::toItalian((string) $name));
+
+        if ($search !== null && $search !== '') {
+            $localized = $localized->filter(static fn (string $name): bool => stripos($name, $search) !== false);
+        }
+
+        return $localized->sort()->values()->take($limit)->all();
     }
 
     /**

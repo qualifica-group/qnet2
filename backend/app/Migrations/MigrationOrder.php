@@ -51,8 +51,10 @@ final class MigrationOrder
         ['attributes', 'product-categories'],
 
         // Phase 5 — products reference the phase 4 product-categories via old_id
-        // (vat_rate/supplier are not remapped).
-        ['products'],
+        // (vat_rate/supplier are not remapped); the attribute/category pivot is
+        // the association pass that needs BOTH phase 4 anchors migrated. The two
+        // have no cross-dependency, so they share the phase.
+        ['product-category-attributes', 'products'],
     ];
 
     /**

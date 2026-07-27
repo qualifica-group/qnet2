@@ -15,7 +15,7 @@ import type { AttributeLayoutData } from '@/features/product-categories/types'
  */
 
 const fetchAttributeLayoutMock = vi.fn<
-  (categoryId: number, context: string, formMode: string) => Promise<AttributeLayoutData>
+  (categoryId: number, context: string, scope: string) => Promise<AttributeLayoutData>
 >()
 
 vi.mock('@/features/product-categories/api', () => ({
@@ -46,6 +46,7 @@ const SKU_ATTRIBUTE: AttributeLayoutData['attributes'][number] = {
 function response(overrides: Partial<AttributeLayoutData> = {}): AttributeLayoutData {
   return {
     layout: null,
+    inherited: null,
     attributes: [SKU_ATTRIBUTE],
     ...overrides,
   }
@@ -66,18 +67,18 @@ beforeEach(() => {
 })
 
 describe('ProductCategoryAttributeLayoutPreview', () => {
-  it('loads the (product, create) layout by default', async () => {
+  it('loads the (product, all modes) layout by default', async () => {
     render(<ProductCategoryAttributeLayoutPreview categoryId={7} />, { wrapper: wrapper() })
 
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'create'))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all'))
   })
 
   it('switching context or form mode re-fetches that combination’s layout', async () => {
     render(<ProductCategoryAttributeLayoutPreview categoryId={7} />, { wrapper: wrapper() })
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'create'))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all'))
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Opportunity' }))
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'opportunity', 'create'))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'opportunity', 'all'))
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Form mode' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Edit' }))
@@ -123,5 +124,35 @@ describe('ProductCategoryAttributeLayoutPreview', () => {
     expect(await screen.findByRole('heading', { name: 'Identification' })).toBeInTheDocument()
     const field = screen.getByRole('textbox', { name: 'SKU' })
     expect(field).toHaveAttribute('readonly')
+  })
+
+  it('renders the inherited shared layout, flagged as such, on a mode with no override', async () => {
+    fetchAttributeLayoutMock.mockResolvedValue(
+      response({
+        inherited: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Identification',
+              description: null,
+              variant: 'default',
+              collapsible: false,
+              default_collapsed: false,
+              columns: 1,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'sku', width: 'full' }] }],
+            },
+          ],
+        },
+      }),
+    )
+    render(<ProductCategoryAttributeLayoutPreview categoryId={7} />, { wrapper: wrapper() })
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Form mode' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'View' }))
+
+    expect(await screen.findByRole('heading', { name: 'Identification' })).toBeInTheDocument()
+    expect(screen.getByText('This mode uses the “All modes” layout.')).toBeInTheDocument()
   })
 })

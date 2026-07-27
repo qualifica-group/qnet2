@@ -2,6 +2,261 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0062 — MODALITA' FORM FLESSIBILE: SCOPE CONDIVISO + OVERRIDE (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: nel configuratore layout della categoria prodotto la "modalita' form" deve essere
+piu' flessibile — poter selezionare TUTTE le modalita' insieme, oppure personalizzare per modalita'.
+Decisione utente (AskUserQuestion): scope esplicito `all` + override per modalita', NON fan-out in
+scrittura. Aggiornata la D3 della spec 0062 (che diceva "tre layout indipendenti").
+
+MODELLO (vincolante per chi tocca i layout): nuovo `App\Enums\LayoutFormScope`
+= { All, Create, Edit, View }, salvato nella colonna ESISTENTE `attribute_layouts.form_mode` (colonna
+e parametro API NON rinominati). `all` = layout condiviso che guida create/edit/view; gli altri tre
+sono override della singola modalita'. Risoluzione per una FormMode concreta:
+**riga modalita' -> riga `all` -> flat**. Il fallback implicito `create->edit->view` del commit
+e3516e0 e' RIMOSSO: un layout salvato su una singola modalita' vale solo per quella.
+`App\Enums\FormMode` resta la fase di lifecycle del rendering (mai `all`) e non e' stata toccata.
+
+BE: nuovo enum; cast del Model `AttributeLayout`; `AttributeLayoutService::resolveForProduct` ->
+`resolveExact(...LayoutFormScope)` + `resolveWithFallback` riscritto (una query su
+[modalita', all]); `upsert` prende lo scope; `AttributeLayoutQueryRequest` valida `form_mode` contro
+DUE enum a seconda di `exact` (authoring = LayoutFormScope default `all`; consumo = FormMode default
+`create`, quindi `?form_mode=all` senza exact -> 422); `UpdateAttributeLayoutRequest::scope()`;
+controller GET espone anche `inherited` (layout `all` ereditato, valorizzato SOLO con exact=1 su uno
+scope per-modalita'); `OpportunityAttributeLayoutResolver` passa da resolveExact a
+resolveWithFallback (senza, un layout `all` non sarebbe MAI arrivato alle opportunita');
+`AttributeLayoutFactory` default `form_mode` = `all`. Migration
+`2026_07_27_140000_backfill_attribute_layout_all_scope`: ogni categoria con UNA sola riga per
+contesto diventa `all` (stessa resa che aveva col fallback implicito), `down()` reversibile.
+
+FE: tipo `LayoutFormScope`; `ATTRIBUTE_LAYOUT_FORM_SCOPES` + `previewModeForScope` (lo scope `all`
+si previsualizza come `edit`) in `product-category-attribute-layout-shared.ts`; `AttributeLayoutData`
+ha ora `inherited`; api/query-keys parlano di scope; `useAttributeLayout` espone
+`inherited/hasOverride/isCustomizing/customize/resetToShared`; selettore a 4 voci (default "Tutte le
+modalita'"); nuovo `product-category-attribute-layout-scope-notice.tsx` (banner "questa modalita' usa
+il layout di Tutte" + "Personalizza questa modalita'" / "Torna a tutte" con conferma via `useConfirm`);
+editor: configuratore READ-ONLY e Save disabilitato finche' non si personalizza, cosi' Save non puo'
+creare un override non richiesto; preview del detail mostra il layout ereditato segnalandolo; i18n it/en.
+
+Verifica ESEGUITA: Pest `tests/Feature/ProductCategories` + layout prodotto/opportunita' 330/331 —
+l'unico rosso e' `ProductCategorySecurityTest` navigazione, PRE-ESISTENTE (fallisce anche in
+isolamento, come gli altri 12 rossi della suite completa: navigation node, preview migrazioni, VAT
+custom-field — tutti fuori da questo diff). Pint pulito sui file toccati. Vitest
+`features/product-categories|attributes|products` 186/186, suite completa 2460/2463 (i 3 rossi sono i
+`ContactsCell` pre-esistenti), `tsc -b` pulito, ESLint pulito.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## FIX — FORM PRODOTTO, `cost`/`price` "expected number, received string" (2026-07-27) — VERDE, NON COMMITTATO
+
+Bug utente: salvato un prodotto, riaprendolo in modifica i campi Costo e Prezzo mostravano
+"Invalid input: expected number, received string" e il salvataggio era bloccato.
+
+ROOT CAUSE: `Product` casta `cost`/`price` a `decimal:2`, e Laravel serializza un cast decimal come
+STRINGA (`"800.00"`). `ProductDetail` in FE li dichiarava `number | null` (contratto sbagliato):
+`useProductForm` seedava la stringa nei defaultValues e lo zod `z.number()` la rifiutava. Effetto
+collaterale silenzioso: in `buildUpdatePayload` il confronto `values.cost !== original.cost`
+(numero vs stringa) era SEMPRE vero, quindi ogni PATCH rispediva cost/price anche se non toccati.
+
+Scelta: fix lato FRONTEND, non backend — Opportunity (`estimated_value`) e Campaign
+(`total_budget`) hanno lo stesso cast e la stessa convenzione (il BE manda la stringa decimale, il
+FE normalizza). Cambiare `ProductResource` avrebbe reso Product l'unico modulo diverso.
+
+Modificati (solo `frontend/src/features/products/`): `types.ts` (`ProductDetail.cost`/`price` ora
+`string | number | null`, il contratto vero), `product-form-payload.ts` (nuovo export
+`normalizeDecimal`, gemello di quello in `opportunity-form-payload.ts`, usato nei due confronti
+del PATCH sparso), `use-product-form.ts` (seed dei defaultValues via `normalizeDecimal`).
+Nuovo test `product-form-decimals.test.tsx` (2 casi: idratazione degli input come numeri, submit in
+edit senza errore di tipo con PATCH del solo campo cambiato) + 1 caso in
+`product-form-payload.test.ts`. Reproduce-first verificato: senza il fix il test di submit e' ROSSO.
+
+Verifica ESEGUITA: Vitest `src/features/products` 55/55, suite completa 2450/2453 (i 3 rossi sono i
+`ContactsCell` in `table/cell-renderers.test.tsx`, pre-esistenti e non toccati), `tsc -b` pulito,
+ESLint pulito. Nessuna modifica backend.
+
+DEBITO NOTO: `normalizeDecimal` esiste ora in due feature (products, opportunities) e campaigns fa
+la stessa cosa inline con `Number(...)`. Candidato all'estrazione in un helper condiviso, non fatto
+qui per non allargare il blast radius fuori dal bug segnalato.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## CAMPO REGIONE SUL PRODOTTO (`products.state_id`) (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: "aggiungere campo regione al model prodotto", visibile anche in frontend e come
+colonna di tabella. Nessuna spec nuova (campo singolo su modulo esistente, spec 0017).
+
+DECISIONE DI NAMING (vincolante per chi tocca questo campo): nel codebase la regione NON si chiama
+`region` — e' il geo level `State` (model `State`, tabella `states`, colonna `state_id`, relazione
+`state()`), gia' usato da Lead, Opportunity, Project, Campaign, Address. Riusato quel nome esatto
+(CLAUDE.md §1.1). "Regione"/"Region" esiste SOLO nelle stringhe i18n. Assunzione dichiarata:
+UNA sola regione per prodotto (relazione singola, come Lead/Opportunity), non multi-regione.
+
+Contratto: `state_id` nullable `exists:states,id` su store E update; `ProductResource` espone
+`state_id` + `state: {id,name}|null`; colonna tabella `state` (`type:text`, `filterType:set`,
+sortable, label `products.columns.state`).
+
+BE: nuova migration `2026_07_27_100000_add_state_id_to_products_table.php` (foreignId nullable dopo
+`supplier_id`, `nullOnDelete`, `down()` reversibile). Modificati `Product` (Fillable + `state()`),
+`Store/UpdateProductRequest`, `Create/UpdateProductData`, `ProductResource`, `ProductService`
+(`HYDRATED_RELATIONS` += `state`), `ProductsAuthorization` (FieldDefinition `state_id`, tipo
+`select`), `ProductColumnCatalog` (colonna + filtro), `ProductsTableDefinition`, `ProductFactory`.
+Nella tabella il nome e' LOCALIZZATO in italiano (`GeoNameLocalizer::toItalian` in `mapRow` e nei
+distinct values, `filterMatchNames()` in ingresso al set-filter) — mirror esatto di
+`ProjectsTableDefinition`, necessario perche' il DB tiene i nomi in inglese. Filtro via `whereHas`,
+sort via subquery correlata: nessun `whereRaw`/`orderByRaw`.
+
+FE: `ProductStateSummary` in types, `state_id` in zod schema (opzionale)/default values/
+`SERVER_ERROR_FIELDS`/payload create+update, `RelationSelectField` su `STATES_FOR_SELECT_RESOURCE`
+in `product-form-body.tsx` (idratato da `mode.product.state`), campo nel detail, renderer colonna
+`state` che riusa il `RelationCell` condiviso di `features/table/rich-cells`, i18n en/it
+(`columns.state` + `form.state{,Placeholder,Search,Empty,Error}`).
+
+Verifica ESEGUITA (teammate backend+frontend, poi gate `verifier` indipendente): Pest
+`tests/Feature/Products` 72/73 (l'unico rosso e' il `ProductSecurityTest` navigazione, pre-esistente),
+`ProductCrudTest` 25/25 e `ProductTableTest` 16/16 verdi, Opportunities 149/149, Pint pulito.
+Vitest `src/features/products` 52/52, suite completa 2446/2449 (i 3 rossi sono i `ContactsCell`
+pre-esistenti), `tsc -b` pulito, ESLint pulito.
+
+DEBITO NOTO (non introdotto ora, sistemico): `ProductResource.state.name` e' in INGLESE ("Lombardy")
+mentre `StateForSelectResource` restituisce l'italiano ("Lombardia"), quindi nel form in modifica
+il trigger del select mostra "Lombardy" finche' non si apre la lista, poi "Lombardia". Lead e
+Opportunity hanno ESATTAMENTE la stessa incoerenza (`LeadResource::summarizeByName`): se si decide di
+sistemarla va fatto sui tre moduli insieme, non solo su Product. Secondo debito:
+`ProductsTableDefinition.php` e' salito a 429 righe (soft limit 300, hard 500) — split candidato:
+estrarre filtro/sort/distinct dello `state` in `Tables/Products/StateColumn.php`, mirror di
+`BusinessFunctionColumn`.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## SPEC 0013 (estesa) — NUOVA SORGENTE MIGRAZIONE `product-category-attributes` (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: in /migrations, una migrazione che colleghi gli ATTRIBUTI alle CATEGORIE PRODOTTO,
+come `business-function-members` collega i responsabili alle funzioni aziendali. Nessuna spec nuova:
+e' una sorgente in piu' dentro il framework di spec 0013 (una classe + una riga in config).
+
+Contratto esterno congelato (decisioni utente): la sorgente RILEGGE l'endpoint esterno
+`product-categories` e ne prende l'array `attributes`. Ogni link identifica l'attributo con
+`attribute_id` (id ESTERNO, remappato via `old_id`) OPPURE `attribute_code` (`attributes.code`, unico
+in qnet), e DEVE dichiarare `context` (`product`|`opportunity`, spec 0061): la destinazione non viene
+mai indovinata ne' defaultata. Extra opzionali per assegnazione: `is_required` (default false),
+`sort_order` (default = posizione nell'array). Esempio:
+`{"id":10,"attributes":[{"attribute_id":7,"context":"product","is_required":true,"sort_order":0},
+{"attribute_code":"size","context":"opportunity"}]}`.
+
+Nuovo: `app/Migrations/Sources/ProductCategoryAttributesSource.php` (key
+`product-category-attributes`, label "Product categories — link attributes" / "Categorie prodotto —
+collega attributi"). Modificati: `config/migrations.php` (registrazione, dopo `product-categories`),
+`app/Migrations/MigrationOrder.php` (fase 5 = `['product-category-attributes', 'products']`: serve
+che ENTRAMBE le ancore di fase 4 — attributes e product-categories — abbiano gia' `old_id`; nessuna
+dipendenza incrociata con products, quindi stessa fase), `i18n/locales/{en,it}-migrations.ts`
+(label della sorgente nel selettore).
+
+Scritture ADDITIVE direttamente sul pivot `attribute_category` via `DB::table()`: NON si passa da
+`ProductCategoryService::syncAttributes()`, che e' full-replace (cancella tutte le righe della
+categoria) e cancellerebbe assegnazioni che la migrazione non ha inviato. Una coppia gia' collegata
+resta intatta (extra inclusi) -> re-import idempotente, riga skipped. Link duplicati DENTRO lo stesso
+record collassano a uno (altrimenti l'unique attribute_id+category_id+context farebbe fallire l'intera
+riga). Attributo non risolto / context assente o sconosciuto / link malformato = warning NON fatale
+che ignora quel singolo link; categoria non ancora migrata = riga skipped con warning (stesso
+comportamento di BusinessFunctionMembersSource).
+
+Test ESEGUITI: nuovo Pest `tests/Feature/Migration/ProductCategoryAttributesSourceImportTest.php`
+7 test (risoluzione per id e per code, stesso attributo su entrambi i context, warning su riferimenti
+irrisolti, context mancante/sconosciuto, idempotenza, nessun detach di assegnazioni non inviate,
+categoria non migrata) + `MigrationRegistryTest` aggiornato (15 sorgenti, mappa e ordine) = 11/11
+verdi. Suite completa `tests/Feature/Migration` + `tests/Unit/Migrations`: 197/198. Pint pulito.
+FE: `tsc -b` pulito, ESLint pulito sui due file i18n, vitest `src/features/migrations` 18/18.
+
+FALLIMENTO PRE-ESISTENTE, NON MIO: `tests/Unit/Migrations/AbstractMigrationSourcePreviewTest.php:53`
+— asserisce le righe di preview di `RolesSource` senza `description`, ma `RolesSource::nativeColumns()`
+dichiara quella colonna (commit e5c31dc). Fallisce anche in isolamento, entrambi i file sono
+committati e non toccati da me. Test stale, da triagiare a parte.
+
+PROSSIMI PASSI: nessuno bloccante. Se in futuro serve AGGIORNARE gli extra (is_required/sort_order)
+di un link gia' esistente, va deciso esplicitamente: oggi l'additivita' li lascia intatti.
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## SPEC 0062 — IL CONFIGURATORE LAYOUT ESCE DAL FORM CATEGORIA -> AZIONE DI RIGA (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: la sezione layout attributi deve essere slegata dal form categoria e vivere in una
+pagina/modale distaccata, raggiunta come azione sulla tabella Categorie prodotto. Decisione presa e
+congelata come **D5** in `docs/specs/0062-attribute-layout-configurator.xml`: entry point = AZIONE DI
+RIGA `layout` che apre un pannello dedicato (Sheet). Resta ancorato alla categoria: NESSUN modulo
+tabellare ne' voce di navigazione autonoma (coerente con lo `<out>` gia' in spec). Superficie
+scelta = Sheet ridimensionabile e non pagina dedicata, per riuso del precedente
+`DefaultStatusesSheet` (features/opportunity-workflows) e perche' il configuratore e' un editor
+ancillare a una riga, non una destinazione di navigazione.
+
+CONTRATTO CONGELATO (invariato tra le due lane): action key `layout`, icon `layout-grid`, label i18n
+`actions.layout`, permesso `product-categories.update`. Nessun endpoint/permesso/migrazione nuovi:
+riusa GET/PUT `product-categories/{productCategory}/attribute-layouts`.
+
+Backend (2 file + 1 test): `ProductCategoryColumnCatalog::actions()` +entry `layout` tra `edit` e
+`delete`; `ProductCategoriesTableDefinition::actionsFor()` la emette solo se
+`Gate::allows('update', $row)` (blocco separato, stile dei blocchi esistenti). `ProductCategoryTableTest`
+aggiornato: `actions` = `['view','edit','layout','delete']`.
+
+Frontend: NUOVO `product-category-attribute-layout-sheet.tsx` — Sheet con
+`storageKey="sheet-width:product-category-attribute-layout"`, `defaultWidth={960}` (palette + righe +
+anteprima: serve largo), `open = categoryId !== null`, editor montato SOLO da aperto (niente fetch a
+pannello chiuso), header = `attributeLayout:section.title` + nome categoria.
+`product-category-attribute-layout-editor.tsx`: persa la chrome `FormSection` (titolo/descrizione
+passano allo SheetHeader) e **rimossa la prop `canEdit`** — l'azione di riga e' gia' gated server-side
+su `update` e la PUT e' comunque autorizzata da `AttributeLayoutController::update()`; tenerla sarebbe
+stato un parametro sempre-vero. `product-categories-table.tsx`: stato `layoutCategoryId`/`Name`,
+`case 'layout'`, `PRODUCT_CATEGORIES_ACTION_ICONS = { 'layout-grid': LayoutGrid }` a livello modulo
+passata via `iconMap` (pattern di `OPPORTUNITIES_ACTION_ICONS`). `product-category-form-body.tsx`:
+rimosso l'INTERO blocco finale (editor in edit + placeholder in create) e gli import orfani.
+i18n: +`actions.layout` in `en.ts`/`it.ts`; RIMOSSA la chiave ora morta `section.createHint` da
+`en-attribute-layout.ts`/`it-attribute-layout.ts` (`section.editorHint` resta, usato dall'editor).
+
+CORREZIONE SUPERFICI (feedback utente "sono blu su blu", stesso giorno): togliere la `FormSection`
+dall'editor era SBAGLIATO. I blocchi del configuratore (`attribute-layout-palette.tsx:33`,
+`attribute-layout-preview-panel.tsx:38`, `attribute-layout-section-editor.tsx:58`) usano `bg-muted/40`,
+che per ui-design.md §1-bis e' una TINTA e non un rung: e' progettata per stare SOPRA un `bg-card`
+(rung 3), e le loro doc-comment lo dichiarano. Senza la card, la tinta poggiava direttamente sul
+`bg-background` dello `SheetContent` (rung 1) -> nessuna separazione. `FormSection` REINTEGRATA
+dentro l'editor (icon `LayoutGrid`, `title` = `section.title`, `description` = `section.editorHint`,
+che assorbe la `<p>` sciolta di prima). Per non duplicare il titolo, lo `SheetHeader` e' stato
+invertito: `SheetTitle` = nome categoria, `SheetDescription` = `section.description`. Gerarchia
+finale: bg-background -> bg-card -> bg-muted/40 -> chip bg-card. Regge in light e dark (in dark
+`--muted` 31 sta sopra `--card` 23, in light 79 sotto: rilievo in un tema, vassoio incassato
+nell'altro, entrambi coerenti con §1-bis). REGOLA DA RICORDARE: chi sposta un pezzo di UI da un
+contenitore all'altro deve riportarsi dietro il rung di cui i suoi figli hanno bisogno.
+
+FOOTER ALLINEATO AGLI ALTRI MODALI (feedback utente, stesso giorno): il Salva stava nello slot
+`trailing` del selettore contesto/modalita', in alto. Portato in fondo nel footer canonico dei Sheet
+con salvataggio esplicito (riferimento `features/opportunity-workflows/default-statuses-sheet.tsx`):
+`flex justify-end gap-2 border-t p-4`, `Annulla` (outline) + `Salva layout`, FUORI dall'area
+scrollabile. Struttura: l'editor possiede ora root `flex flex-1 flex-col overflow-hidden` + body
+`flex-1 overflow-y-auto p-4` + footer; lo Sheet lo monta come figlio diretto di `SheetContent`
+(niente doppio scroll/padding) e passa `onCancel={() => onOpenChange(false)}`. Hook NON sollevato:
+`useAttributeLayout` e lo stato context/formMode restano nell'editor. Nuove chiavi `section.cancel`
+in en/it. SCELTA DELIBERATA: il pannello NON si chiude al salvataggio riuscito (a differenza di
+`DefaultStatusesSheet`) perche' ospita 6 combinazioni context x form_mode indipendenti e l'utente ne
+modifica piu' d'una di seguito; il toast resta l'unica conferma. Annulla chiude scartando il draft.
+Di conseguenza la prop `trailing` di `product-category-attribute-layout-context-mode-selector.tsx`
+e' rimasta senza consumer (grep: il preview non la passava) -> RIMOSSA insieme all'import `ReactNode`.
+
+Test ESEGUITI e riverificati dal verifier indipendente: Pest `tests/Feature/ProductCategories` 110/111
+(l'unico rosso e' pre-esistente, vedi sotto), Pint `{"result":"passed"}`; Vitest
+`src/features/product-categories` + `src/features/attributes` 126/126 su 22 file; `tsc -b --force`
+PULITO a livello progetto; ESLint pulito. Perimetro del diff verificato = perimetro dichiarato.
+
+FALLIMENTO PRE-ESISTENTE, NON DI QUESTA LANE: `ProductCategorySecurityTest.php:41` (navigazione,
+`product-categories` cercato nella sezione sbagliata) — il verifier lo ha riprodotto in un worktree
+pulito a HEAD `32ee40d`, fallisce gia' li'. Da triagiare a parte insieme al gemello su `ProductSecurityTest`.
+
+ATTENZIONE AL COMMIT: nello stesso working tree siede una lane ESTRANEA in corso (campo `state_id`/
+"Regione" sui Prodotti: `backend/app/{Models/Product.php, Services/ProductService.php, Http/Resources/
+ProductResource.php, Http/Requests/Products/*, DataObjects/Products/*, Authorization/ProductsAuthorization.php}`,
+migrazione non tracciata `2026_07_27_100000_add_state_id_to_products_table.php`,
+`frontend/src/features/products/*`). NON e' parte di questo lavoro: un `git add -A` la includerebbe
+per errore. Committare per percorso esplicito.
+
+PROSSIMI PASSI: verifica manuale a 375/768/1024 del pannello (il configuratore e' denso; la larghezza
+e' resizable e memorizzata per utente). NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## SPEC 0062 — RIMOZIONE FLAG MORTA `is_advanced` DALLE SEZIONI LAYOUT (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: "sezione avanzata a cosa serve? se non serve elimina quel booleano". Verificato:

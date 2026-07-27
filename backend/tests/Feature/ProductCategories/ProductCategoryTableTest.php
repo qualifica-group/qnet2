@@ -90,7 +90,7 @@ it('rows expose id/name/parent{id,name}|null/description/counts/created_at + per
         ->and($childRow['products_count'])->toBe(1)
         ->and($childRow['attributes'])->toBe([['id' => $attribute->id, 'name' => 'Color']])
         ->and($childRow['products'])->toBe([['id' => $product->id, 'name' => 'Widget']])
-        ->and($childRow['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($childRow['actions'])->toEqualCanonicalizing(['view', 'edit', 'layout', 'delete']);
 });
 
 it('rows: the products tooltip list is capped at PRODUCT_TOOLTIP_LIST_LIMIT, products_count stays the real total', function () {

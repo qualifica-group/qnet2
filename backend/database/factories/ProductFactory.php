@@ -28,6 +28,7 @@ class ProductFactory extends Factory
             'product_type' => ProductType::Service,
             'vat_rate_id' => null,
             'supplier_id' => null,
+            'state_id' => null,
         ];
     }
 }

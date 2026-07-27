@@ -11,7 +11,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { createProduct, productDetailQueryKey, updateProduct } from '@/features/products/api'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/products/product-form-payload'
+import { buildCreatePayload, buildUpdatePayload, normalizeDecimal } from '@/features/products/product-form-payload'
 import {
   buildCreateProductSchema,
   buildUpdateProductSchema,
@@ -36,6 +36,7 @@ const SERVER_ERROR_FIELDS = [
   'product_type',
   'vat_rate_id',
   'supplier_id',
+  'state_id',
 ] as const
 
 /** Default product type for a new product (SERVICE-only catalogue for now). */
@@ -124,12 +125,13 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
       return {
         name: product.name,
         description: product.description,
-        cost: product.cost,
-        price: product.price,
+        cost: normalizeDecimal(product.cost),
+        price: normalizeDecimal(product.price),
         category_id: product.category_id,
         product_type: product.product_type,
         vat_rate_id: product.vat_rate_id,
         supplier_id: product.supplier_id,
+        state_id: product.state_id,
         custom_fields: customFields.defaultValues,
         attribute_values: seedAttributeValues(productAttributes, product.attribute_values ?? {}),
       }
@@ -143,6 +145,7 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
       product_type: DEFAULT_PRODUCT_TYPE,
       vat_rate_id: null,
       supplier_id: null,
+      state_id: null,
       custom_fields: customFields.defaultValues,
       attribute_values: {},
     }

@@ -66,10 +66,25 @@
       <d id="D2">Visibilita' condizionale = STATICA in v1 (per contesto/modulo + per modalita' +
         flag sezione "avanzata"/"Altre informazioni"). Il rules-engine su valore di altri campi
         (show_if) e' ESPLICITAMENTE FUORI SCOPE — spec successiva.</d>
-      <d id="D3">Modalita' form = TRE layout INDIPENDENTI per create / edit / view.
-        Enum App\Enums\FormMode = { Create='create', Edit='edit', View='view' }.</d>
+      <d id="D3" revised="user 2026-07-27">Modalita' form = layout CONDIVISO + override per modalita'.
+        Enum App\Enums\LayoutFormScope = { All='all', Create='create', Edit='edit', View='view' },
+        salvato nella colonna `attribute_layouts.form_mode` (nome colonna e parametro API invariati).
+        `all` e' il layout condiviso che guida create/edit/view insieme ed e' lo scope di DEFAULT del
+        configuratore; gli altri tre sono override della singola modalita'. Risoluzione per una
+        FormMode concreta: riga della modalita' -> riga `all` -> rendering flat. Non esiste piu' il
+        fallback implicito create->edit->view (introdotto e poi rimosso il 2026-07-27): un layout
+        salvato su una singola modalita' vale SOLO per quella. App\Enums\FormMode resta la fase di
+        lifecycle in cui un record viene renderizzato (mai `all`) e non e' toccata.
+        Migrazione dati `2026_07_27_140000_backfill_attribute_layout_all_scope`: ogni categoria con
+        UNA sola riga per contesto diventa `all` (stessa resa che aveva col fallback implicito).</d>
       <d id="D4">Responsive = collasso automatico progressivo (desktop N col -> tablet -> mobile 1
         col), derivato dalle colonne configurate. NESSUN override manuale per breakpoint in v1.</d>
+      <d id="D5" source="user 2026-07-27">Entry point del configuratore = AZIONE DI RIGA della
+        tabella Categorie prodotto (`layout`, permesso product-categories.update), che apre un
+        pannello dedicato. Il configuratore NON vive piu' dentro il form categoria: form (dati
+        categoria + assegnazione attributi) e layout sono due superfici distinte con salvataggi
+        indipendenti. Resta ancorato alla categoria: nessun modulo tabellare o voce di
+        navigazione autonoma (vedi &lt;out&gt;).</d>
     </decisions>
   </context>
 
@@ -163,12 +178,16 @@
 
     <endpoint method="GET" path="/api/product-categories/{productCategory}/attribute-layouts">
       <request>
-        Query: context in {product,opportunity} (default opportunity, validato vs AttributeContext),
-        form_mode in {create,edit,view} (default create, validato vs FormMode).
+        Query: context in {product,opportunity} (default opportunity, validato vs AttributeContext);
+        exact (bool, default false) = carico di AUTHORING; form_mode validato contro DUE enum diversi
+        a seconda del chiamante (D3): con exact=1 e' un LayoutFormScope in {all,create,edit,view}
+        (default all) e restituisce la riga ESATTA di quello scope; senza exact e' una FormMode in
+        {create,edit,view} (default create) e restituisce la risoluzione modalita' -> all -> null.
       </request>
       <response status="200">
         data: {
           layout: { sections: [...] } | null,   // null = nessuna config -> FE flat
+          inherited: { sections: [...] } | null, // layout `all` ereditato: valorizzato SOLO con exact=1 su uno scope per-modalita'
           attributes: EffectiveAttribute[]       // catalogo effettivo (own+inherited) per (categoria,context): alimenta la palette
         }
       </response>
@@ -177,8 +196,11 @@
 
     <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
       <request>
-        Body: { context, form_mode, layout: { sections:[...] } }.
-        Upsert per (product_category_id, context, form_mode). layout=null (o sections vuoto) elimina la riga (ritorno a flat).
+        Body: { context, form_mode, layout: { sections:[...] } }, con form_mode = LayoutFormScope
+        in {all,create,edit,view} (D3).
+        Upsert per (product_category_id, context, form_mode). layout=null (o sections vuoto) elimina la riga:
+        sullo scope `all` e' il ritorno a flat, su uno scope per-modalita' e' la rimozione dell'override
+        (quella modalita' torna a ereditare il layout condiviso).
         Validazione: enum context/form_mode/variant/width; columns in {1,2,3,4}; ogni attribute_code
         DEVE appartenere ai code effettivi della categoria per quel context (allow-list); nessun code
         duplicato nell'intero blob; titoli/descrizioni entro i limiti. Regole dotted annidate +
@@ -204,7 +226,8 @@
       </products>
       <opportunities>
         RequestWorkPanel payload: additivo `attribute_layout` = layout risolto merge-multicategoria
-        (context=opportunity, form_mode corrente del pannello). `applicable_attributes` INVARIATO.
+        (context=opportunity, form_mode corrente del pannello; ogni categoria contribuente risolve
+        con lo stesso ordine di precedenza modalita' -> all, D3). `applicable_attributes` INVARIATO.
         Nessun altro campo del work-panel cambia (invariante 0061 sul resto del pannello).
       </opportunities>
     </rendering-payload>

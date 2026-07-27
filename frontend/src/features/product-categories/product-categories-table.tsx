@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { FolderTree, Plus } from 'lucide-react'
+import { FolderTree, LayoutGrid, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -15,16 +15,21 @@ import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { productCategoryColumnRenderers } from '@/features/product-categories/column-renderers'
 import { BulkMoveCategoriesDialog } from '@/features/product-categories/bulk-move-categories-dialog'
+import { ProductCategoryAttributeLayoutSheet } from '@/features/product-categories/product-category-attribute-layout-sheet'
 import { productCategoryKeys } from '@/features/product-categories/query-keys'
 import { deleteProductCategory } from '@/features/product-categories/api'
 
 /** Domain key used to mount the generic table for product categories. */
 const PRODUCT_CATEGORIES_DOMAIN = 'product-categories'
+
+/** Domain-specific row-action icon, merged over the shared defaults (spec 0062 revision). */
+const PRODUCT_CATEGORIES_ACTION_ICONS: ActionIconMap = { 'layout-grid': LayoutGrid }
 
 /**
  * Thin Product Categories adapter over the generic table. It mounts
@@ -49,6 +54,8 @@ export function ProductCategoriesTable() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [layoutCategoryId, setLayoutCategoryId] = useState<number | null>(null)
+  const [layoutCategoryName, setLayoutCategoryName] = useState<string | null>(null)
 
   // Bulk move (spec 0063): this adapter owns the selection ids and the
   // post-success refresh; the dialog owns the destination pick, the request
@@ -139,6 +146,10 @@ export function ProductCategoriesTable() {
         case 'activity':
           setActivityRow(row)
           break
+        case 'layout':
+          setLayoutCategoryId(row.id)
+          setLayoutCategoryName(typeof row.name === 'string' ? row.name : null)
+          break
         default:
           break
       }
@@ -177,6 +188,7 @@ export function ProductCategoriesTable() {
         onAction={handleAction}
         isBusy={isBusy}
         getBulkActions={getBulkActions}
+        iconMap={PRODUCT_CATEGORIES_ACTION_ICONS}
       />
 
       <BulkMoveCategoriesDialog
@@ -194,6 +206,17 @@ export function ProductCategoriesTable() {
         onOpenChange={(open) => {
           if (!open) {
             setActivityRow(null)
+          }
+        }}
+      />
+
+      <ProductCategoryAttributeLayoutSheet
+        categoryId={layoutCategoryId}
+        categoryName={layoutCategoryName}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLayoutCategoryId(null)
+            setLayoutCategoryName(null)
           }
         }}
       />

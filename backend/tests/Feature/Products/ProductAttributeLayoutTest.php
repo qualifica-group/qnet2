@@ -68,17 +68,18 @@ it('the category\'s (product, view) configured layout is resolved and exposed on
     expect($response->json('data.attribute_layout.sections.0.rows.0.items.0.attribute_code'))->toBe('material');
 });
 
-it('a layout configured only for form_mode=create drives the detail too via cross-mode fallback (spec 0062 revised)', function () {
-    // Requirement change: a single saved layout is meant to apply across every
-    // form mode. With no dedicated `view` row, the `create` layout resolves for
-    // the read-only detail instead of the previous flat fallback.
+it('the shared `all` layout drives the detail when no view override exists (spec 0062, D3 revised)', function () {
+    // Requirement change: one layout saved under the SHARED scope applies to
+    // every form mode, so it resolves for the read-only detail instead of the
+    // flat fallback. (A layout scoped to a single mode does NOT: see
+    // AttributeLayoutTest, "never leaks into another mode".)
     $actor = productAttributeUserWith(['view']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material', 'type' => 'text']);
     $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
     AttributeLayout::factory()->for($category, 'productCategory')
         ->withCodes(['material'])
-        ->create(['context' => 'product', 'form_mode' => 'create']);
+        ->create(['context' => 'product', 'form_mode' => 'all']);
     $product = Product::factory()->create(['category_id' => $category->id]);
     Sanctum::actingAs($actor);
 
@@ -86,7 +87,7 @@ it('a layout configured only for form_mode=create drives the detail too via cros
         ->assertJsonPath('data.attribute_layout.sections.0.rows.0.items.0.attribute_code', 'material');
 });
 
-it('a dedicated form_mode=view layout wins over the create fallback (exact mode precedence)', function () {
+it('a dedicated form_mode=view layout wins over the shared one (per-mode override precedence)', function () {
     $actor = productAttributeUserWith(['view']);
     $category = ProductCategory::factory()->create();
     foreach (['material', 'colour'] as $code) {
@@ -95,7 +96,7 @@ it('a dedicated form_mode=view layout wins over the create fallback (exact mode 
     }
     AttributeLayout::factory()->for($category, 'productCategory')
         ->withCodes(['material'])
-        ->create(['context' => 'product', 'form_mode' => 'create']);
+        ->create(['context' => 'product', 'form_mode' => 'all']);
     AttributeLayout::factory()->for($category, 'productCategory')
         ->withCodes(['colour'])
         ->create(['context' => 'product', 'form_mode' => 'view']);

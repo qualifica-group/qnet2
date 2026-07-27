@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
+use App\Models\State;
 use App\Models\VatRate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -53,6 +54,8 @@ class ProductResource extends JsonResource
             'vat_rate' => $this->vatRateSummary($this->vatRate),
             'supplier_id' => $this->supplier_id,
             'supplier' => $this->supplierSummary($this->supplier),
+            'state_id' => $this->state_id,
+            'state' => $this->stateSummary($this->state),
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,
@@ -104,5 +107,17 @@ class ProductResource extends JsonResource
         }
 
         return ['id' => $supplier->id, 'name' => $supplier->name];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function stateSummary(?State $state): ?array
+    {
+        if ($state === null) {
+            return null;
+        }
+
+        return ['id' => $state->id, 'name' => $state->name];
     }
 }

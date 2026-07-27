@@ -97,6 +97,7 @@ export const en = {
     documents: 'Documents',
     notes: 'Notes',
     impersonate: 'Impersonate',
+    layout: 'Attribute layout',
   },
   table,
   // Strings of the generic statistics panel (spec 0026). The per-module widget

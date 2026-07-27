@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\AttributeContext;
-use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use App\Models\AttributeLayout;
 use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,7 +24,8 @@ class AttributeLayoutFactory extends Factory
         return [
             'product_category_id' => ProductCategory::factory(),
             'context' => AttributeContext::Opportunity->value,
-            'form_mode' => FormMode::Create->value,
+            // The shared scope is the default configuration (spec 0062 D3 revised).
+            'form_mode' => LayoutFormScope::All->value,
             'layout' => ['sections' => []],
         ];
     }
