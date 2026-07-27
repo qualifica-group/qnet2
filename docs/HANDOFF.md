@@ -2,6 +2,127 @@
 
 > Injected at session start. Update at every green state.
 
+## CATALOGO — SOLO CATEGORIE + DECLINAZIONI REGIONALI GOL (2026-07-27) — VERDE, NON COMMITTATO
+
+`QualificaTemplateSeeder` — il catalogo prodotti (spec 0017) e' ora un albero di SOLE CATEGORIE.
+
+1. Terzo livello: `CATALOG` e' passato da `root => (sub => list di NOMI PRODOTTO)` a
+   `root => (sub => list di FIGLI FOGLIA)`. Stessa forma annidata, semantica diversa: il valore
+   ora sono categorie figlie, non prodotti. Sotto `GOL`: Molise, Abruzzo, Calabria, Campania,
+   Lombardia, Lazio, Umbria (nomi `GOL - <Regione>`). `ProductCategory` e' ad albero senza limite
+   di profondita' → nessuna migrazione.
+2. RIMOSSI TUTTI I PRODOTTI DI RIFERIMENTO (richiesta utente esplicita): via il metodo
+   `seedCatalogProducts()` e i 6 prodotti che creava (`Prodotto per formazione GOL/Autoimpiego/
+   Yisu/Autofinanziato/DIL`, `Prodotto per consulenza Trattative in Corso`), via gli import ormai
+   orfani `ProductService`/`CreateProductData`/`ProductType`/`Product`. Il seeder non tocca piu'
+   la tabella `products`: il catalogo si popola dai moduli CRUD.
+   Sostituito da `seedCatalogChildren(ProductCategory $parent, array $childNames)`.
+3. ATTRIBUTO PRODOTTO "Ore complessive" sul ramo Formazione (spec 0061). Nuova costante
+   `CATALOG_PRODUCT_ATTRIBUTES` (root name => list di `{code, name, type}`) +
+   `seedProductAttributes()`/`assignProductAttribute()`. `Attribute` con `code = total_hours`
+   (identificatore INGLESE, formato `^[a-z0-9_]+$` imposto da `StoreAttributeRequest`),
+   `name = 'Ore complessive'` (label utente, italiano ammesso), `type = 'integer'` (chiave di
+   `config/custom-fields.php` types). Pivot `attribute_category` con
+   `context = AttributeContext::Product`.
+   ASSEGNATO UNA VOLTA SOLA SULLA RADICE `Formazione`, non sulle foglie: `inherits_attributes`
+   e' `true` di default e gli attributi EFFETTIVI di una categoria sono i propri UNION quelli di
+   ogni antenato (`CategoryHierarchy::effectiveAttributes`), quindi GOL, i 7 figli regionali,
+   Autoimpiego, Yisu, Autofinanziato e DIL lo ereditano da una sola riga di pivot — e una
+   sottocategoria aggiunta domani e' coperta automaticamente. `Consulenza` non lo vede.
+   `assignProductAttribute()` e' ADDITIVO di proposito (guard su esistenza + `attach`), NON usa
+   `ProductCategoryService::syncAttributes()` che e' un full-replace e cancellerebbe le
+   assegnazioni fatte a mano dal configuratore di categoria.
+
+ATTENZIONE — il seeder NON cancella i prodotti gia' creati da run precedenti su un DB esistente
+(sarebbe distruttivo e non e' stato chiesto). Su un DB gia' seedato quei 6 prodotti restano: se
+vanno via, e' una cancellazione manuale/una migrazione dedicata, da decidere con l'utente.
+
+Idempotenza invariata: `firstOrCreate` sul nome per le categorie (chiave naturale globale; i nomi
+regionali sono unici), sul `code` per l'attributo (un rename manuale sopravvive al re-seed).
+Verifica ESEGUITA: `QualificaTemplateSeederTest` 9/9 verde — albero categorie, 7 figli sotto GOL
+e solo quelli, `Product::count() === 0` dopo il seed, attributo unico + una sola riga di pivot in
+context `product`, ereditarieta' risolta su GOL / GOL - Molise / DIL con `inherited => true`,
+assente su Consulenza, doppio seed senza duplicati. Pint pulito (exit 0).
+
+NOTA PEST (ci sono gia' cascato): `expect($array)->toContain('x', $msg)` NON prende un messaggio —
+gli argomenti extra sono ULTERIORI valori attesi. Il messaggio esiste solo su `toBeTrue($msg)` &co.
+
+ROSSI PRE-ESISTENTI, NON MIEI — cluster "navigation: the X node only shows with X.view" che
+fallisce anche in ISOLAMENTO su file mai toccati qui: `ProductSecurityTest` (products),
+`CustomFieldAdminSecurityTest` (custom-fields), `AttributeSecurityTest` (attributes),
+`ProductCategorySecurityTest` (product-categories). Piu' `CustomFieldWritePipelineTest::PATCH
+partial merge...` (422 su `vat_number` generato da faker). Baseline verificata. Non perderci tempo.
+
+CAUTELA GIT (incidente sfiorato): in questo repo ci sono 7 stash pre-esistenti, e `stash@{0}` si
+chiama "restored: WIP ... (auto-popped by mistake)". Un `git stash push -- <pathspec>` che fallisce
+(es. per un file UNTRACKED come `TestUsersSeeder.php`) NON crea stash, e un `git stash pop`
+eseguito dopo tenta di applicare `stash@{0}`, cioe' roba altrui. Qui git ha rifiutato da solo
+(avrebbe sovrascritto modifiche locali) e non si e' perso nulla. Per fare una baseline usa un
+metodo non distruttivo (eseguire i test sospetti in isolamento), non lo stash.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## UTENTI TESTER + RUOLI `supervisor`/`commercial` (2026-07-27) — VERDE, NON COMMITTATO
+
+Nuovo `Database\Seeders\TestUsersSeeder` (`backend/database/seeders/TestUsersSeeder.php`) +
+`backend/tests/Feature/Users/TestUsersSeederTest.php` + sezione in `backend/README.md`.
+Nessun file frontend toccato: la navigazione e' backend-driven e le pagine gia' gatano con `<Can>`.
+
+DECISIONI UTENTE (AskUserQuestion, non re-litigare):
+(a) seeder STANDALONE — NON agganciato a `DatabaseSeeder` ne' a `DemoDataSeeder`, si lancia a mano
+come `QualificaTemplateSeeder`: `php artisan db:seed --class=TestUsersSeeder`. Per questo NON ha il
+prefisso `Demo` (CLAUDE.md §3.1 vincola il prefisso ai seeder chiamati da `DemoDataSeeder`).
+(b) Ciro Cacciapuoti = `super-admin` (non un ruolo standard).
+(c) al `commercial` si danno anche i `viewAny` minimi per far funzionare i select del modulo.
+
+RUOLI CREATI DAL SEEDER (non esistevano): `supervisor` e `commercial` — nomi identificatore in
+INGLESE per `engineering.md §1.2`, etichetta italiana nella colonna `roles.description`
+("Supervisore operativo" / "Commerciale"). `commercial` riusa il termine gia' in uso nel codebase
+(`Opportunity::commercial`). 5 account upsertati per email.
+Il seeder lancia da se' `permissions:sync` + `roles:create-super-admin`: e' standalone, non puo'
+dipendere dal fatto che il catalogo permessi sia gia' stato bootstrappato.
+
+PASSWORD (direttiva utente): unica e condivisa `Qualifica2026!`, da una chiave di config NUOVA e
+SEPARATA — `config('seeding.test_users_password')` (env `TEST_USERS_SEED_PASSWORD`, in
+`.env.example`). NON riusa `config('seeding.password')`: quella e' condivisa con `DemoUserSeeder`/
+`DemoUsersSeeder`, cambiarla avrebbe spostato anche `demo@app.com` e i 50 generati — fuori scope.
+A differenza degli altri seeder la password e' riscritta a OGNI run, non solo alla creazione: e' una
+credenziale condivisa e documentata, quindi ruotarla deve raggiungere i tester gia' seedati.
+Contropartita voluta e testata: una password cambiata da UI viene riportata a quella condivisa.
+
+MATRICE `supervisor`: tutto il catalogo MENO `SUPERVISOR_DENIED_RESOURCES` (users, roles,
+custom-fields, business-functions, sectors, tags, sources, referent-types, companies, company-sites,
+operational-sites). Di quelle, `SUPERVISOR_SELECT_ONLY_RESOURCES` (business-functions, sectors,
+sources, referent-types, operational-sites, users) conserva SOLO `viewAny`.
+MATRICE `commercial`: tutto `request-management.*` (incluso `viewAll` — senza, la griglia sarebbe
+vuota su un DB appena seedato) + il solo `viewAny` di registries, sources, referents,
+operational-sites, users.
+
+PERCHE' i `viewAny` di supporto: gli endpoint `for-select` che alimentano i select relazione sono
+autorizzati dal `viewAny` della risorsa di origine. Senza, i form di progetti/campagne/anagrafiche/
+referenti e l'intero work panel di request-management rispondono 403.
+Il `view` resta negato → `config/navigation.php` gatea ogni voce di menu su `<resource>.view`,
+quindi il menu NON mostra quelle sezioni.
+
+RESIDUO NOTO E ACCETTATO (verificato, non un bug da "scoprire" di nuovo): l'endpoint tabellare
+generico autorizza sullo STESSO `viewAny`, percio' `/api/tables/users/columns` (supervisor) e
+`/api/tables/registries/columns` (commercial) rispondono 200 e le liste restano leggibili digitando
+l'URL. Chiuderlo richiede una abilita' dedicata di sola selezione (es. `<resource>.select`), non un
+seed diverso — proposta, NON implementata. Il residuo e' pinnato da un test apposta.
+
+Verifica ESEGUITA (`XDEBUG_MODE=off`): `TestUsersSeederTest` 12/12 verde (account+ruoli, password
+condivisa + ripristino al re-run, idempotenza, matrici permessi, menu via `NavigationService`,
+enforcement sugli endpoint reali). `TestUsersSeederTest`+`tests/Feature/Config` 30/30 verde.
+`tests/Feature/Navigation`+`Roles`+`Authorization`+`SeederFlowTest` 145/145 verde. Pint pulito.
+
+ROSSO PRE-ESISTENTE, NON MIO (non perderci tempo): `MetaEndpointTest::permissions.resource reflects
+the actor abilities including export/import` fallisce SOLO se caricato dopo
+`tests/Feature/Users/UserCrudTest.php`. I due file definiscono `userWithUserAbilities()` dietro
+`function_exists()` e la versione di UserCrudTest NON crea `users.export`/`users.import`: vince chi
+carica per primo. Riproducibile con quei due soli file, indipendente da questo lavoro.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## MIGRAZIONE — NUOVO SOURCE `vat-rates` (IVA) + REMAP PRODOTTI (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: nuova /migration per la tabella di setting IVA. Decisione utente (AskUserQuestion):
@@ -33,11 +154,18 @@ NON in `OldIdSchemaTest`: quel dataset e' fermo alle 10 tabelle originali della 
 stato esteso nemmeno per attributes/product_categories/products — ho seguito il precedente invece di
 riaprirlo.
 
+FE — SOLO la traduzione dell'etichetta: `'vat-rates': 'Aliquote IVA'` in
+`i18n/locales/it-migrations.ts` e `'VAT rates'` in `en-migrations.ts` (i due file si rispecchiano
+1:1), inserita dopo `sectors` per seguire l'ordine di `config/migrations.php`. Le 4 schermate del
+modulo leggono l'etichetta con `t('sources.<key>', {defaultValue: ...})`, quindi senza la chiave la
+UI avrebbe mostrato il fallback grezzo `vat-rates`. Nessun altro file frontend: la pagina
+/migrations e' generica e prende il source da `definitions`.
+
 Verifica ESEGUITA (`XDEBUG_MODE=off`): `tests/Feature/Migration` 195/195 verde (190 preesistenti + 4
 nuovi casi vat-rates + 1 sul remap prodotti). `tests/Feature/VatRates`+`Products` 103/105: i 2 rossi
 sono `VatRateSecurityTest`/`ProductSecurityTest` "navigation node", famiglia PRE-ESISTENTE gia'
-tracciata qui sotto (non tocco la navigazione). Pint pulito. Nessuna modifica frontend: la pagina
-/migrations e' generica e prende il nuovo source da `definitions`.
+tracciata qui sotto (non tocco la navigazione). Pint pulito. FE: `vitest src/features/migrations`
+18/18, `tsc --noEmit` pulito.
 
 DA DECIDERE, NON FATTO: `QualificaLegacyImportSeeder::SOURCES` non include `vat-rates`. Se le
 aliquote fanno parte del template cliente va aggiunto in fase 1, ma e' una scelta di contenuto del

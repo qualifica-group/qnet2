@@ -22,6 +22,7 @@ export const migrations = {
     sources: 'Fonti',
     tags: 'Tag',
     sectors: 'Settori',
+    'vat-rates': 'Aliquote IVA',
     attributes: 'Attributi',
     'product-categories': 'Categorie prodotto',
     'product-category-attributes': 'Categorie prodotto — collega attributi',

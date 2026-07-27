@@ -2,16 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\DataObjects\Products\CreateProductData;
-use App\Enums\ProductType;
+use App\Enums\AttributeContext;
+use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\CustomFieldValue;
-use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
-use App\Services\ProductService;
 use Illuminate\Database\Seeder;
 
 /**
@@ -29,15 +27,17 @@ use Illuminate\Database\Seeder;
  * Plus the client's reward type catalogue (spec 0058): the voucher/reward
  * types actually in use.
  *
- * Plus the client's reference product catalogue (spec 0017): a two-root
- * category tree (Formazione / Consulenza) with its leaf subcategories and one
- * reference SERVICE product per populated subcategory. Products carry no
- * cost/price yet (both 0) — those are edited later through the CRUD modules.
+ * Plus the client's reference category catalogue (spec 0017): a two-root
+ * category tree (Formazione / Consulenza) with its subcategories and the
+ * regional declinations under GOL. Categories only — no product is seeded,
+ * the catalogue is filled in later through the CRUD modules. The "Formazione"
+ * branch also carries a product-context attribute ("Ore complessive", spec
+ * 0061), assigned to the root and inherited by every descendant.
  *
  * Custom-field/source definitions write no per-row values (that is user data);
- * the catalogue does create ProductCategory/Product rows, all idempotent:
+ * the catalogue does create ProductCategory rows, all idempotent:
  * `updateOrCreate` on (entity_type, key) for custom fields, `firstOrCreate`
- * on the natural name key for sources, reward types, categories and products
+ * on the natural name key for sources, reward types and categories
  * — a re-run never duplicates rows nor overwrites manual edits.
  * Adding a module's template = one more entry in TEMPLATES.
  *
@@ -166,25 +166,55 @@ class QualificaTemplateSeeder extends Seeder
     ];
 
     /**
-     * The client's reference product catalogue (spec 0017): root category =>
-     * (leaf subcategory => list of reference product names). Every product is
-     * a SERVICE with cost/price 0 (filled in later via the CRUD modules); a
-     * subcategory with an empty list carries no product. Names are the natural
-     * keys used for idempotent `firstOrCreate` on re-run.
+     * The client's reference category catalogue (spec 0017): root category =>
+     * (subcategory => list of leaf children, empty when the subcategory is
+     * itself a leaf). The tree has no depth limit; only categories are
+     * seeded — products are created later through the CRUD modules. Names are
+     * user-facing domain values, kept in their original language, and are the
+     * natural keys used for idempotent `firstOrCreate` on re-run.
      *
      * @var array<string, array<string, list<string>>>
      */
     private const array CATALOG = [
         'Formazione' => [
-            'GOL' => ['Prodotto per formazione GOL'],
-            'Autoimpiego' => ['Prodotto per formazione Autoimpiego'],
-            'Yisu' => ['Prodotto per formazione Yisu'],
-            'Autofinanziato' => ['Prodotto per formazione Autofinanziato'],
-            'DIL' => ['Prodotto per formazione DIL'],
+            'GOL' => [
+                'GOL - Molise',
+                'GOL - Abruzzo',
+                'GOL - Calabria',
+                'GOL - Campania',
+                'GOL - Lombardia',
+                'GOL - Lazio',
+                'GOL - Umbria',
+            ],
+            'Autoimpiego' => [],
+            'Yisu' => [],
+            'Autofinanziato' => [],
+            'DIL' => [],
         ],
         'Consulenza' => [
-            'Trattative in Corso' => ['Prodotto per consulenza Trattative in Corso'],
+            'Trattative in Corso' => [],
             'Presa Appuntamenti' => [],
+        ],
+    ];
+
+    /**
+     * Product-context attributes (spec 0061) assigned to a ROOT category:
+     * root name => list of catalogue attribute specs. Assigned once at the
+     * root because `inherits_attributes` defaults to true and a category's
+     * EFFECTIVE attributes are its own UNION every ancestor's — so the whole
+     * "Formazione" branch (its subcategories AND the regional GOL children)
+     * gets the field from a single pivot row, and a subcategory added later
+     * is covered automatically.
+     *
+     * `code` is the English identifier (the catalogue's natural key, and its
+     * `^[a-z0-9_]+$` format); `name` is the user-facing label, kept in its
+     * original language. `type` is a FieldTypeRegistry key.
+     *
+     * @var array<string, list<array{code: string, name: string, type: string}>>
+     */
+    private const array CATALOG_PRODUCT_ATTRIBUTES = [
+        'Formazione' => [
+            ['code' => 'total_hours', 'name' => 'Ore complessive', 'type' => 'integer'],
         ],
     ];
 
@@ -222,38 +252,65 @@ class QualificaTemplateSeeder extends Seeder
 
     private function seedCatalog(): void
     {
-        $service = app(ProductService::class);
-
         foreach (self::CATALOG as $rootName => $subcategories) {
             $root = ProductCategory::firstOrCreate(['name' => $rootName], ['parent_id' => null]);
+            $this->seedProductAttributes($root, self::CATALOG_PRODUCT_ATTRIBUTES[$rootName] ?? []);
 
-            foreach ($subcategories as $subName => $productNames) {
+            foreach ($subcategories as $subName => $childNames) {
                 $subcategory = ProductCategory::firstOrCreate(['name' => $subName], ['parent_id' => $root->id]);
-                $this->seedCatalogProducts($service, $subcategory, $productNames);
+                $this->seedCatalogChildren($subcategory, $childNames);
             }
         }
     }
 
     /**
-     * @param  list<string>  $productNames
+     * @param  list<string>  $childNames
      */
-    private function seedCatalogProducts(ProductService $service, ProductCategory $category, array $productNames): void
+    private function seedCatalogChildren(ProductCategory $parent, array $childNames): void
     {
-        foreach ($productNames as $name) {
-            // Natural key (name): a product already present is left untouched.
-            if (Product::where('name', $name)->exists()) {
-                continue;
-            }
-
-            $service->create(new CreateProductData(
-                name: $name,
-                description: null,
-                cost: 0.0,
-                price: 0.0,
-                categoryId: $category->id,
-                productType: ProductType::Service,
-            ));
+        foreach ($childNames as $childName) {
+            ProductCategory::firstOrCreate(['name' => $childName], ['parent_id' => $parent->id]);
         }
+    }
+
+    /**
+     * @param  list<array{code: string, name: string, type: string}>  $specs
+     */
+    private function seedProductAttributes(ProductCategory $category, array $specs): void
+    {
+        foreach ($specs as $spec) {
+            // Natural key (code): an attribute already in the catalogue keeps
+            // its label/type, so a manual rename survives the re-seed.
+            $attribute = Attribute::firstOrCreate(
+                ['code' => $spec['code']],
+                ['name' => $spec['name'], 'type' => $spec['type']],
+            );
+
+            $this->assignProductAttribute($category, $attribute);
+        }
+    }
+
+    /**
+     * Additive on purpose, unlike ProductCategoryService::syncAttributes()
+     * which is a full replace: a re-seed must not wipe the assignments made
+     * by hand from the category configurator.
+     */
+    private function assignProductAttribute(ProductCategory $category, Attribute $attribute): void
+    {
+        $isAssigned = $category->attributes()
+            ->wherePivot('context', AttributeContext::Product->value)
+            ->where('attributes.id', $attribute->id)
+            ->exists();
+
+        if ($isAssigned) {
+            return;
+        }
+
+        $category->attributes()->attach($attribute->id, [
+            'context' => AttributeContext::Product->value,
+            'is_required' => false,
+            'sort_order' => 0,
+        ]);
     }
 
     /**

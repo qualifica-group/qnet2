@@ -23,6 +23,7 @@ export const migrations = {
     sources: 'Sources',
     tags: 'Tags',
     sectors: 'Sectors',
+    'vat-rates': 'VAT rates',
     attributes: 'Attributes',
     'product-categories': 'Product categories',
     'product-category-attributes': 'Product categories — link attributes',

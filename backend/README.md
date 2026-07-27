@@ -62,7 +62,102 @@ php artisan db:seed --class=QualificaTemplateSeeder
  
 # Crea ambiente pulito solo con un utente superadmin
 php artisan db:seed 
+
+# Crea gli utenti tester + i ruoli supervisor/commercial/marketing
+php artisan db:seed --class=TestUsersSeeder
 ```
+
+## Utenti di test (`TestUsersSeeder`)
+
+Seeder **standalone e idempotente**: NON è agganciato a `DatabaseSeeder` né a
+`DemoDataSeeder`, si esegue su richiesta come `QualificaTemplateSeeder`.
+
+```bash
+php artisan db:seed --class=TestUsersSeeder
+```
+
+Ogni account è upsertato per **email** (chiave naturale) e ogni ruolo per nome:
+un secondo run non duplica nulla. Il seeder lancia da sé `permissions:sync` e
+`roles:create-super-admin`, così un run su database vergine non produce mai
+ruoli vuoti.
+
+### Account creati
+
+| Nome | Email | Ruolo |
+|---|---|---|
+| Rosa Falzarano | `rosa.falzarano@qualificagroup.com` | `supervisor` |
+| Fabrizio Aliberti | `fabrizio.aliberti@qualificagroup.com` | `supervisor` |
+| Ciro Cacciapuoti | `ciro.cacciapuoti@qualificagroup.com` | `super-admin` |
+| Commerciale Campania | `campania@commerciale.com` | `commercial` |
+| Commerciale Lazio | `lazio@commerciale.com` | `commercial` |
+| Umberto Santamaria | `umberto.santamaria@qualificagroup.com` | `marketing` |
+
+**Credenziali di sviluppo:** password **`Qualifica2026!`** per tutti,
+dal valore di `config('seeding.test_users_password')` (override con
+`TEST_USERS_SEED_PASSWORD` in `.env`). È una credenziale condivisa di comodo per
+gli ambienti non di produzione, mai un segreto di produzione.
+
+Chiave **separata** da `config('seeding.password')`, che resta `password` e
+continua a servire gli account demo/fixture (`demo@app.com` e i generati da
+`DemoUsersSeeder`): i due gruppi non si spostano insieme.
+
+A differenza degli altri seeder, la password viene **riscritta a ogni run**, non
+solo alla creazione: così ruotare il valore raggiunge anche i tester già
+seedati. Il rovescio è voluto — una password cambiata dall'interfaccia viene
+riportata a quella condivisa al re-seed.
+
+### Ruolo `supervisor`
+
+Ha tutte le funzionalità operative del gestionale **tranne**:
+
+- **Amministrazione**: utenti, ruoli, campi personalizzati, migrazioni;
+- **Configurazione**: funzioni aziendali, settori, tag, fonti;
+- in **Anagrafiche**: tipi di referente, società aziendali, società sedi, sedi operative.
+
+Restano accessibili anagrafiche e referenti, progetti, campagne, lead,
+opportunità (con stati e workflow), gestione richieste, prodotti e premi.
+
+### Ruolo `commercial`
+
+Vede e usa **esclusivamente** il modulo **Gestione Richieste**, attraverso il suo
+set di permessi dedicato `request-management.*` (mai `opportunities.*`). Ogni
+altro modulo, voce di menu e endpoint risponde 403.
+
+Include `request-management.viewAll`: senza, il commerciale vedrebbe solo le
+richieste in cui è già assegnato come Operatore e su un database appena seedato
+la griglia sarebbe vuota. Togliere quel permesso dalla lista ripristina lo
+scoping per operatore.
+
+### Ruolo `marketing`
+
+Vede e usa **esclusivamente** il gruppo di menu **Marketing e Lead**
+(`config/navigation.php`): progetti, campagne, lead — con la procedura di
+import, che è un'abilità del modulo lead (`leads.import`) — e il pick-list stati
+pipeline con cui progetti e campagne si classificano. Su quei quattro moduli ha
+il set completo, scritture incluse.
+
+Tutto il resto è chiuso: opportunità, gestione richieste, prodotti, premi,
+anagrafiche, configurazione e amministrazione rispondono 403 e non compaiono a
+menu.
+
+### Permessi `viewAny` di supporto (residuo noto)
+
+I select relazione dei moduli concessi leggono dagli endpoint `for-select`, che
+sono autorizzati dal `viewAny` della risorsa di origine. I tre ruoli
+ricevono quindi il solo `viewAny` di alcune risorse altrimenti negate:
+
+- `supervisor`: `business-functions`, `sectors`, `sources`, `referent-types`, `operational-sites`, `users`;
+- `commercial`: `registries`, `sources`, `referents`, `operational-sites`, `users`;
+- `marketing`: `business-functions`, `referents`, `product-categories`, `operational-sites`, `registries`, `sources`, `users`.
+
+Il `view` — su cui `config/navigation.php` gatea ogni voce di menu — resta negato,
+quindi **il menu non mostra quelle sezioni** e nessuna scrittura è possibile.
+Residuo accettato: l'endpoint tabellare generico autorizza sullo **stesso**
+`viewAny`, perciò quelle liste restano leggibili digitando l'URL a mano.
+Chiuderlo richiede un'abilità dedicata di sola selezione, non un seed diverso.
+
+Il comportamento è verificato in `tests/Feature/Users/TestUsersSeederTest.php`,
+sia sul menu (`NavigationService`) sia sugli endpoint reali.
 
 ## Testing
 

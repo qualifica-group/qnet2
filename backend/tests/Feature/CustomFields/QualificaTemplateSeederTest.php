@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\AttributeContext;
+use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\CustomFieldValue;
@@ -7,8 +9,10 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
+use App\Services\ProductCategoryService;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 // De-verticalization (point 1): QualificaTemplateSeeder now provisions, on
 // top of the former "Altro" section, the 9 former client-specific ERP
@@ -113,7 +117,7 @@ it('provisions the client reward type catalogue, idempotently', function (): voi
         ->and(RewardType::query()->where('name', 'Buono Amazon')->value('color'))->toBe('orange');
 });
 
-it('provisions the reference product catalogue tree, idempotently', function (): void {
+it('provisions the reference category catalogue tree, idempotently', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
     test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
 
@@ -125,26 +129,71 @@ it('provisions the reference product catalogue tree, idempotently', function ():
 
     $formazioneSubs = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL'];
     foreach ($formazioneSubs as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->exists())->toBeTrue();
+        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->count())->toBe(1);
     }
 
     foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->exists())->toBeTrue();
+        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->count())->toBe(1);
     }
+});
 
-    // Presa Appuntamenti carries no product (empty list in CATALOG).
-    $presaAppuntamenti = ProductCategory::query()->where('name', 'Presa Appuntamenti')->first();
-    expect(Product::query()->where('category_id', $presaAppuntamenti->id)->count())->toBe(0);
+it('provisions the regional GOL declinations as children of the GOL subcategory', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
 
-    $expectedProducts = [
-        'Prodotto per formazione GOL', 'Prodotto per formazione Autoimpiego',
-        'Prodotto per formazione Yisu', 'Prodotto per formazione Autofinanziato',
-        'Prodotto per formazione DIL', 'Prodotto per consulenza Trattative in Corso',
+    $gol = ProductCategory::query()->where('name', 'GOL')->first();
+    expect($gol)->not->toBeNull();
+
+    $regions = [
+        'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
+        'GOL - Lombardia', 'GOL - Lazio', 'GOL - Umbria',
     ];
-    foreach ($expectedProducts as $name) {
-        expect(Product::query()->where('name', $name)->count())->toBe(1);
+
+    foreach ($regions as $name) {
+        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $gol->id)->count())->toBe(1);
     }
 
-    $trattative = ProductCategory::query()->where('name', 'Trattative in Corso')->first();
-    expect(Product::query()->where('name', 'Prodotto per consulenza Trattative in Corso')->where('category_id', $trattative->id)->exists())->toBeTrue();
+    expect(ProductCategory::query()->where('parent_id', $gol->id)->count())->toBe(count($regions));
+});
+
+it('assigns the "Ore complessive" product attribute to the whole Formazione branch', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: no duplicate attribute nor pivot row.
+
+    $attribute = Attribute::query()->where('code', 'total_hours')->get();
+
+    expect($attribute)->toHaveCount(1)
+        ->and($attribute->first()->name)->toBe('Ore complessive')
+        ->and($attribute->first()->type)->toBe('integer');
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+
+    // One single assignment, on the root, in the PRODUCT context.
+    $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
+
+    expect($pivot)->toHaveCount(1)
+        ->and($pivot->first()->category_id)->toBe($formazione->id)
+        ->and($pivot->first()->context)->toBe(AttributeContext::Product->value);
+
+    // Inherited all the way down: subcategory and regional grandchild resolve it.
+    $service = app(ProductCategoryService::class);
+
+    foreach (['GOL', 'GOL - Molise', 'DIL'] as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+        $effective = $service->effectiveAttributes($category, AttributeContext::Product);
+
+        expect($effective->pluck('code')->all())->toContain('total_hours')
+            ->and($effective->firstWhere('code', 'total_hours')['inherited'])->toBeTrue($name);
+    }
+
+    // Not leaked onto the other root.
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
+    expect($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
+        ->not->toContain('total_hours');
+});
+
+it('seeds no product at all: the catalogue is categories only', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+
+    expect(Product::query()->count())->toBe(0);
 });
