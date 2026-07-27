@@ -123,3 +123,40 @@ it('resolves a multi-workflow candidate set with exactly ONE custom_field_values
     expect($resolved?->id)->toBe($matching->id)
         ->and($customFieldValueQueries)->toHaveCount(1);
 });
+
+// ---------------------------------------------------------------------------
+// AC-034 — resolve() never throws for a criterion whose custom field
+// definition is gone (D10); it simply never matches. isAllowed()'s
+// short-circuit in matches() makes the exception structurally impossible
+// today — these tests exist to keep it that way against a future change.
+// ---------------------------------------------------------------------------
+
+it('resolve() does not throw and does not match when the referenced custom field definition is DISABLED', function () {
+    $definition = companyRelationCustomField('one');
+
+    $opportunity = Opportunity::factory()->create();
+    CustomFieldValue::factory()->forEntity('opportunities', $opportunity->id)->create(['values' => ['preferred_company' => 7]]);
+
+    $workflow = workflowWithSystemStatuses();
+    $workflow->criteria()->create(['field' => "custom.{$definition->key}", 'value_id' => 7]);
+
+    $definition->update(['is_active' => false]);
+
+    expect(fn () => workflowResolver()->resolve($opportunity))->not->toThrow(Throwable::class);
+    expect(workflowResolver()->resolve($opportunity))->toBeNull();
+});
+
+it('resolve() does not throw and does not match when the referenced custom field definition is DELETED', function () {
+    $definition = companyRelationCustomField('one');
+
+    $opportunity = Opportunity::factory()->create();
+    CustomFieldValue::factory()->forEntity('opportunities', $opportunity->id)->create(['values' => ['preferred_company' => 7]]);
+
+    $workflow = workflowWithSystemStatuses();
+    $workflow->criteria()->create(['field' => "custom.{$definition->key}", 'value_id' => 7]);
+
+    $definition->delete();
+
+    expect(fn () => workflowResolver()->resolve($opportunity))->not->toThrow(Throwable::class);
+    expect(workflowResolver()->resolve($opportunity))->toBeNull();
+});

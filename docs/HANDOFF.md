@@ -2,6 +2,71 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0047 — CUSTOM FIELD RELAZIONALI COME CAMPI-CRITERIO DEL CONFIGURATORE (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: "nel configuratore di stati per opportunita' voglio che nei campi selezionabili ci
+siano anche i campi personalizzati (solo quelli con relazione)". Contratto congelato PRIMA del
+dispatch nella sezione `<amendment_2026_07_27_custom_field_criteria>` di
+`docs/specs/0047-opportunity-workflow-configurator.xml` (decisioni D5-D11, AC-027..AC-038 + AC-032b).
+
+PERCHE' SOLO `relation`: `opportunity_workflow_criteria.value_id` e' un unsignedBigInteger validato
+con un exists su una tabella. `relation` e' l'unico dei 13 tipi di custom field il cui valore e' un id
+verso una tabella; gli altri non hanno un contratto compatibile. Non e' una preferenza, e' un vincolo.
+
+DECISIONI VINCOLANTI PER CHI TOCCA QUESTO CODICE:
+- Chiave del criterio custom = `custom.<key>` (`CustomFieldProvider::KEY_PREFIX`), nessun naming nuovo.
+- `custom_field_definitions.key` e' `max:64` ma `opportunity_workflow_criteria.field` era varchar(64):
+  nuova migration `2026_07_27_150000_widen_field_on_opportunity_workflow_criteria_table.php` la porta
+  a 191. Senza, troncamento silenzioso.
+- Il payload guadagna `source: 'native'|'custom'`: la label di un custom field e' TESTO LIBERO
+  dell'utente, non una chiave i18n. Il FE traduce solo quando `source === 'native'`.
+- Colonna tabella `criteria_fields`: array MISTO (chiave i18n nativa / label letterale custom / field
+  raw se il custom field e' stato eliminato). Il discriminante FE e' il PREFISSO
+  `opportunityWorkflows.criterionFields.` (costante `NATIVE_CRITERION_FIELD_KEY_PREFIX` in
+  `column-renderers.tsx`). NON affidarsi al fallback di i18next: una label utente che coincidesse con
+  una chiave esistente verrebbe tradotta in silenzio.
+- `CriterionFieldRegistry` NON e' piu' statico: e' un servizio iniettabile (serve CustomFieldProvider +
+  CustomFieldEntityRegistry). Dove la DI non e' possibile (JsonResource) si usa `app()`.
+- Cardinalita' `many` ammessa -> `multi_valued: true`, semantica "contiene", come gia' fanno
+  business_function_id/product_category_id sulle productLines.
+
+TRAPPOLA GIA' CADUTA, NON RIAPRIRLA: `OpportunityWorkflowResolver::resolve()` fa
+`loadMissing(['productLines','customFieldValueRow'])` INCONDIZIONATAMENTE. I due chiamanti BATCH
+(`RequestRowMapper::allowedWorkflowStatusIds()`, una resolve() per riga di griglia, e
+`OpportunityWorkflowService::delete()`) DEVONO eager-caricare `customFieldValueRow` a monte, altrimenti
+e' +1 query per riga (+25 su una pagina di Gestione Richieste). Corretto in
+`RequestManagementTableDefinition::baseQuery()` e nella query di `delete()` (dove si e' chiusa anche la
+N+1 pre-esistente su productLines). Il test che protegge questo e' AC-032b in
+`tests/Feature/RequestManagement/RequestManagementWorkflowStatusOptionsPerRowTest.php` e confronta il
+conteggio query tra 3 e 15 righe: il vecchio AC-032 risolveva UNA sola opportunita' ed era verde anche
+col bug — copertura apparente, non protezione.
+
+AC-033 VERIFICATO (non dedotto): `Opportunity::create()` fa scattare l'hook `saved` di
+`HasCustomFields` che persiste i valori PRIMA che `resolveWorkflowStatus()` giri, quindi un criterio
+custom matcha gia' alla creazione. Dimostrato con round-trip HTTP reale.
+
+Verifica ESEGUITA (teammate backend+frontend, poi gate `verifier` indipendente che ha dato ROSSO al
+primo giro e VERDE al secondo): Pest `--filter=OpportunityWorkflow` 100/100, `--filter=RequestManagement`
+228/228, `--filter="Opportunit|CustomField"` 634/636 (i 2 rossi sono pre-esistenti e scorrelati: test di
+navigazione obsoleto dal 2026-07-17 e fixture VAT a 3 cifre resa invalida dal commit d3187ac), Pint
+pulito. Vitest `src/features/opportunity-workflows` 39/39, `tsc --noEmit` pulito, ESLint pulito.
+
+LEAKAGE CROSS-RIGA: coperto. AC-032b da solo non bastava (stesso valore custom su tutte le righe, non
+avrebbe rilevato uno scambio tra righe), quindi accanto c'e' ora un test con 3 workflow su 3 valori
+DIVERSI dello stesso campo custom e 3 opportunita' corrispondenti, che asserisce per ogni riga le
+`workflow_status_options` del PROPRIO workflow incrociate contro le altre due. VERDE al primo colpo:
+nessun leakage. Serve come rete per il futuro, perche' la sicurezza qui dipende dal fatto che
+`CustomFieldEntityRegistry::entityTypeForModel()` mappa sulla CLASSE e non sull'istanza — se qualcuno
+cambiasse quella mappatura o l'eager load, questo test e' l'unico che se ne accorgerebbe.
+
+INCIDENTE GIT DA CONOSCERE: un teammate ha eseguito `git stash`/`git stash pop` su questo working tree
+CONDIVISO (~80 file non committati di piu' teammate). Il pop e' andato in conflitto, il recupero e'
+stato fatto a mano. Verificato file per file: 29/31 file dello stash identici, 2 piu' recenti, NESSUNO
+tornato a HEAD — nulla perso. `stash@{0}` (2026-07-27 11:00) e' ancora in lista come rete di sicurezza.
+Su un albero condiviso git si usa SOLO in lettura.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## DATI ANAGRAFICI — LUOGO DI NASCITA (`personal_data.birth_city_id`) (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: aggiungere il luogo di nascita ai dati anagrafici. Decisione utente

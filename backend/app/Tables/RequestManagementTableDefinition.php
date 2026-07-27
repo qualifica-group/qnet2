@@ -151,6 +151,13 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     {
         $query = Opportunity::query()->with([
             'workflowStatus', 'productLines.productCategory',
+            // Spec 0047 amendment 2026-07-27: RequestRowMapper::
+            // allowedWorkflowStatusIds() calls OpportunityWorkflowResolver::
+            // resolve() PER ROW, whose own step 1 loadMissing()s this
+            // relation for a custom relation criterion (AC-032) — eager-load
+            // it here so that loadMissing() stays a no-op across the whole
+            // page instead of one query per row.
+            'customFieldValueRow',
             // User directive 2026-07-23: the "Prodotti di interesse" column's
             // own `{id, name}` refs (cell + multiselect editor selection).
             'productsOfInterest',

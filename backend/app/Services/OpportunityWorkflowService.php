@@ -108,6 +108,13 @@ class OpportunityWorkflowService
      * statuses (AC-018): the FK is `nullOnDelete`, so those rows already sit
      * at `opportunity_workflow_status_id = null` by the time the resolver
      * runs — never left orphaned.
+     *
+     * Both `productLines` and `customFieldValueRow` are eager-loaded UP
+     * FRONT (verifier flag, spec 0047 amendment 2026-07-27): resolver's own
+     * `resolve()` step 1 only ever `loadMissing()`s them, which is a no-op
+     * when already loaded and a query PER ROW of this batch otherwise —
+     * `productLines` was already missing this before the amendment (a
+     * pre-existing N+1 this fix also closes, same line, not left implicit).
      */
     public function delete(OpportunityWorkflow $workflow): void
     {
@@ -122,6 +129,7 @@ class OpportunityWorkflowService
 
             Opportunity::query()
                 ->whereIn('id', $impactedOpportunityIds)
+                ->with(['productLines', 'customFieldValueRow'])
                 ->get()
                 ->each(fn (Opportunity $opportunity) => $this->resolver->resolveAndAssign($opportunity));
         });
