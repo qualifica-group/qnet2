@@ -89,6 +89,24 @@ export const productCategories = {
     loadError: 'Impossibile caricare la categoria. Riprova.',
     businessFunctionInherited: 'Ereditata da {{category}}',
   },
+  bulkMove: {
+    tableButton: 'Sposta sotto…',
+    title: 'Sposta categorie',
+    description: '{{count}} categoria/e selezionata/e. Mantengono le proprie sottocategorie.',
+    destination: 'Destinazione',
+    confirm: 'Sposta',
+    success: '{{count}} categoria/e spostata/e.',
+    genericError: 'Impossibile spostare le categorie. Riprova.',
+    reasons: {
+      self_parent: 'La destinazione è una delle categorie selezionate. Nessuna categoria è stata spostata.',
+      nested_selection:
+        'La selezione contiene categorie annidate una dentro l’altra. Deseleziona quelle sottostanti: seguono il padre. Nessuna categoria è stata spostata.',
+      cycle:
+        'La destinazione si trova dentro una delle categorie selezionate. Nessuna categoria è stata spostata.',
+      business_function_conflict:
+        'Alcune categorie sovrascriverebbero la funzione aziendale ereditata dalla destinazione. Nessuna categoria è stata spostata.',
+    },
+  },
   form: {
     newRootCategory: 'Nuova categoria',
     createTitle: 'Crea categoria',

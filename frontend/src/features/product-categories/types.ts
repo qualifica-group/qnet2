@@ -175,6 +175,41 @@ export interface CreateProductCategoryPayload {
 export type UpdateProductCategoryPayload = Partial<CreateProductCategoryPayload>
 
 /**
+ * Payload for POST /product-categories/bulk-move (spec 0063): move every
+ * selected category under one destination. `parent_id: null` moves them to
+ * the root.
+ */
+export interface BulkMoveCategoriesPayload {
+  category_ids: number[]
+  parent_id: number | null
+}
+
+/** `moved` counts the categories actually reparented (one already sitting under the destination is a no-op). */
+export interface BulkMoveCategoriesResult {
+  moved: number
+}
+
+/** Why a bulk move was refused. The batch is all-or-nothing: nothing moved. */
+export type BulkMoveConflictReason =
+  | 'self_parent'
+  | 'nested_selection'
+  | 'cycle'
+  | 'business_function_conflict'
+
+/** One offending row of a refused bulk move. */
+export interface BulkMoveConflict {
+  id: number
+  name: string
+  detail: string
+}
+
+/** The `errors` block of a 422 bulk-move response. */
+export interface BulkMoveConflictError {
+  reason: BulkMoveConflictReason
+  conflicts: BulkMoveConflict[]
+}
+
+/**
  * Discriminated form mode. Create optionally pre-selects a parent (the tree's
  * "add subcategory" action on a given node).
  */

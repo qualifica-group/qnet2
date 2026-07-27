@@ -286,6 +286,24 @@ it('AC-006: GET on a category with no layout -> data.layout is null, data.attrib
     expect(collect($response->json('data.attributes'))->pluck('code')->all())->toBe(['opp_field']);
 });
 
+it('accepts the quarter item width (single cell of a 4-column section) and round-trips it', function () {
+    $actor = productCategoryUserWith(['view', 'update']);
+    $category = ProductCategory::factory()->create();
+    $attribute = Attribute::factory()->create(['code' => 'material']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    Sanctum::actingAs($actor);
+
+    $blob = attributeLayoutBlob(['material']);
+    $blob['sections'][0]['columns'] = 4;
+    $blob['sections'][0]['rows'][0]['items'][0]['width'] = 'quarter';
+
+    $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
+        'context' => 'opportunity',
+        'form_mode' => 'create',
+        'layout' => $blob,
+    ])->assertOk()->assertJsonPath('data.layout.sections.0.rows.0.items.0.width', 'quarter');
+});
+
 // ---------------------------------------------------------------------------
 // Cross-mode fallback (spec 0062 revised) — one saved layout drives every mode
 // ---------------------------------------------------------------------------

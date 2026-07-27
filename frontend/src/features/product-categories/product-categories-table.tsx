@@ -1,11 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { Plus } from 'lucide-react'
+import { FolderTree, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
@@ -13,9 +15,12 @@ import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { productCategoryColumnRenderers } from '@/features/product-categories/column-renderers'
+import { BulkMoveCategoriesDialog } from '@/features/product-categories/bulk-move-categories-dialog'
+import { productCategoryKeys } from '@/features/product-categories/query-keys'
 import { deleteProductCategory } from '@/features/product-categories/api'
 
 /** Domain key used to mount the generic table for product categories. */
@@ -44,6 +49,43 @@ export function ProductCategoriesTable() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+
+  // Bulk move (spec 0063): this adapter owns the selection ids and the
+  // post-success refresh; the dialog owns the destination pick, the request
+  // and the conflict feedback.
+  const { can } = useAbilities()
+  const queryClient = useQueryClient()
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveIds, setMoveIds] = useState<number[]>([])
+
+  const onMoved = useCallback(
+    (moved: number) => {
+      toast.success(t('productCategories.bulkMove.success', { count: moved }))
+      refreshGrid()
+      tableRef.current?.clearSelection()
+      invalidateStats()
+      // The cached tree feeds every category picker, this dialog's included.
+      void queryClient.invalidateQueries({ queryKey: productCategoryKeys.tree })
+    },
+    [refreshGrid, invalidateStats, queryClient, t],
+  )
+
+  // Surfaced inside the generic table's single "Actions" dropdown. Left
+  // `undefined` when the actor cannot update categories, so the checkbox
+  // column stays off entirely rather than offering an empty menu.
+  const getBulkActions = can('product-categories.update')
+    ? (selection: TableSelection): BulkAction[] => [
+        {
+          key: 'bulk-move',
+          label: t('productCategories.bulkMove.tableButton'),
+          icon: FolderTree,
+          onSelect: () => {
+            setMoveIds(selection.ids)
+            setMoveOpen(true)
+          },
+        },
+      ]
+    : undefined
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query and the
@@ -134,6 +176,14 @@ export function ProductCategoriesTable() {
         renderers={productCategoryColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        getBulkActions={getBulkActions}
+      />
+
+      <BulkMoveCategoriesDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        selectedIds={moveIds}
+        onMoved={onMoved}
       />
 
       {sheet}

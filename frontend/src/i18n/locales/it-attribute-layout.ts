@@ -38,6 +38,7 @@ export const attributeLayout = {
       two_thirds: 'Due terzi',
       half: 'Metà',
       third: 'Un terzo',
+      quarter: 'Un quarto',
     },
     preview: {
       title: 'Anteprima live',

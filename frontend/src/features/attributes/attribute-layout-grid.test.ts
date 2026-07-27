@@ -16,7 +16,8 @@ function expectedFraction(columns: number, width: (typeof LAYOUT_ITEM_WIDTHS)[nu
   if (width === 'full') return columns
   if (width === 'two_thirds') return Math.ceil((2 * columns) / 3)
   if (width === 'half') return Math.ceil(columns / 2)
-  return Math.ceil(columns / 3)
+  if (width === 'third') return Math.ceil(columns / 3)
+  return Math.ceil(columns / 4)
 }
 
 /** The effective span once every tier has cascaded: the LAST `col-span-N` (tiers are listed ascending, base -> @md -> wide). */
@@ -39,7 +40,7 @@ describe('attribute-layout-grid', () => {
   })
 
   it('columns=4 collapses through an intermediate 2-col step before the 4-col wide-container grid', () => {
-    expect(gridColsClass(4)).toBe('grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-4')
+    expect(gridColsClass(4)).toBe('grid-cols-1 @xs:grid-cols-2 @md:grid-cols-4')
   })
 
   it('every (columns, width) pair starts at col-span-1 on mobile', () => {

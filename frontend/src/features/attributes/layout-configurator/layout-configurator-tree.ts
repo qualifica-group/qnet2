@@ -151,8 +151,8 @@ function insertIntoRow(
  * The width a freshly placed attribute takes so it fills a SINGLE cell of the
  * target section instead of the whole row — otherwise setting a section to N
  * columns has no visible effect (the default would still span every column).
- * 4 columns has no single-cell width in the fractional enum, so it takes the
- * narrowest available (`third`, span 2); the user can still refine per item.
+ * Each column count maps to the width that spans exactly one cell: 1->full,
+ * 2->half, 3->third, 4->quarter. The user can still refine per item.
  */
 function defaultWidthForColumns(columns: LayoutColumns): LayoutItemWidth {
   switch (columns) {
@@ -160,8 +160,10 @@ function defaultWidthForColumns(columns: LayoutColumns): LayoutItemWidth {
       return 'full'
     case 2:
       return 'half'
-    default:
+    case 3:
       return 'third'
+    default:
+      return 'quarter'
   }
 }
 

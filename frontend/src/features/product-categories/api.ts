@@ -5,6 +5,8 @@ import type { LayoutBlob, LayoutFormMode } from '@/features/attributes/attribute
 import type {
   AttributeContext,
   AttributeLayoutData,
+  BulkMoveCategoriesPayload,
+  BulkMoveCategoriesResult,
   CreateProductCategoryPayload,
   EffectiveAttribute,
   ProductCategoryDetail,
@@ -69,6 +71,21 @@ export async function updateProductCategory(
 ): Promise<ProductCategoryDetail> {
   const { data } = await apiClient.patch<ApiResponse<ProductCategoryDetail>>(
     `/product-categories/${id}`,
+    payload,
+  )
+  return data.data
+}
+
+/**
+ * Moves every category in `category_ids` under `parent_id` (null = root) in a
+ * single all-or-nothing operation (spec 0063). A refused batch answers 422
+ * with `errors.reason` and the full conflict list, and moves nothing.
+ */
+export async function bulkMoveProductCategories(
+  payload: BulkMoveCategoriesPayload,
+): Promise<BulkMoveCategoriesResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkMoveCategoriesResult>>(
+    '/product-categories/bulk-move',
     payload,
   )
   return data.data

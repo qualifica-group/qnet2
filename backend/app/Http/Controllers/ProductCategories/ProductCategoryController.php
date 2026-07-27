@@ -5,13 +5,16 @@ namespace App\Http\Controllers\ProductCategories;
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
+use App\Exceptions\ProductCategories\BulkMoveConflictException;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\ProductCategories\BulkMoveCategoriesRequest;
 use App\Http\Requests\ProductCategories\EffectiveAttributesRequest;
 use App\Http\Requests\ProductCategories\StoreProductCategoryRequest;
 use App\Http\Requests\ProductCategories\UpdateProductCategoryRequest;
 use App\Http\Resources\ProductCategoryResource;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\ProductCategories\BulkMoveCategories;
 use App\Services\ProductCategoryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -36,6 +39,7 @@ class ProductCategoryController extends BaseApiController
 
     public function __construct(
         private readonly ProductCategoryService $service,
+        private readonly BulkMoveCategories $bulkMove,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
@@ -130,6 +134,39 @@ class ProductCategoryController extends BaseApiController
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['productCategory' => $productCategory->id]);
+        }
+    }
+
+    /**
+     * POST /api/product-categories/bulk-move — move many categories under one
+     * new parent, or to the root (spec 0063). All-or-nothing: a batch that
+     * violates a rule (nested selection, cycle, business-function override)
+     * is refused with the full conflict list and writes nothing.
+     *
+     * Every targeted category is authorized individually via
+     * ProductCategoryPolicy (`product-categories.update`), mirroring
+     * LeadController::assignOperators.
+     */
+    public function bulkMove(BulkMoveCategoriesRequest $request): JsonResponse
+    {
+        try {
+            $categoryIds = $request->categoryIds();
+
+            foreach (ProductCategory::query()->whereIn('id', $categoryIds)->get() as $category) {
+                $this->authorize('update', $category);
+            }
+
+            $moved = $this->bulkMove->handle($categoryIds, $request->parentId());
+
+            return $this->ok(['moved' => $moved], 'Categories moved');
+        } catch (BulkMoveConflictException $conflict) {
+            return $this->fail(
+                $conflict->getMessage(),
+                HttpStatusEnum::UNPROCESSABLE_ENTITY->value,
+                ['reason' => $conflict->reason, 'conflicts' => $conflict->conflicts],
+            );
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
         }
     }
 

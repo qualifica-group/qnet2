@@ -6,6 +6,13 @@ export interface FlatCategoryOption {
   name: string
 }
 
+/**
+ * Sentinel id standing for "no parent" in a category picker: `SearchableSelect`
+ * models a selection as a number, so the root option needs a value no real
+ * category can have. Shared by the category form and the bulk-move dialog.
+ */
+export const ROOT_PARENT_VALUE = 0
+
 /** Indentation glyph prepended per depth level, so hierarchy reads at a glance in a flat list. */
 const DEPTH_PREFIX = '    '
 

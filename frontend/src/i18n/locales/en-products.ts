@@ -89,6 +89,23 @@ export const productCategories = {
     loadError: 'Unable to load the category. Please try again.',
     businessFunctionInherited: 'Inherited from {{category}}',
   },
+  bulkMove: {
+    tableButton: 'Move under…',
+    title: 'Move categories',
+    description: '{{count}} category(ies) selected. They keep their own subcategories.',
+    destination: 'Destination',
+    confirm: 'Move',
+    success: '{{count}} category(ies) moved.',
+    genericError: 'Unable to move the categories. Please try again.',
+    reasons: {
+      self_parent: 'The destination is one of the selected categories. Nothing was moved.',
+      nested_selection:
+        'The selection contains categories nested inside one another. Deselect the ones below, they follow their parent. Nothing was moved.',
+      cycle: 'The destination is inside one of the selected categories. Nothing was moved.',
+      business_function_conflict:
+        'Some categories would override the business function inherited from the destination. Nothing was moved.',
+    },
+  },
   form: {
     newRootCategory: 'New category',
     createTitle: 'Create category',

@@ -12,7 +12,11 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
-import { collectSubtreeIds, flattenCategoryTree } from '@/features/product-categories/flatten-tree'
+import {
+  ROOT_PARENT_VALUE,
+  collectSubtreeIds,
+  flattenCategoryTree,
+} from '@/features/product-categories/flatten-tree'
 import { useProductCategoryForm } from '@/features/product-categories/use-product-category-form'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
@@ -31,9 +35,6 @@ interface ProductCategoryFormBodyProps {
   onSuccess: (category: ProductCategoryDetail) => void
   onCancel: () => void
 }
-
-/** Sentinel id representing "no parent" in the parent picker (no real category has id 0). */
-const ROOT_PARENT_VALUE = 0
 
 /** Tags each effective-attributes result with the context it was fetched for, into the flat shape `AttributeAssignmentEditor` splits (spec 0061). */
 function toInheritedAttributes(

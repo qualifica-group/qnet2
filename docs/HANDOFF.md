@@ -2,7 +2,116 @@
 
 > Injected at session start. Update at every green state.
 
-## SPEC 0062 — FIX: DEFAULT WIDTH ITEM PER-COLONNE (le colonne sezione ora hanno effetto) (2026-07-27) — VERDE, NON COMMITTATO
+## SPEC 0063 — SPOSTAMENTO MASSIVO CATEGORIE (bulk move) (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: spostare categorie in sottocategorie in modo massivo. Spec nuova:
+`docs/specs/0063-product-category-bulk-move.xml`. Decisioni utente congelate nella spec:
+D-1 entry point = azione bulk in tabella (NIENTE drag-and-drop su albero); D-2 selezione annidata
+= BLOCCO 422 (nessuna potatura/appiattimento implicito); D-3 conflitti = TUTTO O NIENTE (al primo
+conflitto nessuna riga spostata).
+
+Contratto: `POST /api/product-categories/bulk-move` body `{ category_ids: int[], parent_id: int|null }`
+(null = radice), 200 `{ data: { moved } }` (una categoria gia' figlia del target e' no-op e NON
+viene contata), 422 `{ errors: { reason, conflicts: [{id,name,detail}] } }` con
+reason ∈ `self_parent|nested_selection|cycle|business_function_conflict`. Envelope `errors` (non
+`data`) perche' e' quello che `BaseApiController::fail()` produce.
+
+Backend (nuovi): `app/Services/ProductCategories/BulkMoveCategories.php` (action `handle()`,
+Step 1 carica + Step 2 valida TUTTO prima di scrivere + Step 3 transazione),
+`app/Exceptions/ProductCategories/BulkMoveConflictException.php` (porta reason+conflicts, catturata
+esplicitamente dal controller prima del catch generico),
+`app/Http/Requests/ProductCategories/BulkMoveCategoriesRequest.php` (`parent_id` e' `present`+
+`nullable`, NON `required`: null e' un valore legittimo). Modificati: `ProductCategoryController`
+(+`bulkMove`, authorize('update') per OGNI riga come `LeadController::assignOperators`),
+`routes/api.php` (rotta dichiarata PRIMA della wildcard `{productCategory}`).
+La scrittura passa riga per riga da `ProductCategoryService::update()`: cosi' il cascade della
+business function (spec 0023) resta l'unica autorita' e l'activity log registra ogni spostamento
+(un `whereIn()->update()` lo salterebbe). Le catene di antenati sono risolte in UNA query
+(`ancestorChains()` nell'action, mirror di `CategoryHierarchy::descendantIds()`) perche' i walker
+per-nodo di CategoryHierarchy fanno una query per livello × N righe; CategoryHierarchy NON e' stata
+estesa (era gia' a 458 righe, hard limit 500).
+
+Frontend: nuovi `bulk-move-categories-dialog.tsx` (picker = stesso albero appiattito del form, meno
+le categorie selezionate e i loro discendenti; elenca i conflitti 422 e resta aperto),
+`use-bulk-move-categories.ts`, `product-categories-table-bulk-move.test.tsx`. Modificati:
+`api.ts` (+`bulkMoveProductCategories`), `types.ts` (+4 tipi), `product-categories-table.tsx`
+(`getBulkActions` gated su `can('product-categories.update')`, `undefined` se non autorizzato ->
+la colonna checkbox resta spenta; onMoved invalida anche `productCategoryKeys.tree`),
+`i18n/locales/{en,it}-products.ts` (+`productCategories.bulkMove.*`).
+`ROOT_PARENT_VALUE` (sentinella 0 = radice) e' stata SPOSTATA da `product-category-form-body.tsx`
+a `flatten-tree.ts` ed esportata: ora e' condivisa da form e dialog, niente duplicato.
+
+Test ESEGUITI: Pest `ProductCategoryBulkMoveTest` 11/11 verdi (AC-001..AC-010 + validazione), Pint
+pulito sui file backend. Vitest `src/features/product-categories/` 61/61 verdi (12 file),
+`tsc -b` pulito, ESLint pulito.
+
+FALLIMENTI PRE-ESISTENTI, NON MIEI (non toccati, da triagiare a parte):
+- backend `ProductCategorySecurityTest` + `ProductSecurityTest` (test navigazione): cercano i nodi
+  `product-categories`/`products` nella sezione `configuration`, ma `config/navigation.php` li ha
+  annidati sotto `products-group` (decisione 2026-07-17). Test stale.
+- frontend `src/features/table/cell-renderers.test.tsx` (3 test ContactsCell): asseriscono stringhe
+  inglesi mentre il describe gira con lingua `it`. Falliscono anche in isolamento.
+
+PROSSIMI PASSI: opzionale, mostrare nel dialog anche il conteggio dei discendenti che seguiranno le
+categorie selezionate. NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
+## SPEC 0062 — FIX: GRIGLIA COLONNE VIA CONTAINER QUERY (3/4 colonne non vanno piu' a capo) (2026-07-27) — VERDE, 2 TEST DA COMMITTARE
+
+Sintomo utente: "2 colonne funziona, ma 3 o 4 vanno comunque a capo". Causa: `attribute-layout-grid.ts`
+collassava sui breakpoint di VIEWPORT (`sm`/`lg`): 3/4 colonne scattavano solo a `lg` (finestra
+>=1024px). Dentro un pannello/sheet a larghezza variabile la finestra e' larga ma il pannello no ->
+la griglia restava a 2 colonne e il 3o/4o campo andava a capo.
+
+Fix (solo FE, lane attributes/layout-configurator):
+- `attribute-layout-grid.ts`: `GRID_COLS_CLASS`/`ITEM_SPAN_CLASS` passati da breakpoint viewport a
+  CONTAINER QUERY (`@`-variants). Stesso collasso a 3 tier, ma ancorato alla larghezza del contenitore:
+  `@md` (28rem)->min(cols,2), tier pieno `@3xl` (48rem) per 3 col, `@5xl` (64rem) per 4 col. Mapping
+  meccanico `sm:`->`@md:`, `lg:`->`@3xl:`/`@5xl:` (span frazionari invariati). Classi STATICHE (JIT).
+- `attribute-layout-section.tsx`: aggiunto `@container` sul wrapper `div` delle righe (mio scope; NON
+  toccato `components/ui/config-section.tsx`). I grid delle righe interrogano quel contenitore.
+- Nessuna modifica a renderer/fallback flat.
+
+Verifica (eseguita): `vitest src/features/attributes` 65/65 nel working tree; `tsc -b` OK; `eslint` OK
+sui file toccati. `vite build` OK + grep sul CSS emesso: presenti `@container (width>=28rem|48rem|64rem)`
+e `container-type: inline-size` -> le utility container-query compilano davvero. Dato reale 173 gia'
+"healed" nel turno precedente (2 item della sezione 2-col a `half`).
+
+ATTENZIONE COMMIT: il commit `e3516e0` (fatto dall'utente) ha incluso `attribute-layout-grid.ts`/
+`section.tsx` gia' in versione container-query, MA ha lasciato indietro l'aggiornamento di 2 test di
+rendering -> a HEAD `attribute-layout-renderer.test.tsx` e
+`layout-configurator/attribute-layout-configurator.test.tsx` FALLISCONO (asseriscono ancora
+`sm:col-span-2`/`sm:grid-cols-2`). Le 2 modifiche NON committate nel working tree portano quelle
+asserzioni a `@md:` e rimettono la suite verde (12/12 su quei 2 file). DA COMMITTARE per riportare
+HEAD verde. (Requisito cambiato: aggiornamento asserzioni al nuovo output, non test-tampering.)
+
+SOGLIE ABBASSATE (2o giro, sintomo "non vedo alcun cambiamento"): le prime soglie (3 col @3xl=768px,
+4 col @5xl=1024px) erano troppo alte per il pannello reale (2 col gia' scattava a @md=448px, quindi il
+contenitore sta tra 448 e 768 -> 3/4 restavano a 2). Ora: 2 col `@xs` (320px), 3 col `@md` (448px,
+STESSA soglia gia' soddisfatta da 2 col -> 3 appare di sicuro dove appariva 2), 4 col `@lg` (512px).
+~130-150px per colonna (compatto, ui-design §2). Build verificata: CSS contiene
+`@container (width>=20rem|28rem|32rem)`. Suite prodotti+categorie+attributi 172/172 verdi.
+
+3o giro (sintomo "3 ok ma 4 no"): contenitore in [448,512) -> 4 col a @lg(512) non scattava. 4 col
+portato a @md (448px), STESSA soglia di 3 (che gia' funziona) -> 4 appare dove appare 3 (~112px/col,
+denso ma voluto da chi sceglie 4 colonne). `gridColsClass(4)` = `grid-cols-1 @xs:grid-cols-2
+@md:grid-cols-4`. `vitest attributes` 65/65, `tsc` OK, `vite build` OK (grid-cols-4/col-span-4 nel CSS).
+
+4o giro (sintomo "4 mostra 2 per riga poi a capo"): la causa NON era piu' la soglia ma il VOCABOLARIO
+delle width — la piu' stretta (`third`) vale 2 celle su 4, quindi max 2 item per riga in una sezione
+4-col. Aggiunta la width `quarter` (=1 cella a ogni colonna, ceil(cols/4)) su TUTTO lo stack:
+- BE `App\Enums\LayoutItemWidth`: nuovo `case Quarter='quarter'` (validator/normalizer lo accettano via
+  `Rule::enum`/`::from`, zero altre modifiche BE).
+- FE `attribute-layout-types.ts` (`LayoutItemWidth` + `LAYOUT_ITEM_WIDTHS`), `attribute-layout-grid.ts`
+  (riga `quarter: 'col-span-1'` per ogni colonna), `defaultWidthForColumns` (4->quarter),
+  i18n en/it (`configurator.width.quarter` = One quarter / Un quarto). Lo schema zod usa
+  `LAYOUT_ITEM_WIDTHS` -> auto; il Select dell'item editor idem.
+- Dato reale 173: sezione 4-col re-healed da `third` a `quarter` (4 item -> 4 in fila).
+Test: BE `AttributeLayoutTest` +1 (round-trip quarter) 17/17; FE `vitest attributes` 65/65 (formula
+`quarter=ceil(cols/4)` nel grid test, default 4->quarter nel tree test); `tsc` OK, `eslint` OK,
+`vite build` OK, Pint OK. NOTA: `quarter` ora e' offerta come opzione width per TUTTE le sezioni (in
+1/2/3 col vale comunque 1 cella); accettabile. In 4 col servono >=448px di contenitore (soglia @md).
+
+## SPEC 0062 — FIX: DEFAULT WIDTH ITEM PER-COLONNE (le colonne sezione ora hanno effetto) (2026-07-27) — VERDE (committato in e3516e0)
 
 Sintomo utente: "se setto una sezione a due colonne il sistema mi ritorna sempre colonne singole
 una sopra e una sotto". Causa: ogni attributo piazzato nasceva con `width='full'`

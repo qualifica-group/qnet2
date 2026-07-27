@@ -123,12 +123,12 @@ describe('AttributeLayoutRenderer', () => {
     const nameLabel = screen.getByText('Company name').closest('label')
     expect(nameLabel).toHaveTextContent('*')
 
-    // row grid: columns=2 -> 'grid-cols-1 sm:grid-cols-2'; item spans: full=2cols, half=1col
+    // row grid: columns=2 -> 'grid-cols-1 @xs:grid-cols-2' (container-query); item spans: full=2cols, half=1col
     const row = nameField.closest('[class*="grid-cols"]')
-    expect(row).toHaveClass('grid-cols-1', 'sm:grid-cols-2')
+    expect(row).toHaveClass('grid-cols-1', '@xs:grid-cols-2')
     expect(nameField.closest('.col-span-1')).not.toBeNull()
     const nameSpanWrapper = nameField.closest('[class*="col-span"]')
-    expect(nameSpanWrapper).toHaveClass('sm:col-span-2')
+    expect(nameSpanWrapper).toHaveClass('@xs:col-span-2')
   })
 
   it('AC-012/AC-016: attributes not placed in any section render inside a collapsed trailing "Altre informazioni" section', () => {

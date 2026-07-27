@@ -129,14 +129,14 @@ describe('AttributeLayoutConfigurator', () => {
 
     const skuField = screen.getByRole('textbox', { name: 'SKU' })
     const wrapperBefore = skuField.closest('[class*="col-span"]') as HTMLElement
-    expect(wrapperBefore).toHaveClass('sm:col-span-2')
+    expect(wrapperBefore).toHaveClass('@xs:col-span-2')
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Width' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Half' }))
 
     const wrapperAfter = screen.getByRole('textbox', { name: 'SKU' }).closest('[class*="col-span"]') as HTMLElement
     expect(wrapperAfter).toHaveClass('col-span-1')
-    expect(wrapperAfter).not.toHaveClass('sm:col-span-2')
+    expect(wrapperAfter).not.toHaveClass('@xs:col-span-2')
   })
 
   it('AC-010: adding a row gives the section an extra empty drop zone', () => {

@@ -390,6 +390,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('product-categories/{productCategory}/attribute-layouts', [AttributeLayoutController::class, 'show']);
     Route::put('product-categories/{productCategory}/attribute-layouts', [AttributeLayoutController::class, 'update']);
 
+    // Bulk reparenting (spec 0063): move many categories under one parent, or
+    // to the root. Literal segment declared ABOVE the bound wildcard, same
+    // reasoning as the routes above. Authorization is per targeted category
+    // (product-categories.update) inside the controller.
+    Route::post('product-categories/bulk-move', [ProductCategoryController::class, 'bulkMove']);
+
     Route::get('product-categories/{productCategory}', [ProductCategoryController::class, 'show']);
     Route::post('product-categories', [ProductCategoryController::class, 'store']);
     Route::match(['put', 'patch'], 'product-categories/{productCategory}', [ProductCategoryController::class, 'update']);

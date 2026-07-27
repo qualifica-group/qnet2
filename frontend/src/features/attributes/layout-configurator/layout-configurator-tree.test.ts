@@ -175,7 +175,7 @@ describe('placeAttribute — drag placement/move/row-break (AC-009)', () => {
     expect(blob.sections[0].rows[0].items).toEqual([{ attribute_code: 'company_name', width: 'half' }])
   })
 
-  it('a fresh palette placement takes the single-cell width for the section columns (1->full, 3->third)', () => {
+  it('a fresh palette placement takes the single-cell width for the section columns (1->full, 3->third, 4->quarter)', () => {
     let one = addSection(EMPTY_BLOB)
     const oneId = one.sections[0].id
     one = updateSection(one, oneId, { columns: 1 })
@@ -189,6 +189,13 @@ describe('placeAttribute — drag placement/move/row-break (AC-009)', () => {
     three = addRow(three, threeId)
     three = placeAttribute(three, 'b', { type: 'row', sectionId: threeId, rowId: three.sections[0].rows[0].id, beforeCode: null })
     expect(three.sections[0].rows[0].items[0].width).toBe('third')
+
+    let four = addSection(EMPTY_BLOB)
+    const fourId = four.sections[0].id
+    four = updateSection(four, fourId, { columns: 4 })
+    four = addRow(four, fourId)
+    four = placeAttribute(four, 'c', { type: 'row', sectionId: fourId, rowId: four.sections[0].rows[0].id, beforeCode: null })
+    expect(four.sections[0].rows[0].items[0].width).toBe('quarter')
   })
 
   it('moves a placed item to a different row, preserving its width', () => {

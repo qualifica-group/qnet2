@@ -11,7 +11,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 export type LayoutSectionVariant = 'default' | 'highlighted' | 'informative' | 'secondary'
 
 /** `item.width`: the fraction of the section's `columns` an item spans (see `attribute-layout-grid.ts`). */
-export type LayoutItemWidth = 'full' | 'two_thirds' | 'half' | 'third'
+export type LayoutItemWidth = 'full' | 'two_thirds' | 'half' | 'third' | 'quarter'
 
 /** `section.columns`: the desktop grid-cols count a section's rows lay items into. */
 export type LayoutColumns = 1 | 2 | 3 | 4
@@ -23,7 +23,7 @@ export const LAYOUT_SECTION_VARIANTS: readonly LayoutSectionVariant[] = [
   'secondary',
 ]
 
-export const LAYOUT_ITEM_WIDTHS: readonly LayoutItemWidth[] = ['full', 'two_thirds', 'half', 'third']
+export const LAYOUT_ITEM_WIDTHS: readonly LayoutItemWidth[] = ['full', 'two_thirds', 'half', 'third', 'quarter']
 
 export const LAYOUT_COLUMNS_OPTIONS: readonly LayoutColumns[] = [1, 2, 3, 4]
 

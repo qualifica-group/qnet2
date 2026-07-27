@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0063-product-category-bulk-move" status="approved" owner="utente" date="2026-07-27">
+
+  <goal>
+    Spostare in modo MASSIVO piu' categorie prodotto sotto un nuovo parent (o alla radice)
+    in una sola operazione, dalla lista tabellare del modulo product-categories.
+    Oggi il reparent esiste solo riga per riga, via il form di edit della singola categoria.
+  </goal>
+
+  <context>
+    Il reparent singolo passa gia' da ProductCategoryService::update() ed e' protetto da tre
+    guard che questa feature RIUSA senza duplicarne la logica:
+      - assertNoCycle() (ProductCategoryService.php:269) — no self-parent, no spostamento sotto
+        un proprio discendente. Poggia su CategoryHierarchy::isAncestorOf() (public).
+      - assertNoInheritedBusinessFunction() (:286) — no-override della business function
+        ereditata (spec 0023). Poggia su CategoryHierarchy::inheritedBusinessFunctionFor() (public).
+      - cascadeBusinessFunctionToDescendants() (:303) — dopo il reparent azzera la BF propria
+        dei discendenti, mantenendo l'invariante "una BF per catena".
+
+    Il framework tabellare ha gia' selezione a checkbox e un dropdown "Azioni" alimentato
+    dall'hook `getBulkActions` (features/table/use-bulk-actions-slot.tsx). L'unico endpoint bulk
+    generico e' POST /api/tables/{domain}/bulk-delete: NON esiste un bulk-update generico, quindi
+    serve un endpoint di dominio dedicato. Precedente esatto da ricalcare: spec 0048,
+    POST /api/leads/assign-operators + AssignOperatorsDialog + leads-table.tsx:194.
+
+    ProductCategoryService.php e' a 361 righe (oltre il soft limit di 300, engineering.md §6):
+    la logica bulk NON va aggiunta li', ma in un'action dedicata.
+  </context>
+
+  <decisions source="utente 2026-07-27">
+    <d id="D-1">Entry point = azione bulk nella tabella product-categories (selezione checkbox +
+      voce nel dropdown Azioni + dialog col picker parent). NIENTE drag-and-drop su vista albero.</d>
+    <d id="D-2">Selezione annidata (un id selezionato ha un antenato anch'esso selezionato) =
+      BLOCCO con 422. Nessuna potatura implicita, nessun appiattimento implicito: l'utente
+      corregge la selezione.</d>
+    <d id="D-3">Conflitti = TUTTO O NIENTE. Al primo conflitto rilevato nessuna riga viene
+      spostata (422 + elenco completo delle righe colpevoli). Nessuno stato intermedio.</d>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Endpoint POST /api/product-categories/bulk-move (nuovo).</item>
+      <item>Action App\Services\ProductCategories\BulkMoveCategories (nuova).</item>
+      <item>FormRequest BulkMoveCategoriesRequest (nuovo) + metodo bulkMove sul controller esistente.</item>
+      <item>Dialog frontend + hook + wiring getBulkActions sulla tabella product-categories.</item>
+      <item>Chiavi i18n en/it sotto productCategories.bulkMove.*.</item>
+    </in>
+    <out>
+      <item>Vista albero interattiva / drag-and-drop (D-1).</item>
+      <item>Bulk-update generico del framework tabellare: questo endpoint resta di dominio.</item>
+      <item>Modifiche allo schema DB: si scrive solo product_categories.parent_id, gia' esistente.</item>
+      <item>Nuovo permesso: si riusa product-categories.update.</item>
+      <item>Spostamento massivo di PRODOTTI tra categorie (altro dominio, altra spec).</item>
+      <item>Ricalcolo/migrazione dei layout attributi persistiti (vedi impact, e' read-side).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/product-categories/bulk-move">
+      <request>
+        category_ids: int[]   (required, min 1, ogni id esistente in product_categories)
+        parent_id:    int|null (required ma nullable; null = sposta alla radice;
+                                se valorizzato deve esistere in product_categories)
+      </request>
+      <response status="200">
+        { success: true, message: "Categories moved", data: { moved: int } }
+        `moved` = numero di categorie il cui parent_id e' stato effettivamente scritto
+        (una categoria gia' figlia del target e' un no-op e NON viene contata).
+      </response>
+      <errors>
+        403 — attore senza product-categories.update (verificato per OGNI riga targetizzata).
+        422 — { success: false, message, errors: { reason, conflicts: [{ id, name, detail }] } }
+              reason ∈ 'self_parent' | 'nested_selection' | 'cycle' | 'business_function_conflict'.
+              Le violazioni si raccolgono TUTTE prima di rispondere (mai fail-fast sulla prima):
+              l'utente vede l'elenco completo in un colpo solo. Envelope `errors` (non `data`)
+              perche' e' quello che BaseApiController::fail() gia' produce.
+        422 — validazione standard FormRequest (category_ids vuoto/inesistente, parent_id inesistente).
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <backend root="backend/">
+    <action file="app/Services/ProductCategories/BulkMoveCategories.php">
+      handle(array $categoryIds, ?int $parentId): int — orchestrazione a Step:
+        Step 1: carica le categorie targetizzate (una query, keyBy id).
+        Step 2: valida TUTTO prima di scrivere, accumulando i conflitti per reason:
+                self_parent            — parent_id e' fra i category_ids;
+                nested_selection (D-2) — un id selezionato discende da un altro id selezionato;
+                cycle                  — il target discende da una categoria selezionata
+                                         (CategoryHierarchy::isAncestorOf);
+                business_function_conflict — la categoria ha business_function_id proprio e la
+                                         nuova catena ne eredita gia' una
+                                         (CategoryHierarchy::inheritedBusinessFunctionFor).
+                Al primo reason con conflitti: BulkMoveConflictException (nessuna scrittura, D-3).
+        Step 3: DB::transaction — per ogni categoria che cambia davvero parent: update parent_id
+                + cascadeBusinessFunctionToDescendants (riusata via ProductCategoryService, non
+                riscritta). Ritorna il conteggio.
+      Dipendenze iniettate: CategoryHierarchy, ProductCategoryService.
+    </action>
+    <exception file="app/Exceptions/ProductCategories/BulkMoveConflictException.php">
+      Porta reason (string) e conflicts (array). Catturata ESPLICITAMENTE dal controller prima
+      del catch generico e tradotta in fail(message, 422, ['reason' =&gt; ..., 'conflicts' =&gt; ...]).
+    </exception>
+    <controller file="app/Http/Controllers/ProductCategories/ProductCategoryController.php">
+      +bulkMove(BulkMoveCategoriesRequest): authorize('update', $category) per OGNI riga
+      targetizzata (stessa disciplina di LeadController::assignOperators), poi delega all'action.
+    </controller>
+    <route file="routes/api.php">
+      POST product-categories/bulk-move — dichiarata PRIMA delle route con wildcard
+      {productCategory}, stesso motivo dei segmenti letterali tree/effective-attributes.
+    </route>
+  </backend>
+
+  <frontend root="frontend/src/">
+    <api file="features/product-categories/api.ts">bulkMoveProductCategories(payload) -&gt; { moved }.</api>
+    <types file="features/product-categories/types.ts">BulkMoveCategoriesPayload, BulkMoveCategoriesResult, BulkMoveConflict.</types>
+    <hook file="features/product-categories/use-bulk-move-categories.ts">useMutation sottile, nessun toast proprio (il consumer possiede il feedback).</hook>
+    <dialog file="features/product-categories/bulk-move-categories-dialog.tsx">
+      Picker parent = SearchableSelect alimentato da flattenCategoryTree(useProductCategoryTree()),
+      lo STESSO del form categoria (gerarchia indentata), piu' l'opzione "Nessun parent (radice)"
+      con la sentinella 0 gia' in uso nel form (ROOT_PARENT_VALUE). Le categorie selezionate e i
+      loro discendenti sono esclusi dalle opzioni (blocco client-side dei cicli, il server resta
+      l'autorita'). Elenca i conflitti 422 restituiti dal server.
+    </dialog>
+    <table file="features/product-categories/product-categories-table.tsx">
+      getBulkActions gated su can('product-categories.update'): `undefined` quando non autorizzato
+      (cosi' la colonna checkbox resta spenta), calco di leads-table.tsx:194.
+    </table>
+    <i18n files="i18n/locales/{en,it}-products.ts">productCategories.bulkMove.* (il namespace productCategories vive nei file *-products.ts).</i18n>
+  </frontend>
+
+  <impact>
+    Cambiare parent ricalcola gli attributi EFFETTIVI dell'intero sottoalbero spostato (la
+    barriera inherits_attributes) e di conseguenza cosa mostra il layout attributi persistito di
+    quelle categorie. E' un effetto READ-SIDE: nessun dato da migrare, nessuna riga di layout
+    riscritta. Va noto perche' con un'azione massiva l'effetto si propaga su N categorie insieme.
+  </impact>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un attore con product-categories.update e tre categorie radice, quando POST bulk-move con i tre id e parent_id = X, allora 200, data.moved = 3 e tutte e tre hanno parent_id = X.</criterion>
+    <criterion id="AC-002">Dato parent_id = null, quando si spostano categorie figlie, allora 200 e il loro parent_id diventa NULL (spostamento a radice).</criterion>
+    <criterion id="AC-003">Data una categoria gia' figlia del target inclusa nella selezione, allora e' un no-op: 200 e data.moved non la conta.</criterion>
+    <criterion id="AC-004">Dato parent_id incluso in category_ids, allora 422 con errors.reason = 'self_parent' e nessuna riga spostata.</criterion>
+    <criterion id="AC-005">Data una selezione che contiene sia A sia un suo discendente B, allora 422 con errors.reason = 'nested_selection', conflicts contiene B, e NESSUNA riga e' stata spostata (D-2, D-3).</criterion>
+    <criterion id="AC-006">Dato parent_id = un discendente di una categoria selezionata, allora 422 con errors.reason = 'cycle' e nessuna riga spostata.</criterion>
+    <criterion id="AC-007">Data una categoria con business_function_id proprio spostata sotto una catena che ne eredita gia' una, allora 422 con errors.reason = 'business_function_conflict' e nessuna riga spostata.</criterion>
+    <criterion id="AC-008">Dato un batch con una sola riga in conflitto e le altre valide, allora 422 e NESSUNA delle righe valide risulta spostata (atomicita', D-3).</criterion>
+    <criterion id="AC-009">Dato un attore senza product-categories.update, allora 403 e nessuna riga spostata.</criterion>
+    <criterion id="AC-010">Dato uno spostamento valido di una categoria con BF propria sotto una catena SENZA BF, allora 200 e i discendenti che avevano una BF propria risultano azzerati (cascade, invariante spec 0023).</criterion>
+    <criterion id="AC-011">(FE) Dato un attore senza product-categories.update, allora la voce "Sposta sotto..." non e' presente nel dropdown azioni.</criterion>
+    <criterion id="AC-012">(FE) Date N righe selezionate, quando si conferma il dialog, allora viene inviato un solo POST con i loro id e il parent scelto, e al successo la griglia si aggiorna e la selezione si svuota.</criterion>
+    <criterion id="AC-013">(FE) Il picker parent non offre come destinazione nessuna delle categorie selezionate ne' i loro discendenti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side per riga (mai un solo check globale).
+    Guard riusati da CategoryHierarchy/ProductCategoryService, mai riscritti.
+    Nessun throttle (decisione utente 2026-07-15: solo endpoint credenziali auth).
+    Envelope di progetto rispettato. File entro 300/500 righe. Test Pest + Vitest ESEGUITI.
+  </constraints>
+
+</spec>
