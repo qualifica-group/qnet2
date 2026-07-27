@@ -120,6 +120,9 @@ export const requestManagement = {
     save: 'Salva',
     saved: 'Dati di lavorazione salvati.',
     genericError: 'Si è verificato un errore. Riprova.',
+    generalNotes: {
+      title: 'Note generali',
+    },
     dynamicFields: {
       title: 'Informazioni aggiuntive',
       empty: 'Nessun campo aggiuntivo per questa opportunità.',

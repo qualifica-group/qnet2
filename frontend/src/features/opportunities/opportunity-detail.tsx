@@ -1,6 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Building2, ClipboardList, Contact, Handshake, History, Paperclip, Users } from 'lucide-react'
+import {
+  Building2,
+  ClipboardList,
+  Contact,
+  Handshake,
+  History,
+  Paperclip,
+  StickyNote,
+  Users,
+} from 'lucide-react'
 import {
   DetailEmpty,
   DetailField,
@@ -318,6 +327,14 @@ export function OpportunityDetailView({ opportunity }: OpportunityDetailViewProp
           </DetailField>
           <DetailField label={t('opportunities.form.successProbability')}>
             {opportunity.success_probability !== null ? `${opportunity.success_probability}%` : <DetailEmpty />}
+          </DetailField>
+        </DetailGrid>
+      </DetailSection>
+
+      <DetailSection title={t('opportunities.form.sections.generalNotes.title')} icon={<StickyNote />}>
+        <DetailGrid>
+          <DetailField label={t('opportunities.form.generalNotes')} full>
+            {opportunity.general_notes ?? <DetailEmpty />}
           </DetailField>
         </DetailGrid>
       </DetailSection>

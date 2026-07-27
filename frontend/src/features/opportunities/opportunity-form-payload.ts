@@ -53,6 +53,9 @@ export function buildCreatePayload(
     expected_close_date: values.expected_close_date,
     estimated_value: values.estimated_value,
     success_probability: values.success_probability,
+    // "Note generali" (user directive 2026-07-27): prefilled from the lead
+    // but never locked — always sent as-is, like `state_id` above.
+    general_notes: values.general_notes,
   }
 
   if (!locked.has('registry_id')) {
@@ -167,6 +170,9 @@ export function buildUpdatePayload(
   // field ("0%" ≡ "not set").
   if (values.success_probability !== (original.success_probability ?? 0)) {
     payload.success_probability = values.success_probability
+  }
+  if (values.general_notes !== (original.general_notes ?? null)) {
+    payload.general_notes = values.general_notes
   }
 
   return payload

@@ -19,6 +19,9 @@ export const ESTIMATED_VALUE_MAX = 9999999999999.99
 export const SUCCESS_PROBABILITY_MIN = 0
 export const SUCCESS_PROBABILITY_MAX = 100
 
+/** Backend `general_notes` ceiling (`max:5000`), mirroring the lead `notes` it inherits from. */
+export const GENERAL_NOTES_MAX_LENGTH = 5000
+
 /**
  * A required relation id: `null` (unset) fails the refine. See
  * `lead-schema.ts` for why the explicit `: boolean` return type on the
@@ -118,6 +121,13 @@ function baseFields(t: TFunction) {
       .int()
       .min(SUCCESS_PROBABILITY_MIN, t('opportunities.form.successProbabilityInvalid'))
       .max(SUCCESS_PROBABILITY_MAX, t('opportunities.form.successProbabilityInvalid')),
+    // "Note generali" (user directive 2026-07-27): free text prefilled from
+    // the originating lead's own notes, always editable/clearable (never
+    // BR-2-locked).
+    general_notes: z
+      .string()
+      .max(GENERAL_NOTES_MAX_LENGTH, t('opportunities.form.generalNotesMax'))
+      .nullable(),
   }
 }
 

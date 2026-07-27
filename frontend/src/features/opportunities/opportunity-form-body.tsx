@@ -15,6 +15,7 @@ import { OpportunityClassificationSection } from '@/features/opportunities/oppor
 import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
 import { OpportunityTeamSection } from '@/features/opportunities/opportunity-team-section'
 import { OpportunityPlanningSection } from '@/features/opportunities/opportunity-planning-section'
+import { OpportunityGeneralNotesSection } from '@/features/opportunities/opportunity-general-notes-section'
 import { OpportunityFromLeadBanner } from '@/features/opportunities/opportunity-from-lead-banner'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
 import { OpportunityLeadField } from '@/features/opportunities/opportunity-lead-field'
@@ -123,6 +124,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
   const planningHasError = Boolean(
     errors.start_date || errors.expected_close_date || errors.estimated_value || errors.success_probability,
   )
+  const [generalNotesOpen, setGeneralNotesOpen] = useState(false)
 
   const registryId = useWatch({ control: form.control, name: 'registry_id' })
   const registryChosen = registryId !== null
@@ -252,6 +254,14 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
             open={planningOpen || planningHasError}
             onOpenChange={setPlanningOpen}
             className={sectionRevealClassName(4)}
+          />
+
+          <OpportunityGeneralNotesSection
+            control={form.control}
+            collapsible
+            open={generalNotesOpen || Boolean(errors.general_notes)}
+            onOpenChange={setGeneralNotesOpen}
+            className={sectionRevealClassName(5)}
           />
 
           {serverError && (

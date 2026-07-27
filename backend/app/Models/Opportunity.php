@@ -31,6 +31,11 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * NOT NULL at schema level, defaulted server-side to the system 'new' status
  * when omitted (see OpportunityService).
  *
+ * `general_notes` (user directive 2026-07-27): the "Note generali" free text,
+ * inherited from the originating Lead's `notes` at conversion. Named
+ * `general_notes`, NOT `notes`, because `notes()` is already this model's
+ * collaborative-thread relation (HasNotes, spec 0052).
+ *
  * Spec 0056 (2026-07-23) SUPERSEDES the 2026-07-17 removal limitedly to
  * `operational_site_id`: reintroduced as a plain, optional FK (nullOnDelete —
  * a deliberate deviation from this model's other restrictOnDelete relations,
@@ -53,6 +58,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'estimated_value',
     'expected_close_date',
     'success_probability',
+    'general_notes',
 ])]
 class Opportunity extends BaseModel
 {

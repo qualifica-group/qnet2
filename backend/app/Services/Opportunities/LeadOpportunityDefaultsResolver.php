@@ -99,6 +99,11 @@ final class LeadOpportunityDefaultsResolver
             // conversion. NOT in DERIVED_FIELDS — a plain editable default,
             // never BR-2-locked.
             'operational_site_id' => $lead->operational_site_id,
+            // User directive 2026-07-27: the opportunity's "Note generali"
+            // are seeded from the lead's own free-text notes. Same plain,
+            // never-locked treatment as the two defaults above — the only
+            // non-id entry of this map.
+            'general_notes' => $lead->notes,
         ];
 
         $references = [
@@ -175,7 +180,7 @@ final class LeadOpportunityDefaultsResolver
     }
 
     /**
-     * @param  array<string, int|null>  $values
+     * @param  array<string, int|string|null>  $values
      * @return array<int, string>
      */
     private function lockedFields(array $values): array

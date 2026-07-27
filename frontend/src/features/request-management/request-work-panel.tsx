@@ -11,6 +11,7 @@ import { RequestAttributionSection } from '@/features/request-management/request
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestDynamicFields } from '@/features/request-management/request-dynamic-fields'
+import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
 import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
@@ -37,7 +38,7 @@ const REQUEST_WORK_FORM_ID = 'request-work-form'
 const PANEL_GRID_CLASS = 'grid items-start gap-4 p-4 @4xl:grid-cols-[minmax(0,1fr)_20rem]'
 
 /** Clears the sticky header (`py-3` around a badge row) so the side column never scrolls under it. */
-const SIDE_COLUMN_CLASS = 'min-w-0 @4xl:sticky @4xl:top-16 @4xl:order-2'
+const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16 @4xl:order-2'
 
 /** Props shape matches the module registry's `ModuleDetailScreenProps` (spec 0042), so this mounts as-is as the module's `DetailScreen`. */
 interface RequestWorkPanelScreenProps {
@@ -137,6 +138,9 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         {/* Read-only commercial context: first in the DOM so a narrow container
             reads it before the form, reordered to the right on two columns. */}
         <aside className={SIDE_COLUMN_CLASS}>
+          {/* Directive 2026-07-27: the "Note generali" lead the side column —
+              operators read them before anything else. */}
+          <RequestGeneralNotesCallout notes={panel.context.general_notes ?? null} />
           <RequestWorkSummary panel={panel} />
         </aside>
 

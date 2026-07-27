@@ -77,6 +77,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('estimated_value', 'number'),
             new FieldDefinition('expected_close_date', 'date'),
             new FieldDefinition('success_probability', 'number'),
+            new FieldDefinition('general_notes', 'textarea'),
         ];
     }
 
@@ -113,6 +114,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             'estimated_value' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'expected_close_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'success_probability' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'general_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

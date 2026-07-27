@@ -2,6 +2,91 @@
 
 > Injected at session start. Update at every green state.
 
+## OPPORTUNITA — "NOTE GENERALI" EREDITATE DAL LEAD (`opportunities.general_notes`) (2026-07-27) — VERDE, NON COMMITTATO
+
+Richiesta utente: aggiungere un campo "note generali" in Opportunita che eredita dal campo `notes`
+del Lead.
+
+CONTRATTO (vincolante): colonna `opportunities.general_notes`, TEXT NULL, `max:5000` (stesso tetto
+di `leads.notes`). Il nome NON e' `notes`: `Opportunity` usa gia' `HasNotes::notes()` (thread
+collaborativo, spec 0052) e una colonna omonima lo shadowerebbe. L'ereditarieta' e' un DEFAULT
+SEMPLICE, mai BR-2-locked: `LeadOpportunityDefaultsResolver` lo mette in `values` accanto a
+`state_id`/`operational_site_id` (e' l'UNICA voce non-id di quella mappa, phpdoc aggiornato a
+`int|string|null`), FUORI da `DERIVED_FIELDS` — quindi resta sempre editabile/azzerabile e inviarlo
+non e' mai `prohibited`.
+
+BE: migrazione additiva `2026_07_27_170000_add_general_notes_to_opportunities_table` (reversibile,
+gia' applicata al DB di sviluppo) · `Opportunity` (`$fillable`) · `CreateOpportunityData`
+(`generalNotes`, appeso IN FONDO al costruttore per la solita trappola ArgumentCountError) ·
+`UpdateOpportunityData` (`generalNotes`/`generalNotesSubmitted`, cosi' una PATCH puo' azzerare) ·
+`Store`/`UpdateOpportunityRequest` · `OpportunityResource` · `OpportunitiesAuthorization`
+(`FieldDefinition('general_notes','textarea')` + ceiling: il catalogo campi passa da 15 a **16**) ·
+`LeadOpportunityDefaultsResolver` · `ConvertLeadToOpportunity` · `OpportunityFactory` (default null).
+
+FE: nuovo `features/opportunities/opportunity-general-notes-section.tsx` — sezione collassabile
+dedicata (icona StickyNote, Textarea + contatore, ricalca la sezione note del lead), montata in
+`opportunity-form-body.tsx` dopo Pianificazione. Toccati: `types.ts` (`general_notes` opzionale su
+`OpportunityDetail` per compatibilita' fixture, RICHIESTO su `OpportunityDefaultValues`),
+`opportunity-schema.ts` (+ `GENERAL_NOTES_MAX_LENGTH`), `use-opportunity-form.ts` (default create/edit
++ `SERVER_ERROR_FIELDS`), `opportunity-form-payload.ts` (create sempre inviato as-is; update a diff
+sparso con clear esplicito), `opportunity-detail.tsx` (sezione read-only), i18n it/en.
+
+SPLIT DI FILE: `opportunity-form-payload.test.ts` avrebbe superato il limite hard di 500 righe →
+diviso in `opportunity-form-payload.test.ts` (create), `opportunity-form-payload-update.test.ts`
+(PATCH) e `opportunity-form-payload-fixtures.ts` (le factory `values`/`createValues`/`original`
+condivise, cosi' le due meta' non divergono).
+
+TEST AGGIORNATI per cambio di requisito (dichiarato): `OpportunityMetaTest` (catalogo 15 → 16 campi)
+e le fixture che costruiscono `OpportunityDefaultValues`/`OpportunityFormValues`
+(`opportunity-form-from-lead`, `opportunity-screens`, `use-opportunity-defaults`,
+`opportunity-schema.test`).
+
+Verifica ESEGUITA: nuovo `tests/Feature/Opportunities/OpportunityGeneralNotesTest.php` 9/9 (create,
+default null, 422 oltre 5000 char, PATCH, azzeramento, defaults endpoint con e senza note, override
+in create-from-lead, conversione contestuale) · Pest `Opportunities`+`Leads` 243/243 ·
+`Authorization`+`RequestManagement` 282/282 · Pint pulito. FE: nuovo
+`opportunity-general-notes-section.test.tsx` 3/3, suite `features/opportunities` 152/152, suite
+completa 2479/2482 (i 3 rossi sono i `ContactsCell` di `features/table/cell-renderers.test.tsx`,
+PRE-ESISTENTI), `tsc -b` pulito, ESLint pulito sui file toccati.
+
+### Estensione — le note in GESTIONE RICHIESTE, sola lettura ed EVIDENZIATE (2026-07-27)
+
+Richiesta utente: gli operatori devono LEGGERE le note generali nel pannello "Lavora", in sidebar a
+destra, in evidenza — mai modificarle da li'.
+
+CONTRATTO: `general_notes` entra nel blocco **`context`** di `RequestManagementResource` (accanto a
+`estimated_value`/`expected_close_date`/`success_probability`), non tra i campi editabili: e' la
+stessa scelta con cui la spec 0049 D-5 tiene le dimensioni commerciali fuori dal pannello. Nessuna
+`FieldDefinition` in `RequestManagementAuthorization` — i campi di `context` non ne hanno, essendo
+sola lettura. `UpdateRequestRequest` non ha una regola `general_notes`, quindi una PATCH che provi a
+scriverlo dal modulo e' semplicemente ignorata (test di regressione a copertura).
+
+FE: nuovo `features/request-management/request-general-notes-callout.tsx` — riquadro `<section
+aria-labelledby>` con superficie accentata (`border-primary/30 border-l-4 border-l-primary
+bg-primary/5`, la stessa tinta di `OpportunityFromLeadBanner`, un gradino piu' forte), titolo in
+maiuscoletto con icona StickyNote, testo `whitespace-pre-wrap` con `max-h-64 overflow-y-auto` (una
+nota lunga non spinge fuori il riepilogo). Non renderizza NULLA con note vuote/null: niente scatola
+vuota. Montato PRIMO nell'`<aside>` di `request-work-panel.tsx`, sopra `RequestWorkSummary`;
+`SIDE_COLUMN_CLASS` e' diventato `flex flex-col gap-4` perche' la colonna ora ha due figli.
+`types.ts`: `RequestWorkContext.general_notes?: string | null` (opzionale per compatibilita' fixture).
+i18n `requestManagement.workPanel.generalNotes.title` it/en.
+
+Verifica ESEGUITA (estensione): Pest `RequestManagement`+`Opportunities` 364/364 — inclusi i 2 nuovi
+casi in `RequestManagementShowTest` (il contesto porta le note; una PATCH che prova a scriverle non
+tocca il campo) · Pint pulito. FE: nuovo `request-general-notes-callout.test.tsx` 4/4, nuovo caso di
+integrazione in `request-work-panel.test.tsx` (la regione compare nel pannello), suite
+`features/request-management` 98/98, suite completa 2484/2487 (sempre e solo i 3 `ContactsCell`
+pre-esistenti), `tsc -b` pulito, ESLint pulito.
+
+ATTENZIONE per chi tocchera' `request-work-panel.test.tsx`: e' a **498 righe**, a due dal limite hard
+di 500 imposto dall'hook `code-guard`. Il prossimo caso di test richiede prima uno split del file.
+
+FUORI SCOPE (segnalato, non implementato): il campo NON e' stato aggiunto alla griglia Opportunita
+(`OpportunityColumnCatalog`/`OpportunitiesTableDefinition`) ne' alla griglia di Gestione Richieste
+(`RequestColumnCatalog`), che hanno cataloghi colonne propri.
+
+NON COMMITTATO — in attesa di via libera esplicito (CLAUDE.md §3.6).
+
 ## SPEC 0047 — CUSTOM FIELD RELAZIONALI COME CAMPI-CRITERIO DEL CONFIGURATORE (2026-07-27) — VERDE, NON COMMITTATO
 
 Richiesta utente: "nel configuratore di stati per opportunita' voglio che nei campi selezionabili ci

@@ -40,6 +40,8 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     estimated_value: null,
     // A-6: rendered as a slider that always holds a value (default 0), never null.
     success_probability: 0,
+    // "Note generali" (2026-07-27): free text, never submit-blocking.
+    general_notes: null,
     ...overrides,
   }
 }

@@ -107,6 +107,7 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
               source_id: 20,
               registry_id: 30,
               operational_site_id: null,
+              general_notes: null,
             },
             references: {
               source: { id: 20, name: 'Web' },

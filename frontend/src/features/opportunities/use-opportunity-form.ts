@@ -49,6 +49,7 @@ const SERVER_ERROR_FIELDS = [
   'expected_close_date',
   'estimated_value',
   'success_probability',
+  'general_notes',
 ] as const
 
 export type OpportunityFormValues = CreateOpportunityFormValues
@@ -122,6 +123,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
         // A-6: the slider always holds a value; a null stored probability
         // hydrates as 0 ("0%" ≡ "not set").
         success_probability: opportunity.success_probability ?? 0,
+        general_notes: opportunity.general_notes ?? null,
       }
     }
     const empty: OpportunityFormValues = {
@@ -143,6 +145,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       expected_close_date: null,
       estimated_value: null,
       success_probability: 0,
+      general_notes: null,
     }
     if (!mode.fromLead) {
       return empty

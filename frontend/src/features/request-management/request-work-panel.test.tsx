@@ -476,4 +476,23 @@ describe('RequestWorkPanelScreen — activity log tab (spec 0049 D-7 amended)', 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Preliminary information' })).toBeInTheDocument())
     expect(screen.queryByRole('tab', { name: 'History' })).not.toBeInTheDocument()
   })
+
+  /** Directive 2026-07-27: read-only "Note generali" highlighted in the side column. */
+  it('shows the general notes from the read-only context block', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({
+        context: {
+          estimated_value: null,
+          expected_close_date: null,
+          success_probability: null,
+          general_notes: 'Recall the client in September',
+        },
+      }),
+    )
+
+    renderPanel()
+
+    const region = await screen.findByRole('region', { name: 'General notes' })
+    expect(region).toHaveTextContent('Recall the client in September')
+  })
 })

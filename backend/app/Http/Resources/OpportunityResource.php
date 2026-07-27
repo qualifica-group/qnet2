@@ -100,6 +100,7 @@ class OpportunityResource extends JsonResource
             'estimated_value' => $this->estimated_value,
             'expected_close_date' => $this->expected_close_date,
             'success_probability' => $this->success_probability,
+            'general_notes' => $this->general_notes,
             'locked_fields' => $this->resolveLockedFields(),
             'attribute_values' => $this->attribute_values ?? [],
             'applicable_attributes' => $this->resolveApplicableAttributes(),

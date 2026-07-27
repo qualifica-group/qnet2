@@ -207,6 +207,13 @@ export interface OpportunityDetail {
   expected_close_date: string | null
   success_probability: number | null
   /**
+   * "Note generali" (user directive 2026-07-27): free text, inherited from
+   * the originating lead's `notes` at conversion but always editable. Optional
+   * for the same fixture-compatibility reason as `state`/`workflow_status`
+   * above — treat a missing key the same as `null`.
+   */
+  general_notes?: string | null
+  /**
    * BR-2: keys of the fields whose value was derived from the linked Lead's
    * campaign and is therefore locked (immutable, even server-side). Empty
    * when `lead_id` is null.
@@ -278,6 +285,8 @@ export interface CreateOpportunityPayload {
   estimated_value?: number | null
   expected_close_date?: string | null
   success_probability?: number | null
+  /** "Note generali" (user directive 2026-07-27): free text, never lead-locked — always sent as-is. */
+  general_notes?: string | null
   /**
    * Amendment rev.3 (AC-099): the server REPLACES the entire row collection
    * on every write. Always sent in full on create (even empty); the update
@@ -336,6 +345,12 @@ export interface OpportunityDefaultValues {
    * editable/clearable in the form.
    */
   operational_site_id: number | null
+  /**
+   * User directive 2026-07-27: the lead's own `notes` seed the opportunity's
+   * "Note generali" — a PLAIN default like `operational_site_id` above, never
+   * part of `locked_fields`.
+   */
+  general_notes: string | null
 }
 
 /**

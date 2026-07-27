@@ -114,6 +114,8 @@ it('GET as the opportunity manager returns the full work-panel shape (AC-020)', 
             'estimated_value' => $opportunity->estimated_value,
             'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
             'success_probability' => $opportunity->success_probability,
+            // User directive 2026-07-27: read-only in this module.
+            'general_notes' => $opportunity->general_notes,
         ])
         ->assertJsonStructure([
             'data' => ['workflow_status', 'workflow_statuses', 'product_lines'],
@@ -216,4 +218,36 @@ it('applicable_attributes is empty for an opportunity with no product lines (AC-
     $this->getJson("/api/request-management/{$opportunity->id}")
         ->assertOk()
         ->assertJsonPath('data.applicable_attributes', []);
+});
+
+// ---------------------------------------------------------------------------
+// User directive 2026-07-27 — the opportunity's "Note generali" surface in the
+// work panel's read-only context block (the FE highlights them at the top of
+// the side column). This module never writes the field.
+// ---------------------------------------------------------------------------
+
+it('context.general_notes carries the opportunity notes, read-only', function () {
+    $actor = requestManagementUserWith(['view', 'viewAll']);
+    $opportunity = Opportunity::factory()->create([
+        'registry_id' => Registry::factory()->create()->id,
+        'general_notes' => 'Il cliente richiama a settembre.',
+    ]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/request-management/{$opportunity->id}")
+        ->assertOk()
+        ->assertJsonPath('data.context.general_notes', 'Il cliente richiama a settembre.');
+});
+
+it('a PATCH attempting to write general_notes from this module leaves the field untouched', function () {
+    $actor = requestManagementUserWith(['view', 'viewAll', 'update']);
+    $opportunity = Opportunity::factory()->create([
+        'registry_id' => Registry::factory()->create()->id,
+        'general_notes' => 'Nota originale',
+    ]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$opportunity->id}", ['general_notes' => 'Riscritta']);
+
+    expect($opportunity->fresh()->general_notes)->toBe('Nota originale');
 });

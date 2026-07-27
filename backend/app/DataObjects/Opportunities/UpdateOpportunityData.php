@@ -44,6 +44,10 @@ namespace App\DataObjects\Opportunities;
  * Spec 0057, D-5: `name` is REMOVED entirely — it is immutable server-side
  * (derived once at create as `OPP_{id}`), never part of a PATCH payload.
  *
+ * User directive 2026-07-27: `generalNotes` ("Note generali") follows the
+ * same `*Submitted` convention as every other plain nullable scalar — the
+ * pair is what lets a PATCH clear the field.
+ *
  * Spec 0059: `rewards` follows the SAME null-means-untouched convention as
  * `productsOfInterest`, but — UNLIKE it — CAN be cleared to `[]` (AC-020):
  * an opportunity is allowed to carry zero rewards, so its FormRequest rule
@@ -90,6 +94,8 @@ final readonly class UpdateOpportunityData
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
         public ?array $rewards = null,
+        public ?string $generalNotes = null,
+        public bool $generalNotesSubmitted = false,
     ) {}
 
     /**
@@ -134,6 +140,8 @@ final readonly class UpdateOpportunityData
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
+            generalNotes: array_key_exists('general_notes', $data) ? $data['general_notes'] : null,
+            generalNotesSubmitted: array_key_exists('general_notes', $data),
         );
     }
 
@@ -251,6 +259,10 @@ final readonly class UpdateOpportunityData
 
         if ($this->stateIdSubmitted) {
             $attributes['state_id'] = $this->stateId;
+        }
+
+        if ($this->generalNotesSubmitted) {
+            $attributes['general_notes'] = $this->generalNotes;
         }
 
         return $attributes;

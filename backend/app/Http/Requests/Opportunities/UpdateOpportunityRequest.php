@@ -90,6 +90,9 @@ class UpdateOpportunityRequest extends FormRequest
             'estimated_value' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
             'expected_close_date' => ['sometimes', 'nullable', 'date'],
             'success_probability' => ['sometimes', 'nullable', 'integer', 'between:0,100'],
+            // "Note generali" (user directive 2026-07-27): free text, same
+            // 5000-char ceiling as the lead `notes` it is inherited from.
+            'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             // spec 0047: state_id (Regione, D1) is freely editable on the
             // standalone opportunity. opportunity_workflow_status_id is an
             // OPTIONAL override (AC-016/017); its set-membership is checked

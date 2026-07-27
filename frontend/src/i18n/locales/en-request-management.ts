@@ -120,6 +120,9 @@ export const requestManagement = {
     save: 'Save',
     saved: 'Working data saved.',
     genericError: 'Something went wrong. Please try again.',
+    generalNotes: {
+      title: 'General notes',
+    },
     dynamicFields: {
       title: 'Additional information',
       empty: 'No additional fields for this opportunity.',

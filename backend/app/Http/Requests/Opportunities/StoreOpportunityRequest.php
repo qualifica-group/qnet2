@@ -87,6 +87,9 @@ class StoreOpportunityRequest extends FormRequest
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
             'expected_close_date' => ['nullable', 'date'],
             'success_probability' => ['nullable', 'integer', 'between:0,100'],
+            // "Note generali" (user directive 2026-07-27): free text, same
+            // 5000-char ceiling as the lead `notes` it is inherited from.
+            'general_notes' => ['nullable', 'string', 'max:5000'],
             // spec 0047: state_id (Regione, D1) is editable on a standalone
             // create, overwritten by BR-1 derivation when lead_id derives
             // one. opportunity_workflow_status_id is an OPTIONAL override

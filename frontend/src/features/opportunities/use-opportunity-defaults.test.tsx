@@ -28,6 +28,7 @@ function defaults(overrides: Partial<OpportunityDefaults> = {}): OpportunityDefa
       source_id: 20,
       registry_id: 30,
       operational_site_id: null,
+      general_notes: null,
     },
     references: {
       source: { id: 20, name: 'Web' },

@@ -90,6 +90,12 @@ class RequestManagementResource extends JsonResource
                 'estimated_value' => $opportunity->estimated_value,
                 'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
                 'success_probability' => $opportunity->success_probability,
+                // "Note generali" (user directive 2026-07-27): READ-ONLY here.
+                // It joins the context block rather than the editable fields
+                // above because this module never writes it — the opportunity
+                // form owns that, mirroring D-5's treatment of the sales
+                // dimensions.
+                'general_notes' => $opportunity->general_notes,
             ],
         ];
     }

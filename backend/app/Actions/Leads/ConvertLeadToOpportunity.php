@@ -79,6 +79,9 @@ final class ConvertLeadToOpportunity
             // User directive 2026-07-23: the opportunity inherits the lead's
             // Sede operativa (plain default, never BR-2-locked).
             operationalSiteId: $defaults->values['operational_site_id'],
+            // User directive 2026-07-27: the "Note generali" are seeded from
+            // the lead's own notes (plain default, never BR-2-locked).
+            generalNotes: $defaults->values['general_notes'],
         ));
     }
 

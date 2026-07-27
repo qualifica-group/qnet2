@@ -45,6 +45,11 @@ namespace App\DataObjects\Opportunities;
  * derives it as `OPP_{id}` right after the insert, mirroring
  * RegistryService's own placeholder-then-derive pattern for `registries.name`.
  *
+ * User directive 2026-07-27: `generalNotes` ("Note generali") is a plain
+ * nullable scalar, prefilled from the lead's own `notes` at conversion but
+ * never BR-1-locked — appended AT THE END for the same ArgumentCountError
+ * reason as `operationalSiteId`.
+ *
  * Spec 0059: `rewards` — the reward-type ids to assign, synced by
  * RewardAssignmentWriter — follows the SAME null-means-untouched/out-of-
  * attributes() convention as `productsOfInterest` (D-3: the beneficiary is
@@ -78,6 +83,7 @@ final readonly class CreateOpportunityData
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public ?array $rewards = null,
+        public ?string $generalNotes = null,
     ) {}
 
     /**
@@ -109,6 +115,7 @@ final readonly class CreateOpportunityData
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
+            generalNotes: $data['general_notes'] ?? null,
         );
     }
 
@@ -191,6 +198,7 @@ final readonly class CreateOpportunityData
             'expected_close_date' => $this->expectedCloseDate,
             'success_probability' => $this->successProbability,
             'state_id' => $this->stateId,
+            'general_notes' => $this->generalNotes,
         ];
     }
 }

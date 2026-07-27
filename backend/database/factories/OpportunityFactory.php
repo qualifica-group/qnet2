@@ -37,6 +37,7 @@ class OpportunityFactory extends Factory
             'estimated_value' => fake()->optional()->randomFloat(2, 500, 50000),
             'expected_close_date' => fake()->optional()->date(),
             'success_probability' => fake()->optional()->numberBetween(0, 100),
+            'general_notes' => null,
         ];
     }
 }
