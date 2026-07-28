@@ -124,9 +124,9 @@ export const productCategories = {
     parentError: 'Impossibile caricare le categorie.',
     noParent: 'Nessun padre (categoria radice)',
     description: 'Descrizione',
-    inheritsAttributes: 'Eredita gli attributi dal padre',
+    inheritsAttributes: 'Eredita dal padre',
     inheritsAttributesHint:
-      'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano attributi dai livelli superiori.',
+      'Vale solo per questa sezione. Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano questi attributi dai livelli superiori.',
     attributes: 'Attributi',
     attributesHelp:
       'Assegna gli attributi che i prodotti di questa categoria dovranno compilare (in aggiunta a quelli ereditati).',

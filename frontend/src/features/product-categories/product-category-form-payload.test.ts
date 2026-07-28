@@ -14,7 +14,8 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     name: 'Laptops',
     parent_id: 1,
     parent: { id: 1, name: 'Electronics' },
-    inherits_attributes: true,
+    inherits_product_attributes: true,
+    inherits_opportunity_attributes: true,
     description: null,
     attributes: [
       { attribute_id: 9, code: 'ram', name: 'RAM', type: 'integer', is_required: true, sort_order: 0, context: 'opportunity' },
@@ -33,7 +34,8 @@ describe('buildCreatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
@@ -43,7 +45,8 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values)).toEqual({
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
@@ -56,7 +59,8 @@ describe('buildUpdatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
@@ -70,7 +74,8 @@ describe('buildUpdatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 2,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
@@ -80,25 +85,30 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload(values, original())).toEqual({ parent_id: 2 })
   })
 
-  it('includes only the changed inherits_attributes', () => {
+  it('includes only the inheritance flag of the context that changed', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: false,
+      inherits_product_attributes: false,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       custom_fields: {},
     }
 
-    expect(buildUpdatePayload(values, original())).toEqual({ inherits_attributes: false })
+    expect(buildUpdatePayload(values, original())).toEqual({ inherits_product_attributes: false })
+    expect(
+      buildUpdatePayload({ ...values, inherits_product_attributes: true, inherits_opportunity_attributes: false }, original()),
+    ).toEqual({ inherits_opportunity_attributes: false })
   })
 
   it('sends a full attributes replacement when the assignment set changed', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: false, sort_order: 0 }],
       business_function_id: null,
@@ -114,7 +124,8 @@ describe('buildUpdatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'product', is_required: true, sort_order: 0 }],
       business_function_id: null,
@@ -130,7 +141,8 @@ describe('buildUpdatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: 5,
@@ -144,7 +156,8 @@ describe('buildUpdatePayload', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,

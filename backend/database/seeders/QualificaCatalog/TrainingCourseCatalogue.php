@@ -1,16 +1,16 @@
 <?php
 
-namespace Database\Seeders\QualificaTemplate;
+namespace Database\Seeders\QualificaCatalog;
 
 /**
  * The client's GOL training-course catalogue: the courses actually funded per
  * region, each with its total duration in hours. Split out of
- * QualificaTemplateSeeder as pure data (the seeder holds the logic, this file
+ * QualificaCatalogSeeder as pure data (the seeder holds the logic, this file
  * holds the rows) — the list alone is well past the file-size budget.
  *
  * Keyed by the FULL product-category name, not by the bare region, so the
  * courses bind to the `GOL - <Regione>` nodes of
- * QualificaTemplateSeeder::CATALOG by identity: no string arithmetic to drift,
+ * QualificaCatalogSeeder::CATALOG by identity: no string arithmetic to drift,
  * and renaming a region there breaks loudly here instead of silently dropping
  * its courses.
  *

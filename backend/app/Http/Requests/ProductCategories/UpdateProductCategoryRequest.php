@@ -42,7 +42,8 @@ class UpdateProductCategoryRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
-            'inherits_attributes' => ['sometimes', 'boolean'],
+            'inherits_product_attributes' => ['sometimes', 'boolean'],
+            'inherits_opportunity_attributes' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string'],
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
             'attributes' => ['sometimes', 'array'],

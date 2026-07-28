@@ -11,11 +11,11 @@ use App\Services\UserService;
 use Illuminate\Database\Seeder;
 
 /**
- * The legacy import (spec 0013 / 0046), a STANDALONE seeder: it is not
- * chained by QualificaTemplateSeeder, it is launched on its own
- * (`php artisan db:seed --class=QualificaLegacyImportSeeder`) and must run
- * AFTER it — it adopts that seeder's source catalogue by name, and
- * nestImportedCategories() needs the "Consulenza" root it creates.
+ * The legacy import (spec 0013 / 0046). It is the LAST step of
+ * QualificaProductionDataSeeder and stays runnable on its own
+ * (`php artisan db:seed --class=QualificaLegacyImportSeeder`), but only AFTER
+ * QualificaCatalogSeeder — it adopts that seeder's source catalogue by name,
+ * and nestImportedCategories() needs the "Consulenza" root it creates.
  *
  * It pulls the client's real catalogues from the external system through the
  * SAME
@@ -28,13 +28,13 @@ use Illuminate\Database\Seeder;
  * nestImportedCategories().
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
- * already imported, and `sources` — the one catalogue the template also
- * provisions by name — is adopted rather than duplicated (SourcesSource).
+ * already imported, and `sources` — the one catalogue QualificaCatalogSeeder
+ * also provisions by name — is adopted rather than duplicated (SourcesSource).
  * Re-running therefore only pulls in what the legacy system has that qnet
  * does not.
  *
  * Both preconditions are optional, never fatal: with no external system
- * configured, or no super-admin to act as, the static template stands on its
+ * configured, or no super-admin to act as, the static catalogue stands on its
  * own and this step is skipped with a warning.
  */
 class QualificaLegacyImportSeeder extends Seeder
@@ -70,7 +70,7 @@ class QualificaLegacyImportSeeder extends Seeder
      * Root the legacy product taxonomy is nested under: the client's imported
      * categories hang below "Consulenza" (a root the static catalogue seeds),
      * never beside it at the top level. Must match a root name of
-     * QualificaTemplateSeeder's CATALOG.
+     * QualificaCatalogSeeder's CATALOG.
      */
     private const string LEGACY_CATEGORY_ROOT = 'Consulenza';
 
@@ -114,8 +114,8 @@ class QualificaLegacyImportSeeder extends Seeder
      * Move every migrated product category still sitting at top level under
      * LEGACY_CATEGORY_ROOT: a legacy root, or one ProductCategoriesSource left
      * detached because its own parent never migrated (the run report carries
-     * that warning) — neither belongs beside the template's own roots.
-     * Categories without an `old_id` are the static template's tree and are
+     * that warning) — neither belongs beside the catalogue's own roots.
+     * Categories without an `old_id` are the static catalogue's tree and are
      * never touched, so re-running moves nothing a second time.
      *
      * A direct `parent_id` write, mirroring the engine's own relink pass

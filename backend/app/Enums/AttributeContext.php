@@ -14,4 +14,17 @@ enum AttributeContext: string
 {
     case Product = 'product';
     case Opportunity = 'opportunity';
+
+    /**
+     * The `product_categories` column carrying the inheritance barrier for
+     * THIS context: each context opts in or out of its ancestors' assignments
+     * independently of the other.
+     */
+    public function inheritanceColumn(): string
+    {
+        return match ($this) {
+            self::Product => 'inherits_product_attributes',
+            self::Opportunity => 'inherits_opportunity_attributes',
+        };
+    }
 }

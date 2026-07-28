@@ -30,9 +30,11 @@ use Illuminate\Support\Collection;
  * references an Opportunity, restrictOnDelete only runs the OTHER way).
  *
  * Depends on DemoRegistrySeeder (mandatory) plus DemoBusinessFunctionSeeder/
- * DemoReferentSeeder/DemoUsersSeeder/DemoSourceSeeder/DemoProductCatalogSeeder/
- * DemoLeadSeeder (optional, seeded earlier in DemoDataSeeder) — a no-op
- * (nothing to seed) if registries is empty.
+ * DemoReferentSeeder/DemoUsersSeeder/DemoSourceSeeder/DemoLeadSeeder
+ * (optional, seeded earlier in DemoDataSeeder) — a no-op (nothing to seed) if
+ * registries is empty. Product categories are client reference data
+ * (QualificaCatalogSeeder), not part of the demo dataset: with none present
+ * the product lines stay empty.
  *
  * Amendment rev.3: `business_function_id`/`product_category_id` are REPLACED
  * by `product_lines` — a category is only ever picked alongside its own

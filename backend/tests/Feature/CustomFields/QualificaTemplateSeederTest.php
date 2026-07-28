@@ -1,24 +1,22 @@
 <?php
 
-use App\Enums\AttributeContext;
-use App\Enums\ProductType;
-use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\CustomFieldValue;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\RewardType;
 use App\Models\Source;
-use App\Services\ProductCategoryService;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 // De-verticalization (point 1): QualificaTemplateSeeder now provisions, on
 // top of the former "Altro" section, the 9 former client-specific ERP
 // settings columns (responsible_*, proforma/invoice progressives,
 // quotation_*) as company-sites custom fields.
+//
+// The client's reference DATA (sources, reward types, category tree, courses)
+// is not here: it moved to QualificaCatalogSeeder, covered by
+// tests/Feature/Products/QualificaCatalogSeederTest.php.
 uses(RefreshDatabase::class);
 
 it('provisions the 9 de-verticalized ERP fields for company-sites, idempotently', function (): void {
@@ -97,165 +95,12 @@ it('prunes the superseded product expiration date, definition and stored values'
         ->and($values->fresh()->values)->toBe(['expiration_months' => 24]);
 });
 
-it('provisions the client source catalogue, idempotently', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
-
-    $expected = [
-        'Diretto', 'Passaparola', 'Social', 'Sito', 'Spoki',
-        'Centralino', 'In Sede', 'Segnalatore', 'Spontaneo',
-    ];
-
-    expect(Source::query()->whereIn('name', $expected)->count())->toBe(count($expected));
-    expect(Source::query()->count())->toBe(count($expected));
-});
-
-it('provisions the client reward type catalogue, idempotently', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
-
-    expect(RewardType::query()->where('name', 'Buono Amazon')->count())->toBe(1)
-        ->and(RewardType::query()->where('name', 'Buono Amazon')->value('color'))->toBe('orange');
-});
-
-it('provisions the reference category catalogue tree, idempotently', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
-
-    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->first();
-    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->first();
-
-    expect($formazione)->not->toBeNull()
-        ->and($consulenza)->not->toBeNull();
-
-    $formazioneSubs = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL'];
-    foreach ($formazioneSubs as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->count())->toBe(1);
-    }
-
-    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->count())->toBe(1);
-    }
-});
-
-it('provisions the regional GOL declinations as children of the GOL subcategory', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: firstOrCreate, no duplicates.
-
-    $gol = ProductCategory::query()->where('name', 'GOL')->first();
-    expect($gol)->not->toBeNull();
-
-    $regions = [
-        'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
-        'GOL - Lombardia', 'GOL - Lazio', 'GOL - Umbria',
-    ];
-
-    foreach ($regions as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $gol->id)->count())->toBe(1);
-    }
-
-    expect(ProductCategory::query()->where('parent_id', $gol->id)->count())->toBe(count($regions));
-});
-
-it('assigns the "Ore complessive" product attribute to the whole Formazione branch', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: no duplicate attribute nor pivot row.
-
-    $attribute = Attribute::query()->where('code', 'total_hours')->get();
-
-    expect($attribute)->toHaveCount(1)
-        ->and($attribute->first()->name)->toBe('Ore complessive')
-        ->and($attribute->first()->type)->toBe('integer');
-
-    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
-
-    // One single assignment, on the root, in the PRODUCT context.
-    $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
-
-    expect($pivot)->toHaveCount(1)
-        ->and($pivot->first()->category_id)->toBe($formazione->id)
-        ->and($pivot->first()->context)->toBe(AttributeContext::Product->value);
-
-    // Inherited all the way down: subcategory and regional grandchild resolve it.
-    $service = app(ProductCategoryService::class);
-
-    foreach (['GOL', 'GOL - Molise', 'DIL'] as $name) {
-        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-        $effective = $service->effectiveAttributes($category, AttributeContext::Product);
-
-        expect($effective->pluck('code')->all())->toContain('total_hours')
-            ->and($effective->firstWhere('code', 'total_hours')['inherited'])->toBeTrue($name);
-    }
-
-    // Not leaked onto the other root.
-    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
-    expect($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
-        ->not->toContain('total_hours');
-});
-
-it('seeds every GOL training course under its own region, idempotently', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-    test()->seed(QualificaTemplateSeeder::class); // re-run: natural key (name, category), no duplicates.
-
-    $expectedPerRegion = [
-        'GOL - Molise' => 14, 'GOL - Abruzzo' => 54, 'GOL - Calabria' => 9,
-        'GOL - Campania' => 68, 'GOL - Lombardia' => 64, 'GOL - Lazio' => 35,
-        'GOL - Umbria' => 8,
-    ];
-
-    foreach ($expectedPerRegion as $categoryName => $count) {
-        $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-
-        expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
-    }
-
-    // The courses are the ONLY products seeded: nothing lands outside a region.
-    expect(Product::query()->count())->toBe(array_sum($expectedPerRegion));
-});
-
-it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {
+it('creates structure only: no source, category or product row', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
 
-    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $course = Product::query()->where('name', 'Alfabetizzazione Digitale')->where('category_id', $molise->id)->firstOrFail();
-
-    expect($course->attribute_values['total_hours'])->toEqual(60)
-        ->and($course->product_type)->toBe(ProductType::Service)
-        // Cost/price are filled in later through the CRUD modules.
-        ->and((float) $course->cost)->toBe(0.0)
-        ->and((float) $course->price)->toBe(0.0);
-
-    // The 10 Lombardia rows quoting "150 / 140" keep the first value.
-    $lombardia = ProductCategory::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $cuoco = Product::query()->where('name', 'Cuoco')->where('category_id', $lombardia->id)->firstOrFail();
-
-    expect($cuoco->attribute_values['total_hours'])->toEqual(150);
-});
-
-it('keeps a course name repeated inside one region as two distinct products', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-
-    $abruzzo = ProductCategory::query()->where('name', 'GOL - Abruzzo')->firstOrFail();
-
-    // The 7 Abruzzo duplicates are disambiguated by their duration...
-    foreach ([['Magazziniere', 66, 260], ['Aiuto Cuoco', 50, 463], ['Pizzaiolo', 60, 370]] as [$name, $short, $long]) {
-        expect(Product::query()->where('name', $name)->where('category_id', $abruzzo->id)->exists())->toBeFalse($name)
-            ->and(Product::query()->where('name', "{$name} ({$short} ore)")->where('category_id', $abruzzo->id)->exists())->toBeTrue($name)
-            ->and(Product::query()->where('name', "{$name} ({$long} ore)")->where('category_id', $abruzzo->id)->exists())->toBeTrue($name);
-    }
-
-    // ...while a name occurring once keeps it untouched.
-    expect(Product::query()->where('name', 'Barista')->where('category_id', $abruzzo->id)->exists())->toBeTrue();
-});
-
-it('keeps the same course name in different regions as separate products', function (): void {
-    test()->seed(QualificaTemplateSeeder::class);
-
-    $courses = Product::query()->where('name', 'Italiano per Stranieri')->with('category')->get();
-
-    expect($courses->pluck('category.name')->sort()->values()->all())
-        ->toBe(['GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise'])
-        // Same course, different regional duration: Lazio funds 50 hours, the other two 60.
-        ->and($courses->firstWhere('category.name', 'GOL - Lazio')->attribute_values['total_hours'])->toEqual(50)
-        ->and($courses->firstWhere('category.name', 'GOL - Molise')->attribute_values['total_hours'])->toEqual(60);
+    // The client's reference data belongs to QualificaCatalogSeeder: this
+    // seeder defines fields and touches no domain table.
+    expect(Source::query()->count())->toBe(0)
+        ->and(ProductCategory::query()->count())->toBe(0)
+        ->and(Product::query()->count())->toBe(0);
 });

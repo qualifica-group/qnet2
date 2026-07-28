@@ -48,11 +48,16 @@ class ProductCategoriesStatsDefinition extends AbstractStatsDefinition
                 value: Aggregates::countWithRelated(self::TABLE, self::PRODUCTS_TABLE, 'category_id'),
                 icon: 'package',
             ),
-            // `inherits_attributes` false makes a category an inheritance ROOT
-            // (spec 0025): the flag counts the categories that still inherit.
+            // Inheritance is opted out per usage context (Product /
+            // Opportunity), so a category is a full inheritance ROOT (spec
+            // 0025) only when it opts out of BOTH: the counter tracks those
+            // still inheriting in at least one context.
             $this->stat(
                 key: 'inherits_attributes',
-                value: ProductCategory::query()->where('inherits_attributes', true)->count(),
+                value: ProductCategory::query()
+                    ->where('inherits_product_attributes', true)
+                    ->orWhere('inherits_opportunity_attributes', true)
+                    ->count(),
                 icon: 'layers',
             ),
             $this->distribution(

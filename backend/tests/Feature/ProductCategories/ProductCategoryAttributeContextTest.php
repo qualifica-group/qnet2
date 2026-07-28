@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\AttributeContext;
 use App\Models\Attribute;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
@@ -182,7 +183,7 @@ it('inheritance: barrier and most-specific-wins are honored independently per co
     expect(collect($opportunity->json('data'))->pluck('code')->all())->toBe(['root_opportunity_only']);
 });
 
-it('inheritance: opting out of inherits_attributes empties BOTH contexts inherited lists', function (): void {
+it('inheritance: opting out of BOTH context flags empties both inherited lists', function (): void {
     $actor = categoryContextUserWith(['view']);
     $root = ProductCategory::factory()->create();
     $child = ProductCategory::factory()->childOf($root)->notInheriting()->create();
@@ -199,6 +200,50 @@ it('inheritance: opting out of inherits_attributes empties BOTH contexts inherit
 
     $opportunity = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=opportunity")->assertOk();
     expect($opportunity->json('data'))->toBe([]);
+});
+
+it('inheritance: the barrier is per context — opting Product out leaves Opportunity inheriting', function (): void {
+    $actor = categoryContextUserWith(['view']);
+    $root = ProductCategory::factory()->create();
+    $child = ProductCategory::factory()->childOf($root)->notInheritingIn(AttributeContext::Product)->create();
+
+    $productAttr = Attribute::factory()->create(['code' => 'p']);
+    $opportunityAttr = Attribute::factory()->create(['code' => 'o']);
+    $root->attributes()->attach($productAttr->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+    $root->attributes()->attach($opportunityAttr->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+
+    Sanctum::actingAs($actor);
+
+    $product = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=product")->assertOk();
+    expect($product->json('data'))->toBe([]);
+
+    $opportunity = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=opportunity")->assertOk();
+    expect(collect($opportunity->json('data'))->pluck('code')->all())->toBe(['o']);
+});
+
+it('inheritance: a mid-chain barrier truncates only its own context', function (): void {
+    $actor = categoryContextUserWith(['view']);
+    // grandparent -> parent (Opportunity barrier) -> child (inherits both)
+    $grandparent = ProductCategory::factory()->create();
+    $parent = ProductCategory::factory()->childOf($grandparent)->notInheritingIn(AttributeContext::Opportunity)->create();
+    $child = ProductCategory::factory()->childOf($parent)->create();
+
+    $grandparentProduct = Attribute::factory()->create(['code' => 'gp_p']);
+    $grandparentOpportunity = Attribute::factory()->create(['code' => 'gp_o']);
+    $parentOpportunity = Attribute::factory()->create(['code' => 'p_o']);
+    $grandparent->attributes()->attach($grandparentProduct->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+    $grandparent->attributes()->attach($grandparentOpportunity->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $parent->attributes()->attach($parentOpportunity->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+
+    Sanctum::actingAs($actor);
+
+    // Product climbs past the parent up to the grandparent...
+    $product = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=product")->assertOk();
+    expect(collect($product->json('data'))->pluck('code')->all())->toBe(['gp_p']);
+
+    // ...while Opportunity stops at the parent, which contributes its own.
+    $opportunity = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=opportunity")->assertOk();
+    expect(collect($opportunity->json('data'))->pluck('code')->all())->toBe(['p_o']);
 });
 
 // ---------------------------------------------------------------------------

@@ -31,9 +31,11 @@ use Illuminate\Support\Collection;
  * gestionale's demo data is Italian-flavoured (it_IT faker across the other
  * seeders).
  *
- * Depends on DemoPipelineStatusSeeder,
- * DemoBusinessFunctionSeeder, DemoProductCatalogSeeder and DemoReferentSeeder
- * — must run after all of them. Idempotent: existing campaigns and projects
+ * Depends on DemoPipelineStatusSeeder, DemoBusinessFunctionSeeder and
+ * DemoReferentSeeder — must run after all of them. Product categories are NOT
+ * part of the demo dataset (they are client reference data, seeded by
+ * QualificaCatalogSeeder): with none present the classification degrades to
+ * null, like every other optional lookup. Idempotent: existing campaigns and projects
  * are cleared first (campaigns before projects — `campaigns.project_id` is
  * `restrictOnDelete`, BR-5 — so a stale campaign would block the project
  * delete on a second run); DemoCampaignSeeder recreates the campaigns right

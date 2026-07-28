@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,8 @@ interface AttributeAssignmentSectionProps {
   assignments: AttributeAssignmentInput[]
   /** Already filtered to this section's context. */
   inherited: ProductCategoryInheritedAttribute[]
+  /** This context's "inherit from parent" switch, provided by the form; null/undefined on a root category. */
+  inheritToggle?: ReactNode
   disabled?: boolean
   onAdd: (attributeId: number) => void
   onUpdate: (attributeId: number, patch: Partial<AttributeAssignmentInput>) => void
@@ -29,10 +31,10 @@ interface AttributeAssignmentSectionProps {
 }
 
 /**
- * A single usage-context's attribute list (spec 0061): picker to add, then
- * one row per assigned attribute (data type, `is_required`, `sort_order`,
- * remove), followed by a read-only list of what the context inherits from
- * the category's ancestry. Every non-obvious control carries an info tooltip
+ * A single usage-context's attribute list (spec 0061): this context's
+ * inherit-from-parent switch, a picker to add, then one row per assigned
+ * attribute (data type, `is_required`, `sort_order`, remove), followed by a
+ * read-only list of what the context inherits from the category's ancestry. Every non-obvious control carries an info tooltip
  * (task #19). `AttributeAssignmentEditor` renders one of these per context.
  */
 export function AttributeAssignmentSection({
@@ -40,6 +42,7 @@ export function AttributeAssignmentSection({
   description,
   assignments,
   inherited,
+  inheritToggle,
   disabled,
   onAdd,
   onUpdate,
@@ -71,6 +74,8 @@ export function AttributeAssignmentSection({
         <h4 className="text-sm font-semibold text-foreground">{title}</h4>
         <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
       </div>
+
+      {inheritToggle}
 
       {!disabled && (
         <SearchableSelect

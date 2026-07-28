@@ -2,7 +2,123 @@
 
 > Injected at session start. Update at every green state.
 
-## IMPORT LEGACY SGANCIATO DAL TEMPLATE (2026-07-27) — VERDE, NON COMMITTATO
+## EREDITARIETA' ATTRIBUTI SGANCIATA PER CONTESTO (2026-07-27) — VERDE, NON COMMITTATO
+
+Il singolo flag `product_categories.inherits_attributes` governava la barriera di
+ereditarieta' per ENTRAMBI i contesti (Prodotto e Opportunita'), mentre gli attributi erano
+gia' separati per contesto sul pivot (spec 0061). Ora ogni contesto ha il SUO flag,
+indipendente.
+
+SCHEMA (decisione utente: due colonne simmetriche, non additiva). Migrazione
+`2026_07_27_190000_split_inherits_attributes_by_context_on_product_categories_table`:
+aggiunge `inherits_product_attributes` e `inherits_opportunity_attributes` (bool, default
+true), backfilla ENTRAMBE da `inherits_attributes`, poi droppa la vecchia colonna. `down()`
+ricrea `inherits_attributes` dal lato Opportunita' (unico consumatore pre-0061) e droppa le
+due nuove.
+
+NOMI DA RISPETTARE (non reintrodurre `inherits_attributes` da nessuna parte):
+- Enum `AttributeContext::inheritanceColumn()` — mappa contesto -> nome colonna. E' l'unico
+  punto che conosce i nomi delle colonne.
+- `ProductCategory::inheritsAttributesIn(AttributeContext)` — l'unico lettore del flag.
+- `CategoryHierarchy::inheritedAncestors($category, $context)` ora e' per-contesto: la
+  catena viene troncata dal flag DI QUEL contesto, quindi `effectiveAttributes` e
+  `ancestorAttributes` risolvono barriere completamente indipendenti.
+- Contratto API: `ProductCategoryResource` espone i due booleani; Store/Update request e i
+  DTO (`inheritsProductAttributes` / `inheritsOpportunityAttributes`, con i rispettivi
+  `*Submitted` sull'update) li accettano separatamente. Nessun endpoint nuovo.
+
+ECCEZIONE VOLUTA: `ProductCategoriesSource` (import q-crm) continua a leggere il campo
+ESTERNO `inherits_attributes` — e' il contratto del sistema sorgente, che ha un flag solo —
+e lo usa per seedare identicamente entrambe le barriere.
+
+STAT: il widget `inherits_attributes` (chiave i18n `productCategories.inheritsAttributes`,
+pinnata da un test) resta UNO solo per non rompere la riga a 4 contatori; ora conta le
+categorie che ereditano in ALMENO UN contesto (una categoria e' inheritance root solo se
+opta fuori da entrambi).
+
+UI (decisione utente): niente piu' switch unico in cima alla sezione Attributi. Ogni
+sezione (`AttributeAssignmentSection`) ospita il PROPRIO switch "Eredita dal padre",
+iniettato come slot `inheritToggle` dal form (`InheritanceToggle` in
+`product-category-form-body.tsx`, definito a livello modulo) cosi' che RHF e i field
+permission restino fuori dall'editor. Lo switch non compare su categoria radice
+(`parent_id === null`). La lista read-only degli ereditati si svuota solo per il contesto
+il cui switch e' spento.
+
+VERIFICA ESEGUITA: backend `XDEBUG_MODE=off php artisan test` -> 3990 test, 3973 passati,
+16 rossi TUTTI PRE-ESISTENTI (gli stessi elencati nella sezione sotto; il rosso su
+`ProductCategorySecurityTest` "navigation node" e' stato riverificato stashando le modifiche:
+fallisce identico su albero pulito). Frontend: `tsc --noEmit` pulito, `vitest run` 2490 test,
+3 rossi pre-esistenti e non correlati (`table/cell-renderers.test.tsx` > ContactsCell,
+riverificati con stash). Pint ed ESLint puliti sui file toccati.
+
+## SEEDER QUALIFICA RIORGANIZZATI IN 4 PASSI (2026-07-27, secondo giro) — VERDE, NON COMMITTATO
+
+Questa sezione SOSTITUISCE la successiva ("IMPORT LEGACY SGANCIATO DAL TEMPLATE"), che
+resta sotto solo per il razionale dell'ordine. La decisione la' documentata ("categorie,
+`total_hours` e i 252 corsi RESTANO nel template") e' stata RIBALTATA dall'utente in questo
+giro: vale quanto segue.
+
+NUOVA STRUTTURA — `QualificaProductionDataSeeder` e' l'unico entry point
+(`php artisan db:seed --class=QualificaProductionDataSeeder`). Nome scelto dall'utente per
+dire "dati simil-produzione", in opposizione al prefisso `Demo*` = fixtures finte. Orchestra
+4 passi, ognuno eseguibile da solo e idempotente:
+
+1. `QualificaTemplateSeeder` — **SOLO STRUTTURA**: le definizioni custom field (company-sites,
+   products) + `pruneSupersededFields()`. Non crea NESSUNA riga di dominio. Un test lo pinna
+   ("creates structure only: no source, category or product row"). Da 464 a 216 righe: il
+   debito sul limite 500 righe segnalato nel giro precedente e' rientrato da solo.
+2. `QualificaCatalogSeeder` (NUOVO) — i dati di riferimento hardcodati usciti dal template,
+   spostati INVARIATI: fonti, tipi premio, albero categorie (Formazione/Consulenza + GOL
+   regionali), attributo prodotto `total_hours` sulla radice Formazione, 252 corsi GOL.
+   IN PIU' (richiesta utente): lanciato DA SOLO, a fine seed CHIEDE se importare anche le
+   tabelle di configurazione da q-crm, e in caso affermativo chiama il passo 4. Firma
+   `run(bool $askForLegacyImport = true)`; l'orchestratore passa `false` via
+   `$this->callWith(..., ['askForLegacyImport' => false])` — altrimenti l'import girerebbe
+   due volte. TRE guardie prima di chiedere, tutte necessarie: `$this->command === null`
+   (chiamata da codice), `option('no-interaction')` e `blank(config('migrations.base_url'))`.
+   La seconda NON e' opzionale: `.env` ha `EXTERNAL_MIGRATION_BASE_URL` valorizzato e
+   `phpunit.xml` non lo sovrascrive, quindi in test la base_url C'E' e senza quella guardia
+   la domanda scattava dentro ogni `test()->seed()` facendo esplodere 9 test con
+   "Received ...OutputStyle::askQuestion(), but no expectations were specified".
+3. `TestUsersSeeder` — invariato.
+4. `QualificaLegacyImportSeeder` — invariato nella logica; ora e' l'ultimo passo
+   dell'orchestratore invece che un seeder da lanciare a mano.
+
+ORDINE VINCOLANTE, tre dipendenze reali: (a) il passo 4 adotta per nome le fonti del passo 2;
+(b) `nestImportedCategories()` annida sotto la radice `Consulenza` del passo 2; (c) il passo 4
+agisce come super-admin, che il passo 3 garantisce. La dipendenza del legacy NON e' piu' verso
+il template (che ora non crea categorie) ma verso `QualificaCatalogSeeder`.
+
+FILE SPOSTATI/CANCELLATI:
+- `database/seeders/QualificaTemplate/TrainingCourseCatalogue.php` →
+  `database/seeders/QualificaCatalog/TrainingCourseCatalogue.php` (namespace aggiornato).
+- CANCELLATI su richiesta utente: `DemoProductCatalogSeeder`,
+  `DemoProductCatalog/ProductCatalogTaxonomy.php` e il loro test. Rimossa la `$this->call()`
+  da `DemoDataSeeder`. CONSEGUENZA SEGNALATA: il dataset demo non ha piu' categorie prodotto,
+  quindi progetti/campagne/opportunita' demo nascono senza classificazione (gia' gestito: i
+  seeder degradano a null, non crashano). Le categorie sono ora solo dati cliente.
+
+TEST: `QualificaTemplateSeederTest` 4 test (i 9 sul catalogo spostati in
+`tests/Feature/Products/QualificaCatalogSeederTest.php`). Nuovo
+`tests/Feature/Seeding/QualificaProductionDataSeederTest.php` (3 test) che pinna la
+composizione dei 4 passi e l'idempotenza. In `QualificaLegacyImportSeederTest` l'helper
+`seedTemplateThenLegacy()` e' diventato `seedCatalogThenLegacy()` (il template non c'entra
+piu'). Il prompt e' coperto da 3 test in `QualificaCatalogSeederTest` (confermato / rifiutato /
+non chiesto senza sistema esterno) + 1 nell'orchestratore che pinna UN SOLO `MassMigrationRun`:
+quei 4 girano via `test()->artisan('db:seed', ...)`, non `test()->seed()`, perche' solo cosi'
+il run e' interattivo e una domanda inattesa fallisce invece di passare in silenzio.
+
+VERIFICA ESEGUITA: suite intera `XDEBUG_MODE=off php artisan test` → 3988 test, 3971 passati,
+16 rossi. I 16 rossi sono PRE-ESISTENTI: verificati stashando le modifiche e rieseguendo gli
+stessi file su albero pulito, falliscono identici (registry migrazioni + `vat-rates`, nodi di
+navigazione, validazione partita IVA, search term). NOTA: `php artisan test` senza
+`XDEBUG_MODE=off` va in segfault (signal 11) su questa macchina — usa sempre quella variabile.
+Pint verde sui file toccati; `tests/Feature/Migration/AttributesSourceImportTest.php` e' rosso
+a Pint ma e' pre-esistente e fuori scope.
+
+README backend aggiornato: tabella dei 4 passi + il perche' dell'ordine.
+
+## IMPORT LEGACY SGANCIATO DAL TEMPLATE (2026-07-27) — STORICO, VEDI SOPRA
 
 `QualificaLegacyImportSeeder` non e' piu' chiamato in coda a `QualificaTemplateSeeder::run()`:
 e' un seeder STANDALONE, `php artisan db:seed --class=QualificaLegacyImportSeeder`, da lanciare

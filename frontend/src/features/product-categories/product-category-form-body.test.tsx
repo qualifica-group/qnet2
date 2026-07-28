@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
@@ -14,6 +14,9 @@ import type { ResourceMeta, ResourcePermissions } from '@/features/authorization
  * suite asserts the negative: the form never mounts the layout editor, in
  * either mode. The editor's own fetch/edit/save wiring is covered by
  * `product-category-attribute-layout-editor.test.tsx`.
+ *
+ * Second suite below: the inherit-from-parent switch is per usage context and
+ * lives INSIDE the section it governs, so the two barriers move independently.
  */
 
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
@@ -31,6 +34,10 @@ vi.mock('@/features/product-categories/api', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+vi.mock('@/features/attributes/use-attribute-catalog', () => ({
+  useAttributeCatalog: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
+}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -65,7 +72,8 @@ function category(
     name: 'Laptops',
     parent_id: null,
     parent: null,
-    inherits_attributes: true,
+    inherits_product_attributes: true,
+    inherits_opportunity_attributes: true,
     description: null,
     attributes: [],
     inherited_attributes: [],
@@ -122,5 +130,50 @@ describe('ProductCategoryFormBody — attribute-layout NOT mounted (spec 0062 re
 
     expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
     expect(fetchAttributeLayoutMock).not.toHaveBeenCalled()
+  })
+})
+
+/** The attribute section whose heading is $title (the heading's grandparent is the section root). */
+function attributeSection(title: string): HTMLElement {
+  const section = screen.getByRole('heading', { name: title }).closest('div')?.parentElement
+  if (section === null || section === undefined) {
+    throw new Error(`Attribute section "${title}" not found`)
+  }
+  return section
+}
+
+describe('ProductCategoryFormBody — per-context inheritance switches', () => {
+  it('renders one switch per section and toggles the two contexts independently', async () => {
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'edit', category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' } }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    const productSwitch = within(attributeSection('Product attributes')).getByRole('switch')
+    const opportunitySwitch = within(attributeSection('Opportunity attributes')).getByRole('switch')
+    expect(productSwitch).toBeChecked()
+    expect(opportunitySwitch).toBeChecked()
+
+    fireEvent.click(productSwitch)
+
+    await waitFor(() => expect(productSwitch).not.toBeChecked())
+    expect(opportunitySwitch).toBeChecked()
+  })
+
+  it('root category: no inheritance switch at all (no ancestry to inherit from)', async () => {
+    render(
+      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    expect(screen.queryAllByRole('switch')).toHaveLength(0)
   })
 })

@@ -123,9 +123,9 @@ export const productCategories = {
     parentError: 'Unable to load categories.',
     noParent: 'No parent (root category)',
     description: 'Description',
-    inheritsAttributes: 'Inherit attributes from parent',
+    inheritsAttributes: 'Inherit from parent',
     inheritsAttributesHint:
-      'When off, this category ignores its ancestors: neither it nor its subcategories inherit any attributes from above.',
+      'Applies to this section only. When off, this category ignores its ancestors: neither it nor its subcategories inherit these attributes from above.',
     attributes: 'Attributes',
     attributesHelp:
       'Assign the attributes that products in this category must fill in (in addition to what they inherit).',

@@ -27,7 +27,8 @@ import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-
 const SERVER_ERROR_FIELDS = [
   'name',
   'parent_id',
-  'inherits_attributes',
+  'inherits_product_attributes',
+  'inherits_opportunity_attributes',
   'description',
   'attributes',
   'business_function_id',
@@ -76,7 +77,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       return {
         name: category.name,
         parent_id: category.parent_id,
-        inherits_attributes: category.inherits_attributes,
+        inherits_product_attributes: category.inherits_product_attributes,
+        inherits_opportunity_attributes: category.inherits_opportunity_attributes,
         description: category.description,
         attributes: category.attributes.map((assignment) => ({
           attribute_id: assignment.attribute_id,
@@ -91,7 +93,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
     return {
       name: '',
       parent_id: mode.parentId,
-      inherits_attributes: true,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
       description: null,
       attributes: [],
       business_function_id: null,

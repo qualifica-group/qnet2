@@ -101,12 +101,18 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $warnings = [];
         $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
 
+        // The external system carries a SINGLE inheritance flag; qnet splits it
+        // per usage context (Product / Opportunity), so the imported value seeds
+        // both barriers identically and is decoupled from qnet on afterwards.
+        $inheritsAttributes = array_key_exists('inherits_attributes', $record)
+            ? (bool) $record['inherits_attributes']
+            : true;
+
         $category = $this->service->create(new CreateProductCategoryData(
             name: $name,
             parentId: $parentId,
-            inheritsAttributes: array_key_exists('inherits_attributes', $record)
-                ? (bool) $record['inherits_attributes']
-                : true,
+            inheritsProductAttributes: $inheritsAttributes,
+            inheritsOpportunityAttributes: $inheritsAttributes,
             description: $this->mapDescription($record['description'] ?? null),
         ));
 

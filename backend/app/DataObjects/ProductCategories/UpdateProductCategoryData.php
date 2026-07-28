@@ -27,8 +27,10 @@ final readonly class UpdateProductCategoryData
         public ?string $name = null,
         public ?int $parentId = null,
         public bool $parentIdSubmitted = false,
-        public ?bool $inheritsAttributes = null,
-        public bool $inheritsAttributesSubmitted = false,
+        public ?bool $inheritsProductAttributes = null,
+        public bool $inheritsProductAttributesSubmitted = false,
+        public ?bool $inheritsOpportunityAttributes = null,
+        public bool $inheritsOpportunityAttributesSubmitted = false,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
         public ?array $attributes = null,
@@ -47,8 +49,10 @@ final readonly class UpdateProductCategoryData
             name: array_key_exists('name', $data) ? (string) $data['name'] : null,
             parentId: array_key_exists('parent_id', $data) && $data['parent_id'] !== null ? (int) $data['parent_id'] : null,
             parentIdSubmitted: array_key_exists('parent_id', $data),
-            inheritsAttributes: array_key_exists('inherits_attributes', $data) ? (bool) $data['inherits_attributes'] : null,
-            inheritsAttributesSubmitted: array_key_exists('inherits_attributes', $data),
+            inheritsProductAttributes: array_key_exists('inherits_product_attributes', $data) ? (bool) $data['inherits_product_attributes'] : null,
+            inheritsProductAttributesSubmitted: array_key_exists('inherits_product_attributes', $data),
+            inheritsOpportunityAttributes: array_key_exists('inherits_opportunity_attributes', $data) ? (bool) $data['inherits_opportunity_attributes'] : null,
+            inheritsOpportunityAttributesSubmitted: array_key_exists('inherits_opportunity_attributes', $data),
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
@@ -90,8 +94,12 @@ final readonly class UpdateProductCategoryData
             $attributes['parent_id'] = $this->parentId;
         }
 
-        if ($this->inheritsAttributesSubmitted) {
-            $attributes['inherits_attributes'] = $this->inheritsAttributes;
+        if ($this->inheritsProductAttributesSubmitted) {
+            $attributes['inherits_product_attributes'] = $this->inheritsProductAttributes;
+        }
+
+        if ($this->inheritsOpportunityAttributesSubmitted) {
+            $attributes['inherits_opportunity_attributes'] = $this->inheritsOpportunityAttributes;
         }
 
         if ($this->descriptionSubmitted) {

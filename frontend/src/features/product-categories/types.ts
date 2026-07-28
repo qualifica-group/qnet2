@@ -83,8 +83,10 @@ export interface ProductCategoryDetail {
   name: string
   parent_id: number | null
   parent: { id: number; name: string } | null
-  /** When false the category ignores its ancestry (barrier): no inherited attributes for it or its descendants. */
-  inherits_attributes: boolean
+  /** When false the category ignores its ancestry for PRODUCT attributes (barrier): none inherited by it or its descendants. */
+  inherits_product_attributes: boolean
+  /** Same barrier for OPPORTUNITY attributes — fully independent of the product one. */
+  inherits_opportunity_attributes: boolean
   description: string | null
   attributes: ProductCategoryAttributeAssignment[]
   inherited_attributes: ProductCategoryInheritedAttribute[]
@@ -164,7 +166,8 @@ export interface AttributeAssignmentInput {
 export interface CreateProductCategoryPayload {
   name: string
   parent_id?: number | null
-  inherits_attributes?: boolean
+  inherits_product_attributes?: boolean
+  inherits_opportunity_attributes?: boolean
   description?: string | null
   attributes?: AttributeAssignmentInput[]
   /** Own business function; omit or null when the category has none of its own (spec 0023). */

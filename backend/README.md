@@ -54,38 +54,56 @@ php artisan migrate
 
 php artisan serve   # http://127.0.0.1:8000
 
+# Crea ambiente pulito solo con un utente superadmin
+php artisan db:seed
+
 # Crea dati fake per prove
 php artisan db:seed --class=DemoDataSeeder
 
-# Crea il modello di qualifica group: campi personalizzati, fonti, tipi premio,
-# categorie prodotto (Formazione/Consulenza + GOL regionali), attributo
-# "Ore complessive" e i corsi GOL
-php artisan db:seed --class=QualificaTemplateSeeder
-
-# Importa i cataloghi reali dal gestionale legacy. Va lanciato A PARTE e DOPO
-# il template. No-op se EXTERNAL_MIGRATION_BASE_URL non è configurato
-php artisan db:seed --class=QualificaLegacyImportSeeder
-
-# Crea ambiente pulito solo con un utente superadmin
-php artisan db:seed 
-
-# Crea gli utenti tester + i ruoli supervisor/commercial/marketing
-php artisan db:seed --class=TestUsersSeeder
+# Crea i dati simil-produzione di Qualifica Group: struttura + catalogo +
+# tester + import legacy, nell'ordine giusto
+php artisan db:seed --class=QualificaProductionDataSeeder
 ```
 
-I due seeder di Qualifica sono **standalone e idempotenti**. Il template
-provvisiona tutto ciò che è statico e scritto a codice; l'import legacy è un
-passo separato, da lanciare a mano **dopo**, perché:
+### Dati simil-produzione (`QualificaProductionDataSeeder`)
 
-- adotta per nome il catalogo fonti che il template provvisiona, invece di
-  duplicarlo;
-- annida la tassonomia importata sotto la radice `Consulenza`, creata dal
-  template. Senza, le categorie importate restano a livello zero con un warning.
+Punto di ingresso unico per i dati reali del cliente — l'opposto dei seeder
+`Demo*`, che fabbricano fixtures finte. Orchestra quattro passi, ognuno
+**eseguibile anche da solo e idempotente**:
+
+| # | Seeder | Cosa provvisiona |
+|---|---|---|
+| 1 | `QualificaTemplateSeeder` | **Solo struttura**: le definizioni di campo personalizzato per modulo (company-sites, products). Nessuna riga di dominio |
+| 2 | `QualificaCatalogSeeder` | I dati di riferimento scritti a codice: fonti, tipi premio, albero categorie prodotto (Formazione/Consulenza + GOL regionali) con l'attributo "Ore complessive", e i 252 corsi GOL |
+| 3 | `TestUsersSeeder` | Gli account tester + i ruoli supervisor/commercial/marketing |
+| 4 | `QualificaLegacyImportSeeder` | Le tabelle di appoggio importate dal gestionale legacy. No-op con warning se `EXTERNAL_MIGRATION_BASE_URL` non è configurato |
+
+Lanciando **il solo passo 2** (`php artisan db:seed --class=QualificaCatalogSeeder`),
+a fine seed viene chiesto se importare anche le tabelle di configurazione da
+q-crm — cioè se proseguire col passo 4, che è il seguito naturale e dipende da
+ciò che il passo 2 ha appena creato:
+
+```
+Importare anche le tabelle di configurazione da q-crm? (yes/no) [no]:
+```
+
+La domanda **non** compare quando: il seeder è chiamato da codice (incluso
+`QualificaProductionDataSeeder`, che lancia l'import da sé come passo 4), il run
+è `--no-interaction`, oppure `EXTERNAL_MIGRATION_BASE_URL` non è configurato (non
+ci sarebbe nulla da importare). Il default è **no**.
+
+L'ordine è un contratto, non una preferenza:
+
+- il passo 4 **adotta per nome** il catalogo fonti del passo 2 invece di
+  duplicarlo, e annida la tassonomia importata sotto la radice `Consulenza`
+  creata dal passo 2. Senza, le categorie importate restano a livello zero;
+- il passo 4 agisce per conto di un super-admin, che il passo 3 garantisce
+  esista (lancia da sé `permissions:sync` e `roles:create-super-admin`).
 
 ## Utenti di test (`TestUsersSeeder`)
 
-Seeder **standalone e idempotente**: NON è agganciato a `DatabaseSeeder` né a
-`DemoDataSeeder`, si esegue su richiesta come `QualificaTemplateSeeder`.
+Passo 3 di `QualificaProductionDataSeeder`, eseguibile anche da solo e
+idempotente: NON è agganciato a `DatabaseSeeder` né a `DemoDataSeeder`.
 
 ```bash
 php artisan db:seed --class=TestUsersSeeder

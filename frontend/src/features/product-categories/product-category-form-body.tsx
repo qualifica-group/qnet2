@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FolderTree, ListChecks } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
@@ -17,7 +18,10 @@ import {
   collectSubtreeIds,
   flattenCategoryTree,
 } from '@/features/product-categories/flatten-tree'
-import { useProductCategoryForm } from '@/features/product-categories/use-product-category-form'
+import {
+  useProductCategoryForm,
+  type ProductCategoryFormValues,
+} from '@/features/product-categories/use-product-category-form'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
@@ -52,6 +56,46 @@ function toInheritedAttributes(
   return [...tag(product, 'product'), ...tag(opportunity, 'opportunity')]
 }
 
+/** Hoisted so an opted-out context feeds a stable reference to `toInheritedAttributes`. */
+const EMPTY_ATTRIBUTES: EffectiveAttribute[] = []
+
+/** The `inherits_*_attributes` field names, one per usage context — RHF path and authorization metadata key alike. */
+const INHERITANCE_FIELD = {
+  product: 'inherits_product_attributes',
+  opportunity: 'inherits_opportunity_attributes',
+} as const
+
+interface InheritanceToggleProps {
+  control: Control<ProductCategoryFormValues>
+  context: AttributeContext
+}
+
+/**
+ * The per-context "inherit from parent" switch, rendered INSIDE the section it
+ * governs (spec 0061 follow-up): each usage context carries its own barrier,
+ * so the Product list can ignore the ancestry while the Opportunity one keeps
+ * inheriting. Defined at module level — never inside the form component.
+ */
+function InheritanceToggle({ control, context }: InheritanceToggleProps) {
+  const { t } = useTranslation()
+
+  return (
+    <MetaField
+      control={control}
+      name={INHERITANCE_FIELD[context]}
+      metaKey={INHERITANCE_FIELD[context]}
+      label={t('productCategories.form.inheritsAttributes')}
+      description={<FormDescription>{t('productCategories.form.inheritsAttributesHint')}</FormDescription>}
+    >
+      {({ field, disabled }) => (
+        <FormControl>
+          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
 /**
  * The category create/edit form UI: identity fields (name, parent,
  * description) wrapped in `MetaField` (spec 0004), followed by the
@@ -65,16 +109,26 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
   const treeQuery = useProductCategoryTree()
 
   const parentId = form.watch('parent_id')
-  const inheritsAttributes = form.watch('inherits_attributes')
+  const inheritsProductAttributes = form.watch('inherits_product_attributes')
+  const inheritsOpportunityAttributes = form.watch('inherits_opportunity_attributes')
   const inheritedProductQuery = useEffectiveAttributes(parentId, 'product')
   const inheritedOpportunityQuery = useEffectiveAttributes(parentId, 'opportunity')
-  // Opting out is a barrier: the category inherits nothing, so the read-only
-  // inherited list must reflect that immediately (not just after save).
+  // Opting out is a barrier: that context inherits nothing, so the read-only
+  // inherited list must reflect it immediately (not just after save) — and only
+  // for the context whose switch moved, the other side is untouched.
   // Flat, both contexts (spec 0061) — `AttributeAssignmentEditor` splits it.
   const inherited: ProductCategoryInheritedAttribute[] = useMemo(
     () =>
-      inheritsAttributes ? toInheritedAttributes(inheritedProductQuery.data, inheritedOpportunityQuery.data) : [],
-    [inheritedProductQuery.data, inheritedOpportunityQuery.data, inheritsAttributes],
+      toInheritedAttributes(
+        inheritsProductAttributes ? inheritedProductQuery.data : EMPTY_ATTRIBUTES,
+        inheritsOpportunityAttributes ? inheritedOpportunityQuery.data : EMPTY_ATTRIBUTES,
+      ),
+    [
+      inheritedProductQuery.data,
+      inheritedOpportunityQuery.data,
+      inheritsProductAttributes,
+      inheritsOpportunityAttributes,
+    ],
   )
 
   const parentOptions = useMemo(() => {
@@ -182,30 +236,6 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
               title={t('productCategories.form.sections.attributes.title')}
               description={t('productCategories.form.sections.attributes.description')}
             >
-              {parentId !== null && (
-                <MetaField
-                  control={form.control}
-                  name="inherits_attributes"
-                  metaKey="inherits_attributes"
-                  label={t('productCategories.form.inheritsAttributes')}
-                  description={
-                    <FormDescription>
-                      {t('productCategories.form.inheritsAttributesHint')}
-                    </FormDescription>
-                  }
-                >
-                  {({ field, disabled }) => (
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={disabled}
-                      />
-                    </FormControl>
-                  )}
-                </MetaField>
-              )}
-
               <MetaField
                 control={form.control}
                 name="attributes"
@@ -218,6 +248,13 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                     onChange={field.onChange}
                     inherited={inherited}
                     disabled={disabled}
+                    // A root category has no ancestry to inherit from: no switch to show.
+                    productInheritToggle={
+                      parentId !== null ? <InheritanceToggle control={form.control} context="product" /> : null
+                    }
+                    opportunityInheritToggle={
+                      parentId !== null ? <InheritanceToggle control={form.control} context="opportunity" /> : null
+                    }
                   />
                 )}
               </MetaField>

@@ -82,10 +82,14 @@ it('creates root and child categories, remapping parent_id via old_id', function
     expect($root->name)->toBe('Electronics')
         ->and($root->parent_id)->toBeNull()
         ->and($root->description)->toBe('Top level')
-        ->and($root->inherits_attributes)->toBeTrue()
+        // The external system has ONE inheritance flag; it seeds both qnet
+        // per-context barriers identically.
+        ->and($root->inherits_product_attributes)->toBeTrue()
+        ->and($root->inherits_opportunity_attributes)->toBeTrue()
         ->and($child->name)->toBe('Laptops')
         ->and($child->parent_id)->toBe($root->id)
-        ->and($child->inherits_attributes)->toBeFalse();
+        ->and($child->inherits_product_attributes)->toBeFalse()
+        ->and($child->inherits_opportunity_attributes)->toBeFalse();
 
     $fresh = $run->fresh();
     expect($fresh->status)->toBe(MigrationStatus::Completed)

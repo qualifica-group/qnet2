@@ -91,21 +91,30 @@ it('create: 201 + persists, syncing attribute assignments with pivot data', func
     $this->assertDatabaseHas('attribute_category', ['attribute_id' => $attribute->id, 'context' => 'opportunity', 'is_required' => 1, 'sort_order' => 2]);
 });
 
-it('create: inherits_attributes defaults to true and can be opted out', function () {
+it('create: both inheritance flags default to true and are opted out independently', function () {
     $actor = productCategoryUserWith(['create']);
     $root = ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/product-categories', ['name' => 'Default'])
-        ->assertCreated()->assertJsonPath('data.inherits_attributes', true);
+        ->assertCreated()
+        ->assertJsonPath('data.inherits_product_attributes', true)
+        ->assertJsonPath('data.inherits_opportunity_attributes', true);
 
     $this->postJson('/api/product-categories', [
         'name' => 'OptOut',
         'parent_id' => $root->id,
-        'inherits_attributes' => false,
-    ])->assertCreated()->assertJsonPath('data.inherits_attributes', false);
+        'inherits_product_attributes' => false,
+    ])->assertCreated()
+        ->assertJsonPath('data.inherits_product_attributes', false)
+        // Decoupled: opting the Product section out leaves Opportunity inheriting.
+        ->assertJsonPath('data.inherits_opportunity_attributes', true);
 
-    $this->assertDatabaseHas('product_categories', ['name' => 'OptOut', 'inherits_attributes' => 0]);
+    $this->assertDatabaseHas('product_categories', [
+        'name' => 'OptOut',
+        'inherits_product_attributes' => 0,
+        'inherits_opportunity_attributes' => 1,
+    ]);
 });
 
 it('create: 403 without product-categories.create', function () {
@@ -180,20 +189,27 @@ it('update: attributes is a full-replace sync preserving pivot data', function (
     $this->assertDatabaseHas('attribute_category', ['attribute_id' => $newAttribute->id, 'context' => 'opportunity', 'is_required' => 1, 'sort_order' => 5]);
 });
 
-it('update: toggling inherits_attributes off empties the inherited_attributes side list', function () {
+it('update: toggling a context inheritance flag off empties only that context inherited list', function () {
     $actor = productCategoryUserWith(['view', 'update']);
     $root = ProductCategory::factory()->create();
     $child = ProductCategory::factory()->childOf($root)->create();
-    $rootAttr = Attribute::factory()->create(['code' => 'root_attr']);
-    $root->attributes()->attach($rootAttr->id, ['is_required' => false, 'sort_order' => 0]);
+    $opportunityAttr = Attribute::factory()->create(['code' => 'root_attr']);
+    $productAttr = Attribute::factory()->create(['code' => 'root_product_attr']);
+    $root->attributes()->attach($opportunityAttr->id, ['is_required' => false, 'sort_order' => 0]);
+    $root->attributes()->attach($productAttr->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
     Sanctum::actingAs($actor);
 
     $before = $this->getJson("/api/product-categories/{$child->id}")->assertOk();
-    expect(collect($before->json('data.inherited_attributes'))->pluck('code')->all())->toBe(['root_attr']);
+    expect(collect($before->json('data.inherited_attributes'))->pluck('code')->all())
+        ->toEqualCanonicalizing(['root_attr', 'root_product_attr']);
 
-    $after = $this->patchJson("/api/product-categories/{$child->id}", ['inherits_attributes' => false])
-        ->assertOk()->assertJsonPath('data.inherits_attributes', false);
-    expect($after->json('data.inherited_attributes'))->toBe([]);
+    $after = $this->patchJson("/api/product-categories/{$child->id}", ['inherits_opportunity_attributes' => false])
+        ->assertOk()
+        ->assertJsonPath('data.inherits_opportunity_attributes', false)
+        ->assertJsonPath('data.inherits_product_attributes', true);
+
+    // The Product section keeps inheriting: the two barriers are independent.
+    expect(collect($after->json('data.inherited_attributes'))->pluck('code')->all())->toBe(['root_product_attr']);
 });
 
 it('update: parent_id = self → 422 (anti-cycle)', function () {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AttributeAssignmentSection } from '@/features/product-categories/attribute-assignment-section'
@@ -14,6 +15,10 @@ interface AttributeAssignmentEditorProps {
   /** Read-only, flat, both contexts — attributes inherited from the selected parent's ancestry chain. */
   inherited: ProductCategoryInheritedAttribute[]
   disabled?: boolean
+  /** The Product section's "inherit from parent" switch, owned by the form (RHF + field permissions); null on a root category. */
+  productInheritToggle?: ReactNode
+  /** Same, for the Opportunity section — the two barriers are independent. */
+  opportunityInheritToggle?: ReactNode
 }
 
 /**
@@ -23,13 +28,17 @@ interface AttributeAssignmentEditorProps {
  * preliminary info) — each its own picker/list/inherited-list, filtered from
  * the same flat `value`/`inherited` arrays by `context`. The same catalogue
  * attribute may be assigned to either section, or both (two independent rows
- * in `value`, distinguished by `context`).
+ * in `value`, distinguished by `context`). Each section also hosts its OWN
+ * "inherit from parent" switch, injected by the form as a slot so the RHF and
+ * field-permission wiring stays out of here.
  */
 export function AttributeAssignmentEditor({
   value,
   onChange,
   inherited,
   disabled,
+  productInheritToggle,
+  opportunityInheritToggle,
 }: AttributeAssignmentEditorProps) {
   const { t } = useTranslation()
 
@@ -69,6 +78,7 @@ export function AttributeAssignmentEditor({
           description={t('productCategories.form.sections.productAttributes.description')}
           assignments={byContext('product')}
           inherited={inheritedByContext('product')}
+          inheritToggle={productInheritToggle}
           disabled={disabled}
           onAdd={(attributeId) => addAssignment('product', attributeId)}
           onUpdate={(attributeId, patch) => updateAssignment('product', attributeId, patch)}
@@ -80,6 +90,7 @@ export function AttributeAssignmentEditor({
           description={t('productCategories.form.sections.opportunityAttributes.description')}
           assignments={byContext('opportunity')}
           inherited={inheritedByContext('opportunity')}
+          inheritToggle={opportunityInheritToggle}
           disabled={disabled}
           onAdd={(attributeId) => addAssignment('opportunity', attributeId)}
           onUpdate={(attributeId, patch) => updateAssignment('opportunity', attributeId, patch)}

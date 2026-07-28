@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AttributeContext;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ProductCategoryFactory;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_attributes', 'description', 'business_function_id'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -28,13 +29,25 @@ class ProductCategory extends BaseModel
     protected function casts(): array
     {
         return [
-            'inherits_attributes' => 'boolean',
+            'inherits_product_attributes' => 'boolean',
+            'inherits_opportunity_attributes' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for a
             // migrated category, guarded (not in #[Fillable]) so it is only ever
             // set by property assignment post-create. Also the remap key for the
             // self-referential `parent_id` (child → parent via old_id).
             'old_id' => 'integer',
         ];
+    }
+
+    /**
+     * Whether this category pulls its ancestors' attributes IN $context. The
+     * two usage contexts (spec 0061) each carry their OWN barrier flag, so a
+     * category can keep inheriting Opportunity attributes while cutting itself
+     * off from the Product ones — the barriers are fully independent.
+     */
+    public function inheritsAttributesIn(AttributeContext $context): bool
+    {
+        return (bool) $this->getAttribute($context->inheritanceColumn());
     }
 
     public function parent(): BelongsTo

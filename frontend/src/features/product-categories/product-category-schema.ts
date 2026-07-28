@@ -23,7 +23,8 @@ function baseFields(t: TFunction) {
       .min(1, t('productCategories.form.nameRequired'))
       .max(NAME_MAX_LENGTH, t('productCategories.form.nameMax')),
     parent_id: z.number().nullable(),
-    inherits_attributes: z.boolean(),
+    inherits_product_attributes: z.boolean(),
+    inherits_opportunity_attributes: z.boolean(),
     description: z.string().nullable(),
     business_function_id: z.number().nullable(),
     attributes: z.array(

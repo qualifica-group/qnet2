@@ -27,7 +27,7 @@ final class CategoryHierarchy
 
     /**
      * $category's ancestors, ROOT-FIRST (does not include $category itself).
-     * This is the STRUCTURAL walk — it ignores `inherits_attributes` and is
+     * This is the STRUCTURAL walk — it ignores the inheritance barriers and is
      * used only by the anti-cycle guard, which must see the full chain
      * regardless of any inheritance barrier.
      *
@@ -55,19 +55,23 @@ final class CategoryHierarchy
     }
 
     /**
-     * The ancestors $category actually INHERITS from, ROOT-FIRST — the
-     * structural walk truncated at the first inheritance barrier. A node whose
-     * `inherits_attributes` is false does not pull in its own parent, so the
-     * walk stops there: if $category itself opts out, this is empty; otherwise
-     * it climbs while each node keeps inheriting, cutting off everything above
+     * The ancestors $category actually INHERITS from IN $context, ROOT-FIRST —
+     * the structural walk truncated at the first inheritance barrier. A node
+     * that opts out of $context does not pull in its own parent, so the walk
+     * stops there: if $category itself opts out, this is empty; otherwise it
+     * climbs while each node keeps inheriting, cutting off everything above
      * the first opted-out ancestor (that ancestor's OWN attributes still count,
      * as it is a direct ancestor $category inherits).
      *
+     * The barrier is read per context (ProductCategory::inheritsAttributesIn):
+     * a chain cut for Product attributes may stay fully open for Opportunity
+     * ones — the two walks never look at each other's flag.
+     *
      * @return Collection<int, ProductCategory>
      */
-    private function inheritedAncestors(ProductCategory $category): Collection
+    private function inheritedAncestors(ProductCategory $category, AttributeContext $context): Collection
     {
-        if (! $category->inherits_attributes) {
+        if (! $category->inheritsAttributesIn($context)) {
             return collect();
         }
 
@@ -86,7 +90,7 @@ final class CategoryHierarchy
 
             // Barrier: this ancestor contributes its own attributes but, having
             // opted out, pulls nothing further up — stop climbing.
-            if (! $parent->inherits_attributes) {
+            if (! $parent->inheritsAttributesIn($context)) {
                 break;
             }
 
@@ -111,9 +115,9 @@ final class CategoryHierarchy
      * $category's EFFECTIVE business function (spec 0023): its OWN
      * business_function_id when set, else the first one found walking
      * `parent_id` toward the root (inheritedBusinessFunctionFor) —
-     * TRANSITIVE inheritance, unlike attributes, `inherits_attributes` is
-     * NOT a barrier here. Null when neither $category nor any ancestor has
-     * one.
+     * TRANSITIVE inheritance: unlike attributes, the per-context inheritance
+     * flags are NOT a barrier here. Null when neither $category nor any
+     * ancestor has one.
      *
      * @return array{id: int, name: string, inherited: bool, source_category: array{id: int, name: string}|null}|null
      */
@@ -280,7 +284,7 @@ final class CategoryHierarchy
     /**
      * $category's EFFECTIVE attributes: its own assignments UNION those of the
      * ancestors it actually inherits from (see inheritedAncestors — the chain
-     * is cut at the first `inherits_attributes = false` node), root-first
+     * is cut at the first node opting out OF THIS CONTEXT), root-first
      * (AC-008). When the same attribute is assigned at
      * multiple levels, the MOST SPECIFIC one wins (own overrides an ancestor,
      * a closer ancestor overrides a farther one) — but its position in the
@@ -289,15 +293,16 @@ final class CategoryHierarchy
      * override.
      *
      * $context (spec 0061, default Opportunity so every pre-existing caller
-     * is unaffected) scopes which pivot rows are read at EVERY level of the
-     * chain — a category's Product and Opportunity attribute sets are
-     * resolved and inherited completely independently of one another.
+     * is unaffected) scopes both which pivot rows are read at EVERY level of
+     * the chain AND which inheritance barrier truncates it — a category's
+     * Product and Opportunity attribute sets are resolved and inherited
+     * completely independently of one another.
      *
      * @return Collection<int, array<string, mixed>>
      */
     public function effectiveAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
     {
-        $chain = $this->inheritedAncestors($category)->push($category);
+        $chain = $this->inheritedAncestors($category, $context)->push($category);
 
         $ordered = [];
         $index = [];
@@ -338,11 +343,11 @@ final class CategoryHierarchy
 
     /**
      * The attributes owned by the ANCESTORS $category inherits from (deduped, a
-     * closer ancestor wins; empty when $category opts out of inheritance), for
-     * the show endpoint's read-only `inherited_attributes` side list — never
-     * merged with $category's own assignments. $context (spec 0061, default
-     * Opportunity) scopes which pivot rows are read, same as
-     * effectiveAttributes().
+     * closer ancestor wins; empty when $category opts out of inheritance IN
+     * $context), for the show endpoint's read-only `inherited_attributes` side
+     * list — never merged with $category's own assignments. $context (spec
+     * 0061, default Opportunity) scopes both the pivot rows read and the
+     * barrier walked, same as effectiveAttributes().
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -351,7 +356,7 @@ final class CategoryHierarchy
         $ordered = [];
         $index = [];
 
-        foreach ($this->inheritedAncestors($category) as $ancestor) {
+        foreach ($this->inheritedAncestors($category, $context) as $ancestor) {
             foreach ($this->ownAttributeRows($ancestor, $context) as $attribute) {
                 $entry = [
                     'attribute_id' => $attribute->id,
