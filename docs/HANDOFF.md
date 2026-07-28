@@ -2,6 +2,70 @@
 
 > Injected at session start. Update at every green state.
 
+## STATI DI LAVORAZIONE DEL CATALOGO (2026-07-28) — VERDE, NON COMMITTATO
+
+`QualificaCatalogSeeder` ora seeda anche gli "stati di lavorazione" del cliente, trascritti
+dal foglio `Stati di Lavorazione_Commerciale 23_07_26.ods`. Il modello di destinazione e'
+`opportunity_workflow_statuses` (spec 0047), NON `opportunity_statuses` (spec 0043, la
+pipeline Nuova/Vinta/Persa): un `OpportunityWorkflow` per categoria di prodotto, con unico
+criterio `product_category_id`.
+
+NOMI DA RISPETTARE:
+- `Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue` (NUOVO file dati, gemello di
+  `TrainingCourseCatalogue`): `CRITERION_FIELD`, `LEGEND`, `SECTIONS` (4 blocchi del foglio:
+  `gol`, `self_employment`, `self_funded`, `consulting`), `WORKFLOWS` (categoria => sezione +
+  eventuale sottoinsieme ordinato), `statusesFor(string $categoryName)`.
+- `Database\Seeders\QualificaWorkflowSeeder` (NUOVO seeder): la logica. Separato da
+  `QualificaCatalogSeeder` SOLO per il limite di 500 righe/file — e' lo Step 4 di quel
+  seeder (`$this->call()`), non un dataset indipendente. Ogni workflow passa da
+  `OpportunityWorkflowService::create()`, mai insert raw.
+- Il NOME del workflow e' il NOME della categoria (`GOL - Lombardia`, `Autoimpiego`, ...):
+  e' la chiave naturale dell'idempotenza insieme alla `criteria_signature`.
+
+MAPPATURA LEGENDA -> MODELLO (il colore di riempimento della cella e' l'unica cosa che
+classifica uno stato nel foglio):
+- nessun riempimento -> `WorkflowStatusGroup::Open`, badge token `slate`
+- giallo (`#FFFF00`, "aperto, solo regione di pertinenza") -> `Open`, token `yellow`
+- verde (`#B5E6A2`, "Esito Positivo") -> `ClosedWon`, token `green`
+- rosa (`#FBE2D5`, "Esito Negativo") -> `ClosedLost`, token `red`
+Il giallo NON e' un gruppo a se': ogni workflow e' gia' per regione, quindi la distinzione
+sopravvive solo come colore del badge. `requires_note` e' false ovunque (il foglio non ha
+alcun marcatore del genere).
+
+13 WORKFLOW SEEDATI: 9 regioni GOL (Lombardia 25 stati, Campania 20, Lazio 22, Sicilia 22,
+Umbria 20, Molise/Puglia/Calabria/Basilicata 19 — colonna condivisa, estratta in
+`GOL_BASE_STATUSES`), `Autoimpiego` e `Yisu` (14, stessa lista), `Autofinanziato` (13),
+`Consulenza` (11). Ogni set riceve in piu' le 4 righe di sistema pinnate da
+`WorkflowStatusWriter` (Aperta / Validato / Chiusa positiva / Chiusa negativa).
+
+DECISIONI UTENTE 2026-07-28 (non re-litigare):
+- Il blocco CONSULENZA e' agganciato alla RADICE `Consulenza`, non alle sue foglie. NOTA
+  OPERATIVA: `OpportunityWorkflowResolver` matcha l'id ESATTO della categoria delle product
+  line, senza risalire agli antenati — quindi questo workflow resta inerte finche' nessun
+  prodotto e' filato direttamente sulla radice. Se un domani i prodotti Consulenza stanno in
+  `Trattative in Corso` / `Presa Appuntamenti` o nella tassonomia importata da q-crm, va
+  aggiunto un workflow per quelle foglie.
+- Le grafie divergenti fra colonne sono state FOLDATE su una forma canonica (la piu' usata):
+  `Attesa Esito SFL/ADI` -> `Attesa esito SFL/ADI`, `Trasferito altra sede QG` -> `Trasferito
+  altra Sede QG`, `Non pertinente altra Regione` -> `Non pertinente - Altra regione`,
+  `Numero Inesistente` -> `Numero Inesistente/Errato`.
+
+CATEGORIE SENZA COLONNA NEL FOGLIO (nessun workflow, fallback sul set globale di default):
+`GOL - Abruzzo`, `DIL`, `Formazione`, `Trattative in Corso`, `Presa Appuntamenti`.
+
+ATTENZIONE INCROCIO DEMO/PRODUZIONE: `DemoOpportunityWorkflowSeeder` fa
+`OpportunityWorkflow::query()->delete()` all'inizio del suo `run()`. Lanciare
+`DemoDataSeeder` DOPO `QualificaCatalogSeeder` cancella i 13 workflow seedati qui. I due
+percorsi (demo vs produzione) restano separati: non mescolarli sullo stesso DB.
+
+VERIFICA ESEGUITA: nuovo `tests/Feature/Seeding/QualificaWorkflowSeederTest.php` (6 test, 93
+asserzioni) — un workflow attivo per categoria con il criterio giusto e idempotenza su
+doppio seed, ordine della colonna Lombardia fra le righe di sistema, classificazione dai 4
+colori della legenda, descrizioni scopate per blocco (stesso nome, testo diverso), colonna
+condivisa dalle 4 regioni, categorie assenti dal foglio senza workflow. Suite backend intera:
+**3974 test, 3957 verdi, 16 rossi tutti pre-esistenti** (gli stessi elencati sotto). Pint
+pulito sui 4 file toccati.
+
 ## MIGRAZIONI COMPATTATE: SOLO CREATE, ZERO ALTER (2026-07-28) — VERDE, NON COMMITTATO
 
 Richiesta utente: fondere ogni migrazione di update dentro la CREATE della sua tabella, così

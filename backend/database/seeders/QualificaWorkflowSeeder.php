@@ -1,0 +1,75 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\DataObjects\OpportunityWorkflows\CreateOpportunityWorkflowData;
+use App\Models\OpportunityWorkflow;
+use App\Models\ProductCategory;
+use App\Services\OpportunityWorkflowService;
+use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
+use Illuminate\Database\Seeder;
+
+/**
+ * The client's "stati di lavorazione" (spec 0047): one OpportunityWorkflow per
+ * product category of WorkflowStatusCatalogue::WORKFLOWS, each matched on that
+ * category (criterion `product_category_id`) and carrying that category's own
+ * working-state pick list.
+ *
+ * Split out of QualificaCatalogSeeder — which calls it as its last step —
+ * only because the two together would blow past the file-size limit; it is
+ * part of the catalogue seed, not an independent dataset, and it MUST run
+ * after QualificaCatalogSeeder::seedCatalog(): the criterion value is the
+ * category's id, so the tree has to exist first.
+ *
+ * Every workflow is created through OpportunityWorkflowService::create() — the
+ * same path POST /api/opportunity-workflows uses — so the real write path runs
+ * (signature uniqueness, criteria sync, the 4 pinned system rows added by
+ * WorkflowStatusWriter around the custom ones), never a raw insert.
+ *
+ * Idempotent: a category whose workflow already exists (by name OR by criteria
+ * signature, both unique) is skipped, so a re-run neither duplicates nor
+ * overwrites the manual edits made from the configurator.
+ */
+class QualificaWorkflowSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $service = app(OpportunityWorkflowService::class);
+
+        foreach (array_keys(WorkflowStatusCatalogue::WORKFLOWS) as $categoryName) {
+            // Created by QualificaCatalogSeeder::seedCatalog(): a miss means
+            // the two lists drifted apart, which must fail loudly rather than
+            // silently drop a whole region's statuses.
+            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+
+            $this->seedWorkflow($service, $category);
+        }
+    }
+
+    /**
+     * One workflow named after $category and matched on it alone. The
+     * workflow name doubles as the natural key: it is unique, and so is the
+     * single-criterion signature, so either one already taken means this set
+     * is seeded.
+     */
+    private function seedWorkflow(OpportunityWorkflowService $service, ProductCategory $category): void
+    {
+        $criteria = [['field' => WorkflowStatusCatalogue::CRITERION_FIELD, 'value_id' => $category->id]];
+
+        $exists = OpportunityWorkflow::query()
+            ->where('name', $category->name)
+            ->orWhere('criteria_signature', CreateOpportunityWorkflowData::computeSignature($criteria))
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $service->create(new CreateOpportunityWorkflowData(
+            name: $category->name,
+            isActive: true,
+            criteria: $criteria,
+            statuses: WorkflowStatusCatalogue::statusesFor($category->name),
+        ));
+    }
+}

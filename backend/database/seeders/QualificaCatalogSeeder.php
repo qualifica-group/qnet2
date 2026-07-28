@@ -36,7 +36,11 @@ use Illuminate\Database\Seeder;
  *     one SERVICE product per row under the "Autofinanziato" subcategory,
  *     with its list price and its delivery mode ("Modalità di svolgimento",
  *     an enum attribute assigned to that subcategory alone). No other product
- *     is seeded.
+ *     is seeded;
+ *   - the "stati di lavorazione" (spec 0047), delegated to
+ *     QualificaWorkflowSeeder as the last step: one OpportunityWorkflow per
+ *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
+ *     category and carrying its own working-state pick list.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -184,7 +188,11 @@ class QualificaCatalogSeeder extends Seeder
         $this->seedTrainingCourses();
         $this->seedSelfFundedCourses();
 
-        // Step 4: the optional follow-up, on demand.
+        // Step 4: the "stati di lavorazione", which key their matching
+        // criterion on the categories of step 2.
+        $this->call(QualificaWorkflowSeeder::class);
+
+        // Step 5: the optional follow-up, on demand.
         if ($askForLegacyImport) {
             $this->offerLegacyImport();
         }
