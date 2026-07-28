@@ -34,7 +34,7 @@ it('403 without registries.viewAny', function () {
     $this->getJson('/api/meta/registries')->assertForbidden();
 });
 
-it('200: field catalogue matches the frozen contract (14 registry + 12 personal_data), in order', function () {
+it('200: field catalogue matches the frozen contract (14 registry + 13 personal_data), in order', function () {
     $actor = registryMetaUserWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
@@ -51,7 +51,7 @@ it('200: field catalogue matches the frozen contract (14 registry + 12 personal_
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
-        'personal_data.birth_city_id', 'personal_data.gender',
+        'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
     ]);
 

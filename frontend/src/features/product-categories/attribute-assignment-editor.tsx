@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AttributeAssignmentSection } from '@/features/product-categories/attribute-assignment-section'
+import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import type {
   AttributeAssignmentInput,
   AttributeContext,
@@ -12,6 +13,11 @@ interface AttributeAssignmentEditorProps {
   /** Flat, both contexts — `attribute_id` may repeat once per context (two pivot rows). */
   value: AttributeAssignmentInput[]
   onChange: (next: AttributeAssignmentInput[]) => void
+  /**
+   * Name/type of the attributes the category was loaded with, so an assigned
+   * row labels itself without depending on the picker's search window.
+   */
+  known: AttributeCatalogEntry[]
   /** Read-only, flat, both contexts — attributes inherited from the selected parent's ancestry chain. */
   inherited: ProductCategoryInheritedAttribute[]
   disabled?: boolean
@@ -35,6 +41,7 @@ interface AttributeAssignmentEditorProps {
 export function AttributeAssignmentEditor({
   value,
   onChange,
+  known,
   inherited,
   disabled,
   productInheritToggle,
@@ -77,6 +84,7 @@ export function AttributeAssignmentEditor({
           title={t('productCategories.form.sections.productAttributes.title')}
           description={t('productCategories.form.sections.productAttributes.description')}
           assignments={byContext('product')}
+          known={known}
           inherited={inheritedByContext('product')}
           inheritToggle={productInheritToggle}
           disabled={disabled}
@@ -89,6 +97,7 @@ export function AttributeAssignmentEditor({
           title={t('productCategories.form.sections.opportunityAttributes.title')}
           description={t('productCategories.form.sections.opportunityAttributes.description')}
           assignments={byContext('opportunity')}
+          known={known}
           inherited={inheritedByContext('opportunity')}
           inheritToggle={opportunityInheritToggle}
           disabled={disabled}

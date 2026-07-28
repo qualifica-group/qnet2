@@ -58,6 +58,7 @@ function toClientIdentityPayload(source: ClientIdentitySource): RequestClientIde
     sdi_code: source.sdi_code,
     birth_date: source.birth_date,
     birth_city_id: source.birth_city_id,
+    residence_city_id: source.residence_city_id,
     // Same normalization the draft applies (individual defaults to male, a
     // company carries none), so a legacy null on the loaded card does not read
     // as an edit on both sides of the comparison.

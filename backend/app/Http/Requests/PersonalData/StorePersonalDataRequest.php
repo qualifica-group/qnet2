@@ -74,6 +74,7 @@ class StorePersonalDataRequest extends FormRequest
             'sdi_code' => ['nullable', 'string', 'max:32'],
             'birth_date' => ['nullable', 'date', 'before:today'],
             'birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
+            'residence_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
             'gender' => ['nullable', Rule::enum(GenderEnum::class)],
         ];
     }
@@ -134,6 +135,7 @@ class StorePersonalDataRequest extends FormRequest
             sdiCode: $this->input('sdi_code'),
             birthDate: $this->input('birth_date'),
             birthCityId: $this->filled('birth_city_id') ? (int) $this->input('birth_city_id') : null,
+            residenceCityId: $this->filled('residence_city_id') ? (int) $this->input('residence_city_id') : null,
             gender: $this->input('gender'),
         );
     }

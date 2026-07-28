@@ -40,8 +40,11 @@ function renderEditor(
   value: AttributeAssignmentInput[] = [],
   inherited: ProductCategoryInheritedAttribute[] = [],
   onChange = vi.fn(),
+  known: AttributeCatalogEntry[] = [],
 ) {
-  render(<AttributeAssignmentEditor value={value} onChange={onChange} inherited={inherited} />)
+  render(
+    <AttributeAssignmentEditor value={value} onChange={onChange} known={known} inherited={inherited} />,
+  )
   return { onChange }
 }
 
@@ -162,5 +165,23 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
         'A choice from a predefined list of options.',
       )
     })
+  })
+
+  // The picker only ever holds ONE search window of a catalogue larger than it
+  // (the 100-row cap of the rows endpoint): an assigned attribute left outside
+  // that window used to render as a bare `#<id>` with no data type.
+  it('labels an assigned attribute the picker window does not carry', () => {
+    useAttributeCatalogMock.mockReturnValue(queryResult([]))
+
+    renderEditor(
+      [{ attribute_id: 7, context: 'product', is_required: false, sort_order: 0 }],
+      [],
+      vi.fn(),
+      [{ id: 7, code: 'total_hours', name: 'Ore complessive', type: 'integer' }],
+    )
+
+    expect(screen.getByText('Ore complessive')).toBeInTheDocument()
+    expect(screen.queryByText('#7')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Integer number')[0]).toBeInTheDocument()
   })
 })

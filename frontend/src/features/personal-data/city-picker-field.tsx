@@ -4,8 +4,8 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useCities } from '@/features/geo/use-geo'
 import type { GeoRef } from '@/features/personal-data/types'
 
-interface BirthCityFieldProps {
-  /** The chosen comune id, or null when the place of birth is unknown. */
+interface CityPickerFieldProps {
+  /** The chosen comune id, or null when it is unknown. */
   value: number | null
   /**
    * The hydrated {id, name} of `value` as it arrived from the server, so the
@@ -13,6 +13,12 @@ interface BirthCityFieldProps {
    */
   hydrated?: GeoRef | null
   onChange: (cityId: number) => void
+  /**
+   * What to search for, in the caller's words (e.g. "Search the town of
+   * birth"). Doubles as the empty state: nothing is listed until a term is
+   * typed, so the instruction IS the empty message.
+   */
+  placeholder: string
   disabled?: boolean
   id?: string
   'aria-describedby'?: string
@@ -20,24 +26,25 @@ interface BirthCityFieldProps {
 }
 
 /**
- * The comune-of-birth picker: a single, server-searched city select (the
- * city-first level of the geo cascade, without its country/state/province
- * parents — the card stores only the comune, the ancestors are reachable
- * through it).
+ * A single, server-searched comune picker: the city-first level of the geo
+ * cascade, without its country/state/province parents — the card stores only
+ * the comune, the ancestors are reachable through it. Shared by every card
+ * field that references one (place of birth, comune of residence).
  *
  * The options are the current search page, so the picked comune is remembered
  * locally: the popover clears the term on close, which drops the result page
  * that carried it, and the trigger would otherwise fall back to the placeholder.
  */
-export function BirthCityField({
+export function CityPickerField({
   value,
   hydrated,
   onChange,
+  placeholder,
   disabled,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
-}: BirthCityFieldProps) {
+}: CityPickerFieldProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<GeoRef | null>(null)
@@ -81,11 +88,11 @@ export function BirthCityField({
       isFetchingNextPage={cities.isFetchingNextPage}
       onLoadMore={cities.fetchNextPage}
       labels={{
-        placeholder: t('personalData.form.birthCityPlaceholder'),
+        placeholder,
         searchPlaceholder: t('geo.search'),
-        // Nothing is listed until a term is typed: the comuni are far too many
-        // to browse, so the empty state is the instruction to search.
-        empty: t('personalData.form.birthCityPlaceholder'),
+        // The comuni are far too many to browse, so the empty state is the
+        // instruction to search.
+        empty: placeholder,
         noMatch: t('geo.noMatch'),
         error: t('geo.error'),
         retry: t('geo.retry'),

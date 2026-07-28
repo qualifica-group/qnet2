@@ -109,6 +109,9 @@ export interface RequestClientIdentity {
   birth_city_id: number | null
   /** Hydrated comune of birth, read-only label for the select (never sent back). */
   birth_city: GeoRef | null
+  residence_city_id: number | null
+  /** Hydrated comune of residence, read-only label (never sent back). */
+  residence_city: GeoRef | null
   gender: Gender | null
 }
 
@@ -236,7 +239,10 @@ export interface RequestWorkPanelWithPermissions extends RequestWorkPanel {
  * fields (no `id` — the server resolves the card from the request's client).
  * Saving it also re-derives the client's display name server-side.
  */
-export type RequestClientIdentityPayload = Omit<RequestClientIdentity, 'id' | 'birth_city'>
+export type RequestClientIdentityPayload = Omit<
+  RequestClientIdentity,
+  'id' | 'birth_city' | 'residence_city'
+>
 
 /** One contact row of the `client_contacts` write set (`id` present = update). */
 export interface RequestClientContactPayload {

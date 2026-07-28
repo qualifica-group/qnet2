@@ -128,6 +128,7 @@ trait ValidatesRequestClientProfile
             'client_identity.sdi_code' => ['nullable', 'string', 'max:32'],
             'client_identity.birth_date' => ['nullable', 'date', 'before:today'],
             'client_identity.birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
+            'client_identity.residence_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
             'client_identity.gender' => ['nullable', Rule::enum(GenderEnum::class)],
         ];
     }
@@ -206,6 +207,7 @@ trait ValidatesRequestClientProfile
             sdiCode: $row['sdi_code'] ?? null,
             birthDate: $row['birth_date'] ?? null,
             birthCityId: isset($row['birth_city_id']) ? (int) $row['birth_city_id'] : null,
+            residenceCityId: isset($row['residence_city_id']) ? (int) $row['residence_city_id'] : null,
             gender: $row['gender'] ?? null,
         );
     }

@@ -277,6 +277,7 @@ final class RequestClientProfileWriter
             sdiCode: $card->sdi_code,
             birthDate: $card->birth_date?->format('Y-m-d'),
             birthCityId: $card->birth_city_id,
+            residenceCityId: $card->residence_city_id,
             gender: $card->gender?->value,
         );
     }

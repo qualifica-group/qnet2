@@ -246,6 +246,10 @@ class RequestManagementResource extends JsonResource
             'birth_city' => $card->relationLoaded('birthCity') && $card->birthCity !== null
                 ? ['id' => $card->birthCity->id, 'name' => GeoNameLocalizer::toItalian($card->birthCity->name)]
                 : null,
+            'residence_city_id' => $card->residence_city_id,
+            'residence_city' => $card->relationLoaded('residenceCity') && $card->residenceCity !== null
+                ? ['id' => $card->residenceCity->id, 'name' => GeoNameLocalizer::toItalian($card->residenceCity->name)]
+                : null,
             'gender' => $card->gender?->value,
         ];
     }

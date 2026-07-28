@@ -25,6 +25,7 @@ final readonly class CreatePersonalData
         public ?string $sdiCode = null,
         public ?string $birthDate = null,
         public ?int $birthCityId = null,
+        public ?int $residenceCityId = null,
         public ?string $gender = null,
     ) {}
 
@@ -64,6 +65,7 @@ final readonly class CreatePersonalData
             'sdi_code' => $this->sdiCode,
             'birth_date' => $this->birthDate,
             'birth_city_id' => $this->birthCityId,
+            'residence_city_id' => $this->residenceCityId,
             'gender' => $this->gender,
         ];
     }

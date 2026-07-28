@@ -48,6 +48,10 @@ class PersonalDataResource extends JsonResource
             'birth_city' => $this->whenLoaded('birthCity', fn (): ?array => $this->birthCity !== null
                 ? ['id' => $this->birthCity->id, 'name' => GeoNameLocalizer::toItalian($this->birthCity->name)]
                 : null),
+            'residence_city_id' => $this->residence_city_id,
+            'residence_city' => $this->whenLoaded('residenceCity', fn (): ?array => $this->residenceCity !== null
+                ? ['id' => $this->residenceCity->id, 'name' => GeoNameLocalizer::toItalian($this->residenceCity->name)]
+                : null),
             'gender' => $this->gender,
             'personable_type' => $this->personable_type,
             'personable_id' => $this->personable_id,

@@ -3,7 +3,8 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
-import { BirthCityField } from '@/features/personal-data/birth-city-field'
+import { PersonalDataIndividualFields } from '@/features/personal-data/personal-data-individual-fields'
+import { resolveGate } from '@/features/personal-data/personal-data-field-gate'
 import { formatOnBlur } from '@/lib/formatting/format-on-blur'
 import { formatIdentityField } from '@/lib/formatting/input-format'
 import {
@@ -15,13 +16,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useEnumOptions } from '@/features/config/use-config'
 import {
   buildPersonalDataSchema,
@@ -53,35 +47,6 @@ interface PersonalDataCardFormProps {
   lockType?: PersonalDataType
 }
 
-interface FieldGate {
-  visible: boolean
-  disabled: boolean
-  readOnly: boolean
-  required: boolean
-}
-
-/**
- * Resolves one field's render gating. Without a resolver, every field stays
- * visible/editable and `required` falls back to this card's own (schema-driven)
- * default, matching today's behaviour exactly.
- */
-function resolveGate(
-  fieldPermission: PersonalDataFieldPermissionResolver | undefined,
-  key: string,
-  fallbackRequired: boolean,
-): FieldGate {
-  if (!fieldPermission) {
-    return { visible: true, disabled: false, readOnly: false, required: fallbackRequired }
-  }
-  const permission = fieldPermission(key)
-  return {
-    visible: permission.visible,
-    disabled: permission.disabled || !permission.editable,
-    readOnly: permission.readonly,
-    required: permission.required,
-  }
-}
-
 /**
  * Controlled/buffered create/edit form for the registry card fields. The `type`
  * options come from the server config; individual vs company fields
@@ -98,7 +63,6 @@ export function PersonalDataCardForm({
 }: PersonalDataCardFormProps) {
   const { t } = useTranslation()
   const typeOptions = useEnumOptions('personal_data_type')
-  const genderOptions = useEnumOptions('gender')
   const schema = useMemo(() => buildPersonalDataSchema(t), [t])
 
   const form = useForm<PersonalDataFormValues>({
@@ -114,6 +78,7 @@ export function PersonalDataCardForm({
       sdi_code: value.sdi_code ?? '',
       birth_date: value.birth_date ?? '',
       birth_city_id: value.birth_city_id ?? null,
+      residence_city_id: value.residence_city_id ?? null,
       // Individual cards always carry a gender (default male); company: none.
       gender: value.gender ?? 'male',
     },
@@ -131,9 +96,8 @@ export function PersonalDataCardForm({
   const taxCodeGate = resolveGate(fieldPermission, 'personal_data.tax_code', false)
   const vatNumberGate = resolveGate(fieldPermission, 'personal_data.vat_number', false)
   const sdiCodeGate = resolveGate(fieldPermission, 'personal_data.sdi_code', false)
-  const birthDateGate = resolveGate(fieldPermission, 'personal_data.birth_date', false)
-  const birthCityGate = resolveGate(fieldPermission, 'personal_data.birth_city_id', false)
-  const genderGate = resolveGate(fieldPermission, 'personal_data.gender', false)
+  // The individual-only gates (birth date, gender, the two comuni) are resolved
+  // by PersonalDataIndividualFields, which owns that block.
 
   // Mirror the current field values into the parent buffer (in an effect, so the
   // parent update happens after this render rather than during it), preserving the
@@ -148,9 +112,12 @@ export function PersonalDataCardForm({
     vat_number: watched.vat_number || null,
     sdi_code: watched.sdi_code || null,
     birth_date: watched.birth_date || null,
-    // The comune of birth belongs to an individual, like the gender above.
+    // The comuni of birth and residence belong to an individual, like the
+    // gender above.
     birth_city_id: isCompany ? null : (watched.birth_city_id ?? null),
     birth_city: value.birth_city,
+    residence_city_id: isCompany ? null : (watched.residence_city_id ?? null),
+    residence_city: value.residence_city,
     // Gender is an individual-only attribute: a company card carries none.
     gender: isCompany ? null : (watched.gender ?? 'male'),
     contacts: value.contacts,
@@ -364,85 +331,11 @@ export function PersonalDataCardForm({
           />
         )}
 
-        {!isCompany && (birthDateGate.visible || genderGate.visible) && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {birthDateGate.visible && (
-              <FormField
-                control={form.control}
-                name="birth_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel required={birthDateGate.required}>
-                      {t('personalData.form.birthDate')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        disabled={birthDateGate.disabled}
-                        readOnly={birthDateGate.readOnly}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            {genderGate.visible && (
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel required={genderGate.required}>
-                      {t('personalData.form.gender')}
-                    </FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={genderGate.disabled || genderGate.readOnly}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {genderOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
-        )}
-
-        {!isCompany && birthCityGate.visible && (
-          <FormField
+        {!isCompany && (
+          <PersonalDataIndividualFields
             control={form.control}
-            name="birth_city_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required={birthCityGate.required}>
-                  {t('personalData.form.birthCity')}
-                </FormLabel>
-                <FormControl>
-                  <BirthCityField
-                    value={field.value ?? null}
-                    hydrated={value.birth_city}
-                    onChange={field.onChange}
-                    disabled={birthCityGate.disabled || birthCityGate.readOnly}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            value={value}
+            fieldPermission={fieldPermission}
           />
         )}
       </div>
@@ -462,6 +355,7 @@ function sameCardFields(a: PersonalDataDraft, b: PersonalDataDraft): boolean {
     a.sdi_code === b.sdi_code &&
     a.birth_date === b.birth_date &&
     a.birth_city_id === b.birth_city_id &&
+    a.residence_city_id === b.residence_city_id &&
     a.gender === b.gender
   )
 }

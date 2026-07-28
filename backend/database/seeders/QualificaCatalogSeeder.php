@@ -5,13 +5,13 @@ namespace Database\Seeders;
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\AttributeContext;
 use App\Enums\ProductType;
-use App\Models\Attribute;
-use App\Models\AttributeOption;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
 use App\Services\ProductService;
+use Database\Seeders\Concerns\SeedsCategoryAttributes;
+use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\TrainingCourseCatalogue;
 use Illuminate\Database\Seeder;
@@ -25,9 +25,14 @@ use Illuminate\Database\Seeder;
  *   - the reward type catalogue (spec 0058): the voucher/reward types in use;
  *   - the reference category catalogue (spec 0017): a two-root category tree
  *     (Formazione / Consulenza) with its subcategories and the regional
- *     declinations under GOL. The "Formazione" branch also carries a
- *     product-context attribute ("Ore complessive", spec 0061), assigned to
- *     the root and inherited by every descendant;
+ *     declinations under GOL. The "Formazione" branch also carries its
+ *     product-context attributes (spec 0061) — "Ore complessive" and the
+ *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
+ *     assigned to the root and inherited by every descendant, then grouped
+ *     into form sections by QualificaClassroomLayoutSeeder (spec 0062). The
+ *     OPPORTUNITY-context counterpart ("Dati Lavorazione Contatto", scoped to
+ *     Formazione / Autofinanziato / the two Consulenza leaves) is delegated to
+ *     QualificaContactProcessingSeeder;
  *   - the GOL training courses (QualificaCatalog\TrainingCourseCatalogue): one
  *     SERVICE product per funded course, filed under its own region's
  *     `GOL - <Regione>` category and carrying its duration in that attribute.
@@ -62,6 +67,8 @@ use Illuminate\Database\Seeder;
  */
 class QualificaCatalogSeeder extends Seeder
 {
+    use SeedsCategoryAttributes;
+
     /**
      * The client's fixed source catalogue (spec 0018): user-facing domain
      * values, kept in their original language. Seeded in order.
@@ -136,16 +143,22 @@ class QualificaCatalogSeeder extends Seeder
      * row, while "Modalità di svolgimento" stays confined to the
      * "Autofinanziato" subtree, the only offer sold with a delivery mode.
      *
+     * The "Dati Aula" fields (ClassroomAttributeCatalogue) ride on the same
+     * root assignment, for the same reason: they describe the classroom
+     * edition of ANY Formazione product, regional or self-funded.
+     *
      * `code` is the English identifier (the catalogue's natural key, and its
      * `^[a-z0-9_]+$` format); `name` is the user-facing label, kept in its
      * original language. `type` is a FieldTypeRegistry key; `options` is
-     * required by, and only meaningful for, the `enum` type.
+     * required by, and only meaningful for, the `enum` type, as is
+     * `relation_target` for the `relation` one.
      *
-     * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>>
+     * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, relation_target?: array<string, mixed>}>>
      */
     private const array CATALOG_PRODUCT_ATTRIBUTES = [
         'Formazione' => [
             ['code' => self::TOTAL_HOURS_ATTRIBUTE, 'name' => 'Ore complessive', 'type' => 'integer'],
+            ...ClassroomAttributeCatalogue::ATTRIBUTES,
         ],
         SelfFundedCourseCatalogue::CATEGORY => [
             ['code' => self::DELIVERY_MODE_ATTRIBUTE, 'name' => 'Modalità di svolgimento', 'type' => 'enum', 'options' => [
@@ -195,6 +208,14 @@ class QualificaCatalogSeeder extends Seeder
         // Step 4: the "stati di lavorazione", which key their matching
         // criterion on the categories of step 2.
         $this->call(QualificaWorkflowSeeder::class);
+
+        // Step 4-bis: the "Dati Aula" form section, which places the
+        // attributes step 2 assigned onto every category of the branch.
+        $this->call(QualificaClassroomLayoutSeeder::class);
+
+        // Step 4-ter: the Opportunity-context set, which resolves the same
+        // categories of step 2 and adopts the q-crm rows when they are there.
+        $this->call(QualificaContactProcessingSeeder::class);
 
         // Step 5: the optional follow-up, on demand.
         if ($askForLegacyImport) {
@@ -265,7 +286,7 @@ class QualificaCatalogSeeder extends Seeder
         // any node, at any depth, not just the root being built above.
         foreach (self::CATALOG_PRODUCT_ATTRIBUTES as $categoryName => $specs) {
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-            $this->seedProductAttributes($category, $specs);
+            $this->seedCategoryAttributes($category, $specs, AttributeContext::Product);
         }
     }
 
@@ -277,69 +298,6 @@ class QualificaCatalogSeeder extends Seeder
         foreach ($childNames as $childName) {
             ProductCategory::firstOrCreate(['name' => $childName], ['parent_id' => $parent->id]);
         }
-    }
-
-    /**
-     * @param  list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>  $specs
-     */
-    private function seedProductAttributes(ProductCategory $category, array $specs): void
-    {
-        foreach ($specs as $spec) {
-            // Natural key (code): an attribute already in the catalogue keeps
-            // its label/type, so a manual rename survives the re-seed.
-            $attribute = Attribute::firstOrCreate(
-                ['code' => $spec['code']],
-                ['name' => $spec['name'], 'type' => $spec['type']],
-            );
-
-            $this->seedAttributeOptions($attribute, $spec['options'] ?? []);
-            $this->assignProductAttribute($category, $attribute);
-        }
-    }
-
-    /**
-     * The discrete value list of an ENUM attribute. Seeded here rather than
-     * through AttributeService because the assignment above is additive too:
-     * that Service's nested full-replace would drop the options added by hand
-     * from the attributes module.
-     *
-     * @param  list<array{value: string, label: string}>  $options
-     */
-    private function seedAttributeOptions(Attribute $attribute, array $options): void
-    {
-        $sortOrder = 0;
-
-        foreach ($options as $option) {
-            AttributeOption::firstOrCreate(
-                ['attribute_id' => $attribute->id, 'value' => $option['value']],
-                ['label' => $option['label'], 'sort_order' => $sortOrder],
-            );
-
-            $sortOrder++;
-        }
-    }
-
-    /**
-     * Additive on purpose, unlike ProductCategoryService::syncAttributes()
-     * which is a full replace: a re-seed must not wipe the assignments made
-     * by hand from the category configurator.
-     */
-    private function assignProductAttribute(ProductCategory $category, Attribute $attribute): void
-    {
-        $isAssigned = $category->attributes()
-            ->wherePivot('context', AttributeContext::Product->value)
-            ->where('attributes.id', $attribute->id)
-            ->exists();
-
-        if ($isAssigned) {
-            return;
-        }
-
-        $category->attributes()->attach($attribute->id, [
-            'context' => AttributeContext::Product->value,
-            'is_required' => false,
-            'sort_order' => 0,
-        ]);
     }
 
     /**

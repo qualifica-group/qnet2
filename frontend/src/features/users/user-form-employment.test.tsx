@@ -184,6 +184,7 @@ const validCard: PersonalDataCard = {
   sdi_code: null,
   birth_date: null,
   birth_city_id: null,
+  residence_city_id: null,
   gender: null,
   personable_type: 'user',
   personable_id: 7,

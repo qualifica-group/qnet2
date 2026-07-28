@@ -196,6 +196,9 @@ export function RegistryDetailView({ registry }: RegistryDetailViewProps) {
                 <DetailField label={t('personalData.form.birthCity')}>
                   {registry.personal_data.birth_city?.name || <DetailEmpty />}
                 </DetailField>
+                <DetailField label={t('personalData.form.residenceCity')}>
+                  {registry.personal_data.residence_city?.name || <DetailEmpty />}
+                </DetailField>
                 <DetailField label={t('personalData.form.gender')}>
                   {registry.personal_data.gender ? (
                     enumLabelOf('gender', registry.personal_data.gender)

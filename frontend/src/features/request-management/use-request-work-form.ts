@@ -43,6 +43,8 @@ function toIdentityDraft(identity: RequestClientIdentity): PersonalDataDraft {
     birth_date: identity.birth_date,
     birth_city_id: identity.birth_city_id,
     birth_city: identity.birth_city,
+    residence_city_id: identity.residence_city_id,
+    residence_city: identity.residence_city,
     // Mirrors `cardToDraft`: an individual always carries a gender (default
     // male, backfilling a legacy null), a company carries none.
     gender: identity.gender ?? (identity.type === 'company' ? null : 'male'),

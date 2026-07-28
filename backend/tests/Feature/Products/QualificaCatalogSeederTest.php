@@ -12,6 +12,7 @@ use App\Models\Source;
 use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
+use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -118,6 +119,52 @@ it('assigns the "Ore complessive" product attribute to the whole Formazione bran
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
     expect($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
         ->not->toContain('total_hours');
+});
+
+it('assigns the "Dati Aula" product attributes to the Formazione root', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute, option nor pivot row.
+
+    $codes = ClassroomAttributeCatalogue::codes();
+    $attributes = Attribute::query()->whereIn('code', $codes)->get()->keyBy('code');
+
+    expect($attributes)->toHaveCount(count($codes))
+        ->and($attributes->get('classroom_status')->name)->toBe('Stato Aula')
+        ->and($attributes->get('course_start_date')->type)->toBe('date')
+        ->and($attributes->get('internship_company')->type)->toBe('text');
+
+    // The teacher is a relation to a single referent.
+    expect($attributes->get('teacher')->type)->toBe('relation')
+        ->and($attributes->get('teacher')->relation_target)->toBe([
+            'entity_type' => 'referents',
+            'cardinality' => 'one',
+            'for_select_resource' => 'referents',
+        ]);
+
+    expect($attributes->get('classroom_status')->options()->get()->map->only(['value', 'label'])->all())
+        ->toBe([
+            ['value' => 'open', 'label' => 'Aperta'],
+            ['value' => 'closed', 'label' => 'Chiusa'],
+        ]);
+
+    // One single assignment each, on the root, in the PRODUCT context.
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+
+    $pivot = DB::table('attribute_category')->whereIn('attribute_id', $attributes->pluck('id'))->get();
+
+    expect($pivot)->toHaveCount(count($codes))
+        ->and($pivot->pluck('category_id')->unique()->all())->toBe([$formazione->id])
+        ->and($pivot->pluck('context')->unique()->all())->toBe([AttributeContext::Product->value]);
+
+    // Inherited down the branch, not leaked onto the other root.
+    $service = app(ProductCategoryService::class);
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
+
+    expect($service->effectiveAttributes($molise, AttributeContext::Product)->pluck('code')->all())
+        ->toContain(...$codes)
+        ->and($service->effectiveAttributes($consulenza, AttributeContext::Product)->pluck('code')->all())
+        ->not->toContain('teacher');
 });
 
 it('seeds every GOL training course under its own region, idempotently', function (): void {

@@ -8,9 +8,10 @@ import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 
 /**
- * The comune of birth (`personal_data.birth_city_id`): an individual-only field
- * that references the geo catalogue, so the card emits an id — never free text —
- * and a company card carries none.
+ * The two comune pickers on the card (`personal_data.birth_city_id` and
+ * `personal_data.residence_city_id`): individual-only fields that reference the
+ * geo catalogue, so the card emits an id — never free text — and a company card
+ * carries neither.
  */
 
 const useCitiesMock = vi.fn()
@@ -78,7 +79,10 @@ beforeAll(async () => {
 beforeEach(() => {
   useCitiesMock.mockReset()
   useCitiesMock.mockReturnValue(
-    cityQuery([{ id: 501, name: 'Napoli', country_id: 1, state_id: 10, province_id: 100 }]),
+    cityQuery([
+      { id: 501, name: 'Napoli', country_id: 1, state_id: 10, province_id: 100 },
+      { id: 502, name: 'Torino', country_id: 1, state_id: 10, province_id: 100 },
+    ]),
   )
 })
 
@@ -113,5 +117,58 @@ describe('PersonalDataCardForm — place of birth', () => {
     expect(
       screen.queryByRole('combobox', { name: /^Place of birth/ }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('PersonalDataCardForm — town of residence', () => {
+  it('emits the picked comune id into the draft', async () => {
+    const drafts: PersonalDataDraft[] = []
+    render(<CardHost onDraft={(draft) => drafts.push(draft)} />)
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Town of residence/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Napoli' }))
+
+    await waitFor(() => expect(drafts.at(-1)?.residence_city_id).toBe(501))
+  })
+
+  it('labels the current value from the hydrated comune, before any search', () => {
+    render(
+      <CardHost
+        initial={{
+          residence_city_id: 501,
+          residence_city: { id: 501, name: 'Napoli' },
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: /^Town of residence/ })).toHaveTextContent(
+      'Napoli',
+    )
+  })
+
+  it('is not rendered on a company card', () => {
+    render(<CardHost initial={{ type: 'company' }} />)
+
+    expect(
+      screen.queryByRole('combobox', { name: /^Town of residence/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('is independent of the place of birth', async () => {
+    const drafts: PersonalDataDraft[] = []
+    render(
+      <CardHost
+        initial={{ birth_city_id: 501, birth_city: { id: 501, name: 'Napoli' } }}
+        onDraft={(draft) => drafts.push(draft)}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Town of residence/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Torino' }))
+
+    await waitFor(() => {
+      expect(drafts.at(-1)?.residence_city_id).toBe(502)
+      expect(drafts.at(-1)?.birth_city_id).toBe(501)
+    })
   })
 })

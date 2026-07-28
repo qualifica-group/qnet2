@@ -2,6 +2,224 @@
 
 > Injected at session start. Update at every green state.
 
+## COMUNE DI RESIDENZA IN ANAGRAFICA (2026-07-28) — VERDE, NON COMMITTATO
+
+Richiesta utente: "in anagrafica oltre a comune di nascita, voglio aggiungere comune di
+residenza". Nessuna spec: e' un gemello esatto di `birth_city_id`, implementato per
+rispecchiamento su ogni punto in cui quello esisteva gia'.
+
+DECISIONI PRESE (non erano nella richiesta, valgono finche' l'utente non dice altro):
+- E' un riferimento al catalogo geo (`residence_city_id` -> `cities`), NON un indirizzo.
+  La scheda possiede gia' `addresses` per il recapito postale; la residenza qui e' il
+  singolo dato amministrativo che sta accanto al luogo di nascita sui moduli italiani.
+- Individual-only, come il luogo di nascita: una card `company` lo porta sempre a null.
+- Propagato anche a Request Management (`client_identity`), perche' quel blocco riusa
+  `PersonalDataCardForm` verbatim e serializza la stessa card: lasciarlo fuori avrebbe
+  creato un'asimmetria fra le due superfici di scrittura della stessa entita'.
+- Migrazione NUOVA (`2026_07_28_120000_add_residence_city_id_to_personal_data_table`),
+  non modifica della create gia' committata: CLAUDE.md backend §3 lo vieta. E' la prima
+  migrazione `add_*_to_*` del repo (finora erano tutte `create_`): chi segue non la
+  scambi per un errore. Up+down verificati su sqlite isolato (colonna assente dopo il
+  rollback, presente dopo il re-apply).
+
+NOMI DA RISPETTARE:
+- Colonna/campo API: `residence_city_id`; relazione Eloquent `residenceCity()`;
+  DTO `CreatePersonalData::$residenceCityId`; label idratata `residence_city` (emessa
+  solo con relazione eager-loaded, convenzione `whenLoaded` di `birth_city`).
+- Chiave permessi di campo: `personal_data.residence_city_id`, registrata nei catalogi
+  `Users/Registries/ReferentsAuthorization`. I test "frozen contract" contano i campi:
+  personal_data e' passato da 12 a 13 chiavi.
+
+SPLIT IMPOSTO DALL'HOOK: aggiungendo il campo, `personal-data-card-form.tsx` sarebbe
+finito a 502 righe (hard limit 500, `code-guard.js` blocca). Diviso in tre:
+- `personal-data-field-gate.ts` — `FieldGate` + `resolveGate` (gating spec 0008, puro).
+- `personal-data-individual-fields.tsx` — il blocco individual-only (data di nascita,
+  sesso, i due comuni); risolve da se' i propri 4 gate.
+- `personal-data-card-form.tsx` resta a 361 righe.
+`BirthCityField` e' diventato `CityPickerField` (`city-picker-field.tsx`) con prop
+`placeholder`: due call-site identici a meno del testo, ui-design.md §6.2. Il vecchio
+file e' cancellato, il test rinominato `city-picker-field.test.tsx`.
+
+EAGER LOAD OBBLIGATORIO: `Model::preventLazyLoading()` e' attivo fuori produzione, quindi
+`residenceCity` e' stato aggiunto ovunque ci fosse `birthCity` — `PersonalDataController`
+(3 punti), `UserService`, `RegistryService`, `ReferentService`, `RequestManagementService`.
+Dimenticarne uno fa esplodere la richiesta, non degradare in silenzio.
+
+TRAPPOLA TROVATA IN VERIFICA (varra' per ogni prossimo campo della card): le fixture di
+test costruiscono `PersonalDataCard` campo per campo. Una fixture senza il campo nuovo da
+`undefined` dove il form normalizza a `null`, e il dirty-check di `buildUpdatePayload`
+legge la differenza come "modificato" -> il payload include `personal_data` anche quando
+nulla e' cambiato. Non e' un bug di produzione (l'API emette sempre la chiave): e' la
+fixture da aggiornare. Ha fatto fallire 7 file di test finche' non ho aggiunto
+`residence_city_id: null` a tutte le card di fixture.
+
+VERIFICA (suite intere, eseguite): backend 4042 test / 4025 verdi, 16 falliti = ESATTAMENTE
+i 16 preesistenti gia' censiti (12 `*SecurityTest` di navigazione incluso il VAT, 2
+`MigrationRegistryTest`, 1 `AbstractMigrationSourcePreviewTest`, 1
+`RequestManagementTableSearchTest`/`SEARCH_MAX_LENGTH`): zero regressioni, nessun rosso
+nelle aree toccate. Frontend 2542 test, 3 falliti = i 3 preesistenti di
+`cell-renderers.test.tsx` (leak del singleton i18n). `tsc --noEmit` pulito, Pint pulito,
+ESLint pulito sui file toccati (l'errore `_omit` in `registry-form-metadata.test.tsx` e'
+identico a HEAD, preesistente).
+
+NOTA DI AMBIENTE: `./vendor/bin/pest` sull'intera suite va in SEGFAULT (exit 139) con
+xdebug attivo, senza produrre alcun output — sembra un successo silenzioso ma non lo e'.
+Girare la suite completa con `php -d xdebug.mode=off -d memory_limit=2G vendor/bin/pest`.
+
+FUORI SCOPE, VOLUTAMENTE NON TOCCATO: il luogo di nascita non ha colonna di griglia, ne'
+mappatura di import/migrazione esterna (`UsersSource`/`ReferentsSource` portano solo
+`birth_date`), ne' campo nella detail di Referenti. La residenza segue la stessa
+superficie: e' visibile in form (tutti i moduli, via `PersonalDataCardForm`) e nella
+detail Anagrafiche. Se serve in griglia o in import, e' un task a parte.
+
+## ATTRIBUTI "DATI LAVORAZIONE CONTATTO" (2026-07-28) — VERDE, NON COMMITTATO
+
+27 campi di lavorazione richiesta, contesto OPPORTUNITY, scopati per categoria come da lista
+utente. Solo seeder, nessun cambio ad `app/`.
+
+DECISIONI UTENTE (vincolanti):
+- D-1 contesto `opportunity` (pannello di lavorazione Gestione Richieste), NON `product`.
+- D-2 dove l'import q-crm ha gia' il campo, si RIUSA la riga esistente mantenendone codice ed
+  etichetta; si creano solo i mancanti. Riusati 8: `cpi`, `profilo_cpi`, `data_scelta_cpi`,
+  `data_app_apl`, `stato_assoc_cpi`, `id_corso`, `corso`, `degree`. Nuovi 19.
+- D-3 tipi inferiti dove non indicati: `date` per i "Data *", `integer` Residuo Ore Dote,
+  `decimal` Prezzo, `boolean` per i FLAG, `text` per il resto.
+
+CONSEGUENZA DI D-2 DA NON "CORREGGERE": due etichette leggono come le ha chiamate il legacy,
+non come la lista utente — `data_app_apl` e' "OK app. APL" (lista: "Data App APL") e `corso`
+e' "Corso scelto" (lista: "Corso"). E' il prezzo del riuso, non una svista.
+
+`degree` era `text` nell'import ma la lista lo vuole a menu': `promoteDegree()` lo converte a
+`enum` SOLO se nessuna richiesta ha gia' un valore su quella chiave, altrimenti lo lascia e
+avvisa. Sul DB di sviluppo e' stato promosso (0 opportunita' esistenti).
+
+SCOPING: `Formazione` root (18 campi, ereditati dal ramo) · `Autofinanziato` (+2: Preferenza
+Orario Corso, Prezzo) · `Trattative in Corso` e `Presa Appuntamenti` (7 ciascuna — sono
+fratelli, nessun nodo comune sotto `Consulenza` su cui appenderli, e la radice non deve
+passarli al resto del ramo).
+
+FILE NUOVI: `QualificaCatalog/ContactProcessingAttributeCatalogue.php` (dati puri),
+`QualificaContactProcessingSeeder.php` (step 4-ter di `QualificaCatalogSeeder`),
+`tests/Feature/Products/QualificaContactProcessingSeederTest.php`.
+
+REFACTOR (per non duplicare e per stare nei limiti di dimensione):
+- `Concerns/SeedsCategoryAttributes.php` — creazione attributo + opzioni + assegnazione in un
+  contesto. Estratto da `QualificaCatalogSeeder` (sceso a 405 righe), che ora lo usa passando
+  `AttributeContext::Product`. `seedProductAttributes()` NON esiste piu': si chiama
+  `seedCategoryAttributes($category, $specs, $context)`.
+- `Concerns/SeedsAttributeLayouts.php` — costruzione sezioni/righe del blob + filtro dei codici
+  sugli attributi effettivi. Usato da `QualificaClassroomLayoutSeeder` (sceso a 139) e dal
+  nuovo seeder.
+
+LAYOUT: 18 righe `attribute_layouts` context=opportunity (ramo Formazione 16 + le 2 foglie
+Consulenza), stessa ragione del lato prodotto — `OpportunityAttributeLayoutResolver` legge il
+layout di ogni categoria CONTRIBUENTE, senza risalita agli antenati.
+
+TEST TOCCATO: `QualificaClassroomLayoutSeederTest` contava TUTTI gli `attribute_layouts` (16);
+ora l'asserzione e' scopata a `context = product`, perche' le sezioni opportunity sono righe
+loro sulle stesse categorie.
+
+VERIFICA: nuovo file 7/7 verdi, `QualificaCatalogSeederTest` + `QualificaClassroomLayoutSeederTest`
+21/21, `tests/Feature/Seeding` + template + legacy import + `tests/Feature/RequestManagement`
+284 test con 1 solo rosso, il `SEARCH_MAX_LENGTH` gia' censito fra i 16 preesistenti. Pint pulito.
+
+## PICKER ATTRIBUTI OLTRE LE 100 RIGHE (2026-07-28) — VERDE, NON COMMITTATO
+
+Sintomo riportato dall'utente: in Formazione > "Attributi Prodotto" una riga mostrava `#1`
+invece del nome, con badge tipo "—".
+
+CAUSA (non era un problema di dati, il pivot era corretto): `useAttributeCatalog` scaricava
+UNA finestra di 100 righe ordinate per nome (`ATTRIBUTE_CATALOG_LIMIT`, tetto `MAX_LIMIT`
+dell'endpoint righe generico) e `attribute-assignment-section.tsx` risolveva il nome SOLO da
+quella finestra, con fallback `#${attribute_id}`. Il catalogo nel DB e' a 144 attributi (il
+grosso dall'import legacy q-crm): "Ore complessive" era in posizione 103 e "Stato Aula" 123,
+quindi fuori. I 10 attributi "Dati Aula" hanno spinto oltre la soglia una riga che prima ci
+stava per un soffio (94 -> 103). Il commento nel codice prevedeva gia' il caso: "If the
+catalog ever outgrows 100, switch to a search-driven/paginated source instead of raising this".
+
+FIX (due lati, entrambi necessari):
+- `use-attribute-catalog.ts` — `useAttributeCatalog(search = '')`: il termine va al parametro
+  `search` dell'endpoint righe (quick-search spec 0009, OR-LIKE sulle colonne `searchable` di
+  `AttributeColumnCatalog`, cioe' `code` e `name`), `placeholderData` per non svuotare la
+  tendina mentre si digita. Alzare il limite NON era un'opzione: 100 e' un vincolo backend.
+- `attribute-assignment-section.tsx` — `SearchableSelect` con `filter={false}` +
+  `onSearchChange` (il componente supportava gia' la ricerca server-side, nessuna modifica a
+  `components/ui/`). Le ETICHETTE delle righe assegnate non dipendono piu' dalla finestra:
+  si risolvono da `known` (nuova prop) con fallback su picked/catalogo.
+- `known` viaggia da `product-category-form-body.tsx` (`toKnownAttributes`, legge
+  `mode.category.attributes` che gia' porta `code`/`name`/`type`) attraverso
+  `attribute-assignment-editor.tsx`. In create mode e' la costante vuota hoistata.
+- `picked`: gli attributi scelti in sessione restano etichettati anche cambiando termine di
+  ricerca (la query e' una finestra mobile). Aggiornato nell'event handler, non in un effect.
+
+Nessuna modifica di schema/payload: il form continua a inviare
+`{attribute_id, context, is_required, sort_order}`.
+
+VERIFICA: `src/features/product-categories` 12 file / 69 test verdi (incluso il nuovo caso di
+regressione "labels an assigned attribute the picker window does not carry"), `tsc -b` exit 0,
+ESLint pulito sui 5 file toccati.
+
+## ATTRIBUTI "DATI AULA" SUI PRODOTTI FORMAZIONE (2026-07-28) — VERDE, NON COMMITTATO
+
+Richiesta utente: i campi Formalab di gestione aula sui prodotti della categoria Formazione,
+raggruppati in una sezione di form chiamata "Dati Aula". Solo seeder, nessun cambio ad app/.
+
+DECISIONI UTENTE (vincolanti):
+- D-1 "Docente" e' una RELAZIONE a un referente (`referents`, cardinality `one`), non testo.
+- D-2 "Dati Aula" e' una vera sezione di layout (spec 0062), non solo l'intestazione di un
+  elenco di attributi.
+
+FILE NUOVI:
+- `database/seeders/QualificaCatalog/ClassroomAttributeCatalogue.php` — dati puri (come
+  `SelfFundedCourseCatalogue`): i 10 spec attributo + `SECTION_TITLE = 'Dati Aula'` + `ROWS`
+  (l'accoppiamento due-per-riga) + `codes()`.
+- `database/seeders/QualificaClassroomLayoutSeeder.php` — il layout, chiamato da
+  `QualificaCatalogSeeder` come step 4-bis.
+- `tests/Feature/Products/QualificaClassroomLayoutSeederTest.php`.
+
+CODICI ATTRIBUTO (natural key, da riusare mai reinventare): `teacher` (relation → referents),
+`classroom_status` (enum `open`/`closed` → "Aperta"/"Chiusa"), `course_name`, `course_edition`,
+`course_start_date`, `course_end_date`, `exam_date`, `internship_company`,
+`internship_start_date`, `internship_end_date`. Assegnati TUTTI alla radice `Formazione`,
+contesto `product`: il ramo li eredita (stesso schema di `total_hours`).
+
+PERCHE' UN LAYOUT PER CATEGORIA E NON UNO SULLA RADICE: a differenza dell'assegnazione di un
+attributo, il layout NON si eredita — `AttributeLayoutService::resolveWithFallback` legge la
+categoria esatta, senza risalita agli antenati, e i prodotti vivono nelle foglie
+(`GOL - <Regione>`, `Autofinanziato`). Una sola riga sulla radice non renderizzerebbe da
+nessuna parte. Il seeder scrive quindi 16 righe (radice + 15 discendenti), scope `all`.
+
+PERCHE' ESISTE ANCHE LA SEZIONE "Dati corso": un attributo NON piazzato nel layout finisce
+nella sezione sintetica "altre informazioni" del renderer, che e' collassata di default —
+mettere solo i 10 campi nuovi avrebbe nascosto "Ore complessive" (e "Modalita' di svolgimento"
+su Autofinanziato). Ogni layout e' costruito dagli attributi effettivi DELLA SUA categoria.
+
+NON DISTRUTTIVO: una categoria che ha gia' un layout prodotto configurato (run precedente o
+mano dal configuratore) viene saltata, mai sovrascritta. Attributi via `firstOrCreate` sul
+`code`.
+
+DEBITO NOTO: nella griglia le celle di tipo `relation` mostrano gli ID grezzi (stesso debito
+gia' censito per la 0064) — `teacher` nel form usa il select `referents/for-select` ed e'
+corretto, ma in tabella comparirebbe l'id.
+
+VERIFICA: `tests/Feature/Products/QualificaCatalogSeederTest.php` +
+`QualificaClassroomLayoutSeederTest.php` 21/21 verdi; `tests/Feature/Seeding` +
+`QualificaTemplateSeederTest` + `QualificaLegacyImportSeederTest` 29/29 verdi. Pint pulito.
+Il seeder e' stato eseguito anche sul DB di sviluppo locale.
+
+FUORI SCOPE, SBLOCCATO PERCHE' L'HOOK Stop LO ESIGEVA (debito del task personal-data in
+corso, NON di questa feature): `residence_city_id` era stato aggiunto a `PersonalDataCard`,
+`PersonalDataDraft` e `RequestClientIdentity` senza aggiornare 12 fixture di test, con
+`tsc --noEmit` rosso. Aggiunto il campo alle fixture. Il dodicesimo,
+`request-work-panel.test.tsx`, era gia' a 501 righe (oltre l'hard limit 500 di
+`code-guard.js`) prima di questa sessione: la fixture `panel()` + `FULL_PERMISSIONS` sono
+state estratte in `request-work-panel-fixtures.ts` (dati puri; i `vi.mock` restano nella
+suite che li hoista), file di test sceso a 405 righe, import aliasato
+`workPanel as panel` per non toccare i ~20 call site. ALTRE TRE suite costruiscono a mano
+la stessa fixture (`request-attribution-rewards`, `request-callback-section`,
+`request-attribution-operator-link`): candidate a usare lo stesso modulo, NON migrate qui.
+Verifica: `tsc -b` exit 0, i 12 file di test 74/74 verdi, ESLint pulito.
+
 ## TAB PER CATEGORIA PRODOTTO IN GESTIONE RICHIESTE (2026-07-28) — VERDE, NON COMMITTATO
 
 Spec `docs/specs/0064-request-management-category-tabs.xml` (22 AC, tutti verdi, verificati

@@ -21,6 +21,7 @@ function toClientIdentityPayload(draft: PersonalDataDraft): RequestClientIdentit
     sdi_code: draft.sdi_code,
     birth_date: draft.birth_date,
     birth_city_id: draft.birth_city_id,
+    residence_city_id: draft.residence_city_id,
     // Mirrors the card form's own normalization: an individual always carries
     // a gender (default male), a company carries none.
     gender: draft.type === 'company' ? null : (draft.gender ?? 'male'),

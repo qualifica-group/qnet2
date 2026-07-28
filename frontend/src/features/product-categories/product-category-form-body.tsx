@@ -23,6 +23,7 @@ import {
   type ProductCategoryFormValues,
 } from '@/features/product-categories/use-product-category-form'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
+import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
@@ -58,6 +59,27 @@ function toInheritedAttributes(
 
 /** Hoisted so an opted-out context feeds a stable reference to `toInheritedAttributes`. */
 const EMPTY_ATTRIBUTES: EffectiveAttribute[] = []
+
+/** Hoisted for the same reason, on the create path (no category loaded yet). */
+const EMPTY_KNOWN_ATTRIBUTES: AttributeCatalogEntry[] = []
+
+/**
+ * The name/type the loaded category's own assignments already carry: the
+ * editor labels its rows from here, so an attribute sitting outside the
+ * picker's search window still shows its name instead of a bare `#id`.
+ */
+function toKnownAttributes(mode: ProductCategoryFormMode): AttributeCatalogEntry[] {
+  if (mode.type !== 'edit') {
+    return EMPTY_KNOWN_ATTRIBUTES
+  }
+
+  return mode.category.attributes.map((assignment) => ({
+    id: assignment.attribute_id,
+    code: assignment.code,
+    name: assignment.name,
+    type: assignment.type,
+  }))
+}
 
 /** The `inherits_*_attributes` field names, one per usage context — RHF path and authorization metadata key alike. */
 const INHERITANCE_FIELD = {
@@ -111,6 +133,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
   const parentId = form.watch('parent_id')
   const inheritsProductAttributes = form.watch('inherits_product_attributes')
   const inheritsOpportunityAttributes = form.watch('inherits_opportunity_attributes')
+  const knownAttributes = useMemo(() => toKnownAttributes(mode), [mode])
   const inheritedProductQuery = useEffectiveAttributes(parentId, 'product')
   const inheritedOpportunityQuery = useEffectiveAttributes(parentId, 'opportunity')
   // Opting out is a barrier: that context inherits nothing, so the read-only
@@ -246,6 +269,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                   <AttributeAssignmentEditor
                     value={field.value}
                     onChange={field.onChange}
+                    known={knownAttributes}
                     inherited={inherited}
                     disabled={disabled}
                     // A root category has no ancestry to inherit from: no switch to show.

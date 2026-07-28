@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { useAttributeCatalog } from '@/features/attributes/use-attribute-catalog'
+import { useAttributeCatalog, type AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import { FIELD_TYPE_ICONS } from '@/features/custom-fields/field-type-icons'
 import { DataTypeBadge, InfoTooltip } from '@/features/product-categories/attribute-assignment-row-controls'
 import type {
@@ -15,11 +15,19 @@ import type {
   ProductCategoryInheritedAttribute,
 } from '@/features/product-categories/types'
 
+const EMPTY_CATALOG: AttributeCatalogEntry[] = []
+
 interface AttributeAssignmentSectionProps {
   title: string
   description: string
   /** Already filtered to this section's context. */
   assignments: AttributeAssignmentInput[]
+  /**
+   * Name/type of the attributes the category was LOADED with: the assignment
+   * rows label themselves from here, never from the picker's search window,
+   * which only ever holds one page of a catalogue that outgrew it.
+   */
+  known: AttributeCatalogEntry[]
   /** Already filtered to this section's context. */
   inherited: ProductCategoryInheritedAttribute[]
   /** This context's "inherit from parent" switch, provided by the form; null/undefined on a root category. */
@@ -41,6 +49,7 @@ export function AttributeAssignmentSection({
   title,
   description,
   assignments,
+  known,
   inherited,
   inheritToggle,
   disabled,
@@ -50,8 +59,13 @@ export function AttributeAssignmentSection({
 }: AttributeAssignmentSectionProps) {
   const { t } = useTranslation()
   const [pickerValue, setPickerValue] = useState<number | null>(null)
-  const catalogQuery = useAttributeCatalog()
-  const catalog = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data])
+  const [search, setSearch] = useState('')
+  // Attributes picked during this editing session: the catalogue query is a
+  // moving window (it re-runs on every search term), so a row added under one
+  // term would lose its label under the next one.
+  const [picked, setPicked] = useState<AttributeCatalogEntry[]>(EMPTY_CATALOG)
+  const catalogQuery = useAttributeCatalog(search)
+  const catalog = useMemo(() => catalogQuery.data ?? EMPTY_CATALOG, [catalogQuery.data])
 
   const assignedIds = useMemo(() => new Set(assignments.map((a) => a.attribute_id)), [assignments])
   const pickerOptions = useMemo(
@@ -61,9 +75,18 @@ export function AttributeAssignmentSection({
         .map((attribute) => ({ id: attribute.id, name: attribute.name })),
     [catalog, assignedIds],
   )
-  const catalogById = useMemo(() => new Map(catalog.map((a) => [a.id, a])), [catalog])
+  // Label source, widest first: what the category was loaded with, what has
+  // been picked here, and finally the current search window.
+  const attributeById = useMemo(
+    () => new Map([...known, ...picked, ...catalog].map((a) => [a.id, a])),
+    [known, picked, catalog],
+  )
 
   const handleAdd = (attributeId: number) => {
+    const added = catalog.find((attribute) => attribute.id === attributeId)
+    if (added) {
+      setPicked((current) => [...current, added])
+    }
     onAdd(attributeId)
     setPickerValue(null)
   }
@@ -82,6 +105,10 @@ export function AttributeAssignmentSection({
           value={pickerValue}
           onChange={handleAdd}
           options={pickerOptions}
+          // The catalogue outgrew the endpoint's 100-row window: the term
+          // narrows the query server-side, so the options arrive filtered.
+          filter={false}
+          onSearchChange={setSearch}
           isPending={catalogQuery.isPending}
           isError={catalogQuery.isError}
           onRetry={() => void catalogQuery.refetch()}
@@ -101,7 +128,7 @@ export function AttributeAssignmentSection({
       ) : (
         <ul className="flex flex-col gap-2">
           {assignments.map((assignment) => {
-            const attribute = catalogById.get(assignment.attribute_id)
+            const attribute = attributeById.get(assignment.attribute_id)
             return (
               <li
                 key={assignment.attribute_id}

@@ -124,6 +124,7 @@ trait ValidatesUserProfile
             'personal_data.sdi_code' => ['nullable', 'string', 'max:32'],
             'personal_data.birth_date' => ['nullable', 'date', 'before:today'],
             'personal_data.birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
+            'personal_data.residence_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
             'personal_data.gender' => ['nullable', Rule::enum(GenderEnum::class)],
 
             // Contacts: present key (even empty) is authoritative.
@@ -233,6 +234,9 @@ trait ValidatesUserProfile
             birthDate: $this->input('personal_data.birth_date'),
             birthCityId: $this->filled('personal_data.birth_city_id')
                 ? (int) $this->input('personal_data.birth_city_id')
+                : null,
+            residenceCityId: $this->filled('personal_data.residence_city_id')
+                ? (int) $this->input('personal_data.residence_city_id')
                 : null,
             gender: $this->input('personal_data.gender'),
         );

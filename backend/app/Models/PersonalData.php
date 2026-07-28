@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|null $company_name
  * @property string|null $sdi_code
  * @property int|null $birth_city_id
+ * @property int|null $residence_city_id
  * @property GenderEnum|null $gender
  */
 class PersonalData extends BaseModel
@@ -55,6 +56,7 @@ class PersonalData extends BaseModel
         'sdi_code',
         'birth_date',
         'birth_city_id',
+        'residence_city_id',
         'gender',
     ];
 
@@ -68,6 +70,7 @@ class PersonalData extends BaseModel
         'sdi_code' => 'string',
         'birth_date' => 'date',
         'birth_city_id' => 'int',
+        'residence_city_id' => 'int',
         'gender' => GenderEnum::class,
     ];
 
@@ -103,6 +106,15 @@ class PersonalData extends BaseModel
     public function birthCity(): BelongsTo
     {
         return $this->belongsTo(City::class, 'birth_city_id');
+    }
+
+    /**
+     * The comune of residence, taken from the geo catalogue. Null for a company
+     * card and for an individual whose residence was never captured.
+     */
+    public function residenceCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'residence_city_id');
     }
 
     /*

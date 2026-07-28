@@ -95,6 +95,13 @@ export interface PersonalDataCard {
    * `undefined` = the caller did not load it.
    */
   birth_city?: GeoRef | null
+  residence_city_id: number | null
+  /**
+   * Hydrated comune of residence, present only when the endpoint eager-loaded
+   * the relation (PersonalDataResource `whenLoaded`). `null` = no city set;
+   * `undefined` = the caller did not load it.
+   */
+  residence_city?: GeoRef | null
   gender: Gender | null
   personable_type: string
   personable_id: number
@@ -118,6 +125,7 @@ export interface PersonalDataFields {
   sdi_code?: string | null
   birth_date?: string | null
   birth_city_id?: number | null
+  residence_city_id?: number | null
   gender?: Gender | null
 }
 
@@ -278,6 +286,12 @@ export interface PersonalDataDraft {
    * select can label the current value without searching for it first.
    */
   birth_city?: GeoRef | null
+  residence_city_id: number | null
+  /**
+   * Comune name carried through from the server row (via `cardToDraft`) so the
+   * select can label the current value without searching for it first.
+   */
+  residence_city?: GeoRef | null
   gender: Gender | null
   contacts: ContactDraft[]
   addresses: AddressDraft[]

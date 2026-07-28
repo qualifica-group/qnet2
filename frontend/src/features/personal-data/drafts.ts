@@ -55,6 +55,7 @@ export function emptyPersonalDataDraft(
     sdi_code: null,
     birth_date: null,
     birth_city_id: null,
+    residence_city_id: null,
     gender: type === 'company' ? null : 'male',
     contacts: [],
     addresses: [],
@@ -118,6 +119,8 @@ export function cardToDraft(card: PersonalDataCard): PersonalDataDraft {
     birth_date: card.birth_date ? card.birth_date.slice(0, 10) : null,
     birth_city_id: card.birth_city_id,
     birth_city: card.birth_city,
+    residence_city_id: card.residence_city_id,
+    residence_city: card.residence_city,
     // Mirror emptyPersonalDataDraft: an individual always carries a gender
     // (default male; backfills a legacy null), a company carries none.
     gender: card.gender ?? (card.type === 'company' ? null : 'male'),
@@ -169,6 +172,7 @@ export interface PersonalDataPayload {
   sdi_code?: string | null
   birth_date?: string | null
   birth_city_id?: number | null
+  residence_city_id?: number | null
   gender?: PersonalDataDraft['gender']
   contacts?: PersonalDataContactPayload[]
   addresses?: PersonalDataAddressPayload[]
@@ -215,6 +219,7 @@ export function draftToPayload(draft: PersonalDataDraft): PersonalDataPayload {
     sdi_code: draft.sdi_code,
     birth_date: draft.birth_date,
     birth_city_id: draft.birth_city_id,
+    residence_city_id: draft.residence_city_id,
     gender: draft.gender,
     contacts: draft.contacts.map(contactToPayload),
     addresses: draft.addresses.map(addressToPayload),
@@ -232,6 +237,7 @@ const SCALAR_PAYLOAD_KEYS = [
   'sdi_code',
   'birth_date',
   'birth_city_id',
+  'residence_city_id',
   'gender',
 ] as const
 

@@ -32,6 +32,8 @@ export function buildPersonalDataSchema(t: TFunction) {
       birth_date: z.string().optional(),
       // Individual only: the comune of birth, referenced by id (geo catalogue).
       birth_city_id: z.number().nullable().optional(),
+      // Individual only: the comune of residence, referenced by id.
+      residence_city_id: z.number().nullable().optional(),
       // Individual only (default male); a company card carries no gender.
       gender: z.enum(['male', 'female']).optional(),
     })

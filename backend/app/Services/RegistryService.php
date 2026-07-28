@@ -40,8 +40,10 @@ class RegistryService
         'managers',
         'personalData.contacts',
         'personalData.addresses',
-        // The comune of birth, so PersonalDataResource can emit its name.
+        // The comuni of birth and residence, so PersonalDataResource can emit
+        // their names.
         'personalData.birthCity',
+        'personalData.residenceCity',
         // Geo names for the full address display (AddressResource emits them
         // via whenLoaded); the raw *_id columns already ship without these.
         'personalData.addresses.city',

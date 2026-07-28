@@ -113,10 +113,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
 
 // ---------------------------------------------------------------------------
 // AC-001 (spec 0008) — the catalogue's `users` entry carries the 4 existing
-// keys AND the 12 personal_data.* keys, with the exact type/group contract.
+// keys AND the 13 personal_data.* keys, with the exact type/group contract.
 // ---------------------------------------------------------------------------
 
-it('spec 0008/0015: users.fields contains exactly the 4 existing + 12 personal_data.* + 12 employment.* keys, with the contracted type/group', function () {
+it('spec 0008/0015: users.fields contains exactly the 4 existing + 13 personal_data.* + 12 employment.* keys, with the contracted type/group', function () {
     $actor = actorWithRoleAbilities(['create']);
     Sanctum::actingAs($actor);
 
@@ -129,7 +129,7 @@ it('spec 0008/0015: users.fields contains exactly the 4 existing + 12 personal_d
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
-        'personal_data.birth_city_id', 'personal_data.gender',
+        'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
         // spec 0015 — the 12 employment.* keys.
         'employment.is_manager', 'employment.job_description', 'employment.reports_to_id',

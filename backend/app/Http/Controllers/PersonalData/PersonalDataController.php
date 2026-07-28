@@ -44,7 +44,7 @@ class PersonalDataController extends BaseApiController
         try {
             $this->authorize('viewAny', PersonalData::class);
 
-            $card = $request->owner()->personalData()->with(['contacts', 'addresses', 'birthCity'])->first();
+            $card = $request->owner()->personalData()->with(['contacts', 'addresses', 'birthCity', 'residenceCity'])->first();
 
             return $this->ok($card ? new PersonalDataResource($card) : null);
         } catch (Throwable $exception) {
@@ -61,7 +61,7 @@ class PersonalDataController extends BaseApiController
         try {
             $this->authorize('view', $personalData);
 
-            $personalData->load(['contacts', 'addresses', 'birthCity']);
+            $personalData->load(['contacts', 'addresses', 'birthCity', 'residenceCity']);
 
             return $this->ok(new PersonalDataResource($personalData));
         } catch (Throwable $exception) {
@@ -95,7 +95,7 @@ class PersonalDataController extends BaseApiController
 
             $card = $this->service->update($personalData, $request->toData());
 
-            return $this->ok(new PersonalDataResource($card->load(['contacts', 'addresses', 'birthCity'])));
+            return $this->ok(new PersonalDataResource($card->load(['contacts', 'addresses', 'birthCity', 'residenceCity'])));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['personal_data' => $personalData->id]);
         }
