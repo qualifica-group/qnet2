@@ -25,6 +25,8 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { assignRequestOperators, deleteRequest } from '@/features/request-management/api'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
+import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
+import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 
 /**
@@ -85,6 +87,8 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
 export function RequestManagementTable() {
   const { t } = useTranslation()
   const { can } = useAbilities()
+
+  const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -256,9 +260,20 @@ export function RequestManagementTable() {
         }
       />
 
+      <RequestManagementCategoryTabs
+        categories={categories}
+        selectedCategoryId={selectedCategoryId}
+        onSelect={setCategoryId}
+      />
+
       <TableView
+        // Keyed by the selection (D-4): switching tabs remounts the whole
+        // table so every client-side state (search, filters, layout) restarts
+        // from the freshly-scoped config's defaults instead of carrying over.
+        key={selectedCategoryId ?? 'all'}
         ref={tableRef}
         domain={REQUEST_MANAGEMENT_DOMAIN}
+        scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
         renderers={requestManagementColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

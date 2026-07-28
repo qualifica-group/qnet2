@@ -75,6 +75,35 @@ describe('resolveCellEditorSpec', () => {
     })
   })
 
+  // Spec 0064 AC-022: an `attr.<code>` enum attribute (`source: 'attribute'`,
+  // `editor: 'select'`) resolves through the very same rich-select editor as
+  // any other `select` column — the dynamic id carries no special case.
+  it('resolves an attribute column declaring `editor: "select"` to the same popup listbox', () => {
+    const options: SelectOption[] = [{ value: 'a', label: 'Opzione A' }]
+    const column = stubColumn({
+      id: 'attr.tipo_corso',
+      type: 'text',
+      source: 'attribute',
+      editor: 'select',
+      options,
+    })
+    const spec = resolveCellEditorSpec(column.editor as CellEditorKind)
+    expect(spec?.cellEditor).toBe(SelectCellEditor)
+    expect(spec?.cellEditorParams?.(column)).toEqual({ columnId: 'attr.tipo_corso', options })
+  })
+
+  // Spec 0064: the new `date` kind — a Product Category attribute of type
+  // `date` (no time component) reuses the `datetime` popup picker, told to
+  // render `type="date"` via `dateOnly`.
+  it('maps date to the same popup picker as datetime, with dateOnly on', () => {
+    const spec = resolveCellEditorSpec('date')
+    expect(spec?.cellEditor).toBe(DateTimeCellEditor)
+    expect(spec?.cellEditorPopup).toBe(true)
+    expect(spec?.cellEditorParams?.(stubColumn({ id: 'attr.data_inizio', type: 'text' }))).toEqual({
+      dateOnly: true,
+    })
+  })
+
   it('drops scalar options from a select column instead of coercing them', () => {
     const spec = resolveCellEditorSpec('select')
     const params = spec?.cellEditorParams?.(

@@ -22,7 +22,7 @@ trait AppliesSetFilter
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyFilter(Builder $query, string $jsonKey, array $filter): void
+    public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void
     {
         $values = $filter['values'] ?? null;
 
@@ -40,13 +40,13 @@ trait AppliesSetFilter
             return;
         }
 
-        $column = $this->jsonColumn($jsonKey);
+        $path = $this->jsonColumn($column, $jsonKey);
 
-        $query->where(function (Builder $group) use ($column, $clean): void {
-            $group->whereIn($column, $clean);
+        $query->where(function (Builder $group) use ($path, $clean): void {
+            $group->whereIn($path, $clean);
 
             foreach ($clean as $value) {
-                $group->orWhereJsonContains($column, $value);
+                $group->orWhereJsonContains($path, $value);
             }
         });
     }

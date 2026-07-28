@@ -175,7 +175,10 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
                 <SheetTitle>{t(`${ns}.detail.title`)}</SheetTitle>
                 <SheetDescription>{t(`${ns}.detail.subtitle`)}</SheetDescription>
               </SheetHeader>
-              <DetailScreen id={sheetState.row.id} />
+              <DetailScreen
+                id={sheetState.row.id}
+                onEdit={() => setSheetState({ kind: 'edit', row: sheetState.row })}
+              />
             </>
           )}
 

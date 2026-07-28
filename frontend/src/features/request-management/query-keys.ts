@@ -11,4 +11,6 @@ export const requestManagementKeys = {
    * fetched.
    */
   panel: (id: number | null) => ['request-management', 'panel', id] as const,
+  /** Query key of the Product Category tab strip (spec 0064). */
+  categories: () => ['request-management', 'categories'] as const,
 }

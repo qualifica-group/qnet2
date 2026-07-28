@@ -12,7 +12,7 @@
 import type { ColDef, EditableCallbackParams, ICellRendererParams } from 'ag-grid-community'
 import appI18n from '@/i18n'
 import { resolveCellEditorSpec, type CellEditorKind } from '@/components/data-table/cell-editor-registry'
-import { formatBooleanFilterValue } from '@/components/data-table/column-filters'
+import { formatBadgeFilterValue, formatBooleanFilterValue } from '@/components/data-table/column-filters'
 import { BadgeCell } from '@/features/table/cell-renderers'
 import type { TableColumn, TableRow } from '@/features/table/types'
 
@@ -38,12 +38,28 @@ function formatCustomNumber(value: unknown): string {
 }
 
 /**
+ * Whether a column is one of the dynamic, backend-driven kinds that carry no
+ * per-id renderer: `custom.<key>` (spec 0021) or `attr.<code>` (spec 0064,
+ * request-management's category attributes). Both share the same generic
+ * formatting fallbacks below.
+ */
+function isDynamicColumn(column: TableColumn): boolean {
+  return column.source === 'custom' || column.source === 'attribute'
+}
+
+/**
  * Default cell value formatter for a column, when no cell renderer applies.
- * `tags` (native) joins the array for display. `source:'custom'` columns get
- * a formatter picked by `type` — boolean and number are the two custom types
- * that need one; enum (badge) and text/relation are handled by
- * `resolveCellRenderer`/plain text respectively. Native columns of those
- * types are untouched (the `source === 'custom'` guard).
+ * `tags` maps each raw value (a backend `code`/id) through the column's own
+ * `badges`/`enumKey` metadata when present — a multiselect enum attribute
+ * (spec 0064) or custom field carries option codes, not display labels, so
+ * joining them raw would show gibberish. A column with no `badges` (native
+ * `tags` such as roles, already display strings; a `relation` many-to-many,
+ * which the backend never resolves to a label catalog) falls through
+ * unchanged — `formatBadgeFilterValue` returns the raw value verbatim when it
+ * finds no match. Dynamic columns (`isDynamicColumn`) additionally get a
+ * formatter for `boolean`/`number`; enum (badge) and text/relation are handled
+ * by `resolveCellRenderer`/plain text respectively. Native columns of those
+ * types are untouched (the `isDynamicColumn` guard).
  */
 export function defaultValueFormatter(
   column: TableColumn,
@@ -51,12 +67,14 @@ export function defaultValueFormatter(
 ): ((value: unknown) => string) | undefined {
   if (column.type === 'tags') {
     return (value: unknown): string =>
-      Array.isArray(value) ? value.join(', ') : String(value ?? '')
+      Array.isArray(value)
+        ? value.map((item) => formatBadgeFilterValue(item, column)).join(', ')
+        : String(value ?? '')
   }
-  if (column.source === 'custom' && column.type === 'boolean') {
+  if (isDynamicColumn(column) && column.type === 'boolean') {
     return (value: unknown): string => formatBooleanFilterValue(value, translate)
   }
-  if (column.source === 'custom' && column.type === 'number') {
+  if (isDynamicColumn(column) && column.type === 'number') {
     return formatCustomNumber
   }
   return undefined
@@ -64,13 +82,16 @@ export function defaultValueFormatter(
 
 /**
  * Whether a column renders as the generic enum badge fallback: native `badge`
- * columns and custom `enum` columns (`source:'custom'`) share the same
- * backend-supplied badge metadata shape (`badges`/`enumKey`), so both use the
- * same agnostic `BadgeCell` — no per-id renderer needed even though the
- * custom column id is dynamic.
+ * columns and dynamic `enum` columns (`source:'custom'` or `source:'attribute'`,
+ * spec 0064) share the same backend-supplied badge metadata shape
+ * (`badges`/`enumKey`), so both use the same agnostic `BadgeCell` — no per-id
+ * renderer needed even though the dynamic column id is, well, dynamic.
+ * Deliberately excludes `relation` columns: the backend emits no `badges` for
+ * them (no static option catalog server-side), so they stay on the plain
+ * text/`tags` fallback above regardless of source.
  */
 function isEnumBadgeColumn(column: TableColumn): boolean {
-  return column.type === 'badge' || (column.source === 'custom' && column.type === 'enum')
+  return column.type === 'badge' || (isDynamicColumn(column) && column.type === 'enum')
 }
 
 /**

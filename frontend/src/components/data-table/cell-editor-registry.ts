@@ -21,7 +21,7 @@ import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ColumnType, TableColumn, TableRow } from '@/features/table/types'
 
 /** The lookup key: a column's declared `editor` when present, else its `type` (spec 0054 D-1, 0055 D-1). */
-export type CellEditorKind = ColumnType | 'relation' | 'select' | 'multiselect'
+export type CellEditorKind = ColumnType | 'relation' | 'select' | 'multiselect' | 'date'
 
 /** cellEditor (a built-in name, or a custom React component) + optional per-column params, resolved once per colDef. */
 export interface CellEditorSpec {
@@ -80,6 +80,14 @@ export const CELL_EDITOR_REGISTRY: Record<CellEditorKind, CellEditorSpec> = {
   // it instead of retyping the raw `YYYY-MM-DDTHH:mm` string.
   datetime: {
     cellEditor: DateTimeCellEditor as ComponentType<CustomCellEditorProps>,
+    cellEditorPopup: true,
+  },
+  // Spec 0064: a Product Category attribute of type `date` (no time
+  // component). Same popup picker as `datetime`, told to render `type="date"`
+  // and emit `YYYY-MM-DD` via the `dateOnly` param.
+  date: {
+    cellEditor: DateTimeCellEditor as ComponentType<CustomCellEditorProps>,
+    cellEditorParams: () => ({ dateOnly: true }),
     cellEditorPopup: true,
   },
   boolean: { cellEditor: 'agCheckboxCellEditor' },

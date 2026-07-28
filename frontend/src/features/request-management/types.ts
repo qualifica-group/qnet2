@@ -356,3 +356,16 @@ export interface AssignRequestOperatorsPayload {
 export interface AssignRequestOperatorsResult {
   assigned: number
 }
+
+/**
+ * One Product Category tab (spec 0064), as returned by
+ * `GET /api/request-management/product-categories`: only categories with at
+ * least one request in the actor's own scope, ordered by `name`.
+ * `requests_count` may sum to more than the "Tutte" total, since a request
+ * with several product lines counts under every one of its categories (D-2).
+ */
+export interface RequestManagementProductCategory {
+  id: number
+  name: string
+  requests_count: number
+}

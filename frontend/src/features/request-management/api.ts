@@ -5,6 +5,7 @@ import type {
   AssignRequestOperatorsPayload,
   AssignRequestOperatorsResult,
   CreateRequestPayload,
+  RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
   UpdateRequestWorkPayload,
@@ -74,4 +75,16 @@ export async function assignRequestOperators(
     payload,
   )
   return data.data
+}
+
+/**
+ * Fetches the Product Category tab strip (spec 0064): only categories with at
+ * least one request in the actor's own scope (`request-management.viewAny`),
+ * ordered by name.
+ */
+export async function fetchRequestManagementCategories(): Promise<RequestManagementProductCategory[]> {
+  const { data } = await apiClient.get<ApiResponse<{ categories: RequestManagementProductCategory[] }>>(
+    '/request-management/product-categories',
+  )
+  return data.data.categories
 }

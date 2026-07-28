@@ -297,4 +297,30 @@ describe('createColumnValuesGetter', () => {
     ).not.toThrow()
     await waitFor(() => expect(params.success).toHaveBeenCalledWith([]))
   })
+
+  // Spec 0064: an `attr.<code>` column's set filter needs the selected
+  // category so the backend can resolve it against that category's attributes.
+  it('forwards productCategoryId when given (spec 0064)', async () => {
+    fetchValuesMock.mockResolvedValue({ values: ['a'], hasMore: false })
+    const params = stubValuesParams({})
+
+    createColumnValuesGetter('request-management', 'attr.durata_corso', vi.fn(), 12)(params)
+    await waitFor(() => expect(params.success).toHaveBeenCalled())
+
+    expect(fetchValuesMock).toHaveBeenCalledWith('request-management', {
+      columnId: 'attr.durata_corso',
+      filterModel: {},
+      productCategoryId: 12,
+    })
+  })
+
+  it('omits productCategoryId entirely when not given', async () => {
+    fetchValuesMock.mockResolvedValue({ values: [], hasMore: false })
+    const params = stubValuesParams({})
+
+    createColumnValuesGetter('users', 'email', vi.fn())(params)
+    await waitFor(() => expect(params.success).toHaveBeenCalled())
+
+    expect(fetchValuesMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
+  })
 })

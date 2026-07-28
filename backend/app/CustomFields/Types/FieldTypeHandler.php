@@ -75,34 +75,36 @@ interface FieldTypeHandler
 
     /**
      * Apply a whitelisted SSRM filter payload (identical shape to
-     * App\Services\Table\FilterApplier) against
-     * `custom_field_values.values-><jsonKey>`. Bound parameters only —
-     * `$jsonKey` is always the allow-listed definition key resolved by the
-     * caller, never raw request input (backend.md §8 / security.md §8:
-     * whereRaw/orderByRaw on input is a SQL injection sink).
+     * App\Services\Table\FilterApplier) against `$column-><jsonKey>`. Bound
+     * parameters only — BOTH `$column` (the base JSON column, e.g.
+     * `custom_field_values.values` or `opportunities.attribute_values`) and
+     * `$jsonKey` are always resolved server-side by the caller (an
+     * allow-listed column/definition key), never raw request input
+     * (backend.md §8 / security.md §8: whereRaw/orderByRaw on input is a SQL
+     * injection sink).
      *
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyFilter(Builder $query, string $jsonKey, array $filter): void;
+    public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void;
 
     /**
-     * Apply ORDER BY on `custom_field_values.values-><jsonKey>`.
+     * Apply ORDER BY on `$column-><jsonKey>`.
      *
      * @param  Builder<Model>  $query
      */
-    public function applySort(Builder $query, string $jsonKey, string $direction): void;
+    public function applySort(Builder $query, string $column, string $jsonKey, string $direction): void;
 
     /**
-     * Distinct values under `custom_field_values.values-><jsonKey>` across the
-     * given (already entity_type-scoped) query, capped and flattened whether
-     * the field is single- or multi-valued. Powers the Excel-like set
-     * filter's `/values` endpoint.
+     * Distinct values under `$column-><jsonKey>` across the given
+     * (already entity/domain-scoped) query, capped and flattened whether the
+     * field is single- or multi-valued. Powers the Excel-like set filter's
+     * `/values` endpoint.
      *
      * @param  Builder<Model>  $query
      * @return array<int, scalar>
      */
-    public function distinctValues(Builder $query, string $jsonKey): array;
+    public function distinctValues(Builder $query, string $column, string $jsonKey): array;
 
     /**
      * The type-specific fragment of the FieldDescriptor emitted by

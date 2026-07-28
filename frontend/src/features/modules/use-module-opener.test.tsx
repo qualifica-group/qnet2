@@ -35,7 +35,12 @@ vi.mock('@/features/modules/module-registry', () => ({
           basePath: '/projects',
           defaultMode: 'modal',
           labelKey: 'navigation.projects',
-          DetailScreen: ({ id }: { id: number }) => <div>detail-{id}</div>,
+          DetailScreen: ({ id, onEdit }: { id: number; onEdit?: () => void }) => (
+            <div>
+              <div>{`detail-${id}`}</div>
+              {onEdit && <button onClick={onEdit}>detail-edit</button>}
+            </div>
+          ),
           FormScreen: ({
             mode,
           }: {
@@ -203,6 +208,21 @@ describe('useModuleOpener', () => {
       fireEvent.click(screen.getByRole('button', { name: 'view' }))
 
       expect(screen.getByText('detail-5')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it("view's onEdit swaps the SAME Sheet to the edit form for that row, never a second Sheet", () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+      expect(screen.getByText('detail-5')).toBeInTheDocument()
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'detail-edit' }))
+
+      expect(screen.queryByText('detail-5')).not.toBeInTheDocument()
+      expect(screen.getByText('form-edit')).toBeInTheDocument()
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
     })
   })

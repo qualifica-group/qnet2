@@ -29,7 +29,7 @@ import type { OpportunityDetail } from '@/features/opportunities/types'
  * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
  * `OpportunitiesTable`'s inline loaders, which the rewire removed.
  */
-export function OpportunityDetailScreen({ id }: ModuleDetailScreenProps) {
+export function OpportunityDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: opportunity,
@@ -52,7 +52,7 @@ export function OpportunityDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <OpportunityDetailView opportunity={opportunity} />
+  return <OpportunityDetailView opportunity={opportunity} onEdit={onEdit} />
 }
 
 /**
@@ -184,4 +184,5 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.opportunities',
   DetailScreen: OpportunityDetailScreen,
   FormScreen: OpportunityFormScreen,
+  detailOwnsEditAction: true,
 }

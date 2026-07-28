@@ -56,18 +56,22 @@ let capturedBulkActions:
   | ((selection: { ids: number[]; rows: TableRow[] }) => BulkAction[])
   | null = null
 
+let capturedScope: { productCategoryId?: number } | undefined
+
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void; clearSelection: () => void },
     {
       domain: string
+      scope?: { productCategoryId?: number }
       onAction: RowActionHandler
       getBulkActions?: (selection: { ids: number[]; rows: TableRow[] }) => BulkAction[]
     }
-  >(function TableViewStub({ domain, onAction, getBulkActions }, ref) {
+  >(function TableViewStub({ domain, scope, onAction, getBulkActions }, ref) {
       useImperativeHandle(ref, () => ({ refresh: () => {}, clearSelection: () => {} }))
       capturedOnAction = onAction
       capturedBulkActions = getBulkActions ?? null
+      capturedScope = scope
       return (
         <div role="region" aria-label={`table-${domain}`}>
           <button type="button" onClick={() => onAction(action('view'), ROW)}>
@@ -129,11 +133,13 @@ function panel(): RequestWorkPanelWithPermissions {
 const fetchRequestWorkPanelMock = vi.fn()
 const deleteRequestMock = vi.fn()
 const assignRequestOperatorsMock = vi.fn()
+const fetchRequestManagementCategoriesMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: (...args: unknown[]) => fetchRequestWorkPanelMock(...args),
   updateRequestWork: vi.fn(),
   deleteRequest: (...args: unknown[]) => deleteRequestMock(...args),
   assignRequestOperators: (...args: unknown[]) => assignRequestOperatorsMock(...args),
+  fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
 
 function renderTable() {
@@ -156,16 +162,20 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  window.localStorage.clear()
   requestManagementOpenMode = 'page'
   navigateMock.mockReset()
   capturedOnAction = null
   capturedBulkActions = null
+  capturedScope = undefined
   deleteRequestMock.mockReset()
   deleteRequestMock.mockResolvedValue(undefined)
   assignRequestOperatorsMock.mockReset()
   assignRequestOperatorsMock.mockResolvedValue({ assigned: 1 })
   fetchRequestWorkPanelMock.mockReset()
   fetchRequestWorkPanelMock.mockResolvedValue(panel())
+  fetchRequestManagementCategoriesMock.mockReset()
+  fetchRequestManagementCategoriesMock.mockResolvedValue([])
 })
 
 describe('RequestManagementTable (spec 0049 AC-060)', () => {
@@ -225,5 +235,70 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
     fireEvent.click(screen.getByText('trigger-bulk-assign'))
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Assign operators')
+  })
+})
+
+/**
+ * Spec 0064: the category tab strip above the table, and its wiring into
+ * `<TableView scope>`. `<TableView>` stays stubbed (framework piece outside
+ * this microtask's ownership boundary here); the strip itself, and the scope
+ * it produces, are the real production components.
+ */
+describe('RequestManagementTable category tabs (spec 0064)', () => {
+  it('mounts "Tutte" selected by default, plus one tab per returned category, with no scope on the table (AC-019)', async () => {
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
+    ])
+    renderTable()
+
+    expect(await screen.findByRole('tab', { name: /GOL - Lombardia/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true')
+    expect(capturedScope).toBeUndefined()
+  })
+
+  it('scopes the table to the selected category, and clears the scope back on "Tutte" (AC-020)', async () => {
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
+    ])
+    renderTable()
+    const categoryTab = await screen.findByRole('tab', { name: /GOL - Lombardia/ })
+
+    fireEvent.mouseDown(categoryTab)
+
+    await waitFor(() => expect(capturedScope).toEqual({ productCategoryId: 12 }))
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'All' }))
+
+    await waitFor(() => expect(capturedScope).toBeUndefined())
+  })
+
+  it('survives a remount of the page (localStorage persistence, AC-021)', async () => {
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
+    ])
+    const first = renderTable()
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: /GOL - Lombardia/ }))
+    await waitFor(() => expect(capturedScope).toEqual({ productCategoryId: 12 }))
+    first.unmount()
+
+    renderTable()
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /GOL - Lombardia/ })).toHaveAttribute('aria-selected', 'true'),
+    )
+    expect(capturedScope).toEqual({ productCategoryId: 12 })
+  })
+
+  it('falls back to "Tutte" without error when the persisted category is gone from the live list', async () => {
+    window.localStorage.setItem('request-management.category-tab', '999')
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
+    ])
+
+    renderTable()
+
+    await screen.findByRole('tab', { name: /GOL - Lombardia/ })
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true')
+    expect(capturedScope).toBeUndefined()
   })
 })

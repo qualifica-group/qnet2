@@ -2,6 +2,155 @@
 
 > Injected at session start. Update at every green state.
 
+## TAB PER CATEGORIA PRODOTTO IN GESTIONE RICHIESTE (2026-07-28) — VERDE, NON COMMITTATO
+
+Spec `docs/specs/0064-request-management-category-tabs.xml` (22 AC, tutti verdi, verificati
+dal `verifier` con rerun su branch base: ZERO regressioni). Tab dinamici sopra la tabella
+Gestione Richieste, colonne attributo per categoria, tab "Tutte".
+
+DECISIONI UTENTE (vincolanti, non reinterpretarle):
+- D-1 un tab per ogni categoria ESATTA presente nelle richieste visibili, non per radice.
+- D-2 una richiesta con piu' product line compare in OGNI tab corrispondente (EXISTS).
+  I conteggi dei tab possono quindi sommare a piu' del totale di "Tutte": non e' un bug.
+- D-3 il tab "Tutte" mostra SOLO le colonne native. Zero colonne attributo.
+- D-4 preferenze e filtri restano per dominio (`unique(user_id, domain)` invariato):
+  nessuna migrazione. Al cambio tab la griglia si rimonta via `key` e riparte dai default.
+
+NOMI DA RISPETTARE:
+- Prefisso colonna `attr.<code>` (gemello del `custom.<key>` della spec 0021). Il `code` e'
+  `attributes.code`, mai l'id.
+- Backend nuovi: `App\Tables\RequestManagement\{AttributeScopedTableDefinition,
+  AttributeColumnBuilder, AttributeScopeResolver, AttributeDateFilterApplier}`,
+  `Concerns\WritesAttributeCells`, `App\Services\RequestManagement\RequestCategoryTabsResolver`,
+  `App\Http\Controllers\RequestManagement\ProductCategoryTabsController`,
+  `App\Http\Requests\Table\TableColumnsRequest`.
+- Frontend nuovi: `use-request-management-categories.ts`, `use-request-management-category-preference.ts`
+  (localStorage, chiave `request-management.category-tab`), `use-request-management-category-tab.ts`,
+  `request-management-category-tabs.tsx`. `TableColumn.source` ora e' `'custom' | 'attribute'`.
+- Endpoint: `GET /api/request-management/product-categories`; parametro `product_category_id`
+  su `/columns`, `productCategoryId` su `/rows` e `/values`; `column: "attr.<code>"` sul PATCH.
+
+M1 HA TOCCATO LA SPEC 0021: i metodi grid-side di `FieldTypeHandler` (`applyFilter`,
+`applySort`, `distinctValues`) ora ricevono anche il base path della colonna JSON, perche' gli
+attributi vivono su `opportunities.attribute_values` e i custom field su
+`custom_field_values.values`. Era l'alternativa al duplicare la logica di 13 tipi. Comportamento
+dei custom field invariato (suite 0021 verde identica).
+
+TRE BUG REALI EMERSI IN IMPLEMENTAZIONE (non deducibili dalla spec):
+1. `TableCellUpdateService` rimappa `columnId` -> `editableField` PRIMA di `updateCell()`: per
+   `attr.<code>` il code si perdeva. Risolto leggendo la `column` originale dalla request.
+2. Collisione di trait su `updateCell`/`editableColumnIds` fra `DelegatesUnaugmentedTableMethods`
+   e `WritesAttributeCells`, risolta con `insteadof`.
+3. `CategoryHierarchy::effectiveAttributes()` ordina root-first ma non per `code` a parita' di
+   `sort_order`: re-sort esplicito `[sort_order, code]` in `AttributeScopeResolver`.
+
+FILTRO DATA: `AttributeDateFilterApplier` gestisce il payload `agDateColumnFilter`
+(`dateFrom`/`dateTo`) sul path JSON. Il limite superiore e' ESCLUSIVO sull'inizio del giorno
+successivo, mai un letterale `23:59`: con un `23:59` i valori `datetime` con secondi
+sfuggirebbero in silenzio. I `FieldTypeHandler` `DateFieldType`/`DateTimeFieldType` NON sono
+stati toccati (servono la 0021 con filtro testuale): la diramazione e' in
+`AttributeScopedTableDefinition::applyDerivedFilter()`.
+
+DEBITO NOTO, DA DECIDERE:
+- Attributi `relation` (one e many): la cella mostra gli ID GREZZI, non le etichette. Il
+  contratto congelato prometteva `badges` per `relation` multi, il backend non li emette (non
+  esiste catalogo statico di opzioni per una relation) e il frontend e' coerentemente allineato.
+  Esiste gia' un precedente riusabile: `CustomFieldAwareTableDefinition` idrata le label delle
+  relation via `CustomFieldRelationLabelResolver`. Serve una decisione: idratare allo stesso
+  modo (cambia la shape di riga per le relation) oppure correggere il testo della spec.
+- `AttributeScopedTableDefinition.php` e' a 425 righe: sopra il soft limit 300, sotto l'hard
+  limit 500. Candidato a split.
+
+RUMORE PREESISTENTE, CENSITO CORRETTAMENTE (le lane lo avevano sottostimato a 7): la suite
+backend ha **16 fallimenti preesistenti** sul branch base, non 7 — 11 test `*SecurityTest` di
+navigazione, 2 `MigrationRegistryTest`, 1 `AbstractMigrationSourcePreviewTest`, la regressione
+VAT nota e il mismatch `SEARCH_MAX_LENGTH`. Frontend: 3 in `cell-renderers.test.tsx` (leak del
+singleton i18n interno a quel file). Nessuno di questi appartiene alla 0064.
+
+VERIFICA: backend 4030 test / 4013 verdi; i 4 file di test della feature 49/49. Frontend
+2538 test, `tsc --noEmit` pulito. Pint ed ESLint puliti sui file della feature.
+
+## SCHEDA OPPORTUNITA' RIFATTA (2026-07-28) — VERDE, NON COMMITTATO
+
+Rifacimento completo della vista dettaglio Opportunita' come record page CRM in sola
+lettura. Richiesta utente con screenshot del gestionale legacy come riferimento.
+
+NUOVO KIT CONDIVISO: `frontend/src/components/detail/record-panel.tsx` (162 righe).
+Esporta `RecordCanvas, RecordCard, RecordCardHeader, RecordStatStrip, RecordStat,
+RecordSectionsGrid, RecordSection, RecordFieldList, RecordField, RecordMeta`.
+E' il GEMELLO di `detail-panel.tsx`, non il suo sostituto: `detail-panel.tsx` resta
+invariato e continua a servire users/companies/roles/registries/referents/products.
+`DetailEmpty` (em dash app-wide) si continua a importare da `detail-panel.tsx`.
+
+PERCHE' CONTAINER QUERY E NON BREAKPOINT: `OpportunityDetailScreen` e' montato in DUE
+contesti — il Sheet ridimensionabile (min 380px, default 640px, `defaultMode` resta
+`OPEN_MODE_MODAL`) e la pagina `/opportunities/:id`. Un breakpoint viewport leggerebbe
+la finestra, non il pannello. Precedente seguito: `request-work-panel.tsx`.
+Scala superfici: canvas `bg-surface` (rung 2), card `bg-card` (rung 3), tinta
+`bg-muted/40` sulla striscia indicatori (velo, non rung). `RecordStat` NON usa
+`components/ui/stat-card.tsx` perche' quello incapsula una `Card` -> card su card.
+
+STRUTTURA (decisione utente: UN blocco unico in alto, nessuna colonna laterale che
+spezzi l'entita', NESSUN segnaposto vuoto per moduli futuri):
+`RecordCanvas` > una `RecordCard` (header identita' + striscia KPI + griglia sezioni)
+> card collaborazione a tab > `RecordMeta` (created/updated). I moduli futuri si
+aggiungono come card nello stack, senza toccare il layout.
+File: `opportunity-detail.tsx` (orchestrazione), `-header.tsx`, `-sections.tsx`,
+`-attributes.tsx`.
+
+CARD COLLABORAZIONE — Note | Documenti | Cronologia, copiata da
+`request-work-collaboration.tsx` su richiesta esplicita dell'utente.
+IL FATTO CHE LA RENDE POSSIBILE SENZA BACKEND: `RequestManagementNotable::modelClass()`
+ritorna `App\Models\Opportunity::class`, e i documenti usano l'alias `'opportunity'`.
+Note e allegati sono GIA' agganciati a questo stesso record — `panel.id` in Gestione
+Richieste E' l'id dell'opportunita' (0049 D-1). Quindi `entityId={opportunity.id}`
+raggiunge lo STESSO thread. Nessuna voce nuova in `config/notes.php`.
+Gate DIVERSI per tab, di proposito:
+- Note: `can('request-management.view')`. Il server richiede in piu' `viewAll` OPPURE
+  essere il GA2 di quell'opportunita' (`RequestManagementNotable::authorizeRead`) —
+  il client non puo' saperlo, `NotesSection` gestisce il proprio errore.
+- Documenti: `permissions.actions.view_documents` (gate dell'OPPORTUNITA', non di
+  request-management), `resource={OPPORTUNITY_ATTACHABLE_ALIAS}`.
+- Cronologia: `permissions.actions.view_activity`, `resource="opportunities"`.
+Nessun tab autorizzato -> la card non si monta affatto.
+NOTA SPEC: la 0052 confinava le note collaborative a Gestione Richieste (scope/out).
+Estensione decisa dall'utente il 2026-07-28, non una svista.
+
+PULSANTE MODIFICA — il permesso NON e' in `permissions.actions` (che ha solo
+`delete/export/import/view_activity/view_documents`): e' `permissions.resource.update`,
+gia' nel payload, zero fetch aggiuntive.
+IL VINCOLO DA NON DIMENTICARE: in modalita' modale la vista e' GIA' dentro un Sheet.
+Chiamare `useModuleOpener` dentro la vista anniderebbe due Sheet. Quindi l'azione
+arriva dall'host via callback:
+- `ModuleDetailScreenProps.onEdit?: () => void` (nuovo, opzionale)
+- `ModuleRegistryEntry.detailOwnsEditAction?: boolean` (nuovo, opzionale, default false)
+- `use-module-opener.tsx`: il ramo `view` passa `onEdit` che fa
+  `setSheetState({kind:'edit', row})` — LO STESSO Sheet diventa form, mai un secondo.
+- `module-detail-page.tsx`: passa `onEdit` che naviga a `${basePath}/${id}/edit`, e
+  omette il proprio pulsante Modifica nell'header quando `detailOwnsEditAction` e' true
+  (niente doppione). Per ogni altro modulo il flag e' `undefined` -> zero cambiamenti.
+- `opportunity-screens.tsx`: `detailOwnsEditAction: true`.
+
+CAMPI RECUPERATI: `rewards` era nel payload (0059 D-3) e non veniva reso da nessuna
+parte — ora c'e', via `reward-chip.tsx`, sezione assente se l'array e' vuoto.
+
+TEST — 2 asserzioni esistenti cambiate DELIBERATAMENTE (requisito cambiato, non
+aggiramento): `renders no editable control` non puo' piu' pretendere zero `button`
+(Modifica) ne' zero `tab` (la card collaborazione); e' stata divisa in "nessun controllo
+editabile + nessuna azione senza `onEdit`" piu' un blocco dedicato all'azione Modifica.
+Il conteggio esatto `getAllByText('Acme S.p.A.').length === 2` e' rimasto invariato: il
+nuovo layout conserva la stessa invariante (sottotitolo header + campo anagrafica).
+`probabilityToneClass` era duplicata tra `column-renderers.tsx` e il nuovo header: ora
+e' esportata da `column-renderers.tsx` e importata, copia locale cancellata.
+
+VERIFICA ESEGUITA: `tsc --noEmit` pulito (cache `.tsbuildinfo` invalidata prima — una
+cache stantia nascondeva un errore vero), `eslint` pulito su
+opportunities/components/detail/modules/i18n, `vitest` 24 file / 190 test verdi su
+opportunities+modules.
+ROSSO PRE-ESISTENTE, NON NOSTRO: `src/features/table/cell-renderers.test.tsx` 3 test
+falliti (tooltip contatti / pulsanti Copy). Verificato su albero pulito a HEAD con
+`git stash`: fallisce identico senza alcuna nostra modifica.
+
 ## "FORMAZIONE" -> FUNZIONE AZIENDALE OMONIMA (2026-07-28) — VERDE, NON COMMITTATO
 
 `Database\Seeders\QualificaBusinessFunctionLinkSeeder` (NUOVO): assegna la categoria RADICE

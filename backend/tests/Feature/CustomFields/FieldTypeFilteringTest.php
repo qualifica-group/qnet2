@@ -26,19 +26,19 @@ it('filters text via contains/equals/startsWith/endsWith', function (): void {
     $handler = new TextFieldType;
 
     $contains = CustomFieldValue::query();
-    $handler->applyFilter($contains, 'notes', ['type' => 'contains', 'filter' => 'Hello']);
+    $handler->applyFilter($contains, 'custom_field_values.values', 'notes', ['type' => 'contains', 'filter' => 'Hello']);
     expect($contains->count())->toBe(2);
 
     $equals = CustomFieldValue::query();
-    $handler->applyFilter($equals, 'notes', ['type' => 'equals', 'filter' => 'Bye']);
+    $handler->applyFilter($equals, 'custom_field_values.values', 'notes', ['type' => 'equals', 'filter' => 'Bye']);
     expect($equals->count())->toBe(1);
 
     $startsWith = CustomFieldValue::query();
-    $handler->applyFilter($startsWith, 'notes', ['type' => 'startsWith', 'filter' => 'Hello']);
+    $handler->applyFilter($startsWith, 'custom_field_values.values', 'notes', ['type' => 'startsWith', 'filter' => 'Hello']);
     expect($startsWith->count())->toBe(2);
 
     $endsWith = CustomFieldValue::query();
-    $handler->applyFilter($endsWith, 'notes', ['type' => 'endsWith', 'filter' => 'Again']);
+    $handler->applyFilter($endsWith, 'custom_field_values.values', 'notes', ['type' => 'endsWith', 'filter' => 'Again']);
     expect($endsWith->count())->toBe(1);
 });
 
@@ -47,19 +47,19 @@ it('filters number via equals/range/gt/lt', function (): void {
     $handler = new IntegerFieldType;
 
     $equals = CustomFieldValue::query();
-    $handler->applyFilter($equals, 'score', ['type' => 'equals', 'filter' => 20]);
+    $handler->applyFilter($equals, 'custom_field_values.values', 'score', ['type' => 'equals', 'filter' => 20]);
     expect($equals->count())->toBe(1);
 
     $range = CustomFieldValue::query();
-    $handler->applyFilter($range, 'score', ['type' => 'inRange', 'filter' => 15, 'filterTo' => 25]);
+    $handler->applyFilter($range, 'custom_field_values.values', 'score', ['type' => 'inRange', 'filter' => 15, 'filterTo' => 25]);
     expect($range->count())->toBe(1);
 
     $gt = CustomFieldValue::query();
-    $handler->applyFilter($gt, 'score', ['type' => 'greaterThan', 'filter' => 15]);
+    $handler->applyFilter($gt, 'custom_field_values.values', 'score', ['type' => 'greaterThan', 'filter' => 15]);
     expect($gt->count())->toBe(2);
 
     $lt = CustomFieldValue::query();
-    $handler->applyFilter($lt, 'score', ['type' => 'lessThan', 'filter' => 25]);
+    $handler->applyFilter($lt, 'custom_field_values.values', 'score', ['type' => 'lessThan', 'filter' => 25]);
     expect($lt->count())->toBe(2);
 });
 
@@ -68,7 +68,7 @@ it('filters boolean via values', function (): void {
     $handler = new BooleanFieldType;
 
     $query = CustomFieldValue::query();
-    $handler->applyFilter($query, 'active', ['values' => [true]]);
+    $handler->applyFilter($query, 'custom_field_values.values', 'active', ['values' => [true]]);
     expect($query->count())->toBe(2);
 });
 
@@ -82,11 +82,11 @@ it('filters set values on both single and multi-valued fields', function (): voi
     $handler = new EnumFieldType;
 
     $single = CustomFieldValue::query();
-    $handler->applyFilter($single, 'status', ['values' => ['active']]);
+    $handler->applyFilter($single, 'custom_field_values.values', 'status', ['values' => ['active']]);
     expect($single->count())->toBe(1);
 
     $multi = CustomFieldValue::query();
-    $handler->applyFilter($multi, 'tags', ['values' => ['red']]);
+    $handler->applyFilter($multi, 'custom_field_values.values', 'tags', ['values' => ['red']]);
     expect($multi->count())->toBe(1);
 });
 
@@ -95,7 +95,7 @@ it('sorts by json path', function (): void {
     $handler = new IntegerFieldType;
 
     $query = CustomFieldValue::query();
-    $handler->applySort($query, 'score', 'asc');
+    $handler->applySort($query, 'custom_field_values.values', 'score', 'asc');
 
     expect($query->pluck('entity_id')->all())->toBe([2, 3, 1]);
 });
@@ -110,7 +110,7 @@ it('resolves distinct values, capped and flattened for a multi-valued field', fu
 
     $query = CustomFieldValue::query();
 
-    expect($handler->distinctValues($query, 'tags'))->toBe(['blue', 'green', 'red']);
+    expect($handler->distinctValues($query, 'custom_field_values.values', 'tags'))->toBe(['blue', 'green', 'red']);
 });
 
 it('never uses whereRaw/orderByRaw — the json key stays a bound identifier, not interpolated input', function (): void {
@@ -118,7 +118,7 @@ it('never uses whereRaw/orderByRaw — the json key stays a bound identifier, no
     $handler = new TextFieldType;
 
     $query = CustomFieldValue::query();
-    $handler->applyFilter($query, 'notes', ['type' => 'equals', 'filter' => "it's fine"]);
+    $handler->applyFilter($query, 'custom_field_values.values', 'notes', ['type' => 'equals', 'filter' => "it's fine"]);
 
     expect($query->count())->toBe(1);
 });

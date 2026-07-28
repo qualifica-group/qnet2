@@ -177,6 +177,35 @@ describe('createSsrmDatasource', () => {
     }
   })
 
+  // Spec 0064 AC-020: the Gestione Richieste category tabs scope the rows
+  // request.
+  it('includes productCategoryId in the payload when given', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('request-management', undefined, undefined, 12).getRows(stubParams({}))
+
+    expect(fetchRowsMock).toHaveBeenCalledWith(
+      'request-management',
+      expect.objectContaining({ productCategoryId: 12 }),
+    )
+  })
+
+  it('omits productCategoryId entirely on the "Tutte" tab (no scope given)', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('request-management').getRows(stubParams({}))
+
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
+  })
+
   it('calls params.fail() when the request rejects', async () => {
     fetchRowsMock.mockRejectedValue(new Error('network error'))
     const params = stubParams({})

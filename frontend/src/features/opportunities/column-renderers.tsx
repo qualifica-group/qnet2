@@ -50,7 +50,7 @@ const PROBABILITY_BAR_WIDTH = 'w-16'
  * mid (34-66%) as in-progress, high (>=67%) as likely. Color is a reinforcement
  * — the percentage text is always shown, so it is never the only signal.
  */
-function probabilityToneClass(percent: number): string {
+export function probabilityToneClass(percent: number): string {
   if (percent >= 67) {
     return 'bg-green-600 dark:bg-green-500'
   }

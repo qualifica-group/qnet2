@@ -52,6 +52,12 @@ export type ModuleFormScreenMode =
 
 export interface ModuleDetailScreenProps {
   id: number
+  /**
+   * Opens the module's edit surface in the host's own way (sheet swap in
+   * modal mode, navigation in page mode). Absent when the host offers no
+   * edit affordance.
+   */
+  onEdit?: () => void
 }
 
 export interface ModuleFormScreenProps {
@@ -92,6 +98,12 @@ export interface ModuleRegistryEntry {
   generateRoutes?: boolean
   DetailScreen: ComponentType<ModuleDetailScreenProps>
   FormScreen: ComponentType<ModuleFormScreenProps>
+  /**
+   * When `true`, the `DetailScreen` renders the edit affordance itself and
+   * the generic page header omits its own Edit button, so the action is not
+   * duplicated. Defaults to `false`.
+   */
+  detailOwnsEditAction?: boolean
   /**
    * Optional extra actions rendered as a real child component in the generic
    * detail page's header, between "Back" and "Edit" (e.g. leads' "Create/Go

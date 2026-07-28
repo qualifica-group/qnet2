@@ -91,12 +91,63 @@ describe('resolveCellRenderer', () => {
     const column = stubColumn({ id: 'custom.active', type: 'boolean', source: 'custom' })
     expect(resolveCellRenderer(column, undefined)).toBeUndefined()
   })
+
+  // Spec 0064 (coordinator fix): an attribute enum column must render the same
+  // agnostic BadgeCell a custom enum column does — the backend emits `badges`
+  // for enum (single AND multiselect) precisely so the code never shows raw.
+  it('falls back to the agnostic BadgeCell for an attribute `enum` column, driven by column.badges', () => {
+    const column = stubColumn({
+      id: 'attr.tipo_corso',
+      type: 'enum',
+      source: 'attribute',
+      badges: ENUM_BADGES,
+      options: ['red', 'blue'],
+    })
+    const renderer = resolveCellRenderer(column, undefined)
+    const { getByText } = renderCell(renderer, 'blue')
+    expect(getByText('Blue')).toBeInTheDocument()
+  })
+
+  it('does NOT apply the badge fallback to an attribute `relation` column (backend emits no badges for relations)', () => {
+    const column = stubColumn({ id: 'attr.responsabile', type: 'text', source: 'attribute', editor: 'relation' })
+    expect(resolveCellRenderer(column, undefined)).toBeUndefined()
+  })
 })
 
 describe('defaultValueFormatter', () => {
   it('joins a native `tags` array for display', () => {
     const column = stubColumn({ id: 'roles', type: 'tags' })
     expect(defaultValueFormatter(column, translate)?.(['admin', 'editor'])).toBe('admin, editor')
+  })
+
+  // Spec 0064 (coordinator fix): a multiselect enum attribute stores option
+  // CODES in `attribute_values`, not labels — joining them raw would show
+  // gibberish like "red, blue" instead of "Red, Blue".
+  it('maps a multiselect enum attribute `tags` array through column.badges to readable labels', () => {
+    const column = stubColumn({
+      id: 'attr.colori_disponibili',
+      type: 'tags',
+      source: 'attribute',
+      badges: ENUM_BADGES,
+    })
+    expect(defaultValueFormatter(column, translate)?.(['red', 'blue'])).toBe('Red, Blue')
+  })
+
+  it('falls back to the raw code for a tags entry with no matching badge (defensive)', () => {
+    const column = stubColumn({ id: 'attr.colori_disponibili', type: 'tags', source: 'attribute', badges: ENUM_BADGES })
+    expect(defaultValueFormatter(column, translate)?.(['red', 'unknown'])).toBe('Red, unknown')
+  })
+
+  // The backend never resolves a relation-many column to a label catalog
+  // (no `badges`): the fallback must keep showing the raw ids, unbroken.
+  it('leaves a relation-many `tags` column (no badges) showing the raw ids', () => {
+    const column = stubColumn({
+      id: 'attr.prodotti_collegati',
+      type: 'tags',
+      source: 'attribute',
+      editor: 'multiselect',
+    })
+    expect(defaultValueFormatter(column, translate)?.([3, 7])).toBe('3, 7')
   })
 
   it('formats a custom boolean value to a localized yes/no', () => {
@@ -132,6 +183,25 @@ describe('defaultValueFormatter', () => {
     expect(
       defaultValueFormatter(stubColumn({ id: 'custom.color', type: 'enum', source: 'custom' }), translate),
     ).toBeUndefined()
+  })
+
+  // Spec 0064: `source: 'attribute'` (a Product Category flexible attribute,
+  // `attr.<code>`) is dynamic exactly like `source: 'custom'`, so it shares
+  // the same boolean/number formatting fallbacks.
+  describe('source: "attribute" columns', () => {
+    it('formats an attribute boolean value to a localized yes/no', () => {
+      const column = stubColumn({ id: 'attr.is_urgent', type: 'boolean', source: 'attribute' })
+      const format = defaultValueFormatter(column, translate)
+      expect(format?.(true)).toBe('common.yes')
+      expect(format?.(false)).toBe('common.no')
+    })
+
+    it('formats an attribute number value with locale separators, blank when invalid', () => {
+      const column = stubColumn({ id: 'attr.durata_corso', type: 'number', source: 'attribute' })
+      const format = defaultValueFormatter(column, translate)
+      expect(format?.(120)).toBe(new Intl.NumberFormat(appI18n.language).format(120))
+      expect(format?.(null)).toBe('')
+    })
   })
 })
 

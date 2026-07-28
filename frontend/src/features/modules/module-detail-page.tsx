@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -20,11 +20,15 @@ interface ModuleDetailPageProps {
  * per-module `*-detail-page.tsx` files for the 4 Wave 0 modules, whose
  * content/chrome this mirrors exactly; `DetailPageActions`, when the
  * registry entry declares one, renders between "Back" and "Edit" (e.g.
- * leads' "Create/Go to opportunity").
+ * leads' "Create/Go to opportunity"). When the registry entry sets
+ * `detailOwnsEditAction`, the header Edit button is omitted and `onEdit` is
+ * handed to `DetailScreen` instead, so the module's own read-only view
+ * renders the single Edit affordance itself.
  */
 export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
   const entityId = parseEntityId(id)
 
   const entry = getModuleRegistryEntry(domain)
@@ -50,20 +54,25 @@ export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
               </Link>
             </Button>
             {DetailPageActions ? <DetailPageActions id={entityId} /> : null}
-            <Can permission={`${domain}.update`}>
-              <Button asChild>
-                <Link to={`${entry.basePath}/${entityId}/edit`}>
-                  <Pencil aria-hidden="true" />
-                  {t('common.edit')}
-                </Link>
-              </Button>
-            </Can>
+            {!entry.detailOwnsEditAction && (
+              <Can permission={`${domain}.update`}>
+                <Button asChild>
+                  <Link to={`${entry.basePath}/${entityId}/edit`}>
+                    <Pencil aria-hidden="true" />
+                    {t('common.edit')}
+                  </Link>
+                </Button>
+              </Can>
+            )}
           </>
         }
       />
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-        <DetailScreen id={entityId} />
+        <DetailScreen
+          id={entityId}
+          onEdit={() => void navigate(`${entry.basePath}/${entityId}/edit`)}
+        />
       </div>
     </div>
   )

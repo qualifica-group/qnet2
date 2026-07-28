@@ -35,6 +35,8 @@ const MASTER_DETAIL_EXPAND_COLUMN_WIDTH = 44
 
 export interface BuildColDefsParams {
   domain: string
+  /** Selected Product Category scope (spec 0064), forwarded to the Set Filter values callback. */
+  productCategoryId?: number
   columns: TableColumn[]
   cellRenderers?: Record<string, CellRenderer>
   renderRowActions?: (params: ICellRendererParams) => ReactNode
@@ -52,6 +54,7 @@ export interface BuildColDefsParams {
  */
 export function buildColDefs({
   domain,
+  productCategoryId,
   columns,
   cellRenderers,
   renderRowActions,
@@ -79,6 +82,7 @@ export function buildColDefs({
       column,
       () => toast.info(t('table.filterValuesTruncated')),
       t,
+      productCategoryId,
     )
     return {
       colId: column.id,

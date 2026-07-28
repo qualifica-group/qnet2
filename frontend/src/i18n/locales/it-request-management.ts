@@ -10,6 +10,9 @@ export const requestManagement = {
   title: 'Gestione Richieste',
   subtitle: "Lavora le opportunità: verifica i contatti, completa i campi dinamici e avanza lo stato di lavorazione.",
   forbidden: 'Non hai il permesso di visualizzare Gestione Richieste.',
+  categoryTabs: {
+    all: 'Tutte',
+  },
   columns: {
     productCategory: 'Categoria prodotto',
     productsOfInterest: 'Prodotti di interesse',

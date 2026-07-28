@@ -24,6 +24,13 @@ const DEFAULT_BLOCK_SIZE = 25
  * time. The datasource instance stays stable across renders; the caller calls
  * `refreshServerSide({ purge: true })` when either changes.
  *
+ * `productCategoryId` (spec 0064, request-management's category tabs) is a
+ * plain value, not a getter like the two above: selecting a category always
+ * remounts the whole `<TableView>` (its adapter keys it by the selection, D-4)
+ * so a fresh datasource is built per tab already — there is nothing to read
+ * lazily. Sent as `productCategoryId` only when present; omitted entirely on
+ * the "Tutte" tab.
+ *
  * Domain-agnostic: the only domain-specific input is the `domain` key. The same
  * datasource powers every table.
  */
@@ -31,6 +38,7 @@ export function createSsrmDatasource(
   domain: string,
   getSearch?: () => string,
   getAdvancedFilters?: () => AdvancedFilterValues,
+  productCategoryId?: number,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -66,6 +74,7 @@ export function createSsrmDatasource(
           filterModel,
           ...(search !== '' ? { search } : {}),
           ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
+          ...(productCategoryId != null ? { productCategoryId } : {}),
         })
 
         params.success({

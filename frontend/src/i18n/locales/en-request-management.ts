@@ -9,6 +9,9 @@ export const requestManagement = {
   title: 'Request Management',
   subtitle: 'Work opportunities: verify contacts, complete dynamic fields and advance the working status.',
   forbidden: "You don't have permission to view Request Management.",
+  categoryTabs: {
+    all: 'All',
+  },
   columns: {
     productCategory: 'Product category',
     productsOfInterest: 'Products of interest',

@@ -74,17 +74,26 @@ export function resolveTypedFilter(
  * API rather than a snapshot, so it always reflects the state at the moment
  * the filter is opened (paired with `refreshValuesOnOpen`). A fetch failure
  * resolves to an empty list so the filter UI never crashes.
+ *
+ * `productCategoryId` (spec 0064, request-management's category tabs) rides
+ * along so an `attr.<code>` column's set filter resolves against the right
+ * category; omitted for every native/`custom.*` column.
  */
 export function createColumnValuesGetter(
   domain: string,
   columnId: string,
   onTruncated: () => void,
+  productCategoryId?: number,
 ): SetFilterValuesFunc {
   return (params: SetFilterValuesFuncParams) => {
     const filterModel: Record<string, unknown> = { ...params.api.getFilterModel() }
     delete filterModel[columnId]
 
-    fetchTableColumnValues(domain, { columnId, filterModel })
+    fetchTableColumnValues(domain, {
+      columnId,
+      filterModel,
+      ...(productCategoryId != null ? { productCategoryId } : {}),
+    })
       .then((response) => {
         if (response.hasMore) {
           onTruncated()
@@ -111,9 +120,10 @@ export function buildSetFilterParams(
   column: TableColumn,
   onTruncated: () => void,
   translate: (key: string) => string,
+  productCategoryId?: number,
 ): ISetFilterParams {
   const params: ISetFilterParams = {
-    values: createColumnValuesGetter(domain, column.id, onTruncated),
+    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId),
     refreshValuesOnOpen: true,
     suppressClearModelOnRefreshValues: true,
     excelMode: 'windows',
@@ -153,7 +163,14 @@ export function formatBooleanFilterValue(
   return translate(isTruthy ? BOOLEAN_YES_KEY : BOOLEAN_NO_KEY)
 }
 
-function formatBadgeFilterValue(value: unknown, column: TableColumn): string {
+/**
+ * Maps a single enum/badge raw value (a backend `code`) to its label, via the
+ * column's `enumKey` (frontend i18n) or its `badges` catalog, raw value when
+ * neither matches. Exported so the grid's generic `tags` cell/value formatter
+ * (`column-defaults.tsx`) reuses the same lookup for a multiselect enum
+ * attribute (spec 0064) instead of showing the raw array of codes.
+ */
+export function formatBadgeFilterValue(value: unknown, column: TableColumn): string {
   if (value === null || value === undefined || value === '') {
     return ''
   }
@@ -195,10 +212,14 @@ export function buildColumnFilter(
   column: TableColumn,
   onTruncated: () => void,
   translate: (key: string) => string,
+  productCategoryId?: number,
 ): { filter: ColDef['filter']; filterParams: ColDef['filterParams'] } {
   const filter = resolveFilter(column)
   if (filter === 'agSetColumnFilter') {
-    return { filter, filterParams: buildSetFilterParams(domain, column, onTruncated, translate) }
+    return {
+      filter,
+      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId),
+    }
   }
   if (filter === 'agMultiColumnFilter') {
     const typedFilter = resolveTypedFilter(column)
@@ -206,7 +227,7 @@ export function buildColumnFilter(
       filters: [
         {
           filter: 'agSetColumnFilter',
-          filterParams: buildSetFilterParams(domain, column, onTruncated, translate),
+          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId),
         },
         {
           filter: typedFilter,

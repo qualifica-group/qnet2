@@ -18,8 +18,8 @@ trait OrdersByJsonPath
     /**
      * @param  Builder<Model>  $query
      */
-    public function applySort(Builder $query, string $jsonKey, string $direction): void
+    public function applySort(Builder $query, string $column, string $jsonKey, string $direction): void
     {
-        $query->orderBy($this->jsonColumn($jsonKey), $direction === 'desc' ? 'desc' : 'asc');
+        $query->orderBy($this->jsonColumn($column, $jsonKey), $direction === 'desc' ? 'desc' : 'asc');
     }
 }

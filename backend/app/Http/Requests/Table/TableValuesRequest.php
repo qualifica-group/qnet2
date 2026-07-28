@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -56,6 +57,13 @@ class TableValuesRequest extends FormRequest
             'filterModel' => ['sometimes', 'array'],
             // Whitelist the filter keys: every key must be a filterable column.
             'filterModel.*' => ['array'],
+
+            // Spec 0064: required to resolve an `attr.*` columnId for
+            // `request-management` (`columnId` above is ALREADY checked
+            // against this same scoped instance's filterableColumnIds() —
+            // see definition() — so an attr.* columnId with this key absent
+            // is rejected by Rule::in() without any extra logic, AC-014).
+            'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
         ];
     }
 
@@ -86,7 +94,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null}
      */
     public function payload(): array
     {
@@ -97,6 +105,7 @@ class TableValuesRequest extends FormRequest
             'search' => $validated['search'] ?? null,
             'limit' => $validated['limit'] ?? self::DEFAULT_LIMIT,
             'filterModel' => $validated['filterModel'] ?? [],
+            'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
         ];
     }
 
@@ -109,9 +118,26 @@ class TableValuesRequest extends FormRequest
     {
         if ($this->resolvedDefinition === null) {
             $domain = (string) $this->route('domain');
-            $this->resolvedDefinition = app(TableRegistry::class)->resolve($domain);
+            $definition = app(TableRegistry::class)->resolve($domain);
+
+            if ($definition instanceof AttributeScopedTableDefinition) {
+                $definition->scopeToProductCategory($this->productCategoryIdInput());
+            }
+
+            $this->resolvedDefinition = $definition;
         }
 
         return $this->resolvedDefinition;
+    }
+
+    /**
+     * The raw `productCategoryId` request input, coerced to int (read
+     * directly, not via `validated()`, mirroring TableRowsRequest).
+     */
+    private function productCategoryIdInput(): ?int
+    {
+        $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
     }
 }

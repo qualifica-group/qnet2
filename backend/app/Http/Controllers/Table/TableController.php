@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Table;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Table\BulkDeleteTableRequest;
+use App\Http\Requests\Table\TableColumnsRequest;
 use App\Http\Requests\Table\TableFilterStateRequest;
 use App\Http\Requests\Table\TablePreferencesRequest;
 use App\Http\Requests\Table\TableRowsRequest;
@@ -16,6 +17,7 @@ use App\Services\TableCellUpdateService;
 use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
+use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -48,8 +50,11 @@ class TableController extends BaseApiController
     /**
      * GET /api/tables/{domain}/columns — resolved table schema for the actor,
      * with their saved column preferences (order/width/visibility) merged in.
+     * `product_category_id` (spec 0064) narrows `request-management`'s
+     * response to that category's `attr.*` columns; absent for every other
+     * domain, and for `request-management` itself with no category (D-3).
      */
-    public function columns(Request $request, string $domain): JsonResponse
+    public function columns(TableColumnsRequest $request, string $domain): JsonResponse
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
@@ -57,6 +62,7 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
+            $this->scopeToProductCategory($definition, $request->productCategoryId());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -121,6 +127,7 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
+            $this->scopeToAllProductCategories($definition);
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
 
@@ -170,6 +177,9 @@ class TableController extends BaseApiController
 
     /**
      * POST /api/tables/{domain}/rows — SSRM page of rows + total (paginated).
+     * `productCategoryId` (spec 0064) scopes `request-management` to that
+     * category (D-2 EXISTS on the row's product lines) and its `attr.*`
+     * columns; every other domain, and this one with no category, ignores it.
      */
     public function rows(TableRowsRequest $request, string $domain): JsonResponse
     {
@@ -180,7 +190,11 @@ class TableController extends BaseApiController
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
-            $result = $this->service->rows($definition, $actor, $request->validated());
+            $payload = $request->validated();
+            $productCategoryId = $payload['productCategoryId'] ?? null;
+            $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId);
+
+            $result = $this->service->rows($definition, $actor, $payload);
 
             return $this->paginatedResponse(
                 items: TableRowResource::collection($result->items),
@@ -229,6 +243,8 @@ class TableController extends BaseApiController
      * POST /api/tables/{domain}/values — distinct values for a single column
      * (Excel-like set filter), scoped by the filters active on every OTHER
      * column (the target column never auto-restricts its own list).
+     * `productCategoryId` (spec 0064) is required to resolve an `attr.*`
+     * `columnId` for `request-management` (validated by TableValuesRequest).
      */
     public function values(TableValuesRequest $request, string $domain): JsonResponse
     {
@@ -240,6 +256,7 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $payload = $request->payload();
+            $this->scopeToProductCategory($definition, $payload['productCategoryId']);
 
             $result = $this->service->distinctValues(
                 $definition,
@@ -296,6 +313,31 @@ class TableController extends BaseApiController
     {
         if (! $allowed) {
             throw new AuthorizationException;
+        }
+    }
+
+    /**
+     * Spec 0064: narrows an `AttributeScopedTableDefinition` (only
+     * `request-management`) to one product category's `attr.*` columns.
+     * A no-op for every other domain.
+     */
+    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
+    {
+        if ($definition instanceof AttributeScopedTableDefinition) {
+            $definition->scopeToProductCategory($productCategoryId);
+        }
+    }
+
+    /**
+     * Spec 0064, D-4: widens an `AttributeScopedTableDefinition`'s SSRM
+     * allow-lists to the union of every category's `attr.*` columns, so
+     * saving column/filter preferences from any tab never 422s. A no-op for
+     * every other domain.
+     */
+    private function scopeToAllProductCategories(TableDefinition $definition): void
+    {
+        if ($definition instanceof AttributeScopedTableDefinition) {
+            $definition->scopeToAllProductCategories();
         }
     }
 }

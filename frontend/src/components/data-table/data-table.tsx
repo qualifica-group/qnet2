@@ -62,6 +62,13 @@ interface DataTableProps {
    * else about the domain leaks in.
    */
   domain: string
+  /**
+   * The selected Product Category scope (spec 0064, request-management's
+   * category tabs), forwarded to the Set Filter's async values callback
+   * (`POST /tables/{domain}/values`) so an `attr.<code>` column's distinct
+   * values resolve against the right category. Absent for every other domain.
+   */
+  productCategoryId?: number
   /** Backend-driven column schema. */
   columns: TableColumn[]
   /** SSRM datasource feeding the grid. */
@@ -158,6 +165,7 @@ interface DataTableProps {
  */
 export function DataTable({
   domain,
+  productCategoryId,
   columns,
   datasource,
   blockSize,
@@ -202,6 +210,7 @@ export function DataTable({
     () =>
       buildColDefs({
         domain,
+        productCategoryId,
         columns,
         cellRenderers,
         renderRowActions,
@@ -212,6 +221,7 @@ export function DataTable({
       }),
     [
       domain,
+      productCategoryId,
       columns,
       cellRenderers,
       renderRowActions,

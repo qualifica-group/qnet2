@@ -30,7 +30,7 @@ import {
   type RowActionHandler,
   type RowActionsOptions,
 } from '@/features/table/row-actions'
-import { useTableConfig } from '@/features/table/use-table-config'
+import { useTableConfig, type TableConfigScope } from '@/features/table/use-table-config'
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { TableRow } from '@/features/table/types'
@@ -46,6 +46,16 @@ export interface TableViewHandle {
 interface TableViewProps extends RowActionsOptions {
   /** Domain key selecting the server-side table definition (e.g. "users"). */
   domain: string
+  /**
+   * Narrows the domain's config/rows/Set-Filter-values to one scope (spec
+   * 0064: request-management's Product Category tabs). Omitted ⇒ today's
+   * unscoped behavior for every other domain. The adapter is expected to key
+   * its own `<TableView>` element by the scope (e.g. by category id) so a
+   * scope change remounts the whole table and restarts every client-side
+   * state (search, filters, layout) from the fresh config's defaults (D-4) —
+   * this component does not react to a scope prop CHANGE on its own.
+   */
+  scope?: TableConfigScope
   /** Per-domain custom cell renderers, keyed by column id. Optional. */
   renderers?: TableRendererMap
   /**
@@ -107,6 +117,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
   function TableView(
     {
       domain,
+      scope,
       renderers,
       onAction,
       isBusy,
@@ -122,7 +133,11 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     ref,
   ) {
     const { t } = useTranslation()
-    const { data: config, isPending, isError, refetch } = useTableConfig(domain)
+    // Read once as a primitive: every downstream `useMemo` below keys on this
+    // value, not on the `scope` object identity (a caller may pass a fresh
+    // object literal every render).
+    const productCategoryId = scope?.productCategoryId
+    const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     // Export is generic (spec 0014): TableView owns the grid api, so it gates,
     // builds and mounts the export affordance itself — no per-module wiring.
@@ -198,8 +213,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     // search term and applied advanced filters are read lazily via getters, so
     // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
     const datasource = useMemo(
-      () => createSsrmDatasource(domain, toolbar.getSearchTerm, advancedFilters.getApplied),
-      [domain, toolbar.getSearchTerm, advancedFilters.getApplied],
+      () =>
+        createSsrmDatasource(domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId),
+      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId],
     )
 
     useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
@@ -291,6 +307,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         <DataTable
           key={layoutVersion}
           domain={domain}
+          productCategoryId={productCategoryId}
           columns={config.columns}
           datasource={datasource}
           blockSize={config.defaultPagination.limit}

@@ -110,6 +110,11 @@ export const table = {
     label: 'Data e ora',
     clear: 'Svuota',
   },
+  // Spec 0064: il gemello sola-data di `dateTimeEditor`, usato dall'attributo
+  // di categoria prodotto di tipo `date` (nessuna componente oraria).
+  dateEditor: {
+    label: 'Data',
+  },
   noteDialog: {
     title: 'Aggiungi una nota',
     description: 'Questo stato richiede una nota esplicativa prima di poter essere salvato.',

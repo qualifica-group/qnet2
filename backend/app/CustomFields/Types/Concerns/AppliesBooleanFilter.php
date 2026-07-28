@@ -16,7 +16,7 @@ trait AppliesBooleanFilter
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyFilter(Builder $query, string $jsonKey, array $filter): void
+    public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void
     {
         $values = $this->booleanValues($filter);
 
@@ -24,15 +24,15 @@ trait AppliesBooleanFilter
             return;
         }
 
-        $column = $this->jsonColumn($jsonKey);
+        $path = $this->jsonColumn($column, $jsonKey);
 
         if (count($values) === 1) {
-            $query->where($column, '=', $values[0]);
+            $query->where($path, '=', $values[0]);
 
             return;
         }
 
-        $query->whereIn($column, $values);
+        $query->whereIn($path, $values);
     }
 
     /**

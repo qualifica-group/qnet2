@@ -110,6 +110,12 @@ export const table = {
     label: 'Date and time',
     clear: 'Clear',
   },
+  // Spec 0064: the date-only twin of `dateTimeEditor`, used by a Product
+  // Category attribute of type `date` (no time component) — a distinct label
+  // so the control is never announced as "Date and time".
+  dateEditor: {
+    label: 'Date',
+  },
   noteDialog: {
     title: 'Add a note',
     description: 'This status requires an explanatory note before it can be saved.',

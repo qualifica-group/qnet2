@@ -243,7 +243,7 @@ class CustomFieldAwareTableDefinition implements TableDefinition
             return true;
         }
 
-        $this->columnBuilder->handlerFor($definition)->applyFilter($query, $definition->key, $filter);
+        $this->columnBuilder->handlerFor($definition)->applyFilter($query, $this->valuesJsonBaseColumn(), $definition->key, $filter);
 
         return true;
     }
@@ -259,7 +259,7 @@ class CustomFieldAwareTableDefinition implements TableDefinition
             return $this->inner->applyDerivedSort($query, $columnId, $direction);
         }
 
-        $this->columnBuilder->handlerFor($definition)->applySort($query, $definition->key, $direction);
+        $this->columnBuilder->handlerFor($definition)->applySort($query, $this->valuesJsonBaseColumn(), $definition->key, $direction);
 
         return true;
     }
@@ -277,7 +277,7 @@ class CustomFieldAwareTableDefinition implements TableDefinition
             return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
         }
 
-        $values = $this->columnBuilder->handlerFor($definition)->distinctValues($query, $definition->key);
+        $values = $this->columnBuilder->handlerFor($definition)->distinctValues($query, $this->valuesJsonBaseColumn(), $definition->key);
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);
@@ -315,6 +315,17 @@ class CustomFieldAwareTableDefinition implements TableDefinition
     private function valuesJsonColumn(string $key): string
     {
         return self::VALUES_JOIN_ALIAS.'.values->'.$key;
+    }
+
+    /**
+     * The base JSON column (spec 0064, T-M1) FieldTypeHandler's grid-side
+     * methods (applyFilter/applySort/distinctValues) resolve `<key>` against
+     * — the `custom_field_values` subquery join's own `values` column, never
+     * the raw table (see baseQuery()'s docblock).
+     */
+    private function valuesJsonBaseColumn(): string
+    {
+        return self::VALUES_JOIN_ALIAS.'.values';
     }
 
     /**

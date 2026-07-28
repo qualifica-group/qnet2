@@ -25,6 +25,7 @@ export const opportunities = {
     startDate: 'Data inizio',
     expectedCloseDate: 'Data chiusura prevista',
     createdAt: 'Creato il',
+    updatedAt: 'Aggiornato il',
   },
   advancedFilters: {
     registry: 'Anagrafica',
@@ -44,6 +45,7 @@ export const opportunities = {
     loadError: "Impossibile caricare l'opportunità. Riprova.",
     sourceLead: 'Lead di origine',
     collectedInformation: 'Informazioni raccolte',
+    rewards: 'Premi',
   },
   form: {
     newOpportunity: 'Nuova opportunità',

@@ -16,10 +16,18 @@ import type { AdvancedFilterValues } from '@/features/table/advanced-filters/typ
  * Fetches a domain's table schema (columns, filters, action catalog, defaults).
  * Wrapped in the standard `ok()` envelope → config lives in `data`.
  * One endpoint serves every domain; the `{domain}` segment selects the schema.
+ *
+ * `productCategoryId` (spec 0064, request-management's category tabs) is sent
+ * as `?product_category_id=` only when given; every other domain never passes
+ * it and sees no change.
  */
-export async function fetchTableConfig(domain: string): Promise<TableConfig> {
+export async function fetchTableConfig(
+  domain: string,
+  productCategoryId?: number,
+): Promise<TableConfig> {
   const { data } = await apiClient.get<ApiResponse<TableConfig>>(
     `/tables/${domain}/columns`,
+    productCategoryId != null ? { params: { product_category_id: productCategoryId } } : undefined,
   )
   return data.data
 }

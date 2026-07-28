@@ -12,13 +12,15 @@ import type { TableRow } from '@/features/table/types'
  * generic registry used to hand it.
  */
 
-function renderEditor(props: Partial<CustomCellEditorProps<TableRow, string | null>> = {}) {
+type EditorProps = CustomCellEditorProps<TableRow, string | null> & { dateOnly?: boolean }
+
+function renderEditor(props: Partial<EditorProps> = {}) {
   const fullProps = {
     value: null,
     onValueChange: vi.fn(),
     stopEditing: vi.fn(),
     ...props,
-  } as unknown as CustomCellEditorProps<TableRow, string | null>
+  } as unknown as EditorProps
 
   render((<DateTimeCellEditor {...fullProps} />) as ReactElement)
 
@@ -66,5 +68,29 @@ describe('DateTimeCellEditor', () => {
     fireEvent.blur(input)
 
     expect(props.stopEditing).toHaveBeenCalledTimes(2)
+  })
+})
+
+// Spec 0064: reused for the `date` editor kind (a Product Category attribute
+// with no time component) via the `dateOnly` param.
+describe('DateTimeCellEditor with dateOnly (spec 0064)', () => {
+  it('renders a plain date control, announced with its own "Date" label (not "Date and time")', () => {
+    renderEditor({ value: '2026-07-28', dateOnly: true })
+
+    const input = screen.getByLabelText(i18n.t('table.dateEditor.label'))
+
+    expect(input).toHaveAttribute('type', 'date')
+    expect(input).toHaveValue('2026-07-28')
+    expect(screen.queryByLabelText(i18n.t('table.dateTimeEditor.label'))).not.toBeInTheDocument()
+  })
+
+  it('commits the picked value as YYYY-MM-DD, unparsed', () => {
+    const props = renderEditor({ dateOnly: true })
+
+    fireEvent.change(screen.getByLabelText(i18n.t('table.dateEditor.label')), {
+      target: { value: '2026-08-01' },
+    })
+
+    expect(props.onValueChange).toHaveBeenCalledWith('2026-08-01')
   })
 })

@@ -80,12 +80,14 @@ export interface TableColumn {
   type: ColumnType
   /**
    * Present and `'custom'` when the column is a universal custom field
-   * (`custom.<key>`, spec 0021). The id is backend-driven and dynamic, so no
-   * per-id renderer can be registered for it: the grid picks a generic
-   * fallback cell/filter by `type`/`filterType` instead. Absent for native
-   * columns.
+   * (`custom.<key>`, spec 0021), or `'attribute'` when it is a Product
+   * Category flexible attribute (`attr.<code>`, spec 0064, request-management
+   * only, appended by the backend only when a category tab is selected). Both
+   * ids are backend-driven and dynamic, so no per-id renderer can be
+   * registered for them: the grid picks a generic fallback cell/filter by
+   * `type`/`filterType` instead. Absent for native columns.
    */
-  source?: 'custom'
+  source?: 'custom' | 'attribute'
   /**
    * AG Grid filter type advertised per column in the config catalog. When
    * present it drives the filter component; otherwise it falls back to `type`.
@@ -317,6 +319,14 @@ export interface TableRowsPayload {
    * and `search`. Omitted/empty ⇒ no advanced filter restricts the query.
    */
   advancedFilters?: AdvancedFilterValues
+  /**
+   * The selected Product Category tab (spec 0064, request-management only):
+   * extends the row query with an EXISTS on that category's product lines and
+   * widens the `sortModel`/`filterModel` colId allow-list to that category's
+   * `attr.<code>` columns. Omitted/null ⇒ today's behavior (the "Tutte" tab),
+   * and any `attr.*` colId/filter key is rejected server-side.
+   */
+  productCategoryId?: number | null
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */
@@ -345,6 +355,13 @@ export interface TableColumnValuesPayload {
   search?: string
   limit?: number
   filterModel?: Record<string, unknown>
+  /**
+   * The selected Product Category tab (spec 0064, request-management only):
+   * required by the backend when `columnId` is an `attr.<code>` set filter,
+   * so it can resolve that column against the category's effective
+   * attributes. Omitted for every native/`custom.*` column.
+   */
+  productCategoryId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

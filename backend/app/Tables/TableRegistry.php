@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -20,18 +21,30 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  */
 class TableRegistry
 {
+    /**
+     * The only domain wrapped in `AttributeScopedTableDefinition` (spec
+     * 0064): category-attribute columns are a `request-management`-specific
+     * concept, not a generic table-framework one (unlike custom fields).
+     */
+    private const string REQUEST_MANAGEMENT_DOMAIN = 'request-management';
+
     public function __construct(private readonly Container $container) {}
 
     /**
      * Resolve the definition for the given domain, wrapped in
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
-     * custom-fieldable — one line here, zero per-module code.
+     * custom-fieldable, THEN in `AttributeScopedTableDefinition` (spec 0064)
+     * for `request-management` — one line each here, zero per-module code.
+     * Column order this composition yields: native, then `custom.*`, then
+     * `attr.*`.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
     public function resolve(string $domain): TableDefinition
     {
-        return $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
+        $definition = $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
+
+        return $this->wrapIfAttributeScoped($domain, $definition);
     }
 
     /**
@@ -86,6 +99,24 @@ class TableRegistry
         $wrapped = $this->container->make(CustomFieldAwareTableDefinition::class, [
             'inner' => $definition,
             'entityType' => $domain,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `AttributeScopedTableDefinition` (spec 0064) for
+     * `request-management` only — every other domain is returned unchanged.
+     */
+    private function wrapIfAttributeScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::REQUEST_MANAGEMENT_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var AttributeScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(AttributeScopedTableDefinition::class, [
+            'inner' => $definition,
         ]);
 
         return $wrapped;

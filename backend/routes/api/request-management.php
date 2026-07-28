@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RequestManagement\ProductCategoryTabsController;
 use App\Http\Controllers\RequestManagement\RequestManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,11 @@ use Illuminate\Support\Facades\Route;
 // Declared BEFORE the {opportunity} routes: a POST to the literal segment
 // must never be swallowed by the wildcard.
 Route::post('request-management/assign-operators', [RequestManagementController::class, 'assignOperators']);
+// Spec 0064 (M3): the category tab strip's data source — declared BEFORE
+// GET /request-management/{opportunity} for the same reason as
+// assign-operators above, otherwise "product-categories" is swallowed by the
+// wildcard's route model binding.
+Route::get('request-management/product-categories', ProductCategoryTabsController::class);
 // Spec 0057: the bare POST, gated by `request-management.create` — no
 // {opportunity} to conflict with (creation), but declared here too for
 // consistency with the file's own convention.

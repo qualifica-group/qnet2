@@ -25,6 +25,7 @@ export const opportunities = {
     startDate: 'Start date',
     expectedCloseDate: 'Expected close date',
     createdAt: 'Created at',
+    updatedAt: 'Updated at',
   },
   advancedFilters: {
     registry: 'Registry',
@@ -44,6 +45,7 @@ export const opportunities = {
     loadError: 'Unable to load the opportunity. Please try again.',
     sourceLead: 'Originating lead',
     collectedInformation: 'Collected information',
+    rewards: 'Rewards',
   },
   form: {
     newOpportunity: 'New opportunity',

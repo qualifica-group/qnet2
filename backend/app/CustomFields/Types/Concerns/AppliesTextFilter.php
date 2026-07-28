@@ -19,7 +19,7 @@ trait AppliesTextFilter
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyFilter(Builder $query, string $jsonKey, array $filter): void
+    public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void
     {
         $value = $filter['filter'] ?? null;
 
@@ -29,15 +29,15 @@ trait AppliesTextFilter
 
         $value = (string) $value;
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'contains';
-        $column = $this->jsonColumn($jsonKey);
+        $path = $this->jsonColumn($column, $jsonKey);
 
         match ($type) {
-            'equals' => $query->where($column, '=', $value),
-            'notEqual' => $query->where($column, '!=', $value),
-            'startsWith' => $query->where($column, 'like', $this->escapeLike($value).'%'),
-            'endsWith' => $query->where($column, 'like', '%'.$this->escapeLike($value)),
-            'notContains' => $query->where($column, 'not like', '%'.$this->escapeLike($value).'%'),
-            default => $query->where($column, 'like', '%'.$this->escapeLike($value).'%'),
+            'equals' => $query->where($path, '=', $value),
+            'notEqual' => $query->where($path, '!=', $value),
+            'startsWith' => $query->where($path, 'like', $this->escapeLike($value).'%'),
+            'endsWith' => $query->where($path, 'like', '%'.$this->escapeLike($value)),
+            'notContains' => $query->where($path, 'not like', '%'.$this->escapeLike($value).'%'),
+            default => $query->where($path, 'like', '%'.$this->escapeLike($value).'%'),
         };
     }
 

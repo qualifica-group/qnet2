@@ -17,9 +17,9 @@ trait AppliesNumberFilter
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyFilter(Builder $query, string $jsonKey, array $filter): void
+    public function applyFilter(Builder $query, string $column, string $jsonKey, array $filter): void
     {
-        $column = $this->jsonColumn($jsonKey);
+        $path = $this->jsonColumn($column, $jsonKey);
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
 
         if ($type === 'inRange') {
@@ -27,7 +27,7 @@ trait AppliesNumberFilter
             $to = $this->numericOrNull($filter['filterTo'] ?? null);
 
             if ($from !== null && $to !== null) {
-                $query->whereBetween($column, [$from, $to]);
+                $query->whereBetween($path, [$from, $to]);
             }
 
             return;
@@ -48,7 +48,7 @@ trait AppliesNumberFilter
             default => '=', // 'equals'
         };
 
-        $query->where($column, $operator, $value);
+        $query->where($path, $operator, $value);
     }
 
     private function numericOrNull(mixed $value): int|float|null

@@ -23,10 +23,10 @@ trait ResolvesDistinctJsonValues
      * @param  Builder<Model>  $query
      * @return array<int, scalar>
      */
-    public function distinctValues(Builder $query, string $jsonKey): array
+    public function distinctValues(Builder $query, string $column, string $jsonKey): array
     {
         $raw = (clone $query)
-            ->select($this->jsonColumn($jsonKey).' as json_value')
+            ->select($this->jsonColumn($column, $jsonKey).' as json_value')
             ->pluck('json_value');
 
         $values = [];

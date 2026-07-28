@@ -4,6 +4,7 @@ namespace App\Http\Requests\Table;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -73,6 +74,15 @@ class TableRowsRequest extends FormRequest
             // and value shapes are whitelisted against the definition's
             // advancedFilters() catalogue in withValidator() below.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
+
+            // Spec 0064: scopes `request-management` to one product category
+            // (D-2) and its `attr.*` columns — a no-op key for every other
+            // domain. `sortable`/`filterable` above are ALREADY resolved
+            // against this same scoped instance (see definition()), so an
+            // `attr.*` colId/filterModel key outside the requested category
+            // (or with this key absent) is rejected by the Rule::in()/
+            // in_array() checks above without any extra logic (AC-013).
+            'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
         ];
     }
 
@@ -141,9 +151,28 @@ class TableRowsRequest extends FormRequest
     {
         if ($this->resolvedDefinition === null) {
             $domain = (string) $this->route('domain');
-            $this->resolvedDefinition = app(TableRegistry::class)->resolve($domain);
+            $definition = app(TableRegistry::class)->resolve($domain);
+
+            if ($definition instanceof AttributeScopedTableDefinition) {
+                $definition->scopeToProductCategory($this->productCategoryIdInput());
+            }
+
+            $this->resolvedDefinition = $definition;
         }
 
         return $this->resolvedDefinition;
+    }
+
+    /**
+     * The raw `productCategoryId` request input, coerced to int — read
+     * directly (not via `validated()`, not yet available while `rules()`
+     * itself is being built) so the allow-lists above reflect the SAME scope
+     * `Rule::exists` will separately reject if it does not exist.
+     */
+    private function productCategoryIdInput(): ?int
+    {
+        $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
     }
 }
