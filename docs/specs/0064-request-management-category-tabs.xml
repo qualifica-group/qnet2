@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0064-request-management-category-tabs" status="draft" owner="utente" date="2026-07-28">
+
+  <goal>
+    Nella pagina Gestione Richieste, sopra la tabella, una strip di tab generata dalle Categorie
+    Prodotto realmente presenti nelle richieste visibili all'utente, piu' un tab "Tutte".
+    Selezionando una categoria la tabella mostra solo le sue richieste e aggiunge, alle colonne
+    native, una colonna per ogni attributo flessibile efficace di quella categoria, con valore,
+    filtro, ordinamento e modifica inline coerenti col tipo dell'attributo. Nessuna colonna
+    statica dichiarata nel frontend.
+  </goal>
+
+  <context>
+    Nomi verificati nel codice reale (non ipotizzati).
+
+    TABELLA. Dominio `request-management` -> `App\Tables\RequestManagementTableDefinition`
+    (backend/app/Tables/RequestManagementTableDefinition.php:49), registrato in
+    config/tables.php:80. Colonne/filtri/azioni dal catalogo statico
+    `App\Tables\RequestManagement\RequestColumnCatalog`. Config esposta da
+    `GET /api/tables/{domain}/columns` (oggi senza parametri) via
+    `AbstractTableDefinition::resolveConfig()`. Righe da `POST /api/tables/{domain}/rows`
+    (envelope `{items, export_link, pagination}` di `BaseApiController::paginatedResponse()`,
+    NON `{success,message,data}`). Scope operatore in `baseQuery()`:
+    senza `request-management.viewAll`, `whereHas('managers', users.id = auth AND
+    opportunity_user.position = Opportunity::OPERATOR_MANAGER_POSITION)`.
+
+    CATEGORIA. Non esiste FK diretta su `opportunities`. La relazione passa da
+    `opportunity_product_lines` (`opportunity_id`, `product_category_id`), quindi una richiesta
+    puo' avere piu' categorie: `Opportunity::productLines()` ->
+    `OpportunityProductLine::productCategory()`.
+
+    ATTRIBUTI. Catalogo `attributes` (`code` unique, `type` da `FieldTypeRegistry`, `config`,
+    `relation_target`) + `attribute_options`, assegnati alle categorie dal pivot
+    `attribute_category` (`context` = `AttributeContext::Product|Opportunity`, `is_required`,
+    `sort_order`). Risoluzione con ereditarieta' di ramo:
+    `App\Services\ProductCategories\CategoryHierarchy::effectiveAttributes($category,
+    AttributeContext::Opportunity)` (righe della forma `id, code, name, type, description,
+    help_text, placeholder, icon, config, relation_target, is_required, sort_order, inherited,
+    context, options[]`). Barriera per contesto: `product_categories.inherits_opportunity_attributes`.
+
+    VALORI. Colonna JSON `opportunities.attribute_values`, mappa `{attributes.code => valore}`,
+    cast `array`, FUORI da `#[Fillable]`. Nessun EAV. Unico write path:
+    `App\Services\RequestManagement\RequestManagementService::updateWork()` ->
+    `applyAttributeValues()`, che passa da `ApplicableAttributesResolver`,
+    `AttributeValueValidator` e `AttributeValueNormalizer` (regole e coercizioni per tipo gia'
+    esistenti, riusate come sono).
+
+    PRECEDENTE ARCHITETTURALE. Le colonne dinamiche esistono gia' per un ALTRO sistema (spec
+    0021): `App\Tables\CustomFieldAwareTableDefinition`, decoratore applicato in
+    `TableRegistry::resolve()`, che appende colonne `custom.<key>` e delega filtri/sort/distinct
+    ai `FieldTypeHandler` (`app/CustomFields/Types/`). `request-management` E' gia' wrappato da
+    quel decoratore. Gli attributi di categoria sono un sistema distinto ma condividono lo stesso
+    `FieldTypeRegistry` (13 tipi: text, textarea, integer, decimal, boolean, enum, relation, date,
+    datetime, time, email, url, color): la logica grid-side dei handler va riusata, non duplicata.
+
+    FRONTEND. `frontend/src/features/request-management/request-management-table.tsx` monta
+    `<TableView domain={REQUEST_MANAGEMENT_DOMAIN} .../>`; `TableView`
+    (features/table/table-view.tsx) legge la config con `useTableConfig(domain)` (query key
+    `['table', domain, 'config']`) e crea il datasource con `createSsrmDatasource(domain, ...)`
+    (payload `{startRow, endRow, sortModel, filterModel, search?, advancedFilters?}`).
+    `buildColDefs()` costruisce le colDef dalla config del server; editor risolti da
+    `CELL_EDITOR_REGISTRY` con chiave `column.editor ?? column.type`. `TableColumn.source` oggi
+    ammette solo `'custom'` (features/table/types.ts:88); `ColumnType` =
+    `text|number|datetime|enum|tags|badge|boolean` (types.ts:15). Componente `Tabs` shadcn
+    disponibile in components/ui/tabs.tsx. Precedente di stato di vista persistito:
+    `features/projects/use-projects-view-preference.ts` (localStorage).
+
+    DECISIONI UTENTE (2026-07-28, vincolanti).
+    D-1 Un tab per ogni categoria effettivamente presente nelle product line visibili
+        all'utente (le categorie esatte, non le radici).
+    D-2 Una richiesta con piu' categorie compare in OGNI tab corrispondente (EXISTS su product
+        line). Nessun concetto di "categoria principale", nessuna migrazione su
+        `opportunity_product_lines`.
+    D-3 Il tab "Tutte" mostra esattamente le colonne native di oggi, zero colonne attributo.
+    D-4 Preferenze colonna e filtri restano per dominio (chiave `unique(user_id, domain)`
+        invariata): nessuna migrazione. Cambiando tab la griglia si rimonta e lo stato di
+        filtro/ordinamento riparte dai default della configurazione.
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint elenco categorie con conteggio, ricavato dallo stesso scope operatore della tabella.</item>
+      <item>Parametro di scope categoria su columns/rows/values del framework tabellare, per il solo dominio request-management.</item>
+      <item>Decoratore backend che appende le colonne `attr.&lt;code&gt;` degli attributi efficaci (contesto Opportunity) della categoria selezionata.</item>
+      <item>Valore di cella, filtro, ordinamento e valori distinti per colonna attributo, per tipo, riusando i FieldTypeHandler.</item>
+      <item>Modifica inline delle colonne attributo attraverso RequestManagementService::updateWork (validazione e normalizzazione per tipo gia' esistenti).</item>
+      <item>Tab strip nella pagina Gestione Richieste, con tab "Tutte" di default, selezione persistita in localStorage.</item>
+      <item>Propagazione dello scope nel framework tabellare frontend (config query key, datasource, remount su cambio tab).</item>
+      <item>Editor inline per il tipo `date` (oggi manca; esiste solo `datetime`).</item>
+      <item>i18n it/en delle nuove stringhe.</item>
+    </in>
+    <out>
+      <item>Preferenze colonna, larghezze e filtri salvati PER TAB (decisione D-4): resta una configurazione per dominio.</item>
+      <item>Qualsiasi migrazione su `user_table_preferences`, `user_table_filters`, `opportunity_product_lines`.</item>
+      <item>Flag di "categoria principale" su una product line.</item>
+      <item>Tab per categoria radice o raggruppamenti visivi dell'albero.</item>
+      <item>Ricerca full-text (`search`) sui valori degli attributi: `searchable` resta invariato.</item>
+      <item>Export con le colonne attributo: `POST /api/exports/{domain}` resta sulle colonne native.</item>
+      <item>Attributi di contesto `product`, pagina Prodotti, pannello di lavorazione della singola richiesta (gia' coperto dalla 0049).</item>
+      <item>Filtri avanzati (`advancedFilters`) sugli attributi.</item>
+      <item>Nuove dipendenze npm/composer.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/request-management/product-categories">
+      <request>
+        <!-- nessun parametro. Registrare la rotta PRIMA di /request-management/{opportunity},
+             altrimenti il segmento statico viene catturato dal route model binding. -->
+      </request>
+      <response status="200">
+        {
+          "success": true,
+          "message": "OK",
+          "data": {
+            "categories": [
+              { "id": 12, "name": "GOL - Lombardia", "requests_count": 128 }
+            ]
+          }
+        }
+        <!-- Solo le categorie con almeno una richiesta nello scope dell'utente (stesso scope
+             operatore di RequestManagementTableDefinition::baseQuery). Ordinamento per `name` asc.
+             `requests_count` = richieste distinte nello scope con almeno una product line di
+             quella categoria; la somma dei conteggi puo' superare il totale di "Tutte" (D-2). -->
+      </response>
+      <errors>
+        401 non autenticato; 403 senza `request-management.viewAny`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/request-management/columns?product_category_id={int}">
+      <request>
+        product_category_id: int, OPZIONALE. Assente = tab "Tutte".
+      </request>
+      <response status="200">
+        Envelope invariato `{success, message, data}`. `data` invariato nelle chiavi
+        (`resource, columns, filters, actions, defaultSort, defaultPagination, searchable,
+        advancedFilters, appliedAdvancedFilters, filterState, filtersCustomized`).
+
+        Con `product_category_id` assente: `data.columns` identico a oggi (native + `custom.*`).
+
+        Con `product_category_id` presente: `data.columns` = native + `custom.*` + una colonna per
+        ogni attributo di `CategoryHierarchy::effectiveAttributes($category,
+        AttributeContext::Opportunity)`, in coda, ordinate per `[sort_order, code]`:
+
+        {
+          "id": "attr.&lt;code&gt;",            // prefisso costante `attr.`
+          "label": "&lt;attributes.name&gt;",   // testo letterale, non chiave i18n (come le custom)
+          "type": "&lt;ColumnType&gt;",         // vedi tabella di mapping
+          "visible": true,
+          "width": null,
+          "order": &lt;int&gt;,                 // dopo le native e le custom
+          "sortable": true,
+          "filterable": true,
+          "filterType": "text|number|set|date",
+          "hasFilterValues": &lt;bool&gt;,
+          "editable": &lt;bool&gt;,             // `request-management.update` AND campo
+                                            // `attribute_values` editable nella matrice
+                                            // role_field_permissions
+          "options": null | [{"value": "...", "label": "...", "color": null|"..."}],
+          "source": "attribute",
+          "editor": "select|tags|relation|multiselect|date|datetime",   // solo quando serve
+          "badges":  [{"value": "...", "label": "...", "color": null|"..."}],  // solo enum/relation multi
+          "relation": {"resource": "&lt;relation_target.for_select_resource&gt;"}   // solo relation
+        }
+
+        MAPPING attributes.type -> (type, filterType, editor):
+          text, textarea, email, url, color, time -> ("text",     "text",   assente)
+          integer, decimal                        -> ("number",   "number", assente)
+          boolean                                 -> ("boolean",  "set",    assente)
+          enum (config.display != 'multiselect')  -> ("enum",     "set",    "select")
+          enum (config.display == 'multiselect')  -> ("tags",     "set",    "tags")
+          relation (cardinality one)              -> ("text",     "set",    "relation")
+          relation (cardinality many)             -> ("tags",     "set",    "multiselect")
+          date                                    -> ("text",     "date",   "date")
+          datetime                                -> ("datetime", "date",   "datetime")
+      </response>
+      <errors>
+        422 `product_category_id` non intero o inesistente in `product_categories`;
+        403 senza `request-management.viewAny`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/request-management/rows">
+      <request>
+        Payload invariato + campo OPZIONALE:
+        {
+          "startRow": 0, "endRow": 25,
+          "sortModel": [{"colId": "attr.durata_corso", "sort": "asc"}],
+          "filterModel": {"attr.durata_corso": { ...payload SSRM standard... }},
+          "search": "...", "advancedFilters": {...},
+          "productCategoryId": 12 | null
+        }
+        Con `productCategoryId` valorizzato:
+          - la query aggiunge EXISTS su `opportunity_product_lines.product_category_id` (D-2);
+          - l'allow-list di `sortModel.*.colId` e delle chiavi di `filterModel` si estende agli
+            id `attr.&lt;code&gt;` degli attributi efficaci di QUELLA categoria.
+        Con `productCategoryId` assente/null: comportamento odierno, e un id `attr.*` in
+        sortModel/filterModel e' rifiutato.
+      </request>
+      <response status="200">
+        Envelope invariato `{items, export_link, pagination}`. Ogni item porta, oltre alle chiavi
+        odierne di `RequestRowMapper::map()`, una chiave per attributo:
+        `"attr.&lt;code&gt;": scalar | scalar[] | null`, letta da `opportunities.attribute_values`
+        (valore grezzo normalizzato; nessuna formattazione server-side). Per `relation` il valore
+        e' l'id (o l'array di id) memorizzato.
+      </response>
+      <errors>
+        422 `productCategoryId` inesistente, oppure colId/chiave filtro `attr.*` non appartenente
+        alla categoria richiesta; 403 senza `request-management.viewAny`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/request-management/values">
+      <request>
+        Payload invariato + `productCategoryId: int|null` OPZIONALE. Necessario perche' il set
+        filter di una colonna `attr.*` chieda i valori distinti; senza di esso un `columnId`
+        `attr.*` e' rifiutato.
+      </request>
+      <response status="200">
+        `{success, message, data: {values: scalar[], hasMore: bool}}` (invariato). Per gli
+        attributi `enum` i valori sono i `code` delle opzioni; l'etichetta la risolve il frontend
+        da `options`/`badges`.
+      </response>
+      <errors>422 columnId non in allow-list per lo scope richiesto; 403.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tables/request-management/rows/{row}">
+      <request>
+        Payload invariato `{column, value, note?}`, con `column` che ora accetta anche
+        `"attr.&lt;code&gt;"`. Il valore viene inoltrato a
+        `RequestManagementService::updateWork($opportunity, ['attribute_values' =&gt; [code =&gt; value]])`:
+        validazione e coercizione per tipo restano quelle di `AttributeValueValidator` /
+        `AttributeValueNormalizer`. Il merge sparso odierno e' preservato (gli altri code non
+        vengono toccati). `note` non si applica alle colonne attributo.
+      </request>
+      <response status="200">
+        `{success, message, data: {riga rimappata}}` (invariato), con le chiavi `attr.*`
+        aggiornate.
+      </response>
+      <errors>
+        422 valore non valido per il tipo (messaggio del validator esistente), oppure `code` non
+        appartenente ad alcuna categoria della richiesta; 403 senza `request-management.update` o
+        con `attribute_values` non editable nella matrice role_field_permissions; 404 richiesta
+        fuori dallo scope operatore.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/request-management/preferences">
+      <request>
+        Invariato. Cambia SOLO l'allow-list di validazione degli id colonna, che si estende
+        all'unione degli `attr.&lt;code&gt;` di tutte le categorie assegnate (contesto Opportunity):
+        salvare il layout stando su un tab non deve produrre 422. Stessa estensione per
+        `POST /api/tables/request-management/filters`.
+      </request>
+      <response status="200">Invariato.</response>
+      <errors>422 id colonna sconosciuto.</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `request-management.viewAll` e richieste su 3 categorie distinte, quando chiama `GET /api/request-management/product-categories`, allora riceve 3 elementi ordinati per nome, ciascuno col proprio `requests_count`.</criterion>
+    <criterion id="AC-002">Dato un utente SENZA `request-management.viewAll`, assegnato come operatore solo a richieste della categoria A, quando chiama lo stesso endpoint, allora riceve la sola categoria A (le categorie delle richieste altrui non compaiono).</criterion>
+    <criterion id="AC-003">Dato un utente senza `request-management.viewAny`, quando chiama `GET /api/request-management/product-categories`, allora riceve 403.</criterion>
+    <criterion id="AC-004">Dato `GET /api/tables/request-management/columns` senza `product_category_id`, allora `data.columns` non contiene alcun id con prefisso `attr.` (tab "Tutte", D-3).</criterion>
+    <criterion id="AC-005">Data una categoria con 2 attributi propri e 1 ereditato dal padre in contesto Opportunity, quando si chiama `columns?product_category_id=X`, allora compaiono 3 colonne `attr.*` in coda alle native, ordinate per `[sort_order, code]`, con `visible: true` e `source: "attribute"`.</criterion>
+    <criterion id="AC-006">Dato un attributo assegnato alla categoria in contesto `product`, quando si chiama `columns?product_category_id=X`, allora quella colonna NON compare.</criterion>
+    <criterion id="AC-007">Per ogni tipo di attributo, la colonna emessa rispetta la tabella di mapping `type`/`filterType`/`editor` del contratto (un caso per riga della tabella).</criterion>
+    <criterion id="AC-008">Dato `columns?product_category_id=9999` (inesistente), allora 422.</criterion>
+    <criterion id="AC-009">Date due richieste, una con product line di categoria A e una di categoria B, quando si chiamano le righe con `productCategoryId` = A, allora torna solo la prima; una richiesta con product line sia A sia B torna in entrambe le chiamate (D-2).</criterion>
+    <criterion id="AC-010">Data una richiesta con `attribute_values = {"durata_corso": 120}`, quando si chiamano le righe con la categoria che possiede `durata_corso`, allora l'item contiene `"attr.durata_corso": 120`; una richiesta senza quel code contiene `null`.</criterion>
+    <criterion id="AC-011">Con `productCategoryId` valorizzato, ordinare per `colId: "attr.&lt;code&gt;"` restituisce le righe ordinate per quel valore JSON; la query non usa `whereRaw`/`orderByRaw` su input.</criterion>
+    <criterion id="AC-012">Con `productCategoryId` valorizzato, un `filterModel` su `attr.&lt;code&gt;` filtra le righe secondo il payload SSRM del tipo corrispondente (almeno: text contains, number equals, set in).</criterion>
+    <criterion id="AC-013">Un `sortModel`/`filterModel` che referenzia un `attr.&lt;code&gt;` non appartenente alla categoria richiesta (o senza `productCategoryId`) restituisce 422.</criterion>
+    <criterion id="AC-014">`POST /values` con `columnId: "attr.&lt;code&gt;"` di un attributo enum e la categoria corrispondente restituisce i valori distinti presenti; senza `productCategoryId` restituisce 422.</criterion>
+    <criterion id="AC-015">`PATCH /rows/{id}` con `column: "attr.&lt;code&gt;"` e valore valido persiste in `opportunities.attribute_values` lasciando invariati gli altri code, e la riga di risposta riporta il nuovo valore.</criterion>
+    <criterion id="AC-016">`PATCH /rows/{id}` con `column: "attr.&lt;code&gt;"` e valore non valido per il tipo (es. testo su `integer`, opzione fuori catalogo su `enum`) restituisce 422 e non modifica la riga.</criterion>
+    <criterion id="AC-017">`PATCH /rows/{id}` su una colonna attributo da parte di un utente il cui ruolo ha `attribute_values` non editable restituisce 403.</criterion>
+    <criterion id="AC-018">Salvare le preferenze colonna includendo id `attr.*` di una categoria qualsiasi restituisce 200 (nessun 422 da allow-list).</criterion>
+    <criterion id="AC-019">(Vitest) La pagina Gestione Richieste monta una tab strip con "Tutte" selezionato di default piu' un trigger per ogni categoria restituita dall'endpoint; nessuna colonna e' dichiarata staticamente nel frontend.</criterion>
+    <criterion id="AC-020">(Vitest) Selezionando il tab di una categoria, `useTableConfig` viene interrogato con lo scope della categoria e il datasource invia `productCategoryId` nel payload delle righe; tornando su "Tutte" il campo sparisce.</criterion>
+    <criterion id="AC-021">(Vitest) La selezione del tab sopravvive al remount del componente (persistenza localStorage) e non si perde durante paginazione o refresh della griglia.</criterion>
+    <criterion id="AC-022">(Vitest) Una colonna con `source: "attribute"` ed `editor: "select"` risolve l'editor rich-select con le opzioni della colonna; una con `editor: "date"` risolve il nuovo editor data.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza composer/npm.</item>
+    <item>Nessuna migrazione di database (D-4).</item>
+    <item>Divieto assoluto di `whereRaw`/`orderByRaw`/`groupByRaw` su input: il `code` usato nel path JSON deve provenire dall'allow-list risolta server-side (`effectiveAttributes` della categoria richiesta), mai dalla request. Vale backend.md §8 / security.md §8.</item>
+    <item>Riuso obbligatorio dei `FieldTypeHandler` (app/CustomFields/Types/) per columnType/filterType/applyFilter/applySort/distinctValues: e' ammesso parametrizzare la colonna JSON di destinazione, non duplicare la logica per tipo.</item>
+    <item>Riuso obbligatorio di `AttributeValueValidator` e `AttributeValueNormalizer` per la scrittura: nessuna validazione parallela.</item>
+    <item>Nessuna scrittura diretta su `opportunities.attribute_values`: si passa da `RequestManagementService::updateWork()` (che gia' logga l'attivita' per una colonna fuori fillable).</item>
+    <item>Authz server-side invariata su ogni endpoint: `request-management.viewAny` in lettura, `request-management.update` + matrice role_field_permissions in scrittura, scope operatore sempre applicato.</item>
+    <item>Il decoratore backend non deve alterare il comportamento degli altri domini tabellari: si applica al solo `request-management` e resta un passthrough quando lo scope categoria e' assente.</item>
+    <item>Frontend: nessuna definizione statica di colonna; le colDef restano generate da `buildColDefs()` sulla config del server. Tab strip compatta secondo ui-design.md §2 (`text-xs`, `px-2.5 py-1`, icone `size-3.5`).</item>
+    <item>Stringhe UI solo via i18next (it + en); le label delle colonne attributo arrivano dal server come testo e non vanno tradotte.</item>
+    <item>File entro 300 righe soft / 500 hard; nessun file `.md` aggiuntivo.</item>
+  </constraints>
+
+</spec>

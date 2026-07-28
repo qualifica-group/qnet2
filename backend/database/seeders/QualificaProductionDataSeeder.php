@@ -24,12 +24,18 @@ use Illuminate\Database\Seeder;
  *                                    supervisor/commercial/marketing roles.
  *   4. QualificaLegacyImportSeeder — the support tables pulled from the legacy
  *                                    system through the Migrazioni engine.
+ *   5. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
+ *                                    root to the business function step 4
+ *                                    imports.
  *
  * The order is a contract, not a preference:
  *   - step 4 adopts step 2's source catalogue by name instead of duplicating
  *     it, and nests its imported taxonomy under step 2's "Consulenza" root;
  *   - step 4 acts on behalf of a super-admin, which step 3 guarantees exists
- *     (it runs `permissions:sync` and `roles:create-super-admin` itself).
+ *     (it runs `permissions:sync` and `roles:create-super-admin` itself);
+ *   - step 5 needs BOTH sides: step 2's category and step 4's function. Step 2
+ *     already ran it once at its own end (a no-op here, the import had not run
+ *     yet), which is why it is repeated — not moved — after step 4.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 4 is a no-op with
@@ -48,5 +54,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->callWith(QualificaCatalogSeeder::class, ['askForLegacyImport' => false]);
         $this->call(TestUsersSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
+        $this->call(QualificaBusinessFunctionLinkSeeder::class);
     }
 }

@@ -40,7 +40,11 @@ use Illuminate\Database\Seeder;
  *   - the "stati di lavorazione" (spec 0047), delegated to
  *     QualificaWorkflowSeeder as the last step: one OpportunityWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
- *     category and carrying its own working-state pick list.
+ *     category and carrying its own working-state pick list;
+ *   - the "Formazione" root's business function link (spec 0023), delegated to
+ *     QualificaBusinessFunctionLinkSeeder as the very last step: that function
+ *     is imported from the external qnet CRM, not seeded here, so the link is
+ *     a documented no-op whenever the import did not run.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -196,6 +200,12 @@ class QualificaCatalogSeeder extends Seeder
         if ($askForLegacyImport) {
             $this->offerLegacyImport();
         }
+
+        // Step 6: the business function link, LAST — the function it looks for
+        // comes from the import above, not from this catalogue. A no-op, never
+        // an error, when that import did not run or has no such function;
+        // QualificaProductionDataSeeder repeats it after its own import.
+        $this->call(QualificaBusinessFunctionLinkSeeder::class);
     }
 
     /**

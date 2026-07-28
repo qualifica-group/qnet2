@@ -2,6 +2,37 @@
 
 > Injected at session start. Update at every green state.
 
+## "FORMAZIONE" -> FUNZIONE AZIENDALE OMONIMA (2026-07-28) — VERDE, NON COMMITTATO
+
+`Database\Seeders\QualificaBusinessFunctionLinkSeeder` (NUOVO): assegna la categoria RADICE
+`Formazione` alla `BusinessFunction` di nome `Formazione` (`product_categories.business_function_id`,
+spec 0023). Sulla RADICE di proposito: `CategoryHierarchy::effectiveBusinessFunction()` risolve
+own-or-inherited, quindi una riga sola copre tutto il ramo Formazione, regioni GOL incluse.
+
+PERCHE' E' UN SEEDER A SE' E PERCHE' GIRA DUE VOLTE: le business function NON stanno nel
+catalogo statico, arrivano dall'import esterno (`business-functions` e' la prima source di
+`QualificaLegacyImportSeeder`). Quindi il link deve girare DOPO l'import, ma
+`QualificaCatalogSeeder` gira PRIMA. E' chiamato da entrambi i punti d'ingresso:
+- `QualificaCatalogSeeder::run()` Step 6, dopo `offerLegacyImport()` — copre il lancio
+  standalone che concatena l'import;
+- `QualificaProductionDataSeeder::run()` Step 5, dopo `QualificaLegacyImportSeeder` — copre
+  il percorso principale, dove la chiamata dentro il catalogo e' ancora un no-op.
+Ripetere e' innocuo: il secondo passaggio trova il link gia' fatto. `QualificaCatalogSeeder`
+era a 437 righe, da qui il file separato invece del metodo inline.
+
+REGOLE (requisito utente: "se non esiste lascialo libero senza errori"):
+- Nessuna funzione `Formazione` -> categoria lasciata a null, warn sul comando, seed prosegue.
+  Mai un'eccezione.
+- Slot gia' occupato (`business_function_id` non null) -> NON viene sovrascritto: un
+  abbinamento fatto a mano sopravvive al re-run, come tutto il resto di
+  `QualificaCatalogSeeder`.
+- `business_functions.name` non ha indice unique: a parita' di nome vince l'id piu' basso.
+
+VERIFICA: `tests/Feature/Seeding/QualificaBusinessFunctionLinkSeederTest.php` (5 test) —
+assenza della funzione senza errori, assegnazione idempotente, link solo sulla radice,
+slot manuale non rubato, id piu' basso sui nomi duplicati. Suite backend intera: **3981 test,
+3964 verdi, 16 rossi tutti pre-esistenti**. Pint pulito.
+
 ## STATI DI LAVORAZIONE DEL CATALOGO (2026-07-28) — VERDE, NON COMMITTATO
 
 `QualificaCatalogSeeder` ora seeda anche gli "stati di lavorazione" del cliente, trascritti
