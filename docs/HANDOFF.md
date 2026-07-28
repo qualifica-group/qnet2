@@ -35,8 +35,35 @@ alcun marcatore del genere).
 13 WORKFLOW SEEDATI: 9 regioni GOL (Lombardia 25 stati, Campania 20, Lazio 22, Sicilia 22,
 Umbria 20, Molise/Puglia/Calabria/Basilicata 19 — colonna condivisa, estratta in
 `GOL_BASE_STATUSES`), `Autoimpiego` e `Yisu` (14, stessa lista), `Autofinanziato` (13),
-`Consulenza` (11). Ogni set riceve in piu' le 4 righe di sistema pinnate da
-`WorkflowStatusWriter` (Aperta / Validato / Chiusa positiva / Chiusa negativa).
+`Consulenza` (11).
+
+RIGHE DI SISTEMA CON LE ETICHETTE DEL FOGLIO (richiesta utente 2026-07-28): `WorkflowStatusWriter`
+crea sempre 4 righe pinnate, e le sue etichette di default (`Aperta`, `Chiusa positiva`,
+`Chiusa negativa`) non appartengono a nessun blocco del foglio. Quindi ogni riga pinnata
+PRENDE IL POSTO del PRIMO stato che il blocco classifica nel suo stesso gruppo, e quello
+stato NON viene piu' emesso anche come riga custom (l'indice unico
+`(opportunity_workflow_id, name)` rifiuterebbe il doppione). Regola implementata in
+`WorkflowStatusCatalogue::pinnedStatusesFor()` / `customStatusesFor()`, consumate dai
+parametri `openStatus`/`closedWonStatus`/`closedLostStatus` di
+`CreateOpportunityWorkflowData`:
+
+| set | open | closed_won | closed_lost |
+|---|---|---|---|
+| 9 regioni GOL | Da Richiamare | Associato SI _ NOI | Percorso 101 |
+| Autoimpiego / Yisu | Da Richiamare | OK_Da Caricare | Non ha i Requisiti |
+| Autofinanziato | Da Richiamare | OK_Iscritto | Irreperibile |
+| Consulenza | Da Richiamare | VINTO | Persa |
+
+DA SAPERE su questa regola:
+- `validated` NON e' rimappato: il foglio non ha alcuno stato che gli corrisponda, quindi
+  quella riga resta `Validato`. E' l'unica etichetta estranea al foglio ancora presente, e
+  non e' eliminabile senza toccare `WorkflowStatusWriter` (condiviso con tutta la 0047).
+- Su `closed_lost` la scelta "primo del gruppo" e' meccanica, non semantica: per GOL cade su
+  `Percorso 101` solo perche' e' la prima cella rosa della colonna. Gli altri stati negativi
+  restano righe custom con gruppo `closed_lost`, quindi nulla va perso — ma se il cliente
+  vuole un'altra etichetta sulla riga pinnata, si cambia li'.
+- Il set di DEFAULT GLOBALE (`opportunity_workflow_id` null) NON e' stato toccato: resta con
+  le sole 4 righe di sistema seedate dalla migrazione.
 
 DECISIONI UTENTE 2026-07-28 (non re-litigare):
 - Il blocco CONSULENZA e' agganciato alla RADICE `Consulenza`, non alle sue foglie. NOTA
@@ -58,12 +85,13 @@ ATTENZIONE INCROCIO DEMO/PRODUZIONE: `DemoOpportunityWorkflowSeeder` fa
 `DemoDataSeeder` DOPO `QualificaCatalogSeeder` cancella i 13 workflow seedati qui. I due
 percorsi (demo vs produzione) restano separati: non mescolarli sullo stesso DB.
 
-VERIFICA ESEGUITA: nuovo `tests/Feature/Seeding/QualificaWorkflowSeederTest.php` (6 test, 93
+VERIFICA ESEGUITA: nuovo `tests/Feature/Seeding/QualificaWorkflowSeederTest.php` (8 test, 101
 asserzioni) — un workflow attivo per categoria con il criterio giusto e idempotenza su
-doppio seed, ordine della colonna Lombardia fra le righe di sistema, classificazione dai 4
+doppio seed, ordine della colonna Lombardia fra le righe di sistema, etichette pinnate dai 4
+blocchi, nessun nome duplicato dentro un set (promozione, non copia), classificazione dai 4
 colori della legenda, descrizioni scopate per blocco (stesso nome, testo diverso), colonna
 condivisa dalle 4 regioni, categorie assenti dal foglio senza workflow. Suite backend intera:
-**3974 test, 3957 verdi, 16 rossi tutti pre-esistenti** (gli stessi elencati sotto). Pint
+**3976 test, 3959 verdi, 16 rossi tutti pre-esistenti** (gli stessi elencati sotto). Pint
 pulito sui 4 file toccati.
 
 ## MIGRAZIONI COMPATTATE: SOLO CREATE, ZERO ALTER (2026-07-28) — VERDE, NON COMMITTATO

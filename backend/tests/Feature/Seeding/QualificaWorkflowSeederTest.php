@@ -48,20 +48,88 @@ it('seeds a GOL region column in the sheet order, between the pinned system rows
         ->orderBy('sort_order')
         ->get();
 
-    // The 25 rows of the Lombardia column, plus the 4 rows every set is
-    // pinned with (WorkflowStatusWriter): 'Aperta' first, the closing trio last.
-    $custom = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
+    // Every row of the Lombardia column is seeded once: three of them are
+    // promoted onto pinned system rows, the rest stay custom. The only extra
+    // row is 'validated', which the sheet has no state for.
+    $all = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
+    $custom = WorkflowStatusCatalogue::customStatusesFor('GOL - Lombardia');
 
-    expect($statuses)->toHaveCount(count($custom) + 4)
+    expect($statuses)->toHaveCount(count($all) + 1)
+        ->and(count($custom))->toBe(count($all) - 3)
         ->and($statuses->first()->system_key)->toBe('open')
         ->and($statuses->slice(-3)->pluck('system_key')->all())->toBe(['validated', 'closed_won', 'closed_lost']);
 
     expect($statuses->slice(1, count($custom))->pluck('name')->values()->all())
         ->toBe(array_column($custom, 'name'));
 
-    // First and last custom row of the column, as the sheet lists them.
-    expect($statuses->get(1)->name)->toBe('Da Richiamare')
+    // First and last custom row of the column, as the sheet lists them —
+    // 'Da Richiamare' is no longer here: it now labels the pinned open row.
+    expect($statuses->get(1)->name)->toBe('Attesa esito SFL/ADI')
         ->and($statuses->get(count($custom))->name)->toBe('In Standby');
+});
+
+it('labels the pinned system rows with the sheet states, never the generic defaults', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $pinned = function (string $workflowName): array {
+        $workflow = OpportunityWorkflow::query()->where('name', $workflowName)->firstOrFail();
+
+        return OpportunityWorkflowStatus::query()
+            ->where('opportunity_workflow_id', $workflow->id)
+            ->whereNotNull('system_key')
+            ->pluck('name', 'system_key')
+            ->sortKeys()
+            ->all();
+    };
+
+    // Each pinned row takes over the FIRST state its block classifies under
+    // the same group; 'validated' has no counterpart in the sheet.
+    expect($pinned('GOL - Lombardia'))->toBe([
+        'closed_lost' => 'Percorso 101',
+        'closed_won' => 'Associato SI _ NOI',
+        'open' => 'Da Richiamare',
+        'validated' => 'Validato',
+    ]);
+
+    expect($pinned('Consulenza'))->toBe([
+        'closed_lost' => 'Persa',
+        'closed_won' => 'VINTO',
+        'open' => 'Da Richiamare',
+        'validated' => 'Validato',
+    ]);
+
+    expect($pinned('Autoimpiego'))->toBe([
+        'closed_lost' => 'Non ha i Requisiti',
+        'closed_won' => 'OK_Da Caricare',
+        'open' => 'Da Richiamare',
+        'validated' => 'Validato',
+    ]);
+
+    expect($pinned('Autofinanziato'))->toBe([
+        'closed_lost' => 'Irreperibile',
+        'closed_won' => 'OK_Iscritto',
+        'open' => 'Da Richiamare',
+        'validated' => 'Validato',
+    ]);
+});
+
+it('promotes a state onto a pinned row instead of duplicating it as a custom one', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $workflow = OpportunityWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
+    $statuses = OpportunityWorkflowStatus::query()
+        ->where('opportunity_workflow_id', $workflow->id)
+        ->get();
+
+    // One row per name, and the promoted ones carry their sheet description
+    // and colour onto the system row.
+    expect($statuses->pluck('name')->duplicates())->toBeEmpty();
+
+    $vinto = $statuses->firstWhere('name', 'VINTO');
+
+    expect($vinto->system_key)->toBe('closed_won')
+        ->and($vinto->color)->toBe('green')
+        ->and($vinto->description)->toBe('Trattativa conclusa positivamente.');
 });
 
 it('classifies each status from the sheet legend', function (): void {
@@ -70,13 +138,12 @@ it('classifies each status from the sheet legend', function (): void {
     $workflow = OpportunityWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
     $statuses = OpportunityWorkflowStatus::query()
         ->where('opportunity_workflow_id', $workflow->id)
-        ->whereNull('system_key')
         ->get()
         ->keyBy('name');
 
     // No fill: "stato di lavorazione aperto".
-    expect($statuses['Da Richiamare']->group)->toBe(WorkflowStatusGroup::Open)
-        ->and($statuses['Da Richiamare']->color)->toBe('slate')
+    expect($statuses['In Standby']->group)->toBe(WorkflowStatusGroup::Open)
+        ->and($statuses['In Standby']->color)->toBe('slate')
         // Yellow: open, but used only by the region it belongs to.
         ->and($statuses['Attesa Attivazione DOTE']->group)->toBe(WorkflowStatusGroup::Open)
         ->and($statuses['Attesa Attivazione DOTE']->color)->toBe('yellow')

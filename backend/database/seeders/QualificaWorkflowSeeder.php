@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\DataObjects\OpportunityWorkflows\CreateOpportunityWorkflowData;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\OpportunityWorkflow;
 use App\Models\ProductCategory;
 use App\Services\OpportunityWorkflowService;
@@ -25,6 +26,12 @@ use Illuminate\Database\Seeder;
  * same path POST /api/opportunity-workflows uses — so the real write path runs
  * (signature uniqueness, criteria sync, the 4 pinned system rows added by
  * WorkflowStatusWriter around the custom ones), never a raw insert.
+ *
+ * Those pinned rows are seeded with the sheet's OWN labels, not the writer's
+ * generic "Aperta"/"Chiusa positiva"/"Chiusa negativa": each takes over the
+ * first state its block classifies under the same group (user decision
+ * 2026-07-28), so no label foreign to the sheet reaches the pick list. Only
+ * 'validated', which the sheet has no state for, keeps its default label.
  *
  * Idempotent: a category whose workflow already exists (by name OR by criteria
  * signature, both unique) is skipped, so a re-run neither duplicates nor
@@ -65,11 +72,21 @@ class QualificaWorkflowSeeder extends Seeder
             return;
         }
 
+        // The pinned system rows carry the sheet's own labels rather than the
+        // writer's generic ones (user decision 2026-07-28); the rows they take
+        // over are dropped from the custom list, never seeded twice.
+        $pinned = WorkflowStatusCatalogue::pinnedStatusesFor($category->name);
+
         $service->create(new CreateOpportunityWorkflowData(
             name: $category->name,
             isActive: true,
             criteria: $criteria,
-            statuses: WorkflowStatusCatalogue::statusesFor($category->name),
+            statuses: WorkflowStatusCatalogue::customStatusesFor($category->name),
+            openStatus: $pinned[WorkflowStatusGroup::Open->value],
+            // No state of the sheet maps to 'validated': that row keeps its
+            // own default label.
+            closedWonStatus: $pinned[WorkflowStatusGroup::ClosedWon->value],
+            closedLostStatus: $pinned[WorkflowStatusGroup::ClosedLost->value],
         ));
     }
 }

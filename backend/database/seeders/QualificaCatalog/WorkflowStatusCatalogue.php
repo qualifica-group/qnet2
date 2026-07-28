@@ -242,10 +242,75 @@ final class WorkflowStatusCatalogue
     ];
 
     /**
-     * $categoryName's ordered status rows, shaped to the
-     * CreateOpportunityWorkflowData custom-row contract. The pinned system
-     * rows (open/validated/closed_won/closed_lost) are NOT listed here: every
-     * set gets them from WorkflowStatusWriter.
+     * The groups whose first sheet row is PROMOTED onto the matching pinned
+     * system row (user decision 2026-07-28): every set is created with four
+     * pinned rows whose default labels ("Aperta", "Chiusa positiva", "Chiusa
+     * negativa") belong to no block of the sheet, so each takes the label of
+     * the first state the sheet classifies under its own group instead — the
+     * `open` one lands on "Da Richiamare" in every block.
+     *
+     * `validated` is deliberately absent: the sheet has no state for it, so
+     * that row keeps WorkflowStatusWriter's own "Validato" label.
+     *
+     * @var list<string>
+     */
+    private const array PINNED_GROUPS = [
+        WorkflowStatusGroup::Open->value,
+        WorkflowStatusGroup::ClosedWon->value,
+        WorkflowStatusGroup::ClosedLost->value,
+    ];
+
+    /**
+     * The sheet row promoted onto each pinned system row of $categoryName's
+     * set, keyed by group and shaped to the CreateOpportunityWorkflowData
+     * system-row contract (no `group`: a pinned row's group is fixed by its
+     * system key). Null for a group the category's list never uses — the
+     * pinned row then keeps the writer's default label.
+     *
+     * @return array<string, array{name: string, description: string, color: string, requires_note: bool}|null>
+     */
+    public static function pinnedStatusesFor(string $categoryName): array
+    {
+        $statuses = self::statusesFor($categoryName);
+        $promoted = [];
+
+        foreach (self::PINNED_GROUPS as $group) {
+            $first = array_find($statuses, static fn (array $status): bool => $status['group'] === $group);
+
+            $promoted[$group] = $first === null ? null : [
+                'name' => $first['name'],
+                'description' => $first['description'],
+                'color' => $first['color'],
+                'requires_note' => $first['requires_note'],
+            ];
+        }
+
+        return $promoted;
+    }
+
+    /**
+     * $categoryName's rows left as CUSTOM rows: the full list minus the ones
+     * promoted onto a pinned system row above. Keeping a promoted row in both
+     * places would duplicate its label inside one set — which the
+     * (opportunity_workflow_id, name) unique index rejects outright.
+     *
+     * @return list<array{name: string, description: string, color: string, group: string, requires_note: bool}>
+     */
+    public static function customStatusesFor(string $categoryName): array
+    {
+        $promotedNames = array_column(array_filter(self::pinnedStatusesFor($categoryName)), 'name');
+
+        return array_values(array_filter(
+            self::statusesFor($categoryName),
+            static fn (array $status): bool => ! in_array($status['name'], $promotedNames, true),
+        ));
+    }
+
+    /**
+     * $categoryName's ordered status rows, EVERY one of them — the sheet
+     * column transcribed as it stands, before pinnedStatusesFor()/
+     * customStatusesFor() split it between the pinned system rows and the
+     * custom ones.
      *
      * @return list<array{name: string, description: string, color: string, group: string, requires_note: bool}>
      */
