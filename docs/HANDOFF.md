@@ -2,6 +2,62 @@
 
 > Injected at session start. Update at every green state.
 
+## MIGRAZIONI COMPATTATE: SOLO CREATE, ZERO ALTER (2026-07-28) — VERDE, NON COMMITTATO
+
+Richiesta utente: fondere ogni migrazione di update dentro la CREATE della sua tabella, così
+da avere solo migrazioni di creazione. Da **157 file a 70**: eliminati gli 85 alter + le due
+create di tabelle poi rimosse (`taggables`, `lead_statuses`).
+
+RIORDINO (una create non può referenziare una tabella creata dopo): rinominati i file di
+`provinces` (prima di `cities`), `vat_rates` -> `2026_07_07_105000`, `products` ->
+`2026_07_08_100400`, `mass_migration_runs` -> `2026_07_04_100400`, `opportunity_statuses` ->
+`2026_07_16_130000`, la tripletta `opportunity_workflow*` -> `2026_07_16_1310xx`,
+`reward_statuses` -> `2026_07_23_115000`. `project_statuses` è diventato
+`2026_07_13_110000_create_pipeline_statuses_table.php` (la rename migration non esiste più).
+
+DATI DI SISTEMA — le migrazioni che seedavano righe ora seedano lo STATO FINALE dentro la
+create: `pipeline_statuses` (Nuovo/Chiuso, prima creati dalla migrazione system-status),
+`opportunity_workflow_statuses` (4 righe globali: open 0, validated 10, closed_won 20,
+closed_lost 30 — prima ottenute da create + regenerate + add_validated). I backfill puri
+(attribute layout `all`, reward_status_id, opportunity_status_id, position su registry_user,
+ERP columns -> custom fields) erano no-op su DB vuoto: spariti, con lo schema finale nella
+create.
+
+CICLO FK SCIOLTO: `company_sites.default_bank_id` non esiste più (il flag è
+`company_site_banks.is_primary`), quindi `create_company_site_banks` non fa più
+`Schema::table` su `company_sites`. Stessa cosa per `create_opportunity_product_lines`, che
+non tocca più `opportunities`.
+
+VERIFICA ESEGUITA (non "dovrebbe funzionare"):
+- Schema MySQL confrontato riga per riga (colonne/tipi/null/default/collation + tutti gli
+  indici + tutte le FK con le regole ON DELETE) fra il DB migrato PRIMA e DOPO: **identico**,
+  tranne 4 identificatori che prima restavano stantii dopo la `renameColumn`
+  (`projects_project_status_id_index/_foreign`, `campaigns_project_status_id_foreign`) e ora
+  hanno il nome derivato corretto (`*_pipeline_status_id_*`). Nessuna differenza di struttura.
+- Righe di sistema seedate: confronto prima/dopo su `pipeline_statuses`,
+  `opportunity_statuses`, `opportunity_workflow_statuses`, `reward_statuses`: identiche.
+- `migrate:rollback` completo: torna a DB vuoto, ogni `down()` funziona.
+- `migrate:fresh --seed` e `db:seed --class=DemoDataSeeder`: verdi.
+- Suite backend: 3968 test, 3951 verdi, **16 rossi tutti pre-esistenti** (verificati
+  rieseguendo la suite su una copia dell'albero con le sole mie modifiche annullate: stessi
+  identici 16). Pint pulito sui file toccati (resta il drift pre-esistente su
+  `tests/Feature/Migration/AttributesSourceImportTest.php`, non toccato).
+
+TEST AGGIORNATI (requisito cambiato: le migrazioni alter non esistono più, quindi i test di
+reversibilità che le caricavano con `require database_path(...)` non hanno più oggetto).
+Rimossi SOLO quei blocchi, mai le asserzioni di schema/comportamento:
+`OldIdSchemaTest` (dataset senza più il file di migrazione), `PipelineStatusTest`,
+`AddressSiteTypeTest`, `ImportRunWizardColumnsTest`, `LeadTest`, `CompanySiteTest`,
+`OpportunityAttributeValuesTest`, `OpportunityTest`, `BusinessFunctionTest`,
+`ProductCategoryBusinessFunctionTest`, `SystemStatusMigrationTest`,
+`OpportunityStatusMigrationTest` (l'asserzione NOT NULL è stata spostata nel test superstite).
+Cancellato `AttributeLayoutBackfillMigrationTest` (testava solo la migrazione di backfill).
+Aggiornati i path in `ProductTest`/`VatRateTest` per i file rinominati.
+
+CONSEGUENZA DA SAPERE: un database già migrato con il vecchio set NON è aggiornabile — la
+tabella `migrations` contiene 157 nomi che ora non esistono e le create ripartirebbero da
+zero. Vale per gli ambienti esistenti (dev/staging): serve `migrate:fresh` + re-seed.
+
 ## CATALOGO — CORSI AUTOFINANZIATI + 3 REGIONI GOL (2026-07-28) — VERDE, NON COMMITTATO
 
 `QualificaCatalogSeeder` ora seeda anche i 10 corsi della sottocategoria `Autofinanziato`
