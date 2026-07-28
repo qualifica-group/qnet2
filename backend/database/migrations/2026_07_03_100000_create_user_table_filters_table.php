@@ -34,6 +34,11 @@ return new class extends Migration
             // {"status":{"filterType":"set","values":["active"]}}.
             $table->json('filters');
 
+            // Advanced filters (spec 0032), the backend-driven filter level above
+            // the AG Grid column filters: kept in its own column so the two
+            // concepts persist independently while sharing the same row.
+            $table->json('advanced_filters')->nullable();
+
             $table->timestamps();
 
             // One filter state per user per table → the write is an idempotent

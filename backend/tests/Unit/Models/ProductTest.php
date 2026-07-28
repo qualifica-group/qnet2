@@ -31,7 +31,7 @@ it('a category with products cannot be deleted at the database level (restrictOn
 });
 
 it('down() reverses the products migration, up() recreates it', function () {
-    $migration = require database_path('migrations/2026_07_07_110400_create_products_table.php');
+    $migration = require database_path('migrations/2026_07_08_100400_create_products_table.php');
 
     $migration->down();
 

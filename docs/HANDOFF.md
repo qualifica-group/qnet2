@@ -2,6 +2,46 @@
 
 > Injected at session start. Update at every green state.
 
+## CATALOGO — CORSI AUTOFINANZIATI + 3 REGIONI GOL (2026-07-28) — VERDE, NON COMMITTATO
+
+`QualificaCatalogSeeder` ora seeda anche i 10 corsi della sottocategoria `Autofinanziato`
+(a pagamento, con prezzo di listino) e tre nuove declinazioni regionali GOL.
+
+NOMI DA RISPETTARE:
+- `Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue` (NUOVO file dati, gemello di
+  `TrainingCourseCatalogue`): `CATEGORY = 'Autofinanziato'`, `IN_PERSON = 'in_person'`,
+  `ONLINE = 'online'`, `COURSES` (righe `{name, hours, delivery_mode, price}`).
+- Attributo prodotto `delivery_mode` ("Modalità di svolgimento", type `enum`, opzioni
+  `in_person` = "In presenza" / `online` = "Online"), assegnato SOLO a `Autofinanziato`:
+  a differenza di `total_hours` (assegnato alla radice `Formazione` e quindi ereditato da
+  tutto il ramo) resta confinato al suo sottoalbero.
+- `QualificaCatalogSeeder::seedCourse()` sostituisce `seedTrainingCourse()`: firma
+  generalizzata (nome, prezzo, mappa `attributeValues`), usata sia dai corsi GOL
+  (prezzo 0) sia dagli autofinanziati. `cost` resta 0 ovunque.
+
+CAMBI STRUTTURALI nel seeder:
+- `CATALOG_PRODUCT_ATTRIBUTES` non e' piu' indicizzato per RADICE ma per NOME CATEGORIA
+  qualsiasi (a qualunque profondita'); le assegnazioni girano DOPO la costruzione
+  dell'intero albero, non dentro il loop delle radici.
+- `seedAttributeOptions()` (nuovo) crea le `AttributeOption` con `firstOrCreate` — non usa
+  `AttributeService`, il cui full-replace annidato cancellerebbe le opzioni aggiunte a mano.
+- `CATALOG` -> `Formazione > GOL` ha 3 figli in piu': `GOL - Puglia`, `GOL - Basilicata`,
+  `GOL - Sicilia`. Nessun corso associato (non forniti): le categorie nascono vuote, cosa
+  legittima perche' `seedTrainingCourses()` itera i CORSI, non le categorie.
+
+CONTEGGI AGGIORNATI: i prodotti seedati passano da 252 a 262 (252 GOL + 10 autofinanziati);
+i test che li pinnavano sono aggiornati (`QualificaCatalogSeederTest`,
+`QualificaProductionDataSeederTest`).
+
+VERIFICA ESEGUITA: `XDEBUG_MODE=off php artisan test` sui 4 file di test dei seeder Qualifica
+-> 30 test, 30 verdi. Suite allargata (Products, ProductCategories, Attributes, Seeding,
+CustomFields) -> 325 test, 320 verdi, 5 rossi PRE-ESISTENTI (i 4 "navigation node" gia'
+elencati sotto + `CustomFieldWritePipelineTest` "VAT number is not valid"). Pint pulito.
+NOTA: la suite completa e' attualmente inaffidabile — l'albero di lavoro contiene una
+riorganizzazione delle migrazioni (161 file sotto `database/migrations`, mtime 2026-07-28
+09:06) NON fatta in questo giro, che manda in errore 28 test di reversibilita' migrazione
+("Failed to open stream" sui file rimossi). Fuori dal mio scope, non toccato.
+
 ## EREDITARIETA' ATTRIBUTI SGANCIATA PER CONTESTO (2026-07-27) — VERDE, NON COMMITTATO
 
 Il singolo flag `product_categories.inherits_attributes` governava la barriera di

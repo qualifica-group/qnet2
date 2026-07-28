@@ -31,7 +31,7 @@ it('name and rate are required at the database level', function () {
 });
 
 it('down() reverses the migration, up() recreates it', function () {
-    $migration = require database_path('migrations/2026_07_17_090000_create_vat_rates_table.php');
+    $migration = require database_path('migrations/2026_07_07_105000_create_vat_rates_table.php');
 
     $migration->down();
 

@@ -17,6 +17,12 @@ return new class extends Migration
     {
         Schema::create('sectors', function (Blueprint $table) {
             $table->id();
+
+            // The external system's id for a row migrated from it (spec 0013):
+            // also resolves the SELF-referential `parent_id` remap. NULL for
+            // native qnet rows, unique among migrated ones.
+            $table->unsignedBigInteger('old_id')->nullable()->unique();
+
             $table->string('name', 191);
             $table->foreignId('parent_id')->nullable()->constrained('sectors')->restrictOnDelete();
             $table->timestamps();

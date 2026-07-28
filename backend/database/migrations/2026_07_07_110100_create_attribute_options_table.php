@@ -18,6 +18,13 @@ return new class extends Migration
             $table->foreignId('attribute_id')->constrained()->cascadeOnDelete();
             $table->string('value', 191);
             $table->string('label', 191);
+
+            // Presentation columns, aligned with `custom_field_options`
+            // (spec 0021).
+            $table->string('color', 32)->nullable();
+            $table->string('icon', 191)->nullable();
+            $table->boolean('is_default')->default(false);
+
             $table->integer('sort_order')->default(0);
             $table->timestamps();
 

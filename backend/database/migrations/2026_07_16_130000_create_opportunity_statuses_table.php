@@ -6,16 +6,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Opportunity status lookup entity (spec 0043): a clone 1:1 of the
- * lead_statuses "system statuses" shape (spec 0039) — unlike lead_statuses'
- * own history (create-migration first, system columns/rows added by a LATER
- * migration), this brand-new table carries `system_key`/`group` and the
- * THREE mandatory system rows from the very start (BR-1): "Nuova" (`new`,
- * open, sort_order 0), "Chiusa con successo" (`won`, closed, sort_order 10),
- * "Persa" (`lost`, closed, sort_order 20 — ALWAYS last, D-2). `name` is
- * UNIQUE (BR-3). Referenced by `opportunities.opportunity_status_id` with
- * `restrictOnDelete` (BR-2), added by a later migration (D-2/context: the
- * opportunities create-migration is already committed).
+ * Opportunity status lookup entity (spec 0043): the "system statuses" shape
+ * (spec 0039) shared with `pipeline_statuses` — `system_key`/`group` plus the
+ * THREE mandatory system rows seeded here (BR-1): "Nuova" (`new`, open,
+ * sort_order 0), "Chiusa con successo" (`won`, closed, sort_order 10), "Persa"
+ * (`lost`, closed, sort_order 20 — ALWAYS last, D-2). `name` is UNIQUE (BR-3).
+ * Referenced by `opportunities.opportunity_status_id` with `restrictOnDelete`
+ * (BR-2), which is why this table is created before `opportunities`.
  */
 return new class extends Migration
 {

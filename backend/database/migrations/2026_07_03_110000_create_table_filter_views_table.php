@@ -34,6 +34,11 @@ return new class extends Migration
             // and re-filtered on every read (TableFilterViewRequest / Service).
             $table->json('filters');
 
+            // Advanced filters (spec 0032), the backend-driven filter level above
+            // the AG Grid column filters: kept in its own column so the two
+            // concepts persist independently while sharing the same row.
+            $table->json('advanced_filters')->nullable();
+
             // 'private' | 'shared' — see App\Enums\FilterViewVisibility.
             $table->string('visibility')->default('private');
 

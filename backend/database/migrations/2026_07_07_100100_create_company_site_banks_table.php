@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Schema;
  * BankService for the diff-by-id sync invariant. Cascades on the site's
  * delete.
  *
- * Also completes the create_company_sites_table migration by adding the
- * `default_bank_id` foreign key now that this table exists (the two tables
- * reference each other — see that migration's docblock).
+ * `is_primary` carries the "preferred bank" concept, mirroring the
+ * single-primary invariant already used by contacts/addresses (at most one
+ * primary per owner, enforced in BankService).
  */
 return new class extends Migration
 {
@@ -20,8 +20,6 @@ return new class extends Migration
     {
         Schema::create('company_site_banks', function (Blueprint $table) {
             $table->id();
-            // `after('id')` is an ALTER-TABLE-only modifier; in a fresh CREATE
-            // TABLE the column position is simply where it is declared.
             $table->unsignedBigInteger('old_id')->nullable();
             $table->unique('old_id');
 
@@ -29,21 +27,14 @@ return new class extends Migration
             $table->string('name', 191);
             $table->string('iban', 50)->nullable();
             $table->string('notes', 191)->nullable();
+            $table->boolean('is_primary')->default(false);
 
             $table->timestamps();
-        });
-
-        Schema::table('company_sites', function (Blueprint $table) {
-            $table->foreign('default_bank_id')->references('id')->on('company_site_banks')->nullOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::table('company_sites', function (Blueprint $table) {
-            $table->dropForeign(['default_bank_id']);
-        });
-
         Schema::dropIfExists('company_site_banks');
     }
 };

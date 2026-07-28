@@ -32,6 +32,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('referent_id')->constrained('referents')->cascadeOnDelete();
             $table->foreignId('reward_type_id')->constrained('reward_types')->restrictOnDelete();
+
+            // The workflow status of the assignment (spec 0060, D-5): mandatory,
+            // defaulted to the system `pending` row by
+            // RewardAssignmentWriter::createAdded(). restrictOnDelete is the FK
+            // the BR-4 guard (RewardStatusService::delete()) reads to reject
+            // removing a status still assigned to a reward.
+            $table->foreignId('reward_status_id')->constrained('reward_statuses')->restrictOnDelete();
+
             $table->morphs('source');
             $table->date('assigned_at');
             $table->text('notes')->nullable();

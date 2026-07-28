@@ -12,6 +12,7 @@ use App\Models\Source;
 use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
+use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +73,8 @@ it('provisions the regional GOL declinations as children of the GOL subcategory'
     $regions = [
         'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lombardia', 'GOL - Lazio', 'GOL - Umbria',
+        // No course list yet: the category exists, empty, until one is supplied.
+        'GOL - Puglia', 'GOL - Basilicata', 'GOL - Sicilia',
     ];
 
     foreach ($regions as $name) {
@@ -133,8 +136,8 @@ it('seeds every GOL training course under its own region, idempotently', functio
         expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
     }
 
-    // The courses are the ONLY products seeded: nothing lands outside a region.
-    expect(Product::query()->count())->toBe(array_sum($expectedPerRegion));
+    // Outside the regions, only the self-funded courses are seeded.
+    expect(Product::query()->count())->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES));
 });
 
 it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {
@@ -184,6 +187,76 @@ it('keeps the same course name in different regions as separate products', funct
         ->and($courses->firstWhere('category.name', 'GOL - Molise')->attribute_values['total_hours'])->toEqual(60);
 });
 
+it('assigns the "Modalità di svolgimento" enum to the Autofinanziato subcategory only', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute, option nor pivot row.
+
+    $attribute = Attribute::query()->where('code', 'delivery_mode')->get();
+
+    expect($attribute)->toHaveCount(1)
+        ->and($attribute->first()->name)->toBe('Modalità di svolgimento')
+        ->and($attribute->first()->type)->toBe('enum');
+
+    expect($attribute->first()->options()->get()->map->only(['value', 'label'])->all())
+        ->toBe([
+            ['value' => 'in_person', 'label' => 'In presenza'],
+            ['value' => 'online', 'label' => 'Online'],
+        ]);
+
+    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
+
+    // One single assignment, on the subcategory, in the PRODUCT context.
+    $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
+
+    expect($pivot)->toHaveCount(1)
+        ->and($pivot->first()->category_id)->toBe($autofinanziato->id)
+        ->and($pivot->first()->context)->toBe(AttributeContext::Product->value);
+
+    // Confined to its own subtree: a sibling of Autofinanziato does not see it,
+    // while the branch attribute assigned higher up still reaches both.
+    $service = app(ProductCategoryService::class);
+
+    expect($service->effectiveAttributes($autofinanziato, AttributeContext::Product)->pluck('code')->all())
+        ->toContain('delivery_mode')
+        ->toContain('total_hours');
+
+    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+
+    expect($service->effectiveAttributes($dil, AttributeContext::Product)->pluck('code')->all())
+        ->not->toContain('delivery_mode');
+});
+
+it('seeds the self-funded courses with price, duration and delivery mode, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
+
+    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
+
+    expect(Product::query()->where('category_id', $autofinanziato->id)->count())
+        ->toBe(count(SelfFundedCourseCatalogue::COURSES));
+
+    $oss = Product::query()
+        ->where('name', 'OSS - Operatore Socio Sanitario')
+        ->where('category_id', $autofinanziato->id)
+        ->firstOrFail();
+
+    expect($oss->product_type)->toBe(ProductType::Service)
+        ->and((float) $oss->price)->toBe(1900.0)
+        // Cost is filled in later through the CRUD modules.
+        ->and((float) $oss->cost)->toBe(0.0)
+        ->and($oss->attribute_values['total_hours'])->toEqual(1000)
+        ->and($oss->attribute_values['delivery_mode'])->toBe('in_person');
+
+    $aggiornamento = Product::query()
+        ->where('name', 'Aggiornamento ASO')
+        ->where('category_id', $autofinanziato->id)
+        ->firstOrFail();
+
+    expect((float) $aggiornamento->price)->toBe(130.0)
+        ->and($aggiornamento->attribute_values['total_hours'])->toEqual(10)
+        ->and($aggiornamento->attribute_values['delivery_mode'])->toBe('online');
+});
+
 // The follow-up prompt (user request): launched on its own, the seeder offers
 // to chain the q-crm import. The seeders share one process, so the confirmation
 // is driven through the artisan command, not through test()->seed().
@@ -222,5 +295,5 @@ it('does not ask when no external system is configured', function (): void {
     test()->artisan('db:seed', ['--class' => QualificaCatalogSeeder::class])->assertSuccessful();
 
     expect(MassMigrationRun::query()->count())->toBe(0)
-        ->and(Product::query()->count())->toBe(252);
+        ->and(Product::query()->count())->toBe(262);
 });

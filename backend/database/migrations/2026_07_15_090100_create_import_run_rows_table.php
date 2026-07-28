@@ -30,6 +30,22 @@ return new class extends Migration
             $table->string('status');
             $table->json('messages')->nullable();
             $table->unsignedBigInteger('duplicate_of_id')->nullable();
+
+            // Per-row duplicate resolution (spec 0036): `duplicate_meta` records
+            // the matched referent/lead once staging (or a review edit) detects a
+            // duplicate; `resolution` ("skip"|"create"|"update") is the operator's
+            // per-row choice, read back by the commit phase instead of the global
+            // dedup strategy.
+            $table->json('duplicate_meta')->nullable();
+            $table->string('resolution')->nullable();
+
+            // Per-row Operator / Operational Site overrides (spec 0045): pin a
+            // different value on ONE staged row, overriding the run's global
+            // config just for that lead. nullOnDelete so a removed user/site
+            // never blocks deleting or staging rows.
+            $table->foreignId('operator_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('operational_site_id')->nullable()->constrained('operational_sites')->nullOnDelete();
+
             $table->boolean('is_edited')->default(false);
             $table->timestamps();
 

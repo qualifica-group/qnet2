@@ -28,22 +28,6 @@ it('adds addresses.site_type as a NOT NULL column defaulting to billing', functi
     expect(DB::table('addresses')->find($id)->site_type)->toBe('billing');
 });
 
-it('rolls back cleanly: down() drops site_type', function () {
-    // Load the migration FILE directly and invoke down()/up() on it, rather
-    // than `migrate:rollback --step=1` (which targets the LAST migration in
-    // the batch — a moving target as later migrations are added, e.g. the
-    // registries ones dated after this one). Deterministic regardless of
-    // what else has migrated since.
-    $migration = require database_path('migrations/2026_07_08_090000_add_site_type_to_addresses_table.php');
-
-    $migration->down();
-    expect(Schema::hasColumn('addresses', 'site_type'))->toBeFalse();
-
-    // Restore the schema for any test running after this one in the same process.
-    $migration->up();
-    expect(Schema::hasColumn('addresses', 'site_type'))->toBeTrue();
-});
-
 // ---------------------------------------------------------------------------
 // AC-002/AC-007-style — model cast
 // ---------------------------------------------------------------------------

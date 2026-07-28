@@ -21,7 +21,11 @@ return new class extends Migration
         Schema::create('opportunity_workflow_criteria', function (Blueprint $table) {
             $table->id();
             $table->foreignId('opportunity_workflow_id')->constrained('opportunity_workflows')->cascadeOnDelete();
-            $table->string('field', 64);
+            // 191, not 64: a custom-field criterion's key is namespaced
+            // (App\CustomFields\CustomFieldProvider::KEY_PREFIX `custom.` + the
+            // definition's own key, itself validated max:64), so it can reach
+            // 71 chars.
+            $table->string('field', 191);
             $table->unsignedBigInteger('value_id');
             $table->timestamps();
 

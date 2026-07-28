@@ -51,13 +51,3 @@ it('attribute_values is NOT mass-assignable (absent from Fillable)', function ()
 
     expect($opportunity->attribute_values)->toBeNull();
 });
-
-it('the migration is reversible standalone: down() drops the column, up() recreates it', function () {
-    $migration = require database_path('migrations/2026_07_21_130000_add_attribute_values_to_opportunities_table.php');
-
-    $migration->down();
-    expect(Schema::hasColumn('opportunities', 'attribute_values'))->toBeFalse();
-
-    $migration->up();
-    expect(Schema::hasColumn('opportunities', 'attribute_values'))->toBeTrue();
-});

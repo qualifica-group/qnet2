@@ -22,6 +22,11 @@ return new class extends Migration
     {
         Schema::create('referents', function (Blueprint $table) {
             $table->id();
+
+            // The external system's id for a row migrated from it (spec 0013):
+            // NULL for native qnet rows, unique among migrated ones.
+            $table->unsignedBigInteger('old_id')->nullable()->unique();
+
             $table->string('name')->index();
             $table->foreignId('referent_type_id')->nullable()->constrained('referent_types')->nullOnDelete();
             $table->string('contact_scope')->default('internal');

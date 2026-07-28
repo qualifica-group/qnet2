@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
  * NULL (the fallback every non-matching Opportunity resolves to, AC-010),
  * seeded below. Mirrors `opportunity_statuses`' system-row shape
  * (`system_key`/`group`) but PER-SET: every set (a workflow's own, or the
- * global one) carries its own pinned 'open'/'closed' system rows (AC-004).
+ * global one) carries its own pinned system rows (AC-004).
  *
  * PERCHE (caveat, task-mandated): MySQL/SQLite treat NULL as DISTINCT in a
  * UNIQUE index, so unique(['opportunity_workflow_id','name']) and
@@ -35,6 +35,14 @@ return new class extends Migration
             $table->foreignId('opportunity_workflow_id')->nullable()->constrained('opportunity_workflows')->cascadeOnDelete();
             $table->string('name', 191);
             $table->string('color', 32)->nullable();
+
+            // The free-text explanation shown next to the status, and the flag
+            // marking a status as one that requires an explanatory note. The
+            // flag is CONFIGURATION ONLY: nothing enforces a note when the
+            // status is applied, it only drives the "note required" UI marker.
+            $table->string('description', 500)->nullable();
+            $table->boolean('requires_note')->default(false);
+
             $table->integer('sort_order')->default(0);
             $table->string('system_key', 16)->nullable();
             $table->string('group', 16)->default('open');
@@ -55,9 +63,12 @@ return new class extends Migration
     /**
      * Seeds the GLOBAL default set (opportunity_workflow_id null, spec 0047
      * scope item/AC-005): every Opportunity matching no active workflow
-     * falls back to this set. `updateOrInsert` keyed on the (null workflow
-     * id, system_key) pair for idempotency across repeated migrate:fresh runs
-     * in tests.
+     * falls back to this set. The working phase ends on "Validato" before the
+     * terminal outcome, which carries its own result (revised AC-004): the
+     * pinned tail order is validated -> closed_won -> closed_lost. Sets created
+     * later get the same rows from WorkflowStatusWriter. `updateOrInsert` keyed
+     * on the (null workflow id, system_key) pair for idempotency across
+     * repeated migrate:fresh runs in tests.
      */
     private function seedGlobalDefaultSet(): void
     {
@@ -65,7 +76,9 @@ return new class extends Migration
 
         $rows = [
             ['name' => 'Aperta', 'color' => null, 'sort_order' => 0, 'system_key' => 'open', 'group' => 'open'],
-            ['name' => 'Chiusa', 'color' => null, 'sort_order' => 10, 'system_key' => 'closed', 'group' => 'closed'],
+            ['name' => 'Validato', 'color' => null, 'sort_order' => 10, 'system_key' => 'validated', 'group' => 'validated'],
+            ['name' => 'Chiusa positiva', 'color' => null, 'sort_order' => 20, 'system_key' => 'closed_won', 'group' => 'closed_won'],
+            ['name' => 'Chiusa negativa', 'color' => null, 'sort_order' => 30, 'system_key' => 'closed_lost', 'group' => 'closed_lost'],
         ];
 
         foreach ($rows as $row) {

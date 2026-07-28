@@ -13,15 +13,16 @@ use Illuminate\Support\Facades\Schema;
  * real FK) complete it. `old_id` is additive (spec 0013 external migration),
  * declared inline since this table is greenfield.
  *
- * `default_bank_id` is intentionally NOT foreign-keyed here: its target
- * table (`company_site_banks`) does not exist yet (created right after this
- * one — the two tables reference each other). The constraint is added by
- * `create_company_site_banks_table`, once both tables exist.
+ * The preferred bank is a flag on the bank rows themselves
+ * (`company_site_banks.is_primary`), not a `default_bank_id` FK here: that
+ * keeps the two tables from referencing each other.
  *
  * The former "Altro" section attributes (store, categories, payment statuses,
- * ...) are no longer flat columns: they live as universal custom fields
- * (spec 0021), provisioned by QualificaTemplateSeeder. Only `company_id` (the
- * owning società) remains a real column here.
+ * ...) and the client-specific ERP fields (the responsible_* users, the
+ * proforma/invoice progressives, the quotation references) are not flat
+ * columns: they live as universal custom fields (spec 0021), provisioned by
+ * QualificaTemplateSeeder. Only `company_id` (the owning società) remains a
+ * real column here.
  */
 return new class extends Migration
 {
@@ -29,9 +30,6 @@ return new class extends Migration
     {
         Schema::create('company_sites', function (Blueprint $table) {
             $table->id();
-            // `after('id')` is an ALTER-TABLE-only modifier (add_old_id_to_*
-            // migrations use it for that reason); in a fresh CREATE TABLE the
-            // column position is simply where it is declared.
             $table->unsignedBigInteger('old_id')->nullable();
             $table->unique('old_id');
 
@@ -42,21 +40,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('is_default')->default(false)->index();
 
-            // Impostazioni.
-            $table->foreignId('responsible_rda_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('responsible_tickets_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('responsible_validation_contracts_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('responsible_validation_contracts_two_id')->nullable()->constrained('users')->nullOnDelete();
-            // FK added by create_company_site_banks_table (see class docblock).
-            $table->unsignedBigInteger('default_bank_id')->nullable();
-            $table->integer('proforma_progressive')->nullable();
-            $table->integer('invoice_progressive')->nullable();
-            $table->bigInteger('quotation_layout_id')->nullable();
-            $table->bigInteger('quotation_header_id')->nullable();
-            $table->bigInteger('quotation_footer_id')->nullable();
-
-            // The owning company (società). The remaining former "Altro"
-            // attributes are now universal custom fields (spec 0021,
+            // The owning company (società). The former "Altro"/ERP attributes
+            // are now universal custom fields (spec 0021,
             // QualificaTemplateSeeder), not flat columns.
             $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
 

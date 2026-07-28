@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Schema;
  * the user drops the membership row, no orphaned pivot data. The MAX 4
  * managers rule is validation-layer only (see StoreRegistryRequest), not a
  * DB constraint.
+ *
+ * `position` is the 1-based "G.A. n" slot within the registry, tied to the
+ * SLOT and not to the user: removing a manager frees its position (a gap = an
+ * empty slot the UI keeps), so the surviving managers never renumber.
+ * Positions are unique per registry; gaps are allowed by design.
  */
 return new class extends Migration
 {
@@ -19,8 +24,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('registry_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->unsignedInteger('position')->default(1);
 
             $table->unique(['registry_id', 'user_id']);
+            $table->unique(['registry_id', 'position']);
         });
     }
 

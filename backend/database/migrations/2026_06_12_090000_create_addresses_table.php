@@ -29,18 +29,26 @@ return new class extends Migration
             // Nullable so an address may exist before being attached to an entity.
             $table->nullableMorphs('addressable');
 
-            // Optional human label to distinguish multiple addresses of one owner
-            // (e.g. "Home", "Billing", "Warehouse").
-            $table->string('label')->nullable();
+            // Marks the preferred address of an owner. The "at most one primary
+            // per owner" invariant is enforced in AddressService (no DB-level
+            // constraint is possible on a polymorphic relation); the composite
+            // index below keeps the demote-siblings lookup cheap.
+            $table->boolean('is_primary')->default(false);
 
             // Street parts kept separate so callers can format them as needed.
             $table->string('line1');
             $table->string('line2')->nullable();
             $table->string('postal_code', 20)->nullable();
 
+            // Which kind of location this address represents (legal seat,
+            // delivery, billing, operational site — spec 0020). Only the
+            // Registries form renders the select (showSiteType opt-in).
+            $table->string('site_type')->default('billing');
+
             // Geo references to the existing lookup tables. Nullable + nullOnDelete:
             // losing a reference row must not delete the address it belongs to.
             $table->foreignId('city_id')->nullable()->constrained('cities')->nullOnDelete();
+            $table->foreignId('province_id')->nullable()->constrained('provinces')->nullOnDelete();
             $table->foreignId('state_id')->nullable()->constrained('states')->nullOnDelete();
             $table->foreignId('country_id')->nullable()->constrained('countries')->nullOnDelete();
 
@@ -50,6 +58,11 @@ return new class extends Migration
             $table->decimal('longitude', 11, 8)->nullable();
 
             $table->timestamps();
+
+            $table->index(
+                ['addressable_type', 'addressable_id', 'is_primary'],
+                'addresses_owner_primary_index'
+            );
         });
     }
 

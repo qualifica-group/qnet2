@@ -18,20 +18,20 @@ use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
-// Migration file per target table (spec 0013 — external data migration):
-// each is a purely additive `old_id` BIGINT UNSIGNED nullable + unique index,
-// used by the (not-yet-built) import engine for idempotence/remapping.
+// Target tables of the `old_id` column (spec 0013 — external data migration):
+// a BIGINT UNSIGNED nullable + unique index on each, declared by the table's own
+// create migration and used by the import engine for idempotence/remapping.
 dataset('old_id_tables', [
-    'users' => ['users', '2026_07_04_100000_add_old_id_to_users_table.php'],
-    'roles' => ['roles', '2026_07_04_100100_add_old_id_to_roles_table.php'],
-    'business_functions' => ['business_functions', '2026_07_04_100200_add_old_id_to_business_functions_table.php'],
-    'companies' => ['companies', '2026_07_04_100300_add_old_id_to_companies_table.php'],
-    'operational_sites' => ['operational_sites', '2026_07_04_100400_add_old_id_to_operational_sites_table.php'],
-    'referent_types' => ['referent_types', '2026_07_07_100200_add_old_id_to_referent_types_table.php'],
-    'referents' => ['referents', '2026_07_07_100300_add_old_id_to_referents_table.php'],
-    'sources' => ['sources', '2026_07_08_110000_add_old_id_to_sources_table.php'],
-    'tags' => ['tags', '2026_07_08_110100_add_old_id_to_tags_table.php'],
-    'sectors' => ['sectors', '2026_07_08_110200_add_old_id_to_sectors_table.php'],
+    'users' => ['users'],
+    'roles' => ['roles'],
+    'business_functions' => ['business_functions'],
+    'companies' => ['companies'],
+    'operational_sites' => ['operational_sites'],
+    'referent_types' => ['referent_types'],
+    'referents' => ['referents'],
+    'sources' => ['sources'],
+    'tags' => ['tags'],
+    'sectors' => ['sectors'],
 ]);
 
 /**
@@ -55,20 +55,10 @@ function oldIdFactoryFor(string $table): Factory
 }
 
 // ---------------------------------------------------------------------------
-// AC-001 — schema, unique, nullable, up/down
+// AC-001 — schema, unique, nullable
 // ---------------------------------------------------------------------------
 
 it('adds a nullable old_id column', function (string $table) {
-    expect(Schema::hasColumn($table, 'old_id'))->toBeTrue();
-})->with('old_id_tables');
-
-it('down() drops the column and its unique index, up() recreates both', function (string $table, string $file) {
-    $migration = require database_path("migrations/{$file}");
-
-    $migration->down();
-    expect(Schema::hasColumn($table, 'old_id'))->toBeFalse();
-
-    $migration->up();
     expect(Schema::hasColumn($table, 'old_id'))->toBeTrue();
 })->with('old_id_tables');
 

@@ -31,6 +31,27 @@ return new class extends Migration
             $table->unsignedInteger('imported_rows')->nullable();
             $table->string('error_report_path')->nullable();
             $table->json('preview')->nullable();
+
+            // Unified import wizard state (spec 0033), nullable so the 5 legacy
+            // domains (spec 0012) are unaffected: the analyze/configure step
+            // output, the chosen duplicate handling, the row counters mirroring
+            // `import_run_rows` staging outcomes, and the notification guard.
+            // `error_rows` from the API contract is NOT a column: ImportRunResource
+            // derives it from `invalid_rows`.
+            $table->json('detected_columns')->nullable();
+            $table->json('column_mapping')->nullable();
+            $table->json('global_config')->nullable();
+            $table->string('dedup_strategy')->nullable();
+            $table->unsignedInteger('warning_rows')->default(0);
+            $table->unsignedInteger('duplicate_rows')->default(0);
+            $table->unsignedInteger('modified_rows')->default(0);
+            $table->timestamp('notified_at')->nullable();
+            $table->unsignedInteger('error_count')->default(0);
+
+            // The operator's confirm-step choice (spec 0045): whether a
+            // CREATE-branch row should also spawn an Opportunity.
+            $table->boolean('convert_to_opportunity')->default(false);
+
             $table->timestamps();
         });
     }

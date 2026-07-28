@@ -21,6 +21,12 @@ return new class extends Migration
             $table->id();
             $table->string('source')->index();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+
+            // The parent "Import all" run (spec 0046). Nullable: a single-source
+            // run (spec 0013) has no parent; nullOnDelete keeps the child rows if
+            // the aggregate is ever removed.
+            $table->foreignId('mass_migration_run_id')->nullable()->constrained()->nullOnDelete();
+
             $table->string('status');
             $table->unsignedInteger('total_rows')->default(0);
             $table->unsignedInteger('created_rows')->default(0);

@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Schema;
  * card (mirrors `referents.name`/`users.name`), indexed for the SSRM grid
  * sort/search. `source_id`/`supervisor_id`/`commercial_id`/`reporter_id` are
  * nullable, nullOnDelete (losing the referenced row just clears the field, it
- * never cascades a delete of the registry). `is_supplier`/
+ * never cascades a delete of the registry). The supervisor of the relationship
+ * is an INTERNAL user (like the `managers` pivot), not an external referent —
+ * commercial/reporter stay on referents. `is_supplier`/
  * `is_qualified_supplier` default false (the latter is server-normalized to
  * false whenever the former is false — see RegistryService).
  * `agreement_status`/`size_class` are plain nullable string columns (enum
@@ -34,7 +36,7 @@ return new class extends Migration
             $table->string('agreement_status')->nullable();
             $table->text('agreement_notes')->nullable();
             $table->string('size_class')->nullable();
-            $table->foreignId('supervisor_id')->nullable()->constrained('referents')->nullOnDelete();
+            $table->foreignId('supervisor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('commercial_id')->nullable()->constrained('referents')->nullOnDelete();
             $table->foreignId('reporter_id')->nullable()->constrained('referents')->nullOnDelete();
             $table->unsignedInteger('employee_count')->nullable();

@@ -38,21 +38,6 @@ it('sort_order defaults to 0', function () {
     expect(DB::table('pipeline_statuses')->where('name', 'Default Sort')->value('sort_order'))->toBe(0);
 });
 
-it('the rename migration down() restores project_statuses, up() re-applies pipeline_statuses', function () {
-    $migration = require database_path('migrations/2026_07_13_150000_rename_project_statuses_to_pipeline_statuses.php');
-
-    $migration->down();
-
-    expect(Schema::hasTable('pipeline_statuses'))->toBeFalse();
-    expect(Schema::hasTable('project_statuses'))->toBeTrue();
-    expect(Schema::hasColumn('projects', 'project_status_id'))->toBeTrue();
-
-    $migration->up();
-
-    expect(Schema::hasTable('pipeline_statuses'))->toBeTrue();
-    expect(Schema::hasColumn('projects', 'pipeline_status_id'))->toBeTrue();
-});
-
 // ---------------------------------------------------------------------------
 // model relations, casts, activity log
 // ---------------------------------------------------------------------------

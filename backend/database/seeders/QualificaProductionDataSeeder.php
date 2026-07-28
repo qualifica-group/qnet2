@@ -17,8 +17,9 @@ use Illuminate\Database\Seeder;
  *                                    definitions per module.
  *   2. QualificaCatalogSeeder      — the hard-coded reference data: sources,
  *                                    reward types, the product category tree
- *                                    with its "Ore complessive" attribute,
- *                                    and the 252 GOL training courses.
+ *                                    with its product attributes, the 252 GOL
+ *                                    training courses and the 10 self-funded
+ *                                    ones.
  *   3. TestUsersSeeder             — the named tester accounts and the
  *                                    supervisor/commercial/marketing roles.
  *   4. QualificaLegacyImportSeeder — the support tables pulled from the legacy

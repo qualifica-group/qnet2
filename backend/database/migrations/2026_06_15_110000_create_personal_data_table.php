@@ -44,7 +44,22 @@ return new class extends Migration
             $table->string('tax_code')->nullable()->index();
             $table->string('vat_number')->nullable()->index();
 
+            // The SDI recipient code (Codice Destinatario), the routing address
+            // of the Italian e-invoicing system. Meaningful only for a legal
+            // entity; neither a sensitive identifier nor a dedup key, so
+            // un-indexed.
+            $table->string('sdi_code')->nullable();
+
             $table->date('birth_date')->nullable();
+
+            // Place of birth as a reference to the geo catalogue, not free text.
+            // nullOnDelete mirrors `addresses`: removing a city from the
+            // catalogue must never delete an identity card.
+            $table->foreignId('birth_city_id')->nullable()->constrained('cities')->nullOnDelete();
+
+            // Biological sex (GenderEnum). Meaningful only for a natural person,
+            // so nullable — a company card keeps it null.
+            $table->string('gender')->nullable();
 
             $table->timestamps();
         });

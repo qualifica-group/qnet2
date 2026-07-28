@@ -15,6 +15,11 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
+
+            // The external system's id for a row migrated from it (spec 0013):
+            // NULL for native qnet rows, unique among migrated ones.
+            $table->unsignedBigInteger('old_id')->nullable()->unique();
+
             $table->string('denomination');
             $table->string('vat_number', 50)->nullable();
             $table->timestamps();

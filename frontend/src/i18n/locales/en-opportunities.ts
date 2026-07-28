@@ -74,7 +74,7 @@ export const opportunities = {
       },
       generalNotes: {
         title: 'General notes',
-        description: "Free-form notes about the opportunity, inherited from the lead's notes.",
+        description: 'Free-form notes about the opportunity.',
       },
     },
     registry: 'Registry',

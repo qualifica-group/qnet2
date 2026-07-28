@@ -84,20 +84,15 @@ it('the operational_site pivot cascades on function or site deletion', function 
     expect(DB::table('business_function_operational_site')->where('operational_site_id', $site->id)->exists())->toBeFalse();
 });
 
-it('down()/up() reverses and recreates the parent_id + operational_site migrations', function () {
+it('down()/up() reverses and recreates the operational-site pivot migration', function () {
     $operationalSitePivot = require database_path('migrations/2026_07_16_100100_create_business_function_operational_site_table.php');
-    $parentId = require database_path('migrations/2026_07_16_100000_add_parent_id_to_business_functions_table.php');
 
     $operationalSitePivot->down();
-    $parentId->down();
 
     expect(Schema::hasTable('business_function_operational_site'))->toBeFalse();
-    expect(Schema::hasColumn('business_functions', 'parent_id'))->toBeFalse();
 
-    $parentId->up();
     $operationalSitePivot->up();
 
-    expect(Schema::hasColumn('business_functions', 'parent_id'))->toBeTrue();
     expect(Schema::hasTable('business_function_operational_site'))->toBeTrue();
 });
 

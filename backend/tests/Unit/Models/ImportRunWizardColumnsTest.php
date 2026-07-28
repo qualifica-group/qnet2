@@ -34,27 +34,6 @@ it('adds the wizard columns to import_runs on top of the legacy schema', functio
     ]))->toBeTrue();
 });
 
-it('down() drops only the new wizard columns, up() recreates them, legacy columns survive both', function () {
-    $migration = require database_path('migrations/2026_07_15_090000_add_wizard_columns_to_import_runs_table.php');
-
-    $migration->down();
-
-    expect(Schema::hasColumns('import_runs', [
-        'detected_columns', 'column_mapping', 'global_config', 'dedup_strategy',
-        'warning_rows', 'duplicate_rows', 'modified_rows', 'notified_at', 'error_count',
-    ]))->toBeFalse();
-    expect(Schema::hasColumns('import_runs', [
-        'id', 'resource', 'user_id', 'status', 'original_filename', 'stored_path',
-    ]))->toBeTrue();
-
-    $migration->up();
-
-    expect(Schema::hasColumns('import_runs', [
-        'detected_columns', 'column_mapping', 'global_config', 'dedup_strategy',
-        'warning_rows', 'duplicate_rows', 'modified_rows', 'notified_at', 'error_count',
-    ]))->toBeTrue();
-});
-
 it('new wizard columns default to 0 / null at the database level', function () {
     // Eloquent does not re-fetch DB-level column defaults into the in-memory
     // model after insert (only the auto-increment PK is synced), so assert

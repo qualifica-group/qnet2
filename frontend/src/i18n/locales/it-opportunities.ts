@@ -74,7 +74,7 @@ export const opportunities = {
       },
       generalNotes: {
         title: 'Note generali',
-        description: "Annotazioni libere sull'opportunità, ereditate dalle note del lead.",
+        description: "Annotazioni libere sull'opportunità.",
       },
     },
     registry: 'Anagrafica',

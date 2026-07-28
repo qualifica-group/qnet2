@@ -15,6 +15,11 @@ return new class extends Migration
     {
         Schema::create('referent_types', function (Blueprint $table) {
             $table->id();
+
+            // The external system's id for a row migrated from it (spec 0013):
+            // NULL for native qnet rows, unique among migrated ones.
+            $table->unsignedBigInteger('old_id')->nullable()->unique();
+
             $table->string('name');
             $table->timestamps();
         });

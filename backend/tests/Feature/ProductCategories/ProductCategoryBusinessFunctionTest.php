@@ -41,19 +41,6 @@ it('AC-001: business_function_id is a nullable, indexed FK on product_categories
     expect($category->business_function_id)->toBeNull();
 });
 
-it('AC-001: the migration is reversible (down/up round-trip), other data survives', function () {
-    $category = ProductCategory::factory()->create(['name' => 'Keep me']);
-    $migration = require database_path('migrations/2026_07_13_100000_add_business_function_id_to_product_categories_table.php');
-
-    $migration->down();
-    expect(Schema::hasColumn('product_categories', 'business_function_id'))->toBeFalse();
-    expect(ProductCategory::find($category->id)?->name)->toBe('Keep me');
-
-    $migration->up();
-    expect(Schema::hasColumn('product_categories', 'business_function_id'))->toBeTrue();
-    expect(ProductCategory::find($category->id)?->name)->toBe('Keep me');
-});
-
 // ---------------------------------------------------------------------------
 // AC-002 — nullOnDelete
 // ---------------------------------------------------------------------------

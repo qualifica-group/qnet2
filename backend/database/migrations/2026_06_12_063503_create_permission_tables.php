@@ -37,11 +37,17 @@ return new class extends Migration
          */
         Schema::create($tableNames['roles'], static function (Blueprint $table) use ($teams, $columnNames) {
             $table->id(); // role id
+            // The external system's id for a role migrated from it (spec 0013):
+            // RolesSource adopts it onto an existing role sharing the same name.
+            $table->unsignedBigInteger('old_id')->nullable()->unique();
             if ($teams || config('permission.testing')) { // permission.testing is a fix for sqlite testing
                 $table->unsignedBigInteger($columnNames['team_foreign_key'])->nullable();
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
             $table->string('name');
+            // The external system carries a human description alongside each role
+            // name (spec 0013); read as a plain attribute by spatie's Role model.
+            $table->text('description')->nullable();
             $table->string('guard_name');
             $table->timestamps();
             if ($teams || config('permission.testing')) {

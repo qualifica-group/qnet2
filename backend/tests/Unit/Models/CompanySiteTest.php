@@ -7,7 +7,6 @@ use App\Models\CompanySite;
 use App\Models\CompanySiteBank;
 use App\Models\Concerns\LogsModelActivity;
 use App\Models\PersonalData;
-use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -96,51 +95,6 @@ it('down() reverses both migrations, up() recreates them (in FK order)', functio
     $banks->up();
     expect(Schema::hasTable('company_sites'))->toBeTrue()
         ->and(Schema::hasTable('company_site_banks'))->toBeTrue();
-});
-
-it('the drop-ERP-columns migration backfills non-null values into custom_field_values, merging with any existing row, then drops the columns', function () {
-    $migration = require database_path('migrations/2026_07_24_100000_drop_erp_columns_from_company_sites.php');
-
-    $site = CompanySite::factory()->create();
-    $rda = User::factory()->create();
-
-    // An existing custom_field_values row (e.g. the former "Altro" section)
-    // must survive the merge untouched.
-    DB::table('custom_field_values')->insert([
-        'entity_type' => 'company-sites',
-        'entity_id' => $site->id,
-        'values' => json_encode(['color' => 'blue']),
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    // Re-create the legacy columns (already dropped by the full migrate run)
-    // and populate a subset directly — they are no longer in $fillable.
-    $migration->down();
-    DB::table('company_sites')->where('id', $site->id)->update([
-        'responsible_rda_id' => $rda->id,
-        'proforma_progressive' => 42,
-        'quotation_layout_id' => 7,
-    ]);
-
-    $migration->up();
-
-    expect(Schema::hasColumn('company_sites', 'responsible_rda_id'))->toBeFalse()
-        ->and(Schema::hasColumn('company_sites', 'proforma_progressive'))->toBeFalse()
-        ->and(Schema::hasColumn('company_sites', 'quotation_layout_id'))->toBeFalse();
-
-    $row = DB::table('custom_field_values')
-        ->where('entity_type', 'company-sites')
-        ->where('entity_id', $site->id)
-        ->first();
-
-    $values = json_decode($row->values, true);
-
-    expect($values['color'])->toBe('blue')
-        ->and($values['responsible_rda'])->toBe($rda->id)
-        ->and($values['proforma_progressive'])->toBe(42)
-        ->and($values['quotation_layout'])->toBe(7)
-        ->and($values)->not->toHaveKey('invoice_progressive');
 });
 
 // ---------------------------------------------------------------------------

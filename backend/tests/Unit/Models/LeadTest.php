@@ -86,23 +86,6 @@ it('down() reverses the migration, up() recreates it', function () {
     expect(Schema::hasTable('leads'))->toBeTrue();
 });
 
-it('the referent_id -> registry_id migration is reversible: down() restores referent_id, up() restores registry_id (AC-001)', function () {
-    $migration = require database_path('migrations/2026_07_17_100000_replace_referent_id_with_registry_id_on_leads_table.php');
-
-    expect(Schema::hasColumn('leads', 'registry_id'))->toBeTrue();
-    expect(Schema::hasColumn('leads', 'referent_id'))->toBeFalse();
-
-    $migration->down();
-
-    expect(Schema::hasColumn('leads', 'referent_id'))->toBeTrue();
-    expect(Schema::hasColumn('leads', 'registry_id'))->toBeFalse();
-
-    $migration->up();
-
-    expect(Schema::hasColumn('leads', 'registry_id'))->toBeTrue();
-    expect(Schema::hasColumn('leads', 'referent_id'))->toBeFalse();
-});
-
 // ---------------------------------------------------------------------------
 // model relations (AC-002)
 // ---------------------------------------------------------------------------
