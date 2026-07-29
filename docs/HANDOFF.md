@@ -2,6 +2,423 @@
 
 > Injected at session start. Update at every green state.
 
+## GESTIONE RICHIESTE — FORM DI CREAZIONE: QUICK-CREATE, OPERATORE, FONTE OBBLIGATORIA (2026-07-29) — VERDE, NON COMMITTATO
+
+Quattro direttive utente sullo stesso giro (`/request-management/new`).
+
+### 1. "+" quick-create su ogni relazione creabile del form di creazione
+
+Le select del form erano `AsyncPaginatedSelect` grezze senza la prop `action`, quindi il "+"
+(spec 0028) non compariva. Cablate tutte, riusando `useQuickCreateAction` (nessun nuovo
+componente): `registry_id` (`request-create-client-section.tsx`), `source_id`/`reporter_id`/
+il nuovo `operator_id` (`request-create-attribution-section.tsx`), `business_function_id` e
+`product_category_id` (`product-lines-field.tsx`, CONDIVISO con il form Opportunità — il "+"
+compare ora anche li').
+
+`use-quick-create-action.tsx` espone in piu' `selectedItemFor(value)`: e' la proiezione
+`{id,label}` del record appena creato, che tiene la select etichettata finche' la pagina di
+opzioni invalidata non lo riprende (AC-006). Prima quella logica era duplicata inline in
+`RelationSelectField`/`ManagerSlotsField`.
+
+FUORI: `RewardAssignmentField` (tipologie buono). Non e' una `AsyncPaginatedSelect` ma un
+popover con la propria "+ Aggiungi"; annidarci dentro un Dialog Radix e' un cambio di UX a
+se'. Segnalato, non implementato.
+
+### 2. Campo Operatore (GA2) in creazione, gated da un permesso nuovo
+
+Scelta utente: **nuovo permesso `request-management.assignOperator`** (non `viewAll`).
+`RequestManagementPolicy::abilities()` lo espone -> `php artisan permissions:sync` lo crea
+(GIA' ESEGUITO in locale: "1 created"). **Va assegnato ai ruoli supervisor** da /roles: senza,
+il campo non si vede e la chiave viene rifiutata.
+
+- FE: il campo si renderizza solo se `can('request-management.assignOperator')`; lista utenti
+  NON scopata per Sede (il form di creazione non ha il campo Sede, a differenza del work panel).
+- BE: `StoreRequestRequest` accetta `operator_id` (sometimes/nullable/exists), il CONTROLLER
+  fa `abort_unless(... assignOperator, 403)` quando il valore non e' null — l'authz di questo
+  modulo sta nel controller, non nel FormRequest.
+- Persistenza: `RequestCreationService::operatorManagerSlots()` traduce l'id negli slot
+  ordinati `[null, id]` -> `OpportunityService::managerSyncMap` scrive position 2 =
+  `Opportunity::OPERATOR_MANAGER_POSITION`. Nessun writer nuovo.
+
+### 3. Fonte obbligatoria (scelta utente: creazione + work panel)
+
+- Creazione: `StoreRequestRequest` `source_id => required`; Zod `refine(value !== null)`.
+- Work panel: `UpdateRequestRequest` `source_id => ['sometimes','required',...]` (sparse ma non
+  azzerabile) + `FieldDefinition('source_id', mandatory: true)` + ceiling
+  `visibleEditable(required: true)`.
+- Zod del panel: il rifiuto NON e' gated sul "la chiave viaggia" come `products_of_interest` /
+  attributi richiesti — `values.source_id === null` blocca sempre, richieste legacy incluse.
+  E' la scelta esplicita dell'utente. NON e' il bottone morto che il lavoro in corso su
+  `request-work-panel-submit.test.tsx` ha appena sistemato: `describeInvalidFields` NOMINA la
+  Fonte nel riepilogo sopra il Salva, quindi il rifiuto e' visibile e risolvibile.
+
+### 4. Righe/slot di default
+
+- `product_lines`: entrambi i form di creazione (richieste + opportunità) aprono su UNA riga
+  vuota. Factory condivisa `emptyProductLineRow()` in `features/product-lines/types.ts`.
+- Opportunità `manager_slots`: quattro slot vuoti (GA1..GA4), da `MAX_MANAGERS` (ora esportato
+  da `opportunity-schema.ts`, non piu' un 4 duplicato).
+- CONSEGUENZA REALE, non solo di test: `use-opportunity-lead-selection.ts` faceva
+  `[...slots, operatorId]`, che con 4 slot default avrebbe messo l'Operatore del lead su GA5.
+  Ora `withOperatorSlot()` lo mette su GA2 (indice 1) se libero, altrimenti accoda — mai
+  sovrascrive.
+
+### VERIFICA (eseguita davvero)
+
+- FE: `npx vitest run` -> 389 file, 2696 verdi. Restano rossi SOLO i 3 preesistenti in
+  `features/table/cell-renderers.test.tsx` (documentati sotto). `tsc --noEmit` pulito, ESLint
+  pulito sui file toccati.
+- BE: `pest` per directory (la suite intera segfaulta in locale con Xdebug, exit 139, anche
+  su HEAD pulito): RequestManagement 264/265, Opportunities 162, Rewards 39, Users 128,
+  Authorization 78, Table 234, Policies/Config/Navigation/Roles/Services/Seeding verdi,
+  Unit (Authorization/RequestManagement/Services/Tables/Models/Support) verdi. Pint passed.
+- L'UNICO rosso backend e' `RequestManagementTableSearchTest` ("over-length search term"),
+  **verificato preesistente** con `git stash` su HEAD pulito.
+
+### TEST AGGIORNATI (requisito cambiato, non test tampering)
+
+Le fixture in cui una richiesta "valida" non aveva Fonte ora ce l'hanno
+(`request-work-panel-fixtures.ts` + le fixture inline di 4 suite FE, i payload di POST
+/api/request-management lato BE). `RequestManagementAttributionTest`: il test "clears fonte and
+segnalatore" e' diventato "clears segnalatore" piu' un nuovo test che verifica il 422 quando si
+prova ad azzerare la Fonte. Le asserzioni "nessuna riga/slot finche' non premi Add" sono
+diventate "una riga / quattro slot".
+
+### DA FARE PRIMA DI USARLO IN UI
+
+`request-management.assignOperator` va assegnato ai ruoli supervisor (il super-admin ce l'ha
+per definizione). Nota: `TestUsersSeeder` da al ruolo "commerciale" TUTTO il modulo
+request-management, quindi anche questo permesso — se non e' voluto, va aggiunto alle
+esclusioni di quel seeder.
+
+## MIGRATIONS — COMPANY SITES SELECT I18N (2026-07-29) — STATIC GREEN, NOT COMMITTED
+
+Fixed the `company-sites` source label in the Migrations source select. The
+backend fallback is English (`Company sites`); the select resolves
+`migrations:sources.company-sites`, which was missing from both locale
+catalogues.
+
+Changes:
+- `frontend/src/i18n/locales/en-migrations.ts`: `Company sites`.
+- `frontend/src/i18n/locales/it-migrations.ts`: `Società sedi`.
+- `frontend/src/features/migrations/migrations-page.test.tsx`: regression test
+  proving that the Italian select shows `Società sedi` and not the backend
+  English fallback.
+
+Validation: ESLint and `git diff --check` pass. Reviewer APPROVED; QA static
+validation APPROVED WITH WARNING. Vitest cannot start under the active Node
+v18.16.0 because the current Vite/Rolldown toolchain imports
+`node:util.styleText`, which that runtime does not expose. TypeScript reaches
+the project but is blocked by pre-existing errors in
+`request-management/request-create-form.tsx` and
+`request-management/use-request-create-form.ts`; none involve this patch.
+
+Next owner: QA/release environment with a compatible Node version to rerun
+`npx vitest run src/features/migrations/migrations-page.test.tsx`.
+
+## MIGRATIONS — COMPANY SITES SOURCE (2026-07-29) — GREEN, NOT COMMITTED
+
+Context: added the missing external migration source for the `company-sites`
+("Società Sedi") domain. The external contract uses `id`, external
+`company_id`, native site fields, company-profile fields, contacts and address
+geo names.
+
+Decision and implementation:
+- Added `App\Migrations\Sources\CompanySitesSource`, registered as
+  `company-sites` with endpoint `company-sites`.
+- The source creates records only through `CompanySiteService`, stores the
+  external id in `CompanySite.old_id`, remaps `company_id` through
+  `Company.old_id`, and records a non-fatal warning when the parent company is
+  unresolved.
+- The nested company profile, contacts and single address reuse
+  `MapsExternalProfileRecord`; custom migration fields remain handled
+  generically by `AbstractMigrationSource`.
+- Added `company-sites` to migration phase 2, after phase-1 `companies`.
+- Updated the migration registry expectations and the generic `old_id`
+  nullable/unique schema dataset for `company_sites`.
+
+Files:
+- `backend/app/Migrations/Sources/CompanySitesSource.php` (new)
+- `backend/config/migrations.php`
+- `backend/app/Migrations/MigrationOrder.php`
+- `backend/tests/Feature/Migration/CompanySitesSourceImportTest.php` (new)
+- `backend/tests/Feature/Migration/OldIdSchemaTest.php`
+- `backend/tests/Unit/Migrations/MigrationRegistryTest.php`
+
+Validation executed:
+- TDD red state confirmed before source registration/implementation.
+- Targeted migration, registry, plan and `old_id` tests: 71/71 green,
+  131 assertions.
+- Independent QA: full `tests/Feature/Migration` suite 189/189 green,
+  662 assertions; targeted 7/7 green, 32 assertions.
+- PHP syntax clean; Pint `--test` clean.
+- Reviewer verdict APPROVED; its only Low finding (missing `company_sites` in
+  `OldIdSchemaTest`) was addressed and revalidated.
+
+Risks: the external API contract has not been exercised against a live
+provider; it must return the field names declared by the source. Coverage
+percentage was not measured. No commit was created.
+
+Next owner: release operator for live external-API contract verification, then
+the user for explicit commit authorization.
+
+## OFFERTE (quotes): ICONA "PALLINO" E COLONNE NON TRADOTTE (2026-07-29) — VERDE, NON COMMITTATO
+
+Segnalazione utente sulla pagina Offerte: nel menu/breadcrumb compariva un pallino al posto
+dell'icona, e le intestazioni di colonna della tabella mostravano le chiavi grezze.
+
+CAUSA. Due difetti indipendenti, entrambi dello stesso tipo (chiave dichiarata lato backend e non
+risolta lato frontend):
+- `config/navigation.php` dichiara `'icon' => 'file-text'` per la voce `quotes`, ma `file-text`
+  non era in `iconMap` (`features/navigation/icon-map.ts`) -> `resolveIcon` cadeva sul fallback
+  neutro `Circle`, cioe' il pallino. Stessa mappa usata da `nav-main.tsx` e `breadcrumbs.tsx`.
+- `QuoteColumnCatalog`/`QuoteAdvancedFilterCatalog` inviano la CHIAVE i18n
+  (`quotes.columns.*`, `quotes.advancedFilters.*`) e il grid fa `t(column.label)`
+  (`column-def-builder.ts:90`), ma `it-quotes.ts`/`en-quotes.ts` non avevano quei blocchi: il
+  commento in testa ai due file affermava (erroneamente) che la label arrivava gia' localizzata
+  dal server. Nessuna modifica backend: il contratto e' identico a quello di opportunities.
+
+MODIFICHE (solo frontend)
+- `features/navigation/icon-map.ts`: aggiunto `'file-text': FileText`.
+- `i18n/locales/it-quotes.ts` / `en-quotes.ts`: aggiunti i blocchi `columns` (code, title,
+  opportunity, quoteStatus, commercial, reporter, supervisor, revenueNet, costNet, marginNet,
+  createdAt) e `advancedFilters` (opportunity, quoteStatus, commercial, supervisor, createdRange),
+  allineati 1:1 ai due catalog PHP; corretto il commento fuorviante in testa a entrambi.
+- Nuovo `features/quotes/quotes-i18n.test.ts` (3 test) a guardia dei due set di chiavi e della
+  risoluzione dell'icona.
+
+VERIFICA (eseguita davvero): il nuovo test verificato ROSSO rimuovendo il fix
+(`TypeError: Cannot read properties of undefined (reading 'code')` + `expected {…} not to be {…}`
+su resolveIcon) e VERDE con il fix. `npx vitest run src/features/quotes src/features/navigation
+src/features/config`: 14 file, 102 test verdi. `tsc --noEmit` pulito.
+
+DA CONTROLLARE: gli altri moduli recenti seguono la stessa convenzione (backend manda la chiave,
+frontend traduce); `quote-statuses` e' gia' a posto.
+
+FUORI SCOPE, corretto perche' bloccava il gate typecheck: `request-create-schema.ts` (lavoro non
+committato gia' nel tree) dichiarava `source_id: z.number().nullable().refine((value) => value
+!== null, ...)` SENZA il `: boolean` esplicito sul predicato. TS 5.5+ inferisce un type predicate
+automatico e restringe l'output a `number`, mentre `useForm` passa `source_id: null` nei
+defaultValues -> 5 errori TS2322 (resolver, default, piu' 3 a cascata su `Control`/`UseFormReturn`
+in `request-create-form.tsx`). E' la trappola gia' documentata in `opportunity-schema.ts`
+(`requiredRelationId`): aggiunto `: boolean`, una riga, intento invariato (fonte resta
+obbligatoria). `tsc -b` ora pulito; `vitest run src/features/request-management
+src/features/quotes src/features/navigation`: 29 file, 216 test verdi.
+
+ATTENZIONE AL GATE: `npx tsc --noEmit` nella root di `frontend/` NON verifica nulla
+(`tsconfig.json` e' solution-style, `"files": []` + references). Usa `tsc -b` oppure
+`tsc -p tsconfig.app.json --noEmit`, che e' quello che esegue l'hook Stop.
+
+## TABELLE: RESIZE E RIORDINO COLONNE NON PERSISTEVANO (2026-07-29) — VERDE, NON COMMITTATO
+
+Segnalazione utente: allargando una colonna (es. `email`) la griglia tornava subito alla larghezza
+precedente; stesso comportamento riordinando le colonne. Su tutte le tabelle.
+
+CAUSA REALE (riprodotta con test, non ipotizzata). Lo stato di colonna (larghezza manuale, ordine
+drag-and-drop) vive in AG Grid, non in React. AG Grid **riapplica le column definitions** a ogni
+cambio di identita' di `columnDefs` **o di `defaultColDef`**, e in quel percorso
+(`_updateColumnState`) legge SOLO le chiavi non-`initial`:
+ - `defaultColDef.flex: 1` veniva rispinto su ogni colonna -> `if (colFlex > 0) return` -> la
+   larghezza trascinata veniva scartata e il layout flex ricalcolato;
+ - `maintainColumnOrder` e' `false` di default -> l'ordine veniva riletto dall'array `columnDefs`.
+Il trigger era un semplice re-render: `useTableCellEdit` costruiva `handleCellValueChanged` con
+`useCallback([t, updateCellMutation])` e l'oggetto di `useMutation` e' NUOVO a ogni render ->
+`gridOptions` (che lo contiene) ricalcolato a ogni render -> `defaultColDef` nuovo -> riapplicazione.
+Il resize stesso provoca un re-render (`setCustomizedLocally(true)`), quindi il ritorno era
+immediato e il salvataggio debounced a 500ms persisteva il layout GIA' tornato indietro.
+
+MODIFICHE
+- `column-def-builder.ts`: `hide`/`width`/`flex` -> `initialHide`/`initialWidth`/`initialFlex`.
+  La config backend SEMINA la griglia alla creazione della colonna; da li' in poi la griglia e'
+  proprietaria del layout. Le chiavi `initial*` sono lette solo da `Column.initState()`.
+- `data-table.tsx`: `defaultColDef.flex: 1` -> `initialFlex: 1`, piu' `maintainColumnOrder: true`.
+- `use-table-cell-edit.tsx`: si destruttura `mutate` (identita' stabile) invece di dipendere
+  dall'oggetto mutation.
+- `use-table-preferences.ts` / `use-table-filters.ts` / `use-table-layout-persistence.ts` /
+  `table-view.tsx`: lo `scope` (spec 0064, tab categoria) viene passato a `setQueryData`, che
+  scriveva sulla chiave NON scopata mentre la query legge quella scopata -> su
+  `request-management` con una categoria selezionata il layout salvato non tornava in cache.
+
+VERIFICA (eseguita davvero): nuovo `column-state-persistence.test.tsx` (2 test) — verificato ROSSO
+senza il fix (`expected [name,...] to deeply equal [email,...]`) e VERDE con il fix. Suite completa
+`npx vitest run`: 388 file, 2687 verdi. `tsc --noEmit` ed eslint puliti.
+
+NOTA: i 3 test rossi in `features/table/cell-renderers.test.tsx` ("2 primary contacts") sono
+PREESISTENTI — verificati rossi anche con le mie modifiche in stash. Non toccati.
+
+BACKEND: nessuna modifica necessaria. Round-trip di `POST /api/tables/{domain}/preferences`
+verificato con un test usa-e-getta (payload identico a quello del frontend, 24 colonne, order
+0-based): 200 e width/order persistiti. `AttributeScopedTableDefinition::defaultColumnLayout()` e'
+volutamente UNSCOPED (unione di tutte le categorie), quindi l'allow-list `Rule::in` non puo' 422-are
+su `attr.*` salvando da un tab.
+
+## IMPORT LEAD: CAUSA VERA DEL BLOCCO — GeoFuzzyMatcher CARICAVA 156k CITTA' (2026-07-29)
+
+> Sezione RIPRISTINATA dopo che il working tree e' stato riportato a HEAD da fuori (vedi
+> NOTA DI SESSIONE piu' sotto): il fix backend era stato cancellato insieme a questa sezione.
+> Riapplicato per intero e ri-verificato. Stato: VERDE, NON COMMITTATO.
+
+Le altre sezioni "import lead" (doppia `configure`, run id disallineato) erano difetti reali ma
+NON la causa del blocco in produzione. Sintomi decisivi forniti dall'utente: run 8 e poi run 9
+fermi in `staging`, `GET /api/imports/leads/{id}` in polling infinito.
+
+CONFERMA DAL RUN 9 (payload fornito dall'utente): `status: "staging"`, `total_rows: 26`,
+`valid_rows: 0`, `error_count: 0` — StageImportJob dispatchato e mai arrivato in fondo. Il
+`column_mapping` mappa `city -> city` e NIENTE paese/regione/provincia: e' esattamente lo scope
+citta' non ristretto descritto sotto. File Facebook Lead Ads, cioe' il caso normale.
+
+CAUSA RADICE. `GeoFuzzyMatcher::match()` e `GeoResolver::findByName()` facevano `$query->get()`
+sullo scope del livello geo e confrontavano in PHP. Quando la riga mappa SOLO `city` lo scope e'
+`City::query()` INTERO: **156.025 righe** idratate come model Eloquent, per ogni riga del file,
+per ogni livello.
+
+MISURA sul MySQL locale (stesso `dev/DatabaseWorld/world.sql` della produzione), con le query
+loggate, `resolveFuzzy` con la sola citta' mappata:
+
+| caso | prima | dopo |
+|---|---|---|
+| `Roma` (via esatta) | 1570 ms / 327 MB | 25 ms / 47 MB |
+| `Zzzzqqq` (fallback fuzzy) | 2040 ms / 397 MB | 300 ms / 51 MB |
+
+Gli id risolti sono IDENTICI prima e dopo su tutto il campione provato (`Roma`/`roma`/`Rome`
+-> 59582, `Milano` -> 140142, `Napoli` -> 140713, `Frosinone` -> 138741, `Guidonia Montecelio`
+-> 139179, `Torino` -> 61575, `Roma casilina`/`Zzzzqqq` -> nessuno): il fix cambia SOLO quanto si
+legge, non cosa si decide.
+
+Con `memory_limit=256M` (valore tipico in produzione) il codice VECCHIO muore con "Allowed memory
+size exhausted" in `HasAttributes.php:799` risolvendo UNA sola citta'. Un fatal non passa da
+`catch (Throwable)`: `StageImportJob` non arrivava mai al suo `ImportStatus::Failed` e il run
+restava in `staging` per sempre -> il wizard lo pollava all'infinito. Sotto
+`QUEUE_CONNECTION=sync` lo stesso fatal uccide la richiesta PUT: e' l'errore che l'utente vedeva
+"al salvataggio della mappatura" sul run 8.
+
+MODIFICHE
+- `GeoFuzzyMatcher` riscritto. Il confronto che DECIDE resta in PHP (`mb_strtolower` /
+  `similar_text`, identico su ogni collation): cambia solo quanto si legge. Passo esatto con
+  `where('name','like', <target senza wildcard>)` — uguaglianza servibile da indice
+  (`cities_name_index` esiste gia'), con una collation che puo' matchare DI PIU' (MySQL
+  CI/accent-insensitive) perche' il filtro PHP ristringe; se matcha DI MENO (SQLite lowercase
+  solo ASCII) si cade sulla scansione completa, quindi nessuna perdita semantica. Fallback fuzzy:
+  `toBase()->select(id,name[,country_id])->cursor()`, tuple non idratate, tenendo in RAM solo gli
+  accettati (serve al tiebreak home-country) e i 5 piu' vicini. Il vincitore viene idratato con
+  una `whereKey()`. `country_id` si seleziona solo quando il tiebreak puo' scattare (il livello
+  Country non ha quella colonna).
+- NUOVO `GeoFuzzyMatcher::exactOne()`: meta' esatta condivisa; `GeoResolver::findByName()` ora
+  delega a quello (stessa semantica: null sia se assente sia se ambiguo) e non carica piu' nulla
+  in blocco. Ordinamenti e tie-break invariati (sort PHP stabile = vecchio `sortByDesc`).
+- `AnalyzeImportJob` / `StageImportJob` / `ProcessStagedImportJob`: aggiunto `failed()` che porta
+  il run a `failed` SE e' ancora nello stato di quella fase. Un worker che uccide il job (timeout
+  di coda, tentativi esauriti, fatal) non passa dal `catch` in `handle()`: senza questo hook
+  AC-010 ("mai bloccato") non era vero e il wizard restava in polling.
+
+VERIFICA (eseguita davvero, dopo il ripristino)
+- Test parametrico in `GeoResolverFuzzyTest` ("never hydrates a whole unscoped level"):
+  intercetta le query con `DB::listen` e vieta una `select * from "cities"` senza `where`.
+  Verificato ROSSO su entrambi i dataset ripristinando `GeoFuzzyMatcher` da HEAD, VERDE col fix.
+- 2 test in `StageImportJobTest` per `failed()` (porta a failed da `staging`; non tocca un run
+  gia' passato a `reviewing`).
+- `pest tests/Feature/Imports tests/Unit/Imports tests/Unit/Jobs` -> 270 verdi. Pint pulito.
+- Suite backend intera: `4224 test, 4207 verdi, 16 rossi` = ESATTAMENTE la baseline preesistente
+  (11 `*SecurityTest`/`*PermissionsTest` di navigazione, 2 `MigrationRegistryTest`, 1
+  `AbstractMigrationSourcePreviewTest`, 2 asserzioni HTTP di custom-fields/request-management).
+  Nessun rosso in Imports/Jobs/Geo.
+
+TRAPPOLA DA RICORDARE: nessun matching geo puo' tornare a `$query->get()` sullo scope. Il livello
+citta' e' non ristretto ogni volta che il file mappa solo la citta' — che e' il caso normale dei
+file Facebook Lead Ads.
+
+DA FARE IN PRODUZIONE: il fix NON e' ancora deployato, quindi run 8 e run 9 restano in `staging`
+(stato scritto prima del fatal). Dopo il deploy vanno rifatti gli upload, oppure marcati `failed`
+a mano. Verificare anche `QUEUE_CONNECTION` e il `memory_limit` di PHP-FPM.
+
+## GESTIONE RICHIESTE: IL PANNELLO "LAVORA" NON SALVAVA (2026-07-29) — VERDE, NON COMMITTATO
+
+Sintomo utente: si modifica un campo qualsiasi nel pannello di lavorazione, si preme Salva e
+non succede NULLA — nessuna richiesta HTTP, nessun messaggio.
+
+CAUSA RADICE (due difetti che si sommano).
+1. Lo schema client era PIU' STRETTO dell'endpoint. `products_of_interest` aveva
+   `.min(1)` e `buildAttributeValuesSchema` imponeva `is_required` su OGNI attributo
+   applicabile, sempre. Ma `UpdateRequestRequest` marca ogni chiave `sometimes` e
+   `AttributeValueValidator` controlla `is_required` SOLO sui codici effettivamente inviati:
+   una chiave non toccata non e' mai validata lato server. Su un record storico senza prodotti
+   di interesse, o con un Attributo obbligatorio vuoto (tipico dopo aver reso obbligatorio un
+   attributo a posteriori), `handleSubmit` rifiutava il submit prima di qualunque richiesta,
+   per un campo che l'utente non stava nemmeno modificando.
+2. Il rifiuto era MUTO. `handleSubmit` non aveva callback `onInvalid`, il bottone Salva e'
+   sticky in cima e i blocchi bufferizzati (`ContactsManager`/`AddressCreateField`) non
+   leggono gli errori del form padre: il messaggio, quando c'era, stava sotto la piega o non
+   veniva reso affatto. Da qui "il bottone non fa niente".
+
+MODIFICHE (solo frontend, nessun cambio di contratto API).
+- `request-work-payload.ts`: `attributeValuesChanged` esportata; nuova
+  `productsOfInterestChanged` (confronto come SET) — i due predicati che decidono se la chiave
+  viene inviata.
+- `request-work-schema.ts`: le due regole obbligatorie si spostano nel refinement top-level e
+  scattano SOLO se la chiave sta per essere inviata, usando GLI STESSI predicati del payload
+  (non possono divergere). La firma cambia: il terzo parametro non e' piu' `originalStatusId`
+  ma `RequestWorkOriginalState` (`workflow_status_id`, `attribute_values`,
+  `products_of_interest`) = lo stato caricato del pannello.
+- `use-request-work-form.ts`: `onInvalid` popola `submitError` (ex `serverError`, ora copre
+  entrambe le cause) con l'elenco dei campi bloccanti; `attribute_values` e' espanso nei NOMI
+  degli attributi, perche' un layout configurato puo' nascondere il controllo foglia altrove.
+- `request-work-header.tsx` / `request-work-panel.tsx`: l'alert si sposta ACCANTO al bottone
+  Salva (header sticky), non piu' in fondo alla colonna del form.
+- i18n en/it: `requestManagement.workPanel.validation.summary`.
+
+VERIFICA (eseguita davvero): `vitest run src/features/request-management` -> 17 file, 120
+verdi (2 test nuovi nel pannello: submit bloccato annunciato in header; record senza prodotti
+salvabile per una modifica non correlata, con payload che NON contiene ne'
+`products_of_interest` ne' `attribute_values`; 3 test nuovi nello schema). `tsc --noEmit`
+pulito, ESLint pulito sui file toccati. Suite frontend intera: 2683 verdi, 3 rossi in
+`src/features/table/cell-renderers.test.tsx` — file NON toccato, rosso anche isolatamente su
+HEAD = baseline preesistente.
+
+SECONDO GIRO (stessa sessione): l'utente riprova e ottiene "Impossibile salvare: controlla
+questi campi — Dati identificativi", con i campi visibilmente compilati. Stessa classe di bug
+sui TRE blocchi client bufferizzati: `client_identity`, `client_contacts` e `client_address`
+viaggiano solo se cambiati (`clientBlockChanged`), ma lo schema li validava sempre. Una scheda
+legacy con P.IVA o codice fiscale che non passa la cifra di controllo — o un CF incoerente con
+cognome/nome/data/sesso, regola che il client rispecchia dal server — bloccava OGNI
+salvataggio del pannello. Peggio: `PersonalDataCardForm`, `ContactsManager` e
+`AddressCreateField` prendono solo `value`/`onChange` e NON leggono gli errori del form padre,
+quindi il messaggio non compariva da nessuna parte e il riepilogo nominava solo il gruppo.
+
+MODIFICHE DEL SECONDO GIRO
+- `request-work-payload.ts`: esportati `clientIdentityChanged`, `clientContactsChanged`,
+  `clientAddressChanged`; `buildRequestWorkPayload` ora li USA (prima aveva la stessa logica
+  inline) — un solo posto decide se la chiave viaggia.
+- `request-work-schema.ts`: i tre sub-schema di blocco diventano collector di issue
+  (`addClientIdentityIssues` / `addClientContactsIssues` / `addClientAddressIssues`) invocati
+  dal refinement top-level sotto lo stesso gate. I campi restano `z.custom`/`z.array` puri.
+  `RequestWorkOriginalState` cresce di `client_identity`, `client_contacts`, `client_address`.
+- NUOVO `request-work-invalid-fields.ts` (estratto dall'hook, che sarebbe andato oltre 300
+  righe): per i tre blocchi bufferizzati il riepilogo riporta il MESSAGGIO, non solo
+  l'etichetta ("Dati identificativi: La partita IVA non e' valida."), perche' quei componenti
+  non rendono il proprio errore.
+- NUOVO `request-work-panel-submit.test.tsx`: `request-work-panel.test.tsx` aveva sfondato il
+  limite hard di 500 righe (hook `code-guard`), i test di submit vivono qui.
+
+VERIFICA SECONDO GIRO: `vitest run src/features/request-management` -> 18 file, 122 verdi.
+Controllo di sensibilita' eseguito: sostituendo il gate `clientIdentityChanged(...)` con `true`
+il test "saves an unrelated edit while the untouched client card carries an invalid VAT number"
+diventa ROSSO, col fix e' verde. Suite frontend intera: 2686 verdi, 3 rossi in
+`cell-renderers.test.tsx` (baseline preesistente, file non toccato). `tsc --noEmit` e ESLint
+puliti.
+
+REGOLA DA RICORDARE: una validazione client di questo pannello non puo' essere piu' stretta
+dell'endpoint sparso. Se una regola vale solo sulle chiavi inviate lato server, va gated sullo
+stesso predicato del payload builder, altrimenti blocca il salvataggio di TUTTO il resto. E se
+il campo bloccante vive in un componente bufferizzato che non legge gli errori del form padre,
+il messaggio DEVE finire nel riepilogo, altrimenti l'errore e' invisibile.
+
+NOTA DI SESSIONE: a meta' lavoro il working tree e' stato riportato a HEAD da fuori (le
+modifiche frontend erano sparite, poi sono ricomparse quelle backend degli import lead e non
+la sezione HANDOFF che le documentava). Il fix qui sopra e' stato riapplicato per intero e
+riverificato; se manca la sezione "IMPORT LEAD: CAUSA VERA DEL BLOCCO — GeoFuzzyMatcher"
+mentre `backend/app/Imports/Support/GeoFuzzyMatcher.php` risulta modificato, e' quello il
+motivo.
+
 ## IMPORT LEAD: RUN ID DESINCRONIZZATO DALL'URL (2026-07-29) — VERDE, NON COMMITTATO
 
 Seconda segnalazione dello stesso 422 (`PUT /api/imports/leads/{id}/configure` -> "The import

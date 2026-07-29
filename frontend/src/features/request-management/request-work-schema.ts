@@ -4,8 +4,20 @@ import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
-import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
-import type { ApplicableAttribute, RequestWorkflowStatusRef } from '@/features/request-management/types'
+import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
+import {
+  attributeValuesChanged,
+  clientAddressChanged,
+  clientContactsChanged,
+  clientIdentityChanged,
+  productsOfInterestChanged,
+} from '@/features/request-management/request-work-payload'
+import type {
+  ApplicableAttribute,
+  RequestClientIdentity,
+  RequestContact,
+  RequestWorkflowStatusRef,
+} from '@/features/request-management/types'
 
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
@@ -47,28 +59,19 @@ function buildAttributeScalarSchema(attribute: ApplicableAttribute, t: TFunction
   }
 }
 
-/** Builds the dynamic `attribute_values` shape, one key per applicable attribute `code`. */
+/**
+ * Builds the dynamic `attribute_values` shape, one key per applicable
+ * attribute `code`. Per-TYPE rules only: `is_required` is enforced by the
+ * top-level refinement, which alone knows whether the map is going to be sent
+ * (see `buildRequestWorkSchema`).
+ */
 function buildAttributeValuesSchema(attributes: ApplicableAttribute[], t: TFunction) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const attribute of attributes) {
     shape[attribute.code] = buildAttributeScalarSchema(attribute, t)
   }
 
-  const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
-
-  return z.object(shape).superRefine((values, ctx) => {
-    for (const code of requiredCodes) {
-      if (isEmptyCustomFieldValue((values as Record<string, unknown>)[code])) {
-        ctx.addIssue({
-          code: 'custom',
-          path: [code],
-          message: t('requestManagement.workPanel.validation.required', {
-            defaultValue: 'This field is required.',
-          }),
-        })
-      }
-    }
-  })
+  return z.object(shape)
 }
 
 /**
@@ -80,29 +83,31 @@ function buildAttributeValuesSchema(attributes: ApplicableAttribute[], t: TFunct
 type TypedAttributeValuesSchema = z.ZodType<Record<string, CustomFieldValue>, Record<string, CustomFieldValue>>
 
 /**
+ * The three collectors below are invoked from the top-level refinement rather
+ * than attached to their field: only there is it known whether the block is
+ * going to travel at all (see `buildRequestWorkSchema`).
+ *
  * The client's buffered contacts. Each row is validated by the SAME
  * `buildContactSchema` the contact dialog uses (per-type value rules), so the
  * inline quick fields, the dialog and this submit gate never drift; issues are
  * re-pathed to `client_contacts.<index>.<field>`.
  */
-function buildClientContactsSchema(t: TFunction) {
+function addClientContactsIssues(contacts: ContactDraft[], ctx: z.RefinementCtx, t: TFunction): void {
   const row = buildContactSchema(t)
 
-  return z.array(z.custom<ContactDraft>()).superRefine((contacts, ctx) => {
-    contacts.forEach((contact, index) => {
-      const result = row.safeParse({
-        type: contact.type,
-        value: contact.value,
-        label: contact.label ?? '',
-        is_primary: contact.is_primary,
-      })
-      if (result.success) {
-        return
-      }
-      for (const issue of result.error.issues) {
-        ctx.addIssue({ code: 'custom', path: [index, ...issue.path], message: issue.message })
-      }
+  contacts.forEach((contact, index) => {
+    const result = row.safeParse({
+      type: contact.type,
+      value: contact.value,
+      label: contact.label ?? '',
+      is_primary: contact.is_primary,
     })
+    if (result.success) {
+      return
+    }
+    for (const issue of result.error.issues) {
+      ctx.addIssue({ code: 'custom', path: ['client_contacts', index, ...issue.path], message: issue.message })
+    }
   })
 }
 
@@ -113,17 +118,15 @@ function buildClientContactsSchema(t: TFunction) {
  * backend, which keeps the city optional on update so a legacy address whose
  * city was never captured stays saveable.
  */
-function buildClientAddressSchema(t: TFunction) {
-  return z.array(z.custom<AddressDraft>()).superRefine((addresses, ctx) => {
-    addresses.forEach((address, index) => {
-      if (!address.line1) {
-        ctx.addIssue({
-          code: 'custom',
-          path: [index, 'line1'],
-          message: t('personalData.addresses.line1Required'),
-        })
-      }
-    })
+function addClientAddressIssues(addresses: AddressDraft[], ctx: z.RefinementCtx, t: TFunction): void {
+  addresses.forEach((address, index) => {
+    if (!address.line1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['client_address', index, 'line1'],
+        message: t('personalData.addresses.line1Required'),
+      })
+    }
   })
 }
 
@@ -134,32 +137,49 @@ function buildClientAddressSchema(t: TFunction) {
  * modules never drift. `null` when the client has no card: nothing is
  * rendered and nothing is submitted, so there is nothing to validate.
  */
-function buildClientIdentitySchema(t: TFunction) {
-  const card = buildPersonalDataSchema(t)
+function addClientIdentityIssues(identity: PersonalDataDraft | null, ctx: z.RefinementCtx, t: TFunction): void {
+  if (!identity) {
+    return
+  }
 
-  return z.custom<PersonalDataDraft | null>().superRefine((identity, ctx) => {
-    if (!identity) {
-      return
-    }
-    // The draft carries nulls where the card form carries empty strings.
-    const result = card.safeParse({
-      type: identity.type,
-      first_name: identity.first_name ?? '',
-      last_name: identity.last_name ?? '',
-      company_name: identity.company_name ?? '',
-      tax_code: identity.tax_code ?? '',
-      vat_number: identity.vat_number ?? '',
-      sdi_code: identity.sdi_code ?? '',
-      birth_date: identity.birth_date ?? '',
-      gender: identity.gender ?? undefined,
-    })
-    if (result.success) {
-      return
-    }
-    for (const issue of result.error.issues) {
-      ctx.addIssue({ code: 'custom', path: issue.path, message: issue.message })
-    }
+  // The draft carries nulls where the card form carries empty strings.
+  const result = buildPersonalDataSchema(t).safeParse({
+    type: identity.type,
+    first_name: identity.first_name ?? '',
+    last_name: identity.last_name ?? '',
+    company_name: identity.company_name ?? '',
+    tax_code: identity.tax_code ?? '',
+    vat_number: identity.vat_number ?? '',
+    sdi_code: identity.sdi_code ?? '',
+    birth_date: identity.birth_date ?? '',
+    gender: identity.gender ?? undefined,
   })
+  if (result.success) {
+    return
+  }
+  for (const issue of result.error.issues) {
+    ctx.addIssue({ code: 'custom', path: ['client_identity', ...issue.path], message: issue.message })
+  }
+}
+
+/**
+ * The panel's loaded state, against which the sparse rules below are decided.
+ * `UpdateRequestRequest` marks every key `sometimes` and
+ * `AttributeValueValidator` checks `is_required` only on SUBMITTED codes: an
+ * untouched key is never validated server-side, so mirroring it
+ * unconditionally here would be STRICTER than the endpoint — it would make a
+ * record that is missing a required Attribute (or has no product of interest)
+ * unsavable for any unrelated edit, with the submit refused before any
+ * request went out.
+ */
+export interface RequestWorkOriginalState {
+  workflow_status_id: number | null
+  attribute_values: Record<string, unknown>
+  products_of_interest: number[]
+  /** The client blocks as the panel loaded them (`ValidatesRequestClientProfile` only sees what travels). */
+  client_identity: RequestClientIdentity | null
+  client_contacts: RequestContact[]
+  client_address: Address | null
 }
 
 /**
@@ -172,22 +192,28 @@ function buildClientIdentitySchema(t: TFunction) {
 export function buildRequestWorkSchema(
   attributes: ApplicableAttribute[],
   statuses: RequestWorkflowStatusRef[],
-  originalStatusId: number | null,
+  original: RequestWorkOriginalState,
   t: TFunction,
 ) {
+  const codes = attributes.map((attribute) => attribute.code)
+  const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+
   return z
     .object({
       opportunity_workflow_status_id: z.number().nullable(),
       next_callback_at: z.string().nullable(),
       note: z.string(),
-      client_identity: buildClientIdentitySchema(t),
-      client_contacts: buildClientContactsSchema(t),
-      client_address: buildClientAddressSchema(t),
+      // The three buffered client blocks carry no field-level rule: they are
+      // checked by the refinement below, which alone knows whether they travel.
+      client_identity: z.custom<PersonalDataDraft | null>(),
+      client_contacts: z.array(z.custom<ContactDraft>()),
+      client_address: z.array(z.custom<AddressDraft>()),
       // "Prodotti di interesse": a plain id set, MANDATORY since the user
       // directive 2026-07-23 (same rule as the opportunities form — the two
-      // channels write the same collection). The other membership rules
-      // (existence, category coverage) stay server-side only.
-      products_of_interest: z.array(z.number()).min(1, t('products.ofInterest.required')),
+      // channels write the same collection), but only once the set is
+      // actually edited (see the refinement below). The other membership
+      // rules (existence, category coverage) stay server-side only.
+      products_of_interest: z.array(z.number()),
       // Spec 0059 D-3: reward assignments for the reporter (chips under the
       // field). Only the type id travels — beneficiary/date are
       // server-derived. Duplicates are prevented client-side (the add
@@ -203,7 +229,8 @@ export function buildRequestWorkSchema(
       attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
     })
     .superRefine((values, ctx) => {
-      const statusChanged = values.opportunity_workflow_status_id !== originalStatusId
+      // Step 1: the note that accompanies an advance to a `requires_note` status
+      const statusChanged = values.opportunity_workflow_status_id !== original.workflow_status_id
       const targetStatus = statuses.find((status) => status.id === values.opportunity_workflow_status_id)
 
       if (statusChanged && targetStatus?.requires_note && values.note.trim() === '') {
@@ -214,6 +241,61 @@ export function buildRequestWorkSchema(
             defaultValue: 'A note is required to move to this status.',
           }),
         })
+      }
+
+      // Step 2: the two mandatory rules, gated on the key being sent at all —
+      // the SAME predicates `buildRequestWorkPayload` uses to decide that, so
+      // the two can never drift.
+      if (attributeValuesChanged(values.attribute_values, original.attribute_values, codes)) {
+        for (const code of requiredCodes) {
+          if (isEmptyCustomFieldValue(values.attribute_values[code])) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['attribute_values', code],
+              message: t('requestManagement.workPanel.validation.required', {
+                defaultValue: 'This field is required.',
+              }),
+            })
+          }
+        }
+      }
+
+      if (
+        productsOfInterestChanged(values.products_of_interest, original.products_of_interest) &&
+        values.products_of_interest.length === 0
+      ) {
+        ctx.addIssue({ code: 'custom', path: ['products_of_interest'], message: t('products.ofInterest.required') })
+      }
+
+      // Fonte is MANDATORY (user directive 2026-07-29) — and unlike the two
+      // rules above this one is NOT gated on the key travelling: a request
+      // without a source may not be saved at all, legacy rows included, which
+      // is what the directive asks for. The server's own `sometimes|required`
+      // covers the clearing half it can see.
+      if (values.source_id === null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['source_id'],
+          message: t('requestManagement.workPanel.validation.sourceRequired', {
+            defaultValue: 'Select a source.',
+          }),
+        })
+      }
+
+      // Step 3: the buffered client blocks, on the same gate. A legacy card
+      // whose tax code or VAT number does not pass the fiscal rules would
+      // otherwise block every unrelated edit of the panel — while the server,
+      // never receiving the block, has nothing to complain about.
+      if (clientIdentityChanged(values.client_identity, original.client_identity)) {
+        addClientIdentityIssues(values.client_identity, ctx, t)
+      }
+
+      if (clientContactsChanged(values.client_contacts, original.client_contacts)) {
+        addClientContactsIssues(values.client_contacts, ctx, t)
+      }
+
+      if (clientAddressChanged(values.client_address, original.client_address)) {
+        addClientAddressIssues(values.client_address, ctx, t)
       }
     })
 }

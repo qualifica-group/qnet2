@@ -87,6 +87,8 @@ export const requestManagement = {
         sourceSearch: 'Search a source',
         reporter: 'Reporter',
         reporterSearch: 'Search a reporter',
+        operator: 'Operator (GA2)',
+        operatorSearch: 'Search an operator',
         selectPlaceholder: 'Select',
         selectEmpty: 'No results',
         selectError: 'Could not load the options.',
@@ -108,6 +110,7 @@ export const requestManagement = {
       validation: {
         productLinesRequired: 'Add at least one product line.',
         productLineIncomplete: 'Select a business function and a product category for every row.',
+        sourceRequired: 'Select a source.',
       },
       errors: {
         generic: 'Something went wrong. Please try again.',
@@ -204,6 +207,8 @@ export const requestManagement = {
       enumInvalid: 'Select a valid option.',
       required: 'This field is required.',
       noteRequired: 'A note is required to move to this status.',
+      sourceRequired: 'Select a source.',
+      summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },
 }

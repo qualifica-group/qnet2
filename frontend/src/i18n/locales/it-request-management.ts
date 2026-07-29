@@ -87,6 +87,8 @@ export const requestManagement = {
         sourceSearch: 'Cerca una fonte',
         reporter: 'Segnalatore',
         reporterSearch: 'Cerca un segnalatore',
+        operator: 'Operatore (GA2)',
+        operatorSearch: 'Cerca un operatore',
         selectPlaceholder: 'Seleziona',
         selectEmpty: 'Nessun risultato',
         selectError: 'Impossibile caricare le opzioni.',
@@ -108,6 +110,7 @@ export const requestManagement = {
       validation: {
         productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
         productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
+        sourceRequired: 'Seleziona una fonte.',
       },
       errors: {
         generic: 'Si è verificato un errore. Riprova.',
@@ -204,6 +207,8 @@ export const requestManagement = {
       enumInvalid: 'Seleziona un valore valido.',
       required: 'Questo campo è obbligatorio.',
       noteRequired: 'È obbligatoria una nota per passare a questo stato.',
+      sourceRequired: 'Seleziona una fonte.',
+      summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },
 }

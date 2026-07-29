@@ -72,7 +72,7 @@ export function buildColDefs({
     const valueFormatter = renderer ? undefined : defaultValueFormatter(column, t)
     // A column with a persisted width uses it as a fixed width (flex:0 opts it
     // out of the flex layout); columns without one keep flexing to fill space
-    // via defaultColDef.flex. Columns arrive already ordered by `order`.
+    // via defaultColDef.initialFlex. Columns arrive already ordered by `order`.
     const hasWidth = column.width != null
     // Every Set Filter (standalone or nested in the Multi Filter) gets its
     // values from the server, never a backend one-off list or the paged
@@ -88,12 +88,19 @@ export function buildColDefs({
       colId: column.id,
       field: column.id,
       headerName: t(column.label),
-      hide: !column.visible,
-      width: hasWidth ? column.width! : undefined,
+      // `initial*`, NOT `hide`/`width`/`flex`: the backend layout SEEDS the grid
+      // at column creation and the grid owns it from then on. AG Grid re-applies
+      // the column definitions on any `columnDefs`/`defaultColDef` identity
+      // change, and `_updateColumnState` reads only the non-`initial` keys — so
+      // with `flex`/`width` the defaultColDef's `flex: 1` was pushed back onto
+      // every column on the next React render, discarding a width the user had
+      // just dragged. The `initial` keys are read only by `Column.initState()`.
+      initialHide: !column.visible,
+      initialWidth: hasWidth ? column.width! : undefined,
       // Let an intentionally-narrow backend width take effect: without this the
       // global DEFAULT_MIN_WIDTH would clamp it (e.g. the small avatar column).
       minWidth: hasWidth ? Math.min(DEFAULT_MIN_WIDTH, column.width!) : undefined,
-      flex: hasWidth ? 0 : undefined,
+      initialFlex: hasWidth ? 0 : undefined,
       sortable: column.sortable,
       filter,
       filterParams,

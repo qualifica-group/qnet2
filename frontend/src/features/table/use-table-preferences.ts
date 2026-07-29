@@ -6,7 +6,7 @@ import {
   resetTablePreferences,
   saveTablePreferences,
 } from '@/features/table/api'
-import { tableKeys } from '@/features/table/use-table-config'
+import { tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { ColumnPreferenceInput } from '@/features/table/types'
 
 /**
@@ -67,8 +67,12 @@ export function toColumnPreferences(
  * Upserts the user's column layout for a domain. On success the returned merged
  * config refreshes the cache, so a remount within the config staleTime restores
  * the just-saved layout rather than the stale default.
+ *
+ * `scope` must be the SAME one the config query was keyed by (spec 0064's
+ * category tabs): the cache is keyed per scope, so refreshing the unscoped key
+ * from a scoped table would leave the entry the grid actually reads stale.
  */
-export function useSaveTablePreferences(domain: string) {
+export function useSaveTablePreferences(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
   const { t } = useTranslation()
 
@@ -76,7 +80,7 @@ export function useSaveTablePreferences(domain: string) {
     mutationFn: (columns: ColumnPreferenceInput[]) =>
       saveTablePreferences(domain, columns),
     onSuccess: (config) => {
-      queryClient.setQueryData(tableKeys.config(domain), config)
+      queryClient.setQueryData(tableKeys.config(domain, scope), config)
     },
     // Surface a rejected persist (e.g. a validation 422) instead of swallowing
     // it: without this the layout silently reverts to the default on reload.

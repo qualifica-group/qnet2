@@ -143,3 +143,22 @@ it('moves the run to failed on an unhandled exception (e.g. unknown domain)', fu
 
     expect($run->fresh()->status)->toBe(ImportStatus::Failed);
 });
+
+it('moves the run to failed when the worker kills the job before handle() can catch anything', function () {
+    // A queue timeout / exhausted attempts / PHP fatal never reaches the
+    // catch in handle(): without failed() the run stays `staging` and the
+    // wizard polls it forever (AC-010).
+    $run = stagingRun();
+
+    (new StageImportJob($run->id))->failed(new RuntimeException('killed'));
+
+    expect($run->fresh()->status)->toBe(ImportStatus::Failed);
+});
+
+it('leaves a run that already moved past staging untouched when a late failure lands', function () {
+    $run = stagingRun(['status' => ImportStatus::Reviewing]);
+
+    (new StageImportJob($run->id))->failed(new RuntimeException('killed'));
+
+    expect($run->fresh()->status)->toBe(ImportStatus::Reviewing);
+});

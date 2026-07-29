@@ -15,10 +15,10 @@ use Illuminate\Database\Eloquent\Model;
  * Eloquent class, so this mirrors the smallest existing authorizations
  * (VatRatesAuthorization) with the operative fields the work panel writes
  * (D-4/D-5, `next_callback_at` added by spec 0054 D-4) — visible+editable
- * when the actor may write, else read-only. None of the 3 is
- * mandatory-restrictive (spec 0049, meta endpoint contract): the panel never
- * blocks on a missing value here, the dedicated 422 rules live in
- * AttributeValueValidator/ValidatesWorkflowStatus.
+ * when the actor may write, else read-only. Only `products_of_interest` and
+ * `source_id` are mandatory-restrictive (user directives 2026-07-23 /
+ * 2026-07-29); every other field blocks on nothing here, its dedicated 422
+ * rules living in AttributeValueValidator/ValidatesWorkflowStatus.
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
@@ -59,7 +59,10 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // `opportunity_user` pivot row at position
             // Opportunity::OPERATOR_MANAGER_POSITION (see
             // Opportunity::operatorManager()).
-            new FieldDefinition('source_id', 'select'),
+            // MANDATORY (user directive 2026-07-29): a request always knows
+            // where it came from — the create form requires it and the panel
+            // never lets it be cleared (UpdateRequestRequest's `required`).
+            new FieldDefinition('source_id', 'select', mandatory: true),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('operator_id', 'select'),
             // Spec 0056: the Sede operativa, editable from this same
@@ -100,7 +103,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'next_callback_at' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
-            'source_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operator_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds

@@ -5,7 +5,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
 import { RequestWorkflowStatusField } from '@/features/request-management/request-workflow-status-field'
-import { buildRequestWorkSchema, type RequestWorkFormValues } from '@/features/request-management/request-work-schema'
+import {
+  buildRequestWorkSchema,
+  type RequestWorkFormValues,
+  type RequestWorkOriginalState,
+} from '@/features/request-management/request-work-schema'
 import type { RequestWorkflowStatusRef } from '@/features/request-management/types'
 
 /**
@@ -21,8 +25,20 @@ const STATUSES: RequestWorkflowStatusRef[] = [
   { id: 101, name: 'Closed', color: 'green', system_key: null, description: null, requires_note: true },
 ]
 
+/** The loaded panel state the schema decides its sparse rules against. */
+function original(workflowStatusId: number): RequestWorkOriginalState {
+  return {
+    workflow_status_id: workflowStatusId,
+    attribute_values: {},
+    products_of_interest: [700],
+    client_identity: null,
+    client_contacts: [],
+    client_address: null,
+  }
+}
+
 function Harness({ onSubmit }: { onSubmit: () => void }) {
-  const schema = buildRequestWorkSchema([], STATUSES, 100, i18n.t)
+  const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
   const form = useForm<RequestWorkFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -34,7 +50,9 @@ function Harness({ onSubmit }: { onSubmit: () => void }) {
       client_address: [],
       products_of_interest: [700],
       rewards: [],
-      source_id: null,
+      // Mandatory since the user directive 2026-07-29: a submit-able form
+      // always carries a Fonte (this suite is about the status field).
+      source_id: 30,
       reporter_id: null,
       operator_id: null,
       operational_site_id: null,

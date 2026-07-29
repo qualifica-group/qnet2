@@ -346,9 +346,16 @@ export function DataTable({
       pagination: true,
       paginationPageSize: blockSize,
       paginationPageSizeSelector: [blockSize, blockSize * 2, blockSize * 4],
+      // Keep the user's column order across a `columnDefs` re-apply. The AG Grid
+      // default (false) re-reads the order from the definitions array on every
+      // update, so a drag-and-drop reorder was undone by the next React render.
+      maintainColumnOrder: true,
       defaultColDef: {
         resizable: true,
-        flex: 1,
+        // `initialFlex`, not `flex`: `flex` is re-pushed onto every column on a
+        // definitions update and wins over the width the user just dragged (see
+        // the `initial*` note in column-def-builder.ts).
+        initialFlex: 1,
         minWidth: DEFAULT_MIN_WIDTH,
         // Stop the drag where persistence stops: the server caps a saved width at
         // MAX_COLUMN_WIDTH, so without this the user can widen a column past the

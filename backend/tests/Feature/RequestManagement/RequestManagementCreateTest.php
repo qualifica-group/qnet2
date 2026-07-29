@@ -24,7 +24,7 @@ if (! function_exists('requestManagementCreatorWith')) {
      */
     function requestManagementCreatorWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'export', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'export', 'viewActivity', 'viewAll', 'assignOperator'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -35,6 +35,14 @@ if (! function_exists('requestManagementCreatorWith')) {
         }
 
         return $user;
+    }
+}
+
+if (! function_exists('aSourceId')) {
+    /** The Fonte every successful create must carry: mandatory since the user directive 2026-07-29. */
+    function aSourceId(): int
+    {
+        return Source::factory()->create()->id;
     }
 }
 
@@ -63,6 +71,7 @@ it('AC-001: POST without request-management.create -> 403, no row created', func
     $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
     ])->assertForbidden();
 
     expect(Opportunity::count())->toBe(0);
@@ -81,6 +90,7 @@ it('AC-002: POST with registry_id + product_lines -> 201, attached to that regis
     $response = $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
     ])->assertCreated();
 
     $opportunityId = $response->json('data.id');
@@ -107,6 +117,7 @@ it('AC-003: POST with client_identity + contacts + address -> 201, new Registry+
         ],
         'client_address' => ['line1' => 'Via Roma 1'],
         'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
     ])->assertCreated();
 
     $opportunity = Opportunity::with('registry.personalData.contacts', 'registry.personalData.addresses')->findOrFail($response->json('data.id'));
@@ -198,6 +209,7 @@ it('AC-007: the created opportunity name is OPP_{id}', function () {
     $response = $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
     ])->assertCreated();
 
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
@@ -266,6 +278,78 @@ it('rejects a non-existent source_id -> 422, no row created', function () {
     expect(Opportunity::count())->toBe(0);
 });
 
+it('rejects a create without a source_id -> 422, no row created', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+    ])->assertStatus(422)->assertJsonValidationErrors('source_id');
+
+    expect(Opportunity::count())->toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// GA2 "Operatore" at creation (user directive 2026-07-29): a supervisory act,
+// gated by `request-management.assignOperator` ON TOP of `create`.
+// ---------------------------------------------------------------------------
+
+it('creates with operator_id -> 201, the user lands on the GA2 pivot slot', function () {
+    $actor = requestManagementCreatorWith(['create', 'assignOperator']);
+    $registry = Registry::factory()->create();
+    $operator = User::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'operator_id' => $operator->id,
+    ])->assertCreated();
+
+    $opportunity = Opportunity::findOrFail($response->json('data.id'));
+    expect($opportunity->operatorManager()?->id)->toBe($operator->id);
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $opportunity->id,
+        'user_id' => $operator->id,
+        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
+    ]);
+});
+
+it('rejects operator_id from an actor without request-management.assignOperator -> 403, no row created', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    $operator = User::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'operator_id' => $operator->id,
+    ])->assertForbidden();
+
+    expect(Opportunity::count())->toBe(0);
+});
+
+it('creates without any GA2 slot when operator_id is absent', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+    ])->assertCreated();
+
+    $opportunity = Opportunity::findOrFail($response->json('data.id'));
+    expect($opportunity->operatorManager())->toBeNull();
+    $this->assertDatabaseMissing('opportunity_user', ['opportunity_id' => $opportunity->id]);
+});
+
 // ---------------------------------------------------------------------------
 // AC-010 — response shape is the same RequestManagementResource as the GET
 // ---------------------------------------------------------------------------
@@ -278,6 +362,7 @@ it('AC-010: the 201 response is a full RequestManagementResource, matching the G
     $created = $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
     ])->assertCreated();
 
     $opportunityId = $created->json('data.id');

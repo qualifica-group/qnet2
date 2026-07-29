@@ -257,9 +257,11 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
     expect(screen.getByTestId('select-Operational site')).toBeInTheDocument()
     expect(screen.getByTestId('select-Supervisor')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add account manager' })).toBeInTheDocument()
-    // Amendment rev.3: no product-line row renders until "Add" is clicked (mirrors manager slots).
+    // User directive 2026-07-29: the create form opens on ONE product-line row
+    // (it used to render none until "Add" was clicked).
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument()
-    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-Business function 1')).toBeInTheDocument()
+    expect(screen.queryByTestId('select-Business function 2')).not.toBeInTheDocument()
   })
 
   /** Directive 2026-07-21: supervisor is never required, in either mode (it derives from the linked Lead's Operatore, which may be empty). */

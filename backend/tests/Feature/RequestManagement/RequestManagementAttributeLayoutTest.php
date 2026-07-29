@@ -9,6 +9,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -106,6 +107,7 @@ it('POST (create) resolves form_mode=create — a layout configured only for edi
     $response = $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => [['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]],
+        'source_id' => Source::factory()->create()->id,
     ])->assertCreated();
 
     expect($response->json('data.attribute_layout'))->toBeNull();
@@ -126,6 +128,7 @@ it('POST (create) resolves a layout configured for form_mode=create', function (
     $response = $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => [['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]],
+        'source_id' => Source::factory()->create()->id,
     ])->assertCreated();
 
     expect($response->json('data.attribute_layout.sections.0.rows.0.items.0.attribute_code'))->toBe('material');

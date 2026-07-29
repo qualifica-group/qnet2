@@ -6,6 +6,7 @@ use App\Models\Country;
 use App\Models\Province;
 use App\Models\State;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -158,6 +159,37 @@ it('leaves resolve() exact behavior unchanged: a near-miss name still fails (no 
     expect($result->isResolved())->toBeFalse()
         ->and($result->error)->toContain('Milano');
 });
+
+// ---------------------------------------------------------------------------
+// Production memory guard: an unscoped level (a row mapping only `city`)
+// searches the whole `cities` table — 156k rows in the world dataset shipped
+// by `locations:add`. Hydrating that per staged row exhausted PHP's memory
+// limit in production and left the run stuck in `staging`, so no read of a
+// level may select every column of the unfiltered table.
+// ---------------------------------------------------------------------------
+
+it('never hydrates a whole unscoped level, on either the exact or the fuzzy path', function (string $cityName) {
+    fuzzyGeoChain();
+    City::factory()->count(3)->create();
+
+    $statements = [];
+    DB::listen(function ($query) use (&$statements): void {
+        $statements[] = $query->sql;
+    });
+
+    app(GeoResolver::class)->resolveFuzzy(null, null, null, $cityName);
+
+    $fullTableReads = array_filter(
+        $statements,
+        static fn (string $sql): bool => str_contains($sql, 'select * from "cities"') && ! str_contains($sql, 'where'),
+    );
+
+    expect($statements)->not->toBeEmpty()
+        ->and($fullTableReads)->toBeEmpty();
+})->with([
+    'exact name' => 'Milan',
+    'near miss falling back to similarity' => 'Milanoo',
+]);
 
 it('leaves resolve() exact behavior unchanged: an exact hierarchical match still resolves', function () {
     $geo = fuzzyGeoChain();

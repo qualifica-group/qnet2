@@ -1,11 +1,13 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
+import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
   RequestClientAddressPayload,
   RequestClientContactPayload,
+  RequestClientIdentity,
   RequestClientIdentityPayload,
+  RequestContact,
   RequestWorkPanel,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
@@ -16,7 +18,7 @@ import type {
  * field server-side (spec 0049 data_contract): there is no per-code sparse
  * diff to compute, only whether the map as a whole needs resending.
  */
-function attributeValuesChanged(
+export function attributeValuesChanged(
   current: Record<string, CustomFieldValue>,
   original: Record<string, unknown>,
   codes: string[],
@@ -24,6 +26,18 @@ function attributeValuesChanged(
   return codes.some(
     (code) => !isEqualCustomFieldValue(current[code] ?? null, (original[code] as CustomFieldValue) ?? null),
   )
+}
+
+/**
+ * True when the products of interest differ as a SET (order is not part of
+ * their identity). Exported alongside the one above because the schema gates
+ * its mandatory rules on the same conditions: a key is checked client-side
+ * only when it is actually going to be sent.
+ */
+export function productsOfInterestChanged(current: number[], original: number[]): boolean {
+  const sort = (ids: number[]) => [...ids].sort((a, b) => a - b)
+
+  return clientBlockChanged(sort(current), sort(original))
 }
 
 /**
@@ -101,6 +115,44 @@ function clientBlockChanged(current: unknown, original: unknown): boolean {
 }
 
 /**
+ * The three predicates below decide whether a buffered client block is going
+ * to be sent. Exported for the SAME reason as the two above: the schema
+ * validates a block only when it travels, since an untouched one is never
+ * validated server-side either (`ValidatesRequestClientProfile` only sees
+ * what the PATCH carries).
+ */
+export function clientIdentityChanged(
+  current: PersonalDataDraft | null,
+  original: RequestClientIdentity | null,
+): boolean {
+  // No card on either side: there is no identity to replace, so nothing is sent.
+  if (!current || !original) {
+    return false
+  }
+
+  return clientBlockChanged(toClientIdentityPayload(current), toClientIdentityPayload(original))
+}
+
+export function clientContactsChanged(current: ContactDraft[], original: RequestContact[]): boolean {
+  return clientBlockChanged(current.map(toClientContactPayload), original.map(toClientContactPayload))
+}
+
+export function clientAddressChanged(current: AddressDraft[], original: Address | null): boolean {
+  const address = current[0]
+
+  // No row buffered: clearing the inline fields leaves the persisted address
+  // untouched, so nothing travels (mirrors the payload builder below).
+  if (!address) {
+    return false
+  }
+
+  return clientBlockChanged(
+    toClientAddressPayload(address),
+    original ? toClientAddressPayload(original) : null,
+  )
+}
+
+/**
  * Builds the sparse PATCH payload (AC-062): only `opportunity_workflow_status_id`
  * and/or `attribute_values` are included, each only when it actually changed
  * from the loaded `panel`. `note` rides along ONLY when the working status
@@ -138,25 +190,19 @@ export function buildRequestWorkPayload(
 
   // Sent only when the client actually has a card: without one there is no
   // identity to replace and the server has nothing to resolve the write on.
-  const identity = values.client_identity
-  if (identity && panel.client_identity) {
-    const wire = toClientIdentityPayload(identity)
-    if (clientBlockChanged(wire, toClientIdentityPayload(panel.client_identity))) {
-      payload.client_identity = wire
-    }
+  if (values.client_identity && clientIdentityChanged(values.client_identity, panel.client_identity)) {
+    payload.client_identity = toClientIdentityPayload(values.client_identity)
   }
 
-  const contacts = values.client_contacts.map(toClientContactPayload)
-  if (clientBlockChanged(contacts, panel.client_contacts.items.map(toClientContactPayload))) {
-    payload.client_contacts = contacts
+  if (clientContactsChanged(values.client_contacts, panel.client_contacts.items)) {
+    payload.client_contacts = values.client_contacts.map(toClientContactPayload)
   }
 
   // "Prodotti di interesse" (user directive 2026-07-22): an authoritative
   // replace, so it is sent only when the SET actually changed — order is not
   // part of its identity.
-  const currentProducts = [...values.products_of_interest].sort((a, b) => a - b)
-  const originalProducts = panel.products_of_interest.map((product) => product.id).sort((a, b) => a - b)
-  if (clientBlockChanged(currentProducts, originalProducts)) {
+  const originalProducts = panel.products_of_interest.map((product) => product.id)
+  if (productsOfInterestChanged(values.products_of_interest, originalProducts)) {
     payload.products_of_interest = values.products_of_interest
   }
 
@@ -191,12 +237,8 @@ export function buildRequestWorkPayload(
   // leaves the persisted one untouched — this panel has no delete affordance
   // for it, and the write path never deletes an address.
   const address = values.client_address[0]
-  if (address) {
-    const wire = toClientAddressPayload(address)
-    const original = panel.client_address ? toClientAddressPayload(panel.client_address) : null
-    if (clientBlockChanged(wire, original)) {
-      payload.client_address = wire
-    }
+  if (address && clientAddressChanged(values.client_address, panel.client_address)) {
+    payload.client_address = toClientAddressPayload(address)
   }
 
   return payload

@@ -10,7 +10,7 @@ import type { TFunction } from 'i18next'
  */
 
 /** Backend limit on FILLED manager slots (`max:4`, `ValidatesManagerSlots`, mirrors registries). */
-const MAX_MANAGERS = 4
+export const MAX_MANAGERS = 4
 
 /** Backend `estimated_value` column ceiling, `decimal(15,2)` (`max:9999999999999.99`). */
 export const ESTIMATED_VALUE_MAX = 9999999999999.99

@@ -46,10 +46,24 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level gate for assigning the GA2 "Operatore" AT CREATION time
+     * (user directive 2026-07-29): the supervisor ability. Creating a request
+     * is `request-management.create`, but deciding WHO works it is a
+     * supervisory act, so the create form's Operatore field — and the
+     * `operator_id` key of POST /api/request-management — need this on top.
+     * Reassigning an EXISTING request stays governed by the per-field matrix
+     * (RequestManagementAuthorization) on the work panel's PATCH.
+     */
+    public function assignOperator(User $user): bool
+    {
+        return $user->can($this->permission('assignOperator'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator'];
     }
 }

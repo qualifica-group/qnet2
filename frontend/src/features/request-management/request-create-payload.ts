@@ -62,6 +62,8 @@ export interface BuildRequestCreatePayloadArgs {
   productLines: ProductLineRow[]
   sourceId: number | null
   reporterId: number | null
+  /** GA2 "Operatore": `null` whenever the actor may not assign one (the field is not rendered). */
+  operatorId: number | null
   rewards: RequestRewardInput[]
 }
 
@@ -80,6 +82,7 @@ export function buildRequestCreatePayload({
   productLines,
   sourceId,
   reporterId,
+  operatorId,
   rewards,
 }: BuildRequestCreatePayloadArgs): CreateRequestPayload {
   const product_lines = toProductLinesPayload(productLines)
@@ -87,10 +90,14 @@ export function buildRequestCreatePayload({
   // Initial attribution rides along with EITHER anagrafica branch (it is
   // independent of the D-2 XOR): the Fonte/Segnalatore slots are always sent
   // (null clears them), and `rewards` only when at least one is picked — an
-  // empty array would be a no-op the server need not process.
+  // empty array would be a no-op the server need not process. `operator_id`
+  // travels ONLY when set: an actor without `request-management.assignOperator`
+  // never renders the field, and sending an explicit null would be a key they
+  // are not entitled to submit at all.
   const attribution = {
     source_id: sourceId,
     reporter_id: reporterId,
+    ...(operatorId !== null ? { operator_id: operatorId } : {}),
     ...(rewards.length > 0 ? { rewards } : {}),
   }
 

@@ -23,8 +23,10 @@ import {
 import {
   buildCreateOpportunitySchema,
   buildUpdateOpportunitySchema,
+  MAX_MANAGERS,
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
+import { emptyProductLineRow } from '@/features/product-lines/types'
 import { OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE } from '@/features/opportunity-statuses/for-select-api'
 import { useDefaultSystemStatusId } from '@/features/status-reorder/use-default-system-status'
 import type { OpportunityDetail, OpportunityFormMode } from '@/features/opportunities/types'
@@ -53,6 +55,23 @@ const SERVER_ERROR_FIELDS = [
 ] as const
 
 export type OpportunityFormValues = CreateOpportunityFormValues
+
+/**
+ * The create form's G.A. slots: one empty card per assignable position, G.A. 1
+ * through G.A. MAX_MANAGERS (user directive 2026-07-29). Empty slots are
+ * gap-aware and submit as nothing, so this changes what the user SEES, not
+ * what is sent.
+ */
+function defaultManagerSlots(): (number | null)[] {
+  return Array.from({ length: MAX_MANAGERS }, () => null)
+}
+
+/** Keeps every derived slot in place while topping the list up to the four defaults. */
+function padManagerSlots(slots: (number | null)[]): (number | null)[] {
+  return slots.length >= MAX_MANAGERS
+    ? slots
+    : [...slots, ...Array.from({ length: MAX_MANAGERS - slots.length }, () => null)]
+}
 
 /**
  * The in-form "Lead" select's CURRENT contribution to the submit (spec 0040
@@ -137,10 +156,13 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       operational_site_id: null,
       state_id: null,
       opportunity_workflow_status_id: null,
-      product_lines: [],
+      // User directive 2026-07-29: the create form opens on ONE empty
+      // product-line row (at least one is mandatory anyway) and on the four
+      // G.A. slots, so the ranking is visible without pressing "Add" first.
+      product_lines: [emptyProductLineRow()],
       products_of_interest: [],
       rewards: [],
-      manager_slots: [],
+      manager_slots: defaultManagerSlots(),
       start_date: null,
       expected_close_date: null,
       estimated_value: null,
@@ -160,12 +182,18 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       ...mode.fromLead.values,
       // Directive 2026-07-22: the lead's Operator seeds the SECOND "Gestore
       // Account" slot, G.A. 1 coming in empty (editable/removable both), and
-      // the Supervisor stays empty.
-      manager_slots: mode.fromLead.managerSlots,
-      product_lines: mode.fromLead.productLines.map((line) => ({
-        business_function_id: line.business_function.id,
-        product_category_id: line.product_category.id,
-      })),
+      // the Supervisor stays empty. Padded to the four default slots
+      // (directive 2026-07-29) without ever dropping a derived one.
+      manager_slots: padManagerSlots(mode.fromLead.managerSlots),
+      // A lead with no product line still opens on one empty row, like the
+      // standalone create form.
+      product_lines:
+        mode.fromLead.productLines.length > 0
+          ? mode.fromLead.productLines.map((line) => ({
+              business_function_id: line.business_function.id,
+              product_category_id: line.product_category.id,
+            }))
+          : [emptyProductLineRow()],
     }
   }, [mode])
 

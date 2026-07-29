@@ -44,11 +44,23 @@ export function buildRequestCreateSchema(t: TFunction) {
   return z.object({
     registry_id: z.number().nullable(),
     product_lines: buildProductLinesSchema(t),
-    // Initial attribution (Fonte/Segnalatore): plain nullable relation ids —
-    // existence is a server-side rule, there is nothing to mirror here (same
-    // as the work panel's own attribution schema).
-    source_id: z.number().nullable(),
+    // Initial attribution: plain relation ids — existence is a server-side
+    // rule, there is nothing to mirror here (same as the work panel's own
+    // attribution schema). Fonte is REQUIRED (user directive 2026-07-29),
+    // mirroring StoreRequestRequest's own `required` rule; the other two stay
+    // nullable. The explicit `: boolean` on the predicate is load-bearing:
+    // TS 5.5+ infers an automatic type predicate and would narrow the field
+    // to a non-nullable `number`, breaking every consumer typed against the
+    // nullable form value (same note as `opportunity-schema.ts`).
+    source_id: z
+      .number()
+      .nullable()
+      .refine((value): boolean => value !== null, t('requestManagement.form.create.validation.sourceRequired')),
     reporter_id: z.number().nullable(),
+    // The GA2 "Operatore" (user directive 2026-07-29): only submitted by an
+    // actor holding `request-management.assignOperator` — the field is not
+    // even rendered otherwise, and the endpoint rejects it server-side.
+    operator_id: z.number().nullable(),
     // Spec 0059 D-3: reward assignments for the reporter. Only the type id
     // travels (beneficiary/date are server-derived); duplicates are prevented
     // by the add control, which excludes already-picked types.

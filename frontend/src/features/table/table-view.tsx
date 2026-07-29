@@ -246,6 +246,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       resettingFilters,
     } = useTableLayoutPersistence({
       domain,
+      scope,
       gridApi,
       knownColumnIds,
       initialFilterModel,

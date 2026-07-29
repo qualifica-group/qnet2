@@ -2,12 +2,33 @@
  * Dominio Offerte (spec 0065). Estratto in un file affiancato per
  * mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6). Le colonne/i filtri avanzati della
- * tabella sono backend-driven (label gia' localizzata dal server): non
- * servono chiavi `columns.*`/`advancedFilters.*` qui.
+ * tabella sono backend-driven: il server invia la CHIAVE i18n
+ * (`quotes.columns.*`/`quotes.advancedFilters.*`) che il frontend traduce,
+ * quindi le chiavi qui sotto sono obbligatorie.
  */
 
 export const quotes = {
   forbidden: 'Non hai i permessi per visualizzare le offerte.',
+  columns: {
+    code: 'Codice',
+    title: 'Titolo',
+    opportunity: 'Opportunità',
+    quoteStatus: 'Stato offerta',
+    commercial: 'Commerciale',
+    reporter: 'Segnalatore',
+    supervisor: 'Supervisore',
+    revenueNet: 'Ricavo netto',
+    costNet: 'Costo netto',
+    marginNet: 'Margine netto',
+    createdAt: 'Creato il',
+  },
+  advancedFilters: {
+    opportunity: 'Opportunità',
+    quoteStatus: 'Stato offerta',
+    commercial: 'Commerciale',
+    supervisor: 'Supervisore',
+    createdRange: 'Creato il',
+  },
   detail: {
     loadError: "Impossibile caricare l'offerta. Riprova.",
     opportunity: 'Opportunità',

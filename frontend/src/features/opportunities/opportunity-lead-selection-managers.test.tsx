@@ -181,8 +181,10 @@ describe('OpportunityFormBody — in-form Lead select, Gestori Account (directiv
     })
 
     await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
-    // No slot yet: `manager_slots` starts empty, so no G.A. row is rendered.
-    expect(screen.queryByTestId('value-Account manager 1')).not.toBeInTheDocument()
+    // User directive 2026-07-29: the four G.A. slots render from the start,
+    // all empty (they used to be materialized only by "Add").
+    expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
+    expect(screen.getByTestId('value-Account manager 4')).toHaveTextContent('')
 
     screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
 
@@ -208,8 +210,9 @@ describe('OpportunityFormBody — in-form Lead select, Gestori Account (directiv
     screen.getByRole('button', { name: `select Lead ${TEST_LEAD_NO_OPERATOR_ID}` }).click()
 
     await waitFor(() => expect(screen.getByTestId('value-Registry')).toHaveTextContent(String(TEST_REGISTRY_ID)))
-    // No Operator -> no slot seeded, Supervisor stays empty.
-    expect(screen.queryByTestId('value-Account manager 1')).not.toBeInTheDocument()
+    // No Operator -> the default slots stay empty, Supervisor too.
+    expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
+    expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent('')
     expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
   })
 

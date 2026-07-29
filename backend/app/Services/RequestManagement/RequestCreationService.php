@@ -70,7 +70,7 @@ final class RequestCreationService
                 sourceId: $data->sourceId,
                 leadId: null,
                 opportunityStatusId: null,
-                managerSlots: null,
+                managerSlots: $this->operatorManagerSlots($data->operatorId),
                 productLines: $data->productLines,
                 startDate: null,
                 estimatedValue: null,
@@ -83,6 +83,27 @@ final class RequestCreationService
             // edit work panel's own layout.
             return $this->panel->loadWorkPanel($opportunity, FormMode::Create);
         });
+    }
+
+    /**
+     * The GA2 "Operatore" as ordered manager slots (user directive
+     * 2026-07-29): OpportunityService maps slot index+1 to the pivot
+     * `position`, so the operator sits at index 1 with GA1 left empty —
+     * Opportunity::OPERATOR_MANAGER_POSITION expressed in the slots
+     * vocabulary. `null` when no operator was submitted: nothing to sync.
+     *
+     * @return array<int, int|null>|null
+     */
+    private function operatorManagerSlots(?int $operatorId): ?array
+    {
+        if ($operatorId === null) {
+            return null;
+        }
+
+        $slots = array_fill(0, Opportunity::OPERATOR_MANAGER_POSITION, null);
+        $slots[Opportunity::OPERATOR_MANAGER_POSITION - 1] = $operatorId;
+
+        return $slots;
     }
 
     /**

@@ -65,6 +65,36 @@ const EMPTY_STATE: OpportunityLeadSelectionState = {
   isError: false,
 }
 
+/**
+ * G.A. 2 — the slot the lead's Operatore belongs to (directive 2026-07-22,
+ * the `Opportunity::OPERATOR_MANAGER_POSITION` pivot position in the slots'
+ * 0-based vocabulary).
+ */
+const OPERATOR_SLOT_INDEX = 1
+
+/**
+ * Seeds $operatorId into G.A. 2, materializing the slots up to it when the
+ * form has fewer (it opens on four since the directive 2026-07-29, but a
+ * removed slot can take it below). An operator ALREADY holding that slot is
+ * never overwritten: the newcomer is appended after the existing ones
+ * instead.
+ */
+function withOperatorSlot(slots: (number | null)[], operatorId: number): (number | null)[] {
+  const next = [...slots]
+
+  while (next.length <= OPERATOR_SLOT_INDEX) {
+    next.push(null)
+  }
+
+  if (next[OPERATOR_SLOT_INDEX] === null) {
+    next[OPERATOR_SLOT_INDEX] = operatorId
+
+    return next
+  }
+
+  return [...next, operatorId]
+}
+
 export interface OpportunityLeadSelectionInitial {
   leadId: number
   lockedFields: string[]
@@ -160,17 +190,14 @@ export function useOpportunityLeadSelection(
       setValue('operational_site_id', defaults.values.operational_site_id, { shouldDirty: true })
       applyProductLines(defaults.product_lines)
 
-      // Directive 2026-07-22: append the lead's Operator as a new "Gestore
-      // Account" slot, but only when it isn't already among the current
-      // slots — never overwrites an existing selection; a lead with no
-      // Operator (empty `manager_slots`) is a no-op. With no slot yet, an
-      // empty G.A. 1 is materialized first so the Operator lands on G.A. 2.
+      // Directive 2026-07-22: seed the lead's Operator into the "Gestore
+      // Account" slots, but only when it isn't already among them — never
+      // overwrites an existing selection; a lead with no Operator (empty
+      // `manager_slots`) is a no-op.
       let managers: RelationFieldRef[] | null = null
       const operatorId = defaults.manager_slots.find((id) => id !== null) ?? null
       if (operatorId !== null && !getValues('manager_slots').includes(operatorId)) {
-        const currentSlots = getValues('manager_slots')
-        const slots = currentSlots.length === 0 ? [null] : currentSlots
-        setValue('manager_slots', [...slots, operatorId], { shouldDirty: true })
+        setValue('manager_slots', withOperatorSlot(getValues('manager_slots'), operatorId), { shouldDirty: true })
         managers = defaults.manager_refs
       }
 

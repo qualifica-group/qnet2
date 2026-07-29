@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { areCreateContactsValid, isCreateAddressValid } from '@/features/personal-data/create-validation'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
+import { emptyProductLineRow } from '@/features/product-lines/types'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { createRequest } from '@/features/request-management/api'
@@ -23,7 +24,12 @@ interface UseRequestCreateFormArgs {
 }
 
 /** Server-side field names mapped directly onto an RHF field. */
-const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = ['registry_id', 'source_id', 'reporter_id']
+const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
+  'registry_id',
+  'source_id',
+  'reporter_id',
+  'operator_id',
+]
 
 /** 422 error groups whose sections live OUTSIDE this form's RHF tree (see below). */
 const CLIENT_ERROR_PREFIXES = ['client_identity', 'client_contacts', 'client_address']
@@ -77,7 +83,17 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const schema = useMemo(() => buildRequestCreateSchema(t), [t])
   const form = useForm<RequestCreateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { registry_id: null, product_lines: [], source_id: null, reporter_id: null, rewards: [] },
+    defaultValues: {
+      registry_id: null,
+      // The form opens on ONE empty product-line row (user directive
+      // 2026-07-29): at least one is mandatory anyway, so making the user
+      // press "Add" first was pure friction.
+      product_lines: [emptyProductLineRow()],
+      source_id: null,
+      reporter_id: null,
+      operator_id: null,
+      rewards: [],
+    },
   })
 
   const registryId = useWatch({ control: form.control, name: 'registry_id' })
@@ -130,6 +146,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       productLines: values.product_lines,
       sourceId: values.source_id,
       reporterId: values.reporter_id,
+      operatorId: values.operator_id,
       rewards: values.rewards,
     })
 

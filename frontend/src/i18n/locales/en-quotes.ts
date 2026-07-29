@@ -2,12 +2,33 @@
  * Quotes/Offers domain (spec 0065). Extracted into a sibling file to keep
  * `en.ts` within the engineering size limits (see
  * `.claude/rules/engineering.md` §6). Table columns/advanced filters are
- * backend-driven (label already localized server-side): no `columns.*`/
- * `advancedFilters.*` keys needed here.
+ * backend-driven: the server sends the i18n KEY
+ * (`quotes.columns.*`/`quotes.advancedFilters.*`) that the frontend
+ * translates, so the keys below are required.
  */
 
 export const quotes = {
   forbidden: "You don't have permission to view quotes.",
+  columns: {
+    code: 'Code',
+    title: 'Title',
+    opportunity: 'Opportunity',
+    quoteStatus: 'Quote status',
+    commercial: 'Commercial',
+    reporter: 'Reporter',
+    supervisor: 'Supervisor',
+    revenueNet: 'Net revenue',
+    costNet: 'Net cost',
+    marginNet: 'Net margin',
+    createdAt: 'Created at',
+  },
+  advancedFilters: {
+    opportunity: 'Opportunity',
+    quoteStatus: 'Quote status',
+    commercial: 'Commercial',
+    supervisor: 'Supervisor',
+    createdRange: 'Created at',
+  },
   detail: {
     loadError: 'Unable to load the quote. Please try again.',
     opportunity: 'Opportunity',

@@ -97,7 +97,7 @@ it('PATCH persists fonte and segnalatore and echoes them back', function () {
     ]);
 });
 
-it('PATCH clears fonte and segnalatore with an explicit null', function () {
+it('PATCH clears segnalatore with an explicit null', function () {
     $actor = attributionActor();
     $opportunity = attributionOpportunity($actor);
     $opportunity->update([
@@ -106,19 +106,32 @@ it('PATCH clears fonte and segnalatore with an explicit null', function () {
     ]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'source_id' => null,
-        'reporter_id' => null,
-    ])
+    $this->patchJson("/api/request-management/{$opportunity->id}", ['reporter_id' => null])
         ->assertOk()
-        ->assertJsonPath('data.source', null)
         ->assertJsonPath('data.reporter', null);
 
     $this->assertDatabaseHas('opportunities', [
         'id' => $opportunity->id,
-        'source_id' => null,
         'reporter_id' => null,
     ]);
+});
+
+// User directive 2026-07-29: the Fonte is MANDATORY. The key stays sparse
+// (absent = untouched, so a legacy row is never blocked server-side by a
+// PATCH that does not mention it), but an explicit null is refused — there is
+// no way to take a request back to having no source.
+it('PATCH refuses to clear the fonte with an explicit null', function () {
+    $actor = attributionActor();
+    $opportunity = attributionOpportunity($actor);
+    $source = Source::factory()->create();
+    $opportunity->update(['source_id' => $source->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$opportunity->id}", ['source_id' => null])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('source_id');
+
+    expect($opportunity->fresh()->source_id)->toBe($source->id);
 });
 
 it('PATCH leaves the attribution untouched when its keys are absent (sparse)', function () {

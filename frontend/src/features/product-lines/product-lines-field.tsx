@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Boxes, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { useProductLinesField } from '@/features/product-lines/use-product-lines-field'
@@ -35,6 +36,11 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
   const { t } = useTranslation()
   const { addRow, removeRow, setRowBusinessFunction, setRowProductCategory, businessFunctionLabel, productCategoryLabel } =
     useProductLinesField({ value, onChange, knownLines })
+  // One quick-create wiring per resource, shared by every row: the refs it
+  // tracks are matched by id, so a function created from row 2 also labels
+  // row 5 if picked there (spec 0028).
+  const businessFunctionQuickCreate = useQuickCreateAction(BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE)
+  const productCategoryQuickCreate = useQuickCreateAction(PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE)
 
   const selectLabels = {
     placeholder: t('productLines.selectPlaceholder'),
@@ -48,13 +54,21 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
     <div className="flex flex-col gap-2">
       <ul className="flex flex-col gap-2">
         {value.map((row, index) => {
+          // A just-created record has no label yet in either source, so its
+          // own ref answers before the `#id` fallback (spec 0028 AC-006).
           const businessFunctionSelected =
             row.business_function_id !== null
-              ? { id: row.business_function_id, label: businessFunctionLabel(row.business_function_id) ?? `#${row.business_function_id}` }
+              ? businessFunctionQuickCreate.selectedItemFor(row.business_function_id) ?? {
+                  id: row.business_function_id,
+                  label: businessFunctionLabel(row.business_function_id) ?? `#${row.business_function_id}`,
+                }
               : null
           const productCategorySelected =
             row.product_category_id !== null
-              ? { id: row.product_category_id, label: productCategoryLabel(row.product_category_id) ?? `#${row.product_category_id}` }
+              ? productCategoryQuickCreate.selectedItemFor(row.product_category_id) ?? {
+                  id: row.product_category_id,
+                  label: productCategoryLabel(row.product_category_id) ?? `#${row.product_category_id}`,
+                }
               : null
 
           return (
@@ -75,6 +89,10 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                     value={row.business_function_id}
                     onChange={(id) => setRowBusinessFunction(index, id)}
                     selectedItem={businessFunctionSelected}
+                    action={businessFunctionQuickCreate.renderAction(
+                      (ref) => setRowBusinessFunction(index, ref.id),
+                      disabled,
+                    )}
                     disabled={disabled}
                     labels={{
                       ...selectLabels,
@@ -90,6 +108,10 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                     value={row.product_category_id}
                     onChange={(id) => setRowProductCategory(index, id)}
                     selectedItem={productCategorySelected}
+                    action={productCategoryQuickCreate.renderAction(
+                      (ref) => setRowProductCategory(index, ref.id),
+                      disabled || row.business_function_id === null,
+                    )}
                     disabled={disabled || row.business_function_id === null}
                     params={row.business_function_id !== null ? { business_function_id: row.business_function_id } : undefined}
                     labels={{

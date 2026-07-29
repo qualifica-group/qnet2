@@ -2,6 +2,7 @@
 
 use App\Models\BusinessFunction;
 use App\Models\Company;
+use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Referent;
 use App\Models\ReferentType;
@@ -26,6 +27,7 @@ dataset('old_id_tables', [
     'roles' => ['roles'],
     'business_functions' => ['business_functions'],
     'companies' => ['companies'],
+    'company_sites' => ['company_sites'],
     'operational_sites' => ['operational_sites'],
     'referent_types' => ['referent_types'],
     'referents' => ['referents'],
@@ -45,6 +47,7 @@ function oldIdFactoryFor(string $table): Factory
         'roles' => Role::factory(),
         'business_functions' => BusinessFunction::factory(),
         'companies' => Company::factory(),
+        'company_sites' => CompanySite::factory(),
         'operational_sites' => OperationalSite::factory(),
         'referent_types' => ReferentType::factory(),
         'referents' => Referent::factory(),

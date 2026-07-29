@@ -19,6 +19,9 @@ use App\DataObjects\Users\ProfileData;
  * Segnalatore); `rewards` are the reward-type ids assigned to that reporter
  * (spec 0059), already reduced to a deduplicated id list by
  * StoreRequestRequest — `null` means the key was absent (nothing to assign).
+ * `operatorId` is the GA2 "Operatore" (user directive 2026-07-29), submitted
+ * only by an actor holding `request-management.assignOperator` — the
+ * controller rejects it otherwise, so it is already authorized here.
  */
 final readonly class CreateRequestData
 {
@@ -33,5 +36,6 @@ final readonly class CreateRequestData
         public ?int $sourceId = null,
         public ?int $reporterId = null,
         public ?array $rewards = null,
+        public ?int $operatorId = null,
     ) {}
 }

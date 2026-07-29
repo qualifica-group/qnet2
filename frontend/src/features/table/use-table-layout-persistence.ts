@@ -8,6 +8,7 @@ import {
   useSaveTablePreferences,
 } from '@/features/table/use-table-preferences'
 import { useResetTableFilters, useSaveTableFilters } from '@/features/table/use-table-filters'
+import type { TableConfigScope } from '@/features/table/use-table-config'
 
 /** Debounce window for persisting layout changes after the user stops editing. */
 const PERSIST_DEBOUNCE_MS = 500
@@ -17,6 +18,8 @@ export const EMPTY_FILTER_MODEL: Record<string, unknown> = {}
 
 interface UseTableLayoutPersistenceInput {
   domain: string
+  /** The scope the config query is keyed by (spec 0064), so a save refreshes the entry the grid reads. */
+  scope?: TableConfigScope
   gridApi: GridApi | null
   /** The domain's real column ids (server allow-list), so synthetic grid columns are never persisted. */
   knownColumnIds: Set<string>
@@ -42,6 +45,7 @@ interface UseTableLayoutPersistenceInput {
  */
 export function useTableLayoutPersistence({
   domain,
+  scope,
   gridApi,
   knownColumnIds,
   initialFilterModel,
@@ -51,9 +55,9 @@ export function useTableLayoutPersistence({
 }: UseTableLayoutPersistenceInput) {
   const { t } = useTranslation()
 
-  const savePreferences = useSaveTablePreferences(domain)
+  const savePreferences = useSaveTablePreferences(domain, scope)
   const resetPreferences = useResetTablePreferences(domain)
-  const saveFilters = useSaveTableFilters(domain)
+  const saveFilters = useSaveTableFilters(domain, scope)
   const resetFilters = useResetTableFilters(domain)
 
   const [layoutVersion, setLayoutVersion] = useState(0)

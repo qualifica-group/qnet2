@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IdCard, MapPin, Phone, UserRound } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { AddressCreateField } from '@/features/personal-data/address-create-field'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
@@ -49,6 +50,7 @@ export function RequestCreateClientSection({
   errorMessage,
 }: RequestCreateClientSectionProps) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE)
 
   return (
     <FormSection
@@ -66,6 +68,10 @@ export function RequestCreateClientSection({
                 resource={REGISTRIES_FOR_SELECT_RESOURCE}
                 value={field.value}
                 onChange={field.onChange}
+                // Keeps a just-created registry labelled in the trigger until
+                // the invalidated options page catches up (spec 0028 AC-006).
+                selectedItem={selectedItemFor(field.value)}
+                action={renderAction((ref) => field.onChange(ref.id))}
                 labels={{
                   placeholder: t('requestManagement.form.create.client.registryPlaceholder'),
                   searchPlaceholder: t('requestManagement.form.create.client.registrySearch'),

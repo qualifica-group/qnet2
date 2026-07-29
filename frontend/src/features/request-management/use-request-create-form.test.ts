@@ -18,6 +18,8 @@ vi.mock('@/features/request-management/api', () => ({
 }))
 
 const COMPLETE_ROW = { business_function_id: 1, product_category_id: 2 }
+/** The Fonte every submitting case must set: mandatory since the user directive 2026-07-29. */
+const TEST_SOURCE_ID = 7
 
 function completeIdentity(): PersonalDataDraft {
   return {
@@ -52,6 +54,7 @@ describe('useRequestCreateForm', () => {
 
     act(() => {
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
     })
     await act(async () => {
       await result.current.onSubmit()
@@ -60,6 +63,69 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock).not.toHaveBeenCalled()
     expect(result.current.clientBlockError).toBe('Complete the client identity fields before saving.')
     expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  /**
+   * User directive 2026-07-29: the form opens on ONE empty product-line row
+   * (at least one is mandatory anyway), so the operator fills it in instead of
+   * having to press "Add" first. An untouched row still blocks the submit —
+   * it is incomplete, not absent.
+   */
+  it('opens on one empty product-line row', () => {
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+
+    expect(result.current.form.getValues('product_lines')).toEqual([
+      { business_function_id: null, product_category_id: null },
+    ])
+  })
+
+  /** User directive 2026-07-29: the Fonte is mandatory, mirroring StoreRequestRequest's `required`. */
+  it('blocks submit when no source is chosen', async () => {
+    const onSuccess = vi.fn()
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+    })
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock).not.toHaveBeenCalled()
+    expect(result.current.form.formState.errors.source_id).toBeTruthy()
+  })
+
+  /**
+   * The GA2 "Operatore" (user directive 2026-07-29) travels only when the
+   * supervisor actually picked one: an actor without
+   * `request-management.assignOperator` never renders the field, and the
+   * endpoint rejects the key from them outright.
+   */
+  it('sends operator_id when set, and omits the key entirely when it is not', async () => {
+    createRequestMock.mockResolvedValue({ id: 45 })
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('operator_id')
+
+    act(() => {
+      result.current.form.setValue('operator_id', 55)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ operator_id: 55 })
   })
 
   it('blocks submit when product_lines is empty (D-3)', async () => {
@@ -82,6 +148,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
       // Even if something was typed before picking the registry, the registry
       // branch must win: the buffer is never sent alongside `registry_id`.
       result.current.setIdentityDraft(completeIdentity())
@@ -94,9 +161,10 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock).toHaveBeenCalledWith({
       registry_id: 10,
       product_lines: [COMPLETE_ROW],
-      // Attribution slots ride along with either branch; empty by default,
-      // `rewards` omitted entirely until at least one is picked.
-      source_id: null,
+      // Attribution slots ride along with either branch; the Fonte is
+      // mandatory (user directive 2026-07-29), the Segnalatore empty by
+      // default, and `rewards`/`operator_id` omitted entirely until set.
+      source_id: TEST_SOURCE_ID,
       reporter_id: null,
     })
     expect(onSuccess).toHaveBeenCalledWith(42)
@@ -110,7 +178,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
-      result.current.form.setValue('source_id', 7)
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
       result.current.form.setValue('reporter_id', 3)
       result.current.form.setValue('rewards', [{ reward_type_id: 5 }])
     })
@@ -122,7 +190,7 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock).toHaveBeenCalledWith({
       registry_id: 10,
       product_lines: [COMPLETE_ROW],
-      source_id: 7,
+      source_id: TEST_SOURCE_ID,
       reporter_id: 3,
       rewards: [{ reward_type_id: 5 }],
     })
@@ -143,6 +211,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
       result.current.form.setValue('rewards', [{ reward_type_id: 5 }])
     })
 
@@ -162,6 +231,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.setIdentityDraft(completeIdentity())
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
     })
 
     await act(async () => {
@@ -197,6 +267,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.form.setValue('registry_id', 999)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
     })
 
     await act(async () => {
@@ -222,6 +293,7 @@ describe('useRequestCreateForm', () => {
     act(() => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
     })
 
     await act(async () => {

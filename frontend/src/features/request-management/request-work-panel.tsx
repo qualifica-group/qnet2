@@ -122,7 +122,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const { canAction, canResource } = useResourcePermissions()
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
-  const { form, onSubmit, serverError, isSubmitting } = useRequestWorkForm(panel)
+  const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
 
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
@@ -132,6 +132,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         formId={REQUEST_WORK_FORM_ID}
         isSubmitting={isSubmitting}
         isDirty={form.formState.isDirty}
+        submitError={submitError}
       />
 
       <div className={PANEL_GRID_CLASS}>
@@ -190,15 +191,6 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
               <RequestClientSection control={form.control} />
             </form>
           </Form>
-
-          {serverError && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive"
-            >
-              {serverError}
-            </div>
-          )}
 
           {/* Notes/documents/history: own authorization (spec 0052 D-6), shown to
               any actor who can read the record. The notes composer has its own

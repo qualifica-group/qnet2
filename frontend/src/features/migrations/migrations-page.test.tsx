@@ -50,6 +50,7 @@ vi.mock('@/routes/breadcrumbs', () => ({
 const SOURCES: MigrationSourceSummary[] = [
   { key: 'roles', label: 'Roles' },
   { key: 'users', label: 'Users' },
+  { key: 'company-sites', label: 'Company sites' },
 ]
 
 function previewPage(overrides: Partial<MigrationPreviewPage> = {}): MigrationPreviewPage {
@@ -113,6 +114,22 @@ async function selectRolesSource() {
 }
 
 describe('MigrationsPage', () => {
+  it('translates the company-sites option in the Italian source select', async () => {
+    await i18n.changeLanguage('it')
+
+    try {
+      render(<MigrationsPage />, { wrapper: wrapper() })
+
+      const select = await screen.findByRole('combobox', { name: 'Sorgente' })
+      fireEvent.click(select)
+
+      expect(await screen.findByRole('option', { name: 'Società sedi' })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Company sites' })).not.toBeInTheDocument()
+    } finally {
+      await i18n.changeLanguage('en')
+    }
+  })
+
   it('renders the expected template (id + type) on selection, with zero preview/external calls', async () => {
     render(<MigrationsPage />, { wrapper: wrapper() })
 

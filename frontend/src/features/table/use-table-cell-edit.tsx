@@ -128,14 +128,20 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
   const { t } = useTranslation()
   const [pendingNote, setPendingNote] = useState<PendingNoteEdit | null>(null)
 
-  const updateCellMutation = useMutation({
+  // Only `mutate` is read, and it is referentially stable across renders —
+  // unlike the mutation object itself. `runPatch` below ends up (via
+  // `handleCellValueChanged`) in `DataTable`'s `gridOptions` memo, and an
+  // unstable identity there rebuilds `defaultColDef` on every render, which
+  // makes AG Grid re-apply the column definitions and drop the user's manual
+  // column width/order.
+  const { mutate: patchCell } = useMutation({
     mutationFn: ({ rowId, column, value, note }: CellPatchArgs) =>
       updateTableCell(domain, rowId, { column, value, ...(note !== undefined ? { note } : {}) }),
   })
 
   const runPatch = useCallback(
     (args: CellPatchArgs, node: IRowNode<TableRow>, revertedData: TableRow) => {
-      updateCellMutation.mutate(args, {
+      patchCell(args, {
         onSuccess: (row) => {
           node.setData(row)
         },
@@ -145,7 +151,7 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
         },
       })
     },
-    [t, updateCellMutation],
+    [t, patchCell],
   )
 
   // Step 1: ignore edits with no side effect — an unauthorized/unregistered

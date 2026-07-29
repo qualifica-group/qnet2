@@ -341,6 +341,8 @@ export interface CreateRequestPayload {
   /** Initial attribution (Fonte/Segnalatore), independent of the anagrafica XOR; `null` leaves the slot empty. */
   source_id?: number | null
   reporter_id?: number | null
+  /** GA2 "Operatore", sent only by an actor holding `request-management.assignOperator`. */
+  operator_id?: number
   /** Spec 0059: reward assignments for the reporter, sent only when at least one is picked. */
   rewards?: RequestRewardInput[]
 }

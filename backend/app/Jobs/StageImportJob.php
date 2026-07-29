@@ -70,6 +70,21 @@ class StageImportJob implements ShouldQueue
         }
     }
 
+    /**
+     * A worker that kills the job (queue timeout, exhausted attempts, PHP
+     * fatal) never reaches handle()'s catch, and a run left in `staging` is
+     * polled forever by the wizard with no way out. AC-010 holds either way:
+     * an unhandled failure moves the run to `failed`, it never stays stuck.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $run = ImportRun::query()->find($this->importRunId);
+
+        if ($run?->status === ImportStatus::Staging) {
+            $run->update(['status' => ImportStatus::Failed]);
+        }
+    }
+
     private function stageRows(ImportRun $run, SpreadsheetReader $reader, StagedRowBuilder $builder): void
     {
         $path = Storage::disk('local')->path($run->stored_path);

@@ -30,9 +30,10 @@ use Illuminate\Database\Eloquent\Model;
  * error; a blank/absent name at any level simply yields no id, no error.
  *
  * Matching filters candidates via Eloquent (parent-scoped, real columns only)
- * and compares names in PHP — no raw SQL, so behavior is identical regardless
- * of the underlying database's collation (MySQL in production, SQLite in
- * tests).
+ * and the comparison that DECIDES is always the PHP one, so behavior is
+ * identical regardless of the underlying database's collation (MySQL in
+ * production, SQLite in tests). The database only limits how much is read —
+ * see GeoFuzzyMatcher, which must never hydrate an unscoped level.
  */
 class GeoResolver
 {
@@ -283,7 +284,9 @@ class GeoResolver
      * Case-insensitive exact-name lookup, scoped by the query's parent filter
      * already applied. Returns null both when NOT FOUND and when AMBIGUOUS
      * (more than one match within the scope) — an ambiguous name is exactly as
-     * unusable as a missing one for the import.
+     * unusable as a missing one for the import. The comparison lives in
+     * GeoFuzzyMatcher so both resolution modes narrow the scope identically
+     * (see that class on why the scope is never hydrated).
      *
      * @template TModel of Model
      *
@@ -292,12 +295,6 @@ class GeoResolver
      */
     private function findByName(Builder $query, string $name): ?Model
     {
-        $target = mb_strtolower(trim($name));
-
-        $matches = $query->get()->filter(
-            static fn (Model $candidate): bool => mb_strtolower((string) $candidate->getAttribute('name')) === $target
-        );
-
-        return $matches->count() === 1 ? $matches->first() : null;
+        return $this->fuzzyMatcher->exactOne($query, $name);
     }
 }

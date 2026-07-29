@@ -62,4 +62,17 @@ class AnalyzeImportJob implements ShouldQueue
             throw $exception;
         }
     }
+
+    /**
+     * See StageImportJob::failed() — a killed worker skips the catch above and
+     * would leave the run polling forever in `analyzing`.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $run = ImportRun::query()->find($this->importRunId);
+
+        if ($run?->status === ImportStatus::Analyzing) {
+            $run->update(['status' => ImportStatus::Failed]);
+        }
+    }
 }

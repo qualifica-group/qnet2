@@ -21,8 +21,11 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
     commercial: null,
-    source_id: null,
-    source: null,
+    // Mandatory since the user directive 2026-07-29: a savable request always
+    // carries a Fonte, so the shared fixture does too (a suite that needs the
+    // missing-source case overrides both keys).
+    source_id: 30,
+    source: { id: 30, name: 'Web' },
     reporter_id: null,
     reporter: null,
     operator_id: null,

@@ -79,6 +79,19 @@ class ProcessStagedImportJob implements ShouldQueue
     }
 
     /**
+     * See StageImportJob::failed() — a killed worker skips the catch above and
+     * would leave the run polling forever in `processing`.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $run = ImportRun::query()->find($this->importRunId);
+
+        if ($run?->status === ImportStatus::Processing) {
+            $run->update(['status' => ImportStatus::Failed]);
+        }
+    }
+
+    /**
      * @return array{0: int, 1: array<int, array{row: ImportRunRow, message: string}>}
      */
     private function persistStagedRows(ImportRun $run, ImportDefinition $definition, User $actor): array

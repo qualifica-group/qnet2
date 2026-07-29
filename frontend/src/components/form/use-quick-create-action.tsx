@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { ForSelectItem } from '@/features/for-select/types'
 import { QuickCreateButton } from '@/features/quick-create/quick-create-button'
 import { useQuickCreated } from '@/features/quick-create/use-quick-created'
 import {
@@ -18,6 +19,13 @@ interface QuickCreateAction {
    * field's write (replace for single, append for multi — AC-010).
    */
   renderAction: (onCreated: (ref: RelationFieldRef) => void, disabled?: boolean) => ReactNode
+  /**
+   * `AsyncPaginatedSelect.selectedItem` for a field whose value may be a
+   * just-created record: its `{id,label}` while it is still missing from the
+   * (invalidated) options page, `null` otherwise. Callers with their own
+   * hydrated projection fall back to it with `?? theirs`.
+   */
+  selectedItemFor: (value: number | null) => ForSelectItem | null
 }
 
 /**
@@ -49,5 +57,13 @@ export function useQuickCreateAction(resource: string): QuickCreateAction {
     )
   }
 
-  return { quickCreated, renderAction }
+  const selectedItemFor = (value: number | null): ForSelectItem | null => {
+    if (value === null) {
+      return null
+    }
+    const created = quickCreated.find((ref) => ref.id === value)
+    return created ? { id: created.id, label: created.name } : null
+  }
+
+  return { quickCreated, renderAction, selectedItemFor }
 }

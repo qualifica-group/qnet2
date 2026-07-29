@@ -37,8 +37,9 @@ final class MigrationOrder
         ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'roles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
-        // users (companies/sites/functions/roles) and referents (referent-types).
-        ['users', 'referents'],
+        // users (companies/sites/functions/roles), company-sites (companies)
+        // and referents (referent-types).
+        ['users', 'company-sites', 'referents'],
 
         // Phase 3 — associations that link phase 2 users onto phase 1 entities:
         // business-function operators (pivot) + responsible (manager_id) need

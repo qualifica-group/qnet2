@@ -12,6 +12,7 @@ import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
 import { buildRequestWorkPayload } from '@/features/request-management/request-work-payload'
 import {
   buildRequestWorkSchema,
@@ -109,11 +110,34 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
 export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const schema = useMemo(
-    () => buildRequestWorkSchema(panel.applicable_attributes, panel.workflow_statuses, panel.workflow_status?.id ?? null, t),
-    [panel.applicable_attributes, panel.workflow_statuses, panel.workflow_status, t],
+    () =>
+      buildRequestWorkSchema(
+        panel.applicable_attributes,
+        panel.workflow_statuses,
+        {
+          workflow_status_id: panel.workflow_status?.id ?? null,
+          attribute_values: panel.attribute_values,
+          products_of_interest: panel.products_of_interest.map((product) => product.id),
+          client_identity: panel.client_identity,
+          client_contacts: panel.client_contacts.items,
+          client_address: panel.client_address,
+        },
+        t,
+      ),
+    [
+      panel.applicable_attributes,
+      panel.workflow_statuses,
+      panel.workflow_status,
+      panel.attribute_values,
+      panel.products_of_interest,
+      panel.client_identity,
+      panel.client_contacts,
+      panel.client_address,
+      t,
+    ],
   )
 
   const defaultValues = useMemo(() => buildDefaultValues(panel), [panel])
@@ -140,28 +164,37 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     ),
   ]
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    setServerError(null)
-    const payload = buildRequestWorkPayload(values, panel)
-    if (Object.keys(payload).length === 0) {
-      return
-    }
-    try {
-      const updated = await updateRequestWork(panel.id, payload)
-      queryClient.setQueryData(requestManagementKeys.panel(panel.id), updated)
-      queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.id) })
-      toast.success(t('requestManagement.workPanel.saved', { defaultValue: 'Working data saved.' }))
-      form.reset(buildDefaultValues(updated))
-    } catch (error) {
-      if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(
-          t('requestManagement.workPanel.genericError', {
-            defaultValue: 'Something went wrong. Please try again.',
-          }),
-        )
+  const onSubmit = form.handleSubmit(
+    async (values) => {
+      setSubmitError(null)
+      const payload = buildRequestWorkPayload(values, panel)
+      if (Object.keys(payload).length === 0) {
+        return
       }
-    }
-  })
+      try {
+        const updated = await updateRequestWork(panel.id, payload)
+        queryClient.setQueryData(requestManagementKeys.panel(panel.id), updated)
+        queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.id) })
+        toast.success(t('requestManagement.workPanel.saved', { defaultValue: 'Working data saved.' }))
+        form.reset(buildDefaultValues(updated))
+      } catch (error) {
+        if (!applyServerValidationErrors(error, form.setError, errorFields)) {
+          setSubmitError(
+            t('requestManagement.workPanel.genericError', {
+              defaultValue: 'Something went wrong. Please try again.',
+            }),
+          )
+        }
+      }
+    },
+    (errors) => {
+      setSubmitError(
+        t('requestManagement.workPanel.validation.summary', {
+          fields: describeInvalidFields(errors, panel.applicable_attributes, t).join(', '),
+        }),
+      )
+    },
+  )
 
-  return { form, onSubmit, serverError, isSubmitting: form.formState.isSubmitting }
+  return { form, onSubmit, submitError, isSubmitting: form.formState.isSubmitting }
 }

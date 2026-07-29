@@ -4,7 +4,7 @@ import {
   saveTableFilters,
   type SaveTableFiltersPayload,
 } from '@/features/table/api'
-import { tableKeys } from '@/features/table/use-table-config'
+import { tableKeys, type TableConfigScope } from '@/features/table/use-table-config'
 import type { TableConfig } from '@/features/table/types'
 
 /**
@@ -13,14 +13,18 @@ import type { TableConfig } from '@/features/table/types'
  * success the returned merged config refreshes the cache, so a remount within
  * the config staleTime restores the just-saved state rather than the stale
  * default.
+ *
+ * `scope` must be the SAME one the config query was keyed by (spec 0064's
+ * category tabs): the cache is keyed per scope, so refreshing the unscoped key
+ * from a scoped table would leave the entry the grid actually reads stale.
  */
-export function useSaveTableFilters(domain: string) {
+export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (payload: SaveTableFiltersPayload) => saveTableFilters(domain, payload),
     onSuccess: (config: TableConfig) => {
-      queryClient.setQueryData(tableKeys.config(domain), config)
+      queryClient.setQueryData(tableKeys.config(domain, scope), config)
     },
   })
 }

@@ -28,7 +28,10 @@ use Illuminate\Validation\Rule;
  * EnforcesFieldPermissions: creation is gated WHOLESALE by
  * `request-management.create`, which is what authorizes setting a request's
  * INITIAL attribution — `source_id` (Fonte), `reporter_id` (Segnalatore) and
- * the `rewards` block (buono, beneficiary = reporter). The per-field readonly
+ * the `rewards` block (buono, beneficiary = reporter). The one exception is
+ * `operator_id` (GA2), a supervisory act that needs
+ * `request-management.assignOperator` ON TOP: the controller rejects a
+ * non-null value from an actor without it. The per-field readonly
  * matrix (RequestManagementAuthorization::fields()) governs who may LATER edit
  * those fields on an existing record through the work panel's PATCH, a
  * distinct lifecycle concern; enforcing it here would need a persisted model
@@ -68,12 +71,18 @@ class StoreRequestRequest extends FormRequest
                     $hasIdentity ? 'prohibited' : 'required',
                     'nullable', 'integer', Rule::exists('registries', 'id'),
                 ],
-                // Initial attribution, independent of the anagrafica XOR: the
-                // request's Fonte and Segnalatore. Optional and nullable —
-                // absent/null leaves the created Opportunity's slot empty, the
-                // same semantics the opportunities create payload carries.
-                'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
+                // Initial attribution, independent of the anagrafica XOR.
+                // Fonte is MANDATORY (user directive 2026-07-29): a request
+                // always knows where it came from. Segnalatore stays optional
+                // and nullable — absent/null leaves that slot empty, the same
+                // semantics the opportunities create payload carries.
+                'source_id' => ['required', 'integer', Rule::exists('sources', 'id')],
                 'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+                // The GA2 "Operatore" (user directive 2026-07-29). Optional
+                // here; submitting a non-null value additionally requires
+                // `request-management.assignOperator`, enforced by the
+                // controller (this class holds no authorization, see above).
+                'operator_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             ],
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
@@ -121,6 +130,7 @@ class StoreRequestRequest extends FormRequest
             sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
+            operatorId: isset($validated['operator_id']) ? (int) $validated['operator_id'] : null,
         );
     }
 

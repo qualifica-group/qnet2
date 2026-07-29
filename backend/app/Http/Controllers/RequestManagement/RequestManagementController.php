@@ -58,7 +58,16 @@ class RequestManagementController extends BaseApiController
             $user = $request->user();
             abort_unless($user->can('request-management.create'), 403);
 
-            $panel = $this->creationService->create($user, $request->toData());
+            $data = $request->toData();
+            // Assigning the GA2 "Operatore" up front is a supervisory act
+            // (user directive 2026-07-29): creating a request never implies
+            // deciding who works it.
+            abort_unless(
+                $data->operatorId === null || $user->can('request-management.assignOperator'),
+                403,
+            );
+
+            $panel = $this->creationService->create($user, $data);
             /** @var Opportunity $opportunity */
             $opportunity = $panel['opportunity'];
 

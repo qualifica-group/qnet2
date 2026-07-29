@@ -4,6 +4,7 @@ use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
+use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
@@ -66,6 +67,7 @@ return [
         'users' => UsersSource::class,
         'business-functions' => BusinessFunctionsSource::class,
         'companies' => CompaniesSource::class,
+        'company-sites' => CompanySitesSource::class,
         'operational-sites' => OperationalSitesSource::class,
         'business-function-members' => BusinessFunctionMembersSource::class,
         'referent-types' => ReferentTypesSource::class,

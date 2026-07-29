@@ -15,6 +15,7 @@ export const migrations = {
     users: 'Utenti',
     'business-functions': 'Funzioni aziendali',
     companies: 'Società aziendali',
+    'company-sites': 'Società sedi',
     'operational-sites': 'Sedi operative',
     'business-function-members': 'Funzioni aziendali — riconcilia responsabile e operatori',
     'referent-types': 'Tipi di referente',

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, Loader2 } from 'lucide-react'
+import { CalendarClock, Loader2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { WorkflowStatusSwatch } from '@/features/request-management/request-workflow-status-field'
@@ -13,6 +13,8 @@ interface RequestWorkHeaderProps {
   formId: string
   isSubmitting: boolean
   isDirty: boolean
+  /** Why the last submit did not go through (validation summary or server error); `null` when there is none. */
+  submitError: string | null
 }
 
 /** Formats the `Y-m-d\TH:i` callback for display, `null` when missing/unparsable. */
@@ -41,8 +43,20 @@ function StatusBadge({ label, color, children }: { label: string; color: string 
  * Sticky so the primary action stays reachable while the operator scrolls the
  * long editable form below; the button submits the form by id, keeping this
  * component free of any form state.
+ *
+ * A refused submit is reported HERE, next to the button that was pressed: the
+ * form below is long and some of its blocking fields render no message of
+ * their own, so an error shown only in place reads as "the save button does
+ * nothing".
  */
-export function RequestWorkHeader({ panel, canUpdate, formId, isSubmitting, isDirty }: RequestWorkHeaderProps) {
+export function RequestWorkHeader({
+  panel,
+  canUpdate,
+  formId,
+  isSubmitting,
+  isDirty,
+  submitError,
+}: RequestWorkHeaderProps) {
   const { t } = useTranslation()
   const nextCallback = formatDateTime(panel.next_callback_at)
 
@@ -96,6 +110,16 @@ export function RequestWorkHeader({ panel, canUpdate, formId, isSubmitting, isDi
           </Button>
         )}
       </div>
+
+      {submitError && (
+        <div
+          role="alert"
+          className="flex w-full items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+        >
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          {submitError}
+        </div>
+      )}
     </header>
   )
 }

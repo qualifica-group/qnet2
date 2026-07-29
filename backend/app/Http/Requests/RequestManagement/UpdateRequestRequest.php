@@ -85,8 +85,11 @@ class UpdateRequestRequest extends FormRequest
             'products_of_interest.*' => ['integer', 'exists:products,id'],
             // Attribution (user directive 2026-07-22): "Fonte",
             // "Segnalatore" and the GA2 "Operatore". Sparse like every other
-            // key — absent means untouched, `null` clears the value.
-            'source_id' => ['sometimes', 'nullable', 'integer', 'exists:sources,id'],
+            // key — absent means untouched, `null` clears the value. Fonte is
+            // the exception: MANDATORY (user directive 2026-07-29), so it is
+            // sparse but never clearable to `null` — same shape as
+            // `products_of_interest`' own `min:1`.
+            'source_id' => ['sometimes', 'required', 'integer', 'exists:sources,id'],
             'reporter_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
             'operator_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             // Spec 0056: the Sede operativa, same attribution block, same
