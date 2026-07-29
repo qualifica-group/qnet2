@@ -1,23 +1,47 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
+use Database\Seeders\DemoOpportunityStatusSeeder;
+use Database\Seeders\DemoProductCategorySeeder;
+use Database\Seeders\DemoProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
-it('seeds standalone opportunities, some carrying more than one ordered manager', function (): void {
-    Registry::factory()->count(3)->create();
+/**
+ * Everything a VALID opportunity needs: the mandatory registry plus the demo
+ * catalogue behind `product_lines`/`products_of_interest` (both min:1) and the
+ * status lookup.
+ */
+function seedOpportunityDependencies(int $registryCount = 3): void
+{
+    Registry::factory()->count($registryCount)->create();
     Company::factory()->count(2)->create();
     CompanySite::factory()->count(2)->create();
     OperationalSite::factory()->count(2)->create();
     User::factory()->count(8)->create();
+
+    foreach (DemoCategoryCatalogue::TREE as $branch) {
+        BusinessFunction::query()->firstOrCreate(['name' => $branch['business_function']]);
+    }
+
+    test()->seed(DemoProductCategorySeeder::class);
+    test()->seed(DemoProductSeeder::class);
+    test()->seed(DemoOpportunityStatusSeeder::class);
+}
+
+it('seeds standalone opportunities, some carrying more than one ordered manager', function (): void {
+    seedOpportunityDependencies();
 
     test()->seed(DemoOpportunitySeeder::class);
 
@@ -44,11 +68,7 @@ it('seeds standalone opportunities, some carrying more than one ordered manager'
 });
 
 it('assigns only real seeded users as managers', function (): void {
-    Registry::factory()->count(2)->create();
-    Company::factory()->count(2)->create();
-    CompanySite::factory()->count(2)->create();
-    OperationalSite::factory()->count(2)->create();
-    User::factory()->count(6)->create();
+    seedOpportunityDependencies(registryCount: 2);
 
     test()->seed(DemoOpportunitySeeder::class);
 
@@ -60,4 +80,66 @@ it('assigns only real seeded users as managers', function (): void {
     foreach ($managerIds as $managerId) {
         expect($managerId)->toBeIn($userIds);
     }
+});
+
+it('fills every field the create form makes mandatory', function (): void {
+    seedOpportunityDependencies();
+
+    test()->seed(DemoOpportunitySeeder::class);
+
+    $opportunities = Opportunity::query()->with(['productLines', 'productsOfInterest'])->get();
+
+    expect($opportunities)->not->toBeEmpty();
+
+    foreach ($opportunities as $opportunity) {
+        expect($opportunity->registry_id)->not->toBeNull($opportunity->name)
+            ->and($opportunity->opportunity_status_id)->not->toBeNull($opportunity->name)
+            // Both collections are `required|min:1` on StoreOpportunityRequest.
+            ->and($opportunity->productLines)->not->toBeEmpty($opportunity->name)
+            ->and($opportunity->productsOfInterest)->not->toBeEmpty($opportunity->name);
+
+        foreach ($opportunity->productLines as $line) {
+            expect($line->business_function_id)->not->toBeNull($opportunity->name)
+                ->and($line->product_category_id)->not->toBeNull($opportunity->name);
+        }
+    }
+});
+
+it('picks products that belong to the opportunity own product lines', function (): void {
+    seedOpportunityDependencies();
+
+    test()->seed(DemoOpportunitySeeder::class);
+
+    $hierarchy = app(CategoryHierarchy::class);
+
+    foreach (Opportunity::query()->with(['productLines', 'productsOfInterest'])->get() as $opportunity) {
+        $coveredCategoryIds = $opportunity->productLines
+            ->pluck('product_category_id')
+            ->flatMap(fn (int $categoryId): array => [$categoryId, ...$hierarchy->descendantIds($categoryId)])
+            ->unique()
+            ->all();
+
+        foreach ($opportunity->productsOfInterest as $product) {
+            expect($product->category_id)->toBeIn($coveredCategoryIds, $opportunity->name);
+        }
+    }
+});
+
+it('spreads the opportunities over the whole status catalogue', function (): void {
+    seedOpportunityDependencies();
+
+    test()->seed(DemoOpportunitySeeder::class);
+
+    expect(Opportunity::query()->distinct()->count('opportunity_status_id'))->toBeGreaterThan(1);
+});
+
+it('seeds nothing when no category pairs a business function with a product', function (): void {
+    Registry::factory()->count(2)->create();
+    User::factory()->count(3)->create();
+
+    test()->seed(DemoOpportunitySeeder::class);
+
+    // A row without product lines/products would be one the form itself
+    // refuses to submit: better none at all.
+    expect(Opportunity::count())->toBe(0);
 });

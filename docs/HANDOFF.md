@@ -2,6 +2,90 @@
 
 > Injected at session start. Update at every green state.
 
+## CATALOGO DEMO + SEEDER OPPORTUNITA' A NORMA DI FORM (2026-07-29) — VERDE, NON COMMITTATO
+
+Richiesta utente: "controlla il form delle opportunita' e fixa il seeder in base ai campi
+obbligatori; per categorie prodotto voglio campi e sezioni demo e stati di lavorazione demo
+per provare tutto il ciclo di vita". Solo `database/seeders/` + test: ZERO modifiche ad `app/`.
+
+CAUSA RADICE (non era solo il seeder): il dataset demo non aveva NESSUNA categoria prodotto.
+Il catalogo vero del cliente vive nei seeder `Qualifica*` (dati di produzione, mai chiamati da
+`DemoDataSeeder`), quindi `product_lines` e `products_of_interest` — entrambi
+`required|min:1` su `StoreOpportunityRequest` e nello Zod `opportunity-schema.ts` — non
+avevano da dove pescare. `DemoOpportunitySeeder` passava `productLines: null` circa meta' delle
+volte (SEMPRE nel ramo from-lead) e non passava mai `products_of_interest`: le righe demo
+esistevano ma il form si rifiutava di risalvarle.
+
+DECISIONI PRESE (non erano nella richiesta, valgono finche' l'utente non dice altro):
+- D-1 albero demo PROPRIO, non riuso delle categorie Qualifica: il seed demo dev'essere
+  autosufficiente. Nomi volutamente diversi da "Formazione"/"Consulenza" (i due seed usano
+  `name` come chiave naturale: un DB che li ospita entrambi non deve fonderli).
+- D-2 codici attributo con prefisso `demo_`, cosi' in modulo Attributi un campo demo non si
+  confonde con uno del cliente.
+- D-3 il seeder NON crea piu' opportunita' quando mancano categorie/prodotti: una riga a
+  meta' e' peggio di nessuna riga (il form la rifiuterebbe). Il vecchio comportamento
+  "semina comunque" e' stato rimosso e i test aggiornati di conseguenza.
+- D-4 la funzione aziendale sta solo sulla RADICE del ramo: le foglie la ereditano
+  (`CategoryHierarchy::effectiveBusinessFunction`), che basta per una product line valida.
+
+FILE NUOVI (dati puri sotto `DemoCatalog/`, logica nei seeder):
+- `DemoCatalog/DemoCategoryCatalogue.php` — albero (2 rami x radice+2 foglie = 6 categorie),
+  attributi contesto `product` E `opportunity`, sezioni di layout per ramo, `categoryNames()`
+  e `branchOf()`.
+- `DemoCatalog/DemoProductCatalogue.php` — 9 prodotti sulle 4 foglie con i loro
+  `attribute_values`. ATTENZIONE: `ProductType` ha backing value `'SERVICE'` MAIUSCOLO
+  (`'service'` esplode con "not a valid backing value").
+- `DemoCatalog/DemoWorkflowStatusCatalogue.php` — pick list "stati di lavorazione" per ramo:
+  righe custom + il seed descrittivo delle 4 righe di sistema (open/validated/closed_won/
+  closed_lost).
+- `DemoProductCategorySeeder.php` — albero + attributi (2 contesti) + layout (2 contesti).
+- `DemoProductSeeder.php` — prodotti via `ProductService::create()`.
+- `DemoCategoryWorkflowSeeder.php` — un workflow per categoria demo, criterio
+  `product_category_id`, via `OpportunityWorkflowService::create()`.
+- `DemoOpportunityLifecycleSeeder.php` — fa AVANZARE le richieste sugli stati risolti e
+  riempie gli attributi contesto opportunity passando da
+  `RequestManagementService::updateWork()` (stesso path della PATCH del pannello: membership
+  dello stato, nota obbligatoria sui `requires_note`, validazione valori, activity log).
+- `Concerns/PicksDemoOffers.php` — estrae in un unico sorteggio coerente le due collezioni
+  obbligatorie: una "offerta" e' una categoria che risolve una funzione aziendale E ha
+  prodotti in se' o nei discendenti, cosi' i prodotti pescati non costringono
+  `OpportunityProductInterestWriter` ad aggiungere righe non volute.
+
+MODIFICATI: `DemoOpportunitySeeder.php` (ogni riga ora ha registry + status + >=1 product line
++ >=1 prodotto; status ruotato su tutto il catalogo, piu' `general_notes`, `operational_site`,
+`rewards` solo se c'e' un Segnalatore) e `DemoDataSeeder.php` (ordine: categorie+prodotti
+subito dopo le business function; `DemoCategoryWorkflowSeeder` DOPO
+`DemoOpportunityWorkflowSeeder`, che cancella tutti i workflow, e PRIMA di
+`DemoOpportunitySeeder`; lifecycle per ultimo prima dei reward).
+
+TRAPPOLE DA RICORDARE:
+- Il layout NON si eredita: una riga per ogni categoria e per ogni contesto (12 righe), e le
+  sezioni si filtrano sugli attributi EFFETTIVI di quella categoria (la sezione "Erogazione"
+  con solo `demo_platform` sparisce dove quel codice non arriva).
+- La nota di avanzamento e' permission-checked (`notes.create`): l'attore si risolve con
+  `whereHas('roles')`, NON con lo scope spatie `role()`, che esplode se il ruolo non esiste.
+- Su un match a pari specificita' vince l'id piu' basso: i workflow per fonte
+  (`DemoOpportunityWorkflowSeeder`) sono creati prima, quindi alcune opportunita' restano sul
+  loro set invece che su quello di categoria. E' voluto: si vedono entrambe le dimensioni.
+
+VERIFICA (eseguita davvero): suite backend intera
+`php -d xdebug.mode=off -d memory_limit=2G vendor/bin/pest` → 4069 test, 4052 verdi, 16 rossi
+= ESATTAMENTE i 16 preesistenti gia' censiti (11 `*SecurityTest` di navigazione, VAT
+`CustomFieldWritePipelineTest`, 2 `MigrationRegistryTest`, 1
+`AbstractMigrationSourcePreviewTest`, 1 `RequestManagementTableSearchTest`). Nuovi test: 7
+(`DemoProductCategorySeederTest`) + 4 (`DemoCategoryWorkflowSeederTest`) + 5
+(`DemoOpportunityLifecycleSeederTest`) + `DemoOpportunitySeederTest` portato a 6 casi. Pint
+pulito. END-TO-END REALE: `DemoDataSeeder` completo girato su un database MySQL scratch
+(`qnet2_demo_seed_check`, creato e poi CANCELLATO, il DB di sviluppo non e' stato toccato) →
+6 categorie, 9 prodotti, 16 attributi, 12 layout, 9 workflow, 71 stati, 45 opportunita', 0
+senza product line, 0 senza prodotti, 45 con valori attributo, 11 note, 11 callback, stati
+distribuiti su open/pending/closed_won/closed_lost. Nota: `locations:add` usa SQL MySQL, quindi
+`DemoDataSeeder` intero NON gira su sqlite.
+
+FUORI SCOPE, VOLUTAMENTE NON TOCCATO: nessuna modifica al form o all'API delle opportunita';
+`DemoCustomFieldSeeder` resta commentato in `DemoDataSeeder` com'era; il catalogo Qualifica
+non e' stato toccato.
+
 ## COMUNE DI RESIDENZA IN ANAGRAFICA (2026-07-28) — VERDE, NON COMMITTATO
 
 Richiesta utente: "in anagrafica oltre a comune di nascita, voglio aggiungere comune di

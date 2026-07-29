@@ -48,6 +48,14 @@ class DemoDataSeeder extends Seeder
         $this->call(DemoCompanySeeder::class);
         $this->call(DemoCompanySiteSeeder::class);
         $this->call(DemoBusinessFunctionSeeder::class);
+        // The demo category tree with its attributes (both contexts) and form
+        // sections: depends on DemoBusinessFunctionSeeder for the branch
+        // function, and everything downstream that classifies a record
+        // (projects, campaigns, opportunities) depends on IT.
+        $this->call(DemoProductCategorySeeder::class);
+        // The offer sold under those categories — what "prodotti di interesse"
+        // (mandatory on the opportunity form) is picked from.
+        $this->call(DemoProductSeeder::class);
         $this->call(DemoEmploymentProfileSeeder::class);
         // Depends on sources/sectors/referents (lookups, seeded above) and
         // users (internal managers, seeded above) — must run after all of them.
@@ -79,6 +87,11 @@ class DemoDataSeeder extends Seeder
         // whose source matches a workflow resolve to that workflow's own
         // statuses at creation time (the "reference opportunities").
         $this->call(DemoOpportunityWorkflowSeeder::class);
+        // The per-category "stati di lavorazione": MUST run after the seeder
+        // above (which clears every workflow before seeding its own) and
+        // before DemoOpportunitySeeder, whose rows resolve their working-state
+        // at creation time.
+        $this->call(DemoCategoryWorkflowSeeder::class);
         // Depends on DemoRegistrySeeder (mandatory) plus every optional lookup
         // above (company/company-sites/operational-sites/business-functions/
         // referents/users/sources/product-categories), DemoLeadSeeder (for
@@ -86,6 +99,10 @@ class DemoDataSeeder extends Seeder
         // 0043, opportunity_status_id is mandatory) — must run after all of
         // them.
         $this->call(DemoOpportunitySeeder::class);
+        // Walks those opportunities through their working statuses and fills
+        // the opportunity-context attributes: needs the rows, the pick lists
+        // and the attributes, so it runs after all three.
+        $this->call(DemoOpportunityLifecycleSeeder::class);
         // Depends on DemoRewardTypeSeeder (catalogue) and DemoOpportunitySeeder
         // (reporters to reward, D-3) — must run after both.
         $this->call(DemoRewardSeeder::class);
