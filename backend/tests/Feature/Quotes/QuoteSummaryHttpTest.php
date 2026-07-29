@@ -72,7 +72,7 @@ it('AC-040: summary exposes revenue/cost {net,vat,gross} and margin.net over HTT
     Sanctum::actingAs($actor);
 
     $created = $this->postJson('/api/quotes', [
-        'title' => 'Preventivo riepilogo',
+        'title' => 'Offerta riepilogo',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $revenueProduct->id, 'quantity' => 3, 'unit_price' => 10, 'vat_rate_id' => $vatRate->id],

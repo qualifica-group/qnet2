@@ -53,7 +53,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         // Eager-load every relation mapRow touches to avoid N+1 across the page.
-        return Quote::query()->with(['opportunity', 'quoteStatus', 'commercial', 'reporter', 'supervisor']);
+        // supervisor pulls its avatar relation too, so the row can project the
+        // inline avatar (data URI) without a per-row query — mirrors
+        // OpportunitiesTableDefinition's own supervisor.avatar eager-load.
+        return Quote::query()->with(['opportunity', 'quoteStatus', 'commercial', 'reporter', 'supervisor.avatar']);
     }
 
     /**
@@ -123,7 +126,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'quote_status' => $this->summarizeQuoteStatus($row->quoteStatus),
             'commercial' => $this->summarize($row->commercial),
             'reporter' => $this->summarize($row->reporter),
-            'supervisor' => $this->summarize($row->supervisor),
+            'supervisor' => $this->userSummary($row->supervisor),
             'revenue_net' => $row->revenue_net,
             'cost_net' => $row->cost_net,
             'margin_net' => $row->margin_net,
@@ -148,6 +151,26 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private function summarizeQuoteStatus(?QuoteStatus $status): ?array
     {
         return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
+    }
+
+    /**
+     * A person summary carrying the inline avatar (data URI) so the supervisor
+     * column renders a real avatar, not just initials — mirrors
+     * OpportunitiesTableDefinition::userSummary(). Null when unset.
+     *
+     * @return array{id: int, name: string, avatar_url: string|null}|null
+     */
+    private function userSummary(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $user->avatarDataUri(),
+        ];
     }
 
     /**

@@ -50,7 +50,7 @@ if (! function_exists('createQuoteData')) {
     {
         $defaults = [
             'code' => null,
-            'title' => 'Preventivo di test',
+            'title' => 'Offerta di test',
             'opportunityId' => $opportunityId,
             'quoteStatusId' => null,
             'commercialId' => null,

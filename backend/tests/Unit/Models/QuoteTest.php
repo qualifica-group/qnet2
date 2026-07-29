@@ -45,7 +45,7 @@ it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/
     $supervisor = User::factory()->create();
 
     $quote = Quote::factory()->make([
-        'title' => 'Preventivo mass-assignment',
+        'title' => 'Offerta mass-assignment',
         'opportunity_id' => $opportunity->id,
         'quote_status_id' => $status->id,
         'commercial_id' => $commercial->id,
@@ -55,7 +55,7 @@ it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/
     ]);
     $quote->save();
 
-    expect($quote->title)->toBe('Preventivo mass-assignment')
+    expect($quote->title)->toBe('Offerta mass-assignment')
         ->and($quote->opportunity_id)->toBe($opportunity->id)
         ->and($quote->quote_status_id)->toBe($status->id)
         ->and($quote->commercial_id)->toBe($commercial->id)

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SPEC 0065 — Modulo Offerte/Preventivi (quotes) + modulo Stati Offerta (quote-statuses).
+  SPEC 0065 — Modulo Offerte (quotes) + modulo Stati Offerta (quote-statuses).
   Contract-first: la shape sotto e' congelata PRIMA del dispatch. Backend implementa,
   frontend consuma, identica, senza messaggistica.
 -->
 <spec id="0065-quotes-module" status="draft" owner="utente" date="2026-07-29">
 
   <goal>
-    Introdurre il modulo Offerte/Preventivi collegato alle Opportunita' (una Opportunita' contiene
-    uno o piu' preventivi) e il modulo di configurazione Stati Offerta. Ogni preventivo raccoglie le
+    Introdurre il modulo Offerte collegato alle Opportunita' (una Opportunita' contiene
+    uno o piu' offerte) e il modulo di configurazione Stati Offerta. Ogni offerta raccoglie le
     righe di ricavo (tab Offerta), le righe di costo (tab Costi) e le note interne (tab Note), e
     espone in ogni momento un riepilogo economico calcolato dal sistema: Ricavi Attesi, Costi Attesi,
     Margine Atteso.
@@ -70,7 +70,7 @@
     <!-- Decisioni prese dall'utente in fase di planning: vincolanti. -->
     <decision id="D-1">"Codice prodotto" non esiste su `products`: si aggiunge la colonna `code`
       (string(32), NOT NULL, unique) al modulo Prodotti esistente, esposta in form, tabella, resource,
-      for-select e sorgente di migrazione esterna. Le righe di preventivo NON duplicano il codice:
+      for-select e sorgente di migrazione esterna. Le righe di offerta NON duplicano il codice:
       lo leggono dal prodotto collegato.</decision>
     <decision id="D-1b">Il codice prodotto segue ESATTAMENTE il pattern "codice manuale" della spec 0025
       gia' in produzione su Progetti e Campagne (i Lead non hanno codice: la richiesta si mappa su
@@ -95,8 +95,8 @@
       gruppo, ordinamento, righe di sistema non cancellabili). NESSUN configuratore di workflow con
       criteri di matching (l'equivalente di `opportunity_workflows` resta fuori scope).</decision>
     <decision id="D-3">Commerciale, Segnalatore e Supervisore Commerciale sono uno SNAPSHOT: colonne FK
-      sul preventivo, precompilate dall'opportunita' in creazione e successivamente modificabili sul
-      singolo preventivo. Nessun riallineamento automatico al variare dell'opportunita'.</decision>
+      sull'offerta, precompilate dall'opportunita' in creazione e successivamente modificabili sulla
+      singola offerta. Nessun riallineamento automatico al variare dell'opportunita'.</decision>
     <decision id="D-4">Naming inglese: tabelle `quotes`, `quote_lines`, `quote_statuses`; risorse/route
       `quotes` e `quote-statuses`; permessi `quotes.*` e `quote-statuses.*`. Le label UI restano
       italiane via i18n.</decision>
@@ -105,7 +105,7 @@
     <decision id="D-6">Nella tab Costi il prezzo unitario si precompila da `products.cost`. Se il
       prodotto non ha `cost` valorizzato il campo resta vuoto e va compilato a mano. Nella tab Offerta
       si precompila da `products.price`.</decision>
-    <decision id="D-7">La riga di preventivo salva SOLO `product_id`: codice, nome, categoria e funzione
+    <decision id="D-7">La riga di offerta salva SOLO `product_id`: codice, nome, categoria e funzione
       aziendale si leggono live dal prodotto. Quando una riga OFFERTA usa un prodotto la cui categoria
       non e' coperta dalle `opportunity_product_lines` dell'opportunita', la coppia
       (funzione aziendale effettiva, categoria) viene AGGIUNTA all'opportunita'. Le righe COSTO non
@@ -120,13 +120,13 @@
     <decision id="D-10">L'aliquota IVA di riga e' una FK a `vat_rates` (precompilata da
       `products.vat_rate_id`, modificabile). Gli importi calcolati sono congelati sulla riga
       (`net_amount`, `vat_amount`, `total_amount`): una futura modifica della percentuale in
-      `vat_rates` non altera i preventivi gia' salvati.</decision>
+      `vat_rates` non altera le offerte gia' salvati.</decision>
     <decision id="D-11">Righe offerta e righe costo condividono UNA tabella `quote_lines` con
       discriminante `line_type` (`App\Enums\QuoteLineType`: REVENUE|COST), stessa struttura, stesso
       validatore, stesso componente FE.</decision>
     <decision id="D-12">Arrotondamento: ogni riga arrotonda a 2 decimali (half-up) `net_amount`,
       `vat_amount`, `total_amount`; gli aggregati sono la somma dei valori di riga gia' arrotondati.</decision>
-    <decision id="D-13">Anche il preventivo ha un codice proprio `quotes.code` (string(32), NOT NULL,
+    <decision id="D-13">Anche l'offerta ha un codice proprio `quotes.code` (string(32), NOT NULL,
       unique), affiancato al Titolo, con lo STESSO meccanismo del codice prodotto (D-1b) e di
       Progetti/Campagne: sequenziale `QUO-{seq:4}` generato da
       `App\Services\Concerns\GeneratesSequentialCode`, suggerito al form dal nuovo endpoint
@@ -144,16 +144,16 @@
         TableDefinition + column catalog, activity log, navigazione.</item>
       <item>Estensione di `App\Services\Statuses\SystemStatusGuard` (union type reale su 2 firme) e dei
         PHPDoc di `App\Services\Statuses\StatusOrderManager` per accettare `App\Models\QuoteStatus`.</item>
-      <item>Codice preventivo `QUO-{seq:4}`: riuso del trait `GeneratesSequentialCode`,
+      <item>Codice offerta `QUO-{seq:4}`: riuso del trait `GeneratesSequentialCode`,
         `QuoteService::previewNextCode()`, endpoint `GET /api/quotes/next-code`, precompilazione al
         mount del form in creazione, read-only in modifica (D-13).</item>
-      <item>Modulo Preventivi: migration `quotes` + `quote_lines`, enum `QuoteLineType`, model,
+      <item>Modulo Offerte: migration `quotes` + `quote_lines`, enum `QuoteLineType`, model,
         DataObject, service (con calcolo aggregati e full-replace righe), FormRequest store/update con
         validazione righe, policy, authorization (permessi sui campi), resource, controller, route,
         TableDefinition + column catalog + advanced filter catalog, activity log, navigazione.</item>
       <item>Estrazione della logica di copertura in `App\Services\Opportunities\OpportunityProductLineCoverage`
         (metodo `ensure()`), riusata sia da `OpportunityProductInterestWriter` sia dal service dei
-        preventivi (D-7). Il comportamento esistente dei Prodotti di Interesse resta identico.</item>
+        offerte (D-7). Il comportamento esistente dei Prodotti di Interesse resta identico.</item>
       <item>Modulo Prodotti: colonna `code` (migration con backfill, model, FormRequest, DataObject,
         service, resource, for-select, authorization, TableDefinition/column catalog, sorgente
         migrazione esterna `App\Migrations\Sources\ProductsSource`, form FE, i18n).</item>
@@ -174,17 +174,16 @@
         replica (D-2).</item>
       <item>Sconti di riga o di testata, listini multipli, valute diverse dall'euro, ricarichi
         percentuali, marginalita' per riga.</item>
-      <item>Generazione di documenti PDF del preventivo, invio email, firma, versioning/revisioni del
-        preventivo.</item>
-      <item>Conversione preventivo -> ordine/commessa, e qualsiasi effetto del preventivo sullo stato
+      <item>Generazione di documenti PDF dell'offerta, invio email, firma, versioning/revisioni dell'offerta.</item>
+      <item>Conversione offerta -> ordine/commessa, e qualsiasi effetto dell'offerta sullo stato
         o sul valore stimato dell'opportunita' (`opportunities.estimated_value` NON viene toccato).</item>
-      <item>Campi dinamici/attributi per categoria (spec 0021/0061) sul preventivo, layout attributi,
-        note collaborative e allegati sul preventivo.</item>
-      <item>Import massivo di preventivi, migrazione da sistema esterno di preventivi,
+      <item>Campi dinamici/attributi per categoria (spec 0021/0061) sull'offerta, layout attributi,
+        note collaborative e allegati sull'offerta.</item>
+      <item>Import massivo dle offerte, migrazione da sistema esterno dle offerte,
         inline cell editing delle righe dalla tabella elenco.</item>
       <item>Modifica del comportamento esistente dei Prodotti di Interesse dell'opportunita' e del
         campo `product_lines` (solo refactor interno di estrazione, comportamento invariato).</item>
-      <item>Statistiche/pannello stats del modulo preventivi.</item>
+      <item>Statistiche/pannello stats del modulo offerte.</item>
     </out>
   </scope>
 
@@ -231,7 +230,7 @@
     <endpoint method="DELETE" path="/api/quote-statuses/{quoteStatus}">
       <response status="204">Nessun corpo, come il gemello opportunity-statuses.</response>
       <errors>403 senza `quote-statuses.delete`, 422 riga di sistema,
-        409 stato ancora referenziato da almeno un preventivo</errors>
+        409 stato ancora referenziato da almeno un'offerta</errors>
     </endpoint>
 
     <endpoint method="POST" path="/api/quote-statuses/reorder">
@@ -510,7 +509,7 @@
       e la riga esiste ancora.</criterion>
     <criterion id="AC-013">Quando si aggiorna una riga di sistema inviando `group`, allora la risposta e'
       422; inviando solo `name` e `color` la risposta e' 200.</criterion>
-    <criterion id="AC-014">Quando si cancella uno stato custom referenziato da almeno un preventivo,
+    <criterion id="AC-014">Quando si cancella uno stato custom referenziato da almeno un'offerta,
       allora la risposta e' 409 e la riga esiste ancora.</criterion>
     <criterion id="AC-015">Dato `POST /api/quote-statuses/reorder` con gli id custom in ordine inverso,
       allora i `sort_order` sono risequenziati, la riga `new` resta a 0 e `won`/`lost` restano in coda
@@ -521,27 +520,27 @@
     <criterion id="AC-017">Nelle righe della tabella `quote-statuses`, l'azione `delete` e' assente
       sulle righe di sistema e presente sulle custom (per un utente con `quote-statuses.delete`).</criterion>
 
-    <!-- Preventivi: CRUD e eredita' -->
+    <!-- Offerte: CRUD e eredita' -->
     <criterion id="AC-020">Dato un utente con `quotes.create` e un'opportunita' con
-      `commercial_id`/`reporter_id`/`supervisor_id` valorizzati, quando crea un preventivo senza
-      passare quei tre campi, allora il preventivo li eredita dall'opportunita'.</criterion>
+      `commercial_id`/`reporter_id`/`supervisor_id` valorizzati, quando crea un'offerta senza
+      passare quei tre campi, allora l'offerta li eredita dall'opportunita'.</criterion>
     <criterion id="AC-021">Nelle stesse condizioni, quando il payload passa esplicitamente un
       `commercial_id` diverso, allora prevale il valore passato (snapshot modificabile, D-3).</criterion>
     <criterion id="AC-022">Modificando successivamente il `commercial_id` dell'opportunita', il
-      preventivo gia' creato mantiene il proprio valore.</criterion>
-    <criterion id="AC-023">Quando si crea un preventivo senza `quote_status_id`, allora viene assegnata
+      offerta gia' creata mantiene il proprio valore.</criterion>
+    <criterion id="AC-023">Quando si crea un'offerta senza `quote_status_id`, allora viene assegnata
       la riga di sistema `new`.</criterion>
-    <criterion id="AC-024">Una stessa opportunita' accetta piu' preventivi (creazione di 3 preventivi
+    <criterion id="AC-024">Una stessa opportunita' accetta piu' offerte (creazione di 3 offerte
       sulla stessa opportunita' => 3 righe, tutte leggibili).</criterion>
     <criterion id="AC-025">`PATCH /api/quotes/{quote}` con `opportunity_id` presente restituisce 422
       (campo immutabile).</criterion>
-    <criterion id="AC-026">Cancellando un preventivo, le sue `quote_lines` sono rimosse
+    <criterion id="AC-026">Cancellando un'offerta, le sue `quote_lines` sono rimosse
       (cascadeOnDelete) e i prodotti referenziati restano intatti.</criterion>
-    <criterion id="AC-027">Un'opportunita' con almeno un preventivo non e' cancellabile
+    <criterion id="AC-027">Un'opportunita' con almeno un'offerta non e' cancellabile
       (restrictOnDelete): la richiesta fallisce senza cancellare nulla.</criterion>
 
-    <!-- Preventivi: righe e calcoli -->
-    <criterion id="AC-030">Dato un preventivo con una riga offerta `quantity: 3`, `unit_price: 10.00`,
+    <!-- Offerte: righe e calcoli -->
+    <criterion id="AC-030">Dato un'offerta con una riga offerta `quantity: 3`, `unit_price: 10.00`,
       aliquota 22%, allora la riga persiste `net_amount: 30.00`, `vat_amount: 6.60`,
       `total_amount: 36.60`.</criterion>
     <criterion id="AC-031">Con `vat_rate_id: null`, allora `vat_amount` e' 0.00 e `total_amount` uguale
@@ -554,7 +553,7 @@
     <criterion id="AC-034">`quantity: 0` e `quantity: -1` producono 422; `unit_price: -1` produce 422;
       `unit_price: 0` e' accettato.</criterion>
     <criterion id="AC-035">Un payload con 201 righe in `offer_lines` produce 422.</criterion>
-    <criterion id="AC-036">Aggiornando un preventivo con `offer_lines` che contiene solo una delle due
+    <criterion id="AC-036">Aggiornando un'offerta con `offer_lines` che contiene solo una delle due
       righe esistenti, allora resta esattamente quella riga (full-replace, D-8); con `offer_lines: []`
       il set e' azzerato; omettendo la chiave il set resta invariato.</criterion>
     <criterion id="AC-037">Aggiornando solo `offer_lines`, le `cost_lines` esistenti restano invariate
@@ -562,18 +561,18 @@
     <criterion id="AC-038">Le righe sono restituite ordinate per `sort_order` crescente, coerente con
       l'ordine di invio quando `sort_order` non e' passato.</criterion>
 
-    <!-- Preventivi: riepilogo -->
-    <criterion id="AC-040">Dato un preventivo con offerta (30.00 netto + 6.60 IVA) e costi
+    <!-- Offerte: riepilogo -->
+    <criterion id="AC-040">Dato un'offerta con offerta (30.00 netto + 6.60 IVA) e costi
       (10.00 netto + 2.20 IVA), allora `summary` espone
       `revenue: {net: 30.00, vat: 6.60, gross: 36.60}`, `cost: {net: 10.00, vat: 2.20, gross: 12.20}`,
       `margin: {net: 20.00}` (D-5).</criterion>
     <criterion id="AC-041">Gli stessi valori sono persistiti su `quotes` (`revenue_net`, `revenue_vat`,
       `cost_net`, `cost_vat`, `margin_net`) e ricalcolati a ogni update delle righe.</criterion>
-    <criterion id="AC-042">Un preventivo senza righe espone tutti gli aggregati a 0.00 e margine 0.00.</criterion>
+    <criterion id="AC-042">Un'offerta senza righe espone tutti gli aggregati a 0.00 e margine 0.00.</criterion>
     <criterion id="AC-043">Con costi superiori ai ricavi, `margin_net` e' negativo e viene restituito
       come tale (nessun clamp a zero).</criterion>
 
-    <!-- Preventivi: prodotti, filtro e copertura opportunita' -->
+    <!-- Offerte: prodotti, filtro e copertura opportunita' -->
     <criterion id="AC-050">Dato un prodotto la cui categoria NON e' fra le `opportunity_product_lines`
       dell'opportunita', quando lo si usa in una riga OFFERTA, allora la coppia
       (funzione aziendale effettiva, categoria) viene aggiunta alle `opportunity_product_lines`
@@ -586,8 +585,8 @@
       riga duplicata.</criterion>
     <criterion id="AC-054">Dopo l'estrazione di `OpportunityProductLineCoverage`, i test esistenti dei
       Prodotti di Interesse (`OpportunityProductsOfInterestTest`) restano verdi senza modifiche.</criterion>
-    <criterion id="AC-055">La riga di preventivo espone il prodotto live: modificando `name` o `code`
-      del prodotto, il dettaglio del preventivo mostra i valori aggiornati, mentre gli importi
+    <criterion id="AC-055">La riga di offerta espone il prodotto live: modificando `name` o `code`
+      del prodotto, il dettaglio dell'offerta mostra i valori aggiornati, mentre gli importi
       (`unit_price`, `net_amount`, `vat_amount`, `total_amount`) restano quelli salvati (D-10).</criterion>
 
     <!-- Autorizzazione -->
@@ -606,24 +605,24 @@
       `supervisor_id`, `internal_notes`, `offer_lines`, `cost_lines`; `code` e' readonly, mentre
       `GET /api/meta/quotes` lo espone editable e required.</criterion>
 
-    <!-- Preventivi: codice (D-13, stesso pattern del codice prodotto) -->
-    <criterion id="AC-066">Creando un preventivo senza `code` (assente, null o stringa vuota), allora il
+    <!-- Offerte: codice (D-13, stesso pattern del codice prodotto) -->
+    <criterion id="AC-066">Creando un'offerta senza `code` (assente, null o stringa vuota), allora il
       server assegna `QUO-0001` e lo restituisce in `data.code`.</criterion>
-    <criterion id="AC-067">Creando un preventivo con `code: "OFF-2026/1"`, il valore e' persistito as-is
-      e il preventivo creato subito dopo senza codice riceve comunque il successivo `QUO-*`.</criterion>
+    <criterion id="AC-067">Creando un'offerta con `code: "OFF-2026/1"`, il valore e' persistito as-is
+      e l'offerta creata subito dopo senza codice riceve comunque il successivo `QUO-*`.</criterion>
     <criterion id="AC-068">Un `code` gia' esistente produce 422 sul campo `code`; un `code` di 33
       caratteri produce 422.</criterion>
     <criterion id="AC-069">`PATCH /api/quotes/{quote}` con un `code` diverso da quello persistito
       produce 422; reinviando lo stesso valore la richiesta passa (no-op).</criterion>
     <criterion id="AC-069b">`GET /api/quotes/next-code` restituisce `data.code = "QUO-0001"` su tabella
-      vuota e il primo codice libero dopo N preventivi; senza `quotes.create` risponde 403.</criterion>
+      vuota e il primo codice libero dopo N offerte; senza `quotes.create` risponde 403.</criterion>
     <criterion id="AC-069c">La colonna `code` e' presente fra le colonne della tabella `quotes`,
       ordinabile, filtrabile e ricercabile dalla quick-search.</criterion>
     <criterion id="AC-065">Le voci di menu `quotes` e `quote-statuses` compaiono nella navigazione solo
       per un utente con i rispettivi permessi `.view`/`.viewAny`.</criterion>
 
     <!-- Frontend -->
-    <criterion id="AC-070">La pagina di dettaglio/modifica del preventivo mostra tre tab
+    <criterion id="AC-070">La pagina di dettaglio/modifica dell'offerta mostra tre tab
       ("Offerta", "Costi", "Note") e il riepilogo economico resta visibile sotto i tab
       qualunque sia il tab attivo.</criterion>
     <criterion id="AC-071">Modificando quantita' o prezzo di una riga, il riepilogo si aggiorna senza
@@ -642,7 +641,7 @@
       campi del contratto (nessun `net_amount`/`vat_amount`/`total_amount`).</criterion>
     <criterion id="AC-077">Un campo marcato non editabile dai permessi e' reso disabilitato nel form
       (via `MetaField`) e assente/non modificabile nel payload.</criterion>
-    <criterion id="AC-078">La tabella Preventivi monta `TableView domain="quotes"` senza dichiarare
+    <criterion id="AC-078">La tabella Offerte monta `TableView domain="quotes"` senza dichiarare
       colonne lato client, e la pagina e' gated da `Can permission="quotes.viewAny"`.</criterion>
     <criterion id="AC-079">Aprendo il form prodotto in creazione, il campo Codice e' precompilato con il
       valore di `GET /api/products/next-code` (query `staleTime: 0, gcTime: 0`, mai da cache) e resta
@@ -651,7 +650,7 @@
       persistito, e' disabilitato/read-only e non viene richiesto alcun `next-code`.</criterion>
     <criterion id="AC-081">A fronte di un 422 sul campo `code`, l'errore del server e' mostrato inline
       sul campo (`applyServerValidationErrors`), non come toast generico.</criterion>
-    <criterion id="AC-082">Aprendo il form preventivo in creazione, il campo Codice e' precompilato da
+    <criterion id="AC-082">Aprendo il form offerta in creazione, il campo Codice e' precompilato da
       `GET /api/quotes/next-code` e resta modificabile; in modifica mostra il valore persistito,
       e' disabilitato/read-only e non viene richiesto alcun `next-code`.</criterion>
 

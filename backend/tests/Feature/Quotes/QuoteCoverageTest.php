@@ -50,7 +50,7 @@ if (! function_exists('quoteCoverageData')) {
     {
         $defaults = [
             'code' => null,
-            'title' => 'Preventivo copertura',
+            'title' => 'Offerta copertura',
             'opportunityId' => $opportunityId,
             'quoteStatusId' => null,
             'commercialId' => null,

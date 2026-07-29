@@ -175,6 +175,19 @@ abstract class BaseApiController
 
         $status = $this->resolveExceptionStatus($exception);
         $message = $this->resolveExceptionMessage($exception, $status);
+
+        // A deliberate `abort(4xx, ...)` is a business rule refusing the
+        // request (e.g. an import step guarded by the run's status), not a
+        // backend incident: answer with the envelope and skip the error log /
+        // Teams alert, which would otherwise page on an expected client fault.
+        // Only explicit HTTP aborts qualify: AuthorizationException and
+        // ModelNotFoundException are not HttpExceptionInterface and keep being
+        // logged, and a 5xx abort (e.g. ExternalApiException) still is.
+        if ($exception instanceof HttpExceptionInterface
+            && $status < HttpStatusEnum::INTERNAL_SERVER_ERROR->value) {
+            return $this->fail($message, $status);
+        }
+
         $backendTimestamp = now()->toIso8601String();
 
         Log::error('[BACKEND] API internal error', [

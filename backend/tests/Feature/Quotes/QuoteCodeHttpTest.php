@@ -48,7 +48,7 @@ it('AC-066: creating without a code (absent) assigns the sequential QUO-0001', f
     $actor = quoteCodeUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Preventivo', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
         ->assertCreated()
         ->assertJsonPath('data.code', 'QUO-0001');
 });

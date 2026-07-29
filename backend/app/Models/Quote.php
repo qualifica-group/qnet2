@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Quote entity (spec 0065): a preventivo belonging to exactly one Opportunity
+ * Quote entity (spec 0065): a quote belonging to exactly one Opportunity
  * (D-27/AC-027: an Opportunity with at least one Quote is not deletable).
  * `code` (`QUO-{seq:4}`, D-13, same manual/sequential pattern as
  * `Product::code`/D-1b) is DELIBERATELY absent from #[Fillable]: the service

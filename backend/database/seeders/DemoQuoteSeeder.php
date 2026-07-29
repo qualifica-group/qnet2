@@ -90,7 +90,7 @@ class DemoQuoteSeeder extends Seeder
     {
         return new CreateQuoteData(
             code: null,
-            title: sprintf('Preventivo %d - %s', $opportunity->id, $faker->company()),
+            title: sprintf('Offerta %d - %s', $opportunity->id, $faker->company()),
             opportunityId: $opportunity->id,
             quoteStatusId: $statusIds === [] ? null : $statusIds[$index % count($statusIds)],
             commercialId: null,

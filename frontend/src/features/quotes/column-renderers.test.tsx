@@ -84,3 +84,28 @@ describe('quoteColumnRenderers wiring', () => {
     expect(quoteColumnRenderers.created_at).toBeTypeOf('function')
   })
 })
+
+/**
+ * Bug repro (user report: "la tabella offerte esce ERR su ogni colonna"):
+ * `supervisor` is rendered by the SAME shared `UserCell` as Opportunities'
+ * supervisor/managers columns. Mounts it with the REAL backend-shaped
+ * payloads (both `avatar_url` present and, per the real dev dataset, absent
+ * — a quote with no uploaded avatar) to guard against a shape drift going
+ * unnoticed because `UserCell` defensively falls back instead of throwing.
+ */
+describe('quoteColumnRenderers.supervisor', () => {
+  it('renders the person name and avatar for a real {id, name, avatar_url} payload', () => {
+    renderCell('supervisor', { id: 33, name: 'Mackenzie Stanton', avatar_url: null })
+    expect(screen.getByText('Mackenzie Stanton')).toBeInTheDocument()
+  })
+
+  it('does not throw for a {id, name} payload missing avatar_url entirely', () => {
+    expect(() => renderCell('supervisor', { id: 14, name: 's.r.l. Mazza-Mariani Group' })).not.toThrow()
+    expect(screen.getByText('s.r.l. Mazza-Mariani Group')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when unset (real dataset: most quotes have no supervisor)', () => {
+    renderCell('supervisor', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})

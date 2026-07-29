@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -248,7 +249,7 @@ it('404 for a run whose resource does not match the route domain', function () {
     $this->getJson("/api/imports/leads/{$run->id}/summary")->assertNotFound();
 });
 
-it('422 when configure is attempted outside `configuring`', function () {
+it('422 when configure is attempted outside `configuring`, without logging a backend incident', function () {
     $actor = leadsImportActorWith(['import']);
     $campaign = Campaign::factory()->create();
     $run = ImportRun::factory()->create([
@@ -256,12 +257,18 @@ it('422 when configure is attempted outside `configuring`', function () {
         'detected_columns' => leadsWizardDetectedColumns(),
     ]);
     Sanctum::actingAs($actor);
+    Log::spy();
 
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
         'column_mapping' => ['Email' => 'email'],
         'global_config' => ['campaign_id' => $campaign->id],
         'dedup_strategy' => 'create_new',
     ])->assertStatus(422);
+
+    // The status guard is a business rule refusing the request, not an
+    // incident: it must not reach the error log (nor the Teams alert next to
+    // it) — see BaseApiController::handleControllerException.
+    Log::shouldNotHaveReceived('error');
 });
 
 it('422 when column_mapping targets a field id outside fields()/__ignore__/__extra__', function () {

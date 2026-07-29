@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Quote entity (spec 0065): a preventivo belongs to exactly one Opportunity
+ * Quote entity (spec 0065): a quote belongs to exactly one Opportunity
  * (`opportunity_id`, restrictOnDelete — an Opportunity with at least one
  * Quote is not deletable, D-27/AC-027) and carries its own manual/sequential
  * `code` (`QUO-{seq:4}`, D-13), identical pattern to the product code (D-1b).

@@ -166,7 +166,7 @@ return [
                     'permission' => 'quote-statuses.view',
                 ],
                 [
-                    // Quotes/Offers (spec 0065, MT-05): preventivi against an
+                    // Quotes/Offers (spec 0065, MT-05): quotes against an
                     // Opportunity, gated by their own `quotes.*` permission set.
                     'key' => 'quotes',
                     'label' => 'navigation.quotes',

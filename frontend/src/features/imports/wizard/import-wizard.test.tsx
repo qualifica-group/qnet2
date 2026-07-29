@@ -162,6 +162,49 @@ describe('ImportWizard', () => {
     )
   })
 
+  it('leaves the mapping step on the configure response, before the refetch lands', async () => {
+    getImportWizardRunMock
+      .mockResolvedValueOnce(detailRun())
+      // The refetch triggered by the transition never resolves: the wizard
+      // must advance on the mutation's own response, otherwise the mapping
+      // form stays mounted with an enabled submit and a second click 422s
+      // against the already-staging run.
+      .mockImplementation(() => new Promise(() => {}))
+    configureImportRunMock.mockResolvedValue(createdRun({ status: 'staging' }))
+
+    renderWizard('/leads/import?runId=1')
+
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Campaign' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Spring campaign' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save mapping and continue' }))
+
+    expect(await screen.findByText('Applying mapping…')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save mapping and continue' })).not.toBeInTheDocument()
+    expect(configureImportRunMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-reads the run when a refused configure signals a stale client state', async () => {
+    getImportWizardRunMock
+      .mockResolvedValueOnce(detailRun())
+      .mockResolvedValue(detailRun({ status: 'reviewing' }))
+    configureImportRunMock.mockRejectedValue(
+      Object.assign(new Error('stale'), { isAxiosError: true, response: { status: 422 } }),
+    )
+
+    renderWizard('/leads/import?runId=1')
+
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Campaign' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Spring campaign' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save mapping and continue' }))
+
+    // The resync lands the wizard on the step the server is actually on
+    // instead of leaving the operator stuck on the mapping form.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Save mapping and continue' })).not.toBeInTheDocument(),
+    )
+    expect(getImportWizardRunMock).toHaveBeenCalledTimes(2)
+  })
+
   it('resumes directly at the configuration step from ?runId=', async () => {
     getImportWizardRunMock.mockResolvedValue(detailRun())
 

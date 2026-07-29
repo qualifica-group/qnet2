@@ -80,7 +80,7 @@ it('AC-020: POST without the 3 commercial roles inherits them from the opportuni
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Preventivo', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
         ->assertCreated()
         ->assertJsonPath('data.commercial_id', $commercial->id)
         ->assertJsonPath('data.reporter_id', $reporter->id)
@@ -97,7 +97,7 @@ it('AC-021: an explicitly submitted commercial_id wins over the opportunity snap
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'commercial_id' => $explicit->id,
     ])
@@ -111,7 +111,7 @@ it('AC-023: POST without quote_status_id assigns the system new row', function (
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', ['title' => 'Preventivo', 'opportunity_id' => $opportunity->id])
+    $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
         ->assertCreated()
         ->assertJsonPath('data.quote_status_id', $newStatus->id)
         ->assertJsonPath('data.quote_status.name', $newStatus->name);
@@ -165,7 +165,7 @@ it('AC-033: a POST with net_amount on a line is rejected (server-computed)', fun
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10, 'net_amount' => 10],
@@ -184,7 +184,7 @@ it('AC-034: quantity <= 0 and a negative unit_price are rejected via POST', func
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $product->id, 'quantity' => 0, 'unit_price' => 10],
@@ -192,7 +192,7 @@ it('AC-034: quantity <= 0 and a negative unit_price are rejected via POST', func
     ])->assertStatus(422)->assertJsonValidationErrors('offer_lines.0.quantity');
 
     $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => -1],
@@ -211,7 +211,7 @@ it('AC-035: 201 rows in offer_lines is rejected via POST (max 200)', function ()
     $rows = array_fill(0, 201, ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1]);
 
     $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => $rows,
     ])->assertStatus(422)->assertJsonValidationErrors('offer_lines');
@@ -233,7 +233,7 @@ it('AC-036/037: PATCH full-replaces one tab, the other stays untouched', functio
     Sanctum::actingAs($actor);
 
     $created = $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $productA->id, 'quantity' => 1, 'unit_price' => 10],
@@ -273,7 +273,7 @@ it('AC-055: GET shows the live product name, but the frozen line amounts', funct
     Sanctum::actingAs($actor);
 
     $created = $this->postJson('/api/quotes', [
-        'title' => 'Preventivo',
+        'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
             ['product_id' => $product->id, 'quantity' => 2, 'unit_price' => 15],

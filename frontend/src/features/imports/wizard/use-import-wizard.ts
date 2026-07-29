@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -17,6 +18,7 @@ import type {
   ConfirmImportPayload,
   ImportRunDetail,
   ImportRunStatus,
+  ImportRunSummary,
 } from '@/features/imports/wizard/types'
 
 /** Interval (ms) between polls while the run is analyzing/staging/processing. */
@@ -32,6 +34,20 @@ const STALL_TIMEOUT_MS = 120_000
 
 /** Statuses that still require polling; any other status is a pause/terminal point. */
 const POLLING_STATUSES: ReadonlySet<ImportRunStatus> = new Set(['analyzing', 'staging', 'processing'])
+
+/**
+ * HTTP statuses a step transition returns when the server refuses the move.
+ * The backend's status guards (`ImportService::configure`/`confirmStaged`)
+ * answer 422, so the same code covers both a stale client view of the run and
+ * a genuine payload rejection — re-reading the run is correct either way: it
+ * either resyncs the wizard onto the real step, or confirms the current one.
+ */
+const STALE_STATE_HTTP_STATUSES: ReadonlySet<number> = new Set([409, 422])
+
+function isStaleStateError(error: unknown): boolean {
+  const status = axios.isAxiosError(error) ? error.response?.status : undefined
+  return status != null && STALE_STATE_HTTP_STATUSES.has(status)
+}
 
 /** Index into the 4-step stepper (upload/mapping+config/review/summary). */
 export type WizardStepIndex = 0 | 1 | 2 | 3
@@ -151,19 +167,54 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
     },
   })
 
+  /**
+   * Writes the run a step transition just returned into the cached detail
+   * BEFORE invalidating. The PUT/POST response already carries the new
+   * `status`, and the rendered step derives from the cached one: without this
+   * the wizard keeps rendering the step it just left — with its submit button
+   * re-enabled — until the invalidated GET lands, a window in which a second
+   * submit hits the server's status guard and 422s. `ImportRunDetail` extends
+   * `ImportRunSummary`, so the spread only refreshes the shared fields and
+   * leaves the wizard-only ones (fields, detected columns, ...) untouched.
+   */
+  const applyRunTransition = useCallback(
+    (updatedRun: ImportRunSummary) => {
+      const key = importWizardKeys.run(domain, updatedRun.id)
+      queryClient.setQueryData<ImportRunDetail>(key, (previous) =>
+        previous ? { ...previous, ...updatedRun } : previous,
+      )
+      void queryClient.invalidateQueries({ queryKey: key })
+    },
+    [domain, queryClient],
+  )
+
+  /**
+   * A refused transition means the client's view of the run may be stale
+   * (another tab, a back-navigation, a double submit): re-read the run so the
+   * wizard lands on the step the server actually is on instead of leaving the
+   * operator on a dead one.
+   */
+  const resyncOnStaleState = useCallback(
+    (error: unknown) => {
+      if (runId == null || !isStaleStateError(error)) return
+      void queryClient.invalidateQueries({ queryKey: importWizardKeys.run(domain, runId) })
+    },
+    [domain, queryClient, runId],
+  )
+
   const configureMutation = useMutation({
     mutationFn: (payload: ConfigureImportPayload) => configureImportRun(domain, runId as number, payload),
-    onSuccess: () => {
+    onSuccess: (updatedRun) => {
       setLocalStep(2)
-      void queryClient.invalidateQueries({ queryKey: importWizardKeys.run(domain, runId as number) })
+      applyRunTransition(updatedRun)
     },
+    onError: resyncOnStaleState,
   })
 
   const confirmMutation = useMutation({
     mutationFn: (payload: ConfirmImportPayload) => confirmImportRun(domain, runId as number, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: importWizardKeys.run(domain, runId as number) })
-    },
+    onSuccess: applyRunTransition,
+    onError: resyncOnStaleState,
   })
 
   const initialConfigValues = useMemo<Record<string, number | null>>(() => {

@@ -2,6 +2,51 @@
 
 > Injected at session start. Update at every green state.
 
+## IMPORT LEAD: 422 "cannot be configured in its current status" IN PRODUZIONE (2026-07-29) — VERDE, NON COMMITTATO
+
+Segnalazione utente: log `[BACKEND] API internal error`, `PUT /api/imports/leads/2/configure`
+→ 422 `The import cannot be configured in its current status.`
+
+CAUSA RADICE (frontend, non backend). La guardia `ImportService::configure()` (`ImportService.php:135`)
+e' corretta: il 422 dice che al momento della PUT il run NON era in `configuring`. Non e' la coda
+ferma (in quel caso il run resta in `analyzing` e lo step mapping non viene nemmeno montato):
+il run era gia' stato configurato ed e' arrivata una SECONDA `configure`.
+
+Il perche': `configureMutation.onSuccess` in `use-import-wizard.ts` BUTTAVA VIA il run restituito
+dalla PUT (che porta gia' `status: 'staging'`) e si limitava a `invalidateQueries`. Lo step
+renderizzato deriva da `deriveStepIndex(run.status)` letto dalla CACHE: finche' il refetch della
+GET non atterrava, la cache diceva ancora `configuring` → il form di mapping restava montato con
+il submit ri-abilitato (`isSubmitting` gia' false). In locale la finestra e' ~50ms e non si vede;
+in produzione, con la latenza reale, sono centinaia di ms in cui la schermata sembra non reagire →
+secondo click / seconda tab / back con cache stale → seconda `configure` sul run ormai in
+`staging` → 422. Identico schema su `confirmMutation` ("cannot be confirmed in its current status").
+
+MODIFICHE:
+- `use-import-wizard.ts` — nuovo `applyRunTransition(updatedRun)`: `setQueryData` del run
+  restituito dalla mutation PRIMA di invalidare. `ImportRunDetail extends ImportRunSummary`,
+  quindi lo spread aggiorna solo i campi condivisi e lascia intatti quelli wizard-only
+  (`fields`, `detected_columns`, ...). Usato da configure E confirm. CHI TOCCA QUESTE MUTATION
+  NON TORNI al solo `invalidateQueries`: e' esattamente la finestra che riapre il bug.
+- `use-import-wizard.ts` — nuovo `resyncOnStaleState` su `onError` di configure/confirm: su
+  409/422 (`STALE_STATE_HTTP_STATUSES`) invalida il run cosi' il wizard atterra sullo step reale
+  del server invece di lasciare l'operatore su uno step morto. Sicuro anche sul 422 "vero"
+  (payload rifiutato): lo status non e' cambiato, quindi lo step resta dov'e'.
+- `BaseApiController::handleControllerException` — un `abort(4xx)` deliberato non e' un incidente:
+  `HttpExceptionInterface` con status < 500 ora risponde con l'envelope `fail()` SENZA
+  `Log::error` ne' alert Teams. Restringimento voluto: `AuthorizationException` e
+  `ModelNotFoundException` NON sono `HttpExceptionInterface` → continuano a essere loggate, e un
+  5xx (es. `ExternalApiException` 502/504) pure.
+
+VERIFICA (eseguita davvero):
+- Frontend: 2 nuovi test in `import-wizard.test.tsx` — verificato che FALLISCONO con il codice
+  vecchio (ripristinato temporaneamente) e passano col fix. `npx vitest run src/features/imports`
+  → 23 file, 175 verdi. Suite intera → 386 file, 2677 verdi, 3 rossi TUTTI preesistenti in
+  `features/table/cell-renderers.test.tsx` (file non toccato). `tsc -b` pulito, eslint pulito.
+- Backend: `pest tests/Feature/Imports/` → 169 verdi. Suite intera → 4219 test, 17 rossi TUTTI
+  preesistenti (verificati riproducendo con la versione HEAD di `BaseApiController`: navigation
+  nodes, `MigrationRegistry`/`vat-rates`, `QuoteTableTest`, custom fields VAT — appartengono al
+  lavoro products/VAT non committato in working tree). Pint pulito.
+
 ## IMPORT LEAD: LOOP DI POLLING IN PRODUZIONE + AVVISO "PROSEGUE IN BACKGROUND" (2026-07-29) — VERDE, NON COMMITTATO
 
 Segnalazione utente: "carico un file su import lead, `GET /api/imports/leads/2` va in loop; in
@@ -12518,7 +12563,7 @@ usano `bg-card`, valido su qualunque tint).
 
 ## 2026-07-29 — Frontend `quotes` module (spec 0065-quotes-module) — teammate `frontend`
 
-Implementata la feature `quotes` (Offerte/Preventivi) lato frontend, sopra il data layer gia'
+Implementata la feature `quotes` (Offerte) lato frontend, sopra il data layer gia'
 pronto (`types.ts`/`api.ts`/`quote-schema.ts`/`quote-form-payload.ts`/`quote-totals.ts`/
 `quotes-table.tsx`/`column-renderers.tsx`, NON modificati salvo `quotes-table.test.tsx`, vedi
 sotto). Backend gia' implementato dal teammate `backend` (routes/controller/policy/authorization/
