@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -64,6 +65,10 @@ class TableValuesRequest extends FormRequest
             // see definition() — so an attr.* columnId with this key absent
             // is rejected by Rule::in() without any extra logic, AC-014).
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+
+            // Spec 0067: scopes `quotes` distinct-values to one Opportunity's
+            // Offerte — a no-op key for every other domain.
+            'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
         ];
     }
 
@@ -94,7 +99,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null}
      */
     public function payload(): array
     {
@@ -106,6 +111,7 @@ class TableValuesRequest extends FormRequest
             'limit' => $validated['limit'] ?? self::DEFAULT_LIMIT,
             'filterModel' => $validated['filterModel'] ?? [],
             'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
+            'opportunityId' => isset($validated['opportunityId']) ? (int) $validated['opportunityId'] : null,
         ];
     }
 
@@ -124,6 +130,10 @@ class TableValuesRequest extends FormRequest
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
             }
 
+            if ($definition instanceof OpportunityScopedTableDefinition) {
+                $definition->scopeToOpportunity($this->opportunityIdInput());
+            }
+
             $this->resolvedDefinition = $definition;
         }
 
@@ -137,6 +147,17 @@ class TableValuesRequest extends FormRequest
     private function productCategoryIdInput(): ?int
     {
         $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `opportunityId` request input, coerced to int (spec 0067),
+     * mirroring `productCategoryIdInput()`.
+     */
+    private function opportunityIdInput(): ?int
+    {
+        $value = $this->input('opportunityId');
 
         return is_numeric($value) ? (int) $value : null;
     }

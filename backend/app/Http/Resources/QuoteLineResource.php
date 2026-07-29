@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\ProductCategory;
 use App\Models\QuoteLine;
+use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -41,6 +42,9 @@ class QuoteLineResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $redactor = app(QuoteCommissionPayloadRedactor::class);
+        $permissions = $redactor->permissions($request->user(), $this->quote);
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
@@ -53,6 +57,12 @@ class QuoteLineResource extends JsonResource
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
             'sort_order' => $this->sort_order,
+            'commissions' => $this->when(
+                $permissions['commissions']->visible,
+                fn () => $this->commissions->map(
+                    fn ($commission): QuoteLineCommissionResource => new QuoteLineCommissionResource($commission, $permissions),
+                ),
+            ),
         ];
     }
 

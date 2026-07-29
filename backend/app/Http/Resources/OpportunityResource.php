@@ -58,6 +58,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Spec 0059: `rewards`, ordered by `reward_type.name` (data contract), feeds
  * the form's edit-mode hydration for the "abbinamento buono" control. Relies
  * on OpportunityService::DETAIL_RELATIONS eager-loading `rewards.rewardType`.
+ *
+ * Spec 0067: `quotes_count` is the explicit inverse-relation counter feeding
+ * the Offerte panel's initial header value, before the panel's own grid
+ * reports `pagination.total`. Relies on OpportunityService::loadDetail()
+ * always calling `loadCount('quotes')`, so it is never missing here.
  */
 class OpportunityResource extends JsonResource
 {
@@ -101,6 +106,7 @@ class OpportunityResource extends JsonResource
             'expected_close_date' => $this->expected_close_date,
             'success_probability' => $this->success_probability,
             'general_notes' => $this->general_notes,
+            'quotes_count' => (int) ($this->quotes_count ?? 0),
             'locked_fields' => $this->resolveLockedFields(),
             'attribute_values' => $this->attribute_values ?? [],
             'applicable_attributes' => $this->resolveApplicableAttributes(),

@@ -53,6 +53,11 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('internal_notes', 'textarea'),
             new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('cost_lines', 'lines'),
+            new FieldDefinition('commissions', 'collection'),
+            new FieldDefinition('commission_recipient', 'select'),
+            new FieldDefinition('commission_type', 'select'),
+            new FieldDefinition('commission_value', 'number'),
+            new FieldDefinition('commission_internal_note', 'textarea'),
         ];
     }
 
@@ -86,6 +91,11 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commissions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commission_recipient' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commission_type' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commission_value' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'commission_internal_note' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

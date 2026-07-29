@@ -9,7 +9,7 @@ Commission Configurator and Quote Commission Integration
 
 ## Status
 
-DRAFT — product scope is defined. The blocking questions below must be resolved before the technical contract is frozen and implementation begins.
+APPROVED — product decisions are frozen and the feature is ready for coordinated Backend and Frontend implementation against the Architect-approved technical contract.
 
 ## Priority
 
@@ -56,6 +56,15 @@ The product must keep two concepts separate:
 7. The initial Supplier comes from the Product relation. Commercial, Reporter, and Supervisor come from the existing Quote header snapshots.
 8. The commission summary aggregates persisted calculated amounts across the Quote, grouped by role.
 9. Settlement, payment, and accounting are not part of the MVP. The MVP must nevertheless persist commissions as domain data rather than client-only presentation state.
+10. Commissions apply only to revenue lines (`offer_lines`), never to cost lines (`cost_lines`).
+11. A percentage commission is calculated from the revenue line net amount (`quantity × unit_price`), excluding VAT.
+12. A fixed commission amount is applied once per line and is not multiplied by quantity.
+13. When multiple valid rules have the same role and specificity, the winner is selected by higher numeric priority, then latest `valid_from`, then highest record identifier.
+14. Rule validity is evaluated at the initialization/application timestamp. The selected values are then persisted as the applied commission snapshot.
+15. If a role has no recipient, the system must not create, calculate, persist, or summarize a commission for that role. When a recipient is assigned later, the system automatically initializes that role using the then-current application timestamp and applicable rule.
+16. Changing a Product on a revenue line requires confirmation. After confirmation, the system regenerates the line commissions from the new Product context and replaces prior automatic or manual values for that line.
+17. An authorized operator may select any existing recipient compatible with the commission role.
+18. An authorized operator may create a Manual Override commission for a role even when no configurator rule exists.
 
 ## MVP Scope
 
@@ -89,14 +98,19 @@ The product must keep two concepts separate:
 - A centralized, reusable service that receives a commission context and resolves the applicable rule for each requested role.
 - Only active rules valid on the reference date are candidates.
 - A Product rule always takes precedence over a Product Category rule.
+- Among rules with the same specificity, select higher numeric priority, then latest `valid_from`, then highest record identifier.
+- The reference date is the initialization/application timestamp supplied by the consumer.
 - No automatic commission is returned for a role when no applicable configuration exists.
 - The result supplies the consumer with commission type, value, internal note, and Product/Category source.
-- Selection is deterministic when multiple rules are candidates, once the tie-break decision in the blocking questions is resolved.
+- Selection is deterministic for every candidate set.
 
 #### Quote integration
 
-- Adding a relevant product line automatically invokes the engine for all four roles.
+- Only revenue lines (`offer_lines`) participate in commissions. Cost lines (`cost_lines`) never create or affect commissions.
+- Adding a revenue product line automatically invokes the engine for all four roles.
 - Initial recipients are resolved from the Quote context and the Product supplier.
+- If a role has no recipient, no applied commission is created, calculated, persisted, or included in the summary for that role.
+- Assigning a previously missing recipient later automatically initializes that role from the rule applicable at that initialization timestamp.
 - Applied commissions are persisted against the specific Quote line.
 - A Commissions action appears next to the line delete action.
 - The action opens a modal that displays and, when authorized, edits for every role:
@@ -107,7 +121,11 @@ The product must keep two concepts separate:
   - internal service note;
   - source: Product, Category, or Manual Override.
 - Changing recipient, type, value, or note marks that applied line commission as Manual Override and does not change the Configurator.
+- An authorized user can add a Manual Override commission for a compatible recipient even when no configurator rule exists.
+- Recipient selection may use any existing record compatible with the selected role.
+- Changing the Product requires explicit confirmation; confirming regenerates and replaces the line’s applied commissions from the new Product and recipient context.
 - A centralized calculator recalculates the amount when a relevant line or commission input changes.
+- Percentage amount equals the revenue line net amount excluding VAT multiplied by the percentage. Fixed amount is applied once per line.
 - Commission data is saved and read with the Quote context and never relies exclusively on client state.
 - Deleting a Quote line removes only that line’s applied commissions, not its source configurations.
 - Manual applied-commission changes appear in the Quote’s aggregated activity log through the existing mechanism.
@@ -156,7 +174,7 @@ The product must keep two concepts separate:
 1. The operator adds a product to a relevant Quote line.
 2. The system resolves each role’s recipient from the Quote and Product contexts.
 3. The engine looks for a valid Product rule first, then a Product Category rule.
-4. For each role with a valid rule, the system initializes a persistable line commission.
+4. For each role with both a recipient and a valid rule, the system initializes a persistable line commission. Roles without recipients are skipped.
 5. The system calculates amounts and updates the Commission Summary.
 
 ### Override one line
@@ -166,6 +184,7 @@ The product must keep two concepts separate:
 3. The operator changes permitted fields.
 4. The system recalculates the amount and changes that applied commission’s source to Manual Override.
 5. Saving updates only that line commission and the Quote summary.
+6. If no rule exists, an authorized operator may still add a Manual Override commission for a compatible recipient.
 
 ## Acceptance Criteria
 
@@ -188,6 +207,8 @@ The product must keep two concepts separate:
 - [ ] If no rule applies, the engine returns no configuration for that role.
 - [ ] Suspended, future, and expired rules are not applied.
 - [ ] Commercial, Reporter, Supervisor, and Supplier are resolved independently.
+- [ ] Candidate rules with equal specificity are ordered by higher numeric priority, then latest `valid_from`, then highest record identifier.
+- [ ] Validity is evaluated using the supplied initialization/application timestamp.
 - [ ] Identical context and reference date always produce the same result.
 
 ### Persistence and isolation
@@ -195,16 +216,22 @@ The product must keep two concepts separate:
 - [ ] Adding a product initializes type, value, note, and source for every applicable role.
 - [ ] The initial Supplier recipient matches the Product supplier.
 - [ ] Initial Commercial, Reporter, and Supervisor recipients match the Quote header snapshots.
+- [ ] If a role recipient is missing, no commission for that role is created, calculated, persisted, or included in the summary.
+- [ ] Assigning a previously missing recipient automatically initializes that role using rules valid at the new initialization timestamp.
 - [ ] Applied commissions are persistently queryable by Quote, line, role, and recipient.
 - [ ] Editing an applied commission never updates or creates a Configurator rule.
+- [ ] An authorized user can add a Manual Override commission when no configurator rule exists.
+- [ ] An authorized user can select any existing recipient compatible with the selected role.
 - [ ] Reopening a saved Quote preserves manual values and Manual Override source.
 - [ ] Later changes to a global rule do not automatically change commissions already persisted on Quotes.
+- [ ] Changing a revenue-line Product requests confirmation; cancellation preserves the existing Product and commissions, while confirmation regenerates the line commissions from the new Product context.
 - [ ] Deleting a Quote line deletes only its applied commissions.
+- [ ] Cost lines never create, modify, or summarize commissions.
 
 ### Calculation and summary
 
-- [ ] A percentage commission uses the approved calculation base and the Quote module’s approved monetary rounding.
-- [ ] A fixed commission uses the approved per-line or per-unit behavior.
+- [ ] A percentage commission is calculated from the revenue line net amount excluding VAT and uses the Quote module’s monetary rounding.
+- [ ] A fixed commission is applied exactly once per revenue line, regardless of quantity.
 - [ ] Changing quantity, price, commission type, or commission value updates the line preview and totals by role.
 - [ ] On save, the server recalculates amounts and does not trust client-calculated amounts as authoritative input.
 - [ ] The Commission Summary always displays all four role totals, including zero values.
@@ -249,27 +276,14 @@ The product must keep two concepts separate:
 
 ## Risks
 
-- An undefined percentage base or fixed-amount meaning could generate financially incorrect values.
-- Multiple valid rules for the same role and specificity need an explicit deterministic tie-break.
-- It is not defined whether commissions apply only to revenue lines or also to cost lines.
-- Changing a Product on a line with manual overrides can conflict with the existing snapshot.
-- Missing recipients on the Quote or Product need explicit validation and UX behavior.
+- Percentage and fixed-amount calculations are financially sensitive and require exact decimal and rounding tests.
+- Automatic initialization when a missing recipient is assigned must not duplicate an existing manual commission for the same role.
+- Product-change regeneration intentionally replaces manual overrides after confirmation and therefore requires unambiguous warning copy.
 - The Quote line full-replace workflow can break commission history or identifiers unless the technical contract preserves associations.
 - Protected deletion and future references require a clear boundary between source configuration and applied snapshot.
 - Internal notes and commission amounts may need stricter field visibility than other Quote data.
 - “Complete activity log” must include applied commission changes without duplicating or overwhelming the Quote log.
 
-## Open Product Decisions / Blocking Questions
-
-1. Do commissions apply only to revenue lines (`offer_lines`), or also to cost lines (`cost_lines`)?
-2. Is a percentage calculated from the line net amount (`quantity × unit_price`, excluding VAT), or another amount?
-3. Is a fixed amount applied once per line or multiplied by quantity?
-4. When multiple valid rules share the same role and scope, does a higher or lower numeric priority win? If priority is also tied, must creation be prevented or is another tie-break required?
-5. Which date controls validity: Quote date, line creation date, or the current date when defaults are resolved?
-6. If a role has no recipient, should the system omit the commission, persist it without a recipient and flag it, or block saving?
-7. If an operator changes the Product on a line with manual overrides, should the system preserve overrides, request confirmation, or regenerate commissions?
-8. In the modal, does an editable recipient allow any role-compatible record, or only the subject already present in the Quote/Product context?
-
 ## Next Owner
 
-Architect Agent — assess cross-layer impact and propose the technical contract. Application implementation must not begin until the blocking product decisions are resolved.
+Backend Agent and Frontend Agent — implement the frozen product decisions against the Architect-approved technical contract, then hand off to Reviewer and QA.

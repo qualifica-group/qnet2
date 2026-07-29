@@ -206,6 +206,36 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
   })
 
+  // Spec 0067 D-1/AC-030: the Opportunity detail's Quotes panel scopes the
+  // rows request the same way productCategoryId does above.
+  it('includes opportunityId in the payload when given', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('quotes', undefined, undefined, undefined, 7).getRows(stubParams({}))
+
+    expect(fetchRowsMock).toHaveBeenCalledWith(
+      'quotes',
+      expect.objectContaining({ opportunityId: 7 }),
+    )
+  })
+
+  // AC-072: every existing caller (no rowScope) sends a byte-identical payload.
+  it('omits opportunityId entirely when not given', async () => {
+    fetchRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 0, offset: 0, limit: 25, total_pages: 0 },
+    })
+
+    await createSsrmDatasource('quotes').getRows(stubParams({}))
+
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('opportunityId')
+  })
+
   it('calls params.fail() when the request rejects', async () => {
     fetchRowsMock.mockRejectedValue(new Error('network error'))
     const params = stubParams({})

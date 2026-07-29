@@ -93,6 +93,37 @@ function renderHarness() {
   )
 }
 
+/**
+ * spec 0067 D-3/AC-060: the panel forces `forceMode: 'modal'` regardless of
+ * the resolved mode, so `create`/`view`/`edit` never navigate.
+ */
+function ForcedHarness() {
+  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener('projects', {
+    forceMode: 'modal',
+  })
+  return (
+    <div>
+      <button onClick={() => openView({ id: 5 } as TableRow)}>view</button>
+      <button onClick={() => openEdit({ id: 7 } as TableRow)}>edit</button>
+      <button onClick={() => openCreate()}>create</button>
+      <button onClick={() => openCreateWith({ opportunity_id: 3 })}>create-with-params</button>
+      {sheet}
+      <LocationProbe />
+    </div>
+  )
+}
+
+function renderForcedHarness() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/projects']}>
+        <ForcedHarness />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -224,6 +255,60 @@ describe('useModuleOpener', () => {
       expect(screen.getByText('form-edit')).toBeInTheDocument()
       expect(screen.getAllByRole('dialog')).toHaveLength(1)
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+  })
+
+  describe('forceMode (spec 0067 D-3)', () => {
+    beforeEach(() => {
+      // Resolved mode is 'page' (as it would be for a page-mode module like
+      // quotes): forceMode must win over it in every branch.
+      currentMode = 'page'
+    })
+
+    it('AC-060: view opens the Sheet and never navigates, even though the resolved mode is page', () => {
+      renderForcedHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+
+      expect(screen.getByText('detail-5')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('edit opens the Sheet and never navigates, even though the resolved mode is page', () => {
+      renderForcedHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+
+      expect(screen.getByText('form-edit')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('create opens the Sheet and never navigates, even though the resolved mode is page', () => {
+      renderForcedHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create' }))
+
+      expect(screen.getByText('form-create')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('openCreateWith(params) mounts the Sheet with params set, no query string navigation', () => {
+      renderForcedHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'create-with-params' }))
+
+      expect(screen.getByText('form-create')).toBeInTheDocument()
+      expect(screen.getByText('params:{"opportunity_id":3}')).toBeInTheDocument()
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects')
+    })
+
+    it('AC-064: a sibling hook instance without forceMode still resolves to page and navigates', () => {
+      renderHarness()
+
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/5')
+      expect(screen.queryByText('detail-5')).not.toBeInTheDocument()
     })
   })
 })

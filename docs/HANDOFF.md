@@ -2,6 +2,149 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0067 — PANNELLO OFFERTE NELLA VIEW OPPORTUNITA' (2026-07-29) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0067-opportunity-quotes-panel.xml` (47 criteri). Verifier indipendente:
+**46 PASS con evidenza, 1 NON VERIFICATO (AC-035**, responsive 375/768/1024: serve un
+rendering reale, non simulabile in questo ambiente — resta l'unico criterio aperto).
+Zero test tampering, zero migrazioni, zero nuove dipendenze. `tsc -b --force` EXIT=0.
+
+AC-062 ("decrementa il contatore") era inizialmente PASS solo per costruzione: il test
+mockava `TableView` e lo spy di refresh non rifaceva scattare `onRowCountChanged`. Chiuso
+con un test che, dopo il refresh, fa riemettere al mock il nuovo totale e asserisce il badge.
+Nota sulla cucitura: il test verifica che il PANNELLO reagisca al nuovo totale, non che il
+refresh ne provochi la riemissione — quel secondo anello e' comportamento di `TableView`
+(purge + refetch della cache SSRM) e sta nei test di `table-view.test.tsx`.
+
+### Il modulo Offerte NON e' stato ricreato
+
+La spec 0065 era gia' implementata per intero. `quotes.opportunity_id` esisteva gia' NOT NULL,
+FK `restrictOnDelete`, indicizzato; `opportunity_id` era gia' immutabile in update (`prohibited`
+in `UpdateQuoteRequest`) e readonly nel ceiling di `QuotesAuthorization`. Il lavoro reale era
+un altro: **non esisteva alcun modo di scopare una tabella backend-driven su un record padre.**
+
+### Capacita' nuova: scoping tabellare (riusabile)
+
+`App\Tables\Quotes\OpportunityScopedTableDefinition` — decorator sul modello di
+`AttributeScopedTableDefinition` (spec 0064) ma molto piu' piccolo: **tocca SOLO `baseQuery()`**
+(`where('quotes.opportunity_id', ?)`), passthrough puro quando lo scope e' null. Colonne,
+allow-list sort/filter/search e catalogo azioni sono identici scopati o no, quindi NON esiste
+un equivalente di `scopeToAllProductCategories()` e gli endpoint `preferences`/`filters`
+restano intatti. Composto in `TableRegistry::wrapIfOpportunityScoped()` dopo
+`wrapIfAttributeScoped()`.
+
+Setter: `scopeToOpportunity(?int $opportunityId): void`.
+
+Parametro: `opportunityId` (body) in `TableRowsRequest`/`TableValuesRequest`, `opportunity_id`
+(query) in `TableColumnsRequest`, applicato da `TableController` in `columns()`/`rows()`/
+`values()` e **non** negli endpoint di persistenza. No-op per ogni altro domain.
+
+**DECISIONE D-1 da rispettare:** un solo parametro ad-hoc, NON un'astrazione generica di scope
+multi-chiave. E' il secondo caso nel codebase (dopo `productCategoryId`). **Al terzo dominio
+che richiede scoping si generalizza, non prima.**
+
+### Export scopato — il punto che si sbaglia in silenzio
+
+L'export e' ASINCRONO: `ExportController::store()` congela lo state in `ExportRun` e il job
+ri-risolve la definition da zero in `ExportService::generate()`. Applicare lo scope solo nel
+controller passa i test in sincrono e produce un file sbagliato in produzione. Quindi
+`opportunityId` e' persistito nello state (`export_runs.state` e' JSON: nessuna migrazione) e
+riapplicato nel job prima di `TableQueryBuilder::build()`. Il test legge il CONTENUTO del CSV,
+non lo state.
+
+### Altri contratti congelati
+
+- `GET /api/opportunities/{opportunity}` espone `quotes_count: int`, sempre presente, via
+  `loadCount('quotes')` in `OpportunityService::loadDetail()`. Serve come valore iniziale del
+  contatore **e** come discriminante dei due stati vuoti (vedi sotto). `Opportunity::quotes()`
+  HasMany aggiunta (prima il rovescio della relazione esisteva solo a livello DB).
+- `TableView` ha due prop additive: `rowScope?: TableRowScope` (`{opportunityId?: number}`) e
+  `onRowCountChanged?: (count: number|null) => void`. **`rowScope` non e' `scope`**: `scope`
+  seleziona una FORMA di config ed entra in `tableKeys.config`; `rowScope` seleziona un INSIEME
+  DI RIGHE e non entra in alcuna query key. Va letto come primitiva, non per identita' oggetto.
+- `useModuleOpener` accetta `forceMode?: OpenMode`: il pannello forza `OPEN_MODE_MODAL` cosi'
+  view/edit/create restano in Sheet sopra l'Opportunita' anche con la preferenza utente su
+  pagina (D-3). Dalla pagina lista Offerte la preferenza resta rispettata.
+- `QuoteFormMode` ha ora `{ type: 'create'; params?: ModuleCreateParams }`; il pannello passa
+  `openCreateWith({ opportunity_id })` (meccanismo spec 0045 riusato, non nuovo).
+
+### Preferenze CONDIVISE — scelta esplicita (D-4)
+
+Colonne, filtri persistiti e viste salvate restano chiavate `(user_id, domain)`: il pannello e
+la pagina Offerte **condividono** la configurazione. Nascondere una colonna nel pannello la
+nasconde anche nella pagina. Accettato per non migrare tre tabelle del framework tabellare.
+
+### Divergenza dichiarata e accettata (D-9)
+
+Il gate stato-vuoto/griglia e' un booleano seminato al mount da `quotes_count`
+(`use-opportunity-quotes-panel.ts`), non rivalutato sul totale live. Quindi
+**delete-to-zero mostra l'overlay di AG Grid invece del box CTA**. AC-032 resta PASS alla
+lettera (i suoi due rami sono "nessuna Offerta" e "filtro attivo con zero risultati"), ma D-9
+parla di condizione live: la divergenza e' reale, non coperta da alcun AC, accettata perche'
+distinguere "0 perche' vuoto" da "0 perche' filtrato" richiederebbe un segnale che `TableView`
+non espone. Il bottone Crea Offerta resta comunque nell'header.
+
+`quotes_count?: number` e' opzionale nel tipo FE (compatibilita' fixture) ma la chiave e'
+SEMPRE presente nella response; il consumo ha fallback `?? 0`.
+
+### Scostamento da D-8: guard 409 su OpportunityService::delete()
+
+Cancellare un'Opportunita' con Offerte dava un **500** (`QueryException` da `restrictOnDelete`
+non gestita). Aggiunto guard esplicito `abort(409)` sul modello di `RegistryService::delete()`.
+Fuori dal perimetro dichiarato (D-8 parlava di `QuoteService::delete()`), accettato dall'utente.
+Lato UI nessun cambiamento visibile: `opportunities-table.tsx:78` intercetta solo il 403, quindi
+sia 500 sia 409 finivano nello stesso toast generico.
+
+## TRAPPOLA DI VERIFICA — `tsc --noEmit` NEL FRONTEND E' UN FALSO VERDE
+
+`frontend/tsconfig.json` e' solution-style (`"files": []` + `"references"`): **senza `-b` tsc
+non ha file da controllare e restituisce sempre EXIT=0**, qualunque errore ci sia. Verificato
+il 2026-07-29 confrontando i due comandi sullo stesso albero: `--noEmit` EXIT=0 mentre l'hook
+Stop segnalava errori TS6133 reali.
+
+Il comando valido, quello dell'hook `.claude/hooks/typecheck.sh`:
+
+```
+cd frontend && npx tsc -b --force --pretty false
+```
+
+**`CLAUDE.md §5`, la `§CHECKLIST PRE-RISPOSTA` e `rules/frontend.md §10` prescrivono ancora
+`tsc --noEmit`: la regola scritta e' non verificabile in questo repo.** Chi la segue alla
+lettera dichiara "typecheck pulito" senza aver controllato nulla — e' successo a piu' teammate
+in buona fede in questa sessione. Correzione di quelle tre righe da decidere con l'utente.
+
+Corollario per il lavoro multi-agent: **mai `pint --dirty` in un albero condiviso** (riformatta
+i file WIP di altri); sempre l'elenco esplicito dei file. E mai `git stash` con altri agent che
+scrivono.
+
+## ATTRIBUZIONE DEI ROSSI (2026-07-29) — albero condiviso 0067 + 0066
+
+Le due spec hanno convissuto nello stesso working tree. Tre teammate hanno etichettato dei
+rossi come "preesistenti" usando `git stash` dei SOLI propri file — metodo valido per dire
+"non causato da me", NON per dire "preesistente", perche' la baseline conteneva ancora l'altra
+feature. Attribuzione accertata:
+
+| Test | Attribuzione |
+|---|---|
+| `RequestManagementTableSearchTest` over-length | storico |
+| `quote-costs-tab.test.tsx` | 0066 (`useConfirm` in `quote-lines-field.tsx` senza provider) — RISOLTO |
+| `cell-renderers.test.tsx` (3) | storico — RISOLTO nel frattempo |
+| `CustomFieldAdminSecurityTest:41` | 0066 (nodo in `config/navigation.php`) |
+| `FieldCatalogueEndpointTest:80` | 0066 (entry in `config/authorization.php`, expected-array del test non aggiornato) |
+| `CustomFieldWritePipelineTest` (422 vat_number) | ne' 0066 ne' 0067, origine terza, deterministico |
+| `MetaEndpointTest` permissions_resource | inquinamento d'ordine fra test: isolato passa |
+| `commission-configuration-detail.test.tsx`, `quote-commissions-dialog.test.tsx` | 0066 |
+
+## PROSSIMI PASSI
+
+1. **Commit non fatto** (§3.6: serve via libera esplicito). La contaminazione 0066/0067 e'
+   limitata a DUE file: `features/quotes/types.ts` e `features/quotes/use-quote-form.ts`. Gli
+   altri 25 file della 0067 sono puliti. Non si possono escludere quei due (senza il ramo
+   `params` di `QuoteFormMode` il pannello non compila) e lo staging interattivo non e'
+   disponibile: la via pulita e' **far committare prima la 0066, poi la 0067 sopra**.
+2. AC-035 (responsive 375/768/1024) resta da verificare visivamente sull'app reale.
+3. I rossi 0066 sopra vanno girati a chi possiede quella feature.
+
 ## EREDITARIETA' DEI TRE RUOLI COMMERCIALI (2026-07-29) — VERDE, NON COMMITTATO
 
 Direttiva utente: Commerciale, Segnalatore e Supervisore si ereditano

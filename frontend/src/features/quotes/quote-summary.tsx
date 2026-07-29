@@ -2,7 +2,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
-import { TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { HandCoins, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/features/quotes/quote-totals'
 import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData } from '@/features/quotes/types'
+import { calculateCommissionTotals, type CommissionTotals } from './commission-calculator'
 
 /**
  * Formats a plain, already-numeric amount using the active UI locale (mirrors
@@ -100,6 +101,7 @@ function QuoteAmountBlock({ icon: Icon, title, aggregate, netLabel, vatLabel, gr
 
 interface QuoteSummaryProps {
   totals: QuoteTotalsSummary
+  commissionTotals?: CommissionTotals
 }
 
 /**
@@ -109,13 +111,16 @@ interface QuoteSummaryProps {
  * by the caller (`QuoteLiveSummary` for the live form preview,
  * `totalsFromPersistedSummary` for the read-only detail).
  */
-export function QuoteSummary({ totals }: QuoteSummaryProps) {
+export function QuoteSummary({
+  totals,
+  commissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 },
+}: QuoteSummaryProps) {
   const { t } = useTranslation()
   const marginNegative = totals.margin.net < 0
 
   return (
     <div className="rounded-lg border bg-surface p-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <QuoteAmountBlock
           icon={TrendingUp}
           title={t('quotes.form.summary.revenue')}
@@ -146,6 +151,20 @@ export function QuoteSummary({ totals }: QuoteSummaryProps) {
             {formatQuoteAmount(totals.margin.net)}
           </p>
           <p className="text-[11px] text-muted-foreground">{t('quotes.form.summary.marginHint')}</p>
+        </div>
+        <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <HandCoins aria-hidden="true" className="size-3.5" />
+            {t('quotes.form.summary.commissions')}
+          </div>
+          <dl className="grid gap-1 text-xs">
+            {(['commercial', 'reporter', 'supervisor', 'supplier'] as const).map((role) => (
+              <div key={role} className="flex items-center justify-between">
+                <dt className="text-muted-foreground">{t(`quotes.form.summary.roles.${role}`)}</dt>
+                <dd className="font-medium tabular-nums">{formatQuoteAmount(commissionTotals[role])}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </div>
     </div>
@@ -178,6 +197,7 @@ export function QuoteLiveSummary({ control, vatRatePercentFor }: QuoteLiveSummar
       costLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
     )
   }, [offerLines, costLines, vatRatePercentFor])
+  const commissionTotals = useMemo(() => calculateCommissionTotals(offerLines), [offerLines])
 
-  return <QuoteSummary totals={totals} />
+  return <QuoteSummary totals={totals} commissionTotals={commissionTotals} />
 }

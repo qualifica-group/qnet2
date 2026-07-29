@@ -21,8 +21,12 @@ class ActivityLogEntryResource extends JsonResource
      * @param  Activity  $resource
      * @param  array<string, array<string, array<int, string>>>  $labels  [subject_type alias][field][id] => label, resolved for the whole page (see ForeignKeyLabelResolver)
      */
-    public function __construct($resource, private readonly array $labels = [])
-    {
+    public function __construct(
+        $resource,
+        private readonly array $labels = [],
+        /** @var array<string, array<int, string>> */
+        private readonly array $hiddenFields = [],
+    ) {
         parent::__construct($resource);
     }
 
@@ -75,6 +79,11 @@ class ActivityLogEntryResource extends JsonResource
                 default => ['field' => $field, 'old_value' => null, 'new_value' => $attributes->get($field)],
             })
             ->reject(fn (array $change): bool => $change['old_value'] === null && $change['new_value'] === null)
+            ->reject(fn (array $change): bool => in_array(
+                $change['field'],
+                $this->hiddenFields[$activity->subject_type] ?? [],
+                true,
+            ))
             ->map(fn (array $change): array => [...$change, ...$this->display($activity->subject_type, $change)])
             ->values()
             ->all();

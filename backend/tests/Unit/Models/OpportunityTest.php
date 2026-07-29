@@ -4,6 +4,7 @@ use App\Models\Concerns\LogsModelActivity;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
+use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Source;
@@ -208,6 +209,21 @@ it('productLines() is a HasMany OpportunityProductLine (amendment rev.3, AC-098)
 
     expect($opportunity->productLines())->toBeInstanceOf(HasMany::class)
         ->and($opportunity->productLines()->getRelated())->toBeInstanceOf(OpportunityProductLine::class);
+});
+
+it('quotes() is a HasMany Quote on opportunity_id, and returns every linked quote (spec 0067, AC-019)', function () {
+    $opportunity = new Opportunity;
+
+    expect($opportunity->quotes())->toBeInstanceOf(HasMany::class)
+        ->and($opportunity->quotes()->getRelated())->toBeInstanceOf(Quote::class)
+        ->and($opportunity->quotes()->getForeignKeyName())->toBe('opportunity_id');
+
+    $persisted = Opportunity::factory()->create();
+    Quote::factory()->for($persisted)->count(3)->create();
+    Quote::factory()->create(); // a different opportunity's quote, never counted
+
+    expect($persisted->quotes)->toHaveCount(3)
+        ->each->toBeInstanceOf(Quote::class);
 });
 
 it('commercial()/reporter() are BelongsTo Referent via their own FK', function () {

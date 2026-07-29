@@ -33,6 +33,12 @@ export interface CreateExportPayload {
   sortModel?: ExportSortModelItem[]
   filterModel?: Record<string, unknown>
   search?: string
+  /**
+   * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
+   * Quotes panel export). Frozen into `ExportRun.state` and reapplied by the
+   * generation job. Omitted ⇒ today's unscoped export, unchanged.
+   */
+  opportunityId?: number | null
 }
 
 /** The export run resource returned by every endpoint (`ExportRunResource`). */

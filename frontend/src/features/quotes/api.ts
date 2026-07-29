@@ -6,6 +6,7 @@ import type {
   QuoteDetail,
   QuoteDetailWithPermissions,
   UpdateQuotePayload,
+  QuoteLineCommission,
 } from '@/features/quotes/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -59,4 +60,24 @@ export async function updateQuote(id: number, payload: UpdateQuotePayload): Prom
 /** Deletes a quote. Backend responds 200 with no data (`quote_lines` cascade, AC-026). */
 export async function deleteQuote(id: number): Promise<void> {
   await apiClient.delete(`/quotes/${id}`)
+}
+
+export interface QuoteCommissionDefaultsPayload {
+  quote_id?: number
+  product_id: number
+  line_net_amount: number
+  commercial_id?: number | null
+  reporter_id?: number | null
+  supervisor_id?: number | null
+  reference_date?: string
+}
+
+export async function fetchQuoteCommissionDefaults(
+  payload: QuoteCommissionDefaultsPayload,
+): Promise<QuoteLineCommission[]> {
+  const { data } = await apiClient.post<ApiResponse<QuoteLineCommission[]>>(
+    '/quotes/commission-defaults',
+    payload,
+  )
+  return data.data
 }

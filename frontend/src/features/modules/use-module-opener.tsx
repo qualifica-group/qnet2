@@ -11,7 +11,7 @@ import {
 import { moduleI18nNamespace } from '@/features/modules/i18n-namespace'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import { useModuleOpenMode } from '@/features/modules/use-module-open-mode'
-import { OPEN_MODE_MODAL, type ModuleCreateParams } from '@/features/modules/types'
+import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import type { TableRow } from '@/features/table/types'
 
 /**
@@ -44,6 +44,16 @@ export interface UseModuleOpenerOptions {
    * has navigated away from the grid, there is nothing to refresh.
    */
   onSaved?: () => void
+  /**
+   * Overrides the mode resolved from the module's default/the user's open-mode
+   * preference (spec 0067 D-3). Used by embedded contexts — e.g. the
+   * Opportunity Quotes panel — where the parent record must never be
+   * abandoned, so create/view/edit/duplicate always mount the Sheet
+   * regardless of the target module's `defaultMode` or the user's stored
+   * preference. Omitted by every other call site, which keeps resolving the
+   * mode via `useModuleOpenMode` exactly as before (AC-064).
+   */
+  forceMode?: OpenMode
 }
 
 export interface UseModuleOpenerResult {
@@ -64,14 +74,15 @@ export interface UseModuleOpenerResult {
   openEdit: (row: TableRow) => void
   /** Opens the create form pre-filled from `row` (row action "duplicate"): the source is still fetched fresh, submit still goes through the create path. */
   openDuplicate: (row: TableRow) => void
-  /** The modal Sheet when the resolved mode is `'modal'`, `null` in `'page'` mode. Render it once, anywhere in the table adapter's tree. */
+  /** The modal Sheet when the effective mode (resolved, or `forceMode` when set) is `'modal'`, `null` in `'page'` mode. Render it once, anywhere in the table adapter's tree. */
   sheet: ReactNode
 }
 
 /**
  * Domain-generic replacement for the `SheetState`/`navigate` pair every
  * `*-table.tsx` used to hard-code (spec 0042). Resolves the module's
- * effective open mode (`useModuleOpenMode`) and instrades view/edit/create
+ * effective open mode (`useModuleOpenMode`, overridable per call site via
+ * `options.forceMode`, spec 0067 D-3) and instrades view/edit/create
  * accordingly: `'modal'` mounts the registry's `DetailScreen`/`FormScreen`
  * inside an owned `<Sheet>` (AC-011/018, same `sheet-width:${domain}` layout
  * key as before); `'page'` navigates to the module's deep-link routes
@@ -80,7 +91,7 @@ export interface UseModuleOpenerResult {
 export function useModuleOpener(domain: string, options: UseModuleOpenerOptions = {}): UseModuleOpenerResult {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const mode = useModuleOpenMode(domain)
+  const resolvedMode = useModuleOpenMode(domain)
   const entry = getModuleRegistryEntry(domain)
   // Every module-specific path below the registry lookup is a stable, known
   // route/component; this "basePath" fallback only exists so hooks stay
@@ -90,7 +101,14 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
   // namespace, while `domain` is the kebab-case slug (spec 0042).
   const ns = moduleI18nNamespace(domain)
 
-  const { onSaved } = options
+  const { onSaved, forceMode } = options
+  // `forceMode` short-circuits the resolved mode for the caller (spec 0067
+  // D-3). Applied here rather than inside `resolveOpenMode`/`useModuleOpenMode`
+  // so those stay pure functions of the user's actual preference — the
+  // embedded panel's override is a concern of THIS call site, not of "what
+  // does the user prefer" (engineering.md §1.3: no speculative parameter on
+  // the pure resolver for a single caller).
+  const mode = forceMode ?? resolvedMode
   const [sheetState, setSheetState] = useState<SheetState>({ kind: 'none' })
 
   const closeSheet = useCallback(() => setSheetState({ kind: 'none' }), [])

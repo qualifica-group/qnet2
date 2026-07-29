@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Quotes\QuoteCommissionDefaultsController;
 use App\Http\Controllers\Quotes\QuoteController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('quotes/next-code', [QuoteController::class, 'nextCode']);
+Route::post('quotes/commission-defaults', QuoteCommissionDefaultsController::class);
 
 // Quotes CRUD. Authorization (quotes.view/create/update/delete) is enforced
 // server-side in QuoteController via QuotePolicy on every endpoint.

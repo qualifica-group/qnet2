@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, Handshake, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { FileText, HandCoins, Handshake, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import {
@@ -15,15 +17,35 @@ import {
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatQuoteAmount, QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
 import type { QuoteDetailWithPermissions, QuoteLine } from '@/features/quotes/types'
+import { QuoteCommissionsDialog } from './quote-commissions-dialog'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 
 const OFFER_TAB = 'offer'
 const COSTS_TAB = 'costs'
 const NOTES_TAB = 'notes'
 
-const LINES_GRID_CLASS = 'grid grid-cols-[minmax(200px,1.4fr)_100px_90px_110px_140px_100px_100px_110px] gap-2'
+const LINES_GRID_CLASS = 'grid grid-cols-[minmax(200px,1.4fr)_100px_90px_110px_140px_100px_100px_110px_36px] gap-2'
 
 /** Read-only rendering of one tab's persisted rows (D-7: `product.code`/`name` are live, amounts are frozen at save time, D-10). */
-function QuoteLinesReadOnlyList({ lines }: { lines: QuoteLine[] }) {
+function ReadOnlyLine({ line, index, showCommissions }: { line: QuoteLine; index: number; showCommissions: boolean }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={`${LINES_GRID_CLASS} border-b px-2 py-1.5 last:border-b-0`}>
+      <span className="truncate">{line.product.name}</span>
+      <span className="truncate font-mono text-muted-foreground">{line.product.code}</span>
+      <span className="tabular-nums">{formatQuoteAmount(Number(line.quantity))}</span>
+      <span className="tabular-nums">{formatQuoteAmount(Number(line.unit_price))}</span>
+      <span className="truncate">{line.vat_rate ? line.vat_rate.name : <DetailEmpty />}</span>
+      <span className="text-right tabular-nums">{formatQuoteAmount(Number(line.net_amount))}</span>
+      <span className="text-right tabular-nums">{formatQuoteAmount(Number(line.vat_amount))}</span>
+      <span className="text-right font-medium tabular-nums">{formatQuoteAmount(Number(line.total_amount))}</span>
+      {showCommissions ? <><Button type="button" variant="ghost" size="icon-sm" aria-label={t('quotes.form.commissions.action', { n: index + 1 })} onClick={() => setOpen(true)}><HandCoins aria-hidden="true" /></Button>{open ? <QuoteCommissionsDialog open={open} onOpenChange={setOpen} lineNumber={index + 1} productName={line.product.name} quantity={Number(line.quantity)} unitPrice={Number(line.unit_price)} commissions={(line.commissions ?? []).map((commission) => ({ id: commission.id, recipient_role: commission.recipient_role, recipient_type: commission.recipient_type, recipient_id: commission.recipient_id, recipient: commission.recipient, commission_type: commission.commission_type, value: Number(commission.value), internal_note: commission.internal_note, origin: commission.origin, commission_configuration_id: commission.commission_configuration_id }))} disabled onSave={() => undefined} /> : null}</> : null}
+    </div>
+  )
+}
+
+function QuoteLinesReadOnlyList({ lines, showCommissions = false }: { lines: QuoteLine[]; showCommissions?: boolean }) {
   const { t } = useTranslation()
 
   if (lines.length === 0) {
@@ -42,19 +64,9 @@ function QuoteLinesReadOnlyList({ lines }: { lines: QuoteLine[] }) {
           <span className="text-right">{t('quotes.form.lineNetHeader')}</span>
           <span className="text-right">{t('quotes.form.lineVatHeader')}</span>
           <span className="text-right">{t('quotes.form.lineTotalHeader')}</span>
+          <span className="sr-only">{t('quotes.form.commissions.header')}</span>
         </div>
-        {lines.map((line) => (
-          <div key={line.id} className={`${LINES_GRID_CLASS} border-b px-2 py-1.5 last:border-b-0`}>
-            <span className="truncate">{line.product.name}</span>
-            <span className="truncate font-mono text-muted-foreground">{line.product.code}</span>
-            <span className="tabular-nums">{formatQuoteAmount(Number(line.quantity))}</span>
-            <span className="tabular-nums">{formatQuoteAmount(Number(line.unit_price))}</span>
-            <span className="truncate">{line.vat_rate ? line.vat_rate.name : <DetailEmpty />}</span>
-            <span className="text-right tabular-nums">{formatQuoteAmount(Number(line.net_amount))}</span>
-            <span className="text-right tabular-nums">{formatQuoteAmount(Number(line.vat_amount))}</span>
-            <span className="text-right font-medium tabular-nums">{formatQuoteAmount(Number(line.total_amount))}</span>
-          </div>
-        ))}
+        {lines.map((line, index) => <ReadOnlyLine key={line.id} line={line} index={index} showCommissions={showCommissions} />)}
       </div>
     </div>
   )
@@ -77,6 +89,7 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
   const totals = totalsFromPersistedSummary(quote.summary)
 
   return (
+    <ResourcePermissionsProvider permissions={quote.permissions}>
     <DetailPanel>
       <DetailHero media={<DetailMonogram name={quote.title} icon={<FileText />} />} title={quote.title} subtitle={quote.code} />
 
@@ -116,7 +129,10 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           </TabsList>
 
           <TabsContent value={OFFER_TAB}>
-            <QuoteLinesReadOnlyList lines={quote.offer_lines} />
+            <QuoteLinesReadOnlyList
+              lines={quote.offer_lines}
+              showCommissions={quote.permissions.fields.commissions?.visible ?? true}
+            />
           </TabsContent>
           <TabsContent value={COSTS_TAB}>
             <QuoteLinesReadOnlyList lines={quote.cost_lines} />
@@ -129,11 +145,20 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
         </Tabs>
 
         <div className="mt-4">
-          <QuoteSummary totals={totals} />
+          <QuoteSummary
+            totals={totals}
+            commissionTotals={{
+              commercial: Number(quote.summary.commissions?.commercial ?? 0),
+              reporter: Number(quote.summary.commissions?.reporter ?? 0),
+              supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
+              supplier: Number(quote.summary.commissions?.supplier ?? 0),
+            }}
+          />
         </div>
       </DetailSection>
 
       {createdAt ? <DetailMeta label={t('quotes.detail.createdAt')}>{createdAt}</DetailMeta> : null}
     </DetailPanel>
+    </ResourcePermissionsProvider>
   )
 }

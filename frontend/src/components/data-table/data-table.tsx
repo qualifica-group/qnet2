@@ -69,6 +69,14 @@ interface DataTableProps {
    * values resolve against the right category. Absent for every other domain.
    */
   productCategoryId?: number
+  /**
+   * The Opportunity row-set scope (spec 0067 D-1, the Opportunity detail's
+   * Quotes panel), forwarded to the Set Filter's async values callback
+   * (`POST /tables/{domain}/values`) so an `opportunityId`-scoped column's
+   * distinct values resolve against that Opportunity's Offerte only. Absent
+   * for every other domain.
+   */
+  opportunityId?: number
   /** Backend-driven column schema. */
   columns: TableColumn[]
   /** SSRM datasource feeding the grid. */
@@ -166,6 +174,7 @@ interface DataTableProps {
 export function DataTable({
   domain,
   productCategoryId,
+  opportunityId,
   columns,
   datasource,
   blockSize,
@@ -211,6 +220,7 @@ export function DataTable({
       buildColDefs({
         domain,
         productCategoryId,
+        opportunityId,
         columns,
         cellRenderers,
         renderRowActions,
@@ -222,6 +232,7 @@ export function DataTable({
     [
       domain,
       productCategoryId,
+      opportunityId,
       columns,
       cellRenderers,
       renderRowActions,

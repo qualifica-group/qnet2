@@ -7,6 +7,7 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchQuote, quoteDetailQueryKey } from '@/features/quotes/api'
 import { QuoteForm, QuoteFormSkeleton } from '@/features/quotes/quote-form'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
+import { parseEntityId } from '@/routes/entity-id'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -52,6 +53,15 @@ export function QuoteDetailScreen({ id }: ModuleDetailScreenProps) {
   return <QuoteDetailView quote={quote} />
 }
 
+/**
+ * Create branch reads `opportunity_id` from `mode.params` (spec 0045/0067
+ * AC-050), the same single channel `OpportunityFormScreen` reads `lead_id`
+ * from: the modal Sheet (opportunity detail's "Crea Offerta" panel) hands the
+ * params straight through, while `ModuleFormPage` would convert a deep-link
+ * query string into the same shape. `opportunity_id` can therefore arrive as
+ * either a `number` (modal caller) or a `string` — normalize with
+ * `parseEntityId` before handing it to `QuoteForm`.
+ */
 export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const queryClient = useQueryClient()
 
@@ -61,7 +71,14 @@ export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   }
 
   if (mode.type === 'create') {
-    return <QuoteForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
+    const opportunityId = parseEntityId(String(mode.params?.opportunity_id ?? ''))
+    return (
+      <QuoteForm
+        mode={{ type: 'create', params: opportunityId !== null ? { opportunity_id: opportunityId } : undefined }}
+        onSuccess={handleSuccess}
+        onCancel={onCancel}
+      />
+    )
   }
 
   return <QuoteEditScreen quoteId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />

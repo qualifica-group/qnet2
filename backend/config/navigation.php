@@ -382,6 +382,13 @@ return [
                     'route' => '/sources',
                     'permission' => 'sources.view',
                 ],
+                [
+                    'key' => 'commission-configurations',
+                    'label' => 'navigation.commissionConfigurations',
+                    'icon' => 'percent',
+                    'route' => '/commission-configurations',
+                    'permission' => 'commission-configurations.view',
+                ],
             ],
         ],
 

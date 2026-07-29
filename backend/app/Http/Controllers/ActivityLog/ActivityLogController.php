@@ -4,6 +4,8 @@ namespace App\Http\Controllers\ActivityLog;
 
 use App\ActivityLog\ActivityLogRegistry;
 use App\ActivityLog\Contracts\ActivityLogAuthorizer;
+use App\Authorization\AuthorizationRegistry;
+use App\DataObjects\ActivityLog\ActivityLogDefinition;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\ActivityLog\ActivityLogIndexRequest;
 use App\Http\Resources\ActivityLog\ActivityLogEntryResource;
@@ -30,6 +32,7 @@ class ActivityLogController extends BaseApiController
     public function __construct(
         private readonly ActivityLogRegistry $registry,
         private readonly AggregatedActivityService $service,
+        private readonly AuthorizationRegistry $authorization,
     ) {}
 
     /**
@@ -54,15 +57,58 @@ class ActivityLogController extends BaseApiController
             $authorizer->authorize($actor, $record);
 
             $page = $this->service->paginate($record, $definition->relations, $request->perPage(), $request->cursor());
+            [$hiddenSubjects, $hiddenFields] = $this->activityRedactions($definition, $actor, $record);
 
             return $this->ok([
-                'items' => $page->items->map(
-                    fn (Activity $activity): ActivityLogEntryResource => new ActivityLogEntryResource($activity, $page->labels)
-                ),
+                'items' => $page->items
+                    ->reject(fn (Activity $activity): bool => in_array($activity->subject_type, $hiddenSubjects, true))
+                    ->values()
+                    ->map(
+                        fn (Activity $activity): ActivityLogEntryResource => new ActivityLogEntryResource(
+                            $activity,
+                            $page->labels,
+                            $hiddenFields,
+                        )
+                    ),
                 'next_cursor' => $page->nextCursor,
             ]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['resource' => $resource, 'id' => $id]);
         }
+    }
+
+    /**
+     * @return array{array<int, string>, array<string, array<int, string>>}
+     */
+    private function activityRedactions(
+        ActivityLogDefinition $definition,
+        User $actor,
+        Model $record,
+    ): array {
+        if ($definition->fieldPermissionResource === null) {
+            return [[], []];
+        }
+
+        $permissions = $this->authorization
+            ->resolve($definition->fieldPermissionResource)
+            ->fieldPermissions($actor, $record);
+        $hiddenSubjects = [];
+        $hiddenFields = [];
+
+        foreach ($definition->fieldPermissions as $subject => $fields) {
+            foreach ($fields as $activityField => $permissionField) {
+                if (($permissions[$permissionField] ?? null)?->visible !== false) {
+                    continue;
+                }
+
+                if ($activityField === '__subject') {
+                    $hiddenSubjects[] = $subject;
+                } else {
+                    $hiddenFields[$subject][] = $activityField;
+                }
+            }
+        }
+
+        return [$hiddenSubjects, $hiddenFields];
     }
 }

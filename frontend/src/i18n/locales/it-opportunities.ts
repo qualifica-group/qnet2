@@ -46,6 +46,13 @@ export const opportunities = {
     sourceLead: 'Lead di origine',
     collectedInformation: 'Informazioni raccolte',
     rewards: 'Premi',
+    quotes: {
+      title: 'Offerte',
+      countLabel: '{{count}} offerte',
+      create: 'Nuova offerta',
+      empty: 'Nessuna offerta',
+      emptyHint: "Crea la prima offerta collegata a questa opportunità.",
+    },
   },
   form: {
     newOpportunity: 'Nuova opportunità',

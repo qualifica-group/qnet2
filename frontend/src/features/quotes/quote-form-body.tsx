@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/comp
 import { FormSection } from '@/components/form-section'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
+import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import type { ForSelectItem } from '@/features/for-select/types'
 import {
   OPPORTUNITIES_FOR_SELECT_RESOURCE,
@@ -66,19 +67,65 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   // user pick/clear, never as a render-time effect that could overwrite a
   // later edit.
   const [inheritedRoles, setInheritedRoles] = useState<OpportunityForSelectMeta | null>(null)
-  const handleOpportunityItemChange = (item: ForSelectItem | null) => {
-    const meta = (item as OpportunityForSelectItem | null)?.meta ?? null
-    setInheritedRoles(meta)
-    form.setValue('commercial_id', meta?.commercial?.id ?? null, { shouldDirty: true })
-    form.setValue('reporter_id', meta?.reporter?.id ?? null, { shouldDirty: true })
-    form.setValue('supervisor_id', meta?.supervisor?.id ?? null, { shouldDirty: true })
-  }
+  /** Writes the three RHF fields only — no React state — so this is also safe to call from the effect below (react-hooks/set-state-in-effect). */
+  const applyInheritedRoleValues = useCallback(
+    (meta: OpportunityForSelectMeta | null) => {
+      form.setValue('commercial_id', meta?.commercial?.id ?? null, { shouldDirty: true })
+      form.setValue('reporter_id', meta?.reporter?.id ?? null, { shouldDirty: true })
+      form.setValue('supervisor_id', meta?.supervisor?.id ?? null, { shouldDirty: true })
+    },
+    [form],
+  )
+  const handleOpportunityItemChange = useCallback(
+    (item: ForSelectItem | null) => {
+      const meta = (item as OpportunityForSelectItem | null)?.meta ?? null
+      setInheritedRoles(meta)
+      applyInheritedRoleValues(meta)
+    },
+    [applyInheritedRoleValues],
+  )
 
-  /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills. */
+  // Spec 0067 AC-050/AC-052: when the Opportunity arrives preset via create
+  // params (the opportunity detail's "Crea Offerta" panel), the field is
+  // locked to it (`forceDisabled` below) and the same `meta` (no extra
+  // fetch — same for-select item the field itself hydrates its label from,
+  // deduped by React Query) feeds the three roles below, reusing
+  // `applyInheritedRoleValues` — no duplicated ereditarieta' logic. The sync
+  // to RHF's field values only happens once the item resolves and is
+  // guarded to run at most once, so a later user edit of the (still
+  // editable) roles is never overwritten by a slow response; it is kept out
+  // of `handleOpportunityItemChange`/`inheritedRoles` (a plain `useState`)
+  // to avoid setting React state from inside an effect.
+  const forcedOpportunityId =
+    mode.type === 'create' && typeof mode.params?.opportunity_id === 'number'
+      ? mode.params.opportunity_id
+      : null
+  const forcedOpportunityLabels = useForSelectLabels({
+    resource: OPPORTUNITIES_FOR_SELECT_RESOURCE,
+    ids: forcedOpportunityId !== null ? [forcedOpportunityId] : [],
+    enabled: forcedOpportunityId !== null,
+  })
+  const forcedOpportunityMeta =
+    forcedOpportunityId !== null
+      ? ((forcedOpportunityLabels.get(forcedOpportunityId) as OpportunityForSelectItem | undefined)?.meta ?? null)
+      : null
+  const appliedForcedOpportunity = useRef(false)
+  useEffect(() => {
+    if (forcedOpportunityId === null || appliedForcedOpportunity.current || !forcedOpportunityMeta) {
+      return
+    }
+    appliedForcedOpportunity.current = true
+    applyInheritedRoleValues(forcedOpportunityMeta)
+  }, [forcedOpportunityId, forcedOpportunityMeta, applyInheritedRoleValues])
+
+  /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills; the forced Opportunity's own meta is the fallback source before any user pick. */
   const roleRef = (
     key: keyof OpportunityForSelectMeta,
     loaded: RelationFieldRef | null,
-  ): RelationFieldRef | null => (inheritedRoles ? inheritedRoles[key] : loaded)
+  ): RelationFieldRef | null => {
+    const meta = inheritedRoles ?? forcedOpportunityMeta
+    return meta ? meta[key] : loaded
+  }
 
   const relationLabels = {
     placeholder: t('quotes.form.selectPlaceholder'),
@@ -138,6 +185,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 searchPlaceholder={t('quotes.form.opportunitySearch')}
                 selected={original ? { id: original.opportunity.id, name: original.opportunity.name } : null}
                 onItemChange={handleOpportunityItemChange}
+                forceDisabled={forcedOpportunityId !== null}
                 {...relationLabels}
               />
 
@@ -214,6 +262,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 knownLines={original?.offer_lines ?? []}
                 vatRatePercentFor={vatRatePercentFor}
                 rememberVatRatePercent={rememberVatRatePercent}
+                quoteId={original?.id}
               />
             </TabsContent>
 

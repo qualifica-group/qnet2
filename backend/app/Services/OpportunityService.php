@@ -79,7 +79,10 @@ class OpportunityService
 
     public function loadDetail(Opportunity $opportunity): Opportunity
     {
-        return $opportunity->load(self::DETAIL_RELATIONS);
+        // Spec 0067, AC-020/021: quotes_count feeds the panel's initial
+        // counter — loadCount(), never load('quotes'), so the read stays a
+        // single aggregate query with no quote rows materialized.
+        return $opportunity->load(self::DETAIL_RELATIONS)->loadCount('quotes');
     }
 
     /**
@@ -285,9 +288,20 @@ class OpportunityService
      * Delete the opportunity. The linked lead (if any) is left untouched
      * (D-5); the `opportunity_user` pivot rows cascade away via their own
      * cascadeOnDelete foreign keys (BR-3 explicitly excludes this pivot).
+     *
+     * Restrictive (spec 0065/0067, D-27/AC-022): an opportunity referenced by
+     * at least one quote cannot be removed — `quotes.opportunity_id` is
+     * already `restrictOnDelete` at the schema level, but an explicit guard
+     * here, mirroring RegistryService::delete()'s own precedent, answers with
+     * the same 409 envelope instead of letting the FK violation bubble up as
+     * an unhandled QueryException (500).
      */
     public function delete(Opportunity $opportunity): void
     {
+        if ($opportunity->quotes()->exists()) {
+            abort(409, 'This opportunity has quotes and cannot be deleted.');
+        }
+
         $opportunity->delete();
     }
 

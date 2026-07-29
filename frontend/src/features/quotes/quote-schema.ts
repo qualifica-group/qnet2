@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
 
 /**
  * Zod schema for the quote create/edit form, built as a factory so validation
@@ -66,10 +67,23 @@ function requiredRelationId(message: string) {
 function quoteLineRowSchema(t: TFunction) {
   return z
     .object({
+      id: z.number().optional(),
       product_id: z.number().nullable(),
       quantity: z.number().nullable(),
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
+      commissions: z.array(z.object({
+        id: z.number().optional(),
+        recipient_role: z.enum(COMMISSION_ROLES),
+        recipient_type: z.enum(['referent', 'user', 'registry']),
+        recipient_id: z.number(),
+        recipient: z.object({ id: z.number(), name: z.string() }).nullable().optional(),
+        commission_type: z.enum(COMMISSION_TYPES),
+        value: z.number().min(0),
+        internal_note: z.string().max(5000).nullable(),
+        origin: z.enum(['PRODUCT', 'PRODUCT_CATEGORY', 'MANUAL_OVERRIDE']),
+        commission_configuration_id: z.number().nullable(),
+      })).optional(),
     })
     .superRefine((row, ctx) => {
       if (row.product_id === null) {

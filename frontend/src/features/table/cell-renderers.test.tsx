@@ -1,9 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, waitFor, within } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import { BadgeCell, ContactsCell, CountCell, TagsCountCell } from '@/features/table/cell-renderers'
 import type { EnumBadge, PrimaryContact } from '@/features/table/types'
+
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
+afterAll(async () => {
+  await i18n.changeLanguage('it')
+})
 
 /**
  * BadgeCell is a generic, domain-agnostic renderer for `badge` columns: it maps
@@ -60,7 +67,7 @@ describe('BadgeCell with enumKey (i18n label)', () => {
     await i18n.changeLanguage('it')
   })
   afterAll(async () => {
-    await i18n.changeLanguage('it')
+    await i18n.changeLanguage('en')
   })
 
   function renderWithKey(value: unknown, enumKey: string, badges = BADGES) {
@@ -159,21 +166,33 @@ describe('ContactsCell', () => {
     expect(getByLabelText('2 primary contacts')).toBeInTheDocument()
   })
 
-  it('shows the full contact list in the tooltip', () => {
+  it('shows the full contact list in the tooltip', async () => {
     const { getByLabelText } = renderContacts(CONTACTS)
-    fireEvent.mouseEnter(getByLabelText('2 primary contacts'))
+    fireEvent.focus(getByLabelText('2 primary contacts'))
 
-    expect(screen.getByText('Work')).toBeInTheDocument()
-    expect(screen.getByText('work@example.com')).toBeInTheDocument()
-    expect(screen.getByText('Mobile')).toBeInTheDocument()
-    expect(screen.getByText('+39 333 1234567')).toBeInTheDocument()
+    const tooltip = await waitFor(() => {
+      const content = document.querySelector<HTMLElement>('[data-slot="tooltip-content"][data-state="instant-open"]')
+      expect(content).not.toBeNull()
+      return content!
+    })
+    const contactList = tooltip.querySelector<HTMLElement>('.flex.flex-col.divide-y')!
+    expect(within(contactList).getByText('Work')).toBeInTheDocument()
+    expect(within(contactList).getByText('work@example.com')).toBeInTheDocument()
+    expect(within(contactList).getByText('Mobile')).toBeInTheDocument()
+    expect(within(contactList).getByText('+39 333 1234567')).toBeInTheDocument()
   })
 
-  it('renders one copy button per contact inside the tooltip', () => {
+  it('renders one copy button per contact inside the tooltip', async () => {
     const { getByLabelText } = renderContacts(CONTACTS)
-    fireEvent.mouseEnter(getByLabelText('2 primary contacts'))
+    fireEvent.focus(getByLabelText('2 primary contacts'))
 
-    expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(2)
+    const tooltip = await waitFor(() => {
+      const content = document.querySelector<HTMLElement>('[data-slot="tooltip-content"][data-state="instant-open"]')
+      expect(content).not.toBeNull()
+      return content!
+    })
+    const contactList = tooltip.querySelector<HTMLElement>('.flex.flex-col.divide-y')!
+    expect(within(contactList).getAllByRole('button', { name: 'Copy' })).toHaveLength(2)
   })
 
   it('renders an em dash for an empty contact array', () => {

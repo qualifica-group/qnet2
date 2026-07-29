@@ -8,6 +8,7 @@ use Database\Factories\QuoteLineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One revenue or cost row against a Quote (spec 0065, D-11): revenue and cost
@@ -68,5 +69,10 @@ class QuoteLine extends BaseModel
     public function vatRate(): BelongsTo
     {
         return $this->belongsTo(VatRate::class);
+    }
+
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(QuoteLineCommission::class);
     }
 }

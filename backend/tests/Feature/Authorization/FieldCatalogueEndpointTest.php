@@ -98,6 +98,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0065 `quote-statuses` AND `quotes` (QuoteStatusesAuthorization: the "Stati Offerta"
         // lookup; QuotesAuthorization: the Quotes module resource).
         'quote-statuses', 'quotes',
+        // spec 0066 `commission-configurations` (independent commission-rule
+        // catalogue with field-level permissions).
+        'commission-configurations',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

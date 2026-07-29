@@ -10,6 +10,12 @@ Output di documentazione del progetto. Confine documentale tra backend e fronten
 | [`releases/`](releases/) | Launch checklist (`NNNN-versione.md`) | [`templates/launch-checklist.md`](../templates/launch-checklist.md) | DevOps |
 | [`api/`](api/) | Documentazione del contratto API (confine backend/frontend) | — | Backend |
 
+## Contratti API recenti
+
+- [`api/0006-commission-configurator-and-quote-integration.md`](api/0006-commission-configurator-and-quote-integration.md)
+  — Configuratore Commissioni, risoluzione delle regole, snapshot persistenti
+  sui Preventivi, permessi e rollout.
+
 ## Regola
 
 I template in `templates/` sono i master vuoti. Per ogni nuovo documento si **copia** il

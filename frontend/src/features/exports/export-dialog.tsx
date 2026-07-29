@@ -41,6 +41,12 @@ export interface ExportDialogProps {
   actionsColumnId: string
   /** The applied global search term (may be empty). */
   search: string
+  /**
+   * Row-set scope to one parent record (spec 0067 D-5, e.g. an Opportunity's
+   * Quotes panel), forwarded verbatim into the create payload. Omitted/null
+   * ⇒ today's unscoped export, unchanged.
+   */
+  opportunityId?: number | null
 }
 
 /**
@@ -57,6 +63,7 @@ export function ExportDialog({
   columns,
   actionsColumnId,
   search,
+  opportunityId,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -84,6 +91,7 @@ export function ExportDialog({
       filterModel:
         Object.keys(gridState.filterModel).length > 0 ? gridState.filterModel : undefined,
       search: gridState.search !== '' ? gridState.search : undefined,
+      ...(opportunityId != null ? { opportunityId } : {}),
     })
   }
 

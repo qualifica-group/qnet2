@@ -31,6 +31,10 @@ const DEFAULT_BLOCK_SIZE = 25
  * lazily. Sent as `productCategoryId` only when present; omitted entirely on
  * the "Tutte" tab.
  *
+ * `opportunityId` (spec 0067 D-1, the Opportunity detail's Quotes panel) is
+ * the same kind of plain value, sent as `opportunityId` only when present —
+ * a no-op for every domain but `quotes`.
+ *
  * Domain-agnostic: the only domain-specific input is the `domain` key. The same
  * datasource powers every table.
  */
@@ -39,6 +43,7 @@ export function createSsrmDatasource(
   getSearch?: () => string,
   getAdvancedFilters?: () => AdvancedFilterValues,
   productCategoryId?: number,
+  opportunityId?: number,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -75,6 +80,7 @@ export function createSsrmDatasource(
           ...(search !== '' ? { search } : {}),
           ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
           ...(productCategoryId != null ? { productCategoryId } : {}),
+          ...(opportunityId != null ? { opportunityId } : {}),
         })
 
         params.success({

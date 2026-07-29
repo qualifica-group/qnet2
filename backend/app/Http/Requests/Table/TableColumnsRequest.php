@@ -8,11 +8,14 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the OPTIONAL `product_category_id` query parameter for
- * `GET /api/tables/{domain}/columns` (spec 0064): generic across every
+ * Validates the OPTIONAL `product_category_id`/`opportunity_id` query
+ * parameters for `GET /api/tables/{domain}/columns`: generic across every
  * domain (harmless for one that never sends it), but only
- * `AttributeScopedTableDefinition` (`request-management`) actually narrows
- * its response from this value — see `TableController::columns()`.
+ * `AttributeScopedTableDefinition` (`request-management`, spec 0064) and
+ * `OpportunityScopedTableDefinition` (`quotes`, spec 0067) actually narrow
+ * their response from these values — see `TableController::columns()`. The
+ * response SHAPE never changes either way (spec 0067 D-1/AC-009): only
+ * `request-management`'s `attr.*` columns are shape-dependent on scope.
  *
  * Authorization stays in the controller via the definition's viewAny, same
  * convention as every other Table FormRequest.
@@ -31,12 +34,20 @@ class TableColumnsRequest extends FormRequest
     {
         return [
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+            'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
         ];
     }
 
     public function productCategoryId(): ?int
     {
         $value = $this->validated('product_category_id');
+
+        return $value === null ? null : (int) $value;
+    }
+
+    public function opportunityId(): ?int
+    {
+        $value = $this->validated('opportunity_id');
 
         return $value === null ? null : (int) $value;
     }

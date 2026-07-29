@@ -3,6 +3,7 @@
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\CustomFieldDefinition;
@@ -69,6 +70,26 @@ return [
         'companies' => [
             'model' => Company::class,
         ],
+        'commission-configurations' => [
+            'model' => CommissionConfiguration::class,
+            'field_permission_resource' => 'commission-configurations',
+            'field_permissions' => [
+                'commission_configuration' => [
+                    'name' => 'name',
+                    'recipient_role' => 'recipient_role',
+                    'application_scope' => 'application_scope',
+                    'product_category_id' => 'product_category_id',
+                    'product_id' => 'product_id',
+                    'commission_type' => 'commission_type',
+                    'value' => 'value',
+                    'priority' => 'priority',
+                    'valid_from' => 'valid_from',
+                    'valid_until' => 'valid_until',
+                    'status' => 'status',
+                    'internal_note' => 'internal_note',
+                ],
+            ],
+        ],
         'company-sites' => [
             'model' => CompanySite::class,
             'relations' => ['personalData', 'personalData.contacts', 'personalData.addresses'],
@@ -112,6 +133,19 @@ return [
         ],
         'quotes' => [
             'model' => Quote::class,
+            'relations' => ['lines.commissions'],
+            'field_permission_resource' => 'quotes',
+            'field_permissions' => [
+                'quote_line_commission' => [
+                    '__subject' => 'commissions',
+                    'recipient_type' => 'commission_recipient',
+                    'recipient_id' => 'commission_recipient',
+                    'commission_type' => 'commission_type',
+                    'value' => 'commission_value',
+                    'calculated_amount' => 'commission_value',
+                    'internal_note' => 'commission_internal_note',
+                ],
+            ],
         ],
         'referent-types' => [
             'model' => ReferentType::class,

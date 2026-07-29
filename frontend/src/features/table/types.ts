@@ -303,6 +303,17 @@ export interface SsrmSortModelItem {
   sort: 'asc' | 'desc'
 }
 
+/**
+ * Row-set scope narrowing a domain's rows/values/export requests to one
+ * parent record (spec 0067 D-1, e.g. an Opportunity's Quotes panel). Distinct
+ * from `TableConfigScope` (`use-table-config.ts`): that one selects a config
+ * SHAPE and enters the config's query key; this one selects a ROW SET and
+ * never enters any query key, because the config is identical scoped or not.
+ */
+export interface TableRowScope {
+  opportunityId?: number
+}
+
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
 export interface TableRowsPayload {
   startRow: number
@@ -327,6 +338,12 @@ export interface TableRowsPayload {
    * and any `attr.*` colId/filter key is rejected server-side.
    */
   productCategoryId?: number | null
+  /**
+   * Row-set scope to one parent record (spec 0067 D-1, `TableRowScope`), e.g.
+   * an Opportunity's Quotes panel. Sent only when the caller passes a
+   * `rowScope` with a value; a no-op for every domain but `quotes`.
+   */
+  opportunityId?: number | null
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */
@@ -362,6 +379,8 @@ export interface TableColumnValuesPayload {
    * attributes. Omitted for every native/`custom.*` column.
    */
   productCategoryId?: number | null
+  /** Row-set scope to one parent record (spec 0067 D-1), same rule as above. */
+  opportunityId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

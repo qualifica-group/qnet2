@@ -3,6 +3,7 @@
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
+use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
@@ -57,6 +58,7 @@ return [
         'roles' => RolesAuthorization::class,
         'business-functions' => BusinessFunctionsAuthorization::class,
         'companies' => CompaniesAuthorization::class,
+        'commission-configurations' => CommissionConfigurationsAuthorization::class,
         'company-sites' => CompanySitesAuthorization::class,
         'operational-sites' => OperationalSitesAuthorization::class,
         'referent-types' => ReferentTypesAuthorization::class,

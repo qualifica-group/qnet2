@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { HandCoins, Trash2 } from 'lucide-react'
 import type { FieldError } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,9 @@ import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/q
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
+import { QuoteCommissionsDialog } from '@/features/quotes/quote-commissions-dialog'
+import { useResourcePermissions } from '@/features/authorization/permissions'
+import { quoteLineGridClass } from './quote-line-grid'
 
 /** Per-row validation errors this component wires to the accessible triad (AC-075). */
 export interface QuoteLineRowErrors {
@@ -41,6 +44,7 @@ interface QuoteVatRateForSelectItem extends ForSelectItem {
 
 interface QuoteLineRowProps {
   index: number
+  variant?: 'revenue' | 'cost'
   row: QuoteLineFormValues
   disabled: boolean
   /** `undefined` = unfiltered picker (Cost tab always, Offer tab once unlocked). An empty array locks it with nothing to scope to. */
@@ -51,7 +55,10 @@ interface QuoteLineRowProps {
   /** Feeds the shared VAT-percent cache when the user manually picks a rate the row hasn't seen yet (AC-071). Omitted in call sites that don't need it (e.g. tests exercising unrelated behaviour). */
   rememberVatRatePercent?: (vatRateId: number, percent: number) => void
   error?: QuoteLineRowErrors
-  onChangeProduct: (productId: number | null, item: QuoteProductForSelectItem | null) => void
+  onChangeProduct: (
+    productId: number | null,
+    item: QuoteProductForSelectItem | null,
+  ) => void | boolean | Promise<void | boolean>
   onChangeField: (patch: Partial<QuoteLineFormValues>) => void
   onRemove: () => void
 }
@@ -60,9 +67,6 @@ interface QuoteLineRowProps {
 function numberInputValue(value: number | null): string {
   return value === null ? '' : String(value)
 }
-
-const ROW_GRID_CLASS =
-  'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_128px_140px_90px_90px_100px_36px] items-start gap-2 px-2 py-2'
 
 /**
  * One `offer_lines`/`cost_lines` row (D-11): product picker, quantity/unit
@@ -78,6 +82,7 @@ const ROW_GRID_CLASS =
  */
 export function QuoteLineRow({
   index,
+  variant = 'cost',
   row,
   disabled,
   categoryIds,
@@ -91,8 +96,10 @@ export function QuoteLineRow({
   onRemove,
 }: QuoteLineRowProps) {
   const { t } = useTranslation()
+  const { field: fieldPermission } = useResourcePermissions()
   const rowId = useId()
   const [pickedCode, setPickedCode] = useState<string | null>(knownProduct?.code ?? null)
+  const [commissionsOpen, setCommissionsOpen] = useState(false)
 
   const productSelectDisabled = disabled || (categoryIds !== undefined && categoryIds.length === 0)
   const quantityErrorId = `${rowId}-quantity-error`
@@ -109,15 +116,22 @@ export function QuoteLineRow({
     ? { id: knownVatRate.id, label: knownVatRate.name }
     : null
 
-  const handleProductChange = (productId: number | null, item: QuoteProductForSelectItem | null) => {
-    setPickedCode(item?.meta.code ?? null)
-    onChangeProduct(productId, item)
+  const handleProductChange = async (
+    productId: number | null,
+    item: QuoteProductForSelectItem | null,
+  ) => {
+    if ((await onChangeProduct(productId, item)) !== false) {
+      setPickedCode(item?.meta.code ?? null)
+    }
   }
 
   const code = row.product_id === null ? null : (pickedCode ?? knownProduct?.code ?? null)
+  const collectionPermission = fieldPermission('commissions')
+  const canViewCommissions = collectionPermission.visible
+  const canEditCommissions = collectionPermission.editable && !collectionPermission.disabled
 
   return (
-    <div className={cn(ROW_GRID_CLASS, 'border-b last:border-b-0')}>
+    <div className={cn(quoteLineGridClass(variant), 'items-start border-b px-2 py-2 last:border-b-0')}>
       <div className="flex flex-col gap-1">
         <QuoteProductSelect
           value={row.product_id}
@@ -207,6 +221,32 @@ export function QuoteLineRow({
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.net)}</span>
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.vat)}</span>
       <span className="pt-2 text-right text-xs font-medium tabular-nums">{formatQuoteAmount(amounts.total)}</span>
+
+      {variant === 'revenue' && canViewCommissions ? (
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('quotes.form.commissions.action', { n: index + 1 })}
+            disabled={row.product_id === null}
+            onClick={() => setCommissionsOpen(true)}
+          >
+            <HandCoins aria-hidden="true" />
+          </Button>
+          {commissionsOpen ? <QuoteCommissionsDialog
+            open={commissionsOpen}
+            onOpenChange={setCommissionsOpen}
+            lineNumber={index + 1}
+            productName={knownProduct?.name ?? t('quotes.form.commissions.productFallback')}
+            quantity={row.quantity}
+            unitPrice={row.unit_price}
+            commissions={row.commissions ?? []}
+            disabled={disabled || !canEditCommissions}
+            onSave={(commissions) => onChangeField({ commissions })}
+          /> : null}
+        </>
+      ) : variant === 'revenue' ? <span /> : null}
 
       <Button
         type="button"

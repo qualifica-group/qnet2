@@ -1,0 +1,565 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0067 — Componente Offerte nella view Opportunita'.
+  Contract-first: la shape sotto e' congelata PRIMA del dispatch.
+  PREMESSA VERIFICATA: il modulo Offerte (spec 0065) e' GIA' implementato per intero
+  (migration, model, service, policy, resource, controller, route, TableDefinition,
+  field permissions, form create/edit/view, activity log). Questa spec NON lo ricrea:
+  aggiunge (a) la capacita' di scopare una tabella backend-driven su un record padre,
+  che oggi non esiste in forma generica, e (b) la vista contestuale nella detail
+  dell'Opportunita' che la consuma.
+-->
+<spec id="0067-opportunity-quotes-panel" status="draft" owner="utente" date="2026-07-29">
+
+  <goal>
+    Nella view di dettaglio dell'Opportunita' compare un pannello "Offerte" che elenca tutte e
+    sole le Offerte di quell'Opportunita' in una tabella backend-driven, e permette di crearne,
+    consultarne, modificarne ed eliminarne senza abbandonare il contesto dell'Opportunita'. Il
+    pannello e' una VISTA CONTESTUALE del modulo Offerte: stessa `TableDefinition`, stesse
+    colonne, stessi renderer, stesse azioni, stesse policy, stesso form. Nessuna logica parallela.
+  </goal>
+
+  <context>
+    <!-- Nomi e righe verificati nel repo il 2026-07-29, non ipotizzati. -->
+    <item>Modulo Offerte completo: `quotes` in `backend/config/tables.php:83` ->
+      `App\Tables\QuotesTableDefinition`; colonne in `App\Tables\Quotes\QuoteColumnCatalog`
+      (`code`, `title`, `opportunity`, `quote_status`, `commercial`, `reporter`, `supervisor`,
+      `revenue_net`, `cost_net`, `margin_net`, `created_at`); azioni `view`/`edit`/`delete`/
+      `activity` (`QuoteColumnCatalog:128-164`) gate-ate per riga da `actionsFor()`
+      (`QuotesTableDefinition:181-202`); `authorizeViewAny()` NON overridato -> default
+      `Gate::allows('viewAny', Quote::class)` -> permesso `quotes.viewAny`
+      (`AbstractTableDefinition:48-51`).</item>
+    <item>Relazione: `quotes.opportunity_id` esiste, NOT NULL, FK `constrained('opportunities')
+      ->restrictOnDelete()`, con indice esplicito
+      (`2026_07_29_100200_create_quotes_table.php:43` e `:56`). `Quote::opportunity()` BelongsTo
+      (`Quote.php:63`). NON esiste `Opportunity::quotes()`: nessuna occorrenza in
+      `Opportunity.php`. Il vincolo inverso oggi vive solo a livello DB.</item>
+    <item>Immutabilita': `UpdateQuoteRequest::rules()` dichiara `opportunity_id => ['prohibited']`
+      (`UpdateQuoteRequest.php:51`); `QuotesAuthorization::fieldPermissionCeiling()` rende
+      `opportunity_id` editabile solo quando `$model === null`, readonly dopo
+      (`QuotesAuthorization.php:81`). `StoreQuoteRequest` lo richiede
+      (`required|integer|exists:opportunities,id`, `StoreQuoteRequest.php:51`).</item>
+    <item>Nessun meccanismo generico di scoping tabellare. `TableDefinition::baseQuery()` e'
+      SENZA argomenti; l'unico precedente e' il decorator
+      `App\Tables\RequestManagement\AttributeScopedTableDefinition` (setter
+      `scopeToProductCategory()` :98 + `whereHas` in `baseQuery()` :116-134), composto per il solo
+      domain `request-management` in `TableRegistry::wrapIfAttributeScoped()` :111-123, con il
+      parametro `productCategoryId` whitelistato in `TableRowsRequest:85`,
+      `TableValuesRequest:66` e `product_category_id` in `TableColumnsRequest:33`, applicato dal
+      controller in `columns()` :65, `rows()` :195, `values()` :259, `saveFilters()` :130.</item>
+    <item>`QuotesTableDefinition` e' avvolto in `CustomFieldAwareTableDefinition` (quotes e'
+      custom-fieldable, `TableRegistry::wrapIfCustomFieldable()` :85-105): qualsiasi nuovo
+      decorator si compone SOPRA quello, e il setter va invocato sull'istanza restituita da
+      `TableRegistry::resolve()` (che e' il decorator esterno), esattamente come fa
+      `TableRowsRequest::definition()` :150-164 con l'`instanceof`.</item>
+    <item>Export asincrono: `ExportController::store()` congela
+      `$request->safe()->only(['columns','sortModel','filterModel','search'])` in
+      `ExportRun::state` (JSON) e il job ricostruisce la query DOPO, in
+      `ExportService::generate()` Step 2, ri-risolvendo la definition da `$run->resource`.
+      `CreateExportRequest` NON accetta oggi ne' `advancedFilters` ne' alcuno scope.</item>
+    <item>Persistenza per-utente chiavata `(user_id, domain)`: `TablePreferenceService:114-117`,
+      unique `(user_id,domain)` su `user_table_preferences` e `user_table_filters`, unique
+      `(user_id,domain,name)` su `table_filter_views`. Nessun segmento di contesto nello schema
+      (D-4).</item>
+    <item>Frontend tabella: `TableView` (`frontend/src/features/table/table-view.tsx:116`), props
+      in `TableViewProps` :46-100, handle imperativo `TableViewHandle {refresh, clearSelection}`
+      :39-44; righe SSRM FUORI da TanStack Query (dichiarato :155-158), refresh via
+      `gridApi.refreshServerSide({purge:true})` :167-169. Il totale righe live esiste gia' come
+      `toolbar.rowCount` (`use-table-toolbar-state.ts:58`, alimentato da
+      `onRowCountChanged={toolbar.setRowCount}` in `table-view.tsx:323`) ma NON e' esposto al
+      chiamante. `scope?: TableConfigScope` (`use-table-config.ts:5-8`) e' lo scope della CONFIG
+      colonne, non delle righe.</item>
+    <item>Frontend valori set-filter: `components/data-table/column-filters.ts:92` chiama
+      `fetchTableColumnValues(domain, {...})` e vi inoltra gia' `productCategoryId`
+      (`TableColumnValuesPayload`, `features/table/types.ts:353-365`).</item>
+    <item>Detail Opportunita': `OpportunityDetailView`
+      (`frontend/src/features/opportunities/opportunity-detail.tsx:133-164`), montata sia dalla
+      pagina `/opportunities/:id` (`ModuleDetailPage`, rotta generata da
+      `module-routes.tsx:18`) sia dallo Sheet di `useModuleOpener` :170-183. Il modulo
+      `opportunities` ha `defaultMode: OPEN_MODE_MODAL` (`opportunity-screens.tsx:183`).
+      Nessun registry di sezioni: e' JSX statico; i figli di `<RecordCanvas>` sono
+      `opportunity-detail.tsx:139-161`. Kit grafico: `components/detail/record-panel.tsx`
+      (`RecordCard`, `RecordCardHeader`, `RecordSection` con slot `action` :118).</item>
+    <item>Modulo Offerte frontend: `QUOTES_DOMAIN = 'quotes'` (`features/quotes/api.ts:12`),
+      adapter di pagina `QuotesTable` (`quotes-table.tsx:29`), renderer
+      `quoteColumnRenderers` (`column-renderers.tsx:20`), `deleteQuote` (`api.ts:60`),
+      `moduleScreen` con `defaultMode: OPEN_MODE_PAGE` (`quote-screens.tsx:105-112`).
+      `QuoteFormMode = {type:'create'} | {type:'edit'; quote}` (`types.ts:185`): NON prevede
+      parametri di creazione, e `QuoteFormScreen` (`quote-screens.tsx:63-68`) ignora
+      `mode.params`.</item>
+    <item>Parametri di creazione preimpostati (spec 0045): `ModuleCreateParams =
+      Record<string,string|number>` (`features/modules/types.ts:44`),
+      `useModuleOpener().openCreateWith(params)` (`use-module-opener.tsx:98-108`), letti in
+      pagina da `ModuleFormPage` :93-95. Unico consumatore attuale:
+      `opportunity-screens.tsx:82` (`mode.params?.lead_id`), prodotto da
+      `use-lead-conversion.tsx:34-41`.</item>
+    <item>Cancellazione: `quote_lines.quote_id` e' `cascadeOnDelete`
+      (`...100300:38`) e `quote_line_commissions.quote_line_id` e' `cascadeOnDelete`
+      (`...110100:13`). Nessuna entita' oggi impedisce la cancellazione di un'Offerta:
+      `QuoteService::delete()` :156-159 e' un `$quote->delete()` secco e il controller risponde
+      204.</item>
+  </context>
+
+  <decisions>
+    <!-- Decisioni prese dall'utente in planning il 2026-07-29: vincolanti. -->
+    <decision id="D-1">Lo scoping della tabella su un record padre si implementa come DECORATOR
+      dedicato `App\Tables\Quotes\OpportunityScopedTableDefinition` sul modello di
+      `AttributeScopedTableDefinition`, con un solo parametro whitelistato `opportunityId`
+      (rows/values) e `opportunity_id` (columns), NON come astrazione generica di scope
+      multi-chiave. Motivo: e' il secondo caso concreto in tutto il codebase; una allow-list
+      generica `scope: {chiave: valore}` sarebbe un pattern speculativo su due call-site
+      (`engineering.md §1.3`). Al TERZO dominio che richiede scoping si generalizza, non prima.
+      A differenza di `AttributeScopedTableDefinition`, questo decorator tocca SOLO `baseQuery()`:
+      colonne, allow-list sort/filter/search e catalogo azioni sono identici scopati o non
+      scopati, quindi NON serve alcun equivalente di `scopeToAllProductCategories()` e gli
+      endpoint di persistenza (`preferences`, `filters`) restano intatti.</decision>
+    <decision id="D-2">Il pannello si renderizza in ENTRAMBI i contesti in cui vive la detail
+      Opportunita' (pagina dedicata e Sheet laterale), senza distinguerli: unico albero JSX,
+      nessuna duplicazione. Conseguenza accettata: nello Sheet a larghezza minima la toolbar
+      della griglia e' compressa; si mitiga con la densita' compatta di `ui-design.md §2` e con
+      l'altezza contenuta del pannello, non con un secondo componente.</decision>
+    <decision id="D-3">Dal pannello, create/view/edit di un'Offerta si aprono SEMPRE in Sheet
+      sopra l'Opportunita', forzando `OPEN_MODE_MODAL` e ignorando la preferenza di open mode
+      dell'utente per il solo contesto embedded. Dalla pagina lista Offerte il comportamento
+      resta quello risolto da `resolveOpenMode` (oggi pagina). I componenti montati sono gli
+      stessi del registry (`QuoteFormScreen`/`QuoteDetailScreen`): si forza solo il mode
+      risolto.</decision>
+    <decision id="D-4">Preferenze colonne, stato filtri persistito e viste salvate restano
+      chiavate `(user_id, domain)` e quindi CONDIVISE fra la pagina Offerte e il pannello.
+      Nessuna migrazione, nessun segmento di contesto. Conseguenza accettata e documentata:
+      nascondere una colonna nel pannello la nasconde anche nella pagina, e un `filterModel`
+      salvato sulla pagina viene rigiocato dentro il pannello (in AND con lo scope
+      Opportunita', che non e' un filtro utente e non e' rimovibile).</decision>
+    <decision id="D-5">L'export lanciato dal pannello e' scopato: `POST /api/exports/{domain}`
+      accetta `opportunityId`, lo congela in `ExportRun::state` e `ExportService::generate()`
+      lo riapplica prima di costruire la query. Senza questo, il file conterrebbe tutte le
+      Offerte del gestionale.</decision>
+    <decision id="D-6">Lo scope NON e' un filtro utente: non compare fra i filtri avanzati, non
+      e' resettabile dalla UI, non e' persistito nel `filterState`. Viaggia come parametro di
+      richiesta e viene applicato server-side. L'advanced filter `opportunity`
+      (`QuoteAdvancedFilterCatalog:24-35`) resta disponibile e utilizzabile, e si compone in AND
+      con lo scope: non lo sostituisce e non lo puo' allargare.</decision>
+    <decision id="D-7">Il pannello NON introduce row-level scoping per utente. Chi ha
+      `quotes.viewAny` continua a vedere tutte le Offerte dell'Opportunita' che sta guardando,
+      esattamente come oggi le vede tutte nella pagina lista. Il requisito "l'utente visualizza
+      esclusivamente le Offerte a cui e' autorizzato" e' quindi soddisfatto al livello oggi
+      esistente (permesso di modulo + policy per riga sulle azioni); restringere la visibilita'
+      per assegnatario sarebbe un cambio di comportamento dell'INTERO modulo Offerte, fuori
+      scope.</decision>
+    <decision id="D-8">Nessun guard aggiuntivo sulla cancellazione. Le entita' citate nel brief
+      (ordini, contratti, fatture) non esistono nel dominio; le commissioni di riga cascadano
+      (`quote_line_commissions`). Il pannello riusa `deleteQuote` e la sua semantica attuale
+      (cancellazione reale, 204, righe e commissioni in cascata). Se e quando nascera' un'entita'
+      che deve bloccare, il guard va in `QuoteService::delete()` — un solo punto, ereditato dal
+      pannello senza modifiche.</decision>
+    <decision id="D-9">Il contatore nell'header del pannello e lo stato vuoto usano il totale
+      SSRM gia' calcolato (`pagination.total`), esposto da `TableView` tramite una nuova prop
+      opzionale `onRowCountChanged`. Nessuna query di conteggio aggiuntiva. Lo stato vuoto
+      SOSTITUISCE la griglia solo quando il totale e' 0 E non c'e' alcun filtro/ricerca attivo;
+      con filtri attivi e zero risultati resta la griglia con il suo overlay, perche' "nessuna
+      Offerta" e "nessun risultato per questo filtro" sono due messaggi diversi.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend — decorator `App\Tables\Quotes\OpportunityScopedTableDefinition` che avvolge
+        il domain `quotes` (composto in `TableRegistry`), con setter `scopeToOpportunity(?int)` e
+        override del solo `baseQuery()` (`where('opportunity_id', $id)`); passthrough puro quando
+        lo scope e' null.</item>
+      <item>Backend — parametro `opportunityId` whitelistato in `TableRowsRequest` e
+        `TableValuesRequest`, `opportunity_id` in `TableColumnsRequest`, applicato in
+        `TableController::columns()`, `rows()`, `values()` con un helper gemello di
+        `scopeToProductCategory()`.</item>
+      <item>Backend — `opportunityId` accettato da `CreateExportRequest`, congelato nello state
+        dell'`ExportRun` da `ExportController::store()` e riapplicato in
+        `ExportService::generate()` prima di `TableQueryBuilder::build()` (D-5).</item>
+      <item>Backend — relazione `Opportunity::quotes(): HasMany` (il rovescio esplicito richiesto
+        dal brief) e conteggio `quotes_count` esposto da `OpportunityResource` per il caricamento
+        iniziale del contatore.</item>
+      <item>Frontend — prop `rowScope?: TableRowScope` (`{opportunityId?: number}`) su `TableView`,
+        inoltrata al datasource SSRM (`createSsrmDatasource`), al payload dei valori set-filter
+        (`column-filters.ts`) e al payload di export (`export-dialog.tsx`); prop
+        `onRowCountChanged?: (count: number|null) => void` (D-9). Additive: ogni chiamante
+        esistente resta byte-identico.</item>
+      <item>Frontend — componente `OpportunityQuotesSection` in `features/opportunities/`, montato
+        come card autonoma fra `OpportunityDetailCollaboration` e `RecordMeta` in
+        `opportunity-detail.tsx`: header con titolo, contatore e bottone "Crea Offerta" gated da
+        `quotes.create`, `TableView domain="quotes"` con `rowScope`, stato vuoto, gestione delete
+        e dialog activity — cioe' lo stesso corredo di `QuotesTable`, riusandone renderer,
+        `deleteQuote` e handler di azione.</item>
+      <item>Frontend — apertura forzata in Sheet dal pannello (D-3) e passaggio di
+        `opportunity_id` al form in creazione via `openCreateWith` (meccanismo spec 0045 gia'
+        esistente): `QuoteFormMode` estesa con `params`, `QuoteFormScreen` che li legge,
+        `useQuoteForm` che precompila `opportunity_id` e lo blocca (`forceDisabled` su
+        `RelationSelectField`, prop gia' esistente :36).</item>
+      <item>Frontend — i18n it/en delle nuove chiavi (`opportunities.detail.quotes.*`).</item>
+      <item>Test Pest (backend) e Vitest (frontend) mappati 1:1 sugli acceptance criteria, inclusi
+        i test di non-regressione sui domini non scopati.</item>
+    </in>
+    <out>
+      <item>Qualsiasi modifica a migration, model, service, policy, resource, FormRequest o
+        TableDefinition del modulo Offerte oltre a quanto elencato in `<in>`: il modulo e' gia'
+        completo e il pannello lo consuma cosi' com'e'.</item>
+      <item>Astrazione generica di scope multi-chiave per il framework tabellare (D-1).</item>
+      <item>Segmentazione per contesto di preferenze colonne, filtri persistiti e viste salvate
+        (D-4): nessuna migrazione su `user_table_preferences`, `user_table_filters`,
+        `table_filter_views`.</item>
+      <item>Row-level scoping per utente sulle Offerte (D-7).</item>
+      <item>Guard di cancellazione basati su ordini/contratti/fatture/commissioni contabilizzate:
+        entita' inesistenti nel dominio (D-8).</item>
+      <item>Scollegamento di un'Offerta dall'Opportunita' senza cancellarla: `opportunity_id` e'
+        NOT NULL e immutabile.</item>
+      <item>Modifica di `opportunity_id` di un'Offerta esistente, e spostamento di un'Offerta fra
+        Opportunita'.</item>
+      <item>Pannello Offerte in altre view (Registry, Referent, Lead), pannello stats,
+        inline cell editing dal pannello, import massivo dal pannello.</item>
+      <item>Aggregazione economica delle Offerte a livello di Opportunita' (somma dei margini nei
+        KPI di `OpportunityDetailStats`) e qualsiasi effetto delle Offerte su
+        `opportunities.estimated_value` o sullo stato dell'Opportunita'.</item>
+      <item>Refresh in tempo reale (websocket/polling) del pannello per mutazioni fatte da altri
+        utenti: l'aggiornamento e' quello del proprio ciclo CRUD.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- =============== TABELLA SCOPATA =============== -->
+
+    <endpoint method="POST" path="/api/tables/quotes/rows">
+      <request>
+        Contratto generico esistente (`TableRowsRequest`: startRow, endRow, sortModel,
+        filterModel, search, advancedFilters) PIU' la chiave additiva:
+
+        opportunityId?: int|null   // sometimes, nullable, integer, exists:opportunities,id
+
+        Semantica: quando valorizzata, la query e' vincolata a
+        `quotes.opportunity_id = opportunityId` PRIMA di filtri, ricerca, filtri avanzati e
+        ordinamento. Il vincolo non e' esprimibile ne' rimovibile dal client (D-6). Assente o
+        null => comportamento odierno identico (tutte le Offerte).
+        La chiave e' un NO-OP per ogni altro domain, esattamente come `productCategoryId` lo e'
+        per i domini diversi da `request-management`.
+      </request>
+      <response status="200">
+        `paginatedResponse()` invariata: `{ items, export_link, pagination: { total, offset,
+        limit, total_pages } }`. `items` ha la stessa shape di oggi (`QuotesTableDefinition
+        ::mapRow()` + `actions` + `editable`). `pagination.total` conta SOLO le Offerte
+        dell'Opportunita' scopata.
+      </response>
+      <errors>
+        403 senza `quotes.viewAny`;
+        404 domain inesistente;
+        422 `opportunityId` non intero o inesistente, o payload generico non valido.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/quotes/values">
+      <request>
+        Contratto generico esistente (`TableValuesRequest`: columnId, search, limit, filterModel)
+        PIU' `opportunityId?: int|null` con la stessa regola di validazione e la stessa semantica.
+      </request>
+      <response status="200">
+        `{ success, message, data: { values: string[] } }` invariata. I valori distinti sono
+        calcolati sulla query SCOPATA: il set filter di una colonna nel pannello propone solo i
+        valori presenti fra le Offerte di quell'Opportunita'.
+      </response>
+      <errors>403 senza `quotes.viewAny`, 422 come sopra.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/quotes/columns">
+      <request>
+        Query string generica esistente PIU' `opportunity_id?: int` (accettato e validato per
+        simmetria con `product_category_id`).
+      </request>
+      <response status="200">
+        Config INVARIATA rispetto a oggi, scopata o non scopata: colonne, filtri, catalogo azioni,
+        `defaultSort`, `defaultPagination`, `searchable`, `advancedFilters`,
+        `appliedAdvancedFilters`, `customized`, `filterState`, `filtersCustomized` sono
+        byte-identici. Lo scope non altera la forma della tabella (D-1), solo l'insieme di righe.
+      </response>
+      <errors>403 senza `quotes.viewAny`, 422 `opportunity_id` inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="POST|DELETE" path="/api/tables/quotes/{preferences|filters}">
+      <request>Contratto generico esistente, INVARIATO. Lo scope non viene inviato e non e'
+        accettato: colonne e filtri persistiti sono per `(user_id, domain)` (D-4) e le allow-list
+        non dipendono dallo scope, quindi non esiste il rischio di 422 che per
+        `request-management` ha richiesto `scopeToAllProductCategories()`.</request>
+      <response status="200">Invariata.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/quotes/bulk-delete">
+      <request>`{ ids: int[] }` INVARIATO. Non serve scope: il servizio riautorizza ogni riga via
+        policy e gli id provengono comunque dalla griglia scopata.</request>
+      <response status="200">Invariata.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <!-- =============== EXPORT SCOPATO =============== -->
+
+    <endpoint method="POST" path="/api/exports/quotes">
+      <request>
+        Contratto generico esistente (`format`, `columns[].{colId,header}`, `sortModel`,
+        `filterModel`, `search`) PIU':
+
+        opportunityId?: int|null   // sometimes, nullable, integer, exists:opportunities,id
+
+        Il valore viene congelato in `ExportRun::state` insieme al resto (la colonna e' JSON:
+        nessuna migrazione) e riapplicato dal job prima di costruire la query, cosi' che il file
+        generato contenga esattamente le righe che la griglia mostrava (D-5).
+      </request>
+      <response status="201">
+        `{ success, message, data: { export_run: {...} } }` invariata.
+      </response>
+      <errors>403 senza `quotes.export`, 404 domain inesistente, 422 `opportunityId` inesistente.</errors>
+    </endpoint>
+
+    <!-- =============== OPPORTUNITA': ROVESCIO DELLA RELAZIONE =============== -->
+
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <response status="200">
+        Shape ESISTENTE piu' UN SOLO campo additivo in `data`:
+
+        quotes_count: int   // numero di Offerte collegate, da withCount
+
+        Nessun campo esistente cambia nome, tipo o posizione. Il pannello lo usa come valore
+        iniziale del contatore prima che la griglia riporti il proprio totale; da quel momento
+        prevale `pagination.total` (D-9).
+      </response>
+      <errors>403 senza `opportunities.view`, 404 inesistente.</errors>
+    </endpoint>
+
+    <!-- =============== CREAZIONE OFFERTA DAL PANNELLO =============== -->
+
+    <endpoint method="POST" path="/api/quotes">
+      <request>
+        Contratto ESISTENTE, invariato. Il pannello si limita a inviare `opportunity_id` uguale
+        all'Opportunita' corrente. Nessuna nuova regola server-side: `opportunity_id` e' gia'
+        `required|integer|exists:opportunities,id` (`StoreQuoteRequest:51`) e gia' immutabile in
+        update (`prohibited`, `UpdateQuoteRequest:51`).
+      </request>
+      <response status="201">Invariata (`QuoteResource` + `permissions`).</response>
+      <errors>Invariati: 403 senza `quotes.create`, 422 validazione.</errors>
+    </endpoint>
+
+    <!-- =============== CONTRATTO FRONTEND (props pubbliche) =============== -->
+
+    <endpoint method="N/A" path="frontend: TableView props (additive)">
+      <request>
+        interface TableRowScope { opportunityId?: number }
+
+        TableViewProps additive:
+          rowScope?: TableRowScope
+          onRowCountChanged?: (count: number | null) => void
+
+        `rowScope` e' distinto da `scope: TableConfigScope`: `scope` seleziona una FORMA di
+        config (e entra nella query key `tableKeys.config`), `rowScope` seleziona un INSIEME DI
+        RIGHE e NON entra in alcuna query key, perche' la config e' identica scopata o no (D-1).
+        `rowScope` e' letto come primitiva (`rowScope?.opportunityId`) in ogni `useMemo`
+        a valle, così che un object literal fresco a ogni render non ricostruisca il datasource
+        — stesso accorgimento gia' documentato per `scope` in `table-view.tsx:136-139`.
+        Entrambe le prop sono opzionali: i 20+ chiamanti esistenti non cambiano.
+      </request>
+      <response status="N/A">
+        Il datasource inoltra `opportunityId` nel body di `/rows` solo quando `!= null`; il
+        payload dei valori set-filter e quello di export lo inoltrano con la stessa regola.
+      </response>
+      <errors>N/A</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <schema>
+    <table name="nessuna modifica di schema">
+      Questa spec NON tocca lo schema. `quotes.opportunity_id` esiste gia' (NOT NULL, FK
+      restrictOnDelete, indicizzato): l'indice esistente e' esattamente quello che serve al
+      `where('opportunity_id', ?)` del decorator. `export_runs.state` e' JSON: `opportunityId`
+      vi entra senza migrazione. `Opportunity::quotes()` e' una relazione di codice, non di
+      schema.
+    </table>
+  </schema>
+
+  <acceptance_criteria>
+
+    <!-- Backend: scoping delle righe -->
+    <criterion id="AC-001">Date 3 Offerte sull'Opportunita' A e 2 sull'Opportunita' B, quando si
+      chiama `POST /api/tables/quotes/rows` con `opportunityId` = A, allora `items` contiene
+      esattamente le 3 Offerte di A e `pagination.total` e' 3.</criterion>
+    <criterion id="AC-002">Nelle stesse condizioni, omettendo `opportunityId` la risposta contiene
+      tutte e 5 le Offerte: il comportamento odierno della pagina lista e' invariato.</criterion>
+    <criterion id="AC-003">Con `opportunityId` = A e un `filterModel` su `code` che nella
+      Opportunita' B avrebbe prodotto una riga, allora la risposta e' vuota: lo scope si compone
+      in AND col filtro e il filtro non puo' allargarlo.</criterion>
+    <criterion id="AC-004">Con `opportunityId` = A e `advancedFilters: { opportunity: [B.id] }`,
+      allora la risposta e' vuota (AND, D-6): l'advanced filter non puo' scavalcare lo
+      scope.</criterion>
+    <criterion id="AC-005">Con `opportunityId` = A e una `search` che matcha un'Offerta di B, la
+      risposta non contiene quell'Offerta.</criterion>
+    <criterion id="AC-006">`opportunityId` non numerico o riferito a un'Opportunita' inesistente
+      produce 422; `opportunityId: null` e' accettato e si comporta come assente.</criterion>
+    <criterion id="AC-007">Un utente senza `quotes.viewAny` riceve 403 su
+      `POST /api/tables/quotes/rows` anche passando `opportunityId`: lo scope non e' una scorciatoia
+      di autorizzazione.</criterion>
+    <criterion id="AC-008">`POST /api/tables/quotes/values` con `columnId: "quote_status"` e
+      `opportunityId` = A restituisce solo gli stati presenti fra le Offerte di A, non quelli
+      presenti solo in B.</criterion>
+    <criterion id="AC-009">`GET /api/tables/quotes/columns` restituisce una config identica campo
+      per campo con e senza `opportunity_id`: colonne, filtri, azioni, `searchable`,
+      `advancedFilters`, `defaultSort`, `defaultPagination`.</criterion>
+    <criterion id="AC-010">Le azioni per riga restano quelle della policy: con
+      `quotes.view`+`quotes.update` e senza `quotes.delete`, ogni riga scopata espone
+      `["view","edit"]` e mai `"delete"`.</criterion>
+
+    <!-- Backend: non-regressione del framework -->
+    <criterion id="AC-011">`POST /api/tables/users/rows` e `POST /api/tables/opportunities/rows`
+      con `opportunityId` valorizzato restituiscono lo stesso insieme di righe che restituiscono
+      senza quella chiave: e' un no-op per i domini non scopati.</criterion>
+    <criterion id="AC-012">`POST /api/tables/request-management/rows` con `productCategoryId`
+      continua a scopare per categoria come prima (il decorator preesistente non e' alterato
+      dalla nuova composizione in `TableRegistry`).</criterion>
+    <criterion id="AC-013">Salvare le preferenze colonne e il `filterModel` per il domain `quotes`
+      funziona identicamente a prima e non accetta ne' richiede alcuno scope; una preferenza
+      salvata resta valida sia nella pagina lista sia nel pannello (D-4).</criterion>
+    <criterion id="AC-014">La suite Pest esistente dei domini tabellari resta verde senza
+      modifiche ai test (il decorator e' passthrough quando lo scope e' null).</criterion>
+
+    <!-- Backend: export scopato -->
+    <criterion id="AC-015">`POST /api/exports/quotes` con `opportunityId` = A produce un
+      `ExportRun` il cui `state` contiene `opportunityId`, e il file generato contiene solo le
+      righe delle Offerte di A (header esclusi).</criterion>
+    <criterion id="AC-016">Lo stesso export senza `opportunityId` continua a contenere tutte le
+      Offerte: il contratto export preesistente e' invariato per ogni altro chiamante.</criterion>
+    <criterion id="AC-017">`opportunityId` inesistente su `POST /api/exports/quotes` produce 422 e
+      nessun `ExportRun` viene creato.</criterion>
+    <criterion id="AC-018">Un utente senza `quotes.export` riceve 403 anche passando
+      `opportunityId`.</criterion>
+
+    <!-- Backend: relazione e conteggio -->
+    <criterion id="AC-019">`Opportunity::quotes()` e' una `HasMany` verso `Quote` su
+      `opportunity_id`, e per un'Opportunita' con 3 Offerte restituisce 3 model
+      `Quote`.</criterion>
+    <criterion id="AC-020">`GET /api/opportunities/{opportunity}` espone `quotes_count` uguale al
+      numero di Offerte collegate (0 quando non ce ne sono), e nessun altro campo della response
+      cambia rispetto a oggi.</criterion>
+    <criterion id="AC-021">`GET /api/opportunities/{opportunity}` non introduce query N+1 per
+      `quotes_count`: il conteggio arriva da `withCount`, non da un caricamento della
+      collezione.</criterion>
+    <criterion id="AC-022">Un'Opportunita' con almeno un'Offerta continua a non essere
+      cancellabile (`restrictOnDelete`, comportamento preesistente confermato).</criterion>
+
+    <!-- Frontend: il pannello -->
+    <criterion id="AC-030">Nella detail di un'Opportunita' con 2 Offerte, il pannello "Offerte"
+      monta `TableView` con `domain="quotes"` e `rowScope={{opportunityId: <id>}}`, senza
+      dichiarare alcuna colonna lato client, e la richiesta righe inviata contiene
+      `opportunityId` uguale all'id dell'Opportunita'.</criterion>
+    <criterion id="AC-031">L'header del pannello mostra il contatore delle Offerte: parte da
+      `quotes_count` della detail e, appena la griglia riporta il totale, mostra
+      `pagination.total`.</criterion>
+    <criterion id="AC-032">Con un'Opportunita' senza Offerte e nessun filtro attivo, il pannello
+      mostra lo stato vuoto (messaggio + descrizione + bottone "Crea Offerta") al posto della
+      griglia; con un filtro attivo e zero risultati mostra la griglia e il suo overlay, non lo
+      stato vuoto (D-9).</criterion>
+    <criterion id="AC-033">Durante il caricamento il pannello mostra gli skeleton del design
+      system (gli stessi di `TableView`), non uno spinner ad-hoc; in caso di errore di config
+      mostra lo stato di errore con retry.</criterion>
+    <criterion id="AC-034">Il pannello e' presente sia quando la detail e' montata nella pagina
+      `/opportunities/:id` sia quando e' montata nello Sheet (D-2).</criterion>
+    <criterion id="AC-035">A 375px il pannello non produce scrollbar orizzontale sul body, il
+      testo lungo e' troncato e i target tap restano >= 24px; a 768px e 1024px non ci sono
+      sovrapposizioni.</criterion>
+
+    <!-- Frontend: permessi -->
+    <criterion id="AC-040">Il bottone "Crea Offerta" e' renderizzato solo con
+      `quotes.create`; senza il permesso non e' nel DOM (ne' nell'header ne' nello stato
+      vuoto).</criterion>
+    <criterion id="AC-041">Un utente senza `quotes.viewAny` non vede affatto il pannello nella
+      detail dell'Opportunita'.</criterion>
+    <criterion id="AC-042">Le azioni di riga mostrate nel pannello sono esattamente quelle che il
+      backend ha autorizzato per quella riga (`row.actions`), come nella pagina lista: nessun
+      catalogo di azioni duplicato lato pannello.</criterion>
+
+    <!-- Frontend: creazione con Opportunita' preimpostata -->
+    <criterion id="AC-050">Premendo "Crea Offerta" dal pannello si apre uno Sheet (non una
+      navigazione) contenente lo STESSO `QuoteFormScreen` del modulo, con
+      `mode = {type:'create', params:{opportunity_id: <id>}}`.</criterion>
+    <criterion id="AC-051">In quel form il campo Opportunita' e' precompilato con l'Opportunita'
+      corrente e non e' modificabile (disabilitato, con il nome visibile); il payload inviato a
+      `POST /api/quotes` contiene `opportunity_id` uguale a quell'id.</criterion>
+    <criterion id="AC-052">Nello stesso form i tre ruoli commerciali sono precompilati
+      dall'Opportunita' secondo le regole gia' esistenti (spec 0065 D-3), senza codice nuovo di
+      ereditarieta'.</criterion>
+    <criterion id="AC-053">Aprendo lo stesso form dalla pagina lista Offerte (senza params), il
+      campo Opportunita' resta vuoto e modificabile: il blocco vale solo nel contesto
+      embedded.</criterion>
+    <criterion id="AC-054">Dopo il salvataggio dello Sheet di creazione, la nuova Offerta compare
+      nella griglia del pannello senza ricaricare la pagina, e il contatore si
+      incrementa.</criterion>
+
+    <!-- Frontend: view / edit / delete -->
+    <criterion id="AC-060">L'azione `view` dal pannello apre l'Offerta in Sheet sopra
+      l'Opportunita' (nessuna navigazione a `/quotes/:id`), anche con la preferenza di open mode
+      dell'utente impostata su pagina (D-3).</criterion>
+    <criterion id="AC-061">L'azione `edit` dal pannello apre il form di modifica in Sheet e, dopo
+      il salvataggio, la riga corrispondente nella griglia mostra i valori aggiornati senza
+      ricaricare la pagina.</criterion>
+    <criterion id="AC-062">L'azione `delete` dal pannello chiede conferma, chiama
+      `DELETE /api/quotes/{id}`, mostra il toast di successo, rimuove la riga dalla griglia e
+      decrementa il contatore.</criterion>
+    <criterion id="AC-063">Un `delete` che il server rifiuta con 403 mostra il toast di errore
+      dedicato e lascia la riga in griglia.</criterion>
+    <criterion id="AC-064">Dalla pagina lista Offerte le stesse azioni continuano a rispettare la
+      preferenza di open mode dell'utente: il forcing e' confinato al pannello
+      (AC-060).</criterion>
+    <criterion id="AC-065">L'azione `activity` dal pannello apre il dialog di log attivita' della
+      stessa Offerta, riusando `ResourceActivityDialog` con `resource="quotes"`.</criterion>
+
+    <!-- Frontend: export e non-regressione -->
+    <criterion id="AC-070">L'export lanciato dal pannello invia `opportunityId` nel payload di
+      `POST /api/exports/quotes`; quello lanciato dalla pagina lista non lo invia.</criterion>
+    <criterion id="AC-071">Il set filter di una colonna nel pannello invia `opportunityId` nel
+      payload di `POST /api/tables/quotes/values`.</criterion>
+    <criterion id="AC-072">Ogni chiamante esistente di `TableView` (che non passa `rowScope` ne'
+      `onRowCountChanged`) continua a inviare payload righe/valori/export identici a prima: le
+      due prop sono additive e assenti dal payload quando non valorizzate.</criterion>
+    <criterion id="AC-073">La suite Vitest esistente resta verde senza modifiche ai test dei
+      moduli non toccati.</criterion>
+
+    <!-- i18n -->
+    <criterion id="AC-080">Tutte le stringhe del pannello passano da i18next e sono presenti in
+      `it` e `en` con le stesse chiavi: nessun literal hardcoded nel JSX.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza npm/composer.</item>
+    <item>Identificatori in inglese (classi, props, parametri di request, chiavi i18n); label UI
+      in italiano via i18next.</item>
+    <item>Autorizzazione server-side su ogni endpoint, invariata: `authorizeViewAny` della
+      definition per la tabella, policy per riga sulle azioni, policy sugli endpoint CRUD. Lo
+      scope e' un vincolo di INSIEME DI RIGHE, mai un sostituto dell'autorizzazione (AC-007,
+      AC-018).</item>
+    <item>Nessun `whereRaw`/`orderByRaw`. Lo scope e' un `where('opportunity_id', ?)`
+      parametrizzato su una colonna reale, mai su input grezzo. `opportunityId` e' validato con
+      `integer` + `Rule::exists` prima di raggiungere la query.</item>
+    <item>Il decorator e' passthrough puro quando lo scope e' null: nessun dominio esistente
+      cambia comportamento, nessuna allow-list si restringe o si allarga.</item>
+    <item>Nessuna migrazione, nessuna modifica a `user_table_preferences`,
+      `user_table_filters`, `table_filter_views`, `export_runs`.</item>
+    <item>Le prop nuove di `TableView` sono opzionali e additive: nessun chiamante esistente
+      viene modificato.</item>
+    <item>Nessuna logica di business nel JSX: il pannello delega lo stato a un custom hook, il
+      componente resta UI. Nessun `useEffect` + fetch per i dati.</item>
+    <item>File entro 300 righe (soft) / 500 (hard): il pannello si scompone in componente di
+      presentazione + hook, e non si gonfia `opportunity-detail.tsx` (oggi 164 righe) oltre
+      l'inserimento della card.</item>
+    <item>UI compatta secondo `ui-design.md §2`, superfici dai token della scala (la card del
+      pannello e' `bg-card` su `RecordCanvas` `bg-surface`), mai colori hard-coded. Riuso di
+      `components/detail/record-panel.tsx` e `components/ui/`: nessun componente di stile nuovo
+      se ne esiste uno equivalente.</item>
+    <item>Errori di campo con la triade accessibile dove applicabile; stato vuoto e contatore
+      annunciati correttamente (nessuno stato comunicato dal solo colore).</item>
+    <item>Test come Definition of Done, ESEGUITI: Pest per backend, Vitest per frontend, Pint e
+      `tsc --noEmit` puliti.</item>
+  </constraints>
+
+</spec>

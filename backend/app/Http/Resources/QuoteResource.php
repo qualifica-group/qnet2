@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\Quote;
+use App\Services\Commissions\QuoteCommissionPayloadRedactor;
+use App\Services\Commissions\QuoteCommissionSummaryCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,6 +34,9 @@ class QuoteResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $commissionPermissions = app(QuoteCommissionPayloadRedactor::class)
+            ->permissions($request->user(), $this->resource);
+
         return [
             'id' => $this->id,
             'code' => $this->code,
@@ -49,7 +54,10 @@ class QuoteResource extends JsonResource
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
-            'summary' => $this->summarizeTotals(),
+            'summary' => $this->summarizeTotals(
+                $commissionPermissions['commissions']->visible
+                    && $commissionPermissions['commission_value']->visible,
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -81,15 +89,21 @@ class QuoteResource extends JsonResource
      * net minus cost net, persisted as `margin_net` — may be negative,
      * AC-043, never clamped).
      *
-     * @return array{revenue: array{net: string, vat: string, gross: string}, cost: array{net: string, vat: string, gross: string}, margin: array{net: string}}
+     * @return array<string, array<string, string>>
      */
-    private function summarizeTotals(): array
+    private function summarizeTotals(bool $mayViewCommissions): array
     {
-        return [
+        $summary = [
             'revenue' => $this->amountTriplet($this->revenue_net, $this->revenue_vat),
             'cost' => $this->amountTriplet($this->cost_net, $this->cost_vat),
             'margin' => ['net' => $this->margin_net],
         ];
+
+        if ($mayViewCommissions) {
+            $summary['commissions'] = app(QuoteCommissionSummaryCalculator::class)->totals($this->resource);
+        }
+
+        return $summary;
     }
 
     /**

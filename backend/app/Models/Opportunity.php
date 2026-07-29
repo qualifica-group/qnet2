@@ -262,4 +262,17 @@ class Opportunity extends BaseModel
     {
         return $this->morphMany(Reward::class, 'source');
     }
+
+    /**
+     * The Quotes belonging to this opportunity (spec 0065/0067): the
+     * explicit inverse of `Quote::opportunity()`. The FK is already
+     * `restrictOnDelete` at the schema level, so an opportunity with at
+     * least one quote stays non-deletable regardless of this relation.
+     *
+     * @return HasMany<Quote, $this>
+     */
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
 }

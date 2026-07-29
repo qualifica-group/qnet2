@@ -42,6 +42,7 @@ const OpportunityStatusesPage = lazy(() => import('@/pages/opportunity-statuses-
 const OpportunityWorkflowsPage = lazy(() => import('@/pages/opportunity-workflows-page'))
 const QuoteStatusesPage = lazy(() => import('@/pages/quote-statuses-page'))
 const QuotesPage = lazy(() => import('@/pages/quotes-page'))
+const CommissionConfigurationsPage = lazy(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazy(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazy(() => import('@/pages/reward-types-page'))
 const RewardStatusesPage = lazy(() => import('@/pages/reward-statuses-page'))
@@ -217,6 +218,10 @@ export const router = createBrowserRouter([
           {
             path: 'quotes',
             element: <QuotesPage />,
+          },
+          {
+            path: 'commission-configurations',
+            element: <CommissionConfigurationsPage />,
           },
           {
             path: 'reward-types',

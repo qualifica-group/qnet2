@@ -83,6 +83,7 @@ function baseRun(overrides: Partial<ExportRun> = {}): ExportRun {
 function renderDialog(
   gridApi: GridApi<TableRow> | null = stubGridApi([{ colId: 'name', hide: false } as ColumnState]),
   onOpenChange = vi.fn(),
+  opportunityId?: number | null,
 ) {
   render(
     <ExportDialog
@@ -93,6 +94,7 @@ function renderDialog(
       columns={COLUMNS}
       actionsColumnId={ACTIONS_COLUMN_ID}
       search=""
+      opportunityId={opportunityId}
     />,
     { wrapper: wrapper() },
   )
@@ -176,5 +178,25 @@ describe('ExportDialog', () => {
     renderDialog(null)
 
     expect(screen.getByRole('button', { name: /^export$/i })).toBeDisabled()
+  })
+
+  // Spec 0067 D-5/AC-070: the Opportunity detail's Quotes panel scopes the
+  // export payload with the row-set scope it was mounted with.
+  it('includes opportunityId in the create payload when given (spec 0067)', async () => {
+    createExportMock.mockResolvedValue(baseRun({ status: 'processing' }))
+
+    renderDialog(
+      stubGridApi([{ colId: 'name', hide: false } as ColumnState]),
+      vi.fn(),
+      7,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    await waitFor(() =>
+      expect(createExportMock).toHaveBeenCalledWith(
+        'companies',
+        expect.objectContaining({ opportunityId: 7 }),
+      ),
+    )
   })
 })

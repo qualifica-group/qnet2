@@ -12,6 +12,7 @@ use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contact;
@@ -31,6 +32,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\Quote;
+use App\Models\QuoteLineCommission;
 use App\Models\QuoteStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
@@ -139,6 +141,8 @@ class AppServiceProvider extends ServiceProvider
             'vat_rate' => VatRate::class,
             'quote' => Quote::class,
             'quote_status' => QuoteStatus::class,
+            'commission_configuration' => CommissionConfiguration::class,
+            'quote_line_commission' => QuoteLineCommission::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

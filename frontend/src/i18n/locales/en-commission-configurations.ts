@@ -1,0 +1,23 @@
+export const commissionConfigurations = {
+  forbidden: "You don't have permission to view commission configurations.",
+  detail: { title: 'Commission configuration', loadError: 'Unable to load the commission configuration.', scope: 'Recipient and scope', calculation: 'Calculation', validity: 'Validity and notes', updated_at: 'Last updated' },
+  form: {
+    new: 'New configuration', save: 'Save', saving: 'Saving…',
+    created: 'Commission configuration created.', updated: 'Commission configuration updated.', deleted: 'Commission configuration deleted.',
+    genericError: 'Unable to save the commission configuration.', deleteError: 'Unable to delete the commission configuration.',
+    deleteReferenced: 'This configuration is used by another module and cannot be deleted.',
+    name: 'Configuration name', recipient_role: 'Recipient role', application_scope: 'Application scope',
+    product_category_id: 'Product category', product_id: 'Product', commission_type: 'Commission type',
+    value: 'Commission value', priority: 'Rule priority', valid_from: 'Valid from', valid_until: 'Valid until',
+    status: 'Status', internal_note: 'Internal service note', searchCategory: 'Search product categories…',
+    searchProduct: 'Search products…', selectPlaceholder: 'Select…', selectEmpty: 'No results found.', selectError: 'Unable to load options.',
+    sections: { scope: 'Identity and scope', calculation: 'Calculation', validity: 'Validity', notes: 'Internal note' },
+    errors: { nameRequired: 'Configuration name is required.', valueInvalid: 'Commission value must be zero or greater.', priorityInvalid: 'Priority must be a whole number.', validFromRequired: 'Start date is required.', categoryRequired: 'Select a product category.', productRequired: 'Select a product.', validUntilInvalid: 'End date cannot precede start date.' },
+  },
+  options: {
+    recipient_role: { COMMERCIAL: 'Commercial', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
+    application_scope: { PRODUCT_CATEGORY: 'Product category', PRODUCT: 'Product' },
+    commission_type: { FIXED_AMOUNT: 'Fixed amount', PERCENTAGE: 'Percentage' },
+    status: { ACTIVE: 'Active', SUSPENDED: 'Suspended' },
+  },
+}

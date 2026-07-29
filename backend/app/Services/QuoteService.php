@@ -12,6 +12,7 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteStatus;
+use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Quotes\QuoteLineWriter;
@@ -58,9 +59,13 @@ class QuoteService
         'reporter',
         'supervisor',
         'offerLines.product.category',
+        'offerLines.quote',
         'offerLines.vatRate',
+        'offerLines.commissions.recipient',
         'costLines.product.category',
+        'costLines.quote',
         'costLines.vatRate',
+        'costLines.commissions.recipient',
     ];
 
     public function __construct(
@@ -68,6 +73,7 @@ class QuoteService
         private readonly QuoteLineWriter $lineWriter,
         private readonly QuoteTotalsCalculator $totalsCalculator,
         private readonly OpportunityProductLineCoverage $coverage,
+        private readonly QuoteLineCommissionWriter $commissionWriter,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -142,6 +148,12 @@ class QuoteService
                 $data->offerLines,
                 $data->costLines,
             );
+
+            if ($data->commercialIdSubmitted || $data->reporterIdSubmitted || $data->supervisorIdSubmitted) {
+                $quote->offerLines()->get()->each(
+                    fn ($line) => $this->commissionWriter->sync($line, null),
+                );
+            }
 
             $this->persistAggregates($quote);
         });

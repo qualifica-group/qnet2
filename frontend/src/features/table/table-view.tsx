@@ -33,7 +33,7 @@ import {
 import { useTableConfig, type TableConfigScope } from '@/features/table/use-table-config'
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import type { TableRow } from '@/features/table/types'
+import type { TableRow, TableRowScope } from '@/features/table/types'
 
 /** Imperative handle exposed by the generic table to its domain adapter. */
 export interface TableViewHandle {
@@ -56,6 +56,24 @@ interface TableViewProps extends RowActionsOptions {
    * this component does not react to a scope prop CHANGE on its own.
    */
   scope?: TableConfigScope
+  /**
+   * Narrows the domain's rows/values/export requests to one PARENT RECORD
+   * (spec 0067 D-1: the Opportunity detail's Quotes panel). Distinct from
+   * `scope` above: `scope` selects a config SHAPE and enters the config's
+   * query key; `rowScope` selects a ROW SET and never enters any query key,
+   * because the config is identical scoped or not (D-1). Read once as a
+   * primitive (`rowScope?.opportunityId`), same precaution as `scope`
+   * documented above — a caller may pass a fresh object literal every
+   * render. Omitted ⇒ today's unscoped behavior for every domain.
+   */
+  rowScope?: TableRowScope
+  /**
+   * Reports the grid's live total row count to the caller (spec 0067 D-9),
+   * e.g. so a panel header can show its own counter without a separate
+   * count query. Composes alongside the toolbar's own "N rows" counter — it
+   * does not replace it.
+   */
+  onRowCountChanged?: (count: number | null) => void
   /** Per-domain custom cell renderers, keyed by column id. Optional. */
   renderers?: TableRendererMap
   /**
@@ -118,6 +136,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     {
       domain,
       scope,
+      rowScope,
+      onRowCountChanged,
       renderers,
       onAction,
       isBusy,
@@ -134,9 +154,10 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
   ) {
     const { t } = useTranslation()
     // Read once as a primitive: every downstream `useMemo` below keys on this
-    // value, not on the `scope` object identity (a caller may pass a fresh
-    // object literal every render).
+    // value, not on the `scope`/`rowScope` object identity (a caller may pass
+    // a fresh object literal every render).
     const productCategoryId = scope?.productCategoryId
+    const opportunityId = rowScope?.opportunityId
     const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     // Export is generic (spec 0014): TableView owns the grid api, so it gates,
@@ -197,6 +218,22 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     // orchestrator (engineering.md §6).
     const toolbar = useTableToolbarState({ gridApi, searchEnabled })
 
+    // Feeds the toolbar's own "N rows" counter AND, additively, the caller's
+    // `onRowCountChanged` (spec 0067 D-9) — composed here so `DataTable` keeps
+    // wiring a single handler regardless of whether a caller supplies one.
+    // Bound to a local identifier first: the setState setter is referentially
+    // stable, but calling it as `toolbar.setRowCount(count)` (a member
+    // expression callee) makes exhaustive-deps ask for the whole `toolbar`
+    // object instead — a plain identifier call avoids that ambiguity.
+    const { setRowCount } = toolbar
+    const handleRowCountChanged = useCallback(
+      (count: number) => {
+        setRowCount(count)
+        onRowCountChanged?.(count)
+      },
+      [setRowCount, onRowCountChanged],
+    )
+
     // The domain's advanced filter catalog (spec 0032); empty ⇒ the toolbar
     // hides the toggle entirely and the panel never mounts. Draft/applied
     // state, dependencies and persistence are owned by the dedicated hook;
@@ -214,8 +251,14 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
     const datasource = useMemo(
       () =>
-        createSsrmDatasource(domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId),
-      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId],
+        createSsrmDatasource(
+          domain,
+          toolbar.getSearchTerm,
+          advancedFilters.getApplied,
+          productCategoryId,
+          opportunityId,
+        ),
+      [domain, toolbar.getSearchTerm, advancedFilters.getApplied, productCategoryId, opportunityId],
     )
 
     useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
@@ -309,6 +352,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           key={layoutVersion}
           domain={domain}
           productCategoryId={productCategoryId}
+          opportunityId={opportunityId}
           columns={config.columns}
           datasource={datasource}
           blockSize={config.defaultPagination.limit}
@@ -320,7 +364,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           onColumnStateChanged={handleColumnStateChanged}
           initialFilterModel={initialFilterModel}
           onFilterChanged={handleFilterChanged}
-          onRowCountChanged={toolbar.setRowCount}
+          onRowCountChanged={handleRowCountChanged}
           enableSelection={enableSelection}
           onSelectionChanged={handleSelectionChanged}
           isRowSelectable={isRowSelectable}
@@ -417,6 +461,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             columns={config.columns}
             actionsColumnId={ACTIONS_COLUMN_ID}
             search={toolbar.getSearchTerm()}
+            opportunityId={opportunityId}
           />
         ) : null}
       </>

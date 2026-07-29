@@ -52,7 +52,10 @@ class ExportController extends BaseApiController
             $this->authorizeExport($definition, $actor);
 
             $format = ExportFormat::from($request->validated('format'));
-            $state = $request->safe()->only(['columns', 'sortModel', 'filterModel', 'search']);
+            // `opportunityId` (spec 0067, D-5) is frozen alongside the rest of
+            // the grid state so GenerateExportJob can re-apply it — the scope
+            // must survive the async hop, it cannot live only on this request.
+            $state = $request->safe()->only(['columns', 'sortModel', 'filterModel', 'search', 'opportunityId']);
 
             $run = $this->service->start($actor, $definition, $state, $format);
 

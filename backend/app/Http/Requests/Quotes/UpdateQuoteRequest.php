@@ -63,6 +63,7 @@ class UpdateQuoteRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->enforceCommissionFieldPermissions($validator, $this->currentQuote());
         });
     }
 

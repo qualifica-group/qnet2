@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { QuoteLineRow } from '@/features/quotes/quote-line-row'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import type { ResourcePermissions } from '@/features/authorization/types'
 
 /**
  * Spec 0065 AC-074/AC-075: selecting a product precompiles `unit_price` from
@@ -139,7 +141,7 @@ describe('QuoteLineRow (spec 0065)', () => {
 
     await pickProduct()
 
-    expect(screen.getByText('PRD-0042')).toBeInTheDocument()
+    expect(await screen.findByText('PRD-0042')).toBeInTheDocument()
   })
 
   it('wires a quantity error to its input via aria-describedby/aria-invalid and role=alert (AC-075)', () => {
@@ -233,5 +235,38 @@ describe('QuoteLineRow (spec 0065)', () => {
     expect(await screen.findByText('5.00')).toBeInTheDocument()
     expect(screen.getByText('55.00')).toBeInTheDocument()
     expect(fetchForSelectMock.mock.calls.every(([resource]) => resource === 'vat-rates')).toBe(true)
+  })
+
+  it('hides the revenue commission action when the commissions field is not visible', () => {
+    const permissions: ResourcePermissions = {
+      resource: { view: true, create: true, update: true, delete: true, export: true, import: false },
+      actions: {},
+      fields: {
+        commissions: {
+          visible: false,
+          hidden: true,
+          editable: false,
+          readonly: false,
+          required: false,
+          disabled: true,
+        },
+      },
+    }
+    render(
+      <ResourcePermissionsProvider permissions={permissions}>
+        <QuoteLineRow
+          index={0}
+          variant="revenue"
+          row={{ ...EMPTY_ROW, product_id: 42, commissions: [] }}
+          disabled={false}
+          vatRatePercentFor={() => null}
+          onChangeProduct={vi.fn()}
+          onChangeField={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+    expect(screen.queryByRole('button', { name: 'Commissions for line 1' })).not.toBeInTheDocument()
   })
 })

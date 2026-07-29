@@ -12,6 +12,7 @@ import {
   OpportunityDetailStats,
 } from '@/features/opportunities/opportunity-detail-header'
 import { OpportunityDetailSections } from '@/features/opportunities/opportunity-detail-sections'
+import { OpportunityQuotesSection } from '@/features/opportunities/opportunity-quotes-section'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
@@ -144,6 +145,14 @@ export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetail
       </RecordCard>
 
       <OpportunityDetailCollaboration opportunity={opportunity} />
+
+      {/*
+       * Keyed by id (spec 0067 D-2): the detail route/Sheet does not remount
+       * on an opportunity change (only its params do), so the panel's own
+       * empty-state/counter seed (`use-opportunity-quotes-panel.ts`) needs a
+       * fresh mount to re-derive from the new opportunity's `quotes_count`.
+       */}
+      <OpportunityQuotesSection key={opportunity.id} opportunity={opportunity} />
 
       <RecordMeta>
         {createdAt ? (

@@ -23,6 +23,15 @@ use Illuminate\Validation\Validator;
  * Authorization is intentionally NOT handled here (the controller enforces
  * the `{domain}.export` ability via the definition's modelClass(), which this
  * FormRequest does not see resolved before the controller runs).
+ *
+ * `opportunityId` (spec 0067, D-5) scopes the `quotes` export to one
+ * Opportunity's Offerte — a no-op key for every other domain, mirroring
+ * `TableRowsRequest`. Unlike `columns`/`sortModel`/`filterModel`, it is NOT
+ * used to scope `definition()` here: the allow-lists it feeds (columnIds,
+ * sortableColumnIds, filterableColumnIds) are identical scoped or not (D-1),
+ * so there is nothing for the scope to widen or narrow at validation time.
+ * The value only starts mattering once ExportController::store() freezes it
+ * into ExportRun::state for GenerateExportJob to re-apply asynchronously.
  */
 class CreateExportRequest extends FormRequest
 {
@@ -58,6 +67,10 @@ class CreateExportRequest extends FormRequest
             // Same cap as the rows endpoint: the export carries the very term
             // the grid is filtered by, so the two must never diverge.
             'search' => ['sometimes', 'nullable', 'string', 'max:'.TableRowsRequest::SEARCH_MAX_LENGTH],
+
+            // Spec 0067, D-5: scopes a `quotes` export to one Opportunity's
+            // Offerte — a no-op key for every other domain.
+            'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
         ];
     }
 

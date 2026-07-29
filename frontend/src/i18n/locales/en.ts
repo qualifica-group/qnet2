@@ -34,6 +34,7 @@ import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { quoteStatuses } from './en-quote-statuses'
 import { quotes } from './en-quotes'
+import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
@@ -460,6 +461,7 @@ export const en = {
   opportunityWorkflows,
   quoteStatuses,
   quotes,
+  commissionConfigurations,
   requestManagement,
   rewardTypes,
   rewardStatuses,

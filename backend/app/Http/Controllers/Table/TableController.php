@@ -17,6 +17,7 @@ use App\Services\TableCellUpdateService;
 use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
+use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -53,6 +54,8 @@ class TableController extends BaseApiController
      * `product_category_id` (spec 0064) narrows `request-management`'s
      * response to that category's `attr.*` columns; absent for every other
      * domain, and for `request-management` itself with no category (D-3).
+     * `opportunity_id` (spec 0067) scopes `quotes`' ROWS to one Opportunity;
+     * this response's SHAPE never changes (D-1/AC-009).
      */
     public function columns(TableColumnsRequest $request, string $domain): JsonResponse
     {
@@ -63,6 +66,7 @@ class TableController extends BaseApiController
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
             $this->scopeToProductCategory($definition, $request->productCategoryId());
+            $this->scopeToOpportunity($definition, $request->opportunityId());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -180,6 +184,10 @@ class TableController extends BaseApiController
      * `productCategoryId` (spec 0064) scopes `request-management` to that
      * category (D-2 EXISTS on the row's product lines) and its `attr.*`
      * columns; every other domain, and this one with no category, ignores it.
+     * `opportunityId` (spec 0067) scopes `quotes` to one Opportunity's
+     * Offerte, in AND with every other filter/search/advanced filter (D-6);
+     * every other domain, and this one with no value, ignores it (AC-002,
+     * AC-011).
      */
     public function rows(TableRowsRequest $request, string $domain): JsonResponse
     {
@@ -193,6 +201,8 @@ class TableController extends BaseApiController
             $payload = $request->validated();
             $productCategoryId = $payload['productCategoryId'] ?? null;
             $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId);
+            $opportunityId = $payload['opportunityId'] ?? null;
+            $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
 
             $result = $this->service->rows($definition, $actor, $payload);
 
@@ -245,6 +255,8 @@ class TableController extends BaseApiController
      * column (the target column never auto-restricts its own list).
      * `productCategoryId` (spec 0064) is required to resolve an `attr.*`
      * `columnId` for `request-management` (validated by TableValuesRequest).
+     * `opportunityId` (spec 0067) scopes `quotes`' distinct values to one
+     * Opportunity's Offerte.
      */
     public function values(TableValuesRequest $request, string $domain): JsonResponse
     {
@@ -257,6 +269,7 @@ class TableController extends BaseApiController
 
             $payload = $request->payload();
             $this->scopeToProductCategory($definition, $payload['productCategoryId']);
+            $this->scopeToOpportunity($definition, $payload['opportunityId']);
 
             $result = $this->service->distinctValues(
                 $definition,
@@ -338,6 +351,20 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof AttributeScopedTableDefinition) {
             $definition->scopeToAllProductCategories();
+        }
+    }
+
+    /**
+     * Spec 0067: narrows an `OpportunityScopedTableDefinition` (only
+     * `quotes`) to one Opportunity's Offerte. A no-op for every other
+     * domain. Never called from `savePreferences()`/`saveFilters()`/
+     * `resetPreferences()`/`resetFilters()`/`bulkDelete()`/`updateRow()`
+     * (D-4/D-1: those endpoints are not Opportunity-scoped).
+     */
+    private function scopeToOpportunity(TableDefinition $definition, ?int $opportunityId): void
+    {
+        if ($definition instanceof OpportunityScopedTableDefinition) {
+            $definition->scopeToOpportunity($opportunityId);
         }
     }
 }

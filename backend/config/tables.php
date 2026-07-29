@@ -3,6 +3,7 @@
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
+use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
@@ -59,6 +60,7 @@ return [
         'roles' => RolesTableDefinition::class,
         'business-functions' => BusinessFunctionsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,
+        'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,
         'operational-sites' => OperationalSitesTableDefinition::class,
         'referent-types' => ReferentTypesTableDefinition::class,

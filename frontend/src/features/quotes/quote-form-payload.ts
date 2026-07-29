@@ -16,11 +16,25 @@ import type {
  */
 function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
   return rows.map((row, index) => ({
+    ...(row.id ? { id: row.id } : {}),
     product_id: row.product_id as number,
     quantity: row.quantity as number,
     unit_price: row.unit_price as number,
     vat_rate_id: row.vat_rate_id,
     sort_order: index,
+    ...(row.commissions
+      ? { commissions: row.commissions.map((commission) => ({
+          id: commission.id,
+          recipient_role: commission.recipient_role,
+          recipient_type: commission.recipient_type,
+          recipient_id: commission.recipient_id,
+          commission_type: commission.commission_type,
+          value: commission.value,
+          internal_note: commission.internal_note,
+          origin: commission.origin,
+          commission_configuration_id: commission.commission_configuration_id,
+        })) }
+      : {}),
   }))
 }
 
@@ -61,6 +75,7 @@ function sameLines(a: QuoteLineInput[], b: QuoteLineInput[]): boolean {
       line.quantity === other.quantity &&
       line.unit_price === other.unit_price &&
       (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null)
+      && JSON.stringify(line.commissions ?? []) === JSON.stringify(other.commissions ?? [])
     )
   })
 }
@@ -76,11 +91,27 @@ function originalLineInputs(lines: QuoteLine[]): QuoteLineInput[] {
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((line, index) => ({
+      id: line.id,
       product_id: line.product_id,
       quantity: Number(line.quantity),
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
       sort_order: index,
+      ...(line.commissions
+        ? {
+            commissions: line.commissions.map((commission) => ({
+              id: commission.id,
+              recipient_role: commission.recipient_role,
+              recipient_type: commission.recipient_type,
+              recipient_id: commission.recipient_id,
+              commission_type: commission.commission_type,
+              value: Number(commission.value),
+              internal_note: commission.internal_note,
+              origin: commission.origin,
+              commission_configuration_id: commission.commission_configuration_id,
+            })),
+          }
+        : {}),
     }))
 }
 

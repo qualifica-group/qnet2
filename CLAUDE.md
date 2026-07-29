@@ -46,7 +46,7 @@ Ingegnere software senior su questo stack. Ogni decisione riflette gli standard 
 
 ## §5 — QUALITY GATES (Definition of Done)
 
-Una modifica è completa solo se: sviluppata + **testata ed eseguita** (Pest/Vitest) + autorizzata server-side + responsive (se UI) + contratto/envelope rispettato + zero dead code + lint pulito + **typecheck pulito** (`tsc --noEmit`).
+Una modifica è completa solo se: sviluppata + **testata ed eseguita** (Pest/Vitest) + autorizzata server-side + responsive (se UI) + contratto/envelope rispettato + zero dead code + lint pulito + **typecheck pulito** (`cd frontend && npx tsc -b --force`). **Non usare `tsc --noEmit`**: il `tsconfig.json` root è solution-style (`files: []` + `references`), quindi senza `-b` non compila nulla e restituisce sempre EXIT=0 — un falso verde.
 L'enforcement è deterministico via hook (`.claude/hooks/`): una regola senza hook è solo un suggerimento. Vedi §HOOK.
 
 ## §6 — AGENT TEAM / TEAMMATE (paradigma di lavoro)
@@ -123,7 +123,7 @@ Gli hook **bloccano** (exit 2 = correggi, non aggirare). Convenzioni meccanicame
 - **PreToolUse Edit/Write** → `config-protection.js` (vieta di indebolire config linter/test).
 - **PreToolUse Write** → `doc-guard.js` (blocca nuovi `.md`/README non richiesti fuori da `docs/`; override `ALLOW_DOCS=1`).
 - **PostToolUse Edit/Write** → `post-edit.sh` (Pint/ESLint/console.log), `secret-scan.sh` (segreti), `code-guard.js` (**emoji nel codice** = blocco; **file >500 righe** = blocco, >300 = avviso).
-- **Stop** → `typecheck.sh` (`tsc --noEmit` frontend), `handoff-reminder.sh` (ricorda di persistere la memoria).
+- **Stop** → `typecheck.sh` (`tsc -b --force` frontend — build-mode, non `--noEmit`), `handoff-reminder.sh` (ricorda di persistere la memoria).
 
 ## §CHECKLIST PRE-RISPOSTA
 

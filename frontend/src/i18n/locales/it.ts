@@ -27,6 +27,7 @@ import { opportunityStatuses } from './it-opportunity-statuses'
 import { opportunityWorkflows } from './it-opportunity-workflows'
 import { quoteStatuses } from './it-quote-statuses'
 import { quotes } from './it-quotes'
+import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
@@ -101,6 +102,7 @@ export const it: TranslationResources = {
     opportunityWorkflows: 'Configuratore Stati Lavorazione',
     quoteStatuses: 'Stati Offerta',
     quotes: 'Offerte',
+    commissionConfigurations: 'Configuratore Commissioni',
     requestManagement: 'Gestione Richieste',
     rewards: 'Premi e Incentivi',
     rewardTypes: 'Buoni, Premi e Incentivi',
@@ -484,6 +486,7 @@ export const it: TranslationResources = {
   opportunityWorkflows,
   quoteStatuses,
   quotes,
+  commissionConfigurations,
   requestManagement,
   rewardTypes,
   rewardStatuses,

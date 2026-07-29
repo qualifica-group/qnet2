@@ -11,8 +11,8 @@ full-replace reconciliation
 
 ## Status
 
-PROPOSED — implementation is blocked by the product decisions listed in
-“Blocking decisions”.
+ACCEPTED — the user approved the product defaults on 2026-07-29 and explicitly
+decided that a role without a recipient produces no applied commission.
 
 ## Date
 
@@ -339,42 +339,21 @@ future product-approved backfill/recalculation workflow.
 Rollback must remove UI/navigation first, stop writes, then roll back the
 additive tables only after verifying no applied snapshot data must be retained.
 
-## Blocking decisions
+## Resolved product decisions
 
-Implementation must not begin until Product resolves these points:
-
-1. Eligible lines: revenue only, or revenue and cost.
-   - Recommended MVP default: revenue only, because Commercial/Reporter/
-     Supervisor commissions conventionally derive from sold value and mixing
-     cost lines changes the meaning of the Quote summary.
-2. Percentage base.
-   - Recommended default: persisted line `net_amount`, excluding VAT.
-3. Fixed amount behavior.
-   - Recommended default: once per line, not multiplied by quantity.
-4. Priority and tie-break.
-   - Recommended default: higher integer wins, then later `valid_from`, then
-     higher ID as a final deterministic tie-break. Product may instead require
-     overlap prevention; the resolver contract must freeze one rule.
-5. Validity reference date.
-   - Recommended default: Quote creation date, persisted and stable; current
-     wall-clock time would make reopening an unchanged draft non-repeatable.
-     The current Quote schema has no business date, so choosing this default
-     may require an explicit Quote date field or a frozen resolution timestamp.
-6. Missing recipient.
-   - Recommended default: persist the applicable snapshot with a null recipient
-     and surface an explicit validation state; silently omitting loses the
-     financial obligation, while blocking the whole Quote may be too strict.
-7. Product change with manual overrides.
-   - Recommended default: require confirmation, then regenerate all four
-     commissions from the new Product; preserving overrides can leave a
-     commission attached to the wrong supplier or commercial basis.
-8. Editable recipient scope.
-   - Recommended default: only records compatible with the role's model type;
-     Product must decide whether this is further restricted to the current
-     Quote/Product subjects.
-9. Manual creation when no rule exists.
-   - Recommended default: allow one manual snapshot per role for actors with
-     the Quote commission-field edit permission.
+1. Only revenue/offer lines carry commissions.
+2. Percentage commissions use the persisted line `net_amount`, excluding VAT.
+3. Fixed commissions apply once per line and are not multiplied by quantity.
+4. A higher integer priority wins, then later `valid_from`, then higher ID.
+5. Rule validity is evaluated at the initialization/application date.
+6. If a role has no recipient, no commission is created, calculated, persisted,
+   or included in the summary. Assigning a recipient later initializes that
+   role automatically.
+7. Changing a Product requires confirmation and then regenerates all four
+   role commissions, including prior manual overrides.
+8. A recipient may be changed to any record compatible with the role's model
+   type.
+9. An authorized operator may create a manual commission when no rule exists.
 
 ## Alternatives Considered
 

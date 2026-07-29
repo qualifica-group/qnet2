@@ -20,6 +20,7 @@ interface QuoteOfferTabProps {
   knownLines: QuoteLine[]
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+  quoteId?: number
 }
 
 /**
@@ -37,12 +38,16 @@ export function QuoteOfferTab({
   knownLines,
   vatRatePercentFor,
   rememberVatRatePercent,
+  quoteId,
 }: QuoteOfferTabProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const [unlocked, setUnlocked] = useState(false)
 
   const opportunityId = useWatch({ control, name: 'opportunity_id' })
+  const commercialId = useWatch({ control, name: 'commercial_id' })
+  const reporterId = useWatch({ control, name: 'reporter_id' })
+  const supervisorId = useWatch({ control, name: 'supervisor_id' })
 
   const opportunityQuery = useQuery({
     queryKey: opportunityId !== null ? opportunityDetailQueryKey(opportunityId) : ['opportunities', 'detail', null],
@@ -102,6 +107,7 @@ export function QuoteOfferTab({
               knownVatRates={knownVatRates}
               vatRatePercentFor={vatRatePercentFor}
               rememberVatRatePercent={rememberVatRatePercent}
+              commissionContext={{ quoteId, commercialId, reporterId, supervisorId }}
             />
 
             <div className="flex flex-wrap items-center justify-between gap-2">

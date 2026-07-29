@@ -12,6 +12,30 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
+import type { ModuleCreateParams } from '@/features/modules/types'
+
+export type QuoteCommissionOrigin = 'PRODUCT' | 'PRODUCT_CATEGORY' | 'MANUAL_OVERRIDE'
+
+export interface QuoteLineCommission {
+  id?: number
+  recipient_role: CommissionRole
+  recipient_type: 'referent' | 'user' | 'registry'
+  recipient_id: number
+  recipient?: QuoteRelationRef | null
+  commission_type: CommissionType
+  value: string
+  calculated_amount: string
+  internal_note: string | null
+  origin: QuoteCommissionOrigin
+  commission_configuration_id: number | null
+}
+
+export type QuoteLineCommissionInput = Omit<
+  QuoteLineCommission,
+  'calculated_amount' | 'recipient' | 'value'
+> & { value: number }
+  & { recipient?: QuoteRelationRef | null }
 
 /** A hydrated `{id, name}` relation projection (opportunity/commercial/reporter/supervisor). */
 export interface QuoteRelationRef {
@@ -78,6 +102,7 @@ export interface QuoteLine {
   /** `net_amount + vat_amount`. */
   total_amount: string
   sort_order: number
+  commissions?: QuoteLineCommission[]
 }
 
 /** One side (`revenue`/`cost`) of the persisted economic summary (D-9). */
@@ -96,6 +121,7 @@ export interface QuoteSummary {
   revenue: QuoteAmountBreakdown
   cost: QuoteAmountBreakdown
   margin: { net: string }
+  commissions?: Record<'commercial' | 'reporter' | 'supervisor' | 'supplier', string>
 }
 
 /**
@@ -141,6 +167,7 @@ export interface QuoteDetailWithPermissions extends QuoteDetail {
  * (AC-076/AC-033) — the server computes and freezes them (D-10/D-12).
  */
 export interface QuoteLineInput {
+  id?: number
   product_id: number
   /** > 0, max 999999.99, max 2 decimals. */
   quantity: number
@@ -149,6 +176,7 @@ export interface QuoteLineInput {
   vat_rate_id?: number | null
   /** Row position; when omitted the server uses the array index. */
   sort_order?: number
+  commissions?: QuoteLineCommissionInput[]
 }
 
 /**
@@ -181,5 +209,13 @@ export interface CreateQuotePayload {
  */
 export type UpdateQuotePayload = Partial<Omit<CreateQuotePayload, 'opportunity_id' | 'code'>>
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `QuoteForm`. */
-export type QuoteFormMode = { type: 'create' } | { type: 'edit'; quote: QuoteDetailWithPermissions }
+/**
+ * Discriminated form mode shared by the form hook/meta-resolver and
+ * `QuoteForm`. `create.params` carries a preset `opportunity_id` (spec 0067
+ * AC-050) when the form opens from a context that already knows the
+ * Opportunity — the `ModuleCreateParams` mechanism (spec 0045), mirroring
+ * `OpportunityFormMode`'s `lead_id` via `mode.params`.
+ */
+export type QuoteFormMode =
+  | { type: 'create'; params?: ModuleCreateParams }
+  | { type: 'edit'; quote: QuoteDetailWithPermissions }

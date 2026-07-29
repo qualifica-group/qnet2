@@ -7,6 +7,7 @@ const EMPTY_LINE_ROW: QuoteLineFormValues = {
   quantity: null,
   unit_price: null,
   vat_rate_id: null,
+  commissions: [],
 }
 
 interface UseQuoteLinesFieldArgs {
@@ -41,7 +42,12 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
    * (AC-074, D-6); clearing the product only clears its own id, leaving
    * quantity/price/rate exactly as the user left them.
    */
-  const setProduct = (index: number, productId: number | null, item: QuoteProductForSelectItem | null) => {
+  const setProduct = (
+    index: number,
+    productId: number | null,
+    item: QuoteProductForSelectItem | null,
+    commissions?: QuoteLineFormValues['commissions'],
+  ) => {
     if (productId === null || !item) {
       setField(index, { product_id: null })
       return
@@ -57,7 +63,7 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     onChange(
       value.map((row, rowIndex) =>
         rowIndex === index
-          ? { ...row, product_id: productId, unit_price: unitPrice, vat_rate_id: item.meta.vat_rate_id }
+          ? { ...row, product_id: productId, unit_price: unitPrice, vat_rate_id: item.meta.vat_rate_id, ...(commissions ? { commissions } : {}) }
           : row,
       ),
     )

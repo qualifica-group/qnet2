@@ -31,6 +31,7 @@ export const navigation = {
   opportunityWorkflows: 'Workflow Configurator',
   quoteStatuses: 'Quote Statuses',
   quotes: 'Quotes',
+  commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',

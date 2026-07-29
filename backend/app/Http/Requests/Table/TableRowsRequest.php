@@ -4,6 +4,7 @@ namespace App\Http\Requests\Table;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -83,6 +84,11 @@ class TableRowsRequest extends FormRequest
             // (or with this key absent) is rejected by the Rule::in()/
             // in_array() checks above without any extra logic (AC-013).
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
+
+            // Spec 0067: scopes `quotes` to one Opportunity's Offerte — a
+            // no-op key for every other domain (D-1: the allow-lists above
+            // never depend on this scope, unlike productCategoryId).
+            'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
         ];
     }
 
@@ -157,6 +163,10 @@ class TableRowsRequest extends FormRequest
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
             }
 
+            if ($definition instanceof OpportunityScopedTableDefinition) {
+                $definition->scopeToOpportunity($this->opportunityIdInput());
+            }
+
             $this->resolvedDefinition = $definition;
         }
 
@@ -172,6 +182,17 @@ class TableRowsRequest extends FormRequest
     private function productCategoryIdInput(): ?int
     {
         $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `opportunityId` request input, coerced to int (spec 0067),
+     * mirroring `productCategoryIdInput()`.
+     */
+    private function opportunityIdInput(): ?int
+    {
+        $value = $this->input('opportunityId');
 
         return is_numeric($value) ? (int) $value : null;
     }

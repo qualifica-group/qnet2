@@ -60,7 +60,8 @@ Errori che i modelli AI fanno in modo ricorrente. Vincoli, non consigli.
 
 - **Triade errore accessibile** — ogni errore di campo va cablato come `aria-describedby={errorId} aria-invalid={!!error}` + `<span id={errorId} role="alert">`. RHF+Zod ti dà lo stato `error` ma **non** cabla l'ARIA: questo è il collante mancante.
 - **`safeUrl()` con allow-list di schemi** — prima di ogni `href` derivato dall'utente: `new URL()` + allow-list `["http:","https:","mailto:"]`. React **non** blocca a runtime `javascript:`/`data:`.
-- **`vite build` NON fa typecheck** — aggiungi `vite-plugin-checker` o `tsc --noEmit` in CI/hook, altrimenti gli errori di tipo vengono spediti in silenzio. (Coperto qui dall'hook Stop `typecheck.sh`.)
+- **`vite build` NON fa typecheck** — gli errori di tipo vengono spediti in silenzio. (Coperto qui dall'hook Stop `typecheck.sh`.)
+- **`tsc --noEmit` in questo repo è un FALSO VERDE** — `frontend/tsconfig.json` è solution-style (`"files": []` + `"references"` a `tsconfig.app.json`/`tsconfig.node.json`): senza `-b` tsc non entra nei progetti referenziati, non ha file da controllare e **restituisce sempre EXIT=0**, qualunque errore ci sia. L'unico comando che verifica davvero, lo stesso dell'hook Stop: `cd frontend && npx tsc -b --force --pretty false`. Chi riporta "`tsc --noEmit` pulito" non ha verificato nulla.
 - **`VITE_` non è un confine di segreto** — tutto ciò che ha prefisso `VITE_` finisce nel bundle pubblico. Mai mettere un segreto lì. Usa `loadEnv(mode, cwd, ['VITE_'])`, mai `''`. Per chiamare l'API in dev usa `server.proxy` `/api` → Laravel con `changeOrigin: true` (evita problemi cookie/CORS in dev).
 - **Ternario, non `&&`, per condizioni numeriche** — `{count > 0 ? <Badge/> : null}`: `{count && <Badge/>}` renderizza un `0` letterale a schermo.
 - **Non definire componenti dentro componenti** — un nuovo tipo a ogni render annulla la reconciliation e smonta i figli. Estrai sempre a livello modulo.

@@ -48,6 +48,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'opportunity-workflows': 'navigation.opportunityWorkflows',
   'quote-statuses': 'navigation.quoteStatuses',
   quotes: 'navigation.quotes',
+  'commission-configurations': 'navigation.commissionConfigurations',
   'request-management': 'navigation.requestManagement',
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',

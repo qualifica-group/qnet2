@@ -88,6 +88,7 @@ it('AC-040: summary exposes revenue/cost {net,vat,gross} and margin.net over HTT
         'revenue' => ['net' => '30.00', 'vat' => '6.60', 'gross' => '36.60'],
         'cost' => ['net' => '10.00', 'vat' => '2.20', 'gross' => '12.20'],
         'margin' => ['net' => '20.00'],
+        'commissions' => ['commercial' => '0.00', 'reporter' => '0.00', 'supervisor' => '0.00', 'supplier' => '0.00'],
     ]);
 });
 
@@ -106,6 +107,7 @@ it('AC-042: a quote without lines exposes every summary value at 0.00 over HTTP'
         'revenue' => ['net' => '0.00', 'vat' => '0.00', 'gross' => '0.00'],
         'cost' => ['net' => '0.00', 'vat' => '0.00', 'gross' => '0.00'],
         'margin' => ['net' => '0.00'],
+        'commissions' => ['commercial' => '0.00', 'reporter' => '0.00', 'supervisor' => '0.00', 'supplier' => '0.00'],
     ]);
 });
 

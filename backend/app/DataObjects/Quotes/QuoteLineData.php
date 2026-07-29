@@ -21,6 +21,9 @@ final readonly class QuoteLineData
         public float $unitPrice,
         public ?int $vatRateId,
         public ?int $sortOrder,
+        public ?int $id = null,
+        /** @var array<int, QuoteLineCommissionData>|null */
+        public ?array $commissions = null,
     ) {}
 
     /**
@@ -29,11 +32,18 @@ final readonly class QuoteLineData
     public static function fromValidated(array $row): self
     {
         return new self(
+            id: isset($row['id']) ? (int) $row['id'] : null,
             productId: (int) $row['product_id'],
             quantity: (float) $row['quantity'],
             unitPrice: (float) $row['unit_price'],
             vatRateId: isset($row['vat_rate_id']) ? (int) $row['vat_rate_id'] : null,
             sortOrder: isset($row['sort_order']) ? (int) $row['sort_order'] : null,
+            commissions: array_key_exists('commissions', $row)
+                ? array_map(
+                    static fn (array $commission): QuoteLineCommissionData => QuoteLineCommissionData::fromValidated($commission),
+                    (array) $row['commissions'],
+                )
+                : null,
         );
     }
 }

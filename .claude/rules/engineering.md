@@ -55,7 +55,7 @@
 **Problema.** Il fallimento numero uno del lavoro multi-step: l'agente dichiara "fatto/funziona" prima che i test confermino.
 
 **Mitigazione obbligatoria.**
-- **Mai** "fatto/funziona" senza aver **eseguito davvero** test e lint (Pest/Vitest, Pint/ESLint, `tsc --noEmit`). Se non puoi eseguirli, **dillo**.
+- **Mai** "fatto/funziona" senza aver **eseguito davvero** test e lint (Pest/Vitest, Pint/ESLint, `tsc -b --force` — **non** `tsc --noEmit`, che in questo repo è un falso verde: vedi `frontend.md §10`). Se non puoi eseguirli, **dillo**.
 - Un test **scritto ma non eseguito NON conta**. "Dovrebbe passare" non è una verifica.
 
 ### 1.6 Scope creep / drift — deviare dalla richiesta

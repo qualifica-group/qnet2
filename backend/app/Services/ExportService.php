@@ -10,6 +10,7 @@ use App\Jobs\GenerateExportJob;
 use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\Table\TableQueryBuilder;
+use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +35,7 @@ class ExportService
     ) {}
 
     /**
-     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null}  $state
+     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null}  $state
      */
     public function start(User $actor, TableDefinition $definition, array $state, ExportFormat $format): ExportRun
     {
@@ -70,15 +71,23 @@ class ExportService
         /** @var User $actor */
         $actor = User::query()->findOrFail($run->user_id);
 
-        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null} $state */
+        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null} $state */
         $state = $run->state;
         $columns = $state['columns'];
 
-        // Step 2: build the query exactly as the grid would (allow-listed
+        // Step 2: re-apply the row scope frozen at request time (spec 0067,
+        // D-5) — the state, not the request, is the only thing that survives
+        // the async hop into this job, so the setter is invoked here, never
+        // in the controller.
+        if ($definition instanceof OpportunityScopedTableDefinition && ($state['opportunityId'] ?? null) !== null) {
+            $definition->scopeToOpportunity($state['opportunityId']);
+        }
+
+        // Step 3: build the query exactly as the grid would (allow-listed
         // filter/search/sort — shared with the interactive TableService).
         $query = $this->queryBuilder->build($definition, $state);
 
-        // Step 3: open the writer on a private, non-guessable path. The
+        // Step 4: open the writer on a private, non-guessable path. The
         // writer implementations write straight to the filesystem (never
         // through Storage::put()), so the destination directory must exist
         // up front.
@@ -90,10 +99,10 @@ class ExportService
         $path = $directory.'/'.Str::uuid().'.'.$run->format->extension();
         $writer->open($disk->path($path));
 
-        // Step 4: header row, from the frozen state's client-resolved labels.
+        // Step 5: header row, from the frozen state's client-resolved labels.
         $writer->writeHeaders(array_map(static fn (array $column): string => $column['header'], $columns));
 
-        // Step 5: stream the query (constant memory), capped at max_rows —
+        // Step 6: stream the query (constant memory), capped at max_rows —
         // breaking the loop stops the lazy cursor from fetching further pages.
         $columnTypes = $this->columnTypesById($definition);
         $maxRows = (int) config('exports.max_rows');
@@ -110,7 +119,7 @@ class ExportService
             $rowCount++;
         }
 
-        // Step 6: close + persist the result.
+        // Step 7: close + persist the result.
         $writer->close();
 
         $run->update([

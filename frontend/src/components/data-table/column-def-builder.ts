@@ -37,6 +37,8 @@ export interface BuildColDefsParams {
   domain: string
   /** Selected Product Category scope (spec 0064), forwarded to the Set Filter values callback. */
   productCategoryId?: number
+  /** Opportunity row-set scope (spec 0067 D-1), forwarded to the Set Filter values callback. */
+  opportunityId?: number
   columns: TableColumn[]
   cellRenderers?: Record<string, CellRenderer>
   renderRowActions?: (params: ICellRendererParams) => ReactNode
@@ -55,6 +57,7 @@ export interface BuildColDefsParams {
 export function buildColDefs({
   domain,
   productCategoryId,
+  opportunityId,
   columns,
   cellRenderers,
   renderRowActions,
@@ -83,6 +86,7 @@ export function buildColDefs({
       () => toast.info(t('table.filterValuesTruncated')),
       t,
       productCategoryId,
+      opportunityId,
     )
     return {
       colId: column.id,

@@ -241,6 +241,14 @@ export interface OpportunityDetail {
    * as `state`/`workflow_status` above — treat a missing key the same as `[]`.
    */
   rewards?: RewardAssignmentRef[]
+  /**
+   * Spec 0067 AC-020: number of Quotes linked to this opportunity (`withCount`,
+   * 0 when none). Seeds the Quotes panel's counter/empty-state before the
+   * grid reports its own live total (D-9). Optional for the same
+   * fixture-compatibility reason as `state`/`workflow_status` above — treat a
+   * missing key the same as `0`.
+   */
+  quotes_count?: number
 }
 
 /**

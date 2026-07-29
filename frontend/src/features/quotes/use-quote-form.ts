@@ -36,10 +36,15 @@ function linesToFormValues(lines: QuoteLine[]): QuoteLineFormValues[] {
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((line) => ({
+      id: line.id,
       product_id: line.product_id,
       quantity: Number(line.quantity),
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
+      commissions: (line.commissions ?? []).map((commission) => ({
+        ...commission,
+        value: Number(commission.value),
+      })),
     }))
 }
 
@@ -100,10 +105,15 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         cost_lines: linesToFormValues(quote.cost_lines),
       }
     }
+    // Spec 0067 AC-050/051: a numeric `params.opportunity_id` seeds the
+    // otherwise-empty create form (the panel "Crea Offerta" flow); the field
+    // is then locked read-only by `QuoteFormBody`'s `forceDisabled`.
+    const forcedOpportunityId =
+      typeof mode.params?.opportunity_id === 'number' ? mode.params.opportunity_id : null
     return {
       code: initialCode ?? '',
       title: '',
-      opportunity_id: null,
+      opportunity_id: forcedOpportunityId,
       quote_status_id: null,
       commercial_id: null,
       reporter_id: null,

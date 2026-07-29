@@ -46,6 +46,13 @@ export const opportunities = {
     sourceLead: 'Originating lead',
     collectedInformation: 'Collected information',
     rewards: 'Rewards',
+    quotes: {
+      title: 'Quotes',
+      countLabel: '{{count}} quotes',
+      create: 'New quote',
+      empty: 'No quotes yet',
+      emptyHint: 'Create the first quote linked to this opportunity.',
+    },
   },
   form: {
     newOpportunity: 'New opportunity',

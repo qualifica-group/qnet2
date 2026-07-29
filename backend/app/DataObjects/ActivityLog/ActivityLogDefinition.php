@@ -16,10 +16,13 @@ final readonly class ActivityLogDefinition
      * @param  class-string<Model>  $model
      * @param  array<int, string>  $relations
      * @param  class-string<ActivityLogAuthorizer>  $authorizer
+     * @param  array<string, array<string, string>>  $fieldPermissions
      */
     public function __construct(
         public string $model,
         public array $relations,
         public string $authorizer,
+        public ?string $fieldPermissionResource = null,
+        public array $fieldPermissions = [],
     ) {}
 }

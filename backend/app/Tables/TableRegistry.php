@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\AttributeScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -28,13 +29,21 @@ class TableRegistry
      */
     private const string REQUEST_MANAGEMENT_DOMAIN = 'request-management';
 
+    /**
+     * The only domain wrapped in `OpportunityScopedTableDefinition` (spec
+     * 0067): scoping the Offerte grid to one Opportunity is a `quotes`-
+     * specific concept, not a generic table-framework one.
+     */
+    private const string QUOTES_DOMAIN = 'quotes';
+
     public function __construct(private readonly Container $container) {}
 
     /**
      * Resolve the definition for the given domain, wrapped in
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
      * custom-fieldable, THEN in `AttributeScopedTableDefinition` (spec 0064)
-     * for `request-management` — one line each here, zero per-module code.
+     * for `request-management`, THEN in `OpportunityScopedTableDefinition`
+     * (spec 0067) for `quotes` — one line each here, zero per-module code.
      * Column order this composition yields: native, then `custom.*`, then
      * `attr.*`.
      *
@@ -43,8 +52,9 @@ class TableRegistry
     public function resolve(string $domain): TableDefinition
     {
         $definition = $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
+        $definition = $this->wrapIfAttributeScoped($domain, $definition);
 
-        return $this->wrapIfAttributeScoped($domain, $definition);
+        return $this->wrapIfOpportunityScoped($domain, $definition);
     }
 
     /**
@@ -116,6 +126,24 @@ class TableRegistry
 
         /** @var AttributeScopedTableDefinition $wrapped */
         $wrapped = $this->container->make(AttributeScopedTableDefinition::class, [
+            'inner' => $definition,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `OpportunityScopedTableDefinition` (spec 0067) for `quotes`
+     * only — every other domain is returned unchanged.
+     */
+    private function wrapIfOpportunityScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::QUOTES_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var OpportunityScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(OpportunityScopedTableDefinition::class, [
             'inner' => $definition,
         ]);
 

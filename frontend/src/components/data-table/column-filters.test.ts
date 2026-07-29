@@ -323,4 +323,31 @@ describe('createColumnValuesGetter', () => {
 
     expect(fetchValuesMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
   })
+
+  // Spec 0067 D-1/AC-071: the Opportunity detail's Quotes panel scopes the Set
+  // Filter's value list the same way productCategoryId does above.
+  it('forwards opportunityId when given (spec 0067)', async () => {
+    fetchValuesMock.mockResolvedValue({ values: ['draft'], hasMore: false })
+    const params = stubValuesParams({})
+
+    createColumnValuesGetter('quotes', 'quote_status', vi.fn(), undefined, 7)(params)
+    await waitFor(() => expect(params.success).toHaveBeenCalled())
+
+    expect(fetchValuesMock).toHaveBeenCalledWith('quotes', {
+      columnId: 'quote_status',
+      filterModel: {},
+      opportunityId: 7,
+    })
+  })
+
+  // AC-072: every existing caller (no rowScope) sends a byte-identical payload.
+  it('omits opportunityId entirely when not given', async () => {
+    fetchValuesMock.mockResolvedValue({ values: [], hasMore: false })
+    const params = stubValuesParams({})
+
+    createColumnValuesGetter('quotes', 'quote_status', vi.fn())(params)
+    await waitFor(() => expect(params.success).toHaveBeenCalled())
+
+    expect(fetchValuesMock.mock.calls[0][1]).not.toHaveProperty('opportunityId')
+  })
 })
