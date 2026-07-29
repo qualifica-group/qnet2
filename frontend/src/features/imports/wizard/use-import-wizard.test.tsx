@@ -255,4 +255,32 @@ describe('useImportWizard', () => {
     await waitFor(() => expect(result.current.currentStep).toBe(2))
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
   })
+
+  it('adopts a new runId without a remount, so writes never target the previous run', async () => {
+    getImportWizardRunMock.mockImplementation((_domain: string, id: number) =>
+      Promise.resolve(detailRun({ id })),
+    )
+    configureImportRunMock.mockResolvedValue(createdRun({ id: 6, status: 'staging' }))
+
+    const { result, rerender } = renderHook(
+      ({ runId }: { runId: number }) => useImportWizard({ domain: 'leads', initialRunId: runId }),
+      { wrapper: wrapper(), initialProps: { runId: 4 } },
+    )
+
+    await waitFor(() => expect(result.current.run?.id).toBe(4))
+
+    rerender({ runId: 6 })
+
+    await waitFor(() => expect(result.current.run?.id).toBe(6))
+
+    act(() => result.current.submitMapping({ Email: 'email' }, 'create_new', { campaign_id: 9 }))
+
+    await waitFor(() =>
+      expect(configureImportRunMock).toHaveBeenCalledWith('leads', 6, {
+        column_mapping: { Email: 'email' },
+        global_config: { campaign_id: 9 },
+        dedup_strategy: 'create_new',
+      }),
+    )
+  })
 })

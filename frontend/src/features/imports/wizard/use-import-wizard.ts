@@ -122,6 +122,18 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
   // sibling handling in `ImportStepUpload`.
   const [localStep, setLocalStep] = useState<WizardStepIndex>(initialRunId != null ? 1 : 0)
 
+  // The wizard page stays mounted when `?runId=` changes to another run
+  // (resume links navigate within `/imports/new`), so the id captured at mount
+  // would keep driving every write: the operator sees run N in the URL while
+  // the PUT lands on the previous one — a 422 at best, the wrong run's mapping
+  // overwritten at worst. Adopting it during render (never a null: a fresh
+  // upload sets the id here BEFORE the URL catches up) resyncs before the
+  // stale id can reach a request.
+  if (initialRunId != null && initialRunId !== runId) {
+    setRunId(initialRunId)
+    setLocalStep(1)
+  }
+
   // Read by `refetchInterval` below, which is evaluated before the stall
   // state exists in this render pass; the effect further down keeps it in
   // sync, so a stall stops the poll at its next evaluation (one poll later

@@ -290,3 +290,29 @@ it('AC-055: GET shows the live product name, but the frozen line amounts', funct
     expect($response->json('data.offer_lines.0.product.name'))->toBe('Renamed product')
         ->and($response->json('data.offer_lines.0.net_amount'))->toBe($originalNetAmount);
 });
+
+// ---------------------------------------------------------------------------
+// delete happy path (contratto: 204 No Content, come opportunity-statuses)
+// ---------------------------------------------------------------------------
+
+it('delete: 204 No Content and the quote with its lines is gone', function () {
+    quoteHttpNewStatus();
+    $opportunity = Opportunity::factory()->create();
+    $product = quoteHttpRevenueProduct();
+    $actor = quoteHttpUserWith(['create', 'delete', 'view']);
+    Sanctum::actingAs($actor);
+
+    $quoteId = $this->postJson('/api/quotes', [
+        'title' => 'Offerta da eliminare',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])->assertCreated()->json('data.id');
+
+    $this->deleteJson("/api/quotes/{$quoteId}")->assertNoContent();
+
+    $this->assertDatabaseMissing('quotes', ['id' => $quoteId]);
+    $this->assertDatabaseMissing('quote_lines', ['quote_id' => $quoteId]);
+    $this->assertDatabaseHas('products', ['id' => $product->id]);
+});

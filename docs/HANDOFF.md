@@ -2,6 +2,111 @@
 
 > Injected at session start. Update at every green state.
 
+## IMPORT LEAD: RUN ID DESINCRONIZZATO DALL'URL (2026-07-29) — VERDE, NON COMMITTATO
+
+Seconda segnalazione dello stesso 422 (`PUT /api/imports/leads/{id}/configure` -> "The import
+cannot be configured in its current status"), con un dettaglio nuovo: la pagina era su
+`?runId=6` mentre la PUT loggata era su `/imports/leads/4/configure`. Il log e' delle 11:27,
+il fix della sezione sotto (doppia `configure` su cache stale) e' del commit `310584e` delle
+13:19 e risulta pushato su `origin/main`: **quel log e' ANTECEDENTE al fix**. Se la produzione
+non e' stata ri-deployata dopo le 13:19 non ha ne' `applyRunTransition` ne' `resyncOnStaleState`.
+
+DIFETTO RESIDUO TROVATO (indipendente, reale). `useImportWizard` teneva l'id in
+`useState(initialRunId)`: valore letto SOLO al mount. La route `/imports/new` resta montata quando
+cambia il solo query param (`lead-imports-table.tsx:70` e `lead-import-detail-page.tsx:53`
+navigano entrambe a `/imports/new?runId=N`), quindi passando da un run all'altro senza smontare la
+pagina l'URL mostrava il run nuovo mentre ogni scrittura continuava a colpire il precedente ->
+422 se il run vecchio era gia' oltre `configuring`, mapping scritto sul run sbagliato se era
+ancora in `configuring`.
+
+MODIFICA: `use-import-wizard.ts` adotta il nuovo `initialRunId` **in fase di render** (non in un
+`useEffect`: cosi' nessun render intermedio puo' spedire l'id vecchio) e riporta `localStep` a 1.
+Adotta solo id non-null, perche' in un upload fresco lo state riceve l'id PRIMA che l'URL lo
+recepisca (`onRunCreated` -> `setSearchParams`) e un sync bidirezionale lo azzererebbe.
+
+VERIFICA (eseguita davvero): nuovo test in `use-import-wizard.test.tsx` ("adopts a new runId
+without a remount") verificato ROSSO rimuovendo il blocco (`expected 4 to be 6`) e VERDE col fix.
+`npx vitest run src/features/imports` -> 23 file, 176 verdi. `tsc --noEmit` ed eslint puliti.
+
+DA VERIFICARE IN PRODUZIONE: lo stato reale del run 6 nella tabella `/imports`. Se e' gia'
+`staging`/`reviewing` il mapping ERA stato salvato e va ripreso dallo step Revisione, non
+ri-salvato; il 422 in quel caso e' la guardia che funziona.
+
+## MODULO OFFERTE (quotes) + STATI OFFERTA + CODICE PRODOTTO (2026-07-29) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0065-quotes-module.xml` (70 acceptance criteria, contratto congelato prima del
+dispatch). Eseguita con subagent in ondate: schema -> dominio -> HTTP -> frontend -> UI -> verifier.
+
+COSA C'E' ORA
+- `quotes` (testata: `code` QUO-*, `title`, `opportunity_id`, `quote_status_id`, snapshot
+  `commercial_id`/`reporter_id`/`supervisor_id`, `internal_notes`, + 5 aggregati PERSISTITI
+  `revenue_net`/`revenue_vat`/`cost_net`/`cost_vat`/`margin_net`).
+- `quote_lines`: UNA tabella per righe offerta E costi, discriminante `line_type`
+  (`App\Enums\QuoteLineType`: REVENUE|COST). Importi congelati sulla riga.
+- `quote_statuses`: clone di `opportunity_statuses` (3 righe di sistema Bozza/Accettata/Rifiutata,
+  `system_key` new/won/lost). NESSUN configuratore di workflow (D-2, fuori scope).
+- `products.code` string(32) NOT NULL UNIQUE, con backfill `PRD-0001...` per id.
+
+DECISIONI VINCOLANTI (dalla spec, non reinterpretarle)
+- D-3 commerciale/segnalatore/supervisore sono uno SNAPSHOT: copiati dall'opportunita' alla
+  creazione, poi modificabili; nessun riallineamento.
+- D-5 riepilogo con imponibile+IVA+totale per offerta e costi; MARGINE SULL'IMPONIBILE.
+- D-6 tab Costi precompila da `products.cost`, tab Offerta da `products.price`.
+- D-7 la riga salva SOLO `product_id`; una riga OFFERTA con prodotto di categoria non coperta
+  AGGIUNGE la coppia (funzione aziendale, categoria) alle `opportunity_product_lines`. Le righe
+  COSTO non toccano l'opportunita'.
+- D-8 righe e testata in UN'UNICA chiamata, full-replace per tipo. Chiave assente = set invariato,
+  array vuoto = set azzerato.
+- D-9 aggregati ricalcolati e persistiti dal server a ogni scrittura; il client li ricalcola solo
+  per l'anteprima. `net_amount`/`vat_amount`/`total_amount` sono `prohibited` in input (422).
+- D-12 arrotondamento half-up a 2 decimali per riga; gli aggregati sommano valori gia' arrotondati.
+- D-13 / D-1b codice offerta e codice prodotto seguono il pattern manuale della spec 0025
+  (Progetti/Campagne): suggerito da `GET /api/{resource}/next-code`, editabile in creazione,
+  READ-ONLY dopo il salvataggio, 422 su collisione senza retry.
+
+TRAPPOLE DA RICORDARE
+- `Quote::#[Fillable]` NON contiene `code` ne' i 5 aggregati: si assegnano per property-assignment
+  dopo la mass-assignment (come `Project`/`Campaign`).
+- `Relation::requireMorphMap()` e' attivo: ogni model con `LogsModelActivity` DEVE stare in
+  `AppServiceProvider::enforceMorphMap()` (aggiunti `quote` e `quote_status`), altrimenti esplode
+  al primo create.
+- `SystemStatusGuard` ha VERI union type nelle firme: un nuovo status model va aggiunto li',
+  non basta il duck typing di `StatusOrderManager`.
+- Le colonne di tabella che usano `UserCell` devono proiettare `{id,name,avatar_url}`: proiettare
+  `{id,name}` e' il difetto che ha causato il bug "ERR su ogni colonna" segnalato dall'utente.
+- `DemoDataSeeder` cancella le opportunita': `Quote::query()->delete()` DEVE precederle
+  (`quotes.opportunity_id` e' restrictOnDelete), altrimenti il secondo run esplode.
+- La logica di copertura delle product lines e' stata ESTRATTA in
+  `App\Services\Opportunities\OpportunityProductLineCoverage`: la usano sia
+  `OpportunityProductInterestWriter` sia `QuoteService`. Comportamento dei Prodotti di Interesse
+  invariato (AC-054, test esistente non modificato).
+
+NAMING (richiesta esplicita dell'utente): nell'interfaccia si dice sempre OFFERTA/OFFERTE, mai
+"preventivo". Gli identificatori restano inglesi e invariati (`quotes`, `quote_statuses`, rotte
+`/api/quotes`, permessi `quotes.*`, chiavi i18n `quotes.*`). Restano volutamente NON toccate le
+3 label "Layout/Header/Footer preventivo" in `QualificaTemplateSeeder` (dati di catalogo
+pre-esistenti del cliente, altro dominio: sono i campi del documento di quotazione).
+
+VERIFICA (eseguita davvero, doppio passaggio del verifier)
+- Backend: `4219 test, 4202 verdi, 16 rossi` = ESATTAMENTE la baseline pre-esistente censita
+  (11 `*SecurityTest` di navigazione, 1 `CustomFieldWritePipelineTest`, 2 `MigrationRegistryTest`,
+  1 `AbstractMigrationSourcePreviewTest`, 1 `RequestManagementTableSearchTest`). Pint pulito sui
+  file della feature.
+- Frontend: `2680 test, 2677 verdi, 3 rossi` = la baseline pre-esistente
+  (`src/features/table/cell-renderers.test.tsx`, leak di lingua i18n). `tsc --noEmit` pulito.
+- Il primo giro del verifier era ROSSO: mancava il campo Codice nel form Prodotti FE (AC-079/080/
+  081 mai dispacciati) e la whitelist di `FieldCatalogueEndpointTest` non era stata aggiornata dopo
+  la registrazione di `quotes`/`quote-statuses` in `config/authorization.php`. Entrambi corretti.
+
+DEBITO NOTO, NON BLOCCANTE
+- `frontend/src/features/products/product-form-body.tsx` e' a 361 righe (soft limit 300): valutare
+  uno split per sezione, non fatto per tenere il blast radius minimo.
+- `CategoryHierarchy::effectiveBusinessFunction()` viene invocata per categoria distinta in
+  `QuoteLineResource`: su offerte con molte categorie diverse conviene passare al resolver batch
+  `effectiveBusinessFunctionSummaries()` gia' esistente.
+
+PROSSIMO PASSO: nulla di bloccante. In attesa del via libera per il commit (§3.6).
+
 ## IMPORT LEAD: 422 "cannot be configured in its current status" IN PRODUZIONE (2026-07-29) — VERDE, NON COMMITTATO
 
 Segnalazione utente: log `[BACKEND] API internal error`, `PUT /api/imports/leads/2/configure`
@@ -12561,7 +12666,10 @@ File toccati: `frontend/src/components/ui/config-section.tsx`,
 `attribute-layout-field.tsx` verificati, nessuna modifica necessaria (gia' coerenti: le chip
 usano `bg-card`, valido su qualunque tint).
 
-## 2026-07-29 — Frontend `quotes` module (spec 0065-quotes-module) — teammate `frontend`
+## 2026-07-29 — Frontend `quotes` module (spec 0065) — teammate `frontend` — SUPERATA
+> Nota: le due "richieste aperte" in fondo a questa sezione sono state CHIUSE
+> (tipo di `AsyncPaginatedSelect.params` allargato e cast rimosso; `meta.rate` esposto su
+> `VatRateForSelectResource` e consumato dall'anteprima). Vedi la sezione in testa al file.
 
 Implementata la feature `quotes` (Offerte) lato frontend, sopra il data layer gia'
 pronto (`types.ts`/`api.ts`/`quote-schema.ts`/`quote-form-payload.ts`/`quote-totals.ts`/
