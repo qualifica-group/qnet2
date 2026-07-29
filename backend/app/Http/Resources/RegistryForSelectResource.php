@@ -12,9 +12,10 @@ use Illuminate\Http\Request;
  *
  * Minimal by design (ADR 0011): label = name, no subtitle/avatar. `meta`
  * (spec 0040 BR-4 + A-5) carries the registry's default commercial/reporter
- * referents and its ordered account managers, feeding the Opportunity form's
- * prefill — always present (each key null / `managers: []` when the registry
- * has none), unlike the top-level optional keys ForSelectResource strips.
+ * referents, its supervisor (directive 2026-07-29) and its ordered account
+ * managers, feeding the Opportunity form's prefill — always present (each key
+ * null / `managers: []` when the registry has none), unlike the top-level
+ * optional keys ForSelectResource strips.
  *
  * @mixin Registry
  */
@@ -34,6 +35,9 @@ class RegistryForSelectResource extends ForSelectResource
                     : null,
                 'reporter' => $this->reporter !== null
                     ? ['id' => $this->reporter->id, 'name' => $this->reporter->name]
+                    : null,
+                'supervisor' => $this->supervisor !== null
+                    ? ['id' => $this->supervisor->id, 'name' => $this->supervisor->name]
                     : null,
                 'managers' => $this->managers
                     ->map(static fn (User $manager): array => [

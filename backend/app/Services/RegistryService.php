@@ -166,8 +166,8 @@ class RegistryService
     /**
      * Minimal, searchable, paginated registry list for the for-select
      * standard (spec 0023, ADR 0011), mirroring SourceService::forSelect.
-     * commercial/reporter are eager-loaded so RegistryForSelectResource's
-     * `meta` (spec 0040 BR-4) never N+1s.
+     * commercial/reporter/supervisor are eager-loaded so
+     * RegistryForSelectResource's `meta` (spec 0040 BR-4) never N+1s.
      *
      * $onlySuppliers (product supplier picker) constrains the base query to
      * `is_supplier = true` when true; false/omitted is BYTE-IDENTICAL to the
@@ -206,7 +206,7 @@ class RegistryService
     }
 
     /**
-     * Base for-select query: registries with commercial/reporter
+     * Base for-select query: registries with commercial/reporter/supervisor
      * eager-loaded, so RegistryForSelectResource's `meta` never N+1s.
      *
      * @return Builder<Registry>
@@ -214,8 +214,8 @@ class RegistryService
     private function forSelectBaseQuery(): Builder
     {
         return Registry::query()
-            ->select(['id', 'name', 'commercial_id', 'reporter_id'])
-            ->with(['commercial:id,name', 'reporter:id,name', 'managers:id,name']);
+            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id'])
+            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'managers:id,name']);
     }
 
     /**

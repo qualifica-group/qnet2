@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,8 +7,14 @@ import { Form, FormControl } from '@/components/ui/form'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { FormSection } from '@/components/form-section'
-import { RelationSelectField } from '@/components/form/relation-select-field'
+import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
+import type { ForSelectItem } from '@/features/for-select/types'
+import {
+  OPPORTUNITIES_FOR_SELECT_RESOURCE,
+  type OpportunityForSelectItem,
+  type OpportunityForSelectMeta,
+} from '@/features/opportunities/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { QUOTE_STATUSES_FOR_SELECT_RESOURCE } from '@/features/quote-statuses/for-select-api'
@@ -50,6 +57,28 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
     initialCode,
   })
   const original = mode.type === 'edit' ? mode.quote : null
+
+  // Directive 2026-07-29: Commerciale, Segnalatore and Supervisore are always
+  // inherited from the picked Opportunita' — hydrated straight from its
+  // for-select `meta` (no extra fetch), then freely editable (spec 0065 D-3:
+  // the quote keeps a snapshot, never a live link). Wired as the
+  // opportunity select's `onItemChange`, so it only ever runs on an actual
+  // user pick/clear, never as a render-time effect that could overwrite a
+  // later edit.
+  const [inheritedRoles, setInheritedRoles] = useState<OpportunityForSelectMeta | null>(null)
+  const handleOpportunityItemChange = (item: ForSelectItem | null) => {
+    const meta = (item as OpportunityForSelectItem | null)?.meta ?? null
+    setInheritedRoles(meta)
+    form.setValue('commercial_id', meta?.commercial?.id ?? null, { shouldDirty: true })
+    form.setValue('reporter_id', meta?.reporter?.id ?? null, { shouldDirty: true })
+    form.setValue('supervisor_id', meta?.supervisor?.id ?? null, { shouldDirty: true })
+  }
+
+  /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills. */
+  const roleRef = (
+    key: keyof OpportunityForSelectMeta,
+    loaded: RelationFieldRef | null,
+  ): RelationFieldRef | null => (inheritedRoles ? inheritedRoles[key] : loaded)
 
   const relationLabels = {
     placeholder: t('quotes.form.selectPlaceholder'),
@@ -105,9 +134,10 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 name="opportunity_id"
                 metaKey="opportunity_id"
                 label={t('quotes.form.opportunity')}
-                resource="opportunities"
+                resource={OPPORTUNITIES_FOR_SELECT_RESOURCE}
                 searchPlaceholder={t('quotes.form.opportunitySearch')}
                 selected={original ? { id: original.opportunity.id, name: original.opportunity.name } : null}
+                onItemChange={handleOpportunityItemChange}
                 {...relationLabels}
               />
 
@@ -129,7 +159,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 label={t('quotes.form.commercial')}
                 resource={REFERENTS_FOR_SELECT_RESOURCE}
                 searchPlaceholder={t('quotes.form.commercialSearch')}
-                selected={original?.commercial ? { id: original.commercial.id, name: original.commercial.name } : null}
+                selected={roleRef('commercial', original?.commercial ?? null)}
                 {...relationLabels}
               />
 
@@ -140,7 +170,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 label={t('quotes.form.reporter')}
                 resource={REFERENTS_FOR_SELECT_RESOURCE}
                 searchPlaceholder={t('quotes.form.reporterSearch')}
-                selected={original?.reporter ? { id: original.reporter.id, name: original.reporter.name } : null}
+                selected={roleRef('reporter', original?.reporter ?? null)}
                 {...relationLabels}
               />
 
@@ -151,7 +181,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 label={t('quotes.form.supervisor')}
                 resource={USERS_FOR_SELECT_RESOURCE}
                 searchPlaceholder={t('quotes.form.supervisorSearch')}
-                selected={original?.supervisor ? { id: original.supervisor.id, name: original.supervisor.name } : null}
+                selected={roleRef('supervisor', original?.supervisor ?? null)}
                 showAvatar
                 {...relationLabels}
               />

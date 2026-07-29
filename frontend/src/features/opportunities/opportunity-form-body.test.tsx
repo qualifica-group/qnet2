@@ -209,6 +209,7 @@ beforeEach(() => {
             meta: {
               commercial: { id: 71, name: 'Sara Conti' },
               reporter: { id: 81, name: 'Elio Fabbri' },
+              supervisor: { id: 61, name: 'Ivo Bianchi' },
               // A-5: account managers inherited into manager_slots (gap-aware by position).
               managers: [
                 { id: 91, name: 'Gina Manager', position: 1 },
@@ -226,7 +227,7 @@ beforeEach(() => {
           {
             id: TEST_REGISTRY_WITHOUT_DEFAULTS,
             label: 'Beta Srl',
-            meta: { commercial: null, reporter: null, managers: [] },
+            meta: { commercial: null, reporter: null, supervisor: null, managers: [] },
           },
         ],
       }
@@ -313,7 +314,10 @@ describe('OpportunityFormBody — referent scoping + free commercial/reporter (A
     expect(screen.getByTestId('disabled-Reporter')).toHaveTextContent('false')
   })
 
-  it('scopes ONLY the referent by registry_id; commercial/reporter receive no params and are NOT auto-filled (user directive 2026-07-17)', async () => {
+  // Requirement changed by directive 2026-07-29 (supersedes 2026-07-17): the
+  // three roles are ALWAYS inherited from the anagrafica. The pickers stay
+  // unscoped (A-3), only their initial value is now derived.
+  it('scopes ONLY the referent by registry_id; commercial/reporter/supervisor receive no params but ARE inherited from the anagrafica', async () => {
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -328,14 +332,15 @@ describe('OpportunityFormBody — referent scoping + free commercial/reporter (A
     // A-3: commercial/reporter are the whole platform list — no registry_id param.
     expect(screen.getByTestId('params-Sales rep')).toHaveTextContent('null')
     expect(screen.getByTestId('params-Reporter')).toHaveTextContent('null')
-    // They are independent of the anagrafica: picking a registry must NOT
-    // auto-fill them from its defaults — they stay empty.
-    expect(screen.getByTestId('value-Sales rep')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
+
+    await waitFor(() => expect(screen.getByTestId('value-Sales rep')).toHaveTextContent('71'))
+    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('81')
+    expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('61')
+    // The referent is reset, not inherited: it stays anagrafica-scoped (BR-4).
     expect(screen.getByTestId('value-Contact')).toHaveTextContent('')
   })
 
-  it('resets referent on registry change but leaves the manually chosen commercial/reporter untouched (A-3 independence)', async () => {
+  it('re-inherits the three roles on every registry change, clearing them for an anagrafica without defaults', async () => {
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
@@ -343,20 +348,21 @@ describe('OpportunityFormBody — referent scoping + free commercial/reporter (A
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
     screen.getByRole('button', { name: `select Registry ${TEST_REGISTRY_WITH_DEFAULTS}` }).click()
 
-    // The user manually picks a referent (scoped), a commercial and a reporter.
+    // The user manually picks a referent (scoped) and overrides the inherited roles.
     await waitFor(() => expect(screen.getByTestId('disabled-Contact')).toHaveTextContent('false'))
     screen.getByRole('button', { name: 'select Contact 1' }).click()
     screen.getByRole('button', { name: 'select Sales rep 1' }).click()
     screen.getByRole('button', { name: 'select Reporter 1' }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Contact')).toHaveTextContent('1'))
+    await waitFor(() => expect(screen.getByTestId('value-Sales rep')).toHaveTextContent('1'))
 
-    // Changing the anagrafica resets ONLY the scoped referent; the independent
-    // commercial/reporter keep the user's choices.
+    // Changing the anagrafica resets the scoped referent AND re-derives the
+    // three roles — the new one has none, so they end up empty.
     screen.getByRole('button', { name: `select Registry ${TEST_REGISTRY_WITHOUT_DEFAULTS}` }).click()
 
     await waitFor(() => expect(screen.getByTestId('value-Contact')).toHaveTextContent(''))
-    expect(screen.getByTestId('value-Sales rep')).toHaveTextContent('1')
-    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('1')
+    expect(screen.getByTestId('value-Sales rep')).toHaveTextContent('')
+    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
+    expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
   })
 
   it('inherits the account managers of the chosen anagrafica into gap-aware slots, then clears them for one without (AC-095)', async () => {

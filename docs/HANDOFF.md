@@ -2,6 +2,73 @@
 
 > Injected at session start. Update at every green state.
 
+## EREDITARIETA' DEI TRE RUOLI COMMERCIALI (2026-07-29) — VERDE, NON COMMITTATO
+
+Direttiva utente: Commerciale, Segnalatore e Supervisore si ereditano
+**sempre** dall'Anagrafica quando si crea un'Opportunita', e dall'Opportunita'
+quando si crea un'Offerta.
+
+### Cosa cambia
+
+- **Offerta <- Opportunita'.** `OpportunityForSelectResource` ora emette
+  `meta.{commercial,reporter,supervisor}` (sempre presente, chiavi null se
+  assenti); `OpportunityService::forSelect` usa un nuovo `forSelectBaseQuery()`
+  con eager load dei tre ruoli, condiviso anche da `appendHydratedForSelectIds`
+  (prima l'hydration per `ids[]` avrebbe N+1-ato). Il form legge il `meta` via
+  `RelationSelectField.onItemChange` (event handler, mai effect) e riempie i tre
+  campi. Nuovo `features/opportunities/for-select-api.ts` con
+  `OPPORTUNITIES_FOR_SELECT_RESOURCE` + i tipi del `meta` (prima la stringa
+  `"opportunities"` era inline in `quote-form-body.tsx`).
+- **Opportunita' <- Anagrafica.** `RegistryForSelectResource.meta` guadagna
+  `supervisor` (commercial/reporter c'erano gia'); `OpportunityRegistryField`
+  ora, oltre a `referent_id`/`manager_slots`, azzera e ri-deriva i tre ruoli
+  dal `meta` dell'anagrafica scelta.
+
+### Decisione precedente SUPERSEDED (segnalata, non sovrascritta in silenzio)
+
+La direttiva **2026-07-17** diceva l'opposto: "selezionare un'anagrafica NON
+deve auto-compilare commercial/reporter". Era cablata nel commento di
+`opportunity-registry-field.tsx` e in due test. La direttiva 2026-07-29 la
+sostituisce; commento e test sono stati riscritti citando entrambe le date.
+I picker restano la lista piatta di piattaforma (A-3): cambia solo il valore
+iniziale, che resta liberamente modificabile.
+
+### Semantica scelta (dichiarata, non implicita)
+
+L'ereditarieta' scatta a **ogni pick utente** del campo sorgente, in creazione
+E in modifica — non solo in creazione: il campo sorgente e' un'azione esplicita
+e questo allinea i tre ruoli al comportamento gia' esistente di
+`referent_id`/`manager_slots` sull'anagrafica. Su sorgente sbiancata i tre si
+azzerano. Su una sorgente senza ruoli i tre restano vuoti (nessun carry-over
+dalla scelta precedente).
+
+### FUORI SCOPE — da decidere
+
+Il percorso **conversione da Lead** (`use-opportunity-lead-selection.ts`) imposta
+`registry_id` programmaticamente e NON passa da `OpportunityRegistryField`:
+li' i tre ruoli restano vuoti. `LeadOpportunityDefaultsResolver` non li deriva.
+Se "sempre" deve valere anche li', va deciso come conviva con il locking BR-2.
+
+### Nota: il backend gia' ereditava (invisibile)
+
+`QuoteService::applySnapshotDefaults` copia i tre ruoli dall'opportunita' per
+ogni chiave NON inviata (AC-020). Ma `buildCreatePayload` le invia SEMPRE, anche
+null, e un valore inviato vince (AC-021): per questo l'ereditarieta' non si
+vedeva mai. Il prefill FE la rende visibile prima del submit; la rete di
+sicurezza server-side resta invariata.
+
+### VERIFICA (eseguita davvero)
+
+- FE: `npx vitest run` -> 390 file, 2699 verdi. Rossi SOLO i 3 preesistenti di
+  `features/table/cell-renderers.test.tsx`. `tsc --noEmit` pulito, ESLint pulito
+  sui file toccati.
+- BE: `pest tests/Feature/{Opportunities,Registries,Quotes}` 306 verdi;
+  `pest tests/Feature/{RewardedReferents,Table,Leads}` 336 verdi (il for-select
+  opportunita' alimenta anche il filtro avanzato di `rewarded-referents`).
+  Pint passed.
+- Nuovi test: `quote-form-opportunity-roles.test.tsx` (3), `meta` su
+  `OpportunityForSelectTest` e `supervisor` su `RegistryForSelectTest`.
+
 ## GESTIONE RICHIESTE — FORM DI CREAZIONE: QUICK-CREATE, OPERATORE, FONTE OBBLIGATORIA (2026-07-29) — VERDE, NON COMMITTATO
 
 Quattro direttive utente sullo stesso giro (`/request-management/new`).

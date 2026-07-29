@@ -28,10 +28,15 @@ function toForSelectItem(ref: RelationFieldRef | null): ForSelectItem | null {
 /**
  * The opportunity's required anagrafica (`registry_id`, D-4). Picking a
  * registry resets `referent_id` (BR-4: still anagrafica-scoped) and inherits
- * `manager_slots` from its account managers (`meta.managers`, spec 0040 A-5),
- * still freely editable afterwards. commercial/reporter (A-3) are the whole
- * platform list, INDEPENDENT of the anagrafica, so they are NOT touched here
- * (user directive 2026-07-17: selecting a registry must not auto-fill them).
+ * `manager_slots` from its account managers (`meta.managers`, spec 0040 A-5)
+ * plus Commerciale, Segnalatore and Supervisore from the anagrafica's own
+ * three roles — all still freely editable afterwards.
+ *
+ * The last point SUPERSEDES the 2026-07-17 directive ("selecting a registry
+ * must not auto-fill commercial/reporter"): directive 2026-07-29 makes the
+ * three roles always inherited from the anagrafica. The picker itself stays
+ * the whole platform list (A-3), only the initial value is derived.
+ *
  * A single one-shot fetch, run as a direct consequence of the user's
  * selection, never a render-time effect, so it never re-overwrites a later
  * edit.
@@ -48,12 +53,16 @@ export function OpportunityRegistryField({
 
   const applyRegistrySelection = async (registryId: number | null) => {
     // Referent is anagrafica-scoped (BR-4): a referent from the previous
-    // registry is no longer valid, so reset it. commercial/reporter (A-3) are
-    // independent of the anagrafica and are intentionally left untouched.
+    // registry is no longer valid, so reset it.
     setValue('referent_id', null, { shouldDirty: true })
-    // A-5: account managers are inherited from the anagrafica — clear them too,
-    // then repopulate below (empty when the registry has none).
+    // Everything else below is inherited from the anagrafica (A-5 for the
+    // managers, directive 2026-07-29 for the three roles): clear first, then
+    // repopulate — so a registry with none leaves the fields empty rather
+    // than carrying the previous anagrafica's values over.
     setValue('manager_slots', [], { shouldDirty: true })
+    setValue('commercial_id', null, { shouldDirty: true })
+    setValue('reporter_id', null, { shouldDirty: true })
+    setValue('supervisor_id', null, { shouldDirty: true })
 
     if (registryId === null) {
       return
@@ -63,6 +72,9 @@ export function OpportunityRegistryField({
       return
     }
     setValue('manager_slots', managerSlotsFromRefs(meta.managers ?? []), { shouldDirty: true })
+    setValue('commercial_id', meta.commercial?.id ?? null, { shouldDirty: true })
+    setValue('reporter_id', meta.reporter?.id ?? null, { shouldDirty: true })
+    setValue('supervisor_id', meta.supervisor?.id ?? null, { shouldDirty: true })
   }
 
   const selectRegistry = (field: { onChange: (value: number | null) => void }, registryId: number | null) => {

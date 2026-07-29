@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -63,6 +64,48 @@ it('200: envelope {items, export_link, pagination} with {id, label} items, filte
         'id' => $match->id,
         'label' => 'OPP_Ada',
     ]);
+});
+
+// ---------------------------------------------------------------------------
+// meta.commercial / meta.reporter / meta.supervisor (spec 0065 D-3, directive
+// 2026-07-29): the three roles a new Offerta inherits from its Opportunita'.
+// ---------------------------------------------------------------------------
+
+it('exposes meta.commercial, meta.reporter and meta.supervisor when set', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $commercial = Referent::factory()->create(['name' => 'Carla Commercial']);
+    $reporter = Referent::factory()->create(['name' => 'Renzo Reporter']);
+    $supervisor = User::factory()->create(['name' => 'Sara Supervisor']);
+    $target = Opportunity::factory()->create([
+        'commercial_id' => $commercial->id,
+        'reporter_id' => $reporter->id,
+        'supervisor_id' => $supervisor->id,
+    ]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/opportunities/for-select?ids[]={$target->id}")->assertOk();
+    $item = collect($response->json('items'))->firstWhere('id', $target->id);
+
+    expect($item['meta'])->toMatchArray([
+        'commercial' => ['id' => $commercial->id, 'name' => 'Carla Commercial'],
+        'reporter' => ['id' => $reporter->id, 'name' => 'Renzo Reporter'],
+        'supervisor' => ['id' => $supervisor->id, 'name' => 'Sara Supervisor'],
+    ]);
+});
+
+it('exposes meta.commercial/meta.reporter/meta.supervisor as null when unset', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $target = Opportunity::factory()->create([
+        'commercial_id' => null,
+        'reporter_id' => null,
+        'supervisor_id' => null,
+    ]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/opportunities/for-select?ids[]={$target->id}")->assertOk();
+    $item = collect($response->json('items'))->firstWhere('id', $target->id);
+
+    expect($item['meta'])->toMatchArray(['commercial' => null, 'reporter' => null, 'supervisor' => null]);
 });
 
 it('ids[] hydrates an opportunity present even though it does not match the search', function () {

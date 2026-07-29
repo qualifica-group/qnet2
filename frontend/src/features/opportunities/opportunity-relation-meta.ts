@@ -9,6 +9,8 @@ import type { OpportunityManagerRef } from '@/features/opportunities/types'
 export interface RegistryMeta {
   commercial: RelationFieldRef | null
   reporter: RelationFieldRef | null
+  /** Directive 2026-07-29: inherited alongside commercial/reporter when an anagrafica is picked. */
+  supervisor: RelationFieldRef | null
   /** Account managers (registry_user), ordered by position — A-5 prefill of `manager_slots`. */
   managers: OpportunityManagerRef[]
 }
@@ -25,7 +27,7 @@ interface RegistryForSelectItem extends ForSelectItem {
 
 /**
  * Imperative one-shot fetch of the newly selected registry's `meta` block
- * (BR-4: prefill of commercial/reporter), run as a direct consequence of the
+ * (prefill of commercial/reporter/supervisor), run as a direct consequence of the
  * user's `onChange` — never as a render-time effect, so a later background
  * refetch can never silently overwrite the user's own edits.
  */

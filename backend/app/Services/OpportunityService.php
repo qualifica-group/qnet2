@@ -16,6 +16,7 @@ use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Statuses\SystemStatusGuard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -90,7 +91,7 @@ class OpportunityService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = Opportunity::query()->select(['id', 'name']);
+        $base = $this->forSelectBaseQuery();
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -116,9 +117,23 @@ class OpportunityService
     }
 
     /**
+     * Base for-select query: opportunities with the three commercial roles
+     * eager-loaded, so OpportunityForSelectResource's `meta` (the Quote
+     * snapshot prefill, spec 0065 D-3) never N+1s.
+     *
+     * @return Builder<Opportunity>
+     */
+    private function forSelectBaseQuery(): Builder
+    {
+        return Opportunity::query()
+            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id'])
+            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name']);
+    }
+
+    /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
      * not already on the page, deduplicated. They bypass search and the same
-     * id/name projection applies. Total is unaffected.
+     * id/name/meta projection applies. Total is unaffected.
      *
      * @param  Collection<int, Opportunity>  $page
      * @return Collection<int, Opportunity>
@@ -137,8 +152,7 @@ class OpportunityService
         }
 
         /** @var Collection<int, Opportunity> $hydrated */
-        $hydrated = Opportunity::query()
-            ->select(['id', 'name'])
+        $hydrated = $this->forSelectBaseQuery()
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')
