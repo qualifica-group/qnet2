@@ -443,6 +443,9 @@ export const it: TranslationResources = {
       create: 'Crea',
       update: 'Modifica',
       delete: 'Elimina',
+      // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
+      // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).
+      assignOperator: 'Assegna operatore',
     },
     resources: {
       users: 'Utenti',

@@ -416,6 +416,9 @@ export const en = {
       create: 'Create',
       update: 'Edit',
       delete: 'Delete',
+      // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
+      // Operator at creation (user directive 2026-07-29).
+      assignOperator: 'Assign operator',
     },
     // Resource prefixes shown as permission group titles. New resources fall
     // back to a humanized version of their key, so this list need not be exhaustive.
