@@ -54,6 +54,12 @@ export const imports = {
     completed: 'Completato',
     failed: 'Fallito',
   },
+  background: {
+    hint: 'L’operazione prosegue sul server anche se chiudi questa finestra.',
+    stalled:
+      'Sta impiegando più del previsto: abbiamo smesso di controllare. L’operazione resta in carico al server — riprova a controllare tra poco o, se non si sblocca, avvisa l’amministratore.',
+    retry: 'Controlla di nuovo',
+  },
   summary: {
     total: 'Righe totali',
     valid: 'Righe valide',

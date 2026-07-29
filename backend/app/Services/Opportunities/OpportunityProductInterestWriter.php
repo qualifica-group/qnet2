@@ -6,7 +6,6 @@ namespace App\Services\Opportunities;
 
 use App\Models\Opportunity;
 use App\Models\Product;
-use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -23,15 +22,13 @@ use Illuminate\Validation\ValidationException;
  * therefore legal, and it must ADD the matching funzione-aziendale +
  * categoria-prodotto row to the opportunity — the frontend warns before
  * doing it, this writer is what actually performs it, so the invariant holds
- * even for a client that never showed the warning.
- *
- * A product whose category has no EFFECTIVE business function (own or
- * inherited) cannot produce a valid row — `product_lines` requires both ids —
- * so it is rejected as a 422 rather than silently dropped.
+ * even for a client that never showed the warning. The coverage rule itself
+ * (spec 0065, D-7/AC-054) is extracted into OpportunityProductLineCoverage,
+ * shared verbatim with QuoteService.
  */
 final class OpportunityProductInterestWriter
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(private readonly OpportunityProductLineCoverage $coverage) {}
 
     /**
      * Replaces the whole collection (authoritative sync) and returns the
@@ -50,7 +47,7 @@ final class OpportunityProductInterestWriter
 
         // Step 2: cover every selected product's category with a product line
         // (the cross-category pick the frontend warns about).
-        $addedLines = $this->ensureProductLinesCover($opportunity, $products);
+        $addedLines = $this->coverage->ensure($opportunity, $products);
 
         // Step 3: replace the collection.
         $opportunity->productsOfInterest()->sync($ids);
@@ -81,53 +78,5 @@ final class OpportunityProductInterestWriter
         }
 
         return $products;
-    }
-
-    /**
-     * Creates the missing funzione-aziendale + categoria-prodotto rows for
-     * the categories of $products that the opportunity does not already
-     * carry. Existing rows are never touched (the pair is unique, so a
-     * duplicate is impossible by construction).
-     *
-     * @param  Collection<int, Product>  $products
-     * @return array<int, array{business_function_id: int, product_category_id: int}>
-     *
-     * @throws ValidationException
-     */
-    private function ensureProductLinesCover(Opportunity $opportunity, Collection $products): array
-    {
-        $coveredCategoryIds = $opportunity->productLines()->pluck('product_category_id')->all();
-        $added = [];
-
-        foreach ($products as $product) {
-            $category = $product->category;
-
-            if ($category === null || in_array($category->id, $coveredCategoryIds, true)) {
-                continue;
-            }
-
-            $businessFunction = $this->hierarchy->effectiveBusinessFunction($category);
-
-            if ($businessFunction === null) {
-                throw ValidationException::withMessages([
-                    'products_of_interest' => ["The category of product \"{$product->name}\" has no business function: it cannot be added to this opportunity."],
-                ]);
-            }
-
-            $line = [
-                'business_function_id' => (int) $businessFunction['id'],
-                'product_category_id' => (int) $category->id,
-            ];
-
-            $opportunity->productLines()->create($line);
-            $coveredCategoryIds[] = $category->id;
-            $added[] = $line;
-        }
-
-        if ($added !== []) {
-            $opportunity->unsetRelation('productLines');
-        }
-
-        return $added;
     }
 }

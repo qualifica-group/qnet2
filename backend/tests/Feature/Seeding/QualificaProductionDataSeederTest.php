@@ -49,7 +49,7 @@ it('is idempotent: a second run duplicates nothing', function (): void {
     test()->seed(QualificaProductionDataSeeder::class);
     test()->seed(QualificaProductionDataSeeder::class);
 
-    expect(Source::query()->count())->toBe(9)
+    expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(262)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);

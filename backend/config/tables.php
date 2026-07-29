@@ -16,6 +16,8 @@ use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
+use App\Tables\QuotesTableDefinition;
+use App\Tables\QuoteStatusesTableDefinition;
 use App\Tables\ReferentsTableDefinition;
 use App\Tables\ReferentTypesTableDefinition;
 use App\Tables\RegistriesTableDefinition;
@@ -77,6 +79,8 @@ return [
         'opportunities' => OpportunitiesTableDefinition::class,
         'opportunity-statuses' => OpportunityStatusesTableDefinition::class,
         'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
+        'quote-statuses' => QuoteStatusesTableDefinition::class,
+        'quotes' => QuotesTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
         'reward-types' => RewardTypesTableDefinition::class,
         'reward-statuses' => RewardStatusesTableDefinition::class,

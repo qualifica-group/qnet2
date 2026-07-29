@@ -204,6 +204,15 @@ export const importWizard = {
       unresolved: 'Non risolti',
     },
   },
+  background: {
+    hint: 'L’operazione prosegue in background: puoi chiudere questa pagina e riprendere l’import dalla lista.',
+    hintNotified:
+      'L’importazione prosegue in background: riceverai una notifica al termine. Puoi chiudere questa pagina.',
+    goToList: 'Vai alla lista import',
+    stalled:
+      'Questa fase sta impiegando più del previsto: abbiamo smesso di controllare. L’operazione resta in carico al server — riprova a controllare tra poco o, se non si sblocca, avvisa l’amministratore.',
+    retry: 'Controlla di nuovo',
+  },
   status: {
     analyzing: 'Analisi in corso',
     configuring: 'Configurazione',

@@ -92,7 +92,12 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
               </div>
             </div>
           ) : (
-            <MassImportProgress run={massState.run} onClose={() => handleOpenChange(false)} />
+            <MassImportProgress
+              run={massState.run}
+              onClose={() => handleOpenChange(false)}
+              isPollingStalled={massState.isPollingStalled}
+              onRetryPolling={massState.retryPolling}
+            />
           )}
         </div>
       </SheetContent>

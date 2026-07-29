@@ -78,6 +78,7 @@ class QualificaCatalogSeeder extends Seeder
     private const array SOURCES = [
         'Diretto',
         'Passaparola',
+        'Diretto / Passaparola',
         'Social',
         'Sito',
         'Spoki',

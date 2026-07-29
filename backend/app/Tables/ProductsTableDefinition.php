@@ -15,9 +15,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Table definition for the `products` domain (spec 0017).
+ * Table definition for the `products` domain (spec 0017; `code` per spec
+ * 0065, AC-009b).
  *
- * Real columns (name, description, cost, price, created_at) are handled
+ * Real columns (code, name, description, cost, price, created_at) are handled
  * entirely by the generic engine. `category` has no real DB column of its
  * own (it is the related category's name) and is DERIVED: its set
  * filter/sort/distinct-values are resolved here against the related
@@ -139,6 +140,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
         /** @var Product $row */
         return [
             'id' => $row->id,
+            'code' => $row->code,
             'name' => $row->name,
             'description' => $row->description,
             'cost' => $row->cost === null ? null : (float) $row->cost,

@@ -206,6 +206,15 @@ export const importWizard = {
       unresolved: 'Unresolved',
     },
   },
+  background: {
+    hint: 'This step keeps running in the background: you can leave this page and resume the import from the list.',
+    hintNotified:
+      'The import keeps running in the background: you will get a notification once it finishes. You can leave this page.',
+    goToList: 'Go to the import list',
+    stalled:
+      'This phase is taking longer than expected, so we stopped checking. The server still owns the run — check again in a moment or, if it does not move, tell your administrator.',
+    retry: 'Check again',
+  },
   status: {
     analyzing: 'Analyzing',
     configuring: 'Configuring',

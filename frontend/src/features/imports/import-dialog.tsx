@@ -132,6 +132,8 @@ export function ImportDialog({ domain, open, onOpenChange }: ImportDialogProps) 
               domain={domain}
               importRun={importRun}
               onClose={() => handleOpenChange(false)}
+              isPollingStalled={importState.isPollingStalled}
+              onRetryPolling={importState.retryPolling}
             />
           ) : null}
 

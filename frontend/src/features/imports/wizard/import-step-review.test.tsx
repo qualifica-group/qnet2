@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import '@/features/imports/wizard/i18n'
 import { ImportStepReview } from '@/features/imports/wizard/import-step-review'
@@ -74,9 +75,18 @@ describe('ImportStepReview', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading the review…')
   })
 
-  it('shows the staging state while rows are still being staged', () => {
-    render(<ImportStepReview domain="leads" run={baseRun({ status: 'staging' })} onContinue={vi.fn()} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Applying mapping…')
+  it('shows the staging state while rows are still being staged, announcing it runs in the background', () => {
+    render(
+      <MemoryRouter>
+        <ImportStepReview domain="leads" run={baseRun({ status: 'staging' })} onContinue={vi.fn()} />
+      </MemoryRouter>,
+    )
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Applying mapping…')
+    expect(status).toHaveTextContent('keeps running in the background')
+    // Staging sends no notification — only the final commit phase does.
+    expect(status).not.toHaveTextContent('you will get a notification')
+    expect(screen.getByRole('link', { name: 'Go to the import list' })).toHaveAttribute('href', '/imports')
   })
 
   it('renders the run counters and the review grid once reviewing', () => {

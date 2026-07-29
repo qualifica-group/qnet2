@@ -59,6 +59,22 @@ class ProductController extends BaseApiController
     }
 
     /**
+     * GET /api/products/next-code — the next sequential code (PRD-0001...) as
+     * a non-binding suggestion for the create form's auto-fill (spec 0065,
+     * D-1b). Gated by products.create: only an actor who may create needs it.
+     */
+    public function nextCode(): JsonResponse
+    {
+        try {
+            $this->authorize('create', Product::class);
+
+            return $this->ok(['code' => $this->service->previewNextCode()]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
      * POST /api/products — create a new product.
      */
     public function store(StoreProductRequest $request): JsonResponse

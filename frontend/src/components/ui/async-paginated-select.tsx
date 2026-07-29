@@ -88,9 +88,12 @@ interface AsyncPaginatedSelectProps {
   /**
    * Extra, resource-specific query parameters forwarded to the for-select
    * request (spec 0032 `dependency.param`: a parent filter's current value).
-   * Changing it starts a fresh paginated query.
+   * Changing it starts a fresh paginated query. An array value is serialized
+   * as repeated `key[]=` params (Laravel convention) — matches the type
+   * already accepted by `useForSelect`/`fetchForSelect` and by the
+   * `AsyncPaginatedMultiSelect` sibling.
    */
-  params?: Record<string, string | number>
+  params?: Record<string, string | number | number[]>
 }
 
 /**

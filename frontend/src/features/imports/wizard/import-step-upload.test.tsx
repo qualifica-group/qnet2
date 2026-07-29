@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ImportStepUpload } from '@/features/imports/wizard/import-step-upload'
 import '@/features/imports/wizard/i18n'
@@ -73,18 +74,23 @@ describe('ImportStepUpload', () => {
     expect(onUpload).not.toHaveBeenCalled()
   })
 
-  it('shows the analyzing state while the run is still analyzing', () => {
+  it('shows the analyzing state while the run is still analyzing, announcing it runs in the background', () => {
     render(
-      <ImportStepUpload
-        run={baseRun({ status: 'analyzing' })}
-        isUploading={false}
-        uploadError={null}
-        onUpload={vi.fn()}
-        onContinue={vi.fn()}
-      />,
+      <MemoryRouter>
+        <ImportStepUpload
+          run={baseRun({ status: 'analyzing' })}
+          isUploading={false}
+          uploadError={null}
+          onUpload={vi.fn()}
+          onContinue={vi.fn()}
+        />
+      </MemoryRouter>,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('Analyzing the file…')
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Analyzing the file…')
+    expect(status).toHaveTextContent('keeps running in the background')
+    expect(screen.getByRole('link', { name: 'Go to the import list' })).toHaveAttribute('href', '/imports')
   })
 
   it('shows the analysis summary and continues on demand once configuring', () => {

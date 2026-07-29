@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BackgroundJobNotice } from '@/components/background-job-notice'
 import { ImportErrorReportLink } from '@/features/imports/import-error-report-link'
 import type { ImportRun, ImportStatus } from '@/features/imports/types'
 import type { VariantProps } from 'class-variance-authority'
@@ -24,6 +25,9 @@ interface ImportProgressProps {
   importRun: ImportRun
   /** Called when the user dismisses a terminal (completed/failed) run. */
   onClose: () => void
+  /** True once the poll gave up on this run (see `useImport`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 /**
@@ -31,7 +35,13 @@ interface ImportProgressProps {
  * on the terminal `completed`/`failed` outcome. Purely presentational: the
  * poll itself is driven by `useImport`.
  */
-export function ImportProgress({ domain, importRun, onClose }: ImportProgressProps) {
+export function ImportProgress({
+  domain,
+  importRun,
+  onClose,
+  isPollingStalled = false,
+  onRetryPolling,
+}: ImportProgressProps) {
   const { t } = useTranslation()
   const isActive = ACTIVE_STATUSES.has(importRun.status)
   const isTerminal = importRun.status === 'completed' || importRun.status === 'failed'
@@ -58,6 +68,14 @@ export function ImportProgress({ domain, importRun, onClose }: ImportProgressPro
           } ${isActive ? 'w-1/2 animate-pulse' : 'w-full'}`}
         />
       </div>
+
+      {isActive ? (
+        <BackgroundJobNotice
+          keyPrefix="imports.background"
+          isStalled={isPollingStalled}
+          onRetry={onRetryPolling}
+        />
+      ) : null}
 
       {importRun.total_rows > 0 ? (
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">

@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 // See the note in `import-step-summary.test.tsx`: the base bundle must
 // register before this lane's deep-merge extension.
@@ -48,10 +49,26 @@ beforeAll(async () => {
 
 describe('ImportRunProgress', () => {
   it('shows a busy indicator with a progressbar while processing', () => {
-    render(<ImportRunProgress domain="leads" run={baseRun()} />)
+    render(
+      <MemoryRouter>
+        <ImportRunProgress domain="leads" run={baseRun()} />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByRole('status')).toHaveTextContent('Import in progress…')
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('announces the background run and the incoming notification while processing', () => {
+    render(
+      <MemoryRouter>
+        <ImportRunProgress domain="leads" run={baseRun()} />
+      </MemoryRouter>,
+    )
+
+    // The commit phase is the only one that ends with a notification.
+    expect(screen.getByRole('status')).toHaveTextContent('you will get a notification once it finishes')
+    expect(screen.getByRole('link', { name: 'Go to the import list' })).toHaveAttribute('href', '/imports')
   })
 
   it('shows the outcome and the error report link once completed with errors', () => {
@@ -75,6 +92,22 @@ describe('ImportRunProgress', () => {
     )
 
     expect(screen.queryByRole('button', { name: 'Download error report' })).not.toBeInTheDocument()
+  })
+
+  it('replaces the busy view with the stalled notice once the poll gives up', () => {
+    const onRetryPolling = vi.fn()
+    render(
+      <MemoryRouter>
+        <ImportRunProgress domain="leads" run={baseRun()} isPollingStalled onRetryPolling={onRetryPolling} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('we stopped checking')
+    // The spinner is gone: nothing is being polled any more.
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+    expect(onRetryPolling).toHaveBeenCalledTimes(1)
   })
 
   it('shows the failure notice once failed', () => {

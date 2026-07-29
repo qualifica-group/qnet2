@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 // The base `importWizard` bundle (owned by F1) must register before this
 // lane's extension deep-merges on top of it (see
@@ -95,14 +96,17 @@ function renderStep({
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <ImportStepSummary
-        domain="leads"
-        run={run}
-        onConfirm={onConfirm}
-        onBackToReview={onBackToReview}
-        isConfirming={isConfirming}
-        confirmError={confirmError}
-      />
+      {/* The processing view links back to the import list (`ImportBackgroundNotice`). */}
+      <MemoryRouter>
+        <ImportStepSummary
+          domain="leads"
+          run={run}
+          onConfirm={onConfirm}
+          onBackToReview={onBackToReview}
+          isConfirming={isConfirming}
+          confirmError={confirmError}
+        />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return { onConfirm, onBackToReview }

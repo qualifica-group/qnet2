@@ -72,7 +72,13 @@ it('persists ONLY non-skipped/error staged rows via persistRow, updates counters
         ->and(BusinessFunction::query()->where('name', 'Should Not Import')->exists())->toBeFalse()
         ->and(BusinessFunction::query()->where('name', 'Also Should Not Import')->exists())->toBeFalse();
 
-    Notification::assertSentTo($actor, ImportCompletedNotification::class);
+    // The action_url must hit the SPA's `/imports/:runId` route: a
+    // `/imports/{resource}/{id}` deep link matches no route at all.
+    Notification::assertSentTo(
+        $actor,
+        ImportCompletedNotification::class,
+        fn (ImportCompletedNotification $notification): bool => $notification->toArray($actor)['action_url'] === "/imports/{$run->id}",
+    );
 });
 
 it('isolates a commit-time failure to its own row without blocking the others', function () {

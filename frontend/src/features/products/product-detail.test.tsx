@@ -12,6 +12,7 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
 function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
   return {
     id: 5,
+    code: 'PRD-0005',
     name: 'ThinkPad X1',
     description: null,
     cost: 800,

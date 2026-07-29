@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { fetchProductNextCode } from '@/features/products/api'
 import { useProductFormMeta } from '@/features/products/use-product-form-meta'
 import { ProductFormBody } from '@/features/products/product-form-body'
 import type { ProductDetail, ProductFormMode } from '@/features/products/types'
@@ -25,7 +27,20 @@ export function ProductForm(props: ProductFormProps) {
   const { t } = useTranslation()
   const meta = useProductFormMeta(props.mode)
 
-  if (meta.status === 'loading') {
+  // Create-only: fetch the next sequential code to auto-fill the (required,
+  // editable) `code` field (spec 0065, mirrors `ProjectForm`). Kept uncached
+  // (staleTime/gcTime 0) so each new form gets a fresh suggestion; an error
+  // degrades gracefully to an empty field the user fills manually.
+  const isCreate = props.mode.type === 'create'
+  const nextCode = useQuery({
+    queryKey: ['products', 'next-code'],
+    queryFn: fetchProductNextCode,
+    enabled: isCreate,
+    staleTime: 0,
+    gcTime: 0,
+  })
+
+  if (meta.status === 'loading' || (isCreate && nextCode.isLoading)) {
     return (
       <div className="flex flex-col gap-4 p-4" aria-hidden="true">
         <Skeleton className="h-9 w-full" />
@@ -50,7 +65,7 @@ export function ProductForm(props: ProductFormProps) {
 
   return (
     <ResourcePermissionsProvider permissions={meta.permissions}>
-      <ProductFormBody {...props} />
+      <ProductFormBody {...props} initialCode={isCreate ? (nextCode.data ?? '') : undefined} />
     </ResourcePermissionsProvider>
   )
 }

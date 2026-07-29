@@ -13,21 +13,31 @@ use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `products` resource (spec 0017; spec 0061 for its
- * own `attribute_values`): create/update (generic fields, plus the
- * PRODUCT-context attribute values validated/normalized against
- * ProductAttributeResolver — reusing the SAME
+ * own `attribute_values`; spec 0065, D-1/D-1b for `code`): create/update
+ * (generic fields, plus the PRODUCT-context attribute values
+ * validated/normalized against ProductAttributeResolver — reusing the SAME
  * AttributeValueValidator/AttributeValueNormalizer pipeline as the Opportunity
  * path, App\RequestManagement) and delete. The controller stays thin; this
  * Service is the single authority.
  */
 class ProductService
 {
+    use GeneratesSequentialCode;
+
+    private const string CODE_PREFIX = 'PRD';
+
+    private const string CODE_TABLE = 'products';
+
+    private const string CODE_COLUMN = 'code';
+
     /**
      * Relations eager-loaded on every returned model, so ProductResource
      * never N+1s while hydrating the category summary.
@@ -35,6 +45,15 @@ class ProductService
      * @var array<int, string>
      */
     private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'state'];
+
+    /**
+     * Columns projected by the for-select standard (ADR 0011; spec 0065,
+     * AC-009 for `code`/`price`/`cost`/`vat_rate_id`), shared by both the page
+     * query and the `ids[]` hydration query so the two never drift.
+     *
+     * @var array<int, string>
+     */
+    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -68,27 +87,52 @@ class ProductService
         return ['id' => $effective['id'], 'name' => $effective['name']];
     }
 
+    /**
+     * A manual `code` (spec 0065, D-1b) is persisted as submitted; otherwise
+     * one is generated inside the transaction with a pessimistic lock, so two
+     * concurrent creates never collide (mirrors ProjectService::create).
+     */
     public function create(CreateProductData $data): Product
     {
-        $product = new Product([
-            'name' => $data->name,
-            'description' => $data->description,
-            'cost' => $data->cost,
-            'price' => $data->price,
-            'category_id' => $data->categoryId,
-            'product_type' => $data->productType,
-            'vat_rate_id' => $data->vatRateId,
-            'supplier_id' => $data->supplierId,
-            'state_id' => $data->stateId,
-        ]);
+        $product = DB::transaction(function () use ($data): Product {
+            $product = new Product([
+                'name' => $data->name,
+                'description' => $data->description,
+                'cost' => $data->cost,
+                'price' => $data->price,
+                'category_id' => $data->categoryId,
+                'product_type' => $data->productType,
+                'vat_rate_id' => $data->vatRateId,
+                'supplier_id' => $data->supplierId,
+                'state_id' => $data->stateId,
+            ]);
 
-        if ($data->hasAttributeValues()) {
-            $this->applyAttributeValues($product, $data->attributeValues);
-        }
+            if ($data->hasAttributeValues()) {
+                $this->applyAttributeValues($product, $data->attributeValues);
+            }
 
-        $product->save();
+            // `code` is deliberately absent from Product's #[Fillable] (spec
+            // 0065, D-1), so a mass-assigned Product::create() would silently
+            // drop it, leaving the NOT NULL `code` column unset — assign it
+            // directly (bypasses mass-assignment guarding) AFTER the fillable
+            // attributes, mirroring ProjectService::create().
+            $product->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+            $product->save();
+
+            return $product;
+        });
 
         return $product->fresh(self::HYDRATED_RELATIONS);
+    }
+
+    /**
+     * The next sequential code (PRD-0001...) as a non-binding suggestion for
+     * the create form's auto-fill (spec 0065, D-1b). Lock-free: the binding
+     * value is still resolved atomically in create().
+     */
+    public function previewNextCode(): string
+    {
+        return $this->peekNextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
     }
 
     public function update(Product $product, UpdateProductData $data): Product
@@ -185,10 +229,14 @@ class ProductService
      * The category is projected as `meta.category` so the operator can tell
      * two same-named products apart, and so the unlocked picker shows what a
      * cross-category pick would add to the opportunity's product lines.
+     * `code`/`price`/`cost`/`vat_rate_id`/`vat_rate` (spec 0065, AC-009) ride
+     * along on the SAME projection: the Quote line form precompiles
+     * `unit_price` and the VAT rate from a single for-select pick, no extra
+     * request.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = Product::query()->select(['id', 'name', 'category_id']);
+        $base = Product::query()->select(self::FOR_SELECT_COLUMNS);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -208,7 +256,7 @@ class ProductService
             ->get();
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load('category:id,name');
+        $items->load(['category:id,name', 'vatRate:id,name,rate']);
 
         return new ForSelectResult(
             items: $items,
@@ -242,7 +290,7 @@ class ProductService
 
         /** @var Collection<int, Product> $hydrated */
         $hydrated = Product::query()
-            ->select(['id', 'name', 'category_id'])
+            ->select(self::FOR_SELECT_COLUMNS)
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

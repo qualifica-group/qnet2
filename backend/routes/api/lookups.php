@@ -3,6 +3,8 @@
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
+use App\Http\Controllers\QuoteStatuses\QuoteStatusController;
+use App\Http\Controllers\QuoteStatuses\QuoteStatusForSelectController;
 use App\Http\Controllers\RewardStatuses\RewardStatusController;
 use App\Http\Controllers\RewardStatuses\RewardStatusForSelectController;
 use App\Http\Controllers\RewardTypes\RewardTypeController;
@@ -119,6 +121,28 @@ Route::get('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowCo
 Route::post('opportunity-workflows', [OpportunityWorkflowController::class, 'store']);
 Route::match(['put', 'patch'], 'opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'update']);
 Route::delete('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'destroy']);
+
+// Quote statuses CRUD (spec 0065): the Quote working-state pick-list, a
+// plain clone of opportunity-statuses (delete-guard lives in
+// QuoteStatusService). Authorization (quote-statuses.view/create/update/
+// delete) is enforced server-side in QuoteStatusController via
+// QuoteStatusPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE quote-statuses/{quoteStatus} so the literal `for-select`
+// segment wins over the bound wildcard. Gated by quote-statuses.viewAny
+// server-side in QuoteStatusForSelectController.
+Route::get('quote-statuses/for-select', QuoteStatusForSelectController::class);
+
+// Custom-row resequencing: `sort_order` is server-managed, this is the only
+// way to change it. Declared ABOVE the bound wildcard for the same
+// literal-segment reason as `for-select`. Gated on quote-statuses.update
+// directly in QuoteStatusController::reorder.
+Route::post('quote-statuses/reorder', [QuoteStatusController::class, 'reorder']);
+
+Route::get('quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'show']);
+Route::post('quote-statuses', [QuoteStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'update']);
+Route::delete('quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'destroy']);
 
 // Reward types CRUD (spec 0058): a pure anagraphic (name/color) describing
 // the TYPES of voucher/reward/incentive usable in the CRM (BR-3: no

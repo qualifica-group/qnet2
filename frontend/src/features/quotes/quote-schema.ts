@@ -1,0 +1,183 @@
+import { z } from 'zod'
+import type { TFunction } from 'i18next'
+
+/**
+ * Zod schema for the quote create/edit form, built as a factory so validation
+ * messages are localized via the i18n `t` function (namespace `quotes.form.*`).
+ * The shape mirrors the spec 0065 frozen `data_contract` 1:1, including the
+ * per-row validation of `offer_lines`/`cost_lines` (AC-075): each row is its
+ * own `z.object(...).superRefine(...)`, so a violation lands on that exact
+ * row's field (`offer_lines.<index>.quantity`), not on the array as a whole —
+ * required for the field-level `aria-describedby`/`aria-invalid` wiring the
+ * form owns.
+ */
+
+/** Backend `title` column limit (`max:191`). */
+const TITLE_MAX_LENGTH = 191
+
+/** Backend `code` column limit (`string(32)`), mirrors the product/project pattern (D-13/D-1b). */
+const CODE_MAX_LENGTH = 32
+
+/** Backend `internal_notes` column limit (`max:5000`). */
+const INTERNAL_NOTES_MAX_LENGTH = 5000
+
+/** Backend per-tab row ceiling (`max:200`, AC-035). */
+const MAX_LINES_PER_TAB = 200
+
+/** Backend `quantity` ceiling (`max:999999.99`). */
+export const QUANTITY_MAX = 999999.99
+
+/** Backend `unit_price` ceiling (`max:99999999.99`). */
+export const UNIT_PRICE_MAX = 99999999.99
+
+/**
+ * `true` when `value` has at most 2 decimal digits (AC-032: `10.005` fails,
+ * `10.01` passes). Shifts the decimal point via the number's own (exact,
+ * round-trip) string form rather than a raw `value * 100` multiplication,
+ * which would introduce IEEE-754 artifacts at the very magnitudes this check
+ * cares about (e.g. `10.005 * 100 === 1000.4999999999999`). Mirrors the same
+ * exponential-notation technique as `round2` in `quote-totals.ts`.
+ */
+function hasMaxTwoDecimals(value: number): boolean {
+  const rounded = Number(`${Math.round(Number(`${value}e2`))}e-2`)
+  return rounded === value
+}
+
+/**
+ * A required relation id: `null` (unset) fails the refine. See
+ * `opportunity-schema.ts` for why the explicit `: boolean` return type on the
+ * predicate is load-bearing (TS 5.5+ automatic type-predicate inference would
+ * otherwise narrow the field to non-nullable `number`).
+ */
+function requiredRelationId(message: string) {
+  return z
+    .number()
+    .nullable()
+    .refine((value): boolean => value !== null, { message })
+}
+
+/**
+ * One `offer_lines`/`cost_lines` row (D-11: both tabs share this exact shape).
+ * Held nullable-per-field so the controlled inputs can represent "empty"
+ * while typing; `superRefine` enforces the backend's `required`/range/
+ * decimal-precision rules per field, each issue keyed to its own path so it
+ * survives the array wrapper untouched.
+ */
+function quoteLineRowSchema(t: TFunction) {
+  return z
+    .object({
+      product_id: z.number().nullable(),
+      quantity: z.number().nullable(),
+      unit_price: z.number().nullable(),
+      vat_rate_id: z.number().nullable(),
+    })
+    .superRefine((row, ctx) => {
+      if (row.product_id === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['product_id'],
+          message: t('quotes.form.lineProductRequired'),
+        })
+      }
+
+      if (row.quantity === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quantity'],
+          message: t('quotes.form.lineQuantityRequired'),
+        })
+      } else if (row.quantity <= 0 || row.quantity > QUANTITY_MAX) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quantity'],
+          message: t('quotes.form.lineQuantityInvalid'),
+        })
+      } else if (!hasMaxTwoDecimals(row.quantity)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quantity'],
+          message: t('quotes.form.lineQuantityDecimals'),
+        })
+      }
+
+      if (row.unit_price === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['unit_price'],
+          message: t('quotes.form.lineUnitPriceRequired'),
+        })
+      } else if (row.unit_price < 0 || row.unit_price > UNIT_PRICE_MAX) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['unit_price'],
+          message: t('quotes.form.lineUnitPriceInvalid'),
+        })
+      } else if (!hasMaxTwoDecimals(row.unit_price)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['unit_price'],
+          message: t('quotes.form.lineUnitPriceDecimals'),
+        })
+      }
+    })
+}
+
+/** Shared fields common to create and edit. */
+function baseFields(t: TFunction) {
+  return {
+    // Manual code (D-13/D-1b): trimmed, required (the create form auto-fills
+    // the next sequential suggestion, editable), max 32. Read-only in edit
+    // (field-permission ceiling); the server still generates one as a
+    // fallback when absent.
+    code: z
+      .string()
+      .trim()
+      .min(1, t('quotes.form.codeRequired'))
+      .max(CODE_MAX_LENGTH, t('quotes.form.codeMax')),
+    title: z
+      .string()
+      .min(1, t('quotes.form.titleRequired'))
+      .max(TITLE_MAX_LENGTH, t('quotes.form.titleMax')),
+    // Immutable after create (AC-025); still part of both schemas since the
+    // form always displays it (read-only in edit) and the create form must
+    // block submit until it is set.
+    opportunity_id: requiredRelationId(t('quotes.form.opportunityRequired')),
+    quote_status_id: z.number().nullable(),
+    commercial_id: z.number().nullable(),
+    reporter_id: z.number().nullable(),
+    supervisor_id: z.number().nullable(),
+    internal_notes: z
+      .string()
+      .max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.internalNotesMax'))
+      .nullable(),
+    offer_lines: z
+      .array(quoteLineRowSchema(t))
+      .max(MAX_LINES_PER_TAB, t('quotes.form.linesMax')),
+    cost_lines: z
+      .array(quoteLineRowSchema(t))
+      .max(MAX_LINES_PER_TAB, t('quotes.form.linesMax')),
+  }
+}
+
+export function buildCreateQuoteSchema(t: TFunction) {
+  return z.object(baseFields(t))
+}
+
+/** Edit schema; partial PATCH is computed by the caller. Same shape as create (opportunity_id/code stay read-only, enforced by the form's field permissions, not the schema). */
+export function buildUpdateQuoteSchema(t: TFunction) {
+  return z.object(baseFields(t))
+}
+
+export type CreateQuoteFormValues = z.infer<ReturnType<typeof buildCreateQuoteSchema>>
+export type UpdateQuoteFormValues = CreateQuoteFormValues
+
+/**
+ * Canonical form-values type consumed by `quote-form-payload.ts` and (once
+ * built) `use-quote-form.ts` — kept here, not in the not-yet-existing form
+ * hook, so the payload builder has no dependency on it. The hook's own
+ * `QuoteFormValues` (if it declares one) must stay identical to this shape.
+ */
+export type QuoteFormValues = CreateQuoteFormValues
+
+/** One row of `QuoteFormValues.offer_lines`/`cost_lines`. */
+export type QuoteLineFormValues = QuoteFormValues['offer_lines'][number]

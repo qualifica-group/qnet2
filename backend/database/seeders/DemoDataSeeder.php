@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -22,14 +23,15 @@ class DemoDataSeeder extends Seeder
     {
         $this->call(DatabaseSeeder::class);
 
-        // Clear the most-downstream demo entities first: opportunities
-        // restrict-reference half the graph (registries, companies, sites,
-        // referents, leads) and leads restrict referents/campaigns/sites, so
-        // on a re-run the upstream delete-and-recreate seeders (e.g.
-        // DemoReferentSeeder) would trip the FK restriction before the
-        // downstream seeders get a chance to clear their own rows. Both
-        // tables are re-seeded below (same pre-clear pattern as
-        // DemoProjectSeeder with campaigns).
+        // Clear the most-downstream demo entities first: a Quote restricts
+        // (never cascades) its Opportunity, which itself restrict-references
+        // half the graph (registries, companies, sites, referents, leads),
+        // and a Lead restricts referents/campaigns/sites — so on a re-run
+        // the upstream delete-and-recreate seeders (e.g. DemoReferentSeeder)
+        // would trip the FK restriction before the downstream seeders get a
+        // chance to clear their own rows. All three tables are re-seeded
+        // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
+        Quote::query()->delete();
         Opportunity::query()->delete();
         Lead::query()->delete();
 
@@ -103,6 +105,10 @@ class DemoDataSeeder extends Seeder
         // the opportunity-context attributes: needs the rows, the pick lists
         // and the attributes, so it runs after all three.
         $this->call(DemoOpportunityLifecycleSeeder::class);
+        // One quote per opportunity (spec 0065): depends on DemoOpportunitySeeder
+        // for the opportunities themselves and on DemoProductSeeder for the
+        // offer/cost line products — must run after both.
+        $this->call(DemoQuoteSeeder::class);
         // Depends on DemoRewardTypeSeeder (catalogue) and DemoOpportunitySeeder
         // (reporters to reward, D-3) — must run after both.
         $this->call(DemoRewardSeeder::class);

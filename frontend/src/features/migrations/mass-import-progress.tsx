@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BackgroundJobNotice } from '@/components/background-job-notice'
 import type {
   MassMigrationRun,
   MigrationRun,
@@ -40,6 +41,9 @@ interface MassImportProgressProps {
   run: MassMigrationRun
   /** Called when the user dismisses a terminal (completed/failed) run. */
   onClose: () => void
+  /** True once the poll gave up on this run (see `useMassMigration`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 /**
@@ -49,7 +53,12 @@ interface MassImportProgressProps {
  * after it read as "not run". Purely presentational; the poll lives in
  * `useMassMigration`.
  */
-export function MassImportProgress({ run, onClose }: MassImportProgressProps) {
+export function MassImportProgress({
+  run,
+  onClose,
+  isPollingStalled = false,
+  onRetryPolling,
+}: MassImportProgressProps) {
   const { t } = useTranslation('migrations')
   const isActive = ACTIVE_STATUSES.has(run.status)
   const isTerminal = run.status === 'completed' || run.status === 'failed'
@@ -76,6 +85,15 @@ export function MassImportProgress({ run, onClose }: MassImportProgressProps) {
           } ${isActive ? 'w-1/2 animate-pulse' : 'w-full'}`}
         />
       </div>
+
+      {isActive ? (
+        <BackgroundJobNotice
+          namespace="migrations"
+          keyPrefix="background"
+          isStalled={isPollingStalled}
+          onRetry={onRetryPolling}
+        />
+      ) : null}
 
       <ul className="flex list-none flex-col gap-1.5">
         {run.sources.map((source) => {

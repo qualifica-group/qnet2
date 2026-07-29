@@ -103,6 +103,18 @@ describe('ImportDialog (migrations)', () => {
     expect(screen.getByText('Warnings and errors')).toBeInTheDocument()
   }, 10000)
 
+  it('tells the user the run keeps going server-side while it is still active', async () => {
+    startMigrationImportMock.mockResolvedValue(createdRun())
+    fetchMigrationRunMock.mockResolvedValue(polledRun({ status: 'processing' }))
+
+    renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    expect(
+      await screen.findByText(/keeps running on the server even if you close this dialog/i),
+    ).toBeInTheDocument()
+  })
+
   it('surfaces a localized error on a 403 start response, staying on the confirm step', async () => {
     startMigrationImportMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {

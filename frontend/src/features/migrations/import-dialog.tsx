@@ -65,6 +65,8 @@ export function ImportDialog({ source, sourceLabel, open, onOpenChange }: Import
             <MigrationImportProgress
               run={importState.run}
               onClose={() => handleOpenChange(false)}
+              isPollingStalled={importState.isPollingStalled}
+              onRetryPolling={importState.retryPolling}
             />
           )}
         </div>

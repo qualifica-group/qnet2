@@ -30,6 +30,8 @@ use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
+use App\Models\Quote;
+use App\Models\QuoteStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
@@ -135,6 +137,8 @@ class AppServiceProvider extends ServiceProvider
             'reward_type' => RewardType::class,
             'reward_status' => RewardStatus::class,
             'vat_rate' => VatRate::class,
+            'quote' => Quote::class,
+            'quote_status' => QuoteStatus::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

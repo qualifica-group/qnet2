@@ -1,14 +1,22 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import axios from 'axios'
 import { confirmImport, getImportRun, uploadImport } from '@/features/imports/api'
 import { importKeys } from '@/features/imports/query-keys'
+import { useStallTimeout } from '@/hooks/use-stall-timeout'
 import type { ImportRunDetail, ImportStatus } from '@/features/imports/types'
 
 /** Interval (ms) between polls while the run is validating or processing. */
 const POLL_INTERVAL_MS = 1500
+
+/**
+ * How long one phase may run before the poll gives up (ms). Both phases wait
+ * on a queued job: with no worker consuming the queue the status never moves
+ * and the dialog would poll forever. See `useStallTimeout`.
+ */
+const STALL_TIMEOUT_MS = 120_000
 
 /** Statuses that still require polling; any other status is a pause/terminal point. */
 const POLLING_STATUSES: ReadonlySet<ImportStatus> = new Set(['validating', 'processing'])
@@ -53,6 +61,10 @@ export function useImport({ domain }: UseImportArgs) {
     },
   })
 
+  // Read by `refetchInterval`, which is evaluated before the stall state
+  // exists in this render pass; the effect below keeps it in sync.
+  const isStalledRef = useRef(false)
+
   const runQuery = useQuery({
     queryKey: runId != null ? importKeys.run(domain, runId) : importKeys.domain(domain),
     queryFn: () => getImportRun(domain, runId as number),
@@ -61,9 +73,27 @@ export function useImport({ domain }: UseImportArgs) {
     // below), so confirming resumes polling without a separate effect.
     refetchInterval: (query) => {
       const status = query.state.data?.import_run.status
-      return status && POLLING_STATUSES.has(status) ? POLL_INTERVAL_MS : false
+      if (!status || !POLLING_STATUSES.has(status)) return false
+      return isStalledRef.current ? false : POLL_INTERVAL_MS
     },
   })
+
+  const polledRun = runId != null ? runQuery.data?.import_run : undefined
+  const pollingPhase =
+    polledRun && POLLING_STATUSES.has(polledRun.status) ? `${polledRun.id}:${polledRun.status}` : null
+  const { isStalled: isPollingStalled, resetStall } = useStallTimeout(pollingPhase, STALL_TIMEOUT_MS)
+
+  useEffect(() => {
+    isStalledRef.current = isPollingStalled
+  }, [isPollingStalled])
+
+  const { refetch: refetchRun } = runQuery
+
+  /** Gives the stuck phase a fresh window and re-reads the run right away. */
+  const retryPolling = useCallback(() => {
+    resetStall()
+    void refetchRun()
+  }, [resetStall, refetchRun])
 
   const confirmMutation = useMutation({
     mutationFn: () => confirmImport(domain, runId as number),
@@ -94,6 +124,8 @@ export function useImport({ domain }: UseImportArgs) {
     confirmError: confirmMutation.isError
       ? resolveImportErrorMessage(confirmMutation.error, t)
       : null,
+    isPollingStalled,
+    retryPolling,
     reset,
   }
 }

@@ -61,6 +61,12 @@ export const imports = {
     completed: 'Completed',
     failed: 'Failed',
   },
+  background: {
+    hint: 'The operation keeps running on the server even if you close this dialog.',
+    stalled:
+      'This is taking longer than expected, so we stopped checking. The server still owns the run — check again in a moment or, if it does not move, tell your administrator.',
+    retry: 'Check again',
+  },
   summary: {
     total: 'Total rows',
     valid: 'Valid rows',

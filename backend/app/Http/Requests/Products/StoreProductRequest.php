@@ -12,12 +12,17 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/products (spec 0017; spec 0061 for
- * `attribute_values`). `attribute_values` gets only a shallow `array` check
- * here — its DEEP validation (per-code applicability/type/required against
- * the product's PRODUCT-context effective attributes) runs in ProductService
- * via the SAME AttributeValueValidator the Opportunity path uses (mirrors
+ * `attribute_values`; spec 0065, D-1b for `code`). `attribute_values` gets
+ * only a shallow `array` check here — its DEEP validation (per-code
+ * applicability/type/required against the product's PRODUCT-context
+ * effective attributes) runs in ProductService via the SAME
+ * AttributeValueValidator the Opportunity path uses (mirrors
  * UpdateRequestRequest's docblock: doing it twice would mean resolving
  * CategoryHierarchy::effectiveAttributes() an extra time for no benefit).
+ *
+ * `code` is optional: when absent, null or empty, the Service falls back to
+ * the sequential PRD-0001 generator; when submitted, it must be unique
+ * against `products.code` (mirrors StoreProjectRequest, spec 0025).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('create', Product::class)). EnforcesFieldPermissions
@@ -40,6 +45,7 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'code' => ['nullable', 'string', 'max:32', Rule::unique('products', 'code')],
             'name' => ['required', 'string', 'max:191'],
             'description' => ['nullable', 'string'],
             'cost' => ['required', 'numeric'],

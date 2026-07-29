@@ -15,6 +15,8 @@ use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProjectsAuthorization;
+use App\Authorization\QuotesAuthorization;
+use App\Authorization\QuoteStatusesAuthorization;
 use App\Authorization\ReferentsAuthorization;
 use App\Authorization\ReferentTypesAuthorization;
 use App\Authorization\RegistriesAuthorization;
@@ -74,6 +76,8 @@ return [
         'opportunities' => OpportunitiesAuthorization::class,
         'opportunity-statuses' => OpportunityStatusesAuthorization::class,
         'opportunity-workflows' => OpportunityWorkflowsAuthorization::class,
+        'quote-statuses' => QuoteStatusesAuthorization::class,
+        'quotes' => QuotesAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

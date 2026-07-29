@@ -4,10 +4,11 @@ namespace App\Tables\Products;
 
 /**
  * Declarative column/filter/action catalogue for the `products` domain
- * (spec 0017). Extracted out of ProductsTableDefinition (file-size split,
- * engineering.md §6): pure data (no logic), mirroring BusinessFunctionColumnCatalog.
+ * (spec 0017; `code` per spec 0065, AC-009b). Extracted out of
+ * ProductsTableDefinition (file-size split, engineering.md §6): pure data (no
+ * logic), mirroring BusinessFunctionColumnCatalog.
  *
- * `name`/`description`/`cost`/`price`/`created_at` are real DB columns
+ * `code`/`name`/`description`/`cost`/`price`/`created_at` are real DB columns
  * handled entirely by the generic engine. `category` has no real column of
  * its own (it is the related category's name) and is DERIVED: its set
  * filter/sort/distinct-values are resolved by ProductsTableDefinition,
@@ -23,6 +24,16 @@ final class ProductColumnCatalog
     public static function columns(): array
     {
         return [
+            [
+                'id' => 'code',
+                'label' => 'products.columns.code',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+                'searchable' => true,
+            ],
             [
                 'id' => 'name',
                 'label' => 'products.columns.name',
@@ -113,6 +124,7 @@ final class ProductColumnCatalog
     public static function filters(): array
     {
         return [
+            ['columnId' => 'code', 'type' => 'text'],
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'cost', 'type' => 'number'],

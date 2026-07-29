@@ -16,8 +16,17 @@ use Illuminate\Validation\Rule;
  * spec 0061 for `attribute_values`). Generic fields are `sometimes`.
  * `attribute_values` gets only a shallow `array` check here — see
  * StoreProductRequest's docblock for why its deep validation lives in
- * ProductService instead. Authorization is intentionally NOT handled here
- * (it stays in the controller via authorize('update', $product)).
+ * ProductService instead.
+ *
+ * `code` (spec 0065, D-1b) is deliberately ABSENT from `rules()`: it is
+ * immutable once persisted. A submitted `code` that differs from the
+ * persisted value is rejected with a 422 by EnforcesFieldPermissions (the
+ * ceiling is readonly whenever `$model !== null`, see ProductsAuthorization);
+ * resubmitting the identical value is a harmless no-op (mirrors
+ * UpdateProjectRequest).
+ *
+ * Authorization is intentionally NOT handled here (it stays in the
+ * controller via authorize('update', $product)).
  * EnforcesFieldPermissions (spec 0004) rejects any submitted field the actor
  * cannot edit on this specific model.
  */

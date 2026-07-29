@@ -29,6 +29,9 @@ export interface ImportStepSummaryProps {
   onBackToReview: () => void
   isConfirming: boolean
   confirmError: string | null
+  /** True once the commit poll gave up; forwarded to `ImportRunProgress`. */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 /** Permission gating the auto-convert-to-Opportunity toggle, mirroring `lead-form-body.tsx`'s own gate. */
@@ -60,6 +63,8 @@ export function ImportStepSummary({
   onBackToReview,
   isConfirming,
   confirmError,
+  isPollingStalled = false,
+  onRetryPolling,
 }: ImportStepSummaryProps) {
   const { t } = useTranslation('importWizard')
   // Field/global labels are backend default-namespace i18n keys
@@ -78,7 +83,14 @@ export function ImportStepSummary({
   if (!run) return null
 
   if (!isReviewing) {
-    return <ImportRunProgress domain={domain} run={run} />
+    return (
+      <ImportRunProgress
+        domain={domain}
+        run={run}
+        isPollingStalled={isPollingStalled}
+        onRetryPolling={onRetryPolling}
+      />
+    )
   }
 
   if (summaryQuery.isLoading) {

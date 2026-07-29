@@ -40,7 +40,10 @@ class ImportCompletedNotification extends Notification
             title: 'Import completed',
             message: $this->buildMessage(),
             level: $this->run->error_count > 0 ? NotificationLevelEnum::Warning : NotificationLevelEnum::Success,
-            actionUrl: "/imports/{$this->run->resource}/{$this->run->id}",
+            // SPA route is `/imports/:runId` (routes/router.tsx) — a
+            // `/imports/{resource}/{id}` deep link matches nothing and lands
+            // the user on the not-found page.
+            actionUrl: "/imports/{$this->run->id}",
         ))->toArray();
     }
 

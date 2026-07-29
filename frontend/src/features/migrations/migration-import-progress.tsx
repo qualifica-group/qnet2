@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BackgroundJobNotice } from '@/components/background-job-notice'
 import type { MigrationRun, MigrationRunStatus } from '@/features/migrations/types'
 import type { VariantProps } from 'class-variance-authority'
 
@@ -21,6 +22,9 @@ interface MigrationImportProgressProps {
   run: MigrationRun
   /** Called when the user dismisses a terminal (completed/failed) run. */
   onClose: () => void
+  /** True once the poll gave up on this run (see `useMigrationImport`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 /**
@@ -30,7 +34,12 @@ interface MigrationImportProgressProps {
  * run finishes. Purely presentational: the poll itself is driven by
  * `useMigrationImport`.
  */
-export function MigrationImportProgress({ run, onClose }: MigrationImportProgressProps) {
+export function MigrationImportProgress({
+  run,
+  onClose,
+  isPollingStalled = false,
+  onRetryPolling,
+}: MigrationImportProgressProps) {
   const { t } = useTranslation('migrations')
   const isActive = ACTIVE_STATUSES.has(run.status)
   const isTerminal = run.status === 'completed' || run.status === 'failed'
@@ -54,6 +63,15 @@ export function MigrationImportProgress({ run, onClose }: MigrationImportProgres
           } ${isActive ? 'w-1/2 animate-pulse' : 'w-full'}`}
         />
       </div>
+
+      {isActive ? (
+        <BackgroundJobNotice
+          namespace="migrations"
+          keyPrefix="background"
+          isStalled={isPollingStalled}
+          onRetry={onRetryPolling}
+        />
+      ) : null}
 
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div>

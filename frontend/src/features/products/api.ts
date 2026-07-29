@@ -29,6 +29,17 @@ export async function fetchProduct(id: number): Promise<ProductDetailWithPermiss
   return { ...data.data, permissions: data.permissions }
 }
 
+/**
+ * The next sequential code (PRD-0001...) suggested for the create form's
+ * `code` auto-fill (spec 0065, mirrors `fetchProjectNextCode`). Non-binding:
+ * the user may edit it, and the server resolves the definitive value
+ * atomically on store.
+ */
+export async function fetchProductNextCode(): Promise<string> {
+  const { data } = await apiClient.get<ApiResponse<{ code: string }>>('/products/next-code')
+  return data.data.code
+}
+
 /** Creates a product. Returns the created resource from the envelope `data`. */
 export async function createProduct(payload: CreateProductPayload): Promise<ProductDetail> {
   const { data } = await apiClient.post<ApiResponse<ProductDetail>>('/products', payload)

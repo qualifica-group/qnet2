@@ -22,6 +22,7 @@ const updateProductMock = vi.fn()
 vi.mock('@/features/products/api', () => ({
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
+  fetchProductNextCode: () => Promise.resolve('PRD-0100'),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -112,6 +113,7 @@ function wrapper() {
 function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
   return {
     id: 5,
+    code: 'PRD-0005',
     name: 'ThinkPad X1',
     description: null,
     cost: 800,

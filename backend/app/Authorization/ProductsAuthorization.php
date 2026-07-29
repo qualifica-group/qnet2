@@ -8,13 +8,18 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ResourceAuthorization for the `products` resource (spec 0017).
+ * ResourceAuthorization for the `products` resource (spec 0017; `code`
+ * writable-on-create per spec 0065, D-1b).
  *
- * Covers ONLY the generic fields (name/description/cost/price/category_id/product_type):
- * dynamic attributes are authorized at the resource level (products.update),
- * never per-field (spec 0017 decision — no field-permission granularity on
- * EAV values). No contextual rules otherwise: every field's ceiling is
- * simply visible+editable when the actor may write, else visible+readonly.
+ * Covers ONLY the generic fields (name/description/cost/price/category_id/product_type)
+ * plus `code`: dynamic attributes are authorized at the resource level
+ * (products.update), never per-field (spec 0017 decision — no
+ * field-permission granularity on EAV values). Every field's ceiling is
+ * visible+editable when the actor may write, else visible+readonly —
+ * EXCEPT `code` (spec 0065, D-1b): writable only in create ($model === null);
+ * once persisted it is permanently readonly, enforced by the same ceiling so
+ * EnforcesFieldPermissions rejects a changed `code` on update with a 422
+ * (mirrors ProjectsAuthorization).
  */
 class ProductsAuthorization extends AbstractResourceAuthorization
 {
@@ -34,6 +39,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
     public function fields(): array
     {
         return [
+            new FieldDefinition('code', 'text'),
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('cost', 'number', mandatory: true),
@@ -62,6 +68,12 @@ class ProductsAuthorization extends AbstractResourceAuthorization
         $mayWrite = $this->actorMayWrite($actor, $model);
 
         return [
+            // code is writable only in create (spec 0065, D-1b): permanently
+            // readonly once a $model exists, regardless of write ability. It
+            // is required-on-create at the form level (manual entry with a
+            // sequential auto-fill suggestion), so the create ceiling flags it
+            // required; the Service still generates one when absent (fallback).
+            'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

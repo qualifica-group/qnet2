@@ -235,6 +235,10 @@ export const products = {
     createSubtitle: 'Add a new product.',
     editTitle: 'Edit product',
     editSubtitle: 'Update the selected product.',
+    code: 'Code',
+    codePlaceholder: 'Suggested code, editable',
+    codeMax: 'Code must be at most 32 characters.',
+    codeRequired: 'Code is required.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -280,8 +284,11 @@ export const products = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, pricing and category of the product.',
+        description: 'Code, name, description, pricing and category of the product.',
       },
+    },
+    hints: {
+      code: 'Prefilled with the next sequential code; edit it if you need a custom one.',
     },
     dynamicFields: {
       title: 'Attributes',

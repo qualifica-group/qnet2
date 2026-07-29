@@ -34,7 +34,7 @@ if (! function_exists('productUserWith')) {
 // AC-018 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 10 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 11 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = productUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/products/columns')->assertForbidden();
@@ -46,10 +46,10 @@ it('returns the 10 columns in order with the declared flags, 403 without viewAny
 
     expect($data['resource'])->toBe('products')
         ->and($data['defaultSort'])->toBe([['columnId' => 'created_at', 'direction' => 'desc']])
-        ->and($data['searchable'])->toBe(['name']);
+        ->and($data['searchable'])->toBe(['code', 'name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'description', 'cost', 'price', 'category', 'state', 'product_type', 'created_at']);
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'state', 'product_type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -57,12 +57,50 @@ it('returns the 10 columns in order with the declared flags, 403 without viewAny
         ->and($columns['id']['filterType'])->toBeNull()
         ->and($columns['id']['type'])->toBe('number')
         ->and($columns['id']['visible'])->toBeFalse()
+        // spec 0065, AC-009b: `code` is sortable, filterable and searchable.
+        ->and($columns['code']['sortable'])->toBeTrue()
+        ->and($columns['code']['filterable'])->toBeTrue()
+        ->and($columns['code']['filterType'])->toBe('text')
         ->and($columns['description']['sortable'])->toBeFalse()
         ->and($columns['category']['filterType'])->toBe('set')
         ->and($columns['state']['filterType'])->toBe('set')
         ->and($columns['state']['sortable'])->toBeTrue()
         ->and($columns['product_type']['type'])->toBe('badge')
         ->and($columns['product_type']['filterType'])->toBe('set');
+});
+
+// ---------------------------------------------------------------------------
+// AC-009b — `code` column: rows valorize it, sortable, filterable
+// ---------------------------------------------------------------------------
+
+it('rows expose the code column and values populate it (AC-009b)', function () {
+    $actor = productUserWith(['viewAny']);
+    Product::factory()->create(['name' => 'Widget', 'code' => 'PRD-9001']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/products/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('name', 'Widget');
+
+    expect($row['code'])->toBe('PRD-9001');
+});
+
+it('sort: rows ordered by code, filter: text filter narrows by code (AC-009b)', function () {
+    $actor = productUserWith(['viewAny']);
+    Product::factory()->create(['name' => 'Zeta', 'code' => 'PRD-0002']);
+    Product::factory()->create(['name' => 'Alpha', 'code' => 'PRD-0001']);
+    Sanctum::actingAs($actor);
+
+    $sorted = $this->postJson('/api/tables/products/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'sortModel' => [['colId' => 'code', 'sort' => 'asc']],
+    ])->assertOk();
+    expect(collect($sorted->json('items'))->pluck('code')->all())->toBe(['PRD-0001', 'PRD-0002']);
+
+    $filtered = $this->postJson('/api/tables/products/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['code' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'PRD-0002']],
+    ])->assertOk();
+    expect(collect($filtered->json('items'))->pluck('code')->all())->toBe(['PRD-0002']);
 });
 
 // ---------------------------------------------------------------------------

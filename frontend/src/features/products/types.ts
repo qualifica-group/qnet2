@@ -49,6 +49,8 @@ export interface ProductStateSummary {
  */
 export interface ProductDetail {
   id: number
+  /** Manual, unique, immutable-after-create code (spec 0065, `string(32)`); server-generated when omitted at create. */
+  code: string
   name: string
   description: string | null
   /**
@@ -112,8 +114,9 @@ export interface ProductDetailWithPermissions extends ProductDetail {
   permissions: ResourcePermissions
 }
 
-/** Payload for POST /products (create). */
+/** Payload for POST /products (create). `code` is optional and manual (spec 0065): server-generated when absent/blank. */
 export interface CreateProductPayload {
+  code?: string
   name: string
   description?: string | null
   cost: number

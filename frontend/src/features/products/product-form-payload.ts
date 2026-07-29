@@ -39,7 +39,9 @@ function buildAttributeValuesUpdate(values: AttributeValues, original: Attribute
  * attribute values. `productAttributeCodes` is the selected category's
  * CURRENT PRODUCT-context attribute set — the only codes ever sent, so a
  * stale code left over from a since-abandoned category never reaches the
- * server.
+ * server. `code` is included only when set (trimmed, non-empty) — an
+ * empty/absent value falls back to server-side sequential generation (spec
+ * 0065, mirrors the project's `code`).
  */
 export function buildCreatePayload(
   values: ProductFormValues,
@@ -47,7 +49,9 @@ export function buildCreatePayload(
 ): CreateProductPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   const attributeValues = buildAttributeValuesCreate(values.attribute_values, productAttributeCodes)
+  const code = values.code.trim()
   return {
+    ...(code ? { code } : {}),
     name: values.name,
     description: values.description,
     // cost/price/category_id are validated non-null by the schema's
@@ -67,7 +71,8 @@ export function buildCreatePayload(
 /**
  * Builds a partial PATCH payload carrying only fields that changed from the
  * original product (spec 0017 AC-024), plus any changed attribute value
- * (spec 0061).
+ * (spec 0061). `code` is never sent: it is immutable after create (spec
+ * 0065, mirrors the project's `code`).
  */
 export function buildUpdatePayload(
   values: ProductFormValues,

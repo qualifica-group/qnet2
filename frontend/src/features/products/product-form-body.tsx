@@ -35,6 +35,8 @@ interface ProductFormBodyProps {
   mode: ProductFormMode
   onSuccess: (product: ProductDetail) => void
   onCancel: () => void
+  /** Create-only: the sequential code suggestion prefilled into the `code` field (spec 0065). */
+  initialCode?: string
 }
 
 /** Formats a raw numeric field's RHF value for a controlled `<input type="number">`. */
@@ -42,13 +44,16 @@ function numberInputValue(value: number | null): string {
   return value === null ? '' : String(value)
 }
 
+/** Placeholder shown for the manual `code` field in create, declaring the server-generation fallback (spec 0065, mirrors `ProjectFormBody`). */
+const CODE_PLACEHOLDER_KEY = 'products.form.codePlaceholder'
+
 /**
  * The product create/edit form UI: generic fields (name, description, cost,
  * price, category) wrapped in `MetaField` (spec 0004), followed by the
  * universal custom fields section (spec 0021). All non-render logic lives in
  * `useProductForm`.
  */
-export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyProps) {
+export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: ProductFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission, canResource } = useResourcePermissions()
   const {
@@ -60,7 +65,7 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
     productLayout,
     layoutFormMode,
     onCategoryChange,
-  } = useProductForm({ mode, onSuccess })
+  } = useProductForm({ mode, onSuccess, initialCode })
   const treeQuery = useProductCategoryTree()
   // Attribute values are authorized at the resource level, not per field
   // (see `useProductFormMeta`'s docblock) — gate the whole dynamic block on
@@ -80,6 +85,7 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
   const selectedState = mode.type === 'edit' ? mode.product.state : null
 
   const identityVisible =
+    fieldPermission('code').visible ||
     fieldPermission('name').visible ||
     fieldPermission('description').visible ||
     fieldPermission('cost').visible ||
@@ -104,6 +110,28 @@ export function ProductFormBody({ mode, onSuccess, onCancel }: ProductFormBodyPr
               title={t('products.form.sections.identity.title')}
               description={t('products.form.sections.identity.description')}
             >
+              <MetaField
+                control={form.control}
+                name="code"
+                metaKey="code"
+                label={t('products.form.code')}
+                hint={t('products.form.hints.code')}
+                hintLabel={t('products.form.code')}
+              >
+                {({ field, disabled, readOnly }) => (
+                  <FormControl>
+                    <Input
+                      autoComplete="off"
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      placeholder={t(CODE_PLACEHOLDER_KEY)}
+                      {...field}
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
+
               <MetaField
                 control={form.control}
                 name="name"

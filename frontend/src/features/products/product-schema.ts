@@ -20,8 +20,20 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
 /** Backend `name` column limit (`max:191`). */
 const NAME_MAX_LENGTH = 191
 
+/** Backend `code` column limit (`string(32)`). */
+const CODE_MAX_LENGTH = 32
+
 function baseFields(t: TFunction) {
   return {
+    // Manual code (spec 0065, mirrors the project's `code`): trimmed,
+    // required (the create form auto-fills the next sequential suggestion,
+    // editable), max 32. Read-only in edit (enforced by the field-permission
+    // ceiling); the server still generates one as a fallback when absent.
+    code: z
+      .string()
+      .trim()
+      .min(1, t('products.form.codeRequired'))
+      .max(CODE_MAX_LENGTH, t('products.form.codeMax')),
     name: z
       .string()
       .min(1, t('products.form.nameRequired'))

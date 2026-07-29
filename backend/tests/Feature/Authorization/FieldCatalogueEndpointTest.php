@@ -95,6 +95,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0060 `reward-statuses` (RewardStatusesAuthorization: the "Stati Buoni Collegati"
         // lookup — name/color mandatory, description/is_active optional, D-4).
         'reward-statuses',
+        // spec 0065 `quote-statuses` AND `quotes` (QuoteStatusesAuthorization: the "Stati Offerta"
+        // lookup; QuotesAuthorization: the Quotes module resource).
+        'quote-statuses', 'quotes',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

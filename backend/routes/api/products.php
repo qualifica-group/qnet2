@@ -26,6 +26,12 @@ use Illuminate\Support\Facades\Route;
 // mirroring every other for-select precedent.
 Route::get('products/for-select', ProductForSelectController::class);
 
+// Next sequential code suggestion for the create form's auto-fill (spec
+// 0065, D-1b). Declared ABOVE products/{product} so the literal `next-code`
+// segment wins over the bound wildcard. Gated by products.create
+// server-side in ProductController.
+Route::get('products/next-code', [ProductController::class, 'nextCode']);
+
 Route::get('products/{product}', [ProductController::class, 'show']);
 Route::post('products', [ProductController::class, 'store']);
 Route::match(['put', 'patch'], 'products/{product}', [ProductController::class, 'update']);

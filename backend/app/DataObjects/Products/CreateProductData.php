@@ -6,11 +6,12 @@ use App\Enums\ProductType;
 
 /**
  * Validated payload for creating a product (POST /api/products, spec 0017;
- * spec 0061 for `attributeValues`). Declared DTO (no "magic flying array") so
- * the StoreProductRequest → ProductService contract is explicit — see
- * standards/architecture.md → Data Transfer Objects. `cost`/`price`/
- * `productType` are all required by the FormRequest, so they cross as
- * non-null values.
+ * spec 0061 for `attributeValues`; spec 0065, D-1b for `code`). Declared DTO
+ * (no "magic flying array") so the StoreProductRequest → ProductService
+ * contract is explicit — see standards/architecture.md → Data Transfer
+ * Objects. `cost`/`price`/`productType` are all required by the FormRequest,
+ * so they cross as non-null values. `code` is optional: absent/null/empty
+ * means the Service falls back to the sequential PRD-0001 generator.
  */
 final readonly class CreateProductData
 {
@@ -28,6 +29,7 @@ final readonly class CreateProductData
         public ?int $supplierId = null,
         public ?int $stateId = null,
         public ?array $attributeValues = null,
+        public ?string $code = null,
     ) {}
 
     /**
@@ -48,6 +50,7 @@ final readonly class CreateProductData
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
             stateId: array_key_exists('state_id', $data) && $data['state_id'] !== null ? (int) $data['state_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
+            code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );
     }
 

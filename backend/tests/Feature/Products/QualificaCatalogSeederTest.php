@@ -28,7 +28,7 @@ it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class); // re-run: firstOrCreate, no duplicates.
 
     $expected = [
-        'Diretto', 'Passaparola', 'Social', 'Sito', 'Spoki',
+        'Diretto', 'Passaparola', 'Diretto / Passaparola', 'Social', 'Sito', 'Spoki',
         'Centralino', 'In Sede', 'Segnalatore', 'Spontaneo',
     ];
 
@@ -330,7 +330,7 @@ it('seeds the catalogue and stops there when the import is declined', function (
         ->assertSuccessful();
 
     expect(MassMigrationRun::query()->count())->toBe(0)
-        ->and(Source::query()->count())->toBe(9);
+        ->and(Source::query()->count())->toBe(10);
 });
 
 it('does not ask when no external system is configured', function (): void {

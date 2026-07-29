@@ -157,6 +157,24 @@ return [
                     'permission' => 'opportunity-workflows.viewAny',
                 ],
                 [
+                    // Quote statuses (spec 0065): the Quote working-state
+                    // pick-list, a plain clone of opportunity-statuses.
+                    'key' => 'quote-statuses',
+                    'label' => 'navigation.quoteStatuses',
+                    'icon' => 'tag',
+                    'route' => '/quote-statuses',
+                    'permission' => 'quote-statuses.view',
+                ],
+                [
+                    // Quotes/Offers (spec 0065, MT-05): preventivi against an
+                    // Opportunity, gated by their own `quotes.*` permission set.
+                    'key' => 'quotes',
+                    'label' => 'navigation.quotes',
+                    'icon' => 'file-text',
+                    'route' => '/quotes',
+                    'permission' => 'quotes.view',
+                ],
+                [
                     // Request Management (spec 0049): the operative
                     // "Gestione Richieste" view over Opportunities for
                     // commercial operators (D-1, no new entity). Gated by its

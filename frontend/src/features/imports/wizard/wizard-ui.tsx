@@ -92,13 +92,14 @@ export function StatTile({ label, value, tone = 'default' }: StatTileProps) {
 }
 
 /** Centered busy indicator for server-side phases (analyzing, staging, loading). */
-export function BusyState({ label }: { label: string }) {
+export function BusyState({ label, children }: { label: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 py-10 text-center" role="status">
       <span className="flex size-12 items-center justify-center rounded-full bg-primary/10">
         <Loader2 className="size-6 animate-spin text-primary" aria-hidden="true" />
       </span>
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      {children}
     </div>
   )
 }

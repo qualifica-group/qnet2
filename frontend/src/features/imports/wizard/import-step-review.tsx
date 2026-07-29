@@ -4,6 +4,7 @@ import { AlertTriangle, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ReviewGrid } from '@/features/imports/wizard/review-grid'
+import { ImportBackgroundNotice } from '@/features/imports/wizard/import-background-notice'
 import { BusyState, StatTile, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
 import type { ImportRunDetail, ImportRunRowCounts } from '@/features/imports/wizard/types'
 
@@ -11,6 +12,9 @@ export interface ImportStepReviewProps {
   domain: string
   run: ImportRunDetail | null
   onContinue: () => void
+  /** True once the staging poll gave up (see `useImportWizard`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 function countsFromRun(run: ImportRunDetail): ImportRunRowCounts {
@@ -33,7 +37,13 @@ function countsFromRun(run: ImportRunDetail): ImportRunRowCounts {
  * then kept in sync purely from each edit's server-returned counts — no
  * effect needed to reconcile the two.
  */
-export function ImportStepReview({ domain, run, onContinue }: ImportStepReviewProps) {
+export function ImportStepReview({
+  domain,
+  run,
+  onContinue,
+  isPollingStalled = false,
+  onRetryPolling,
+}: ImportStepReviewProps) {
   const { t } = useTranslation('importWizard')
   const [counts, setCounts] = useState<ImportRunRowCounts | null>(() => (run ? countsFromRun(run) : null))
 
@@ -42,7 +52,13 @@ export function ImportStepReview({ domain, run, onContinue }: ImportStepReviewPr
   }
 
   if (run.status === 'staging') {
-    return <BusyState label={t('status.staging')} />
+    return (
+      <ImportBackgroundNotice
+        label={t('status.staging')}
+        isStalled={isPollingStalled}
+        onRetry={onRetryPolling}
+      />
+    )
   }
 
   const activeCounts = counts ?? countsFromRun(run)

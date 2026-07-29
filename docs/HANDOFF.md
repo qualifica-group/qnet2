@@ -2,6 +2,111 @@
 
 > Injected at session start. Update at every green state.
 
+## IMPORT LEAD: LOOP DI POLLING IN PRODUZIONE + AVVISO "PROSEGUE IN BACKGROUND" (2026-07-29) — VERDE, NON COMMITTATO
+
+Segnalazione utente: "carico un file su import lead, `GET /api/imports/leads/2` va in loop; in
+produzione si', in locale no".
+
+CAUSA RADICE (infrastrutturale, NON un bug del frontend): il wizard fa polling ogni 1500 ms
+finche' lo status e' `analyzing|staging|processing` (`use-import-wizard.ts:22-25,106-109`).
+E' `AnalyzeImportJob` (queued) a portare il run da `analyzing` a `configuring`. In locale
+`.env` ha `QUEUE_CONNECTION=sync` → il job gira dentro la request e il polling si spegne
+subito; in produzione il default e' `database` (`.env.example:43`, `config/queue.php:16`) e
+NON esiste alcuna configurazione di worker nel repo (niente supervisor/systemd/Procfile) → il
+job non viene mai consumato, lo status resta `analyzing` per sempre, il polling non termina
+mai. FIX RICHIESTO LATO SERVER (non codice): worker persistente `php artisan queue:work` +
+`queue:restart` a ogni deploy. Finche' manca, TUTTO l'import lead e' fermo (analisi, staging,
+commit), non solo l'analisi. Nota: se il job girasse e fallisse lo status andrebbe a `failed`
+e il polling si fermerebbe — il loop infinito significa "job mai eseguito".
+
+MODIFICHE DI CODICE FATTE (decisione utente: la promessa di notifica si estende SOLO dove e'
+gia' vera, niente nuove notification class):
+- NUOVO `frontend/src/features/imports/wizard/import-background-notice.tsx` — busy state delle
+  fasi async: spinner + label + hint "prosegue in background" + link `/imports`. Prop
+  `notifiesOnCompletion` (default false) sceglie la copy: SOLO la fase finale promette la
+  notifica, perche' solo `ProcessStagedImportJob` invia `ImportCompletedNotification`.
+  Analisi e staging non ne mandano nessuna: non promettere una notifica che non arriva.
+- `wizard-ui.tsx` — `BusyState` accetta `children` (slot sotto la label), cosi' il notice
+  riusa lo stesso spinner invece di duplicarne il markup.
+- Call site sostituiti: `import-step-upload.tsx` (analyzing), `import-step-review.tsx`
+  (staging, `BusyState` resta per `review.loading` che e' client-side), `import-run-progress.tsx`
+  (processing, la `Progress` bar indeterminata passa come children — un test la asserisce).
+- i18n `background.{hint,hintNotified,goToList}` in `en-import-wizard.ts`/`it-import-wizard.ts`
+  (bundle base della lane F1, non i file `en.ts`/`it.ts`).
+- BUG COLLEGATO CORRETTO: `ImportCompletedNotification::toArray()` costruiva
+  `actionUrl` = `/imports/{resource}/{id}` → `/imports/leads/2`, ma la rotta SPA e'
+  `/imports/:runId` (`routes/router.tsx:266`): la notifica portava su una rotta inesistente.
+  Ora `/imports/{id}`, con assert dedicato in `ProcessStagedImportJobTest`.
+
+TRAPPOLA DA RICORDARE: il notice contiene un `<Link>`, quindi ogni test che monta una di
+quelle viste ha bisogno di `MemoryRouter` — aggiunto a `import-step-upload.test.tsx`,
+`import-step-review.test.tsx`, `import-run-progress.test.tsx` e all'helper `renderStep` di
+`import-step-summary.test.tsx` (quest'ultimo falliva con "Cannot destructure property
+'basename'": la summary delega a `ImportRunProgress` quando lo status lascia `reviewing`).
+
+VERIFICA (eseguita davvero): `npx vitest run src/features/imports` → 23 file, 171 test verdi.
+Suite frontend intera → 383 file, 2651 verdi, 5 rossi TUTTI preesistenti e non collegati
+(3 in `features/table/cell-renderers.test.tsx` — file committato e non toccato — e 2 nel
+modulo `features/quotes/` ancora untracked). `tsc -b` pulito, eslint sui file toccati senza
+errori (2 warning `react-hooks/incompatible-library` preesistenti in `import-step-upload.tsx`).
+Backend: `pest tests/Unit/Jobs/ProcessStagedImportJobTest.php` → 4 verdi, 20 assert; Pint
+pulito. Corretto anche un errore di tipo preesistente in
+`features/quotes/quote-form-payload.test.ts:80` (cast via `unknown`) che bloccava l'hook
+typecheck.
+
+SECONDO GIRO (stessa sessione, richiesto dall'utente): allineare gli ALTRI flussi async +
+implementare il cap sul polling.
+
+ACCERTAMENTO IMPORTANTE (correzione a quanto scritto sopra): il flusso legacy a dialog spec
+0012 NON e' "usato dagli altri domini". `config/imports.php` registra un solo dominio,
+`leads`, che e' una definizione WIZARD; e `features/imports/import-dialog.tsx` non e' montato
+da NESSUNA pagina (l'unico `ImportDialog` in uso e' quello, diverso, di `features/migrations/`).
+E' codice generico ancora senza dominio legacy attivo — allineato lo stesso su richiesta, ma
+se non arriva un dominio legacy va valutata la cancellazione, non la manutenzione.
+
+I flussi async VIVI con lo stesso identico problema sono nelle MIGRAZIONI:
+`use-migration-import.ts` (import per source) e `use-mass-migration.ts` ("Importa tutto"),
+entrambi in polling su job in coda (`RunMigrationJob`, `RunMassMigrationJob`) e senza NESSUNA
+notifica a fine run (a differenza dell'import lead). Allineati anche loro.
+
+NUOVI FILE CONDIVISI:
+- `src/hooks/use-stall-timeout.ts` — guard generico del polling: `isStalled` diventa true se
+  `phase` resta invariata oltre `timeoutMs`; `resetStall()` riapre la finestra. IMPLEMENTATO
+  SENZA setState nel corpo dell'effect (l'hook `react-hooks/set-state-in-effect` lo BLOCCA):
+  si memorizza la "wait" (`${waitToken}:${phase}`) per cui lo stallo e' stato registrato e si
+  confronta con quella corrente, cosi' il cambio di fase azzera lo stato per derivazione.
+  Chi lo tocca non reintroduca `setIsStalled(false)` nell'effect.
+- `src/components/background-job-notice.tsx` — riga "prosegue sul server" + variante stallo con
+  retry, per i flussi ospitati in dialog. Prende `namespace`/`keyPrefix` i18next (chiavi
+  `hint`/`stalled`/`retry`) perche' serve due namespace diversi (default `imports.background`
+  e `migrations.background`). Il wizard a piena pagina ha il suo `ImportBackgroundNotice`.
+
+CAP SUL POLLING: `STALL_TIMEOUT_MS = 120_000` in tutti e tre gli hook (wizard, import legacy,
+migrazioni x2). Superata la finestra il polling si FERMA e la UI passa allo stato "sta
+impiegando piu' del previsto, abbiamo smesso di controllare" con bottone "Controlla di nuovo".
+La copy non dice mai "bloccato": il run resta in carico al server, e' il client che smette di
+chiedere. TRAPPOLA: `refetchInterval` viene valutata PRIMA che lo stato di stallo esista nel
+render corrente → si legge da un `isStalledRef` sincronizzato in un `useEffect` (niente
+scrittura di ref in render, niente TDZ). Costo: al massimo un poll in piu' dopo il flip.
+
+Props aggiunte (tutte opzionali, default falsy): `isPollingStalled`/`onRetryPolling` su
+`ImportStepUpload`, `ImportStepReview`, `ImportStepSummary`, `ImportRunProgress`,
+`ImportProgress` (legacy), `MigrationImportProgress`, `MassImportProgress`; cablate dai
+rispettivi orchestratori (`ImportWizard`, i tre dialog).
+
+VERIFICA SECONDO GIRO (eseguita davvero): `vitest run` intera → 384 file, 2660 verdi. Rossi:
+i 3 preesistenti di `features/table/cell-renderers.test.tsx` (file committato, mai toccato) piu'
+1 test del modulo untracked `features/quotes/` che e' FLAKY (fallisce solo nella run parallela
+completa, passa 2 volte su 2 isolato — verificato). `tsc -b` pulito; eslint pulito sui file
+toccati (restano 2 warning preesistenti `react-hooks/incompatible-library` in
+`import-step-upload.tsx`). Test nuovi: 4 su `use-stall-timeout`, 1 sul wizard hook (il polling
+si ferma dopo la finestra e riparte col retry, a timer finti), 1 su `ImportRunProgress`
+(stato stallo + retry), 1 su `ImportDialog` migrazioni (copy background).
+
+RESTA APERTO: la causa radice e' sempre infrastrutturale — senza `queue:work` in produzione
+l'import non parte comunque, ora lo dice invece di girare a vuoto. Le migrazioni non inviano
+notifica a fine run (l'import lead si): se serve, e' un lavoro backend a parte.
+
 ## CATALOGO DEMO + SEEDER OPPORTUNITA' A NORMA DI FORM (2026-07-29) — VERDE, NON COMMITTATO
 
 Richiesta utente: "controlla il form delle opportunita' e fixa il seeder in base ai campi
@@ -12410,3 +12515,86 @@ File toccati: `frontend/src/components/ui/config-section.tsx`,
 `attribute-layout-item-editor.tsx`, `attribute-layout-configurator.tsx` e
 `attribute-layout-field.tsx` verificati, nessuna modifica necessaria (gia' coerenti: le chip
 usano `bg-card`, valido su qualunque tint).
+
+## 2026-07-29 — Frontend `quotes` module (spec 0065-quotes-module) — teammate `frontend`
+
+Implementata la feature `quotes` (Offerte/Preventivi) lato frontend, sopra il data layer gia'
+pronto (`types.ts`/`api.ts`/`quote-schema.ts`/`quote-form-payload.ts`/`quote-totals.ts`/
+`quotes-table.tsx`/`column-renderers.tsx`, NON modificati salvo `quotes-table.test.tsx`, vedi
+sotto). Backend gia' implementato dal teammate `backend` (routes/controller/policy/authorization/
+resource per `quotes` e `quote-statuses`, colonna `products.code`, `meta` su
+`ProductForSelectResource`).
+
+**File creati** (`frontend/src/features/quotes/`): `quote-product-select.tsx` (wrapper tipizzato
+su `AsyncPaginatedSelect` per il prodotto di riga, con `QuoteProductForSelectMeta`/
+`QuoteProductForSelectItem` locali — vedi deviazione sotto), `use-quote-lines-field.ts`
+(add/remove riga + precompilazione da `meta` on pick, AC-074), `quote-line-row.tsx` (riga:
+prodotto/codice-readonly/quantita/prezzo/IVA/importi calcolati, triade a11y AC-075),
+`quote-lines-field.tsx` (griglia scrollabile + header, `knownProductsFrom`/`knownVatRatesFrom`),
+`quote-offer-tab.tsx` (filtro categorie dall'opportunita' selezionata + toggle sblocco via
+`useConfirm()`, AC-072), `quote-costs-tab.tsx` (mai `category_ids`, AC-073), `quote-notes-tab.tsx`,
+`quote-summary.tsx` (`QuoteSummary` presentazionale + `QuoteLiveSummary` con `useWatch`, zero rete,
+AC-070/071), `use-quote-form.ts` (RHF/Zod + cache condivisa `vatRatePercentFor`/
+`rememberVatRatePercent`, submit create/update), `quote-form.tsx` (meta + `next-code` inline,
+mirror `project-form.tsx`), `quote-form-body.tsx` (testata fuori tab + 3 tab + riepilogo SEMPRE
+visibile sotto ai tab), `quote-detail.tsx` (read-only, stessi 3 tab + `quote.summary` persistito),
+`quote-screens.tsx` (registry adapter, `OPEN_MODE_PAGE` SENZA `generateRoutes:false` — le pagine
+generiche `new`/`:id`/`:id/edit` arrivano da `buildModuleRoutes()`). Nuovo `pages/quotes-page.tsx`.
+i18n: `it-quotes.ts`/`en-quotes.ts` nuovi + import/spread in `it.ts`/`en.ts` + chiave
+`navigation.quotes` (inline in `it.ts`, in `en-navigation.ts` per `en.ts`). Rotte: voce manuale
+`quotes` in `router.tsx` (lista) + `breadcrumbs.tsx`; create/edit/detail generati automaticamente.
+
+**Deviazione dichiarata (richiesta a `ui-design`)**: `AsyncPaginatedSelect.params` (single-select)
+e' tipizzato `Record<string, string | number>`, piu' stretto del fratello
+`AsyncPaginatedMultiSelect` (che gia' accetta `number[]`, usato da `ProductsOfInterestField`) e
+dello stesso `useForSelect`/`fetchForSelect` sottostanti (accettano array). Serve un array
+(`category_ids`) per il filtro prodotti di riga (AC-072/073): in `quote-product-select.tsx` ho
+isolato un cast locale e documentato (`as unknown as Record<string, string | number>`), senza
+toccare `components/ui/async-paginated-select.tsx` (fuori dal mio write surface). Richiesta:
+allargare quel tipo a `Record<string, string | number | number[]>` per allinearlo al multi-select
+e rimuovere il cast.
+
+**Gap di contratto rilevato (non un blocco, solo trasparenza)**: `GET /vat-rates/for-select` non
+espone la percentuale (`rate`), solo `{id, label}` — a differenza di `products/for-select` che la
+porta in `meta.vat_rate`. Il riepilogo live (AC-071) replica quindi la percentuale SOLO per le
+aliquote gia' "viste" (precompilazione da un prodotto, o idratazione della riga persistita in
+edit): una modifica manuale dell'aliquota su una riga verso un valore mai incontrato prima mostra
+transitoriamente IVA/margine senza quella percentuale nella sola ANTEPRIMA client (il server resta
+comunque l'unica fonte di verita', D-9, e calcola l'importo corretto al salvataggio). Nessun AC
+dei 13 richiesti copre questo caso specifico; segnalato come possibile futura estensione additiva
+di `VatRateForSelectResource` (un blocco `meta.rate`, sul modello di `ProductForSelectResource`).
+
+**Test modificato (dichiarato)**: `quotes-table.test.tsx` (data layer, non mio) asseriva le CHIAVI
+i18n grezze (`'quotes.form.newQuote'`, ecc.) perche' le traduzioni non esistevano ancora quando
+e' stato scritto — ora che le ho aggiunte, i18next le risolve davvero e le vecchie asserzioni
+fallivano. Aggiornate le 4 asserzioni per aspettare le stringhe risolte ("New quote", "Quote
+deleted successfully.", ecc.), nessuna logica toccata.
+
+**Verifica eseguita**:
+- `npx tsc --noEmit` → pulito (exit 0).
+- `npx eslint src/features/quotes src/pages/quotes-page.tsx` → pulito.
+- `npx vitest run src/features/quotes` → 82/82 verdi (10 file).
+- `npx vitest run src/features/quote-statuses src/features/opportunities src/routes` → 196/196
+  verdi (nessuna regressione).
+- `npx vitest run` (intera suite) → 2653/2656 verdi; 3 falliti in
+  `src/features/table/cell-renderers.test.tsx` (contatti, asserzioni in inglese ma i18n risolve in
+  italiano) PREESISTENTI e riproducibili anche eseguendo quel file da solo, in isolamento — non
+  causati da questa modifica (non ho toccato ne' quel file ne' `it-personal-data.ts`).
+
+**Mappatura AC -> test**: AC-070 `quote-form-body.test.tsx` (tab + riepilogo sempre montato) +
+`quote-detail.tsx` (stessa struttura, non testato a parte); AC-071 `quote-summary.test.tsx`
+(quantita' cambia -> riepilogo aggiornato, zero chiamate `apiClient.get/post`); AC-072
+`quote-offer-tab.test.tsx` (categorie di default + sblocco confermato le rimuove); AC-073
+`quote-costs-tab.test.tsx`; AC-074 `quote-line-row.test.tsx` (precompilazione price/cost + codice
+prodotto read-only); AC-075 `quote-line-row.test.tsx` (aria-invalid/aria-describedby/role=alert);
+AC-077 `quote-form-body.test.tsx` (campo disabilitato da permessi); AC-082
+`quote-form-body.test.tsx` (codice precompilato in create, read-only in edit).
+
+**Non implementato / fuori scope dichiarato**: nessun test dedicato per `quote-screens.tsx` (basso
+valore incrementale vs. costo, dato il pattern identico a `product-screens.tsx` gia' coperto
+altrove) — segnalato, non implementato per budget di tempo.
+
+**Prossimo passo**: nessuna azione bloccante lato frontend. Richieste aperte: (1) `ui-design` —
+valutare l'allargamento tipo di `AsyncPaginatedSelect.params`; (2) `backend` — valutare se esporre
+`meta.rate` su `VatRateForSelectResource` per chiudere il gap di anteprima descritto sopra (non
+urgente, nessun AC lo richiede). NIENTE COMMIT (attesa via libera §3.6).

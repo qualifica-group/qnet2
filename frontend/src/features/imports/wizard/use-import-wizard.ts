@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import {
   getImportWizardRun,
 } from '@/features/imports/wizard/api'
 import { importWizardKeys } from '@/features/imports/wizard/query-keys'
+import { useStallTimeout } from '@/hooks/use-stall-timeout'
 import { resolveImportWizardErrorMessage } from '@/features/imports/wizard/resolve-error-message'
 import type {
   ConfigureImportPayload,
@@ -20,6 +21,14 @@ import type {
 
 /** Interval (ms) between polls while the run is analyzing/staging/processing. */
 const POLL_INTERVAL_MS = 1500
+
+/**
+ * How long a single phase may run before the poll gives up (ms). Every phase
+ * waits on a queued job: with no worker consuming the queue the status never
+ * moves and the wizard would poll forever. Generous enough that a genuinely
+ * slow staging/commit of a large file is not cut short.
+ */
+const STALL_TIMEOUT_MS = 120_000
 
 /** Statuses that still require polling; any other status is a pause/terminal point. */
 const POLLING_STATUSES: ReadonlySet<ImportRunStatus> = new Set(['analyzing', 'staging', 'processing'])
@@ -97,6 +106,12 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
   // sibling handling in `ImportStepUpload`.
   const [localStep, setLocalStep] = useState<WizardStepIndex>(initialRunId != null ? 1 : 0)
 
+  // Read by `refetchInterval` below, which is evaluated before the stall
+  // state exists in this render pass; the effect further down keeps it in
+  // sync, so a stall stops the poll at its next evaluation (one poll later
+  // at most) without any render-time ref write.
+  const isStalledRef = useRef(false)
+
   const runQuery = useQuery({
     queryKey: runId != null ? importWizardKeys.run(domain, runId) : importWizardKeys.domain(domain),
     queryFn: () => getImportWizardRun(domain, runId as number),
@@ -105,11 +120,27 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
     // without a separate effect.
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status && POLLING_STATUSES.has(status) ? POLL_INTERVAL_MS : false
+      if (!status || !POLLING_STATUSES.has(status)) return false
+      return isStalledRef.current ? false : POLL_INTERVAL_MS
     },
   })
 
   const run = runId != null ? (runQuery.data ?? null) : null
+
+  const pollingPhase = run != null && POLLING_STATUSES.has(run.status) ? `${run.id}:${run.status}` : null
+  const { isStalled: isPollingStalled, resetStall } = useStallTimeout(pollingPhase, STALL_TIMEOUT_MS)
+
+  useEffect(() => {
+    isStalledRef.current = isPollingStalled
+  }, [isPollingStalled])
+
+  const { refetch: refetchRun } = runQuery
+
+  /** Gives the stuck phase a fresh window and re-reads the run right away. */
+  const retryPolling = useCallback(() => {
+    resetStall()
+    void refetchRun()
+  }, [resetStall, refetchRun])
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => analyzeImport(domain, file),
@@ -208,6 +239,9 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
     isRunLoading: runId != null && runQuery.isLoading,
     isRunError: runQuery.isError,
     refetchRun: runQuery.refetch,
+
+    isPollingStalled,
+    retryPolling,
 
     upload: uploadMutation.mutate,
     isUploading: uploadMutation.isPending,

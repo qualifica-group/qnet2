@@ -114,6 +114,8 @@ export function ImportWizard({ domain }: ImportWizardProps) {
           uploadError={wizard.uploadError}
           onUpload={wizard.upload}
           onContinue={wizard.advanceFromUpload}
+          isPollingStalled={wizard.isPollingStalled}
+          onRetryPolling={wizard.retryPolling}
         />
       ) : null}
 
@@ -130,7 +132,13 @@ export function ImportWizard({ domain }: ImportWizardProps) {
       ) : null}
 
       {wizard.currentStep === 2 ? (
-        <ImportStepReview domain={domain} run={wizard.run} onContinue={wizard.advanceFromReview} />
+        <ImportStepReview
+          domain={domain}
+          run={wizard.run}
+          onContinue={wizard.advanceFromReview}
+          isPollingStalled={wizard.isPollingStalled}
+          onRetryPolling={wizard.retryPolling}
+        />
       ) : null}
 
       {wizard.currentStep === 3 ? (
@@ -141,6 +149,8 @@ export function ImportWizard({ domain }: ImportWizardProps) {
           onBackToReview={() => wizard.goToStep(2)}
           isConfirming={wizard.isConfirming}
           confirmError={wizard.confirmError}
+          isPollingStalled={wizard.isPollingStalled}
+          onRetryPolling={wizard.retryPolling}
         />
       ) : null}
         </div>

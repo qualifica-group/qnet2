@@ -28,6 +28,7 @@ import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module
 
 /** Server-side generic field names mapped onto the form for 422 handling. */
 const SERVER_ERROR_FIELDS = [
+  'code',
   'name',
   'description',
   'cost',
@@ -54,6 +55,8 @@ interface UseProductFormArgs {
   mode: ProductFormMode
   /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (product: ProductDetail) => void
+  /** Create-only: sequential code suggestion prefilled into the `code` default (spec 0065). */
+  initialCode?: string
 }
 
 /** Seeds/prunes the dynamic `attribute_values` RHF slice: every current PRODUCT-context code, known value or `null` when unset. */
@@ -76,7 +79,7 @@ function seedAttributeValues(
  * category's PRODUCT-context effective attributes drive both validation
  * (`buildCreateProductSchema`) and which RHF paths exist.
  */
-export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
+export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
@@ -123,6 +126,7 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
     if (mode.type === 'edit') {
       const { product } = mode
       return {
+        code: product.code,
         name: product.name,
         description: product.description,
         cost: normalizeDecimal(product.cost),
@@ -137,6 +141,7 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
       }
     }
     return {
+      code: initialCode ?? '',
       name: '',
       description: null,
       cost: null,
@@ -153,7 +158,7 @@ export function useProductForm({ mode, onSuccess }: UseProductFormArgs) {
     // INITIAL state only (mount), the effect below keeps it in sync as the
     // category — and therefore the effective attribute set — changes later.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, customFields.defaultValues])
+  }, [mode, customFields.defaultValues, initialCode])
 
   const form = useForm<ProductFormValues>({ resolver: zodResolver(schema), defaultValues })
 

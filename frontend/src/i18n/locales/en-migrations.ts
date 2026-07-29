@@ -107,6 +107,12 @@ export const migrations = {
     },
     perSourceCounts: '{{created}} created · {{skipped}} skipped · {{failed}} failed',
   },
+  background: {
+    hint: 'The operation keeps running on the server even if you close this dialog.',
+    stalled:
+      'This is taking longer than expected, so we stopped checking. The server still owns the run — check again in a moment or, if it does not move, tell your administrator.',
+    retry: 'Check again',
+  },
   status: {
     pending: 'Pending',
     processing: 'Importing',

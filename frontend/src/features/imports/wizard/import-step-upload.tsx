@@ -11,7 +11,8 @@ import {
   buildImportWizardUploadSchema,
   type ImportWizardUploadFormValues,
 } from '@/features/imports/wizard/import-upload-schema'
-import { BusyState, StatTile, StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
+import { ImportBackgroundNotice } from '@/features/imports/wizard/import-background-notice'
+import { StatTile, StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
 import type { ImportRunDetail } from '@/features/imports/wizard/types'
 
 export interface ImportStepUploadProps {
@@ -21,6 +22,9 @@ export interface ImportStepUploadProps {
   uploadError: string | null
   onUpload: (file: File) => void
   onContinue: () => void
+  /** True once the analysis poll gave up (see `useImportWizard`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 const FILE_ACCEPT =
@@ -43,7 +47,15 @@ function formatFileSize(bytes: number): string {
  * duplicate-columns summary and an explicit "continue" action — the user
  * reviews the analysis before proceeding.
  */
-export function ImportStepUpload({ run, isUploading, uploadError, onUpload, onContinue }: ImportStepUploadProps) {
+export function ImportStepUpload({
+  run,
+  isUploading,
+  uploadError,
+  onUpload,
+  onContinue,
+  isPollingStalled = false,
+  onRetryPolling,
+}: ImportStepUploadProps) {
   const { t } = useTranslation('importWizard')
   const [isDragging, setIsDragging] = useState(false)
   const form = useForm<ImportWizardUploadFormValues>({
@@ -150,7 +162,13 @@ export function ImportStepUpload({ run, isUploading, uploadError, onUpload, onCo
   }
 
   if (run.status === 'analyzing') {
-    return <BusyState label={t('upload.analyzing')} />
+    return (
+      <ImportBackgroundNotice
+        label={t('upload.analyzing')}
+        isStalled={isPollingStalled}
+        onRetry={onRetryPolling}
+      />
+    )
   }
 
   const columnsCount = run.detected_columns?.length ?? 0

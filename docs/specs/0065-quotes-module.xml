@@ -1,0 +1,688 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0065 — Modulo Offerte/Preventivi (quotes) + modulo Stati Offerta (quote-statuses).
+  Contract-first: la shape sotto e' congelata PRIMA del dispatch. Backend implementa,
+  frontend consuma, identica, senza messaggistica.
+-->
+<spec id="0065-quotes-module" status="draft" owner="utente" date="2026-07-29">
+
+  <goal>
+    Introdurre il modulo Offerte/Preventivi collegato alle Opportunita' (una Opportunita' contiene
+    uno o piu' preventivi) e il modulo di configurazione Stati Offerta. Ogni preventivo raccoglie le
+    righe di ricavo (tab Offerta), le righe di costo (tab Costi) e le note interne (tab Note), e
+    espone in ogni momento un riepilogo economico calcolato dal sistema: Ricavi Attesi, Costi Attesi,
+    Margine Atteso.
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo, non ipotizzati. -->
+    <item>Opportunita': tabella `opportunities`, model `App\Models\Opportunity`. I tre ruoli commerciali
+      da ereditare sono `commercial_id` (FK -> `referents`), `reporter_id` (FK -> `referents`),
+      `supervisor_id` (FK -> `users`).</item>
+    <item>Classificazione dell'opportunita': tabella figlia `opportunity_product_lines`
+      (`opportunity_id`, `business_function_id`, `product_category_id`, unique sulla tripla),
+      model `App\Models\OpportunityProductLine`. E' la sorgente delle categorie usate come filtro
+      di default dei prodotti.</item>
+    <item>Prodotti: tabella `products` (`name`, `description`, `cost`, `price`, `vat_rate_id`,
+      `supplier_id`, `state_id`, `category_id`, `product_type`, `attribute_values`).
+      NON esiste oggi alcuna colonna codice/SKU: viene aggiunta da questa spec (D-1).</item>
+    <item>Aliquote IVA: tabella `vat_rates` (`name`, `rate` decimal(5,2)), model `App\Models\VatRate`,
+      collegata a `products.vat_rate_id`.</item>
+    <item>Funzione aziendale effettiva di una categoria:
+      `App\Services\ProductCategories\CategoryHierarchy::effectiveBusinessFunction()` (risale
+      `parent_id` fino alla prima `business_function_id` valorizzata).</item>
+    <item>Copertura automatica delle product lines dell'opportunita' quando si sceglie un prodotto
+      fuori dalle categorie gia' presenti: logica oggi interna a
+      `App\Services\Opportunities\OpportunityProductInterestWriter::sync()`.</item>
+    <item>Stati configuratore: `opportunity_statuses` + `App\Models\OpportunityStatus`
+      (`name` unique, `color`, `sort_order`, `system_key` unique nullable, `group`),
+      `App\Enums\StatusGroup` (open/pending/closed), `App\Enums\StatusSystemKey`
+      (new/closed/won/lost/pending), `App\Services\Statuses\SystemStatusGuard`,
+      `App\Services\Statuses\StatusOrderManager`,
+      `App\Http\Requests\Statuses\ReorderStatusesRequest` (gia' condivisa fra piu' moduli).</item>
+    <item>Permessi: nessun catalogo statico. `php artisan permissions:sync`
+      (`App\Console\Commands\SyncPermissions`) li deriva da `app/Policies/*.php` che estendono
+      `App\Policies\Abstracts\BasePolicy` (abilities `viewAny|view|create|update|delete|export|import|viewActivity`)
+      e da `backend/config/navigation.php`.</item>
+    <item>Permessi sui campi: `XxxAuthorization extends App\Authorization\AbstractResourceAuthorization`
+      registrata in `backend/config/authorization.php`; ceiling nel codice, intersecato con la matrice
+      DB `role_field_permissions`; enforcement in scrittura via trait
+      `App\Http\Requests\Concerns\EnforcesFieldPermissions`.</item>
+    <item>Tabelle backend-driven: `App\Tables\TableDefinition` + `AbstractTableDefinition`,
+      registrazione in `backend/config/tables.php`, endpoint generici
+      `GET /api/tables/{domain}/columns` + `POST /api/tables/{domain}/{rows|values|bulk-delete|preferences|filters}`.
+      Export (spec 0014), ricerca (spec 0009) e filtri avanzati (spec 0032) sono automatici una volta
+      dichiarati nella definition.</item>
+    <item>Envelope: `App\Http\Controllers\Abstract\BaseApiController` — `ok()`/`okWithPermissions()`
+      => `{ success, message, data, permissions? }`, `fail()` => `{ success, message, errors? }`,
+      `paginatedResponse()` (for-select) => `{ items, export_link, pagination, meta? }` FUORI envelope.</item>
+    <item>Frontend: registry moduli automatico via `import.meta.glob('../*/*-screens.tsx')` in
+      `frontend/src/features/modules/module-registry.ts`; rotte generiche da
+      `module-routes.tsx::buildModuleRoutes()`; menu backend-driven da `backend/config/navigation.php`;
+      permessi campo in UI via `frontend/src/features/authorization/MetaField.tsx`;
+      toggle filtro prodotti gia' implementato in
+      `frontend/src/features/products/products-of-interest-field.tsx` (stato `unlocked` + conferma
+      esplicita via `useConfirm()`); righe ripetibili controllate in
+      `frontend/src/features/product-lines/product-lines-field.tsx` + `use-product-lines-field.ts`.</item>
+  </context>
+
+  <decisions>
+    <!-- Decisioni prese dall'utente in fase di planning: vincolanti. -->
+    <decision id="D-1">"Codice prodotto" non esiste su `products`: si aggiunge la colonna `code`
+      (string(32), NOT NULL, unique) al modulo Prodotti esistente, esposta in form, tabella, resource,
+      for-select e sorgente di migrazione esterna. Le righe di preventivo NON duplicano il codice:
+      lo leggono dal prodotto collegato.</decision>
+    <decision id="D-1b">Il codice prodotto segue ESATTAMENTE il pattern "codice manuale" della spec 0025
+      gia' in produzione su Progetti e Campagne (i Lead non hanno codice: la richiesta si mappa su
+      quel pattern):
+      - generazione sequenziale server-side `PRD-{seq:4}` via il trait esistente
+        `App\Services\Concerns\GeneratesSequentialCode` (`nextSequentialCode` sotto lock in create,
+        `peekNextSequentialCode` lock-free per il suggerimento);
+      - nuovo endpoint `GET /api/products/next-code` (gemello di `/projects/next-code` e
+        `/campaigns/next-code`), consumato dal form al mount in creazione per PRECOMPILARE il campo;
+      - il campo e' EDITABILE a mano in creazione: se valorizzato si usa il valore as-is senza
+        normalizzazione ne' prefisso imposto; se lasciato vuoto il server genera il sequenziale;
+      - in modifica il codice e' READ-ONLY e immutabile, come per Progetti/Campagne (ceiling
+        `$model === null ? visibleEditable(required: true) : visibleReadonly()` in
+        `ProductsAuthorization::fieldPermissionCeiling()`);
+      - collisione: 422 sul campo `code`, nessun retry ne' suffisso automatico (parita' con 0025);
+      - un codice manuale non standard (es. `ACME-2026`) non rompe la sequenza: il generatore filtra
+        `like 'PRD-%'`.</decision>
+    <decision id="D-1c">I prodotti gia' esistenti vengono BACKFILLATI dalla migration con codici
+      sequenziali `PRD-0001...` ordinati per `id` prima di applicare NOT NULL + unique, cosi' il campo
+      e' obbligatorio come su Progetti/Campagne senza rompere le righe in essere.</decision>
+    <decision id="D-2">Stati Offerta = clone del modulo semplice `opportunity-statuses` (nome, colore,
+      gruppo, ordinamento, righe di sistema non cancellabili). NESSUN configuratore di workflow con
+      criteri di matching (l'equivalente di `opportunity_workflows` resta fuori scope).</decision>
+    <decision id="D-3">Commerciale, Segnalatore e Supervisore Commerciale sono uno SNAPSHOT: colonne FK
+      sul preventivo, precompilate dall'opportunita' in creazione e successivamente modificabili sul
+      singolo preventivo. Nessun riallineamento automatico al variare dell'opportunita'.</decision>
+    <decision id="D-4">Naming inglese: tabelle `quotes`, `quote_lines`, `quote_statuses`; risorse/route
+      `quotes` e `quote-statuses`; permessi `quotes.*` e `quote-statuses.*`. Le label UI restano
+      italiane via i18n.</decision>
+    <decision id="D-5">Il riepilogo economico espone imponibile, IVA e totale sia per l'offerta sia per
+      i costi, affiancati; il Margine Atteso e' calcolato SULL'IMPONIBILE (ricavi netti - costi netti).</decision>
+    <decision id="D-6">Nella tab Costi il prezzo unitario si precompila da `products.cost`. Se il
+      prodotto non ha `cost` valorizzato il campo resta vuoto e va compilato a mano. Nella tab Offerta
+      si precompila da `products.price`.</decision>
+    <decision id="D-7">La riga di preventivo salva SOLO `product_id`: codice, nome, categoria e funzione
+      aziendale si leggono live dal prodotto. Quando una riga OFFERTA usa un prodotto la cui categoria
+      non e' coperta dalle `opportunity_product_lines` dell'opportunita', la coppia
+      (funzione aziendale effettiva, categoria) viene AGGIUNTA all'opportunita'. Le righe COSTO non
+      hanno alcun effetto sull'opportunita'.</decision>
+    <decision id="D-8">Righe e testata si salvano in un'unica chiamata (payload annidato,
+      full-replace lato server come gia' avviene per `opportunity_product_lines`). Nessun endpoint
+      per singola riga.</decision>
+    <decision id="D-9">Gli aggregati economici sono PERSISTITI su `quotes` (`revenue_net`,
+      `revenue_vat`, `cost_net`, `cost_vat`, `margin_net`), ricalcolati server-side a ogni scrittura:
+      il server e' l'unica fonte di verita'. Il totale lordo (net + vat) e' derivato, non persistito.
+      Il client ricalcola gli stessi valori solo per l'anteprima in tempo reale.</decision>
+    <decision id="D-10">L'aliquota IVA di riga e' una FK a `vat_rates` (precompilata da
+      `products.vat_rate_id`, modificabile). Gli importi calcolati sono congelati sulla riga
+      (`net_amount`, `vat_amount`, `total_amount`): una futura modifica della percentuale in
+      `vat_rates` non altera i preventivi gia' salvati.</decision>
+    <decision id="D-11">Righe offerta e righe costo condividono UNA tabella `quote_lines` con
+      discriminante `line_type` (`App\Enums\QuoteLineType`: REVENUE|COST), stessa struttura, stesso
+      validatore, stesso componente FE.</decision>
+    <decision id="D-12">Arrotondamento: ogni riga arrotonda a 2 decimali (half-up) `net_amount`,
+      `vat_amount`, `total_amount`; gli aggregati sono la somma dei valori di riga gia' arrotondati.</decision>
+    <decision id="D-13">Anche il preventivo ha un codice proprio `quotes.code` (string(32), NOT NULL,
+      unique), affiancato al Titolo, con lo STESSO meccanismo del codice prodotto (D-1b) e di
+      Progetti/Campagne: sequenziale `QUO-{seq:4}` generato da
+      `App\Services\Concerns\GeneratesSequentialCode`, suggerito al form dal nuovo endpoint
+      `GET /api/quotes/next-code`, editabile a mano in creazione (valore as-is, nessuna
+      normalizzazione), READ-ONLY e immutabile in modifica, 422 sul campo in caso di collisione
+      (nessun retry ne' suffisso). Nessun backfill: la tabella nasce con questa spec.
+      `code` NON e' in `#[Fillable]` di `Quote`: lo assegna il service dopo la mass-assignment.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Modulo Stati Offerta: migration `quote_statuses` con seed delle 3 righe di sistema
+        ("Bozza" `new` open, "Accettata" `won` closed, "Rifiutata" `lost` closed), model, service,
+        FormRequest store/update, reorder, policy, authorization, resource, controller, route,
+        TableDefinition + column catalog, activity log, navigazione.</item>
+      <item>Estensione di `App\Services\Statuses\SystemStatusGuard` (union type reale su 2 firme) e dei
+        PHPDoc di `App\Services\Statuses\StatusOrderManager` per accettare `App\Models\QuoteStatus`.</item>
+      <item>Codice preventivo `QUO-{seq:4}`: riuso del trait `GeneratesSequentialCode`,
+        `QuoteService::previewNextCode()`, endpoint `GET /api/quotes/next-code`, precompilazione al
+        mount del form in creazione, read-only in modifica (D-13).</item>
+      <item>Modulo Preventivi: migration `quotes` + `quote_lines`, enum `QuoteLineType`, model,
+        DataObject, service (con calcolo aggregati e full-replace righe), FormRequest store/update con
+        validazione righe, policy, authorization (permessi sui campi), resource, controller, route,
+        TableDefinition + column catalog + advanced filter catalog, activity log, navigazione.</item>
+      <item>Estrazione della logica di copertura in `App\Services\Opportunities\OpportunityProductLineCoverage`
+        (metodo `ensure()`), riusata sia da `OpportunityProductInterestWriter` sia dal service dei
+        preventivi (D-7). Il comportamento esistente dei Prodotti di Interesse resta identico.</item>
+      <item>Modulo Prodotti: colonna `code` (migration con backfill, model, FormRequest, DataObject,
+        service, resource, for-select, authorization, TableDefinition/column catalog, sorgente
+        migrazione esterna `App\Migrations\Sources\ProductsSource`, form FE, i18n).</item>
+      <item>Endpoint `GET /api/products/next-code` + `ProductService::previewNextCode()` sul modello di
+        `ProjectService`/`CampaignService`, e precompilazione del campo nel form prodotto al mount in
+        creazione (D-1b).</item>
+      <item>Estensione additiva di `App\Http\Resources\ProductForSelectResource` con il blocco `meta`
+        (`code`, `price`, `cost`, `vat_rate_id`, `vat_rate_name`, `vat_rate`) necessario alla
+        precompilazione delle righe.</item>
+      <item>Frontend: feature `quote-statuses` (clone di `opportunity-statuses`) e feature `quotes`
+        (pagina dedicata a tab Offerta/Costi/Note + riepilogo economico persistente sotto i tab,
+        tabella backend-driven, form create/edit, dettaglio read-only), rotte, breadcrumb, i18n it/en.</item>
+      <item>Test Pest (backend) e Vitest (frontend) mappati 1:1 sugli acceptance criteria.</item>
+    </in>
+    <out>
+      <item>Configuratore di workflow per gli stati offerta (criteri di matching, set di stati per
+        workflow, note obbligatorie al cambio stato): l'equivalente di `opportunity_workflows` NON si
+        replica (D-2).</item>
+      <item>Sconti di riga o di testata, listini multipli, valute diverse dall'euro, ricarichi
+        percentuali, marginalita' per riga.</item>
+      <item>Generazione di documenti PDF del preventivo, invio email, firma, versioning/revisioni del
+        preventivo.</item>
+      <item>Conversione preventivo -> ordine/commessa, e qualsiasi effetto del preventivo sullo stato
+        o sul valore stimato dell'opportunita' (`opportunities.estimated_value` NON viene toccato).</item>
+      <item>Campi dinamici/attributi per categoria (spec 0021/0061) sul preventivo, layout attributi,
+        note collaborative e allegati sul preventivo.</item>
+      <item>Import massivo di preventivi, migrazione da sistema esterno di preventivi,
+        inline cell editing delle righe dalla tabella elenco.</item>
+      <item>Modifica del comportamento esistente dei Prodotti di Interesse dell'opportunita' e del
+        campo `product_lines` (solo refactor interno di estrazione, comportamento invariato).</item>
+      <item>Statistiche/pannello stats del modulo preventivi.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- =============== STATI OFFERTA =============== -->
+
+    <endpoint method="GET" path="/api/quote-statuses/for-select">
+      <request>search?: string, offset?: int (default 0), limit?: int (default 25, max 100), ids?: int[]</request>
+      <response status="200">
+        { items: [{ id: int, label: string, subtitle?: string }], export_link: null,
+          pagination: { total: int, offset: int, limit: int, total_pages: int } }
+      </response>
+      <errors>403 senza `quote-statuses.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quote-statuses/{quoteStatus}">
+      <response status="200">
+        { success: true, message: "OK",
+          data: { id: int, name: string, color: string|null, sort_order: int,
+                  system_key: "new"|"won"|"lost"|null, group: "open"|"pending"|"closed",
+                  created_at: string },
+          permissions: { resource: {...}, fields: {...}, actions: {...} } }
+      </response>
+      <errors>403 senza `quote-statuses.view`, 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quote-statuses">
+      <request>{ name: string (required, max 191, unique), color?: string|null (max 32),
+                 group: "open"|"pending"|"closed" (required) }</request>
+      <response status="201">come GET /{quoteStatus}, con `sort_order` assegnato dal server
+        (`StatusOrderManager::placeNew`) e `system_key: null`</response>
+      <errors>403 senza `quote-statuses.create`, 422 nome duplicato / group non valido /
+        campo non editabile realmente modificato</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/quote-statuses/{quoteStatus}">
+      <request>{ name?: string, color?: string|null, group?: "open"|"pending"|"closed" }</request>
+      <response status="200">come GET /{quoteStatus}</response>
+      <errors>403, 404, 422 (su riga di sistema sono modificabili SOLO `name` e `color`:
+        qualsiasi altra chiave => 422)</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/quote-statuses/{quoteStatus}">
+      <response status="204">Nessun corpo, come il gemello opportunity-statuses.</response>
+      <errors>403 senza `quote-statuses.delete`, 422 riga di sistema,
+        409 stato ancora referenziato da almeno un preventivo</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quote-statuses/reorder">
+      <request>{ ordered_ids: int[] (required, min 1, distinct) }</request>
+      <response status="200">{ success: true, message: "OK",
+        data: [{ id: int, sort_order: int }] }</response>
+      <errors>403 senza `quote-statuses.update`, 422 id non appartenenti al set</errors>
+    </endpoint>
+
+    <!-- =============== PREVENTIVI =============== -->
+
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response status="200">
+        { success: true, message: "OK",
+          data: {
+            id: int,
+            code: string,
+            title: string,
+            opportunity_id: int,
+            opportunity: { id: int, name: string },
+            quote_status_id: int,
+            quote_status: { id: int, name: string, color: string|null, group: string },
+            commercial_id: int|null,   commercial: { id: int, name: string }|null,
+            reporter_id: int|null,     reporter:   { id: int, name: string }|null,
+            supervisor_id: int|null,   supervisor: { id: int, name: string }|null,
+            internal_notes: string|null,
+            offer_lines: QuoteLine[],
+            cost_lines: QuoteLine[],
+            summary: {
+              revenue: { net: string, vat: string, gross: string },
+              cost:    { net: string, vat: string, gross: string },
+              margin:  { net: string }
+            },
+            created_at: string, updated_at: string
+          },
+          permissions: { resource: {...}, fields: {...}, actions: {...} } }
+
+        QuoteLine := {
+          id: int,
+          product_id: int,
+          product: { id: int, code: string, name: string,
+                     category: { id: int, name: string }|null,
+                     business_function: { id: int, name: string }|null },
+          quantity: string,          // decimal(15,2) serializzato come stringa
+          unit_price: string,        // decimal(15,2)
+          vat_rate_id: int|null,
+          vat_rate: { id: int, name: string, rate: string }|null,
+          net_amount: string,        // quantity * unit_price, arrotondato 2 dec.
+          vat_amount: string,        // net_amount * rate / 100, arrotondato 2 dec.
+          total_amount: string,      // net_amount + vat_amount
+          sort_order: int
+        }
+      </response>
+      <errors>403 senza `quotes.view`, 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quotes">
+      <request>
+        {
+          code?: string|null (max 32, unique — se assente/vuoto il server genera `QUO-{seq:4}`),
+          title: string (required, max 191),
+          opportunity_id: int (required, exists:opportunities,id),
+          quote_status_id?: int|null (exists:quote_statuses,id — se assente il server assegna
+                                      la riga di sistema `new`),
+          commercial_id?: int|null (exists:referents,id),
+          reporter_id?: int|null (exists:referents,id),
+          supervisor_id?: int|null (exists:users,id),
+          internal_notes?: string|null (max 5000),
+          offer_lines?: QuoteLineInput[] (array, max 200),
+          cost_lines?:  QuoteLineInput[] (array, max 200)
+        }
+
+        QuoteLineInput := {
+          product_id: int (required, exists:products,id),
+          quantity: numeric (required, > 0, max 999999.99, max 2 decimali),
+          unit_price: numeric (required, >= 0, max 99999999.99, max 2 decimali),
+          vat_rate_id?: int|null (exists:vat_rates,id),
+          sort_order?: int (>= 0; se assente vale l'indice nell'array)
+        }
+
+        NOTA: `net_amount`, `vat_amount`, `total_amount` e il blocco `summary` sono PROIBITI in
+        input (regola `prohibited`): li calcola il server. `commercial_id`/`reporter_id`/
+        `supervisor_id`, se assenti in creazione, sono ereditati dall'opportunita' (D-3).
+      </request>
+      <response status="201">identica a GET /api/quotes/{quote}</response>
+      <errors>
+        403 senza `quotes.create`;
+        422 validazione (riga con quantita' minore o uguale a 0, prezzo negativo, prodotto inesistente,
+            piu' di 200 righe per tab, importi inviati dal client, campo non editabile modificato);
+        422 riga OFFERTA il cui prodotto appartiene a una categoria senza funzione aziendale
+            effettiva (impossibile coprire l'opportunita', D-7)
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/quotes/{quote}">
+      <request>Stessi campi di POST, tutti `sometimes`. `opportunity_id` e' PROIBITO (immutabile).
+        `code` NON e' presente in `rules()`: immutabile, respinto da `EnforcesFieldPermissions`
+        (ceiling readonly quando `$model !== null`); reinviare il valore identico e' un no-op.
+        `offer_lines`/`cost_lines`, se presenti, sostituiscono integralmente il set esistente di quel
+        tipo (full-replace, D-8); se assenti il set resta invariato. Un array vuoto azzera il set.</request>
+      <response status="200">identica a GET /api/quotes/{quote}</response>
+      <errors>403 senza `quotes.update`, 404, 422 come POST + `opportunity_id` presente</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/quotes/{quote}">
+      <response status="204">Nessun corpo. Allineato alla convenzione gia' in produzione
+        (`OpportunityStatusController::destroy()` risponde 204 via `BaseApiController::noContent()`):
+        la coerenza col codebase esistente prevale sulla bozza di contratto.</response>
+      <errors>403 senza `quotes.delete`, 404</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quotes/next-code">
+      <request>nessun parametro</request>
+      <response status="200">{ success: true, message: "OK", data: { code: "QUO-0001" } }</response>
+      <errors>403 senza `quotes.create`</errors>
+      <note>Rotta dichiarata SOPRA `quotes/{quote}` (segmento letterale prima del wildcard).</note>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/quotes">
+      <response status="200">contratto generico gia' esistente (`MetaController`):
+        `{ success, message, data: { resource, fields, actions } }` per il contesto di creazione</response>
+      <errors>403 senza `quotes.viewAny`</errors>
+    </endpoint>
+
+    <!-- =============== PRODOTTI (estensione) =============== -->
+
+    <endpoint method="GET" path="/api/products/for-select">
+      <request>search?: string, offset?: int, limit?: int, ids?: int[],
+        category_ids?: int[] (gia' esistente: filtro per categorie)</request>
+      <response status="200">
+        { items: [{ id: int, label: string, subtitle?: string,
+                    meta: { code: string, price: string|null, cost: string|null,
+                            vat_rate_id: int|null, vat_rate_name: string|null,
+                            vat_rate: string|null } }],
+          export_link: null, pagination: {...} }
+        NOTA: il blocco `meta` e' ADDITIVO. Nessun campo esistente cambia nome o tipo.
+      </response>
+      <errors>403 senza `products.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/products/next-code">
+      <request>nessun parametro</request>
+      <response status="200">{ success: true, message: "OK", data: { code: "PRD-0001" } }</response>
+      <errors>403 senza `products.create`</errors>
+      <note>Rotta dichiarata SOPRA `products/{product}` (segmento letterale prima del wildcard),
+        come gia' fatto in `routes/api/projects.php` per `projects/next-code`.</note>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/products (esistente)">
+      <request>campo aggiuntivo `code?: string|null` (nullable, max 32, unique). Se assente/vuoto il
+        server genera `PRD-{seq:4}` sotto lock nella stessa transazione della create.</request>
+      <response status="201">`data.code: string` aggiunto a `ProductResource`</response>
+      <errors>422 codice duplicato (errore sul campo `code`)</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/products/{product} (esistente)">
+      <request>`code` NON e' presente in `rules()`: e' immutabile. Un valore diverso da quello
+        persistito viene respinto dal trait `EnforcesFieldPermissions` (ceiling readonly quando
+        `$model !== null`); reinviare il valore identico e' un no-op.</request>
+      <response status="200">`data.code` invariato</response>
+      <errors>422 `code` non editabile</errors>
+    </endpoint>
+
+    <!-- =============== TABELLE BACKEND-DRIVEN =============== -->
+
+    <endpoint method="GET|POST" path="/api/tables/quotes/{columns|rows|values|bulk-delete|preferences|filters}">
+      <!-- Rotte reali gia' esistenti: `columns` e' GET, `rows`/`values`/`bulk-delete` sono POST
+           (verificato in routes/api.php). -->
+      <request>contratto generico gia' esistente (`TableRowsRequest`: startRow, endRow, sortModel,
+        filterModel, search, advancedFilters)</request>
+      <response status="200">
+        colonne dichiarate: `code` (text, sortable, filterable, searchable),
+        `title` (text, sortable, filterable, searchable),
+        `opportunity` (derivata, set), `quote_status` (badge con colore, set),
+        `commercial` (derivata, set), `reporter` (derivata, set), `supervisor` (derivata, set),
+        `revenue_net` (number), `cost_net` (number), `margin_net` (number),
+        `created_at` (datetime).
+        Filtri avanzati: `opportunity` (relation), `quote_status` (relation), `commercial` (relation),
+        `supervisor` (relation), `created_at` (daterange).
+        Azioni riga: view/edit se autorizzato, delete se `quotes.delete`, activity se
+        `quotes.viewActivity`.
+      </response>
+      <errors>403 senza `quotes.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/quote-statuses/{...}">
+      <response status="200">colonne `name`, `color`, `sort_order`, `group`, `created_at`;
+        azione delete OMESSA sulle righe di sistema</response>
+      <errors>403 senza `quote-statuses.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/exports/quotes">
+      <request>contratto generico spec 0014 (nessun codice dedicato)</request>
+      <response status="200">export run asincrono</response>
+      <errors>403 senza `quotes.export`</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <schema>
+    <table name="quote_statuses">
+      id; name string(191) UNIQUE; color string(32) nullable; sort_order int default 0;
+      system_key string(16) nullable UNIQUE; group string(16) default 'open'; timestamps.
+      Seed righe di sistema: ('Bozza','slate',0,'new','open'),
+      ('Accettata','green',10,'won','closed'), ('Rifiutata','red',20,'lost','closed').
+    </table>
+    <table name="quotes">
+      id; code string(32) NOT NULL UNIQUE; title string(191) INDEX;
+      opportunity_id FK -> opportunities restrictOnDelete NOT NULL INDEX;
+      quote_status_id FK -> quote_statuses restrictOnDelete NOT NULL INDEX;
+      commercial_id FK nullable -> referents restrictOnDelete;
+      reporter_id FK nullable -> referents restrictOnDelete;
+      supervisor_id FK nullable -> users restrictOnDelete;
+      internal_notes text nullable;
+      revenue_net decimal(15,2) default 0; revenue_vat decimal(15,2) default 0;
+      cost_net decimal(15,2) default 0; cost_vat decimal(15,2) default 0;
+      margin_net decimal(15,2) default 0;
+      timestamps; INDEX created_at.
+      Gli aggregati NON sono mass-assignable: li scrive solo il service (D-9).
+    </table>
+    <table name="quote_lines">
+      id; quote_id FK -> quotes cascadeOnDelete;
+      line_type string(16) (App\Enums\QuoteLineType: 'REVENUE'|'COST');
+      product_id FK -> products restrictOnDelete NOT NULL;
+      quantity decimal(15,2); unit_price decimal(15,2);
+      vat_rate_id FK nullable -> vat_rates restrictOnDelete;
+      net_amount decimal(15,2); vat_amount decimal(15,2); total_amount decimal(15,2);
+      sort_order int default 0; timestamps;
+      INDEX (quote_id, line_type, sort_order); INDEX product_id.
+    </table>
+    <table name="products (alter)">
+      + code string(32), dopo `name`. La migration procede in 3 passi:
+      (1) aggiunge la colonna nullable senza indice;
+      (2) backfilla le righe esistenti con `PRD-0001...` in ordine di `id` (D-1c);
+      (3) porta la colonna a NOT NULL e aggiunge l'indice UNIQUE.
+      `down()` simmetrico (drop indice + drop colonna).
+      `code` NON e' in `#[Fillable]` di `Product`: lo assegna il service dopo la mass-assignment,
+      come su `Project`/`Campaign`.
+    </table>
+  </schema>
+
+  <acceptance_criteria>
+
+    <!-- Prodotti: codice (pattern spec 0025, D-1b/D-1c) -->
+    <criterion id="AC-001">Dato un utente con `products.create`, quando crea un prodotto senza `code`
+      (assente, null o stringa vuota), allora il server assegna il sequenziale `PRD-0001` e lo
+      restituisce in `data.code`.</criterion>
+    <criterion id="AC-002">Quando crea un prodotto con `code: "ACME-2026"`, allora il valore e'
+      persistito as-is (nessuna normalizzazione, nessun prefisso imposto) e il prodotto creato subito
+      dopo senza codice riceve comunque il successivo `PRD-*` (la sequenza non e' rotta).</criterion>
+    <criterion id="AC-003">Dato un prodotto con `code: "ACME-2026"`, quando se ne crea un altro con lo
+      stesso codice, allora la risposta e' 422 con errore sul campo `code` (nessun retry, nessun
+      suffisso automatico).</criterion>
+    <criterion id="AC-004">Un `code` di 33 caratteri produce 422 (max 32).</criterion>
+    <criterion id="AC-005">`PATCH /api/products/{product}` con un `code` diverso da quello persistito
+      produce 422 (campo non editabile); reinviando lo stesso valore la richiesta passa (no-op).</criterion>
+    <criterion id="AC-006">`GET /api/products/{product}` espone `permissions.fields.code` come
+      readonly, mentre `GET /api/meta/products` (contesto di creazione) lo espone editable e required.</criterion>
+    <criterion id="AC-007">`GET /api/products/next-code` restituisce `data.code = "PRD-0001"` su
+      catalogo vuoto e il primo codice libero dopo N prodotti; senza `products.create` risponde 403.</criterion>
+    <criterion id="AC-008">Eseguendo la migration su un database con prodotti preesistenti, ogni riga
+      riceve un codice `PRD-*` distinto in ordine di `id`, la colonna e' NOT NULL e l'indice unique
+      e' applicato senza errori.</criterion>
+    <criterion id="AC-009">Quando si chiama `GET /api/products/for-select`, allora ogni item espone
+      `meta.code`, `meta.price`, `meta.cost`, `meta.vat_rate_id`, `meta.vat_rate_name`, `meta.vat_rate`,
+      e i campi preesistenti `id`/`label`/`subtitle` restano invariati.</criterion>
+    <criterion id="AC-009b">Quando si richiedono le colonne della tabella `products`, allora e' presente
+      la colonna `code` filtrabile, ordinabile e ricercabile, e le righe la valorizzano.</criterion>
+
+    <!-- Stati Offerta -->
+    <criterion id="AC-010">Dopo la migration, la tabella `quote_statuses` contiene esattamente 3 righe
+      di sistema con `system_key` `new`, `won`, `lost` e `sort_order` 0, 10, 20.</criterion>
+    <criterion id="AC-011">Dato un utente con `quote-statuses.create`, quando crea uno stato custom,
+      allora `system_key` e' null e `sort_order` e' assegnato dal server prima delle righe di coda.</criterion>
+    <criterion id="AC-012">Quando si tenta di cancellare una riga di sistema, allora la risposta e' 422
+      e la riga esiste ancora.</criterion>
+    <criterion id="AC-013">Quando si aggiorna una riga di sistema inviando `group`, allora la risposta e'
+      422; inviando solo `name` e `color` la risposta e' 200.</criterion>
+    <criterion id="AC-014">Quando si cancella uno stato custom referenziato da almeno un preventivo,
+      allora la risposta e' 409 e la riga esiste ancora.</criterion>
+    <criterion id="AC-015">Dato `POST /api/quote-statuses/reorder` con gli id custom in ordine inverso,
+      allora i `sort_order` sono risequenziati, la riga `new` resta a 0 e `won`/`lost` restano in coda
+      nell'ordine dichiarato.</criterion>
+    <criterion id="AC-016">Un utente senza `quote-statuses.viewAny` riceve 403 su
+      `GET /api/tables/quote-statuses/columns`; con il permesso riceve 200 e le colonne `name`,
+      `color`, `sort_order`, `group`, `created_at`.</criterion>
+    <criterion id="AC-017">Nelle righe della tabella `quote-statuses`, l'azione `delete` e' assente
+      sulle righe di sistema e presente sulle custom (per un utente con `quote-statuses.delete`).</criterion>
+
+    <!-- Preventivi: CRUD e eredita' -->
+    <criterion id="AC-020">Dato un utente con `quotes.create` e un'opportunita' con
+      `commercial_id`/`reporter_id`/`supervisor_id` valorizzati, quando crea un preventivo senza
+      passare quei tre campi, allora il preventivo li eredita dall'opportunita'.</criterion>
+    <criterion id="AC-021">Nelle stesse condizioni, quando il payload passa esplicitamente un
+      `commercial_id` diverso, allora prevale il valore passato (snapshot modificabile, D-3).</criterion>
+    <criterion id="AC-022">Modificando successivamente il `commercial_id` dell'opportunita', il
+      preventivo gia' creato mantiene il proprio valore.</criterion>
+    <criterion id="AC-023">Quando si crea un preventivo senza `quote_status_id`, allora viene assegnata
+      la riga di sistema `new`.</criterion>
+    <criterion id="AC-024">Una stessa opportunita' accetta piu' preventivi (creazione di 3 preventivi
+      sulla stessa opportunita' => 3 righe, tutte leggibili).</criterion>
+    <criterion id="AC-025">`PATCH /api/quotes/{quote}` con `opportunity_id` presente restituisce 422
+      (campo immutabile).</criterion>
+    <criterion id="AC-026">Cancellando un preventivo, le sue `quote_lines` sono rimosse
+      (cascadeOnDelete) e i prodotti referenziati restano intatti.</criterion>
+    <criterion id="AC-027">Un'opportunita' con almeno un preventivo non e' cancellabile
+      (restrictOnDelete): la richiesta fallisce senza cancellare nulla.</criterion>
+
+    <!-- Preventivi: righe e calcoli -->
+    <criterion id="AC-030">Dato un preventivo con una riga offerta `quantity: 3`, `unit_price: 10.00`,
+      aliquota 22%, allora la riga persiste `net_amount: 30.00`, `vat_amount: 6.60`,
+      `total_amount: 36.60`.</criterion>
+    <criterion id="AC-031">Con `vat_rate_id: null`, allora `vat_amount` e' 0.00 e `total_amount` uguale
+      a `net_amount`.</criterion>
+    <criterion id="AC-032">Con `quantity: 3`, `unit_price: 10.005`, il valore e' rifiutato con 422
+      (massimo 2 decimali); con `unit_price: 10.01` la riga produce `net_amount: 30.03`
+      (arrotondamento half-up a 2 decimali, D-12).</criterion>
+    <criterion id="AC-033">Un payload che invia `net_amount`, `vat_amount` o `total_amount` su una riga
+      riceve 422 (campi calcolati dal server, non accettati in input).</criterion>
+    <criterion id="AC-034">`quantity: 0` e `quantity: -1` producono 422; `unit_price: -1` produce 422;
+      `unit_price: 0` e' accettato.</criterion>
+    <criterion id="AC-035">Un payload con 201 righe in `offer_lines` produce 422.</criterion>
+    <criterion id="AC-036">Aggiornando un preventivo con `offer_lines` che contiene solo una delle due
+      righe esistenti, allora resta esattamente quella riga (full-replace, D-8); con `offer_lines: []`
+      il set e' azzerato; omettendo la chiave il set resta invariato.</criterion>
+    <criterion id="AC-037">Aggiornando solo `offer_lines`, le `cost_lines` esistenti restano invariate
+      (e viceversa).</criterion>
+    <criterion id="AC-038">Le righe sono restituite ordinate per `sort_order` crescente, coerente con
+      l'ordine di invio quando `sort_order` non e' passato.</criterion>
+
+    <!-- Preventivi: riepilogo -->
+    <criterion id="AC-040">Dato un preventivo con offerta (30.00 netto + 6.60 IVA) e costi
+      (10.00 netto + 2.20 IVA), allora `summary` espone
+      `revenue: {net: 30.00, vat: 6.60, gross: 36.60}`, `cost: {net: 10.00, vat: 2.20, gross: 12.20}`,
+      `margin: {net: 20.00}` (D-5).</criterion>
+    <criterion id="AC-041">Gli stessi valori sono persistiti su `quotes` (`revenue_net`, `revenue_vat`,
+      `cost_net`, `cost_vat`, `margin_net`) e ricalcolati a ogni update delle righe.</criterion>
+    <criterion id="AC-042">Un preventivo senza righe espone tutti gli aggregati a 0.00 e margine 0.00.</criterion>
+    <criterion id="AC-043">Con costi superiori ai ricavi, `margin_net` e' negativo e viene restituito
+      come tale (nessun clamp a zero).</criterion>
+
+    <!-- Preventivi: prodotti, filtro e copertura opportunita' -->
+    <criterion id="AC-050">Dato un prodotto la cui categoria NON e' fra le `opportunity_product_lines`
+      dell'opportunita', quando lo si usa in una riga OFFERTA, allora la coppia
+      (funzione aziendale effettiva, categoria) viene aggiunta alle `opportunity_product_lines`
+      dell'opportunita' (D-7).</criterion>
+    <criterion id="AC-051">Nelle stesse condizioni, se la categoria del prodotto non risolve alcuna
+      funzione aziendale effettiva, allora la risposta e' 422 e nulla viene persistito.</criterion>
+    <criterion id="AC-052">Lo stesso prodotto usato in una riga COSTO NON altera le
+      `opportunity_product_lines` dell'opportunita'.</criterion>
+    <criterion id="AC-053">Se la coppia e' gia' presente sull'opportunita', non viene creata alcuna
+      riga duplicata.</criterion>
+    <criterion id="AC-054">Dopo l'estrazione di `OpportunityProductLineCoverage`, i test esistenti dei
+      Prodotti di Interesse (`OpportunityProductsOfInterestTest`) restano verdi senza modifiche.</criterion>
+    <criterion id="AC-055">La riga di preventivo espone il prodotto live: modificando `name` o `code`
+      del prodotto, il dettaglio del preventivo mostra i valori aggiornati, mentre gli importi
+      (`unit_price`, `net_amount`, `vat_amount`, `total_amount`) restano quelli salvati (D-10).</criterion>
+
+    <!-- Autorizzazione -->
+    <criterion id="AC-060">`php artisan permissions:sync` genera i permessi `quotes.viewAny|view|create|
+      update|delete|export|import|viewActivity` e gli omologhi `quote-statuses.*`.</criterion>
+    <criterion id="AC-061">Un utente senza `quotes.view` riceve 403 su `GET /api/quotes/{quote}`;
+      senza `quotes.create` riceve 403 su POST; senza `quotes.update` 403 su PATCH; senza
+      `quotes.delete` 403 su DELETE.</criterion>
+    <criterion id="AC-062">Un utente senza `quotes.viewAny` riceve 403 su
+      `GET /api/tables/quotes/columns` e su `POST /api/exports/quotes` senza `quotes.export`.</criterion>
+    <criterion id="AC-063">Con la matrice `role_field_permissions` che rende `commercial_id` non
+      editabile per il ruolo dell'attore, un PATCH che CAMBIA quel campo riceve 422, mentre un PATCH
+      che lo reinvia identico passa (enforcement change-based).</criterion>
+    <criterion id="AC-064">`GET /api/quotes/{quote}` restituisce il blocco `permissions.fields` con le
+      chiavi `code`, `title`, `opportunity_id`, `quote_status_id`, `commercial_id`, `reporter_id`,
+      `supervisor_id`, `internal_notes`, `offer_lines`, `cost_lines`; `code` e' readonly, mentre
+      `GET /api/meta/quotes` lo espone editable e required.</criterion>
+
+    <!-- Preventivi: codice (D-13, stesso pattern del codice prodotto) -->
+    <criterion id="AC-066">Creando un preventivo senza `code` (assente, null o stringa vuota), allora il
+      server assegna `QUO-0001` e lo restituisce in `data.code`.</criterion>
+    <criterion id="AC-067">Creando un preventivo con `code: "OFF-2026/1"`, il valore e' persistito as-is
+      e il preventivo creato subito dopo senza codice riceve comunque il successivo `QUO-*`.</criterion>
+    <criterion id="AC-068">Un `code` gia' esistente produce 422 sul campo `code`; un `code` di 33
+      caratteri produce 422.</criterion>
+    <criterion id="AC-069">`PATCH /api/quotes/{quote}` con un `code` diverso da quello persistito
+      produce 422; reinviando lo stesso valore la richiesta passa (no-op).</criterion>
+    <criterion id="AC-069b">`GET /api/quotes/next-code` restituisce `data.code = "QUO-0001"` su tabella
+      vuota e il primo codice libero dopo N preventivi; senza `quotes.create` risponde 403.</criterion>
+    <criterion id="AC-069c">La colonna `code` e' presente fra le colonne della tabella `quotes`,
+      ordinabile, filtrabile e ricercabile dalla quick-search.</criterion>
+    <criterion id="AC-065">Le voci di menu `quotes` e `quote-statuses` compaiono nella navigazione solo
+      per un utente con i rispettivi permessi `.view`/`.viewAny`.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-070">La pagina di dettaglio/modifica del preventivo mostra tre tab
+      ("Offerta", "Costi", "Note") e il riepilogo economico resta visibile sotto i tab
+      qualunque sia il tab attivo.</criterion>
+    <criterion id="AC-071">Modificando quantita' o prezzo di una riga, il riepilogo si aggiorna senza
+      salvataggio e senza chiamate di rete (calcolo client speculare a quello server).</criterion>
+    <criterion id="AC-072">Nella tab Offerta il select prodotti invia di default
+      `category_ids` derivate dalle product lines dell'opportunita'; premendo il pulsante di sblocco e
+      confermando il dialog, le chiamate successive non inviano piu' il filtro.</criterion>
+    <criterion id="AC-073">Nella tab Costi il select prodotti non invia mai `category_ids`.</criterion>
+    <criterion id="AC-074">Selezionando un prodotto in una riga offerta, `unit_price` si precompila con
+      `meta.price` e l'aliquota con `meta.vat_rate_id`; nella tab Costi `unit_price` si precompila con
+      `meta.cost` (vuoto se il prodotto non ha costo, D-6). Entrambi restano modificabili.</criterion>
+    <criterion id="AC-075">Una riga con quantita' 0 o prezzo negativo mostra l'errore di validazione
+      inline e blocca il submit; l'errore e' collegato al campo via `aria-describedby` +
+      `aria-invalid` con `role="alert"`.</criterion>
+    <criterion id="AC-076">Il payload inviato dal form contiene `offer_lines`/`cost_lines` con i soli
+      campi del contratto (nessun `net_amount`/`vat_amount`/`total_amount`).</criterion>
+    <criterion id="AC-077">Un campo marcato non editabile dai permessi e' reso disabilitato nel form
+      (via `MetaField`) e assente/non modificabile nel payload.</criterion>
+    <criterion id="AC-078">La tabella Preventivi monta `TableView domain="quotes"` senza dichiarare
+      colonne lato client, e la pagina e' gated da `Can permission="quotes.viewAny"`.</criterion>
+    <criterion id="AC-079">Aprendo il form prodotto in creazione, il campo Codice e' precompilato con il
+      valore di `GET /api/products/next-code` (query `staleTime: 0, gcTime: 0`, mai da cache) e resta
+      modificabile; svuotandolo il submit passa comunque (il server genera il sequenziale).</criterion>
+    <criterion id="AC-080">Aprendo il form prodotto in modifica, il campo Codice mostra il valore
+      persistito, e' disabilitato/read-only e non viene richiesto alcun `next-code`.</criterion>
+    <criterion id="AC-081">A fronte di un 422 sul campo `code`, l'errore del server e' mostrato inline
+      sul campo (`applyServerValidationErrors`), non come toast generico.</criterion>
+    <criterion id="AC-082">Aprendo il form preventivo in creazione, il campo Codice e' precompilato da
+      `GET /api/quotes/next-code` e resta modificabile; in modifica mostra il valore persistito,
+      e' disabilitato/read-only e non viene richiesto alcun `next-code`.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza npm/composer. Solo librerie gia' presenti.</item>
+    <item>Identificatori in inglese (tabelle, colonne, rotte, permessi, classi, componenti); label UI
+      in italiano via i18next (`it-quotes.ts` / `en-quotes.ts`).</item>
+    <item>Autorizzazione server-side su OGNI endpoint (Policy) inclusa la TableDefinition
+      (`authorizeViewAny`). L'UI nasconde, il backend autorizza.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` con input utente: ordinamenti e filtri dalle allow-list della
+      TableDefinition (`sortableColumnIds`, `filterableColumnMap`, `advancedFilterableIds`).</item>
+    <item>`$request->safe()->only()` o DataObject tipizzato: mai `$request->only()` da solo.
+      `#[Fillable]` esplicito su ogni model; aggregati e `system_key` MAI mass-assignable.</item>
+    <item>Nessun endpoint restituisce un model Eloquent raw: sempre via API Resource.
+      Envelope di progetto rispettato (`ok`/`okWithPermissions`/`fail`/`paginatedResponse`).</item>
+    <item>Nessun `throttle` sui nuovi endpoint (decisione utente 2026-07-15: rate limiting solo sugli
+      endpoint di credenziali).</item>
+    <item>Scrittura di testata + righe + copertura opportunita' in UNA transazione DB.</item>
+    <item>Zero N+1: `baseQuery()` e `loadDetail()` con eager loading esplicito
+      (`opportunity`, `quoteStatus`, `commercial`, `reporter`, `supervisor`,
+      `lines.product.category`, `lines.vatRate`).</item>
+    <item>File entro 300 righe (soft) / 500 (hard): cataloghi colonne e filtri estratti in
+      `app/Tables/Quotes/*`, come gia' fatto per Opportunities.</item>
+    <item>UI compatta secondo `.claude/rules/ui-design.md` §2 (tab `text-xs`, righe dense),
+      responsive a 375/768/1024, superfici dai token della scala (`bg-background`/`bg-surface`/`bg-card`),
+      mai colori hard-coded. Il colore dello stato usa i token di
+      `frontend/src/features/custom-fields/badge-color-tokens.ts`.</item>
+    <item>Test come Definition of Done, eseguiti davvero: Pest per backend, Vitest per frontend,
+      Pint e `tsc --noEmit` puliti.</item>
+  </constraints>
+
+</spec>

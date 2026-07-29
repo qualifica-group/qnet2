@@ -31,4 +31,20 @@ class ProductFactory extends Factory
             'state_id' => null,
         ];
     }
+
+    /**
+     * `code` (spec 0065, D-1: PRD-0001...) is service-generated in production
+     * and deliberately NOT in the model's #[Fillable], so it must be assigned
+     * directly (property assignment bypasses mass-assignment guarding) after
+     * the instance is made, not through the fillable `definition()` array —
+     * mirrors ProjectFactory/CampaignFactory. `??=` lets an explicit
+     * `code` override (e.g. `Product::factory()->create(['code' => 'X'])`,
+     * which the factory's `Model::unguarded()` already assigned) win.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Product $product): void {
+            $product->code ??= sprintf('PRD-%04d', fake()->unique()->numberBetween(1, 999999));
+        });
+    }
 }

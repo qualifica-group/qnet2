@@ -5,16 +5,18 @@ namespace App\Services\Statuses;
 use App\Enums\StatusSystemKey;
 use App\Models\OpportunityStatus;
 use App\Models\PipelineStatus;
+use App\Models\QuoteStatus;
 use App\Models\RewardStatus;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * The system-status protection rules (spec 0039, D-2; extended to
  * opportunity_statuses by spec 0043; extended to reward_statuses by spec
- * 0060), shared verbatim by every status configurator (pipeline_statuses,
- * opportunity_statuses, reward_statuses): every mandatory row cannot be
- * deleted, and only its `name`/`color` may ever change — every OTHER
- * submitted attribute is rejected (pipeline/opportunity: `group`,
+ * 0060; extended to quote_statuses by spec 0065), shared verbatim by every
+ * status configurator (pipeline_statuses, opportunity_statuses,
+ * reward_statuses, quote_statuses): every mandatory row cannot be deleted,
+ * and only its `name`/`color` may ever change — every OTHER submitted
+ * attribute is rejected (pipeline/opportunity/quote: `group`,
  * App\Enums\StatusGroup, fixed at migration time; reward: `description`/
  * `is_active`/`sort_order`, spec 0060 BR-3). Mirrors the precedent guard for
  * a single protected system row, RoleService::guardSystemRoleMutation (the
@@ -32,7 +34,7 @@ class SystemStatusGuard
     /**
      * @throws HttpException 422
      */
-    public function assertDeletable(PipelineStatus|OpportunityStatus|RewardStatus $status): void
+    public function assertDeletable(PipelineStatus|OpportunityStatus|RewardStatus|QuoteStatus $status): void
     {
         if (! $status->isSystem()) {
             return;
@@ -51,7 +53,7 @@ class SystemStatusGuard
      *
      * @throws HttpException 422
      */
-    public function assertUpdatable(PipelineStatus|OpportunityStatus|RewardStatus $status, array $submittedAttributes): void
+    public function assertUpdatable(PipelineStatus|OpportunityStatus|RewardStatus|QuoteStatus $status, array $submittedAttributes): void
     {
         if (! $status->isSystem()) {
             return;
@@ -71,7 +73,7 @@ class SystemStatusGuard
      * Resolved by `system_key`, never by name (D-3: "query per system_key,
      * non per nome").
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<QuoteStatus>  $modelClass
      *
      * @throws HttpException 500 if the
      *                       mandatory row is somehow missing (should never happen post-migration,

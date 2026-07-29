@@ -30,6 +30,11 @@ use RuntimeException;
  * no migration source, so its external reference cannot be resolved. It is left
  * null; a non-fatal warning is surfaced when the external record carries one,
  * so the operator knows the link was dropped.
+ *
+ * `code` (spec 0065, D-1) carries the external `code` as-is when present; an
+ * absent/blank value leaves it null so ProductService::create() falls back to
+ * the sequential PRD-0001 generator (mirrors every other optional passthrough
+ * field here), never duplicating the sequence across re-imports.
  */
 class ProductsSource extends AbstractMigrationSource
 {
@@ -62,6 +67,7 @@ class ProductsSource extends AbstractMigrationSource
     {
         return [
             ['id' => 'id', 'label' => 'ID', 'type' => 'number'],
+            ['id' => 'code', 'label' => 'Code', 'type' => 'string'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
             ['id' => 'cost', 'label' => 'Cost', 'type' => 'number'],
@@ -86,6 +92,7 @@ class ProductsSource extends AbstractMigrationSource
     {
         return [
             'id' => $record['id'] ?? null,
+            'code' => $record['code'] ?? null,
             'name' => $record['name'] ?? null,
             'description' => $record['description'] ?? null,
             'cost' => $record['cost'] ?? null,
@@ -126,6 +133,7 @@ class ProductsSource extends AbstractMigrationSource
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
+            code: $this->mapCode($record['code'] ?? null),
         ));
 
         $product->old_id = $externalId;
@@ -236,5 +244,21 @@ class ProductsSource extends AbstractMigrationSource
         $description = trim((string) $externalDescription);
 
         return $description !== '' ? $description : null;
+    }
+
+    /**
+     * A blank/absent external `code` becomes null, so ProductService::create()
+     * falls back to the sequential PRD-0001 generator (spec 0065, D-1b);
+     * otherwise the trimmed external value is kept as-is.
+     */
+    private function mapCode(mixed $externalCode): ?string
+    {
+        if ($externalCode === null) {
+            return null;
+        }
+
+        $code = trim((string) $externalCode);
+
+        return $code !== '' ? $code : null;
     }
 }

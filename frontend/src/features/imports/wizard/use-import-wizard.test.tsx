@@ -150,6 +150,52 @@ describe('useImportWizard', () => {
     await waitFor(() => expect(result.current.currentStep).toBe(2))
   })
 
+  it('gives up polling a phase that never advances, and resumes on retry', async () => {
+    // A queued job nobody consumes (no queue worker) leaves the run in
+    // `analyzing` forever: the poll must stop instead of hammering the API.
+    vi.useFakeTimers()
+    try {
+      getImportWizardRunMock.mockResolvedValue(detailRun({ status: 'analyzing' }))
+
+      const { result } = renderHook(() => useImportWizard({ domain: 'leads', initialRunId: 1 }), {
+        wrapper: wrapper(),
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(result.current.run?.status).toBe('analyzing')
+
+      // Polling is live while the phase is young.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000)
+      })
+      expect(getImportWizardRunMock.mock.calls.length).toBeGreaterThan(1)
+
+      // Past the stall window (120s) the poll gives up.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(130_000)
+      })
+      expect(result.current.isPollingStalled).toBe(true)
+
+      const callsAtStall = getImportWizardRunMock.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      // At most the single evaluation still in flight when the flag flipped.
+      expect(getImportWizardRunMock.mock.calls.length).toBeLessThanOrEqual(callsAtStall + 1)
+
+      await act(async () => {
+        result.current.retryPolling()
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(result.current.isPollingStalled).toBe(false)
+      expect(getImportWizardRunMock.mock.calls.length).toBeGreaterThan(callsAtStall)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('routes processing/completed/failed statuses to the summary step', async () => {
     getImportWizardRunMock.mockResolvedValue(detailRun({ status: 'processing' }))
 

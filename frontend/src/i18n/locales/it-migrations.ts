@@ -108,6 +108,12 @@ export const migrations = {
     },
     perSourceCounts: '{{created}} creati · {{skipped}} saltati · {{failed}} falliti',
   },
+  background: {
+    hint: 'L’operazione prosegue sul server anche se chiudi questa finestra.',
+    stalled:
+      'Sta impiegando più del previsto: abbiamo smesso di controllare. L’operazione resta in carico al server — riprova a controllare tra poco o, se non si sblocca, avvisa l’amministratore.',
+    retry: 'Controlla di nuovo',
+  },
   status: {
     pending: 'In attesa',
     processing: 'Importazione in corso',

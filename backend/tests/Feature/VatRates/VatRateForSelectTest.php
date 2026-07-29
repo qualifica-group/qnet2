@@ -61,16 +61,30 @@ it('allows actors with vat-rates.viewAny (200) and returns the paginated envelop
 // item shape + search
 // ---------------------------------------------------------------------------
 
-it('maps a vat rate to { id, label: name }', function () {
+it('maps a vat rate to { id, label: name, meta: { rate } }', function () {
     $actor = vatRateUserWith(['viewAny']);
-    $target = VatRate::factory()->create(['name' => 'IVA 22%']);
+    $target = VatRate::factory()->create(['name' => 'IVA 22%', 'rate' => 22]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/vat-rates/for-select?search=IVA 22%')->assertOk();
     $item = collect($response->json('items'))->firstWhere('id', $target->id);
 
     expect($item)->toMatchArray(['id' => $target->id, 'label' => 'IVA 22%'])
-        ->and(array_keys($item))->toEqualCanonicalizing(['id', 'label']);
+        ->and(array_keys($item))->toEqualCanonicalizing(['id', 'label', 'meta'])
+        ->and($item['meta'])->toMatchArray(['rate' => '22.00']);
+});
+
+it('exposes meta.rate on every item without altering id/label/subtitle', function () {
+    $actor = vatRateUserWith(['viewAny']);
+    VatRate::factory()->count(3)->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson('/api/vat-rates/for-select')->assertOk();
+
+    collect($response->json('items'))->each(function (array $item) {
+        expect($item)->toHaveKeys(['id', 'label', 'meta'])
+            ->and($item['meta'])->toHaveKey('rate');
+    });
 });
 
 it('searches by name', function () {

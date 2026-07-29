@@ -48,7 +48,7 @@ class VatRateService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = VatRate::query()->select(['id', 'name']);
+        $base = VatRate::query()->select(['id', 'name', 'rate']);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -96,7 +96,7 @@ class VatRateService
 
         /** @var Collection<int, VatRate> $hydrated */
         $hydrated = VatRate::query()
-            ->select(['id', 'name'])
+            ->select(['id', 'name', 'rate'])
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

@@ -20,6 +20,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * template. Deliberately absent from #[Fillable] (mass-assignment guard,
  * same discipline as Opportunity): written exclusively via
  * App\Services\ProductService, which forceFill()s it after validation.
+ *
+ * `code` (spec 0065, D-1/D-1b) is likewise deliberately absent from
+ * #[Fillable]: it is writable only at create time (manual value or the
+ * PRD-0001 sequential fallback) and permanently read-only afterwards, so
+ * ProductService assigns it directly AFTER mass-assignment, mirroring
+ * Project/Campaign (spec 0025).
  */
 #[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'state_id'])]
 class Product extends BaseModel

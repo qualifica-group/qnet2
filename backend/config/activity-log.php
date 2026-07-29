@@ -16,6 +16,8 @@ use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
+use App\Models\Quote;
+use App\Models\QuoteStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
@@ -104,6 +106,12 @@ return [
         ],
         'projects' => [
             'model' => Project::class,
+        ],
+        'quote-statuses' => [
+            'model' => QuoteStatus::class,
+        ],
+        'quotes' => [
+            'model' => Quote::class,
         ],
         'referent-types' => [
             'model' => ReferentType::class,

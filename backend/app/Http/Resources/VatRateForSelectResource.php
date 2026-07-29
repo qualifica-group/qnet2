@@ -12,6 +12,11 @@ use Illuminate\Http\Request;
  * Minimal by design (ADR 0011): label = name, no subtitle/avatar. Mirrors
  * SourceForSelectResource.
  *
+ * `meta.rate` (spec 0065 follow-up) is ADDITIVE: lets a Quote line form
+ * recompute the client-side preview when the actor picks a VAT rate that
+ * was never hydrated via the product's own `meta.vat_rate` — no existing
+ * key changes name or type.
+ *
  * @mixin VatRate
  */
 class VatRateForSelectResource extends ForSelectResource
@@ -24,6 +29,9 @@ class VatRateForSelectResource extends ForSelectResource
         return [
             'id' => $this->id,
             'label' => $this->name,
+            'meta' => [
+                'rate' => $this->rate,
+            ],
         ];
     }
 }

@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { ImportErrorReportLink } from '@/features/imports/import-error-report-link'
+import { ImportBackgroundNotice } from '@/features/imports/wizard/import-background-notice'
 import { StepAlert } from '@/features/imports/wizard/wizard-ui'
 // Side effect: registers this lane's `progress.*` i18n keys (see the module
 // doc comment there).
@@ -11,29 +12,40 @@ import type { ImportRunDetail } from '@/features/imports/wizard/types'
 export interface ImportRunProgressProps {
   domain: string
   run: ImportRunDetail
+  /** True once the commit poll gave up (see `useImportWizard`). */
+  isPollingStalled?: boolean
+  onRetryPolling?: () => void
 }
 
 /**
- * Post-confirm progress/outcome view (spec 0033 AC-024): a busy indicator
- * while the server-side `ProcessImportJob` runs (`status === 'processing'`,
- * polled upstream by `useImportWizard`), the final imported/error counts and
- * the CSV error report link (same endpoint as the legacy import flow) once
- * `completed`, or the failure notice for `failed`. The completion
- * notification itself is sent by the backend (`ImportCompletedNotification`)
- * and surfaced in `features/notifications`; this view only notes it was sent.
+ * Post-confirm progress/outcome view (spec 0033 AC-024): the background
+ * notice while the server-side `ProcessImportJob` runs (`status ===
+ * 'processing'`, polled upstream by `useImportWizard`), the final
+ * imported/error counts and the CSV error report link (same endpoint as the
+ * legacy import flow) once `completed`, or the failure notice for `failed`.
+ * The completion notification itself is sent by the backend
+ * (`ImportCompletedNotification`) and surfaced in `features/notifications`;
+ * this view announces it up front (the job outlives the page) and notes it
+ * was sent once the run ends.
  */
-export function ImportRunProgress({ domain, run }: ImportRunProgressProps) {
+export function ImportRunProgress({
+  domain,
+  run,
+  isPollingStalled = false,
+  onRetryPolling,
+}: ImportRunProgressProps) {
   const { t } = useTranslation('importWizard')
 
   if (run.status === 'processing') {
     return (
-      <div className="flex flex-col items-center gap-3 py-10 text-center" role="status">
-        <span className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-          <Loader2 className="size-6 animate-spin text-primary" aria-hidden="true" />
-        </span>
-        <p className="text-sm font-medium">{t('progress.processing')}</p>
+      <ImportBackgroundNotice
+        label={t('progress.processing')}
+        notifiesOnCompletion
+        isStalled={isPollingStalled}
+        onRetry={onRetryPolling}
+      >
         <Progress value={null} className="w-full max-w-sm" aria-label={t('progress.processing')} />
-      </div>
+      </ImportBackgroundNotice>
     )
   }
 
