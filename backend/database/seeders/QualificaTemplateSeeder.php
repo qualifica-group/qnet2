@@ -8,15 +8,20 @@ use App\Models\CustomFieldValue;
 use Illuminate\Database\Seeder;
 
 /**
- * STRUCTURE ONLY: the per-module custom field "template", as universal custom
- * field definitions (spec 0021). One entry per entity_type in TEMPLATES:
- *   - company-sites: the former flat "Altro" columns, PLUS the former
- *     client-specific ERP settings (responsible_*, proforma/invoice
- *     progressives, quotation_*), now dynamic fields;
- *   - products: the validity in months and the filing folder.
+ * The client's "template": the shape their installation starts from, as
+ * opposed to the reference DATA it is filled with. Two parts:
+ *   - the per-module custom field definitions (spec 0021), one entry per
+ *     entity_type in TEMPLATES:
+ *       - company-sites: the former flat "Altro" columns, PLUS the former
+ *         client-specific ERP settings (responsible_*, proforma/invoice
+ *         progressives, quotation_*), now dynamic fields;
+ *       - products: the validity in months and the filing folder;
+ *   - the document layout they print quotes on, delegated to
+ *     QualificaDocumentLayoutSeeder (a `document_layouts` row plus its
+ *     letterhead binary — see that class for why it is not inlined here).
  *
- * It creates FIELDS, never domain rows: no source, no reward type, no product
- * category, no product. Those are hard-coded reference data and live in
+ * It creates no reference row of its own: no source, no reward type, no
+ * product category, no product. Those are hard-coded data and live in
  * QualificaCatalogSeeder; the legacy catalogues live in
  * QualificaLegacyImportSeeder. All three are steps of
  * QualificaProductionDataSeeder, which is the entry point.
@@ -117,11 +122,18 @@ class QualificaTemplateSeeder extends Seeder
 
     public function run(): void
     {
+        // Step 1: the per-module custom field definitions.
         foreach (self::TEMPLATES as $entityType => $fields) {
             $this->seedTemplate($entityType, $fields);
         }
 
+        // Step 2: drop what previous revisions of the template defined.
         $this->pruneSupersededFields();
+
+        // Step 3: the client's document layout. Delegated, not inlined: it
+        // uploads a binary and owns the D-7 default invariant, neither of
+        // which belongs in a custom-field template.
+        $this->call(QualificaDocumentLayoutSeeder::class);
     }
 
     /**

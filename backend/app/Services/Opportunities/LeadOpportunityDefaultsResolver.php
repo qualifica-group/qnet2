@@ -65,9 +65,13 @@ final class LeadOpportunityDefaultsResolver
      * Relations resolve() needs loaded on $lead to stay N+1-free; harmless
      * (loadMissing) when the caller already eager-loaded some or all of them.
      *
+     * Public so a caller resolving a WHOLE BATCH of leads (spec 0071's
+     * ConvertLeadsToOpportunities) can eager-load exactly this set up front
+     * instead of maintaining a second, drifting copy of the list.
+     *
      * @var array<int, string>
      */
-    private const array REQUIRED_RELATIONS = [
+    public const array REQUIRED_RELATIONS = [
         'registry',
         'source',
         'operator',

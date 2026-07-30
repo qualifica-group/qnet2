@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0071 — Azione massiva "Converti in Opportunita'" nella tabella Lead.
+  Contract-first: la shape sotto e' congelata PRIMA del dispatch.
+  Toglie dallo scope-out di spec 0044 la voce "Conversione massiva / bulk da tabella".
+-->
+<spec id="0071-lead-bulk-opportunity-conversion" status="draft" owner="utente" date="2026-07-30">
+
+  <goal>
+    Convertire in Opportunita' molti Lead selezionati nella tabella Lead in una sola
+    azione, riusando la stessa derivazione server-side gia' usata dalla conversione
+    contestuale alla creazione (spec 0044) e dall'auto-convert dell'import (spec 0045).
+  </goal>
+
+  <context>
+    Tutti i pezzi esistono gia' e questa spec li ricompone: non introduce ne' una
+    seconda logica di conversione, ne' un secondo motore di bulk action.
+
+    Nomi reali verificati:
+      - App\Actions\Leads\ConvertLeadToOpportunity::handle(Lead): Opportunity — deriva e
+        persiste l'Opportunita' collegata via LeadOpportunityDefaultsResolver +
+        OpportunityService::create(). NON apre una transazione propria: e' chiamata da
+        dentro quella di LeadService::create(). Lancia ValidationException quando le
+        product line derivate sono vuote.
+      - LeadOpportunityDefaultsResolver::campaignDerivesProductLine(Campaign): bool —
+        il predicato condiviso gia' esposto per il gate dell'import
+        (App\Services\Import\ImportOpportunityConvertibility). E' l'unico modo per
+        sapere in anticipo se un Lead e' convertibile, senza duplicare la regola.
+      - LeadsTableDefinition::actionsFor() espone 'convert_to_opportunity' per riga solo
+        se ! $row->opportunity_exists && Gate::allows('create', Opportunity::class).
+        `opportunity_exists` e' risolto da baseQuery()->withExists (nessun N+1) e
+        proiettato sulla riga come colonna derivata `lead_status`
+        (LeadLifecycleStatus: not_associated | associated | converted_to_opportunity).
+      - Bulk action UI: TableView `getBulkActions(selection: TableSelection): BulkAction[]`
+        (features/table/use-bulk-actions-slot.tsx). Le voci finiscono nell'unico dropdown
+        "Azioni"; `TableSelection` porta ids E rows complete. `tableRef.current
+        ?.clearSelection()` svuota la selezione dopo il successo.
+      - Precedente bulk POST su leads: POST /api/leads/assign-operators
+        (LeadController::assignOperators + AssignOperatorsRequest), con authz per-lead
+        nel controller.
+      - Precedente bulk all-or-nothing con 422 elencante gli offensori:
+        POST /api/product-categories/bulk-move -> BulkMoveConflictException ->
+        BaseApiController::fail($message, 422, ['reason' => ..., 'conflicts' => ...]),
+        reso inline nel dialog da bulk-move-categories-dialog.tsx.
+      - Envelope: { success, message, data } / { success, message, errors } —
+        BaseApiController::ok() / fail().
+
+    DECISIONI UTENTE (2026-07-30):
+      D-1. TUTTO-O-NIENTE. Se anche un solo Lead della selezione non e' convertibile,
+           la richiesta e' rifiutata con 422 e NESSUNA Opportunita' viene creata.
+           Nessuna modalita' "best-effort", nessuna conversione parziale.
+      D-2. Dialog di conferma con riepilogo prima di eseguire.
+      D-3. Esecuzione SINCRONA con cap sulla dimensione del batch, in config
+           (nessuna queue, nessun tracking di stato).
+
+    D-4 (conseguenza di D-1, non una decisione autonoma): la conversione massiva NON puo'
+    aprire il form Opportunita' precompilato come fa l'azione di riga singola
+    (use-lead-conversion.tsx) — N form non sono componibili. Usa quindi la derivazione
+    automatica server-side, esattamente quella del checkbox in creazione Lead e
+    dell'auto-convert dell'import. Differenza semantica voluta e da documentare in UI:
+    l'azione singola apre un form editabile, quella massiva no.
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint POST /api/leads/convert-to-opportunities, sincrono, all-or-nothing.</item>
+      <item>Action App\Actions\Leads\ConvertLeadsToOpportunities: pre-check di convertibilita' su tutto il batch, poi conversione in un'unica DB::transaction.</item>
+      <item>Exception dedicata con la lista degli offensori, resa in un 422 strutturato.</item>
+      <item>Cap del batch in config/leads.php (nuovo file), applicato nel FormRequest.</item>
+      <item>Voce 'convert-to-opportunities' nel dropdown "Azioni" della tabella Lead, gated su opportunities.create.</item>
+      <item>Dialog di conferma con riepilogo della selezione e pre-check client dei Lead gia' convertiti.</item>
+      <item>i18n it/en sotto leads.bulkConvert.*.</item>
+    </in>
+    <out>
+      <item>Queue job / avanzamento asincrono: la conversione e' sincrona (D-3).</item>
+      <item>Conversione parziale o best-effort: rifiutata da D-1.</item>
+      <item>Campi opportunita' impostabili in bulk dal dialog (Supervisore, G.A., stato...): l'Opportunita' nasce solo dai default derivati.</item>
+      <item>Modifica di ConvertLeadToOpportunity, di LeadOpportunityDefaultsResolver o dei DERIVED_FIELDS: riusati invariati.</item>
+      <item>Modifica dell'azione di riga singola 'convert_to_opportunity' (resta il form precompilato) e del checkbox in creazione Lead.</item>
+      <item>Nuovo endpoint di preflight: il riepilogo del dialog si costruisce dalle righe gia' in griglia (lead_status), il resto lo dice il 422.</item>
+      <item>Migration: nessuna. Nessuna colonna nuova.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/leads/convert-to-opportunities">
+      <request>
+        lead_ids:   required, array, min:1, max:config('leads.bulk_conversion_max')
+        lead_ids.*: integer, exists:leads,id
+        <!-- Deduplicati lato FormRequest (leadIds()), come AssignOperatorsRequest. -->
+      </request>
+      <response status="200">
+        {
+          success: true,
+          message: 'Leads converted',
+          data: {
+            converted: int,             <!-- = count(lead_ids) deduplicati: e' all-or-nothing -->
+            opportunity_ids: int[]      <!-- nell'ordine dei lead convertiti -->
+          }
+        }
+      </response>
+      <errors>
+        403 — l'attore non ha opportunities.create (OpportunityPolicy::create).
+        403 — l'attore non ha leads.view su uno dei Lead targetizzati (check per-lead).
+        422 — validazione: lead_ids vuoto, non array, o oltre il cap (errors di Laravel).
+        422 — batch non convertibile (D-1). Body congelato, NESSUNA scrittura eseguita:
+              {
+                success: false,
+                message: string,
+                errors: {
+                  reason: 'not_convertible',
+                  blockers: [ { id: int, reason: 'already_converted' | 'not_derivable' } ]
+                }
+              }
+              already_converted — il Lead ha gia' un'Opportunita' collegata.
+              not_derivable     — la campagna (o il suo progetto) non deriva alcuna
+                                  product line: nessuna business function o categoria
+                                  prodotto, oppure il Lead non ha campagna.
+      </errors>
+    </endpoint>
+
+    <internal_contract>
+      <!-- Non HTTP, ma congelato: backend e frontend devono coincidere. -->
+      ConvertLeadsToOpportunities::handle(array $leadIds): array (opportunity ids)
+        Step 1: carica i Lead con withExists('opportunity') — una query, nessun N+1.
+        Step 2: raccoglie i blockers (already_converted, poi not_derivable via
+                LeadOpportunityDefaultsResolver::campaignDerivesProductLine).
+        Step 3: blockers non vuoti -> BulkConversionBlockedException PRIMA di scrivere.
+        Step 4: DB::transaction unica; per ogni Lead delega a
+                ConvertLeadToOpportunity::handle() (nessuna logica di conversione qui).
+
+      App\Exceptions\Leads\BulkConversionBlockedException
+        public readonly array $blockers  // [{id, reason}], gia' nella shape del 422.
+
+      config/leads.php
+        'bulk_conversion_max' => (int) env('LEADS_BULK_CONVERSION_MAX', 200)
+        Mai un numero inline nelle rules (engineering.md §6).
+
+      Frontend — il dialog deriva il riepilogo dalle righe selezionate, non da una
+      chiamata: row.lead_status === 'converted_to_opportunity' identifica i gia'
+      convertiti. Con almeno uno di questi il bottone Converti e' disabilitato e il
+      dialog spiega di deselezionarli (il backend resta comunque l'autorita': D-1 e'
+      enforced server-side, il check client e' solo un'affordance).
+    </internal_contract>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- A) Backend, happy path -->
+    <criterion id="AC-001">Dato un utente con opportunities.create e leads.view e 3 Lead convertibili, quando POST /api/leads/convert-to-opportunities con i loro id, allora risponde 200 con data.converted = 3 ed esistono 3 Opportunity, una per lead_id.</criterion>
+    <criterion id="AC-002">Dato lo scenario AC-001, allora data.opportunity_ids contiene esattamente gli id delle Opportunity create.</criterion>
+    <criterion id="AC-003">Dato lo scenario AC-001, allora ogni Opportunity creata ha registry_id/source_id derivati dal proprio Lead, opportunity_status_id pari allo stato di sistema 'new' e una product line derivata da campagna/progetto — cioe' lo stesso esito della conversione contestuale (nessuna seconda derivazione).</criterion>
+    <criterion id="AC-004">Dato un batch con id duplicati (es. [7,7,8]), quando POST, allora ogni Lead e' convertito una sola volta e data.converted = 2.</criterion>
+
+    <!-- B) Backend, all-or-nothing (D-1) -->
+    <criterion id="AC-010">Dato un batch di 3 Lead di cui 1 gia' convertito, quando POST, allora risponde 422 con errors.reason = 'not_convertible' ed errors.blockers contenente quell'id con reason 'already_converted'.</criterion>
+    <criterion id="AC-011">Dato lo scenario AC-010, allora il conteggio delle Opportunity prima e dopo la richiesta e' identico: nessuno degli altri 2 Lead e' stato convertito.</criterion>
+    <criterion id="AC-012">Dato un batch con un Lead la cui campagna non ha business function o categoria prodotto, quando POST, allora risponde 422 con quell'id fra i blockers con reason 'not_derivable' e nessuna Opportunity creata.</criterion>
+    <criterion id="AC-013">Dato un batch con piu' Lead non convertibili per motivi diversi, quando POST, allora errors.blockers li elenca TUTTI (non si ferma al primo).</criterion>
+    <criterion id="AC-014">Dato un fallimento imprevisto durante la conversione del secondo di 3 Lead (dopo il pre-check), allora la transazione fa rollback totale: nessuna Opportunity resta persistita.</criterion>
+
+    <!-- C) Backend, autorizzazione e limiti -->
+    <criterion id="AC-020">Dato un utente SENZA opportunities.create, quando POST, allora risponde 403 e nessuna Opportunita' e' creata.</criterion>
+    <criterion id="AC-021">Dato un utente senza leads.view, quando POST, allora risponde 403 e nessuna Opportunita' e' creata.</criterion>
+    <criterion id="AC-022">Dato lead_ids con piu' elementi del cap config('leads.bulk_conversion_max'), quando POST, allora risponde 422 di validazione su lead_ids e nessuna Opportunita' e' creata.</criterion>
+    <criterion id="AC-023">Dato lead_ids vuoto o assente, quando POST, allora risponde 422 di validazione.</criterion>
+    <criterion id="AC-024">Dato lead_ids con un id inesistente, quando POST, allora risponde 422 di validazione (regola exists), non un 500.</criterion>
+
+    <!-- D) Frontend -->
+    <criterion id="AC-030">Dato un utente con opportunities.create e almeno una riga selezionata nella tabella Lead, allora il dropdown "Azioni" contiene la voce di conversione massiva.</criterion>
+    <criterion id="AC-031">Dato un utente SENZA opportunities.create, allora quella voce non compare nel dropdown.</criterion>
+    <criterion id="AC-032">Dato il click sulla voce, allora si apre un dialog di conferma che dichiara quanti Lead verranno convertiti, e non e' stata ancora inviata alcuna richiesta.</criterion>
+    <criterion id="AC-033">Data una selezione che include Lead con lead_status 'converted_to_opportunity', allora il dialog ne mostra il numero, spiega di deselezionarli e il bottone di conferma e' disabilitato.</criterion>
+    <criterion id="AC-034">Dato il dialog con selezione tutta convertibile, quando si conferma, allora parte POST /api/leads/convert-to-opportunities con lead_ids = gli id selezionati.</criterion>
+    <criterion id="AC-035">Dato un esito 200, allora il dialog si chiude, compare un toast con il numero di Opportunita' create, la griglia si aggiorna e la selezione viene svuotata.</criterion>
+    <criterion id="AC-036">Dato un esito 422 con errors.reason = 'not_convertible', allora il dialog resta aperto ed elenca inline i Lead rifiutati con il motivo tradotto (mai il codice grezzo).</criterion>
+    <criterion id="AC-037">Dato un errore generico (500 o rete), allora compare un toast di errore e il dialog resta aperto.</criterion>
+    <criterion id="AC-038">Durante l'invio, il bottone di conferma e' disabilitato e mostra lo stato di caricamento (nessun doppio invio).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza (composer.json / package.json invariati). Nessuna migration.
+    La logica di conversione del singolo Lead NON va duplicata: ConvertLeadToOpportunity
+      e' l'unico punto, invocato in ciclo. Il predicato di convertibilita' e' l'esistente
+      LeadOpportunityDefaultsResolver::campaignDerivesProductLine, non una copia.
+    Authz server-side obbligatoria: opportunities.create + leads.view per-lead, mai il
+      solo gate <Can> in UI.
+    Cap del batch da config(), mai inline nelle rules.
+    Il pre-check deve precedere ogni scrittura (AC-011): niente "prova e fai rollback"
+      come strategia di reporting dei blockers.
+    Zero whereRaw/orderByRaw. Nessun N+1: withExists + eager load delle relazioni che
+      il resolver richiede.
+    Stringhe UI solo via i18next (it-leads.ts / en-leads.ts). Nessun testo hard-coded.
+    Il flusso esistente resta verde: i test di spec 0044/0045 (conversione contestuale,
+      auto-convert dell'import, actionsFor) non vanno modificati per far passare il
+      nuovo codice.
+    File entro 300 righe soft / 500 hard.
+  </constraints>
+
+  <plan>
+    <!-- Microtask, con dipendenze. Lane BE e FE parallele dopo il congelamento sopra. -->
+    <task id="T1" lane="backend" depends="">config/leads.php + BulkConvertLeadsRequest (cap, dedup) + rotta in routes/api/leads.php sopra il wildcard leads/{lead}.</task>
+    <task id="T2" lane="backend" depends="T1">BulkConversionBlockedException + Action ConvertLeadsToOpportunities (pre-check, transazione, delega).</task>
+    <task id="T3" lane="backend" depends="T2">LeadController::convertToOpportunities: authz opportunities.create + per-lead view, catch dedicato -> fail(422).</task>
+    <task id="T4" lane="backend" depends="T3">Pest: tests/Feature/Leads/BulkLeadConversionTest.php — AC-001..AC-024.</task>
+    <task id="T5" lane="frontend" depends="">types.ts + api.ts (convertLeadsToOpportunities) + use-convert-leads.ts.</task>
+    <task id="T6" lane="frontend" depends="T5">convert-leads-dialog.tsx (riepilogo, blocco client, blockers inline) sul modello di bulk-move-categories-dialog.tsx.</task>
+    <task id="T7" lane="frontend" depends="T6">leads-table.tsx: voce bulk gated su opportunities.create, toast, refresh, clearSelection, invalidateStats.</task>
+    <task id="T8" lane="frontend" depends="T7">i18n it-leads.ts / en-leads.ts + Vitest (dialog e tabella) — AC-030..AC-038.</task>
+    <task id="T9" lane="verify" depends="T4,T8">Pest mirato + Vitest mirato + Pint + tsc -b --force; aggiornamento docs/HANDOFF.md.</task>
+  </plan>
+
+</spec>

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Quotes\QuoteCommissionDefaultsController;
 use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
 use App\Http\Controllers\Quotes\QuoteController;
+use App\Http\Controllers\Quotes\QuoteDocumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,3 +31,8 @@ Route::get('quotes/{quote}', [QuoteController::class, 'show']);
 Route::post('quotes', [QuoteController::class, 'store']);
 Route::match(['put', 'patch'], 'quotes/{quote}', [QuoteController::class, 'update']);
 Route::delete('quotes/{quote}', [QuoteController::class, 'destroy']);
+
+// `.docx` generation (spec 0070, D-2): a pure read (quotes.view), generated
+// synchronously and streamed back, never persisted. POST (not GET): it
+// produces an artifact, mirroring `POST /api/exports/{domain}`.
+Route::post('quotes/{quote}/document', QuoteDocumentController::class);

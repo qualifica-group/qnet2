@@ -14,6 +14,11 @@ return [
     'default_must_be_reassigned' => 'The default layout cannot be unset directly: designate another layout as default first.',
     'default_cannot_be_deleted' => 'The default layout cannot be deleted while other layouts exist in the same module: designate another layout as default first.',
 
+    // Usage guard (D-7, spec 0070): thrown by App\Services\DocumentLayoutService
+    // as a 422 ValidationException when a layout is referenced by at least
+    // one Quote, keyed on `quotes`.
+    'layout_in_use' => 'This layout is used by :count quotes: you can only deactivate it.',
+
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'This image is referenced by a block in the current config: remove the block before deleting it.',
 

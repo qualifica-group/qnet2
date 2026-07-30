@@ -3,11 +3,14 @@
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\CustomFieldValue;
+use App\Models\DocumentLayout;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Source;
+use Database\Seeders\QualificaDocumentLayoutSeeder;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 
 // De-verticalization (point 1): QualificaTemplateSeeder now provisions, on
 // top of the former "Altro" section, the 9 former client-specific ERP
@@ -16,8 +19,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 //
 // The client's reference DATA (sources, reward types, category tree, courses)
 // is not here: it moved to QualificaCatalogSeeder, covered by
-// tests/Feature/Products/QualificaCatalogSeederTest.php.
+// tests/Feature/Products/QualificaCatalogSeederTest.php. Its document layout
+// IS a step of this seeder, but only its presence is asserted here — the
+// transcription itself is covered by
+// tests/Feature/Seeding/QualificaDocumentLayoutSeederTest.php.
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // The layout step uploads the letterhead: without this, every run of this
+    // suite would leave a real binary under storage/app.
+    Storage::fake(config('attachments.disk'));
+});
 
 it('provisions the 9 de-verticalized ERP fields for company-sites, idempotently', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
@@ -95,12 +107,23 @@ it('prunes the superseded product expiration date, definition and stored values'
         ->and($values->fresh()->values)->toBe(['expiration_months' => 24]);
 });
 
-it('creates structure only: no source, category or product row', function (): void {
+it('seeds no reference row: no source, category or product', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
 
     // The client's reference data belongs to QualificaCatalogSeeder: this
-    // seeder defines fields and touches no domain table.
+    // seeder defines fields, and provisions the one layout below.
     expect(Source::query()->count())->toBe(0)
         ->and(ProductCategory::query()->count())->toBe(0)
         ->and(Product::query()->count())->toBe(0);
+});
+
+it('provisions the client document layout, with its letterhead attached', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: keyed on `code`, no duplicates.
+
+    $layout = DocumentLayout::query()->where('code', QualificaDocumentLayoutSeeder::LAYOUT_CODE)->sole();
+
+    expect($layout->module->value)->toBe('quotes')
+        ->and($layout->images()->count())->toBe(1)
+        ->and($layout->config['header']['blocks'][0]['attachment_id'])->toBe($layout->images()->sole()->id);
 });

@@ -167,6 +167,10 @@ function baseFields(t: TFunction) {
     company_id: z.number().nullable(),
     company_site_id: z.number().nullable(),
     operational_site_id: z.number().nullable(),
+    // Document-generation layout (spec 0070 D-3): optional, no cross-field
+    // refine — an inactive/mismatched layout is a server-side 422
+    // (`ValidatesQuoteLayout`), the picker here is only an affordance.
+    layout_id: z.number().nullable(),
     internal_notes: z
       .string()
       .max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.internalNotesMax'))

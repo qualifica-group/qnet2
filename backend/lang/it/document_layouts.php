@@ -14,6 +14,11 @@ return [
     'default_must_be_reassigned' => 'Il layout predefinito non può essere rimosso direttamente: designa prima un altro layout come predefinito.',
     'default_cannot_be_deleted' => 'Il layout predefinito non può essere eliminato finché esistono altri layout dello stesso modulo: designa prima un altro layout come predefinito.',
 
+    // Usage guard (D-7, spec 0070): thrown by App\Services\DocumentLayoutService
+    // as a 422 ValidationException when a layout is referenced by at least
+    // one Quote, keyed on `quotes`.
+    'layout_in_use' => 'Layout utilizzato da :count preventivi: puoi solo disattivarlo.',
+
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'Questa immagine è referenziata da un blocco della configurazione corrente: rimuovi il blocco prima di eliminarla.',
 

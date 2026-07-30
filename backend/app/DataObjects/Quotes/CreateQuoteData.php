@@ -21,6 +21,14 @@ namespace App\DataObjects\Quotes;
  * Opportunity counterpart to inherit from, so a plain nullable value is
  * enough.
  *
+ * `layoutId`/`layoutIdSubmitted` (spec 0070, D-3/D-8) carry the same
+ * "omitted vs explicit" distinction, but resolved WITHOUT the Opportunity:
+ * QuoteService falls back to the `quotes` module's current default layout
+ * only when `layoutIdSubmitted` is false — an explicit value, even null,
+ * always wins. `attributes()` deliberately does NOT expose this pair: the
+ * resolution lives entirely in QuoteService::create(), never inside
+ * applySnapshotDefaults() (D-8).
+ *
  * `offerLines`/`costLines` follow the CreateOpportunityData::$productLines
  * convention: null means "no rows submitted for this tab", an array
  * (including empty) is an authoritative full-replace set (D-8).
@@ -52,6 +60,10 @@ final readonly class CreateQuoteData
         public ?int $companySiteId = null,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
+        // Appended after the pre-existing parameters (spec 0070) for the
+        // same positional-compat reason as the block above.
+        public ?int $layoutId = null,
+        public bool $layoutIdSubmitted = false,
     ) {}
 
     /**
@@ -79,6 +91,8 @@ final readonly class CreateQuoteData
             companySiteId: isset($data['company_site_id']) ? (int) $data['company_site_id'] : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
+            layoutId: isset($data['layout_id']) ? (int) $data['layout_id'] : null,
+            layoutIdSubmitted: array_key_exists('layout_id', $data),
         );
     }
 

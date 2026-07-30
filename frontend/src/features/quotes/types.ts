@@ -193,6 +193,15 @@ export interface QuoteDetail {
   company_site: QuoteRelationRef | null
   operational_site_id: number | null
   operational_site: QuoteOperationalSiteRef | null
+  /**
+   * The document-generation layout (spec 0070 D-3): a snapshot picked at
+   * create time from the `quotes` module's active default, freely editable,
+   * `null` only when the module had no default AND the user never picked
+   * one. Resolved again at generation time if still `null` (D-3) — this
+   * field is a convenience default, not the generation-time source of truth.
+   */
+  layout_id: number | null
+  layout: QuoteRelationRef | null
   internal_notes: string | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
@@ -246,6 +255,8 @@ export interface CreateQuotePayload {
   company_site_id?: number | null
   /** When omitted, inherited from the opportunity server-side (directive 2026-07-30), like the 3 roles above. */
   operational_site_id?: number | null
+  /** When omitted, resolved server-side to the `quotes` module's active default layout, if any (spec 0070 D-3). */
+  layout_id?: number | null
   internal_notes?: string | null
   /** Full-replace, max 200 rows (D-8/AC-035); always sent in full on create. */
   offer_lines?: QuoteLineInput[]

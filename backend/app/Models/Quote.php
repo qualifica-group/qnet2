@@ -34,6 +34,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * the other two have no Opportunity counterpart and are always picked by
  * hand. A `company_site` must belong to the quote's `company` — enforced at
  * the request layer (ValidatesQuoteCompanySite), not by the schema.
+ *
+ * `layout_id` (spec 0070, D-3/D-8) is the Document Layout used to generate
+ * the preventivo's `.docx`, nullOnDelete. It is NOT part of the Opportunity
+ * snapshot set above: `opportunities` has no `layout_id` column at all, and
+ * this one is defaulted from `App\Services\DocumentLayouts\DocumentLayoutDefaultManager`'s
+ * module default (QuoteService), a wholly separate mechanism (D-8).
  */
 #[Fillable([
     'title',
@@ -45,6 +51,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'company_id',
     'company_site_id',
     'operational_site_id',
+    'layout_id',
     'internal_notes',
 ])]
 class Quote extends BaseModel
@@ -137,6 +144,17 @@ class Quote extends BaseModel
     public function operationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * The Document Layout used to generate this quote's `.docx` (spec 0070).
+     * Resolved to the module's default at creation when omitted, then freely
+     * editable — never re-synced (same snapshot-then-diverge shape as the
+     * commercial roles, but NOT sourced from the Opportunity, D-8).
+     */
+    public function layout(): BelongsTo
+    {
+        return $this->belongsTo(DocumentLayout::class);
     }
 
     /**

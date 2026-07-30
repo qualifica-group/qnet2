@@ -4,6 +4,8 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   AssignOperatorsPayload,
   AssignOperatorsResult,
+  ConvertLeadsPayload,
+  ConvertLeadsResult,
   CreateLeadPayload,
   LeadDetail,
   LeadDetailWithPermissions,
@@ -59,6 +61,22 @@ export async function assignLeadOperators(
 ): Promise<AssignOperatorsResult> {
   const { data } = await apiClient.post<ApiResponse<AssignOperatorsResult>>(
     '/leads/assign-operators',
+    payload,
+  )
+  return data.data
+}
+
+/**
+ * Mass Lead -> Opportunity conversion (spec 0071). Unlike the single row
+ * action, which opens the prefilled Opportunity form, this derives every
+ * Opportunity server-side. All-or-nothing: a batch holding a lead that cannot
+ * be converted answers 422 with `errors.blockers` and converts nothing.
+ */
+export async function convertLeadsToOpportunities(
+  payload: ConvertLeadsPayload,
+): Promise<ConvertLeadsResult> {
+  const { data } = await apiClient.post<ApiResponse<ConvertLeadsResult>>(
+    '/leads/convert-to-opportunities',
     payload,
   )
   return data.data

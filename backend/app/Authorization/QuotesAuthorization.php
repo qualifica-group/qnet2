@@ -53,6 +53,9 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('company_id', 'select'),
             new FieldDefinition('company_site_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
+            // Not mandatory (spec 0070, D-3): a preventivo is valid without a
+            // layout, so a role may legitimately not see this field at all.
+            new FieldDefinition('layout_id', 'select'),
             new FieldDefinition('internal_notes', 'textarea'),
             new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('cost_lines', 'lines'),
@@ -69,7 +72,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity'];
+        return ['delete', 'export', 'import', 'view_activity', 'generate_document'];
     }
 
     /**
@@ -94,6 +97,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'company_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'company_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operational_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'layout_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -118,6 +122,9 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // record-level `quotes.view` boundary is enforced separately by
             // GET /api/activity-log/quotes/{id} itself.
             'view_activity' => $model !== null && $actor->can('quotes.viewActivity'),
+            // spec 0070: `.docx` generation is a read (record-level), gated
+            // by `quotes.view` like `view_activity` above, never `update`.
+            'generate_document' => $model !== null && $actor->can('quotes.view'),
         ];
     }
 }

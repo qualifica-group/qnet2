@@ -170,7 +170,9 @@ it('AC-010: per-row actions in a scoped grid still come from QuotePolicy, never 
     ])->assertOk();
 
     $row = $response->json('items.0');
-    expect($row['actions'])->toBe(['view', 'edit'])
+    // spec 0070 adds `generate_document`, gated by the same `quotes.view` as
+    // `view` itself — this actor legitimately gets both.
+    expect($row['actions'])->toBe(['view', 'edit', 'generate_document'])
         ->and($row['actions'])->not->toContain('delete');
 });
 

@@ -171,6 +171,17 @@ final class QuoteColumnCatalog
                 'confirm' => false,
                 'permission' => 'quotes.viewActivity',
             ],
+            // spec 0070: generates the quote's `.docx` in-request (D-2), a
+            // pure read — gated by the same `quotes.view` as the `view`
+            // action above, not `update`.
+            [
+                'key' => 'generate_document',
+                'label' => 'actions.generateWord',
+                'icon' => 'file-text',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'quotes.view',
+            ],
         ];
     }
 }

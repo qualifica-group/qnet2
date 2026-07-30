@@ -42,8 +42,13 @@ export const quotes = {
     company: 'Società',
     companySite: 'Società sede',
     operationalSite: 'Sede operativa',
+    layout: 'Layout',
     createdAt: 'Creato il',
     linesEmpty: 'Nessuna riga presente.',
+    generatingDocument: 'Generazione…',
+    documentGenerated: 'Documento Word generato con successo.',
+    documentForbidden: 'Non hai i permessi per generare questo documento.',
+    documentGenericError: 'Impossibile generare il documento. Riprova.',
   },
   form: {
     newQuote: 'Nuova offerta',
@@ -76,6 +81,8 @@ export const quotes = {
     companySiteSearch: 'Cerca sedi…',
     operationalSite: 'Sede operativa',
     operationalSiteSearch: 'Cerca sedi operative…',
+    layout: 'Layout',
+    layoutSearch: 'Cerca layout…',
     hints: {
       companySite: 'Seleziona prima la società: le sedi mostrate sono solo le sue.',
       operationalSite: "Precompilata dall'opportunità selezionata; puoi cambiarla.",
@@ -102,6 +109,10 @@ export const quotes = {
       sites: {
         title: 'Società e sedi',
         description: 'Società e sede che emettono l\'offerta, sede operativa di riferimento.',
+      },
+      layout: {
+        title: 'Layout documento',
+        description: 'Layout Word usato per generare il documento dell\'offerta.',
       },
       offer: {
         title: 'Offerta',

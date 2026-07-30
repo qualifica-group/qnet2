@@ -24,6 +24,7 @@ import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
 import { QuoteSitesSection } from '@/features/quotes/quote-sites-section'
+import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
@@ -250,6 +251,13 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
             setValue={form.setValue}
             original={original}
             inheritedOperationalSite={inheritedOperationalSite}
+            labels={relationLabels}
+          />
+
+          <QuoteLayoutSection
+            control={form.control}
+            setValue={form.setValue}
+            mode={mode}
             labels={relationLabels}
           />
 

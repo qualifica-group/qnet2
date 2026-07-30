@@ -3,7 +3,227 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## MODULO DOCUMENT-LAYOUTS, FASE 1 (2026-07-30) — VERDE, NON COMMITTATO
+## AZIONE MASSIVA LEAD -> OPPORTUNITA' (2026-07-30) — VERDE, NON COMMITTATO
+
+Spec `docs/specs/0071-lead-bulk-opportunity-conversion.xml` (approvata dall'utente),
+implementata per intero. Toglie dallo scope-out di spec 0044 la voce "conversione massiva
+da tabella".
+
+**Decisioni utente (vincolanti, non reinterpretare):** D-1 **tutto-o-niente** (un solo lead
+non convertibile rifiuta l'intero batch, nessuna conversione parziale); D-2 dialog di
+conferma con riepilogo; D-3 esecuzione **sincrona con cap** in config, niente queue.
+
+**Contratto congelato.** `POST /api/leads/convert-to-opportunities` `{lead_ids:int[]}` ->
+`200 {converted, opportunity_ids}`. Rifiuto: `422 { errors: { reason:'not_convertible',
+blockers:[{id, reason:'already_converted'|'not_derivable'}] } }` — stessa forma del 422 di
+`bulk-move` categorie, reso inline nel dialog.
+
+**File nuovi:** `config/leads.php` (`bulk_conversion_max`, default 200, env
+`LEADS_BULK_CONVERSION_MAX`), `Http/Requests/Leads/BulkConvertLeadsRequest.php`,
+`Exceptions/Leads/BulkConversionBlockedException.php` (possiede le costanti `REASON` e
+`BLOCKER_*`), `Actions/Leads/ConvertLeadsToOpportunities.php`,
+`tests/Feature/Leads/BulkLeadConversionTest.php`; FE `use-convert-leads.ts`,
+`convert-leads-dialog.tsx` + le due suite.
+
+**Invarianti da non rompere**
+- La conversione del singolo lead resta SOLO in `ConvertLeadToOpportunity`: l'Action bulk
+  possiede unicamente pre-check, atomicita' e ordine. Il predicato di convertibilita' e'
+  `LeadOpportunityDefaultsResolver::campaignDerivesProductLine`, non una copia.
+- `LeadOpportunityDefaultsResolver::REQUIRED_RELATIONS` e' passata da `private` a
+  **`public`**: l'Action bulk fa l'eager load dell'intero batch con quella lista, cosi' la
+  lista resta una sola. Se cambia, cambia per entrambi.
+- Il pre-check precede ogni scrittura: e' l'unico modo di elencare TUTTI i blockers
+  (provare-e-rollbackare mostrerebbe solo il primo).
+- Authz doppia in `LeadController::convertToOpportunities`: `opportunities.create` +
+  `leads.view` per ogni lead targetizzato.
+
+**Scelte UI da conoscere**
+- Semantica diversa dall'azione di riga singola, e dichiarata nel dialog: quella apre il
+  form Opportunita' precompilato, la massiva deriva tutto server-side (N form non sono
+  componibili). Nessun campo dell'Opportunita' e' impostabile in bulk.
+- I lead gia' convertiti sono intercettati lato client dal `lead_status` gia' in griglia
+  (conteggio + confirm disabilitato), NON rendendoli non selezionabili: la stessa
+  selezione serve al bulk-delete, che deve continuare a raggiungerli (direttiva
+  2026-07-21, `isRowSelectable` resta non usato).
+- `getBulkActions` di `leads-table.tsx` ora compone due voci gated separatamente
+  (`leads.update` -> assegna operatori, `opportunities.create` -> converti). Un test di
+  `leads-table-assign.test.tsx` asseriva `getBulkActions === undefined` senza
+  `leads.update`: **requisito cambiato**, ora asserisce che resti la sola voce di
+  conversione, piu' un nuovo caso "nessuna delle due abilities -> slot non cablato".
+
+**Verifica eseguita:** Pest `tests/Feature/Leads tests/Feature/Opportunities
+tests/Feature/Imports` -> 437 verdi (di cui 14 nuovi); Vitest `src/features/leads` -> 125
+verdi; Pint pulito; `tsc -b --force` EXIT=0. La suite completa ha 14 rossi backend
+(attributes/companies/custom-fields/migrations/request-management/*-security navigation) e
+3 rossi frontend (commission-configurations, quotes): **pre-esistenti**, falliscono anche
+in isolamento, nessuno tocca i lead.
+
+## IMPORT LEAD: AUTO-CONVERT DEFAULT ON (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: nello step finale del wizard di importazione lead il toggle "Converti
+automaticamente in Opportunita'" deve partire **acceso**. Da opt-in a opt-out.
+
+- `frontend/src/features/imports/wizard/import-step-summary.tsx`: lo stato e' ora
+  `autoConvertPreference = useState(true)` e il valore effettivo e' **derivato**
+  (`autoConvertPreference && can('opportunities.create')`), non solo inizializzato. Motivo: le
+  abilities arrivano da una query asincrona, quindi un initializer di `useState` congelerebbe il
+  valore pre-fetch; e `ImportController::confirm()` risponde **403** se arriva
+  `convert_to_opportunity: true` senza `opportunities.create` — con il default a `true` un operatore
+  senza quel permesso non avrebbe piu' potuto confermare **nessun** import.
+- Conseguenza voluta da tenere presente: se la run **non** e' conversion-ready, ora al primo paint
+  i blocker sono gia' visibili e **Conferma e' disabilitato**; l'operatore sistema i blocker (Torna
+  alla revisione) oppure spegne il toggle. Prima partiva spento e non se ne accorgeva.
+- Test aggiornati in `import-step-summary.test.tsx`: il default-on sostituisce il vecchio
+  "toggle stays off", piu' un test nuovo che con `opportunities.create` assente il payload resta
+  `false`. Il mock di `useAbilities` e' ora pilotabile via `vi.hoisted`.
+
+**Verifica eseguita:** `npx vitest run src/features/imports` -> 23 file / 177 test verdi;
+`npx tsc -b --force --pretty false` -> EXIT=0.
+
+## LAYOUT PREVENTIVO STANDARD SEEDATO (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: una **riga** in `document_layouts` che riproduca il `.docx` di riferimento del
+cliente ("Layout Accordo Sindacale_ Qualifica Group Training S.r.l."), intestazione e logo inclusi;
+poi, in un secondo giro, **resa generica** ("va bene l'header e il footer, ma il preventivo dev'essere
+generico") e **predefinita**. Anticipa il punto "layout iniziale dal `.docx`" della spec 0070; il
+resto della fase 2 (PhpWord, `quotes.layout_id`, azione Genera Word) resta da fare.
+
+**File nuovi**
+- `backend/database/seeders/QualificaCatalog/StandardQuoteLayout.php` — il `config` come dati
+  puri (~414 righe: sotto l'hard limit, in linea con `QualificaCatalogSeeder.php` a 406).
+- `backend/database/seeders/QualificaDocumentLayoutSeeder.php` — la logica (riga + upload letterhead).
+- `backend/tests/Feature/Seeding/QualificaDocumentLayoutSeederTest.php` — 5 test.
+- `backend/database/seeders/assets/quote-letterhead.png` — `word/media/image1.png` del `.docx`
+  (md5 verificato identico), gia' presente ma prima non referenziato da nessuno.
+
+**Registrato come ultimo step di `QualificaTemplateSeeder`** (non di `QualificaProductionDataSeeder`:
+l'utente lancia il template seeder da solo e li' si aspetta il layout). Delegato, non inline: carica
+un binario e possiede l'invariante D-7, quindi ha le sue due dipendenze iniettate e la sua suite.
+Il docblock di `QualificaTemplateSeeder` diceva "structure only, mai righe di dominio": aggiornato,
+ora e' "la forma dell'installazione" = definizioni custom field + layout. Dati reali del cliente,
+quindi `Qualifica*` e NON `Demo*` (backend.md §3.1); `DemoDocumentLayoutSeeder` resta com'e'.
+
+**Conseguenza sui test:** il template seeder ora scrive un file. Ogni suite che lo seeda deve fare
+`Storage::fake(config('attachments.disk'))` o lascia binari veri sotto `storage/app`. Aggiunto a
+`QualificaTemplateSeederTest` e `QualificaProductionDataSeederTest`.
+
+**Vincoli risolti, da non rompere**
+- **Uovo/gallina immagine-layout:** un blocco `image` referenzia un `attachment_id` che deve gia'
+  appartenere al layout, ma l'attachment richiede il layout esistente. Il seeder inserisce la riga
+  con `StandardQuoteLayout::emptyConfig()`, carica il letterhead, poi aggiorna il `config` —
+  tutto in **una** `DB::transaction`, quindi nessuno stato intermedio e' osservabile.
+- **Idempotenza:** chiave naturale `code = 'qualifica_standard'` (globale, immutabile). Un re-run
+  aggiorna nome/descrizione/config e **non** ricarica il letterhead.
+- **Predefinito per volonta' esplicita dell'utente:** la riga ri-rivendica `is_default` (+`is_active`,
+  che D-7c impone) a **ogni** run, poi chiama `DocumentLayoutDefaultManager::clearOtherDefaults()`
+  nella stessa transazione. Quindi un DB dove i layout demo (o un operatore) avevano promosso un
+  altro layout riconverge qui. Non e' un refuso: e' la regola richiesta.
+
+**Trascrizione: cosa e' stato letto dall'OOXML, non ricordato** — margini `sectPr` (top 1985 /
+right 1134 / bottom 1560 / left 1134 twips), letterhead 7551317x10677155 EMU = **595x841 pt**
+(`wrap: behind_page`), 4 righe orizzontali flottanti `v:line` strokeweight **1pt = thickness 8**
+(ottavi di punto) colore `A5A5A5`, header tabella `323E4F`, `tblGrid` 4082/1770/1900/1037/1417 twips
+normalizzato a 40/17/19/10/14 pct. Le `w:sz` di Word sono **mezzi punti**: dimezzate.
+
+**Due scostamenti deliberati dalla trascrizione letterale** (il contratto 0069 non ha la primitiva):
+1. i `${...}` del `.docx` sono i placeholder del sistema **legacy**, mappati sul catalogo variabili
+   di questo modulo (`{quote.code}`, `{quote.created_at}`, `{client.name}`, `{client.address}`,
+   `{totals.revenue_net|revenue_vat|revenue_gross}`);
+2. l'area firme, allineata a **tab stop** in Word, e' un blocco `table` a 2 colonne senza bordi: un
+   `run` non ha tab e riempire di spazi non sopravvive a un cambio font.
+
+**Generalizzazione (richiesta esplicita).** Struttura, letterhead e piede invariati; cambia solo il
+testo legato a quel singolo accordo: titolo `OFFERTA ECONOMICA` (non "... E CONTRATTO DI
+AVVALIMENTO"), saldo "alla sottoscrizione della presente offerta" (non "del presente accordo" — che
+nel `.docx` era anche ripetuto due volte, refuso ora rientrato con la riscrittura). Un test blocca
+il ritorno di quelle stringhe: se serve un layout per un tipo di documento specifico, si clona
+questo dal configuratore, non si specializza il predefinito.
+
+**Verifica eseguita:** `pest tests/Feature/Seeding tests/Feature/DocumentLayouts
+tests/Unit/DocumentLayouts tests/Feature/SeederFlowTest.php` + `tests/Feature/CustomFields/
+QualificaTemplateSeederTest.php` -> verde. Pint pulito. Il test piu' importante e' quello che passa
+il `config` seedato dentro `DocumentLayoutConfigValidator`: e' l'unica prova che l'editor riuscira'
+ad aprirlo e a risalvarlo.
+
+## GENERAZIONE WORD DEI PREVENTIVI, FASE 2 (2026-07-30) — VERDE, NON COMMITTATO
+
+Spec `docs/specs/0070-quote-word-generation.xml` implementata. La fase 1 (spec 0069, modulo
+document-layouts) e' gia' committata in `c7a17d9`.
+
+### Cosa c'e' ora
+
+`phpoffice/phpword ^1.4` installato (dipendenza autorizzata dall'utente). **Licenza LGPL-3.0-only:
+vietato patchare `vendor/phpoffice/phpword`** — se manca un comportamento si scrive codice nostro
+sopra la sua API. Il `require` ha aggiunto esattamente 2 pacchetti (`phpword` + `phpoffice/math`);
+le 4 advisory di sicurezza che composer segnala sono su `guzzlehttp/guzzle`, PREESISTENTI
+(verificato: guzzle era gia' nel lock a HEAD), non introdotte da noi.
+
+- `quotes.layout_id` (FK nullable -> document_layouts, `nullOnDelete`), relazione `Quote::layout()`,
+  campo nel form/detail/Resource/meta, field permission `layout_id` (NON mandatory).
+- Renderer completo in `app/Services/DocumentLayouts/Rendering/` (19 file): `QuoteDocumentGenerator`
+  (entry point), `DocxRenderer`, un renderer per famiglia di blocchi, `ProductsTableRenderer`,
+  `VariableResolver` + 4 resolver di categoria, `ValueFormatter`.
+- `POST /api/quotes/{quote}/document` (gate `quotes.view`) e
+  `POST /api/document-layouts/{documentLayout}/preview` (gate `document-layouts.view`), entrambi
+  binari in streaming, sincroni, **senza persistere nulla**.
+- Delete-guard `layout_in_use` (422 col NUMERO di preventivi nel messaggio), valutato DOPO il guard
+  sul predefinito.
+- Azione di riga `generate_document` + bottone "Genera Word" nel detail.
+- Layout iniziale del cliente: `QualificaDocumentLayoutSeeder` + `QualificaCatalog/StandardQuoteLayout`.
+
+### Decisioni e deviazioni dalla spec, da sapere
+
+- **Il seed sta nella famiglia `Qualifica*`, non in `DatabaseSeeder`** come diceva la spec 0070 D-5.
+  Il repo aveva gia' `QualificaTemplateSeeder`/`QualificaProductionDataSeeder` per la forma
+  dell'installazione del cliente: e' il posto giusto, la spec era meno informata del repo.
+- **Il titolo del layout e' "OFFERTA ECONOMICA"**, non "OFFERTA ECONOMICA E CONTRATTO DI
+  AVVALIMENTO" del file originale: e' il layout PREDEFINITO di tutti i preventivi, non di quel
+  singolo tipo di accordo.
+- **PhpWord scrive le immagini in VML (`w:pict`), MAI in DrawingML (`w:drawing`/`wp:extent`).**
+  Verificato nel sorgente vendor, non assunto. Conseguenza: le dimensioni restano in PUNTI, non in
+  EMU — l'AC-251 della spec ("punti x 12700") descrive qualcosa che la libreria non produce, e i
+  test asseriscono il comportamento REALE (z-index negativo, `position:absolute`,
+  `mso-position-*-relative:page`) invece di quello ipotizzato. Il "dietro al testo" funziona, ma
+  non esiste un `w10:wrap type="behind"` letterale nell'XML.
+- `page_break` in header/footer e' un no-op silenzioso: PhpWord lo consente solo nel Section.
+- Il resolver del layout: `quote->layout` vince SEMPRE, anche se quel layout e' stato disattivato
+  dopo (e' il layout con cui il preventivo e' stato fatto); solo se e' null si usa il predefinito;
+  se non c'e' nessuno dei due -> 422 `quotes.no_layout_available`.
+- Un riferimento a variabile non risolvibile -> stringa VUOTA e la generazione RIESCE. Il posto dove
+  il problema si segnala e' il validator al salvataggio del layout, non il documento del cliente.
+
+### Verifica ESEGUITA
+
+- Backend intero: `XDEBUG_MODE=off php artisan test` -> **4669 test, 4654 passed, 20753 assertions,
+  14 failed**, e i 14 sono ESATTAMENTE gli stessi file preesistenti di prima della fase 2.
+- `Quote|DocumentLayout` mirato: **450 test / 2178 assertions verdi**. Renderer: 28/28.
+- **Test di fedelta' end-to-end** `tests/Feature/Quotes/QuoteDocumentFidelityTest.php` (6 test, 38
+  assertions): attraversa seeder -> generatore -> `.docx` e confronta col documento REALE del
+  cliente — geometria pagina (11906x16838, margini 1985/1134/1560/1134), carta intestata a piena
+  pagina nell'header ancorata alla pagina, tabella prodotti a 5 colonne con i rapporti
+  40/17/19/10/14 e header 323E4F, testi statici, nessuna graffa residua, nessun footer.
+  Era l'unico controllo che nessun singolo agente poteva fare, perche' attraversa due ownership.
+- Frontend: `tsc -b --force` EXIT=0, ESLint pulito su quotes/document-layouts/i18n.
+- Pint pulito.
+
+### Attenzione: lavoro di terzi nello stesso working tree
+
+Mentre chiudevo la fase 2 e' comparsa nell'albero un'ALTRA feature in corso, non nostra:
+**spec 0071 lead-bulk-opportunity-conversion** (file `features/leads/*`, `Actions/Leads/`,
+`config/leads.php`). L'unico test frontend rosso — `leads-table-assign.test.tsx > is wired only
+with leads.update` — appartiene a QUEL lavoro, non a questo: nessun file di leads e' stato toccato
+dalla fase 1 o 2. Non toccarlo qui.
+
+### Prossimi passi
+
+1. Verifica manuale a 375/768/1024 px dell'editor (AC-140) e apertura reale in Word di un `.docx`
+   generato: la fedelta' e' asserita sull'XML, il giudizio visivo finale resta umano.
+2. Se il cliente vuole la ripartizione IVA per aliquota nella riga totali (l'originale ce l'ha,
+   noi rendiamo una riga di IVA aggregata, spec 0070 D-6) serve una struttura ripetuta per aliquota:
+   e' una feature a se.
+3. Sconto di riga e metodo di pagamento sul preventivo restano fuori: non esistono in schema.
+
+## MODULO DOCUMENT-LAYOUTS, FASE 1 (2026-07-30) — COMMITTATO in c7a17d9
 
 Spec `docs/specs/0069-document-layouts-module.xml` (approvata dall'utente) implementata per intero.
 La **fase 2** (`docs/specs/0070-quote-word-generation.xml`: PhpWord, `quotes.layout_id`, azione

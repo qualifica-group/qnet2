@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Leads;
 
+use App\Actions\Leads\ConvertLeadsToOpportunities;
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
+use App\Exceptions\Leads\BulkConversionBlockedException;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Leads\AssignOperatorsRequest;
+use App\Http\Requests\Leads\BulkConvertLeadsRequest;
 use App\Http\Requests\Leads\StoreLeadRequest;
 use App\Http\Requests\Leads\UpdateLeadRequest;
 use App\Http\Resources\LeadResource;
@@ -39,6 +42,7 @@ class LeadController extends BaseApiController
     public function __construct(
         private readonly LeadService $service,
         private readonly LeadAssignmentService $assignmentService,
+        private readonly ConvertLeadsToOpportunities $bulkConverter,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
@@ -133,6 +137,49 @@ class LeadController extends BaseApiController
             );
 
             return $this->ok(['assigned' => $assigned], 'Operators assigned');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/leads/convert-to-opportunities — convert many existing leads
+     * into their derived Opportunity in one call (spec 0071, the table's mass
+     * action). Unlike the single row action, which opens the prefilled
+     * Opportunity form, this path derives everything server-side: the exact
+     * same ConvertLeadToOpportunity the creation checkbox uses.
+     *
+     * Double-gated like the single conversion: OpportunityPolicy::create
+     * (the ability that actually creates the records) plus LeadPolicy::view
+     * per targeted lead, mirroring LeadOpportunityDefaultsController.
+     *
+     * All-or-nothing (D-1): a batch holding a non-convertible lead answers 422
+     * with the full blocker list and writes nothing — not expressible through
+     * the generic exception handler, hence the dedicated catch.
+     */
+    public function convertToOpportunities(BulkConvertLeadsRequest $request): JsonResponse
+    {
+        try {
+            $this->authorize('create', Opportunity::class);
+
+            $leadIds = $request->leadIds();
+
+            foreach (Lead::query()->whereIn('id', $leadIds)->get() as $lead) {
+                $this->authorize('view', $lead);
+            }
+
+            $opportunityIds = $this->bulkConverter->handle($leadIds);
+
+            return $this->ok([
+                'converted' => count($opportunityIds),
+                'opportunity_ids' => $opportunityIds,
+            ], 'Leads converted');
+        } catch (BulkConversionBlockedException $blocked) {
+            return $this->fail(
+                $blocked->getMessage(),
+                HttpStatusEnum::UNPROCESSABLE_ENTITY->value,
+                ['reason' => BulkConversionBlockedException::REASON, 'blockers' => $blocked->blockers],
+            );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

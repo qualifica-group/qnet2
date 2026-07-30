@@ -96,6 +96,7 @@ export const it: TranslationResources = {
     notes: 'Note',
     impersonate: 'Impersona',
     layout: 'Layout attributi',
+    generateWord: 'Scarica preventivo',
   },
   table,
   statsPanel,

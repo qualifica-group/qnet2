@@ -28,6 +28,7 @@ import {
   type AssignOperatorsDialogSite,
 } from '@/features/leads/assign-operators-dialog'
 import { useAssignOperators } from '@/features/leads/use-assign-operators'
+import { ConvertLeadsDialog } from '@/features/leads/convert-leads-dialog'
 import type { LeadOperationalSiteRef } from '@/features/leads/types'
 
 /** Domain key used to mount the generic table for leads. */
@@ -187,20 +188,58 @@ export function LeadsTable() {
     setAssignOpen(true)
   }, [])
 
-  // Surfaced inside the generic table's single "Actions" dropdown. Only wired
-  // when the actor can update Leads: `undefined` (not a function returning an
-  // empty array) so the checkbox column stays off entirely without it, rather
-  // than offering an empty menu with no reachable bulk action.
-  const getBulkActions = canAssignOperators
-    ? (selection: TableSelection): BulkAction[] => [
-        {
-          key: 'assign-operators',
-          label: t('leads.assign.tableButton'),
-          icon: UserCog,
-          onSelect: () => openAssignDialog(selection),
-        },
-      ]
-    : undefined
+  // Mass lead -> opportunity conversion (spec 0071). Unlike the single row
+  // action, which opens the prefilled Opportunity form, the batch derives
+  // everything server-side; the popup owns the confirmation and the blocker
+  // reporting, this adapter the selection and the post-success refresh.
+  const [convertOpen, setConvertOpen] = useState(false)
+  const [convertRows, setConvertRows] = useState<TableRow[]>([])
+  const canCreateOpportunities = can('opportunities.create')
+
+  const openConvertDialog = useCallback((selection: TableSelection) => {
+    setConvertRows(selection.rows)
+    setConvertOpen(true)
+  }, [])
+
+  const handleConverted = useCallback(
+    (converted: number) => {
+      toast.success(t('leads.bulkConvert.success', { count: converted }))
+      refreshGrid()
+      tableRef.current?.clearSelection()
+      invalidateStats()
+    },
+    [t, refreshGrid, invalidateStats],
+  )
+
+  // Surfaced inside the generic table's single "Actions" dropdown, each entry
+  // gated on its own ability. `undefined` (not a function returning an empty
+  // array) when the actor has neither, so the checkbox column stays off
+  // entirely rather than offering a menu with no reachable bulk action.
+  const getBulkActions =
+    canAssignOperators || canCreateOpportunities
+      ? (selection: TableSelection): BulkAction[] => [
+          ...(canAssignOperators
+            ? [
+                {
+                  key: 'assign-operators',
+                  label: t('leads.assign.tableButton'),
+                  icon: UserCog,
+                  onSelect: () => openAssignDialog(selection),
+                },
+              ]
+            : []),
+          ...(canCreateOpportunities
+            ? [
+                {
+                  key: 'convert-to-opportunities',
+                  label: t('leads.bulkConvert.tableButton'),
+                  icon: ArrowRightLeft,
+                  onSelect: () => openConvertDialog(selection),
+                },
+              ]
+            : []),
+        ]
+      : undefined
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -246,6 +285,13 @@ export function LeadsTable() {
         selectionCount={assignIds.length}
         defaultSite={assignDefaultSite}
         onAssign={handleAssign}
+      />
+
+      <ConvertLeadsDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        rows={convertRows}
+        onConverted={handleConverted}
       />
 
       {sheet}

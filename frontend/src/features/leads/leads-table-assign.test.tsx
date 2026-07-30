@@ -200,12 +200,26 @@ describe('LeadsTable — row selectability', () => {
 })
 
 describe('LeadsTable — bulk "Assign operators" button (AC-041)', () => {
+  // Spec 0071 added a second, independently gated bulk action (the mass
+  // conversion): losing leads.update no longer empties the whole slot, it
+  // only drops this entry from it.
   it('is wired only with leads.update', () => {
     canMock.mockImplementation((permission) => permission !== 'leads.update')
     renderTable()
 
-    expect(capturedGetBulkActions).toBeUndefined()
+    expect(capturedGetBulkActions?.(bulkActionSelection).map((action) => action.key)).toEqual([
+      'convert-to-opportunities',
+    ])
     expect(screen.queryByRole('button', { name: 'Assign operators' })).not.toBeInTheDocument()
+  })
+
+  it('leaves the slot unwired when the actor has neither bulk ability', () => {
+    canMock.mockImplementation(
+      (permission) => permission !== 'leads.update' && permission !== 'opportunities.create',
+    )
+    renderTable()
+
+    expect(capturedGetBulkActions).toBeUndefined()
   })
 
   it('renders the button and opens the shared popup', () => {

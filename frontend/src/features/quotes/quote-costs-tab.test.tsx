@@ -42,6 +42,7 @@ const EMPTY_VALUES: QuoteFormValues = {
   company_id: null,
   company_site_id: null,
   operational_site_id: null,
+  layout_id: null,
   internal_notes: null,
   offer_lines: [],
   cost_lines: [],

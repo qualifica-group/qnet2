@@ -30,6 +30,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * third as `{id, label}` via OperationalSiteLabel — the site has no own name
  * column, exactly as on ProjectResource/OpportunityResource.
  *
+ * `layout`/`layout_id` (spec 0070) follow the standard `{id, name}` ref shape
+ * (`summarizeByName`), additive alongside every pre-existing key.
+ *
  * `summary.*.gross` is DERIVED here (net + vat) at request time — NEVER
  * persisted (D-9): the 5 persisted aggregates (`revenue_net`, `revenue_vat`,
  * `cost_net`, `cost_vat`, `margin_net`) are the only source of truth this
@@ -65,6 +68,8 @@ class QuoteResource extends JsonResource
             'company_site' => $this->summarizeByName($this->companySite),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
+            'layout_id' => $this->layout_id,
+            'layout' => $this->summarizeByName($this->layout),
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),

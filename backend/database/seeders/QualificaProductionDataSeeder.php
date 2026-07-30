@@ -13,8 +13,9 @@ use Illuminate\Database\Seeder;
  * reference rows and the real legacy catalogues, in the one order their
  * dependencies allow:
  *
- *   1. QualificaTemplateSeeder     — structure only: the custom field
- *                                    definitions per module.
+ *   1. QualificaTemplateSeeder     — the installation's shape: the custom
+ *                                    field definitions per module, and the
+ *                                    document layout quotes are printed on.
  *   2. QualificaCatalogSeeder      — the hard-coded reference data: sources,
  *                                    reward types, the product category tree
  *                                    with its product attributes, the 252 GOL

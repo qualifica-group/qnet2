@@ -60,6 +60,7 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     company_id: values.company_id,
     company_site_id: values.company_site_id,
     operational_site_id: values.operational_site_id,
+    layout_id: values.layout_id,
     internal_notes: values.internal_notes,
     offer_lines: toLineInputs(values.offer_lines),
     cost_lines: toLineInputs(values.cost_lines),
@@ -153,6 +154,9 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.operational_site_id !== original.operational_site_id) {
     payload.operational_site_id = values.operational_site_id
+  }
+  if (values.layout_id !== original.layout_id) {
+    payload.layout_id = values.layout_id
   }
   if (values.internal_notes !== original.internal_notes) {
     payload.internal_notes = values.internal_notes

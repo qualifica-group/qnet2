@@ -237,6 +237,11 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'activity';
         }
 
+        // spec 0070: `.docx` generation is a read, gated the same as `view`.
+        if (Gate::forUser($actor)->allows('view', $row)) {
+            $allowed[] = 'generate_document';
+        }
+
         return $allowed;
     }
 

@@ -12,6 +12,7 @@
         "laravel/tinker": "^3.0",
         "openspout/openspout": "^5.7",
         "phpoffice/phpspreadsheet": "^5.9",
+        "phpoffice/phpword": "^1.4",
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-permission": "^8.0"
     },

@@ -10,6 +10,7 @@ use App\Services\UserService;
 use Database\Seeders\QualificaProductionDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 // The single entry point for the client's production-like dataset. Each step
 // is covered by its own suite (QualificaTemplateSeederTest,
@@ -23,6 +24,9 @@ beforeEach(function (): void {
     // so the seeder is exercised without reaching the network.
     config(['migrations.base_url' => null]);
     Http::preventStrayRequests();
+    // Step 1's layout uploads the client letterhead: keep the binary off the
+    // real disk.
+    Storage::fake(config('attachments.disk'));
 });
 
 it('composes structure, catalogue and testers in one run', function (): void {

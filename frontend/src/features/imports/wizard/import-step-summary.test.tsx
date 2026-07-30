@@ -25,11 +25,19 @@ vi.mock('@/features/imports/wizard/api', () => ({
   getImportRunSummary: (...args: unknown[]) => getImportRunSummaryMock(...args),
 }))
 
-// Grants `opportunities.create` unconditionally: the auto-convert toggle's
-// own gating (`<Can>`) is exercised by `lead-form-body.test.tsx`, not here —
-// this lane only cares about the toggle's own behavior once visible.
+// `opportunities.create` is granted by default: the auto-convert toggle's own
+// gating (`<Can>`) is exercised by `lead-form-body.test.tsx`, not here — this
+// lane only cares about the toggle's behavior once visible. Flipping the flag
+// covers the payload gate that keeps a permission-less operator from
+// confirming with the (now default-on) toggle.
+const abilities = vi.hoisted(() => ({ canCreateOpportunity: true }))
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({
+    can: () => abilities.canCreateOpportunity,
+    hasRole: () => false,
+    roles: [],
+    isLoading: false,
+  }),
 }))
 
 function baseRun(overrides: Partial<ImportRunDetail> = {}): ImportRunDetail {
@@ -118,6 +126,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   getImportRunSummaryMock.mockReset()
+  abilities.canCreateOpportunity = true
 })
 
 describe('ImportStepSummary', () => {
@@ -179,28 +188,41 @@ describe('ImportStepSummary', () => {
     expect(await screen.findByText('No global values configured.')).toBeInTheDocument()
   })
 
-  it('calls onConfirm with convert_to_opportunity: false when the toggle stays off', async () => {
+  it('auto-convert toggle defaults to on and sends convert_to_opportunity: true on confirm', async () => {
     getImportRunSummaryMock.mockResolvedValue(baseSummary())
     const { onConfirm } = renderStep()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm and import' }))
-
-    expect(onConfirm).toHaveBeenCalledTimes(1)
-    expect(onConfirm).toHaveBeenCalledWith({ convert_to_opportunity: false })
-  })
-
-  it('auto-convert toggle ON with a ready run sends convert_to_opportunity: true on confirm', async () => {
-    getImportRunSummaryMock.mockResolvedValue(baseSummary())
-    const { onConfirm } = renderStep()
-
-    fireEvent.click(await screen.findByRole('switch', { name: 'Automatically convert to Opportunity' }))
-    expect(await screen.findByText('7 row(s) can be converted.')).toBeInTheDocument()
+    expect(await screen.findByRole('switch', { name: 'Automatically convert to Opportunity' })).toBeChecked()
+    expect(screen.getByText('7 row(s) can be converted.')).toBeInTheDocument()
 
     const confirmButton = screen.getByRole('button', { name: 'Confirm and import' })
     expect(confirmButton).not.toBeDisabled()
 
     fireEvent.click(confirmButton)
+    expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onConfirm).toHaveBeenCalledWith({ convert_to_opportunity: true })
+  })
+
+  it('calls onConfirm with convert_to_opportunity: false once the toggle is switched off', async () => {
+    getImportRunSummaryMock.mockResolvedValue(baseSummary())
+    const { onConfirm } = renderStep()
+
+    fireEvent.click(await screen.findByRole('switch', { name: 'Automatically convert to Opportunity' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and import' }))
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onConfirm).toHaveBeenCalledWith({ convert_to_opportunity: false })
+  })
+
+  it('never sends convert_to_opportunity: true without the opportunities.create permission', async () => {
+    abilities.canCreateOpportunity = false
+    getImportRunSummaryMock.mockResolvedValue(baseSummary())
+    const { onConfirm } = renderStep()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm and import' }))
+
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(onConfirm).toHaveBeenCalledWith({ convert_to_opportunity: false })
   })
 
   it('auto-convert toggle ON with a not-ready run disables Confirm and shows the blockers + back-to-review action', async () => {
@@ -215,8 +237,6 @@ describe('ImportStepSummary', () => {
       }),
     )
     const { onConfirm, onBackToReview } = renderStep()
-
-    fireEvent.click(await screen.findByRole('switch', { name: 'Automatically convert to Opportunity' }))
 
     expect(await screen.findByText('This run cannot be auto-converted yet:')).toBeInTheDocument()
     expect(screen.getByText('3 row(s) have no operator assigned.')).toBeInTheDocument()

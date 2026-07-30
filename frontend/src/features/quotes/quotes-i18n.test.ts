@@ -52,3 +52,37 @@ describe('quotes navigation icon', () => {
     expect(resolveIcon('file-text')).not.toBe(resolveIcon(null))
   })
 })
+
+// Spec 0070 AC-315: the Layout field, its form section, the detail field, the
+// backend-declared row-action label (`actions.generateWord`) and every new
+// document-generation message must exist in both locales.
+describe('quotes document generation i18n (spec 0070)', () => {
+  it('translates the shared "actions.generateWord" row-action label declared by the backend', () => {
+    expect(en.actions.generateWord).toBeTruthy()
+    expect(itLocale.actions.generateWord).toBeTruthy()
+  })
+
+  it('translates the Layout field, its search placeholder and its form section', () => {
+    expect(en.quotes.form.layout).toBeTruthy()
+    expect(itLocale.quotes.form.layout).toBeTruthy()
+    expect(en.quotes.form.layoutSearch).toBeTruthy()
+    expect(itLocale.quotes.form.layoutSearch).toBeTruthy()
+    expect(en.quotes.form.sections.layout.title).toBeTruthy()
+    expect(itLocale.quotes.form.sections.layout.title).toBeTruthy()
+    expect(en.quotes.form.sections.layout.description).toBeTruthy()
+    expect(itLocale.quotes.form.sections.layout.description).toBeTruthy()
+  })
+
+  it('translates the detail Layout field and the document-generation messages', () => {
+    expect(en.quotes.detail.layout).toBeTruthy()
+    expect(itLocale.quotes.detail.layout).toBeTruthy()
+    expect(en.quotes.detail.generatingDocument).toBeTruthy()
+    expect(itLocale.quotes.detail.generatingDocument).toBeTruthy()
+    expect(en.quotes.detail.documentGenerated).toBeTruthy()
+    expect(itLocale.quotes.detail.documentGenerated).toBeTruthy()
+    expect(en.quotes.detail.documentForbidden).toBeTruthy()
+    expect(itLocale.quotes.detail.documentForbidden).toBeTruthy()
+    expect(en.quotes.detail.documentGenericError).toBeTruthy()
+    expect(itLocale.quotes.detail.documentGenericError).toBeTruthy()
+  })
+})

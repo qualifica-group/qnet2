@@ -3,6 +3,7 @@
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutForSelectController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutImageController;
+use App\Http\Controllers\DocumentLayouts\DocumentLayoutPreviewController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutVariableController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +49,13 @@ Route::get('document-layouts/variables', DocumentLayoutVariableController::class
 Route::get('document-layouts/{documentLayout}/images', [DocumentLayoutImageController::class, 'index']);
 Route::post('document-layouts/{documentLayout}/images', [DocumentLayoutImageController::class, 'store']);
 Route::delete('document-layouts/{documentLayout}/images/{attachment}', [DocumentLayoutImageController::class, 'destroy']);
+
+// A real `.docx` preview of this layout's config (spec 0070), gated by
+// document-layouts.view. Declared above the plain `{documentLayout}` show
+// route only for grouping consistency with the other nested sub-routes above
+// — no ordering ambiguity exists here (different HTTP verb AND an extra path
+// segment already disambiguate it from the bound wildcard route).
+Route::post('document-layouts/{documentLayout}/preview', DocumentLayoutPreviewController::class);
 
 // Document layouts CRUD. Authorization (document-layouts.view/create/update/
 // delete) is enforced server-side in DocumentLayoutController via

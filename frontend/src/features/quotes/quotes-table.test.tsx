@@ -56,6 +56,11 @@ vi.mock('sonner', () => ({
   toast: { success: (...args: unknown[]) => toastSuccessMock(...args), error: (...args: unknown[]) => toastErrorMock(...args) },
 }))
 
+const generateQuoteDocumentMock = vi.fn()
+vi.mock('@/features/quotes/quote-document-api', () => ({
+  generateQuoteDocument: (...args: unknown[]) => generateQuoteDocumentMock(...args),
+}))
+
 const DELETE_ACTION: TableActionDefinition = {
   key: 'delete',
   label: 'actions.delete',
@@ -64,18 +69,30 @@ const DELETE_ACTION: TableActionDefinition = {
   confirm: true,
 }
 
-const ROW: TableRow = { id: 3, actions: ['delete'], title: 'Offerta Acme' }
+const GENERATE_DOCUMENT_ACTION: TableActionDefinition = {
+  key: 'generate_document',
+  label: 'actions.generateWord',
+  icon: 'file-text',
+  type: 'action',
+  confirm: false,
+}
 
+const ROW: TableRow = { id: 3, actions: ['delete'], title: 'Offerta Acme', code: 'QUO-0003' }
+
+const refreshMock = vi.fn()
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
     { domain: string; onAction?: (action: TableActionDefinition, row: TableRow) => void }
   >(function TableViewStub({ domain, onAction }, ref) {
-    useImperativeHandle(ref, () => ({ refresh: () => {} }))
+    useImperativeHandle(ref, () => ({ refresh: refreshMock }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
+        </button>
+        <button type="button" onClick={() => onAction?.(GENERATE_DOCUMENT_ACTION, ROW)}>
+          generate document row
         </button>
       </div>
     )
@@ -104,6 +121,8 @@ beforeEach(() => {
   openCreateMock.mockReset()
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
+  generateQuoteDocumentMock.mockReset()
+  refreshMock.mockReset()
 })
 
 describe('QuotesTable — domain wiring (AC-078)', () => {
@@ -165,5 +184,34 @@ describe('QuotesTable — delete', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Unable to delete the quote. Please try again.'))
+  })
+})
+
+describe('QuotesTable — generate_document row action (spec 0070 AC-302)', () => {
+  it('downloads the document, shows a success toast and does NOT refresh the grid', async () => {
+    generateQuoteDocumentMock.mockResolvedValue(undefined)
+
+    renderTable()
+    screen.getByRole('button', { name: 'generate document row' }).click()
+
+    await waitFor(() => expect(generateQuoteDocumentMock).toHaveBeenCalledWith(3, 'QUO-0003'))
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Word document generated successfully.'))
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it("shows the backend's 422 message on generation failure (AC-303)", async () => {
+    const error = new axios.AxiosError('Unprocessable', '422', undefined, undefined, {
+      status: 422,
+      data: { success: false, message: 'No layout is available to generate this document.' },
+    } as never)
+    generateQuoteDocumentMock.mockRejectedValue(error)
+
+    renderTable()
+    screen.getByRole('button', { name: 'generate document row' }).click()
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith('No layout is available to generate this document.'),
+    )
+    expect(refreshMock).not.toHaveBeenCalled()
   })
 })

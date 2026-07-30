@@ -30,6 +30,21 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
+// `QuoteLayoutSection` (spec 0070) resolves its create-mode default straight
+// off `useForSelect`, independent of the `AsyncPaginatedSelect` stub below —
+// mocked here so it never hits the real network in this suite, which is
+// scoped to the roles inheritance, not the layout field.
+vi.mock('@/features/for-select/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
+    '@/features/for-select/api',
+  )
+  return {
+    ...actual,
+    fetchForSelect: () =>
+      Promise.resolve({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+  }
+})
+
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},

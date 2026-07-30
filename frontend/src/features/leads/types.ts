@@ -146,3 +146,29 @@ export interface AssignOperatorsPayload {
 export interface AssignOperatorsResult {
   assigned: number
 }
+
+/** Payload for POST /leads/convert-to-opportunities (spec 0071), the table's mass conversion. */
+export interface ConvertLeadsPayload {
+  lead_ids: number[]
+}
+
+/** Response of a successful mass conversion: the batch is all-or-nothing, so `converted` is the whole selection. */
+export interface ConvertLeadsResult {
+  converted: number
+  opportunity_ids: number[]
+}
+
+/** Why a single lead was refused by the mass conversion (spec 0071). */
+export type LeadConversionBlockerReason = 'already_converted' | 'not_derivable'
+
+/** One offending lead of a refused batch. */
+export interface LeadConversionBlocker {
+  id: number
+  reason: LeadConversionBlockerReason
+}
+
+/** The `errors` block of a 422 mass-conversion response. Nothing was converted. */
+export interface LeadConversionBlockedError {
+  reason: 'not_convertible'
+  blockers: LeadConversionBlocker[]
+}

@@ -7,7 +7,9 @@ namespace App\Services;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Quotes\UpdateQuoteData;
+use App\Enums\DocumentLayoutModule;
 use App\Enums\QuoteLineType;
+use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
@@ -25,9 +27,8 @@ use Illuminate\Support\Facades\DB;
  * Business logic for the `quotes` resource (spec 0065): create/update (with
  * the server-generated QUO-0001 code, D-13; the Opportunity snapshot of the
  * 3 roles plus the sede operativa, D-3), the full-replace line sync per tab
- * (D-8), the REVENUE-only
- * opportunity coverage (D-7), and the persisted, always-recalculated
- * economic aggregates (D-9).
+ * (D-8), the REVENUE-only opportunity coverage (D-7), and the persisted,
+ * always-recalculated economic aggregates (D-9).
  */
 class QuoteService
 {
@@ -41,9 +42,8 @@ class QuoteService
 
     /**
      * The error field a REVENUE line's coverage failure is reported under
-     * (OpportunityProductLineCoverage::ensure()'s $errorField) — distinct
-     * from the opportunities picker's own `products_of_interest` key, since a
-     * quote payload has no such field.
+     * (OpportunityProductLineCoverage::ensure()'s $errorField) — distinct from
+     * the opportunities picker's own `products_of_interest` key.
      */
     private const string COVERAGE_ERROR_FIELD = 'offer_lines';
 
@@ -64,6 +64,7 @@ class QuoteService
         // The site has no own name: its label is composed from the primary
         // address + city (OperationalSiteLabel), so both are eager-loaded.
         'operationalSite.addresses.city',
+        'layout',
         'offerLines.product.category',
         'offerLines.quote',
         'offerLines.vatRate',
@@ -113,6 +114,10 @@ class QuoteService
             // Step 2: default the working status to the system 'new' row
             // (AC-023) when the client omitted it.
             $attributes['quote_status_id'] ??= $this->systemStatusGuard->resolveNewStatusId(QuoteStatus::class);
+
+            // Step 2b: resolve `layout_id` (D-3/D-8) — NOT an Opportunity
+            // snapshot, a separate mechanism (see resolveLayoutId()).
+            $attributes['layout_id'] = $this->resolveLayoutId($data);
 
             // Step 3: `code` is deliberately absent from Quote's #[Fillable]
             // (D-13), so it is assigned directly AFTER the fillable
@@ -168,8 +173,8 @@ class QuoteService
     }
 
     /**
-     * Delete the quote. `quote_lines` cascade away via their own FK
-     * (AC-026); the linked Opportunity/Product/VatRate rows are untouched.
+     * Delete the quote. `quote_lines` cascade away via their own FK (AC-026);
+     * the linked Opportunity/Product/VatRate rows are untouched.
      */
     public function delete(Quote $quote): void
     {
@@ -202,6 +207,29 @@ class QuoteService
             : $opportunity->operational_site_id;
 
         return $attributes;
+    }
+
+    /**
+     * `layout_id` resolution at create time (spec 0070, D-3/D-8). Deliberately
+     * NOT part of applySnapshotDefaults(): `opportunities` has no `layout_id`
+     * to copy from — the default read here comes from DocumentLayout, never
+     * from $opportunity. A submitted key (even null) wins outright; otherwise
+     * fall back to the `quotes` module's active default, or null when none
+     * exists (AC-211). A minimal, explicit query: no suitable read method
+     * exists yet on DocumentLayoutDefaultManager, which only covers the
+     * WRITE-side invariant (spec 0069).
+     */
+    private function resolveLayoutId(CreateQuoteData $data): ?int
+    {
+        if ($data->layoutIdSubmitted) {
+            return $data->layoutId;
+        }
+
+        return DocumentLayout::query()
+            ->where('module', DocumentLayoutModule::Quotes->value)
+            ->where('is_active', true)
+            ->where('is_default', true)
+            ->value('id');
     }
 
     /**

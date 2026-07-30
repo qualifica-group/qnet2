@@ -50,6 +50,11 @@ final readonly class UpdateQuoteData
         public bool $companySiteIdSubmitted = false,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
+        // Appended after the pre-existing parameters (spec 0070, D-3/D-8):
+        // NOT resolved against the Opportunity — a plain submitted/persisted
+        // toggle, exactly like every other optional FK here.
+        public ?int $layoutId = null,
+        public bool $layoutIdSubmitted = false,
     ) {}
 
     /**
@@ -80,6 +85,8 @@ final readonly class UpdateQuoteData
             companySiteIdSubmitted: array_key_exists('company_site_id', $data),
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
+            layoutId: self::nullableInt($data, 'layout_id'),
+            layoutIdSubmitted: array_key_exists('layout_id', $data),
         );
     }
 
@@ -144,6 +151,10 @@ final readonly class UpdateQuoteData
 
         if ($this->operationalSiteIdSubmitted) {
             $attributes['operational_site_id'] = $this->operationalSiteId;
+        }
+
+        if ($this->layoutIdSubmitted) {
+            $attributes['layout_id'] = $this->layoutId;
         }
 
         if ($this->internalNotesSubmitted) {

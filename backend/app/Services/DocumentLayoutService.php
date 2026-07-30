@@ -11,9 +11,11 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\DocumentLayoutModule;
 use App\Models\Attachment;
 use App\Models\DocumentLayout;
+use App\Models\Quote;
 use App\Services\DocumentLayouts\DocumentLayoutDefaultManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic for the `document-layouts` resource (spec 0069): a
@@ -89,28 +91,47 @@ class DocumentLayoutService
     }
 
     /**
-     * Plain delete, guarded only by D-7's default invariant (AC-025..028):
-     * a predefinito layout blocks deletion unless it is the module's only
-     * layout. Every uploaded image is removed WITH the layout (attachment
-     * row + binary on disk, via AttachmentService::delete()) — DocumentLayout
-     * does not `use HasAttachments` (its `images()` relation is scoped to
-     * `layout_image`, wave 1), so this loop is the cascade, not a framework hook.
-     *
-     * EXTENSION POINT for spec 0070 (D-10): the first real consumer
-     * (`quotes.layout_id`) adds a referenced-by guard here, mirroring
-     * QuoteStatusService::delete()'s FK-usage check — deliberately absent in
-     * this spec (no consumer exists yet), so this method stays a single guard
-     * + delete until that spec lands.
+     * Delete, guarded by TWO checks, in this frozen order (spec 0070, D-7):
+     * (1) D-7's default invariant (AC-025..028) — a predefinito layout blocks
+     * deletion unless it is the module's only layout; (2) the usage guard
+     * below — a layout referenced by at least one Quote cannot be deleted at
+     * all. A layout that is BOTH default and in use fails on (1), the more
+     * specific/earlier rule (AC-281). Every uploaded image is removed WITH
+     * the layout (attachment row + binary on disk, via
+     * AttachmentService::delete()) — DocumentLayout does not `use
+     * HasAttachments` (its `images()` relation is scoped to `layout_image`,
+     * wave 1), so this loop is the cascade, not a framework hook.
      */
     public function delete(DocumentLayout $documentLayout): void
     {
         $this->defaultManager->assertDeletable($documentLayout);
+        $this->assertNotInUse($documentLayout);
 
         $documentLayout->images()->get()->each(
             fn (Attachment $attachment) => $this->attachmentService->delete($attachment)
         );
 
         $documentLayout->delete();
+    }
+
+    /**
+     * D-7's usage guard (spec 0070): a layout referenced by at least one
+     * Quote is not deletable — only deactivatable. The count is read with a
+     * single `count()` query, never hydrating the referencing quotes
+     * (AC-283). Thrown as a ValidationException so the controller's existing
+     * generic Throwable handling (BaseApiController::handleControllerException)
+     * needs no special case, exactly like DocumentLayoutDefaultManager's own
+     * checks above.
+     */
+    private function assertNotInUse(DocumentLayout $documentLayout): void
+    {
+        $usageCount = Quote::query()->where('layout_id', $documentLayout->id)->count();
+
+        if ($usageCount > 0) {
+            throw ValidationException::withMessages([
+                'quotes' => [__('document_layouts.layout_in_use', ['count' => $usageCount])],
+            ]);
+        }
     }
 
     /**

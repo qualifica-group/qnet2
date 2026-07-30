@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { BusyState, StatTile, StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
 import { getImportRunSummary } from '@/features/imports/wizard/api'
 import { importWizardKeys } from '@/features/imports/wizard/query-keys'
@@ -72,7 +73,13 @@ export function ImportStepSummary({
   const { t: tLabel } = useTranslation()
   const runId = run?.id ?? null
   const isReviewing = run?.status === 'reviewing'
-  const [autoConvert, setAutoConvert] = useState(false)
+  // Opt-out, not opt-in: the toggle starts on. It is derived, not just seeded,
+  // because abilities resolve asynchronously — a `useState` initializer would
+  // freeze the pre-fetch value, and confirming with `true` without
+  // `opportunities.create` is a 403 that would block the whole import.
+  const [autoConvertPreference, setAutoConvertPreference] = useState(true)
+  const { can } = useAbilities()
+  const autoConvert = autoConvertPreference && can(CONVERT_TO_OPPORTUNITY_PERMISSION)
 
   const summaryQuery = useQuery<ImportRunSummaryReport>({
     queryKey: runId != null ? importWizardKeys.summary(domain, runId) : importWizardKeys.domain(domain),
@@ -238,7 +245,7 @@ export function ImportStepSummary({
         <Can permission={CONVERT_TO_OPPORTUNITY_PERMISSION}>
           <ConversionReadinessSection
             checked={autoConvert}
-            onCheckedChange={setAutoConvert}
+            onCheckedChange={setAutoConvertPreference}
             readiness={summary.conversion_readiness}
             onBackToReview={onBackToReview}
             t={t}

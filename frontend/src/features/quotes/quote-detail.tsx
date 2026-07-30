@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, HandCoins, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { Download, FileText, HandCoins, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
@@ -16,6 +16,7 @@ import {
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatQuoteAmount, QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
+import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import type { QuoteDetailWithPermissions, QuoteLine } from '@/features/quotes/types'
 import { QuoteCommissionsDialog } from './quote-commissions-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
@@ -87,11 +88,29 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(quote.created_at)
   const totals = totalsFromPersistedSummary(quote.summary)
+  const { generate: generateDocument, isGenerating } = useQuoteDocument()
+  const canGenerateDocument = quote.permissions.actions.generate_document
+  const generatingThisQuote = isGenerating(quote.id)
 
   return (
     <ResourcePermissionsProvider permissions={quote.permissions}>
     <DetailPanel>
       <DetailHero media={<DetailMonogram name={quote.title} icon={<FileText />} />} title={quote.title} subtitle={quote.code} />
+
+      {canGenerateDocument ? (
+        <div className="flex justify-end border-b px-6 py-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void generateDocument(quote.id, quote.code)}
+            disabled={generatingThisQuote}
+          >
+            <Download aria-hidden="true" />
+            {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generateWord')}
+          </Button>
+        </div>
+      ) : null}
 
       <DetailSection>
         <DetailGrid>
@@ -116,6 +135,9 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           </DetailField>
           <DetailField label={t('quotes.detail.operationalSite')} icon={<MapPin />}>
             {quote.operational_site ? quote.operational_site.label : <DetailEmpty />}
+          </DetailField>
+          <DetailField label={t('quotes.detail.layout')} icon={<FileText />}>
+            {quote.layout ? quote.layout.name : <DetailEmpty />}
           </DetailField>
         </DetailGrid>
       </DetailSection>

@@ -37,6 +37,12 @@ Route::get('leads/{lead}/opportunity-defaults', LeadOpportunityDefaultsControlle
 // per-lead by leads.update in LeadController::assignOperators.
 Route::post('leads/assign-operators', [LeadController::class, 'assignOperators']);
 
+// Bulk Lead -> Opportunity conversion, the leads table's mass action (spec
+// 0071). POST-only, same placement rationale as assign-operators above.
+// Double-gated in LeadController::convertToOpportunities: opportunities.create
+// plus leads.view per targeted lead.
+Route::post('leads/convert-to-opportunities', [LeadController::class, 'convertToOpportunities']);
+
 // Leads CRUD. Authorization (leads.view/create/update/delete) is enforced
 // server-side in LeadController via LeadPolicy on every endpoint.
 Route::get('leads/{lead}', [LeadController::class, 'show']);

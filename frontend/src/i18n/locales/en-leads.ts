@@ -160,4 +160,22 @@ export const leads = {
       generic: 'Unable to assign the operators. Please try again.',
     },
   },
+  bulkConvert: {
+    tableButton: 'Convert to opportunities',
+    title: 'Convert to opportunities',
+    description: 'An opportunity will be created for each of the {{count}} selected lead(s).',
+    note: 'Every opportunity is generated automatically from its lead: no form to fill in. Either the whole selection is converted, or nothing is.',
+    alreadyConverted: '{{count}} selected lead(s) already have an opportunity. Deselect them to continue.',
+    blocked: 'These leads cannot be converted, so nothing was converted.',
+    reasons: {
+      already_converted: 'already has an opportunity',
+      not_derivable: 'its campaign has no business function or product category',
+    },
+    confirm: 'Convert',
+    converting: 'Converting…',
+    success: '{{count}} opportunity(ies) created.',
+    errors: {
+      generic: 'Unable to convert the leads. Please try again.',
+    },
+  },
 }

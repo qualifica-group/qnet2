@@ -19,6 +19,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
+    layout_id: null,
     internal_notes: null,
     offer_lines: [],
     cost_lines: [],
@@ -47,6 +48,8 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     company_site: null,
     operational_site_id: null,
     operational_site: null,
+    layout_id: null,
+    layout: null,
     internal_notes: null,
     offer_lines: [],
     cost_lines: [],
@@ -75,6 +78,11 @@ describe('buildCreatePayload', () => {
   it('sends opportunity_id on create', () => {
     const payload = buildCreatePayload(formValues({ opportunity_id: 42 }))
     expect(payload.opportunity_id).toBe(42)
+  })
+
+  it('sends layout_id on create (AC-311)', () => {
+    const payload = buildCreatePayload(formValues({ layout_id: 4 }))
+    expect(payload.layout_id).toBe(4)
   })
 
   it('emits only the contract fields for each line, never the calculated amounts', () => {
@@ -138,6 +146,22 @@ describe('buildUpdatePayload', () => {
       detail({ commercial_id: null, commercial: null }),
     )
     expect(payload.commercial_id).toBe(9)
+  })
+
+  it('includes layout_id only when it changed from the original (AC-311)', () => {
+    const original = detail({ layout_id: 3, layout: { id: 3, name: 'Layout A' } })
+
+    const unchanged = buildUpdatePayload(formValues({ layout_id: 3 }), original)
+    expect('layout_id' in unchanged).toBe(false)
+
+    const changed = buildUpdatePayload(formValues({ layout_id: 7 }), original)
+    expect(changed.layout_id).toBe(7)
+  })
+
+  it('includes layout_id: null when clearing a persisted layout (AC-215/AC-311)', () => {
+    const original = detail({ layout_id: 3, layout: { id: 3, name: 'Layout A' } })
+    const payload = buildUpdatePayload(formValues({ layout_id: null }), original)
+    expect(payload.layout_id).toBeNull()
   })
 
   it('omits offer_lines when the row set is unchanged (D-8/AC-037)', () => {
