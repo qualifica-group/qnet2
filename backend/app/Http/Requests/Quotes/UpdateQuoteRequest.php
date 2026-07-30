@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Models\Quote;
 use Illuminate\Contracts\Validation\Validator;
@@ -34,6 +35,7 @@ use Illuminate\Validation\Rule;
 class UpdateQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
 
     public function authorize(): bool
@@ -64,6 +66,7 @@ class UpdateQuoteRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->enforceCommissionFieldPermissions($validator, $this->currentQuote());
+            $this->enforceCommissionRecipients($validator, $this->currentQuote());
         });
     }
 

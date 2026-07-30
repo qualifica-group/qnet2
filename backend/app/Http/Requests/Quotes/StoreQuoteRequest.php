@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,7 @@ use Illuminate\Validation\Rule;
 class StoreQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
 
     public function authorize(): bool
@@ -63,6 +65,7 @@ class StoreQuoteRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->enforceCommissionFieldPermissions($validator, null);
+            $this->enforceCommissionRecipients($validator, null);
         });
     }
 

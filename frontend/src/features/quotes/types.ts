@@ -17,10 +17,40 @@ import type { ModuleCreateParams } from '@/features/modules/types'
 
 export type QuoteCommissionOrigin = 'PRODUCT' | 'PRODUCT_CATEGORY' | 'MANUAL_OVERRIDE'
 
+export type QuoteCommissionRecipientType = 'referent' | 'user' | 'registry'
+
+/**
+ * The ONE identity a commission role may be awarded to on a given quote line,
+ * as resolved server-side by `POST /quotes/commission-recipients`: the quote's
+ * commercial/reporter/supervisor for the three people roles, the line
+ * product's supplier for the fourth. The recipient is never picked by the
+ * user — the dialog only displays it locked.
+ */
+export interface QuoteCommissionRecipient {
+  type: QuoteCommissionRecipientType
+  id: number
+  name: string
+}
+
+/** `null` for a role with no upstream selection: no commission may exist for it. */
+export type QuoteCommissionRecipientMap = Record<CommissionRole, QuoteCommissionRecipient | null>
+
+/**
+ * The upstream selections a line's commissions resolve their locked recipients
+ * against — the quote's own role fields, read live off the open form (they may
+ * differ from what is persisted until it is saved).
+ */
+export interface QuoteCommissionContext {
+  quoteId?: number
+  commercialId: number | null
+  reporterId: number | null
+  supervisorId: number | null
+}
+
 export interface QuoteLineCommission {
   id?: number
   recipient_role: CommissionRole
-  recipient_type: 'referent' | 'user' | 'registry'
+  recipient_type: QuoteCommissionRecipientType
   recipient_id: number
   recipient?: QuoteRelationRef | null
   commission_type: CommissionType

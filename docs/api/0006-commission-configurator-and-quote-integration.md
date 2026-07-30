@@ -189,11 +189,11 @@ Configurator permissions are not required.
 
 | Field | Rules and semantics |
 |---|---|
-| `quote_id` | Optional existing Quote. When present, persisted Quote recipients take precedence over submitted recipient IDs. |
+| `quote_id` | Optional existing Quote. Submitted recipient IDs take precedence over its persisted ones; the Quote fills in only the roles the payload omits. |
 | `product_id` | Required existing Product. Its category and supplier are loaded server-side. |
 | `line_net_amount` | Required, non-negative, at most two decimals. |
-| `commercial_id`, `reporter_id` | Optional existing Referent IDs, used only for create context without `quote_id`. |
-| `supervisor_id` | Optional existing User ID, used only for create context without `quote_id`. |
+| `commercial_id`, `reporter_id` | Optional existing Referent IDs. The open form's current values, which may differ from what the Quote has persisted. |
+| `supervisor_id` | Optional existing User ID. Same semantics as above. |
 | `reference_date` | Optional date/time. Defaults to the server's current timestamp. |
 
 ### Response data
@@ -221,10 +221,62 @@ This endpoint is a UI aid. Quote persistence repeats recipient discovery,
 resolution and calculation; clients cannot make a configuration-derived draft
 authoritative.
 
+## Quote commission recipients
+
+`POST /api/quotes/commission-recipients` returns the ONE identity each role may
+be commissioned to on a given line. The recipient of a commission is never
+chosen by the user: it is whoever was selected upstream, per the source table
+above. A role whose upstream selection is empty returns `null` and cannot be
+commissioned at all.
+
+Authorization is identical to `commission-defaults`, except that the Quote
+`commissions` and `commission_recipient` fields need only be VISIBLE (this
+endpoint reads identities, it writes nothing).
+
+### Request
+
+```json
+{
+  "quote_id": 91,
+  "product_id": 42,
+  "commercial_id": 11,
+  "reporter_id": null,
+  "supervisor_id": 7
+}
+```
+
+Same fields and same precedence as `commission-defaults`, minus
+`line_net_amount` and `reference_date`.
+
+### Response data
+
+`data` is an object keyed by role, every role always present:
+
+```json
+{
+  "COMMERCIAL": { "type": "referent", "id": 11, "name": "Anna Bianchi" },
+  "REPORTER": null,
+  "SUPERVISOR": { "type": "user", "id": 7, "name": "Ivo Rossi" },
+  "SUPPLIER": { "type": "registry", "id": 3, "name": "ACME Spa" }
+}
+```
+
+The write contract below enforces the same rule server-side, so a client that
+ignores this lock is rejected rather than obeyed.
+
 ## Quote write contract
 
 Commissions are accepted only under `offer_lines`; they are prohibited under
 `cost_lines`.
+
+A submitted commission must name the recipient the role resolves to for that
+line (see above), against the role IDs submitted in the same request — falling
+back to the Quote's persisted ones for roles the payload omits. Otherwise:
+
+- role with no admissible recipient → 422 on
+  `offer_lines.{i}.commissions.{j}.recipient_role`;
+- recipient other than the resolved one → 422 on
+  `offer_lines.{i}.commissions.{j}.recipient_id`.
 
 ```json
 {

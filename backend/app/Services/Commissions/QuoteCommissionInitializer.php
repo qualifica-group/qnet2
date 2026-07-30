@@ -6,7 +6,6 @@ namespace App\Services\Commissions;
 
 use App\DataObjects\Commissions\AppliedCommissionDraft;
 use App\DataObjects\Commissions\CommissionCalculationInput;
-use App\DataObjects\Commissions\CommissionRecipient;
 use App\DataObjects\Commissions\CommissionResolutionContext;
 use App\DataObjects\Commissions\QuoteCommissionDefaultsData;
 use App\Enums\CommissionRecipientRole;
@@ -18,6 +17,7 @@ final class QuoteCommissionInitializer
     public function __construct(
         private readonly CommissionRuleResolver $resolver,
         private readonly CommissionCalculator $calculator,
+        private readonly CommissionRecipientResolver $recipients,
     ) {}
 
     /** @return array<int, AppliedCommissionDraft> */
@@ -25,12 +25,14 @@ final class QuoteCommissionInitializer
     {
         $quote = $data->quoteId === null ? null : Quote::findOrFail($data->quoteId);
         $product = Product::query()->with('category')->findOrFail($data->productId);
-        $recipients = [
-            CommissionRecipientRole::Commercial->value => $this->recipient('referent', $quote?->commercial_id ?? $data->commercialId),
-            CommissionRecipientRole::Reporter->value => $this->recipient('referent', $quote?->reporter_id ?? $data->reporterId),
-            CommissionRecipientRole::Supervisor->value => $this->recipient('user', $quote?->supervisor_id ?? $data->supervisorId),
-            CommissionRecipientRole::Supplier->value => $this->recipient('registry', $product->supplier_id),
-        ];
+        // Submitted role ids win over the quote's persisted ones: the caller is
+        // an open form whose roles may already have been changed but not saved.
+        $recipients = $this->recipients->resolve(
+            $product,
+            $data->commercialId ?? $quote?->commercial_id,
+            $data->reporterId ?? $quote?->reporter_id,
+            $data->supervisorId ?? $quote?->supervisor_id,
+        );
 
         $rules = $this->resolver->resolve(new CommissionResolutionContext(
             productId: $product->id,
@@ -65,10 +67,5 @@ final class QuoteCommissionInitializer
         }
 
         return $drafts;
-    }
-
-    private function recipient(string $type, ?int $id): ?CommissionRecipient
-    {
-        return $id === null ? null : new CommissionRecipient($type, $id);
     }
 }

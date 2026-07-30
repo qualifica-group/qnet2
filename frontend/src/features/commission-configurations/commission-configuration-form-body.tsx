@@ -112,7 +112,7 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
               <MetaField control={form.control} name="value" metaKey="value" label={t('commissionConfigurations.form.value')}>
                 {({ field, disabled, readOnly }) => <FormControl><div className="flex items-center gap-2"><Input type="number" min={0} step="0.0001" {...field} disabled={disabled} readOnly={readOnly} onChange={(event) => field.onChange(Number(event.target.value))} /><span className="text-sm text-muted-foreground" aria-hidden="true">{commissionType === 'PERCENTAGE' ? '%' : '€'}</span></div></FormControl>}
               </MetaField>
-              <MetaField control={form.control} name="priority" metaKey="priority" label={t('commissionConfigurations.form.priority')}>
+              <MetaField control={form.control} name="priority" metaKey="priority" label={t('commissionConfigurations.form.priority')} hint={t('commissionConfigurations.form.hints.priority')}>
                 {({ field, disabled, readOnly }) => <FormControl><Input type="number" step="1" {...field} disabled={disabled} readOnly={readOnly} onChange={(event) => field.onChange(Number(event.target.value))} /></FormControl>}
               </MetaField>
             </div>

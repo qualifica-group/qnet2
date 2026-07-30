@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { useQuoteLinesField } from '@/features/quotes/use-quote-lines-field'
 import { QuoteLineRow, type QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import type { QuoteLine, QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
-import { fetchQuoteCommissionDefaults } from '@/features/quotes/api'
+import type { QuoteCommissionContext, QuoteLine, QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
+import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from '@/features/quotes/api'
 import { useOptionalConfirm } from '@/components/confirm-dialog-context'
 import { quoteLineGridClass, quoteLineMinWidthClass } from './quote-line-grid'
 
@@ -44,12 +44,7 @@ interface QuoteLinesFieldProps {
   knownVatRates: QuoteLineVatRateRef[]
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
-  commissionContext?: {
-    quoteId?: number
-    commercialId: number | null
-    reporterId: number | null
-    supervisorId: number | null
-  }
+  commissionContext?: QuoteCommissionContext
 }
 
 /**
@@ -97,21 +92,36 @@ export function QuoteLinesField({
 
     void Promise.all(value.map(async (row) => {
       if (row.product_id === null) return row
-      const withoutMissingRecipients = (row.commissions ?? []).filter((commission) => {
-        if (commission.recipient_role === 'COMMERCIAL') return commissionContext.commercialId !== null
-        if (commission.recipient_role === 'REPORTER') return commissionContext.reporterId !== null
-        if (commission.recipient_role === 'SUPERVISOR') return commissionContext.supervisorId !== null
-        return true
-      })
-      const defaults = await fetchQuoteCommissionDefaults({
+      const scope = {
         ...(commissionContext.quoteId ? { quote_id: commissionContext.quoteId } : {}),
         product_id: row.product_id,
-        line_net_amount: (row.quantity ?? 0) * (row.unit_price ?? 0),
         commercial_id: commissionContext.commercialId,
         reporter_id: commissionContext.reporterId,
         supervisor_id: commissionContext.supervisorId,
+      }
+      const [recipients, defaults] = await Promise.all([
+        fetchQuoteCommissionRecipients(scope),
+        fetchQuoteCommissionDefaults({
+          ...scope,
+          line_net_amount: (row.quantity ?? 0) * (row.unit_price ?? 0),
+        }),
+      ])
+      // A retained commission follows its role to the new holder; one whose
+      // role lost its holder is dropped, since nobody may be paid for it.
+      const retained = (row.commissions ?? []).flatMap((commission) => {
+        const recipient = recipients[commission.recipient_role]
+        if (recipient === null) return []
+        if (recipient.id === commission.recipient_id && recipient.type === commission.recipient_type) {
+          return [commission]
+        }
+        return [{
+          ...commission,
+          recipient_type: recipient.type,
+          recipient_id: recipient.id,
+          recipient: { id: recipient.id, name: recipient.name },
+        }]
       })
-      const existingRoles = new Set(withoutMissingRecipients.map((commission) => commission.recipient_role))
+      const existingRoles = new Set(retained.map((commission) => commission.recipient_role))
       const additions = defaults
         .filter((commission) => changedRoles.includes(commission.recipient_role as typeof changedRoles[number]) && !existingRoles.has(commission.recipient_role))
         .map((commission) => ({
@@ -126,7 +136,7 @@ export function QuoteLinesField({
           origin: commission.origin,
           commission_configuration_id: commission.commission_configuration_id,
         }))
-      return { ...row, commissions: [...withoutMissingRecipients, ...additions] }
+      return { ...row, commissions: [...retained, ...additions] }
     })).then(onChange).catch(() => toast.error(t('quotes.form.commissions.defaultsError')))
   }, [commissionContext, onChange, t, value, variant])
   const changeRevenueProduct = async (
@@ -215,6 +225,7 @@ export function QuoteLinesField({
                 rememberVatRatePercent={rememberVatRatePercent}
                 error={errors?.[index]}
                 variant={variant}
+                commissionContext={commissionContext}
                 onChangeProduct={(productId, item) => changeRevenueProduct(index, productId, item)}
                 onChangeField={(patch) => setField(index, patch)}
                 onRemove={() => removeRow(index)}

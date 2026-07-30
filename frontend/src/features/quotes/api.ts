@@ -7,6 +7,7 @@ import type {
   QuoteDetailWithPermissions,
   UpdateQuotePayload,
   QuoteLineCommission,
+  QuoteCommissionRecipientMap,
 } from '@/features/quotes/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -77,6 +78,37 @@ export async function fetchQuoteCommissionDefaults(
 ): Promise<QuoteLineCommission[]> {
   const { data } = await apiClient.post<ApiResponse<QuoteLineCommission[]>>(
     '/quotes/commission-defaults',
+    payload,
+  )
+  return data.data
+}
+
+/** Identity-only sibling of `QuoteCommissionDefaultsPayload`: no economic inputs. */
+export type QuoteCommissionRecipientsPayload = Omit<QuoteCommissionDefaultsPayload, 'line_net_amount' | 'reference_date'>
+
+/**
+ * Query key of the recipients a quote line's commission roles are locked to.
+ * Keyed on every input the server resolves against, so changing a role on the
+ * open form re-derives the lock instead of serving a stale identity.
+ */
+export function quoteCommissionRecipientsQueryKey(payload: QuoteCommissionRecipientsPayload) {
+  return [
+    'quotes',
+    'commission-recipients',
+    payload.quote_id ?? null,
+    payload.product_id,
+    payload.commercial_id ?? null,
+    payload.reporter_id ?? null,
+    payload.supervisor_id ?? null,
+  ] as const
+}
+
+/** The one admissible recipient of each commission role, `null` where nothing was picked upstream. */
+export async function fetchQuoteCommissionRecipients(
+  payload: QuoteCommissionRecipientsPayload,
+): Promise<QuoteCommissionRecipientMap> {
+  const { data } = await apiClient.post<ApiResponse<QuoteCommissionRecipientMap>>(
+    '/quotes/commission-recipients',
     payload,
   )
   return data.data

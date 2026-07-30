@@ -1,11 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QuoteLinesField } from './quote-lines-field'
-import { fetchQuoteCommissionDefaults } from './api'
+import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from './api'
+import type { QuoteCommissionRecipientMap } from './types'
 
 const confirm = vi.hoisted(() => vi.fn())
 vi.mock('@/components/confirm-dialog-context', () => ({ useOptionalConfirm: () => confirm }))
-vi.mock('./api', () => ({ fetchQuoteCommissionDefaults: vi.fn() }))
+vi.mock('./api', () => ({
+  fetchQuoteCommissionDefaults: vi.fn(),
+  fetchQuoteCommissionRecipients: vi.fn(),
+}))
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 vi.mock('./quote-line-row', () => ({
   QuoteLineRow: (props: {
@@ -51,8 +55,19 @@ const existingRow = {
   }],
 }
 
-function renderField(onChange = vi.fn(), variant: 'revenue' | 'cost' = 'revenue') {
-  render(
+const RECIPIENTS: QuoteCommissionRecipientMap = {
+  COMMERCIAL: { type: 'referent', id: 4, name: 'Anna' },
+  REPORTER: null,
+  SUPERVISOR: null,
+  SUPPLIER: null,
+}
+
+function renderField(
+  onChange = vi.fn(),
+  variant: 'revenue' | 'cost' = 'revenue',
+  commercialId: number | null = 4,
+) {
+  const view = render(
     <QuoteLinesField
       value={[existingRow]}
       onChange={onChange}
@@ -64,17 +79,63 @@ function renderField(onChange = vi.fn(), variant: 'revenue' | 'cost' = 'revenue'
       rememberVatRatePercent={vi.fn()}
       commissionContext={{
         quoteId: 9,
-        commercialId: 4,
+        commercialId,
         reporterId: null,
         supervisorId: null,
       }}
     />,
   )
-  return onChange
+  return Object.assign(onChange, { rerenderWithCommercial: (id: number | null) => view.rerender(
+    <QuoteLinesField
+      value={[existingRow]}
+      onChange={onChange}
+      variant={variant}
+      disabled={false}
+      knownProducts={[]}
+      knownVatRates={[]}
+      vatRatePercentFor={() => null}
+      rememberVatRatePercent={vi.fn()}
+      commissionContext={{ quoteId: 9, commercialId: id, reporterId: null, supervisorId: null }}
+    />,
+  ) })
 }
 
 describe('QuoteLinesField commission defaults', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue(RECIPIENTS)
+  })
+
+  it('follows a changed quote role onto the commissions already on the line', async () => {
+    const replacement = { type: 'referent' as const, id: 77, name: 'Sara' }
+    vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({ ...RECIPIENTS, COMMERCIAL: replacement })
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue([])
+    const onChange = renderField()
+
+    await act(async () => onChange.rerenderWithCommercial(77))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        commissions: [expect.objectContaining({
+          recipient_role: 'COMMERCIAL',
+          recipient_id: 77,
+          recipient: { id: 77, name: 'Sara' },
+        })],
+      }),
+    ]))
+  })
+
+  it('drops a commission whose role lost its holder on the quote', async () => {
+    vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({ ...RECIPIENTS, COMMERCIAL: null })
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue([])
+    const onChange = renderField()
+
+    await act(async () => onChange.rerenderWithCommercial(null))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ commissions: [] }),
+    ]))
+  })
 
   it('preserves product and commissions when regeneration is cancelled', async () => {
     confirm.mockResolvedValue(false)

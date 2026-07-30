@@ -2,6 +2,86 @@
 
 > Injected at session start. Update at every green state.
 
+## COMMISSIONI OFFERTE: DESTINATARIO BLOCCATO (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: nel popup commissioni di un'Offerta il destinatario non si sceglie —
+e' sempre chi e' stato selezionato a monte per quel ruolo; se a monte non c'e' nessuno,
+quel ruolo non deve essere selezionabile. Piu' la resa grafica: le card del popup erano
+dello stesso colore dello sfondo.
+
+### Regola (unica, condivisa da 3 consumatori)
+
+`App\Services\Commissions\CommissionRecipientResolver` — estratto da
+`QuoteCommissionInitializer`, e' l'UNICA fonte di verita' su chi puo' ricevere una
+commissione: `COMMERCIAL`→`quote.commercial_id` (referent), `REPORTER`→`reporter_id`
+(referent), `SUPERVISOR`→`supervisor_id` (user), `SUPPLIER`→`product.supplier_id`
+(registry). Ruolo senza selezione a monte = `null` = non commissionabile.
+Lo usano: l'initializer dei defaults, il nuovo endpoint recipients, la validazione write.
+
+**Precedenza invertita in `QuoteCommissionInitializer`**: prima era
+`$quote?->commercial_id ?? $data->commercialId` (il persistito vinceva). Ora vince il
+SUBMITTED (`$data->commercialId ?? $quote?->commercial_id`): il chiamante e' un form
+aperto i cui ruoli possono essere gia' cambiati e non ancora salvati — con la vecchia
+precedenza i defaults risolvevano il commerciale STALE. `QuoteLineCommissionWriter::defaults()`
+passa null su tutti e tre, quindi per lui non cambia nulla.
+
+### Contratto nuovo (additivo)
+
+`POST /api/quotes/commission-recipients` → `data` = oggetto chiavato per ruolo, TUTTI e 4
+sempre presenti, valore `{type, id, name}` oppure `null`. Stessi input di
+`commission-defaults` meno `line_net_amount`/`reference_date`. Authz identica salvo che
+`commissions`/`commission_recipient` bastano VISIBLE (non editable): legge identita', non scrive.
+Documentato in `docs/api/0006-commission-configurator-and-quote-integration.md`.
+
+### Enforcement server-side (non e' solo UI)
+
+`ValidatesQuoteLineCommissions::enforceCommissionRecipients()`, agganciato in `withValidator`
+di Store/UpdateQuoteRequest. Ruolo senza destinatario → 422 su
+`offer_lines.{i}.commissions.{j}.recipient_role`; destinatario diverso da quello risolto →
+422 su `...recipient_id`. I ruoli di riferimento sono quelli SUBMITTED nella stessa request,
+con fallback sul persistito solo per le chiavi assenti (`effectiveRoleId`).
+
+**Split di file:** `ValidatesQuoteLines` aveva superato 300 righe → i due guard commissioni
+sono usciti in `App\Http\Requests\Concerns\ValidatesQuoteLineCommissions` (256 righe); il
+trait originale resta a 74 e tiene solo le regole di FORMA delle righe. Entrambe le request
+usano ora i due trait.
+
+### Frontend
+
+- `QuoteCommissionsDialog`: niente piu' `AsyncPaginatedSelect` sul destinatario — e' un
+  `<output>` in sola lettura. Nuove prop `productId` e `commissionContext`; risolve il lock
+  con `useQuery` su `fetchQuoteCommissionRecipients` (staleTime 60s), **disabilitata quando
+  `disabled`** (il dettaglio read-only non chiama l'endpoint, che pretende create/update).
+  Ruolo `null` → nessun bottone "Aggiungi", messaggio `roleUnavailable`. Commissione gia'
+  presente su un ruolo che ha perso il titolare → nota `recipientStale` con `role="alert"` e
+  **Salva disabilitato** (sarebbe un 422 garantito).
+- `quote-lines-field.tsx`: l'effetto sul cambio ruolo ora fa `Promise.all([recipients, defaults])`
+  e **riscrive** il destinatario delle commissioni gia' presenti (prima le teneva col
+  destinatario vecchio → con il nuovo guard sarebbe stato un 422); quelle il cui ruolo ha
+  perso il titolare vengono droppate.
+- Prop threading: `QuoteLinesField` → `QuoteLineRow` (nuova prop `commissionContext`) → dialog.
+  Tipo `QuoteCommissionContext` centralizzato in `features/quotes/types.ts` (era inline).
+- Superfici (ui-design.md): `DialogContent` resta rung 1 `bg-background`; header/footer del
+  dialog salgono a `bg-surface` (rung 2); **le card di ruolo sono `bg-card`** (rung 3, bianche).
+
+### Verifica eseguita
+
+Backend `--filter="Quote|Commission"`: 187 pass. Nuovo file
+`tests/Feature/Quotes/QuoteCommissionRecipientLockTest.php` (6 test: endpoint, precedenza
+submitted-vince, 403, 422 destinatario estraneo, 422 ruolo senza titolare, PATCH validato
+contro i ruoli della stessa request). Frontend: 407 file / 2786 test pass,
+`tsc -b --force` EXIT=0, eslint pulito.
+
+**ATTENZIONE ambiente:** i test frontend vanno lanciati con `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`.
+Le asserzioni sugli importi usano `toLocaleString(undefined)` e su macchina it-IT rendono
+`20,00` invece di `20.00` (sensibilita' preesistente, non introdotta qui).
+
+**Rossi PREESISTENTI** nella suite backend completa, non toccati da questa modifica e rossi
+anche in isolamento su HEAD: 14 test (nodi di navigazione `*SecurityTest`,
+`AbstractMigrationSourcePreviewTest` per una colonna `description` in piu',
+`CustomFieldWritePipelineTest` su `vat_number`, `RequestManagementTableSearchTest` sulla
+lunghezza del termine). Da triagare a parte.
+
 ## SPEC 0067 — PANNELLO OFFERTE NELLA VIEW OPPORTUNITA' (2026-07-29) — VERDE, NON COMMITTATO
 
 Spec: `docs/specs/0067-opportunity-quotes-panel.xml` (47 criteri). Verifier indipendente:

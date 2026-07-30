@@ -1,5 +1,18 @@
+/**
+ * Table columns and advanced filters are backend-driven: the server sends the
+ * i18n KEY (`commissionConfigurations.columns.*` /
+ * `commissionConfigurations.advancedFilters.*`, see
+ * `CommissionConfigurationColumnCatalog`) and the frontend translates it — the
+ * keys below are mandatory and must match the column ids.
+ */
 export const commissionConfigurations = {
   forbidden: "You don't have permission to view commission configurations.",
+  columns: {
+    name: 'Configuration name', recipient_role: 'Recipient role', application_scope: 'Scope',
+    category: 'Product category', product: 'Product', commission_type: 'Type',
+    value: 'Value', priority: 'Priority', status: 'Status', updated_at: 'Last updated',
+  },
+  advancedFilters: { name: 'Configuration name', validFrom: 'Valid from', validUntil: 'Valid until' },
   detail: { title: 'Commission configuration', loadError: 'Unable to load the commission configuration.', scope: 'Recipient and scope', calculation: 'Calculation', validity: 'Validity and notes', updated_at: 'Last updated' },
   form: {
     new: 'New configuration', save: 'Save', saving: 'Saving…',
@@ -12,6 +25,7 @@ export const commissionConfigurations = {
     status: 'Status', internal_note: 'Internal service note', searchCategory: 'Search product categories…',
     searchProduct: 'Search products…', selectPlaceholder: 'Select…', selectEmpty: 'No results found.', selectError: 'Unable to load options.',
     sections: { scope: 'Identity and scope', calculation: 'Calculation', validity: 'Validity', notes: 'Internal note' },
+    hints: { priority: 'Decides which rule wins when several valid configurations compete for the same role and the same scope: the highest number wins, then the most recent start date. A Product rule always beats a Category rule regardless.' },
     errors: { nameRequired: 'Configuration name is required.', valueInvalid: 'Commission value must be zero or greater.', priorityInvalid: 'Priority must be a whole number.', validFromRequired: 'Start date is required.', categoryRequired: 'Select a product category.', productRequired: 'Select a product.', validUntilInvalid: 'End date cannot precede start date.' },
   },
   options: {

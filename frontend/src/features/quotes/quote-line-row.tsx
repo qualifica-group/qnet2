@@ -12,7 +12,7 @@ import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import type { QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
+import type { QuoteCommissionContext, QuoteLineProductRef, QuoteLineVatRateRef } from '@/features/quotes/types'
 import { QuoteCommissionsDialog } from '@/features/quotes/quote-commissions-dialog'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { quoteLineGridClass } from './quote-line-grid'
@@ -55,6 +55,8 @@ interface QuoteLineRowProps {
   /** Feeds the shared VAT-percent cache when the user manually picks a rate the row hasn't seen yet (AC-071). Omitted in call sites that don't need it (e.g. tests exercising unrelated behaviour). */
   rememberVatRatePercent?: (vatRateId: number, percent: number) => void
   error?: QuoteLineRowErrors
+  /** The quote's live role selections, from which the commissions dialog resolves its locked recipients (revenue rows only). */
+  commissionContext?: QuoteCommissionContext
   onChangeProduct: (
     productId: number | null,
     item: QuoteProductForSelectItem | null,
@@ -91,6 +93,7 @@ export function QuoteLineRow({
   vatRatePercentFor,
   rememberVatRatePercent,
   error,
+  commissionContext,
   onChangeProduct,
   onChangeField,
   onRemove,
@@ -239,6 +242,8 @@ export function QuoteLineRow({
             onOpenChange={setCommissionsOpen}
             lineNumber={index + 1}
             productName={knownProduct?.name ?? t('quotes.form.commissions.productFallback')}
+            productId={row.product_id}
+            commissionContext={commissionContext}
             quantity={row.quantity}
             unitPrice={row.unit_price}
             commissions={row.commissions ?? []}
