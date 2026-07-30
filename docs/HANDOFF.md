@@ -3,6 +3,74 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SUITE INTERAMENTE VERDE: AZZERATI I 17 ROSSI STORICI (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: chiudere i rossi rimasti e ripulire. I 14 rossi backend + 3 frontend che da
+giorni venivano etichettati "preesistenti" e rimbalzati fra teammate avevano **5 cause distinte**,
+tutte identificate e corrette. Backend **4695 passed / 1 skipped / 0 failed**, frontend **3056
+passed su 442 file / 0 failed**, Pint `passed`, `tsc -b --force` EXIT=0, ESLint pulito.
+
+**1. Gli assert di navigazione erano inerti (11 rossi, la causa piu' grave).**
+`NavigationService::filter()` (riga 73) scarta un gruppo senza route i cui figli sono tutti
+nascosti. L'helper `navigationSectionKeys($data, 'sezione')` cercava i figli di UNA sezione: per
+l'utente **senza** permesso quella sezione non esiste nella risposta, quindi la collection era
+vuota e `not->toContain('x')` passava **a vuoto**. Tutti e 44 gli assert di gating della
+navigazione — inclusi i 33 allora verdi — non verificavano nulla: sarebbero rimasti verdi anche
+con il nodo che trapelava a un utente non autorizzato. Gli 11 rossi erano solo la punta emersa,
+cioe' i file rimasti agganciati alle sezioni `management` e `configuration` dopo la
+riorganizzazione dell'IA (oggi `registries-group`, `products-group`, `rewards-group`,
+`administration`).
+- Helper sostituito con **`navigationNodeKeys(array $data)`** in `tests/Pest.php`: ricorsivo su
+  tutto l'albero, a qualsiasi profondita' (serve anche per `imports`, annidato a livello 3).
+  Il ramo negativo diventa "assente dall'INTERO albero" — piu' forte del precedente e, soprattutto,
+  non falsificabile da una riorganizzazione delle sezioni. `navigationSectionKeys` eliminato
+  (nessun residuo: era dead code una volta convertiti i 44 call site).
+- Convertiti 22 file + il lookup inline di `CompanySitePermissionsTest`, che puntava anch'esso a
+  `management`.
+- **Da sapere:** il nuovo helper non asserisce piu' in quale sezione sta il nodo. Era una
+  precisione solo apparente — si e' rotta due volte e nel frattempo copriva zero. Chi vuole
+  vincolare la posizione nell'IA scriva un test dedicato alla navigazione (esiste gia' il
+  precedente: `RequestManagementNavigationTest`, `MigrationNavigationTest`).
+
+**2. `CustomFieldWritePipelineTest` (422 vat_number).** La partita IVA e' ora validata davvero
+(`App\Rules\VatNumber` -> `App\Support\Fiscal\ItalianVatNumber`, algoritmo a cifra di controllo).
+Il test usava `IT999` come payload accessorio — non e' un numero valido. Allineato a
+`IT99988877769`, lo stesso valore gia' usato da `CompanyCrudTest`. L'intento del test (merge
+parziale dei custom field) e' invariato.
+
+**3. `AbstractMigrationSourcePreviewTest`.** `RolesSource` dichiara 3 colonne native e
+`mapNativeRow()` emette **sempre** `description`, null-fillata quando il record esterno la omette
+(necessario: la griglia di preview mappa le righe per column id, una chiave assente sfaserebbe le
+celle). L'aspettativa del test precedeva quella colonna. Aggiornata **coprendo entrambi i casi** —
+un record con description e uno senza — invece di limitarsi ad aggiungere `null`.
+
+**4. `RequestManagementTableSearchTest` over-length.** Non e' una regressione: il cap di
+`TableRowsRequest::SEARCH_MAX_LENGTH` e' stato alzato **deliberatamente** da 100 a 255 (il
+commento alla riga 33 documenta il perche': un cap corto rifiutava l'incolla di nomi prodotto
+lunghi e la 422 compariva nella griglia come una riga di celle "ERR"). Il test era rimasto sul
+vecchio limite con un magic value `101`; ora usa `TableRowsRequest::SEARCH_MAX_LENGTH + 1`, come
+gia' facevano `TableRowsSearchTest` ed `ExportStoreTest`.
+
+**5. I 3 rossi frontend erano un bug di codice, non test stantii.**
+`quote-commissions-dialog.tsx` e `commission-configuration-detail.tsx` formattavano i numeri con
+`toLocaleString(undefined, ...)` / `Intl.DateTimeFormat(undefined, ...)`: locale `undefined`
+significa **locale ambientale del runtime**, quindi l'output cambiava da macchina a macchina
+(qui `20,00`, in CI `20.00`). I test, che fissano `i18n.changeLanguage('en')`, avevano ragione.
+Entrambi allineati alla convenzione gia' usata da 6 altri file: **`new Intl.NumberFormat(i18n.language, …)`**.
+Nel dialog si riusa `formatQuoteAmount` (gia' esportato da `quote-summary.tsx`, stessa feature)
+invece di un terzo formatter: l'importo passa da `calculateCommissionAmount` -> `roundCommission`,
+gia' arrotondato a 2 decimali, quindi il `maximumFractionDigits: 2` non cambia il risultato.
+**Regola da tenere:** in questo frontend il locale non si prende mai dall'ambiente, si prende da
+`i18n.language`. Un `undefined` li' dentro e' un test che passa sul portatile e rompe in CI.
+
+**Pulizia collaterale.** Pint falliva su 2 file che nessuno aveva formattato
+(`app/Services/Commissions/QuoteCommissionPayloadRedactor.php`,
+`tests/Feature/Migration/AttributesSourceImportTest.php`), entrambi non toccati da questo lavoro:
+formattati, ora `pint --test` e' `passed`.
+
+**Restano aperti** (non risolvibili qui, richiedono l'app reale): AC-140 responsive dell'editor
+document-layouts + apertura in Word di un `.docx` generato; AC-035 responsive del pannello Offerte.
+
 ## FIX 500 SU GET /api/quotes/{id} IN PRODUZIONE (2026-07-30) — VERDE, NON COMMITTATO
 
 Errore prod: `SQLSTATE[42000] 1055 ... ORDER BY clause is not in GROUP BY clause`
@@ -1104,16 +1172,25 @@ rossi come "preesistenti" usando `git stash` dei SOLI propri file — metodo val
 "non causato da me", NON per dire "preesistente", perche' la baseline conteneva ancora l'altra
 feature. Attribuzione accertata:
 
-| Test | Attribuzione |
-|---|---|
-| `RequestManagementTableSearchTest` over-length | storico |
-| `quote-costs-tab.test.tsx` | 0066 (`useConfirm` in `quote-lines-field.tsx` senza provider) — RISOLTO |
-| `cell-renderers.test.tsx` (3) | storico — RISOLTO nel frattempo |
-| `CustomFieldAdminSecurityTest:41` | 0066 (nodo in `config/navigation.php`) |
-| `FieldCatalogueEndpointTest:80` | 0066 (entry in `config/authorization.php`, expected-array del test non aggiornato) |
-| `CustomFieldWritePipelineTest` (422 vat_number) | ne' 0066 ne' 0067, origine terza, deterministico |
-| `MetaEndpointTest` permissions_resource | inquinamento d'ordine fra test: isolato passa |
-| `commission-configuration-detail.test.tsx`, `quote-commissions-dialog.test.tsx` | 0066 |
+**TUTTI RISOLTI il 2026-07-30** — vedi la voce in testa al file: la suite e' interamente verde su
+entrambi gli stack. Tabella conservata perche' documenta il metodo di attribuzione sbagliato, non
+perche' ci siano rossi aperti.
+
+| Test | Attribuzione | Esito |
+|---|---|---|
+| `RequestManagementTableSearchTest` over-length | storico | RISOLTO — cap alzato a 255 di proposito, test fermo a 100 |
+| `quote-costs-tab.test.tsx` | 0066 (`useConfirm` in `quote-lines-field.tsx` senza provider) | RISOLTO |
+| `cell-renderers.test.tsx` (3) | storico | RISOLTO |
+| `CustomFieldAdminSecurityTest:41` | attribuito a 0066, **sbagliato**: era l'helper di navigazione inerte | RISOLTO |
+| `FieldCatalogueEndpointTest:80` | 0066 (entry in `config/authorization.php`) | RISOLTO |
+| `CustomFieldWritePipelineTest` (422 vat_number) | ne' 0066 ne' 0067, origine terza | RISOLTO — VAT ora validata davvero, fixture `IT999` non valida |
+| `MetaEndpointTest` permissions_resource | inquinamento d'ordine fra test | RISOLTO |
+| `commission-configuration-detail.test.tsx`, `quote-commissions-dialog.test.tsx` | attribuito a 0066, **sbagliato**: locale ambientale nel codice, non nei test | RISOLTO |
+
+**Lezione, oltre al `git stash`:** meta' di queste attribuzioni erano errate perche' fatte per
+prossimita' (il rosso e' comparso mentre lavoravo su X, quindi e' di X). Le cause vere erano due
+difetti trasversali — un helper di test inerte e una formattazione dipendente dal locale di
+sistema — che non appartenevano a nessuna delle spec sospettate.
 
 ## PROSSIMI PASSI
 
@@ -1123,7 +1200,8 @@ feature. Attribuzione accertata:
    `params` di `QuoteFormMode` il pannello non compila) e lo staging interattivo non e'
    disponibile: la via pulita e' **far committare prima la 0066, poi la 0067 sopra**.
 2. AC-035 (responsive 375/768/1024) resta da verificare visivamente sull'app reale.
-3. I rossi 0066 sopra vanno girati a chi possiede quella feature.
+3. ~~I rossi 0066 vanno girati a chi possiede quella feature.~~ Fatto il 2026-07-30: erano 5 cause
+   trasversali, nessuna di 0066. Suite interamente verde, vedi la voce in testa al file.
 
 
 ---
