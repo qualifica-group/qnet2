@@ -309,7 +309,7 @@ it('HTTP: PATCH partial merge leaves other custom field keys untouched', functio
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/companies/{$target->id}", [
-        'vat_number' => 'IT999',
+        'vat_number' => 'IT99988877769',
         'custom_fields' => ['headcount' => 42],
     ])->assertOk();
 

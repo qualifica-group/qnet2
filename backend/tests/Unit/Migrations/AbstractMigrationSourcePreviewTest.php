@@ -41,7 +41,7 @@ it('translates page/per_page to offset/limit and maps records to rows keyed by c
     Http::fake([
         fakeMigrationsBaseUrl().'/roles*' => Http::response([
             'items' => [
-                ['id' => 10, 'name' => 'operator'],
+                ['id' => 10, 'name' => 'operator', 'description' => 'Front desk'],
                 ['id' => 11, 'name' => 'reviewer'],
             ],
             'pagination' => ['total' => 5, 'offset' => 2, 'limit' => 2, 'total_pages' => 3],
@@ -50,9 +50,12 @@ it('translates page/per_page to offset/limit and maps records to rows keyed by c
 
     $page = app(RolesSource::class)->preview(new MigrationQuery(page: 2, perPage: 2));
 
+    // Every declared native column is keyed on every row: a column the external
+    // record omits is null-filled, never absent, or the preview grid would
+    // shift its cells.
     expect($page->rows)->toBe([
-        ['id' => 10, 'name' => 'operator'],
-        ['id' => 11, 'name' => 'reviewer'],
+        ['id' => 10, 'name' => 'operator', 'description' => 'Front desk'],
+        ['id' => 11, 'name' => 'reviewer', 'description' => null],
     ])
         ->and($page->page)->toBe(2)
         ->and($page->perPage)->toBe(2)

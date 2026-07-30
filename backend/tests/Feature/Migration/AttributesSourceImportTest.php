@@ -1,7 +1,9 @@
 <?php
 
+use App\CustomFields\FieldTypeRegistry;
 use App\Enums\MigrationStatus;
 use App\Jobs\RunMigrationJob;
+use App\Migrations\Sources\AttributesSource;
 use App\Models\Attribute;
 use App\Models\MigrationRun;
 use App\Models\Role;
@@ -242,10 +244,10 @@ it('isolates a RELATION row with an invalid entity_type', function () {
 it('exposes a sample response covering every attribute type with its extras', function () {
     seedMigrationsConfig();
 
-    $sample = app(App\Migrations\Sources\AttributesSource::class)->sampleResponse();
+    $sample = app(AttributesSource::class)->sampleResponse();
     $types = array_column($sample['items'], 'type');
 
-    expect($types)->toEqualCanonicalizing(app(App\CustomFields\FieldTypeRegistry::class)->all());
+    expect($types)->toEqualCanonicalizing(app(FieldTypeRegistry::class)->all());
 
     $enum = collect($sample['items'])->firstWhere('type', 'enum');
     expect($enum['options'][0])->toHaveKeys(['value', 'label', 'color', 'icon', 'sort_order', 'is_default']);

@@ -86,3 +86,24 @@ describe('quotes document generation i18n (spec 0070)', () => {
     expect(itLocale.quotes.detail.documentGenericError).toBeTruthy()
   })
 })
+
+// Directive 2026-07-30: the Note tab became "Note e pagamenti" and hosts the
+// payment method picker, so its field/search/detail labels must exist in both
+// locales and the tab label must no longer be the bare "Note"/"Notes".
+describe('quotes payment method i18n', () => {
+  it('translates the payment method field and its search placeholder', () => {
+    expect(en.quotes.form.paymentMethod).toBeTruthy()
+    expect(itLocale.quotes.form.paymentMethod).toBeTruthy()
+    expect(en.quotes.form.paymentMethodSearch).toBeTruthy()
+    expect(itLocale.quotes.form.paymentMethodSearch).toBeTruthy()
+    expect(en.quotes.detail.paymentMethod).toBeTruthy()
+    expect(itLocale.quotes.detail.paymentMethod).toBeTruthy()
+  })
+
+  it('renames the notes tab and section to cover payments in both locales', () => {
+    expect(itLocale.quotes.form.tabs.notes).toBe('Note e pagamenti')
+    expect(itLocale.quotes.form.sections.notes.title).toBe('Note e pagamenti')
+    expect(en.quotes.form.tabs.notes).toBe('Notes and payments')
+    expect(en.quotes.form.sections.notes.title).toBe('Notes and payments')
+  })
+})

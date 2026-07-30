@@ -3,6 +3,75 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX 500 SU GET /api/quotes/{id} IN PRODUZIONE (2026-07-30) — VERDE, NON COMMITTATO
+
+Errore prod: `SQLSTATE[42000] 1055 ... ORDER BY clause is not in GROUP BY clause`
+(`quote_lines.sort_order`) su `QuoteController@show`.
+
+**Root cause.** `QuoteCommissionSummaryCalculator::totals()` costruiva l'aggregato
+riusando la relazione `Quote::lines()`, che porta con se' `orderBy('sort_order')` per il
+read path. L'`ORDER BY` finiva nella query con `GROUP BY recipient_role`: MySQL con
+`only_full_group_by` (prod) la rifiuta, SQLite (dev/test) la tollera — per questo era
+verde in locale e rossa solo in produzione.
+
+**Fix.** `->reorder()` subito dopo `$quote->lines()`: l'ordinamento di riga non ha senso
+in un aggregato. Nessun'altra query con `groupBy` nel backend parte da una relazione
+ordinata (verificate: ImportService, LeadOperatorDistributor, RequestAssignmentService,
+RequestCategoryTabsResolver — tutte da `query()`/`DB::table()` o ordinate su colonna
+raggruppata).
+
+**Regola generale da tenere:** un aggregato non si costruisce mai sopra una relazione che
+definisce `orderBy` senza `reorder()`. Le suite girano su SQLite, che non segnala il
+problema: la garanzia va asserita sull'SQL emesso.
+
+**Test.** `QuoteSummaryHttpTest`: nuovo caso che cattura il query log della `show` e
+asserisce che nessuna query con `group by` contenga `order by`. Verificato che fallisce
+senza il fix (reproduce-first) e passa con il fix.
+
+**Verifica eseguita:** Pest `tests/Feature/Quotes tests/Feature/CommissionConfigurations`
+-> 170 verdi; Pint pulito sui due file toccati.
+
+## OFFERTE: TAB "NOTE E PAGAMENTI" + METODO DI PAGAMENTO (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: nelle Offerte (modulo `quotes`) la sezione/tab "Note" diventa "Note e
+pagamenti" e ospita un select con tutti i metodi di pagamento, salvato sull'offerta.
+
+**Contratto congelato.** `quotes.payment_method_id` (FK nullable -> `payment_methods`,
+`nullOnDelete`), scrivibile su `POST /api/quotes` e `PATCH /api/quotes/{id}`, esposto da
+`QuoteResource` come `payment_method_id` + `payment_method: {id,name}|null`. Il select e'
+alimentato da `GET /api/payment-methods/for-select` (gia' esistente, spec 0068), quindi
+mostra solo i metodi attivi.
+
+**Invarianti da non rompere**
+- `payment_method_id` NON e' un default ne' un'ereditarieta': a differenza di `layout_id`
+  non esiste un "default di modulo" sui `payment_methods` e le Opportunita' non hanno un
+  campo da cui ereditarlo. Chiave assente = resta `null`. Percio' il DTO di create ha
+  `paymentMethodId` **senza** flag `*Submitted` (basta il valore), mentre quello di update
+  ha la coppia `paymentMethodId`/`paymentMethodIdSubmitted` come ogni altra FK opzionale.
+- `quotes` e' il **primo consumatore** del lookup `payment-methods`: per questo
+  `PaymentMethodService::delete()` non e' piu' una delete nuda ma ha il guard 409
+  (`$paymentMethod->quotes()->exists()`), esattamente il punto di estensione che il file
+  documentava da spec 0068. Il `nullOnDelete` a schema resta solo come rete di sicurezza.
+- Nessuna validazione "metodo attivo" lato server (a differenza di `ValidatesQuoteLayout`):
+  il for-select gia' offre solo gli attivi, e un'offerta con un metodo disattivato dopo la
+  firma deve restare salvabile.
+
+**Test toccati perche' il requisito e' cambiato (dichiarato, non aggirato)**
+- `QuoteAuthorizationTest` AC-064 asseriva l'elenco ESATTO dei campi di `quotes`: ora
+  include `payment_method_id` fra `layout_id` e `internal_notes`.
+- `quote-form-body.test.tsx` asseriva il tab `'Notes'`: ora `'Notes and payments'`.
+- Le fixture di 7 suite frontend hanno i due campi nuovi (additivo).
+
+**Fuori scope, segnalato:** nessuna colonna `payment_method` nella tabella AG Grid delle
+offerte e nessun token `payment_method` in `QuoteFieldResolver` (il resolver dei campi per
+il `.docx`): se il layout Word deve stampare il metodo di pagamento, va aggiunto li'.
+
+**Verifica eseguita:** Pest `tests/Feature/Quotes tests/Feature/PaymentMethods` -> 251
+verdi (13 nuovi in `QuotePaymentMethodTest`); Pint pulito; Vitest `src/features/quotes` ->
+149/150 (l'unico rosso, `quote-commissions-dialog`, e' **pre-esistente**: fallisce anche a
+albero pulito), `src/features/payment-methods` + `src/i18n` -> 50 verdi; ESLint pulito;
+`tsc -b --force` EXIT=0. Migrazione applicata al DB di sviluppo.
+
 ## AZIONE MASSIVA LEAD -> OPPORTUNITA' (2026-07-30) — VERDE, NON COMMITTATO
 
 Spec `docs/specs/0071-lead-bulk-opportunity-conversion.xml` (approvata dall'utente),

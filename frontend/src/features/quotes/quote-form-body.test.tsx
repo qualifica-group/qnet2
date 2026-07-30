@@ -132,7 +132,9 @@ describe('QuoteFormBody (spec 0065)', () => {
 
     expect(screen.getByRole('tab', { name: 'Offer' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Costs' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Notes' })).toBeInTheDocument()
+    // Renamed by the 2026-07-30 directive: the tab now also hosts the payment
+    // method picker, so it is "Notes and payments"/"Note e pagamenti".
+    expect(screen.getByRole('tab', { name: 'Notes and payments' })).toBeInTheDocument()
     expect(screen.getByText('Expected revenue')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Costs' }))

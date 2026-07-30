@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Requests\Table\TableRowsRequest;
 use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\User;
@@ -130,6 +131,6 @@ it('rows: an over-length search term is rejected', function () {
     $this->postJson('/api/tables/request-management/rows', [
         'startRow' => 0,
         'endRow' => 25,
-        'search' => str_repeat('a', 101),
+        'search' => str_repeat('a', TableRowsRequest::SEARCH_MAX_LENGTH + 1),
     ])->assertStatus(422);
 });

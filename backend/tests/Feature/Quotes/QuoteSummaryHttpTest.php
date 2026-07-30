@@ -8,6 +8,7 @@ use App\Models\QuoteStatus;
 use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -109,6 +110,35 @@ it('AC-042: a quote without lines exposes every summary value at 0.00 over HTTP'
         'margin' => ['net' => '0.00'],
         'commissions' => ['commercial' => '0.00', 'reporter' => '0.00', 'supervisor' => '0.00', 'supplier' => '0.00'],
     ]);
+});
+
+it('aggregates the commission totals without inheriting the sort_order ordering of Quote::lines()', function () {
+    quoteSummaryNewStatus();
+    $opportunity = Opportunity::factory()->create();
+    $revenueProduct = quoteSummaryRevenueProduct();
+    $actor = quoteSummaryUserWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $created = $this->postJson('/api/quotes', [
+        'title' => 'Riepilogo provvigioni',
+        'opportunity_id' => $opportunity->id,
+        'offer_lines' => [
+            ['product_id' => $revenueProduct->id, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])->assertCreated();
+
+    DB::enableQueryLog();
+    $this->getJson('/api/quotes/'.$created->json('data.id'))->assertOk();
+    $aggregates = collect(DB::getQueryLog())
+        ->pluck('query')
+        ->filter(fn (string $sql): bool => str_contains($sql, 'group by'));
+    DB::disableQueryLog();
+
+    // MySQL only_full_group_by rejects "order by sort_order" next to a
+    // GROUP BY that neither groups nor aggregates it; SQLite tolerates it,
+    // so the guarantee is asserted on the emitted SQL, not on the result.
+    expect($aggregates)->not->toBeEmpty()
+        ->and($aggregates->filter(fn (string $sql): bool => str_contains($sql, 'order by')))->toBeEmpty();
 });
 
 it('AC-043: cost exceeding revenue yields a negative margin.net over HTTP, never clamped', function () {

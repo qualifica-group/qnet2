@@ -14,6 +14,11 @@ final class QuoteCommissionSummaryCalculator
     public function totals(Quote $quote): array
     {
         $totals = $quote->lines()
+            // Quote::lines() carries orderBy('sort_order') for the read path;
+            // inherited here it lands in an aggregate query and MySQL rejects
+            // it under only_full_group_by (sort_order is neither grouped nor
+            // aggregated). Row order is meaningless for a GROUP BY total.
+            ->reorder()
             ->where('quote_lines.line_type', QuoteLineType::Revenue)
             ->join('quote_line_commissions', 'quote_lines.id', '=', 'quote_line_commissions.quote_line_id')
             ->selectRaw('quote_line_commissions.recipient_role, SUM(quote_line_commissions.calculated_amount) as total')

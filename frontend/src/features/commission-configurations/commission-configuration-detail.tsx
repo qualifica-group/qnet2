@@ -1,5 +1,6 @@
 import { CalendarRange, CircleDollarSign, History, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import {
   DetailField,
@@ -16,7 +17,7 @@ import type { CommissionConfigurationDetailWithPermissions } from './types'
 
 function formatDate(value: string | null): string {
   if (!value) return '–'
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+  return new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(
     new Date(`${value.slice(0, 10)}T00:00:00`),
   )
 }
@@ -48,8 +49,8 @@ export function CommissionConfigurationDetailView({
     t(`commissionConfigurations.options.${field}.${value}`)
   const formattedValue =
     configuration.commission_type === 'PERCENTAGE'
-      ? `${Number(configuration.value).toLocaleString(undefined, { maximumFractionDigits: 4 })}%`
-      : Number(configuration.value).toLocaleString(undefined, { minimumFractionDigits: 2 })
+      ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 4 }).format(Number(configuration.value))}%`
+      : new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 2 }).format(Number(configuration.value))
 
   return (
     <DetailPanel>

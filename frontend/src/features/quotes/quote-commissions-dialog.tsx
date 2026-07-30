@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { calculateCommissionAmount, roundCommission } from './commission-calculator'
+import { formatQuoteAmount } from './quote-summary'
 import { fetchQuoteCommissionRecipients, quoteCommissionRecipientsQueryKey } from './api'
 import type { CommissionRole } from '@/features/commission-configurations/types'
 import type { QuoteCommissionContext, QuoteCommissionRecipient, QuoteLineCommissionInput } from './types'
@@ -200,7 +201,7 @@ export function QuoteCommissionsDialog(props: Props) {
                   </div> : null}
                   <div className="grid gap-2">
                     <Label htmlFor={amountId}>{t('quotes.form.commissions.calculated')}</Label>
-                    <output id={amountId} className="flex h-9 items-center rounded-md border bg-muted/40 px-3 font-semibold tabular-nums">{amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</output>
+                    <output id={amountId} className="flex h-9 items-center rounded-md border bg-muted/40 px-3 font-semibold tabular-nums">{formatQuoteAmount(amount)}</output>
                   </div>
                   {notePermission.visible ? <div className="grid gap-2 sm:col-span-2">
                     <Label htmlFor={`commission-${role}-note`}>{t('quotes.form.commissions.note')}</Label>
