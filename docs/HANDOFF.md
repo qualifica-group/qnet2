@@ -2,6 +2,123 @@
 
 > Injected at session start. Update at every green state.
 
+## SPEC 0068 — MODULO METODI DI PAGAMENTO (2026-07-30) — VERDE, COMMITTATO IN 3c9e63c
+
+Spec: `docs/specs/0068-payment-methods-module.xml`, 75 criteri. Nuovo lookup `payment-methods`
+sul modello canonico di `reward-statuses` (spec 0060). Contratto congelato prima del dispatch,
+backend e frontend implementati in parallelo senza rinegoziarlo.
+
+### Esito dei 75 criteri (conteggio ricostruito enumerando gli id, non per intervalli)
+
+**74 PASS** con test eseguiti, **1 MANUALE** (AC-140). 74+1 = 75. Zero FAIL, zero non verificati.
+Un PASS porta una riserva sostanziale che va letta:
+- **AC-051 PASS CON RISERVA** — il criterio come scritto e esercitato per intero (termine nel solo
+  `code`, nel solo `name`, assente da entrambi), ma solo per termini SENZA underscore.
+  Causa: `App\Services\Table\FilterApplier::escapeLike()` produce `\_` e SQLite (DB dei test) non
+  onora l'escape a backslash senza clausola `ESCAPE`; MySQL (produzione) si. Verificato con probe
+  SQLite isolato: il record cercato sparisce del tutto, non e un falso negativo collaterale.
+  Difetto PREESISTENTE e cross-cutting su OGNI colonna searchable di OGNI dominio del repo.
+  Il test lo documenta nel commento (`PaymentMethodTableTest.php:92-97`) e usa codici senza
+  underscore. NON aggirato altrove: gli altri test usano codici snake_case solo come valore di
+  campo, mai come termine `search=`.
+- **AC-113 PASS** — chiuso con `features/modules/module-routes.test.tsx`, primo test del repo su
+  `buildModuleRoutes()`. Nessun router montato e nessun refactor di produzione: la funzione era
+  gia testabile. Attenzione alla forma reale del valore di ritorno, che il test asserisce e che
+  e controintuitiva: **path RELATIVI senza slash iniziale** (`payment-methods/new`, non
+  `/payment-methods/new`, per via di `basePath.replace(/^\//, '')`). Verifica anche `element.type`
+  e `element.props` (`domain`, piu `variant: 'duplicate'` sulla quarta route) e include un caso
+  negativo su un dominio inesistente.
+- **AC-140 MANUALE** — responsive 375/768/1024, dichiarato non automatizzabile dalla spec stessa.
+  Richiede un rendering reale. UNICO criterio ancora aperto.
+
+### Decisioni vincolanti (D-1..D-5) — da rispettare per chi estende il modulo
+
+- **D-1** `sort_order` server-managed, FUORI dal form. `StatusOrderManager` NON e riutilizzabile
+  (accoppiato a `system_key`, `SYSTEM_HEAD_KEY`, union chiusa di 4 class-string): creato
+  `App\Services\PaymentMethods\PaymentMethodOrderManager`, senza concetto di head/tail.
+  `StatusOrderManager` NON e stato toccato.
+- **D-2** DELETE senza guard: nessun consumatore esiste, quindi 204 e nessun 409. Un guard con
+  relazioni inesistenti sarebbe dead code. Punto di estensione documentato nel docblock di
+  `PaymentMethodService::delete()`: il primo modulo consumatore aggiunge lì il check e il 409.
+- **D-3** `code` immutabile SEMPRE dopo la create, per chiunque, super-admin incluso. NON poggia
+  sui field permission (il ruolo privilegiato li bypassa per progetto): la garanzia e la regola
+  `['prohibited']` in `UpdatePaymentMethodRequest`, incondizionata. Coperto da AC-025.
+- **D-4** `is_active` editabile inline in tabella: PRIMO caso nel repo di colonna
+  `type: 'boolean'` con `'editable' => true`. Passa dalla pipeline generica
+  `PATCH /api/tables/{domain}/rows/{row}`, default `updateCell()` (mass-assignment), nessun
+  override, nessuna regola di business su `is_active`. Il ramo `'boolean' => ['boolean']` di
+  `CellValueValidator::typeRules()` prima non era esercitato da alcun test: ora lo e.
+- **D-5** La response di `POST /payment-methods/reorder` emette SEMPRE `"system_key": null`
+  letterale, pur non esistendo quella colonna: e il contratto che il feature condiviso
+  `status-reorder` pretende. Senza, `isPinned` leggerebbe `undefined !== null` come true e lo
+  sheet perderebbe ogni maniglia dopo il primo drag.
+
+### Contratto (per i futuri moduli consumatori)
+
+`GET /api/payment-methods/for-select` -> `{id, label: name, subtitle: code, meta: {payment_days}}`.
+Solo `is_active = true`, ordinati per `sort_order`. `ids[]` idrata anche gli INATTIVI (edit-mode)
+senza gonfiare `total`. Un consumatore deve mostrare solo gli attivi e non alterare i record
+storici quando un metodo viene disattivato.
+
+### Due difetti PREESISTENTI scoperti, entrambi fuori scope, da triagare
+
+1. **`FilterApplier::escapeLike()` + SQLite** — vedi AC-051 sopra. Serve `ESCAPE` esplicito o un
+   PRAGMA lato test. Impatta la ricerca globale di TUTTI i domini, non solo questo.
+2. **`use-status-reorder.ts` non invalida mai `['status-reorder', resource, 'list']`** dopo un
+   reorder riuscito. Il guard adjust-state-during-render (righe 53-56) confronta `listQuery.data`
+   con `syncedFrom` e, poiche la query non viene mai reinvalidata, ripristina lo stato pre-drag
+   subito dopo il `.then()`. Giudicato FONDATO in modo indipendente dal verifier, e confermato
+   empiricamente: lo stato riconciliato post-successo NON e osservabile nel DOM per NESSUNO dei
+   4 moduli status esistenti (pipeline/opportunity/quote/reward). Nessun test attuale lo copre.
+   Conseguenza pratica: dopo un drag riuscito lo sheet mostra l'ordine vecchio finche non si
+   riapre. Merita una spec dedicata.
+
+### Lezione di processo (costata un falso verde)
+
+Il primo test di regressione per D-5 era VERDE e NON POTEVA FALLIRE: rimuovendo `?? null` restava
+verde, perche il bug di resync sopra rende lo stato riconciliato non osservabile attraverso il
+componente Sheet. Scoperto dal verifier con un esperimento di falsificazione, non per lettura.
+Correzione: la mappatura e stata estratta in `features/status-reorder/reconcile-reordered-items.ts`
+(funzione pura) e testata direttamente. **Criterio adottato: un test di regressione vale solo se
+si dimostra che diventa rosso rimuovendo il fix.** Applicato anche ad AC-114 (svuota una stringa
+i18n -> rosso) e AD AC-115 (rimuovi la entry icona -> rosso).
+
+### Cucitura cross-stack da non dimenticare
+
+Una voce di menu richiede il nome icona in DUE posti: `backend/config/navigation.php` E
+`frontend/src/features/navigation/icon-map.ts`. Senza il secondo, `resolveIcon()` cade in
+silenzio sul fallback `Circle` — nessun errore di lint o di tipo. Questa spec l'aveva omesso e il
+difetto e arrivato all'utente; ora e coperto da AC-115 (`icon-map.test.ts`).
+
+### Verifica eseguita
+
+- Backend `--filter=PaymentMethod`: **91 test, 393 assertion**, verdi (87 + 4 whitebox AC-003).
+- Backend suite INTERA: **4409 test, 4394 pass, 14 fail** = esattamente il baseline preesistente
+  (11 `*SecurityTest` sui nodi di navigazione, `AbstractMigrationSourcePreviewTest`,
+  `CustomFieldWritePipelineTest`, `RequestManagementTableSearchTest`). Zero regressioni.
+- Frontend: **418 file / 2869 test** verdi. `npx tsc -b --force` **EXIT=0**. ESLint pulito.
+- Una regressione introdotta e chiusa: `FieldCatalogueEndpointTest` asserisce con
+  `toEqualCanonicalizing()` l'elenco ESATTO delle resource di `config/authorization.php`;
+  registrare un nuovo dominio la fa cadere. Chi aggiunge una resource deve aggiungere la propria
+  voce a quella lista (convenzione del file, ogni spec precedente ha fatto lo stesso).
+
+**ATTENZIONE ambiente:** la suite backend intera va lanciata con Xdebug spento, altrimenti va in
+SIGSEGV prima di eseguire un test: `XDEBUG_MODE=off php -d memory_limit=1G vendor/bin/pest
+--no-coverage`. I test frontend vanno lanciati con `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`.
+Il typecheck e `npx tsc -b --force` — `tsc --noEmit` in questo repo e un falso verde garantito.
+
+### Stato e prossimo passo
+
+Codice committato in `3c9e63c` (162 file, che include anche lavoro concorrente non correlato:
+commissioni, categorie prodotto `requires_quote`, quotes company-sites, default country da env).
+**Restano NON TRACCIATI due file di test**, entrambi nati dopo quel commit e da aggiungere se si
+vogliono in cronologia:
+- `frontend/src/features/navigation/icon-map.test.ts` (AC-115)
+- `frontend/src/features/modules/module-routes.test.tsx` (AC-113)
+
+Prossimo passo: AC-140 (verifica responsive su UI reale, unico criterio aperto) e il triage dei
+due difetti preesistenti sopra. Suite frontend finale: 419 file / 2871 test verdi.
+
 ## FIX: ICONA MENU "MODALITA' DI PAGAMENTO" (2026-07-30) — VERDE, NON COMMITTATO
 
 `config/navigation.php:400` dichiara `'icon' => 'credit-card'` per `payment-methods`, ma
