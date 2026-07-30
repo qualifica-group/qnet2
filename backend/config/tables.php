@@ -7,6 +7,7 @@ use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
+use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
@@ -70,6 +71,7 @@ return [
         'sectors' => SectorsTableDefinition::class,
         'attributes' => AttributesTableDefinition::class,
         'custom-fields' => CustomFieldsTableDefinition::class,
+        'document-layouts' => DocumentLayoutsTableDefinition::class,
         'product-categories' => ProductCategoriesTableDefinition::class,
         'products' => ProductsTableDefinition::class,
         'sources' => SourcesTableDefinition::class,

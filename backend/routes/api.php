@@ -486,4 +486,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Geo reference lookups (ADR 0010): routes/api/geo.php (file-size split,
     // engineering.md §6), required for the same context.
     require __DIR__.'/api/geo.php';
+
+    // Document layouts CRUD + for-select + variable catalogue (spec 0069):
+    // routes/api/document-layouts.php (file-size split, engineering.md §6),
+    // required for the same context.
+    require __DIR__.'/api/document-layouts.php';
 });

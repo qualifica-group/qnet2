@@ -2,6 +2,7 @@
 
 use App\Enums\AgreementStatusEnum;
 use App\Enums\ContactTypeEnum;
+use App\Enums\DocumentLayoutModule;
 use App\Enums\GenderEnum;
 use App\Enums\LocaleEnum;
 use App\Enums\NotificationLevelEnum;
@@ -62,6 +63,10 @@ return [
         'agreement_status' => AgreementStatusEnum::class,
         // Registry size class (spec 0020).
         'size_class' => SizeClassEnum::class,
+        // Document layout consumer module (spec 0069): populates the option
+        // list of the `module` advanced filter on the layouts grid, which
+        // declares `enumKey: document_layout_module`.
+        'document_layout_module' => DocumentLayoutModule::class,
     ],
 
 ];

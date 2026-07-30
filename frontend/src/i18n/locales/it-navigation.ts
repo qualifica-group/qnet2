@@ -39,6 +39,7 @@ export const navigation = {
   rewardTypes: 'Buoni, Premi e Incentivi',
   rewardStatuses: 'Stati Buoni Collegati',
   rewardedReferents: 'Referenti con Buoni',
+  documentLayouts: 'Layout',
   opportunitiesAndCommesse: 'Opportunità e Commesse',
   imports: 'Importa lead',
   pipelineStatuses: 'Stati progetto/campagna',

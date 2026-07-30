@@ -7,6 +7,7 @@ use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\CustomFieldDefinition;
+use App\Models\DocumentLayout;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -98,6 +99,9 @@ return [
         'custom-fields' => [
             'model' => CustomFieldDefinition::class,
             'relations' => ['options'],
+        ],
+        'document-layouts' => [
+            'model' => DocumentLayout::class,
         ],
         'leads' => [
             'model' => Lead::class,

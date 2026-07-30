@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CompanySite;
+use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\User;
 
@@ -86,6 +87,7 @@ return [
         'user' => User::class,
         'company_site' => CompanySite::class,
         'opportunity' => Opportunity::class,
+        'document_layout' => DocumentLayout::class,
     ],
 
 ];

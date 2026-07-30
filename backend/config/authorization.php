@@ -7,6 +7,7 @@ use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
+use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
@@ -68,6 +69,7 @@ return [
         'sectors' => SectorsAuthorization::class,
         'attributes' => AttributesAuthorization::class,
         'custom-fields' => CustomFieldsAuthorization::class,
+        'document-layouts' => DocumentLayoutsAuthorization::class,
         'product-categories' => ProductCategoriesAuthorization::class,
         'products' => ProductsAuthorization::class,
         'sources' => SourcesAuthorization::class,

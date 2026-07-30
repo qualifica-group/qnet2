@@ -38,6 +38,7 @@ export const navigation = {
   rewardTypes: 'Vouchers, Rewards and Incentives',
   rewardStatuses: 'Reward Statuses',
   rewardedReferents: 'Rewarded Referents',
+  documentLayouts: 'Layouts',
   opportunitiesAndCommesse: 'Opportunities & Contracts',
   imports: 'Import Lead',
   pipelineStatuses: 'Project/Campaign Statuses',

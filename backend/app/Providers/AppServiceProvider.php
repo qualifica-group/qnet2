@@ -18,6 +18,7 @@ use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
+use App\Models\DocumentLayout;
 use App\Models\EmploymentProfile;
 use App\Models\Lead;
 use App\Models\Note;
@@ -145,6 +146,19 @@ class AppServiceProvider extends ServiceProvider
             'commission_configuration' => CommissionConfiguration::class,
             'quote_line_commission' => QuoteLineCommission::class,
             'payment_method' => PaymentMethod::class,
+            // Spec 0069 (document-layouts module, wave 1 backend): DocumentLayout
+            // uses LogsModelActivity, whose bootLogsActivity() unconditionally
+            // calls Activity::subject()->associate($model) on every create/update
+            // — i.e. $model->getMorphClass() — BEFORE checking whether logging is
+            // even enabled. With Relation::enforceMorphMap() active (strict mode,
+            // see the comment above), an unregistered model throws
+            // ClassMorphViolationException on its very first save, not just when
+            // its images() morphMany (also declared on the model) is used. This
+            // one-line registration was verified against
+            // vendor/spatie/laravel-activitylog and vendor/laravel/framework
+            // (Model::getMorphClass()/MorphOneOrMany::__construct) before adding
+            // it — it is not a guess. No other file in this list was touched.
+            'document_layout' => DocumentLayout::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

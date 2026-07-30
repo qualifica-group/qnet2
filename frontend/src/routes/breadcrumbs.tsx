@@ -54,6 +54,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',
   'rewarded-referents': 'navigation.rewardedReferents',
+  'document-layouts': 'navigation.documentLayouts',
   imports: 'navigation.imports',
   'pipeline-statuses': 'navigation.pipelineStatuses',
   // Namespaced key (`ns:key`): the migrations module registers its own

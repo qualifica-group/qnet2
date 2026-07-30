@@ -401,6 +401,17 @@ return [
                     'route' => '/payment-methods',
                     'permission' => 'payment-methods.view',
                 ],
+                [
+                    // Document layouts (spec 0069): reusable, block-based
+                    // document layout catalogue (first consumer: quotes,
+                    // module-agnostic by design) — a cross-cutting
+                    // configuration tool, not tied to a single domain group.
+                    'key' => 'document-layouts',
+                    'label' => 'navigation.documentLayouts',
+                    'icon' => 'files',
+                    'route' => '/document-layouts',
+                    'permission' => 'document-layouts.view',
+                ],
             ],
         ],
 

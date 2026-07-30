@@ -33,6 +33,7 @@ import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
+import { documentLayouts } from './it-document-layouts'
 import { requestManagement } from './it-request-management'
 import { notes } from './it-notes'
 import { notifications } from './it-notifications'
@@ -456,4 +457,5 @@ export const it: TranslationResources = {
   importRuns: { stats: moduleStats.importRuns },
   attachments,
   impersonation,
+  documentLayouts,
 }

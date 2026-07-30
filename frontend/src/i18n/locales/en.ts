@@ -39,6 +39,7 @@ import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
+import { documentLayouts } from './en-document-layouts'
 import { navigation } from './en-navigation'
 import { requestManagement } from './en-request-management'
 import { notes } from './en-notes'
@@ -472,6 +473,7 @@ export const en = {
   importRuns: { stats: moduleStats.importRuns },
   attachments,
   impersonation,
+  documentLayouts,
 }
 
 export type TranslationResources = typeof en

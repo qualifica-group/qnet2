@@ -86,6 +86,10 @@ class DemoDataSeeder extends Seeder
         // Standalone anagraphic (spec 0068): no dependency on anything above,
         // no consumer module references it yet — order here is arbitrary.
         $this->call(DemoPaymentMethodSeeder::class);
+        // Standalone anagraphic (spec 0069): no dependency on anything above,
+        // no consumer module references it yet (`quotes.layout_id` is spec
+        // 0070) — order here is arbitrary.
+        $this->call(DemoDocumentLayoutSeeder::class);
         // Depends on DemoSourceSeeder (mandatory criterion values) and
         // DemoBusinessFunctionSeeder (optional, two-criteria workflow), both
         // seeded above. MUST run before DemoOpportunitySeeder so opportunities

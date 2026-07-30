@@ -105,6 +105,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // consumer-agnostic payment-modality lookup — name/code mandatory,
         // `code` writable only on create, D-3).
         'payment-methods',
+        // spec 0069 `document-layouts` (DocumentLayoutsAuthorization: the
+        // block-based document layout catalogue — name/code/module/config
+        // mandatory, `code`/`module` writable only on create, D-2).
+        'document-layouts',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();
