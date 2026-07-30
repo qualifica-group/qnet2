@@ -27,6 +27,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (D-3): copied from the Opportunity at creation time by the service, then
  * independently editable — no live read-through, no re-sync when the
  * Opportunity's own values change later.
+ *
+ * `company_id`/`company_site_id`/`operational_site_id` (user directive
+ * 2026-07-30) are all optional, nullOnDelete. `operational_site_id` joins the
+ * D-3 snapshot set (prefilled from the Opportunity when the client omits it);
+ * the other two have no Opportunity counterpart and are always picked by
+ * hand. A `company_site` must belong to the quote's `company` — enforced at
+ * the request layer (ValidatesQuoteCompanySite), not by the schema.
  */
 #[Fillable([
     'title',
@@ -35,6 +42,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'commercial_id',
     'reporter_id',
     'supervisor_id',
+    'company_id',
+    'company_site_id',
+    'operational_site_id',
     'internal_notes',
 ])]
 class Quote extends BaseModel
@@ -97,6 +107,36 @@ class Quote extends BaseModel
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    /**
+     * The issuing Societa' (spec 0010 — "Societa' aziendali"), optional.
+     * Its display name is the `denomination` column: `companies` has no
+     * `name`.
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * The issuing Societa' Sede (spec 0020), optional. Constrained at the
+     * request layer to a site of `company` when both are set.
+     */
+    public function companySite(): BelongsTo
+    {
+        return $this->belongsTo(CompanySite::class);
+    }
+
+    /**
+     * The Sede operativa (spec 0011), optional. Snapshotted from the
+     * Opportunity at creation when the client omits it (D-3 set); the site
+     * has no own name — its identity is its primary address
+     * (OperationalSiteLabel).
+     */
+    public function operationalSite(): BelongsTo
+    {
+        return $this->belongsTo(OperationalSite::class);
     }
 
     /**

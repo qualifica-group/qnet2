@@ -21,6 +21,9 @@ export const quotes = {
     costNet: 'Costo netto',
     marginNet: 'Margine netto',
     createdAt: 'Creato il',
+    company: 'Società',
+    companySite: 'Società sede',
+    operationalSite: 'Sede operativa',
   },
   advancedFilters: {
     opportunity: 'Opportunità',
@@ -36,6 +39,9 @@ export const quotes = {
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
+    company: 'Società',
+    companySite: 'Società sede',
+    operationalSite: 'Sede operativa',
     createdAt: 'Creato il',
     linesEmpty: 'Nessuna riga presente.',
   },
@@ -64,6 +70,16 @@ export const quotes = {
     reporterSearch: 'Cerca segnalatori…',
     supervisor: 'Supervisore',
     supervisorSearch: 'Cerca supervisori…',
+    company: 'Società',
+    companySearch: 'Cerca società…',
+    companySite: 'Società sede',
+    companySiteSearch: 'Cerca sedi…',
+    operationalSite: 'Sede operativa',
+    operationalSiteSearch: 'Cerca sedi operative…',
+    hints: {
+      companySite: 'Seleziona prima la società: le sedi mostrate sono solo le sue.',
+      operationalSite: "Precompilata dall'opportunità selezionata; puoi cambiarla.",
+    },
     internalNotes: 'Note interne',
     internalNotesMax: 'Le note interne possono contenere al massimo 5000 caratteri.',
     selectPlaceholder: 'Seleziona…',
@@ -82,6 +98,10 @@ export const quotes = {
       identity: {
         title: 'Dati offerta',
         description: "Codice, titolo, opportunità collegata e team commerciale.",
+      },
+      sites: {
+        title: 'Società e sedi',
+        description: 'Società e sede che emettono l\'offerta, sede operativa di riferimento.',
       },
       offer: {
         title: 'Offerta',

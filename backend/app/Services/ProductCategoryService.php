@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\ProductCategories\RequiresQuoteInheritance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -22,12 +23,19 @@ use Illuminate\Support\Facades\DB;
  */
 class ProductCategoryService
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly RequiresQuoteInheritance $requiresQuote,
+    ) {}
 
     public function create(CreateProductCategoryData $data): ProductCategory
     {
         if ($data->businessFunctionId !== null) {
             $this->assertNoInheritedBusinessFunction($data->parentId);
+        }
+
+        if ($data->requiresQuote !== null) {
+            $this->assertRequiresQuoteNotOverridden($data->parentId, $data->requiresQuote);
         }
 
         return DB::transaction(function () use ($data): ProductCategory {
@@ -39,6 +47,9 @@ class ProductCategoryService
                 'inherits_opportunity_attributes' => $data->inheritsOpportunityAttributes,
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
+                // A child never authors the flag: it takes its root's value,
+                // whatever was (or was not) submitted.
+                'requires_quote' => $this->requiresQuote->inheritedValueFor($data->parentId) ?? ($data->requiresQuote ?? false),
             ]);
 
             if ($data->hasAttributes()) {
@@ -63,6 +74,11 @@ class ProductCategoryService
             $this->assertNoInheritedBusinessFunction($resolvedParentId);
         }
 
+        if ($data->requiresQuoteSubmitted && $data->requiresQuote !== null) {
+            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
+            $this->assertRequiresQuoteNotOverridden($resolvedParentId, $data->requiresQuote);
+        }
+
         return DB::transaction(function () use ($category, $data): ProductCategory {
             $attributes = $data->submittedAttributes();
 
@@ -80,6 +96,13 @@ class ProductCategoryService
             // an unrelated edit (name/description/attributes-only).
             if ($data->hasParentId() || $data->businessFunctionIdSubmitted) {
                 $this->cascadeBusinessFunctionToDescendants($category);
+            }
+
+            // Same trigger set for the quote flag: only a reparent (the branch
+            // root changed) or an edit of the flag itself can break the
+            // "whole subtree mirrors its root" invariant.
+            if ($data->hasParentId() || $data->requiresQuoteSubmitted) {
+                $this->requiresQuote->syncSubtree($category);
             }
 
             return $category->fresh(['parent', 'attributes', 'businessFunction']);
@@ -263,6 +286,18 @@ class ProductCategoryService
     }
 
     /**
+     * The ROOT category $category takes its `requires_quote` flag from — null
+     * when $category is itself a root and therefore owns the flag. The value
+     * itself is a real column on $category, already carried by the Resource.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public function requiresQuoteSourceCategory(ProductCategory $category): ?array
+    {
+        return $this->requiresQuote->sourceCategoryFor($category);
+    }
+
+    /**
      * $parentId may not be $category itself, nor one of its own descendants
      * (i.e. $category may not be an ancestor of the prospective new parent) —
      * either would create a cycle in the tree.
@@ -288,6 +323,22 @@ class ProductCategoryService
     {
         if ($this->hierarchy->inheritedBusinessFunctionFor($parentId) !== null) {
             abort(422, 'This category inherits a business function from an ancestor and cannot define its own.');
+        }
+    }
+
+    /**
+     * NO-OVERRIDE guard for the quote flag: only a ROOT category authors it,
+     * so a category under $parentId may only submit the value it already
+     * inherits. Submitting the inherited value is accepted as a no-op (the
+     * form shows it read-only and may echo it back); submitting a DIFFERENT
+     * one is a real override attempt and is refused.
+     */
+    private function assertRequiresQuoteNotOverridden(?int $parentId, bool $submitted): void
+    {
+        $inherited = $this->requiresQuote->inheritedValueFor($parentId);
+
+        if ($inherited !== null && $inherited !== $submitted) {
+            abort(422, 'This category inherits the quote flag from its root category and cannot define its own.');
         }
     }
 

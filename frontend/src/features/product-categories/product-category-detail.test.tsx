@@ -51,8 +51,10 @@ function category(
     inherited_attributes: [],
     created_at: '2026-01-01T00:00:00Z',
     business_function_id: null,
+    requires_quote: false,
     business_function: null,
     effective_business_function: null,
+    requires_quote_source_category: null,
     permissions: PERMISSIONS,
     ...overrides,
   }
@@ -143,5 +145,30 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
       .getByRole('heading', { name: 'Opportunity attributes' })
       .closest('section') as HTMLElement
     expect(within(opportunitySection).getByText('Required')).toBeInTheDocument()
+  })
+})
+
+describe('ProductCategoryDetailView — quote flag', () => {
+  it('shows the flag with no source badge on a root category', () => {
+    render(<ProductCategoryDetailView category={category({ requires_quote: true })} />)
+
+    const section = screen.getByRole('heading', { name: 'Quoted' }).closest('section') as HTMLElement
+    expect(within(section).getByText('Yes')).toBeInTheDocument()
+    expect(within(section).queryByText(/Inherited from/)).not.toBeInTheDocument()
+  })
+
+  it('names the root the flag is inherited from on a child category', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          requires_quote: true,
+          requires_quote_source_category: { id: 1, name: 'Electronics' },
+        })}
+      />,
+    )
+
+    const section = screen.getByRole('heading', { name: 'Quoted' }).closest('section') as HTMLElement
+    expect(within(section).getByText('Yes')).toBeInTheDocument()
+    expect(within(section).getByText('Inherited from Electronics')).toBeInTheDocument()
   })
 })

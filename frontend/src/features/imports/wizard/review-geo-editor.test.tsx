@@ -19,6 +19,13 @@ const useStatesMock = vi.fn()
 const useProvincesMock = vi.fn()
 const useCitiesMock = vi.fn()
 
+// The cascade's national default is resolved by a network-backed hook (public
+// config + country list, covered by `use-default-country.test.ts`). Stub it to
+// international mode: this suite asserts the ids that come from the row.
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => null,
+}))
+
 vi.mock('@/features/geo/use-geo', () => ({
   useCountries: () => useCountriesMock(),
   useStates: (countryId: number | null) => useStatesMock(countryId),

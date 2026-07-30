@@ -190,9 +190,12 @@ it('AC-064: GET show exposes permissions.fields with the full key set, code read
     $response = $this->getJson("/api/quotes/{$target->id}")->assertOk();
     $fields = $response->json('permissions.fields');
 
+    // company_id/company_site_id/operational_site_id joined the field set with
+    // the 2026-07-30 directive.
     expect(array_keys($fields))->toEqual([
         'code', 'title', 'opportunity_id', 'quote_status_id', 'commercial_id',
-        'reporter_id', 'supervisor_id', 'internal_notes', 'offer_lines', 'cost_lines',
+        'reporter_id', 'supervisor_id', 'company_id', 'company_site_id', 'operational_site_id',
+        'internal_notes', 'offer_lines', 'cost_lines',
         'commissions', 'commission_recipient', 'commission_type', 'commission_value',
         'commission_internal_note',
     ])

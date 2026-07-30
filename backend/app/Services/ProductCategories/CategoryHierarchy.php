@@ -421,6 +421,11 @@ final class CategoryHierarchy
                 'attributes_count' => (int) $category->attributes_count,
                 'products_count' => (int) $category->products_count,
                 'business_function_id' => $category->business_function_id,
+                // Already the EFFECTIVE flag on every node (a child mirrors
+                // its root — RequiresQuoteInheritance): the category form
+                // reads it off a candidate parent to preview what a child
+                // would inherit, with no extra request.
+                'requires_quote' => (bool) $category->requires_quote,
             ];
         }
 

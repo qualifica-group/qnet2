@@ -22,6 +22,7 @@ export const navigation = {
   products: 'Products',
   sources: 'Sources',
   vatRates: 'VAT',
+  paymentMethods: 'Payment Methods',
   tags: 'Tags',
   projects: 'Projects',
   campaigns: 'Campaigns',

@@ -44,13 +44,14 @@ const OPPORTUNITY_WITH_ROLES: OpportunityForSelectItem = {
     commercial: { id: 71, name: 'Sara Conti' },
     reporter: { id: 81, name: 'Elio Fabbri' },
     supervisor: { id: 61, name: 'Ivo Bianchi' },
+    operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },
   },
 }
 
 const OPPORTUNITY_WITHOUT_ROLES: OpportunityForSelectItem = {
   id: 56,
   label: 'OPP_56',
-  meta: { commercial: null, reporter: null, supervisor: null },
+  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null },
 }
 
 /**

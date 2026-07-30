@@ -23,8 +23,10 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     inherited_attributes: [],
     created_at: '2026-01-01T00:00:00Z',
     business_function_id: null,
+    requires_quote: false,
     business_function: null,
     effective_business_function: null,
+    requires_quote_source_category: null,
     ...overrides,
   }
 }
@@ -39,6 +41,7 @@ describe('buildCreatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -52,6 +55,23 @@ describe('buildCreatePayload', () => {
       business_function_id: null,
     })
   })
+
+  it('omits requires_quote under a parent (inherited) and sends it at the root (owned)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [],
+      business_function_id: null,
+      requires_quote: true,
+      custom_fields: {},
+    }
+
+    expect(buildCreatePayload(values)).not.toHaveProperty('requires_quote')
+    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ requires_quote: true })
+  })
 })
 
 describe('buildUpdatePayload', () => {
@@ -64,6 +84,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -79,6 +100,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -94,6 +116,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -112,6 +135,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: false, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -129,6 +153,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'product', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -146,6 +171,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: 5,
+      requires_quote: false,
       custom_fields: {},
     }
 
@@ -161,6 +187,7 @@ describe('buildUpdatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: {},
     }
     const inheriting = original({
@@ -168,5 +195,42 @@ describe('buildUpdatePayload', () => {
     })
 
     expect(buildUpdatePayload(values, inheriting)).toEqual({})
+  })
+
+  it('never sends requires_quote while the category sits under a parent (the root owns it)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+  })
+
+  it('sends requires_quote when a root category changes it, and on promotion to root', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: null,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: true,
+      custom_fields: {},
+    }
+
+    // Already a root: only the flag changed.
+    expect(buildUpdatePayload(values, original({ parent_id: null, parent: null }))).toEqual({
+      requires_quote: true,
+    })
+    // Promoted to root in the same save: both travel, the server accepts it.
+    expect(buildUpdatePayload(values, original())).toEqual({ parent_id: null, requires_quote: true })
   })
 })

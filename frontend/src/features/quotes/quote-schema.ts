@@ -160,6 +160,13 @@ function baseFields(t: TFunction) {
     commercial_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
+    // Societa'/Societa' Sede/Sede operativa (directive 2026-07-30): all three
+    // optional. The site-belongs-to-company rule is enforced server-side
+    // (ValidatesQuoteCompanySite) and mirrored here only as a UI cascade —
+    // the picker is scoped to the chosen company, so no cross-field refine.
+    company_id: z.number().nullable(),
+    company_site_id: z.number().nullable(),
+    operational_site_id: z.number().nullable(),
     internal_notes: z
       .string()
       .max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.internalNotesMax'))

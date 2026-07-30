@@ -1,0 +1,792 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0069-document-layouts-module" status="draft" owner="nicola" date="2026-07-30">
+
+  <goal>
+    Introdurre il modulo `document-layouts`: layout di documento riutilizzabili, definiti e
+    modificati interamente dal gestionale tramite un editor visuale a blocchi con anteprima A4,
+    contenenti variabili dinamiche risolte dal record di origine. Il modulo e agnostico rispetto
+    al consumatore: la prima implementazione serve i Preventivi (modulo `quotes`), ma lo schema
+    `module` e il catalogo variabili sono estendibili ad altri moduli senza modifiche strutturali.
+    Questa spec copre il modulo, l'editor e il catalogo variabili. La GENERAZIONE del file `.docx`,
+    il campo `quotes.layout_id`, il delete-guard sui layout in uso e il layout iniziale dei
+    Preventivi sono nella spec 0070, che dipende da questa.
+  </goal>
+
+  <context>
+    Modulo interamente nuovo. Verificato per grep: non esistono `document_layouts`,
+    `DocumentLayout`, `document-layouts` in nessuna forma (backend, frontend, config, docs).
+
+    COLLISIONE DI NOME RISOLTA (decisione utente 2026-07-30). Il brief chiama il modulo
+    "Layout", ma l'identificatore e GIA occupato in due punti del repo:
+      - `App\Models\AttributeLayout` + tabella `attribute_layouts` (spec 0062: layout del form
+        degli attributi per categoria prodotto) + `App\Services\ProductCategories\AttributeLayoutService`;
+      - `frontend/src/layouts/app-layout.tsx` (shell applicativa).
+    Identificatori congelati: tabella `document_layouts`, model `App\Models\DocumentLayout`,
+    dominio/permessi `document-layouts`, feature frontend `features/document-layouts/`,
+    rotta `/document-layouts`, namespace i18n `documentLayouts`. L'ETICHETTA mostrata all'utente
+    resta "Layout" via i18next (`documentLayouts.title`), coerentemente con engineering.md §1.2
+    (identificatori inglesi, valori UI localizzati).
+
+    RIFERIMENTO CANONICO PER GLI ARTEFATTI CRUD: `payment-methods` (spec 0068) - lookup piu
+    recente e completo, con `code` unique immutabile, `description`, `is_active`, delete-guard
+    documentato, tabella backend-driven, activity log, export, for-select. Ogni artefatto
+    standard di questo modulo si clona da lì. Il riferimento per la validazione di una colonna
+    JSON di configurazione e `App\Services\ProductCategories\AttributeLayoutValidator`
+    (spec 0062): unico precedente nel repo di JSON strutturato validato server-side.
+
+    CONVENZIONI REALI VERIFICATE (nomi da riusare esattamente, non ipotizzare):
+    - Model: estende `App\Models\Abstracts\BaseModel`; mass-assignment via attributo PHP
+      `#[Fillable([...])]` (NON la proprieta `$fillable`); `casts()` come METODO protetto;
+      activity log via concern `App\Models\Concerns\LogsModelActivity`.
+    - Nessun soft delete (nessun modulo del repo ne ha). Timestamps si: `created_at` e
+      `updated_at` soddisfano i requisiti "Data creazione" e "Data ultima modifica" del brief.
+    - Permessi CRUD DERIVATI: `DocumentLayoutPolicy extends App\Policies\Abstracts\BasePolicy`
+      con `resource() === 'document-layouts'`; `php artisan permissions:sync` legge
+      `glob(app_path('Policies/*.php'))` e crea le 8 permission
+      (`viewAny|view|create|update|delete|export|import|viewActivity`). Nessun catalogo
+      hardcoded, nessuna registrazione policy (auto-discovery per convenzione).
+    - Permessi di campo: `App\Authorization\DocumentLayoutsAuthorization extends
+      AbstractResourceAuthorization` + riga in `config/authorization.php`. `fieldPermissions()`
+      e `final`: interseca `fieldPermissionCeiling()` con `role_field_permissions` (bypass
+      totale per `RoleAssignmentGuard::PRIVILEGED_ROLE`, bypass intersezione per i campi
+      `mandatory: true`). Enforcement sulla write via trait
+      `App\Http\Requests\Concerns\EnforcesFieldPermissions` (metodi astratti
+      `authorizationResource()`/`authorizationModel()`, invocato in `withValidator`).
+      Firma reale: `new FieldDefinition(string $key, string $type, ?string $group = null,
+      bool $mandatory = false)`.
+    - Tabella: riga in `config/tables.php` + `App\Tables\DocumentLayoutsTableDefinition` (flat)
+      + `App\Tables\DocumentLayouts\DocumentLayoutColumnCatalog` e
+      `...\DocumentLayoutAdvancedFilterCatalog` (split per dimensione, engineering.md §6).
+      `TableRegistry` non richiede codice (legge `config/tables.php` e auto-wrappa in
+      `CustomFieldAwareTableDefinition`). `authorizeViewAny()` NON si overrida.
+      Casi reali di `App\Enums\AdvancedFilterType` usati qui: `Switch`, `Enum`, `Text`.
+    - Export: nessun registro per-dominio. Una TableDefinition registrata ha export "gratis";
+      serve solo la permission `document-layouts.export`.
+    - Route: `backend/routes/api/document-layouts.php` (nuovo file, `require` da
+      `backend/routes/api.php` dentro il gruppo `auth:sanctum`; i moduli con endpoint propri
+      oltre al CRUD hanno un file dedicato - precedenti `quotes.php`, `products.php`).
+      NON si usa `Route::resource` e NON esiste `index()`: la lista passa da
+      `/api/tables/{domain}/rows`. I segmenti letterali (`for-select`, `variables`) vanno
+      SOPRA il wildcard bindato.
+    - Envelope: `BaseApiController::okWithPermissions()` -> `{success, message, data, permissions}`;
+      `ok()` -> `{success, message, data}`; `destroy` -> 204 via `noContent()`;
+      `paginatedResponse()` -> `{items, export_link, pagination:{total,offset,limit,total_pages}}`.
+      Ogni metodo del controller e avvolto in `try/catch (Throwable) -> handleControllerException()`.
+      `handleControllerException` mappa `ValidationException`->422, `AuthorizationException`->403,
+      `ModelNotFoundException`->404, `HttpExceptionInterface`->il suo codice (gli abort 4xx
+      deliberati NON loggano e NON allertano Teams).
+    - Navigazione backend-driven: nodo in `backend/config/navigation.php` (il frontend non
+      dichiara voci di menu, legge `GET /navigation`). L'icona deve esistere in
+      `frontend/src/features/custom-fields/icon-catalog.ts`.
+    - Activity log endpoint: riga in `backend/config/activity-log.php` (`'model' => ...`,
+      `relations` omesso quando non c'e figlio con activitylog).
+    - Upload: disco privato `local`, `Storage::putFileAs($dir, $file, Str::uuid().'.'.$ext)`,
+      metadata su `attachments` (morph `attachable`), alias del tipo in
+      `config/attachments.php` -> `attachable_types`. Nessun file e MAI servito da URL pubblico:
+      il repo espone le immagini come data URI base64 (`User::avatarDataUri()`,
+      `CompanySite::logoDataUri()`). Precedente di validazione immagine:
+      `UploadCompanySiteLogoRequest` (`image` + `mimes:` + `extensions:` + `max:`).
+    - Frontend: registry per convenzione via `import.meta.glob('../*/*-screens.tsx')` in
+      `features/modules/module-registry.ts`; i deep-link (`new`, `:id`, `:id/edit`) sono
+      generati da `buildModuleRoutes()`. In `routes/router.tsx` va aggiunta solo la rotta lista.
+      Modalita di apertura: `OPEN_MODE_PAGE` (costante reale in `features/modules/types.ts`,
+      accanto a `OPEN_MODE_MODAL`).
+    - i18n: moduli TypeScript `i18n/locales/{it,en}-document-layouts.ts` (NON file JSON),
+      importati e montati in `it.ts`/`en.ts` come `documentLayouts`. `en.ts` e la fonte dei tipi
+      (`TranslationResources`). Label nav: `navigation.documentLayouts` in `en-navigation.ts` e
+      nel blocco `navigation` inline di `it.ts`.
+    - Test: Pest in `backend/tests/Feature/DocumentLayouts/` (ogni file dichiara
+      `uses(RefreshDatabase::class)`, non c'e default globale); Vitest colocati nella feature,
+      soglia coverage 85%. Ogni suite frontend crea il proprio `QueryClient`.
+
+    DATI REALI DISPONIBILI PER LE VARIABILI (verificati su migrazioni e model, non ipotizzati -
+    questa e la base del catalogo congelato in `data_contract`):
+    - `quotes`: `code`, `title`, `internal_notes`, `opportunity_id`, `quote_status_id`,
+      `commercial_id`/`reporter_id` (-> `Referent`), `supervisor_id` (-> `User`), `company_id`,
+      `company_site_id`, `operational_site_id`, aggregati `revenue_net`/`revenue_vat`/
+      `cost_net`/`cost_vat`/`margin_net`, timestamps. Il LORDO non e in colonna: e derivato
+      (`net + vat`) da `QuoteResource::amountTriplet()`.
+    - Il CLIENTE non e in relazione diretta col preventivo: si raggiunge con
+      `quote->opportunity->registry`. Il nome canonico e `registries.name` (NON `denomination`:
+      quella colonna esiste solo su `companies`). Partita IVA, codice fiscale, SDI, nome/cognome
+      e contatti stanno sulla scheda `personalData` (`HasPersonalData` morphOne su
+      `personal_data`), con accessor calcolato `full_name` e discriminante
+      `personalData->type` (`individual`|`company`).
+    - `personal_data`: `tax_code`, `vat_number`, `birth_date` sono in `$hidden` (accessibili per
+      property, assenti dalla serializzazione di default). Sono PII soggetti ai field permission
+      di spec 0008: vedi D-6.
+    - Contatti: NON sono colonne. Sono righe `contacts` (morph `contactable`) sulla SCHEDA
+      (`personalData->contacts`), con `type` (`phone|mobile|fax|email|pec|website`), `value`,
+      `is_primary`.
+    - Indirizzi: righe `addresses` (morph `addressable`), colonne `line1`/`line2` (in `$hidden`),
+      `postal_code`, `site_type`, e SOLO FK geo (`city_id`/`province_id`/`state_id`/`country_id`).
+      Non esistono colonne stringa per comune/provincia/regione: i nomi si leggono dalle relazioni
+      e si localizzano con `App\Support\Geo\GeoNameLocalizer::toItalian()`.
+      NON esiste alcun helper che componga un indirizzo stampabile: l'unico label-composer del
+      repo e `App\Support\OperationalSiteLabel` (`"{line1} - {city}"`, non interroga il DB, il
+      chiamante deve eager-loadare `addresses.city`). Serve quindi un nuovo composer: vedi D-5.
+    - `OperationalSite` NON ha colonna nome: il label si compone da
+      `OperationalSiteLabel::compose($site->primaryAddress)`, fallback `alias`.
+    - `Opportunity` NON ha colonna `code` (esiste su `quotes`, `products`, `payment_methods`,
+      `projects`, `campaigns`). Nome canonico `opportunities.name`.
+    - Custom field universali (spec 0021): `quotes` E abilitato (e in `config/tables.php` E in
+      `config/authorization.php`, la condizione esatta di
+      `App\CustomFields\CustomFieldEntityRegistry::isCustomFieldable()`). Lettura via accessor
+      `$quote->custom_fields`; catalogo via `App\CustomFields\CustomFieldProvider::definitionsFor('quotes')`.
+    - Attributi dinamici (spec 0061/0062): la colonna `attribute_values` esiste SOLO su
+      `products` e `opportunities`, NON su `quotes`. Sono quindi raggiungibili come attributi
+      dell'Opportunita e dei Prodotti di riga, non del Preventivo.
+    - `quote_lines`: `product_id`, `quantity`, `unit_price`, `vat_rate_id`, `net_amount`,
+      `vat_amount`, `total_amount`, `sort_order`, `line_type` (`REVENUE`|`COST`).
+
+    DECISIONI PRESE DALL'UTENTE (2026-07-30), vincolanti:
+    - D-1 EDITOR A BLOCCHI, ZERO NUOVE DIPENDENZE FRONTEND. Nessun editor rich-text viene
+      aggiunto (no tiptap, no lexical, no slate). L'editor e strutturato: tre zone
+      (`header`/`body`/`footer`), blocchi tipizzati riordinabili con `@dnd-kit/*` GIA presente,
+      pannello ispettore per le proprieta del blocco selezionato, pannello variabili ricercabile
+      per categoria, anteprima A4 client-side. Motivazione tecnica, non solo di costo: un JSON
+      strutturato mappa 1:1 su WordprocessingML e rende la generazione `.docx` deterministica e
+      testabile, mentre l'HTML arbitrario di un rich-text non ha una mappatura totale su OOXML.
+    - D-2 NOMI: `document_layouts` / `DocumentLayout` / `document-layouts` (vedi COLLISIONE).
+    - D-3 METODO DI PAGAMENTO ESCLUSO. `quotes` non ha `payment_method_id` (grep: zero
+      occorrenze in migrazioni e model) e questa spec NON lo aggiunge. La categoria
+      `payment_method` NON compare nel catalogo variabili. Il layout puo comunque contenere le
+      condizioni di pagamento come blocco di testo statico, esattamente come fa oggi il `.docx`
+      di riferimento del cliente.
+    - D-4 SCONTO NON DISPONIBILE (rilevato in fase di grounding, non era noto al brief).
+      Il brief chiede la colonna "sconto" nella tabella prodotti dinamica, ma
+      `grep -rniE "discount|sconto" backend/app backend/database` restituisce ZERO match: non
+      esiste alcuna colonna sconto su `quote_lines`, `products`, `opportunity_product_lines` ne
+      altrove, e nemmeno in `frontend/src`. La chiave `discount` NON entra nell'allow-list delle
+      colonne della tabella prodotti: non si dichiara una colonna che non ha una fonte dati
+      (sarebbe dead code + hallucination). Introdurre lo sconto e una feature a se, sui
+      Preventivi, non su questo modulo.
+    - D-5 NUOVO COMPOSER DI INDIRIZZO. Serve un indirizzo stampabile e non esiste: si aggiunge
+      `App\Support\AddressLabel` (`singleLine(?Address): string`,
+      `multiLine(?Address): array&lt;string&gt;`), che compone da `line1`, `line2`, `postal_code` e dai
+      nomi geo localizzati con `GeoNameLocalizer::toItalian()`, senza interrogare il DB (stesso
+      contratto di `OperationalSiteLabel`: il chiamante eager-loada). E l'UNICA aggiunta a
+      `App\Support` di questa spec. I 14 call-site esistenti che compongono indirizzi a mano NON
+      vengono toccati (blast radius): la loro migrazione a `AddressLabel` e fuori scope.
+    - D-6 LE VARIABILI RISPETTANO I FIELD PERMISSION DEI DATI PERSONALI. Il resolver gira
+      server-side con l'attore della richiesta. Un token la cui sorgente e un campo di
+      `personal_data` non visibile per i `role_field_permissions` dell'attore (spec 0008) si
+      risolve a stringa VUOTA, non al valore. Senza questa regola un layout diventerebbe un
+      canale di esfiltrazione di PII (codice fiscale, data di nascita) che aggira la matrice dei
+      permessi di campo. Vale per il catalogo (`GET .../variables` non elenca i token non
+      visibili) e per la risoluzione (spec 0070).
+    - D-7 UN SOLO PREDEFINITO PER MODULO, INVARIANTE SERVER-SIDE. Non e esprimibile con un
+      unique index portabile su MySQL+SQLite (unique parziale/filtrato non e supportato da
+      Laravel su MySQL): l'invariante vive in `App\Services\DocumentLayouts\DocumentLayoutDefaultManager`
+      dentro una `DB::transaction`. Regole: (a) il PRIMO layout creato per un modulo diventa
+      automaticamente predefinito; (b) impostare `is_default = true` azzera il flag sugli altri
+      layout dello stesso modulo; (c) `is_default = true` richiede `is_active = true` (422);
+      (d) un layout predefinito NON puo essere disattivato (422: designa prima un altro
+      predefinito); (e) `is_default` non si puo portare da `true` a `false` con una PATCH diretta
+      (422): si designa un altro predefinito. Cosi il modulo ha sempre 0 o 1 predefinito, mai 2.
+    - D-8 ANTEPRIMA CLIENT-SIDE. L'anteprima A4 dell'editor e HTML/CSS che rende lo STESSO JSON
+      con la stessa scala twips->px. Non e pixel-identica a Word (lo sarebbe solo rendendo il
+      `.docx` reale) e non lo pretende: la verifica di fedelta ad alta fedelta e l'endpoint di
+      anteprima `.docx` della spec 0070. Dichiarato qui per non promettere piu di quanto si fa.
+    - D-9 APERTURA IN PAGINA. `moduleScreen.defaultMode = OPEN_MODE_PAGE`: l'editor richiede
+      larghezza (canvas + ispettore + variabili) e non sta in uno Sheet. Unico modulo del repo
+      con questo default insieme a quelli che lo dichiarano esplicitamente.
+    - D-11 TRE AGGIUNTE AL CONTRATTO IMPOSTE DALL'ANALISI DEL `.docx` DI RIFERIMENTO
+      (`Layout Accordo Sindacale_ Qualifica Group Training S.r.l..docx`, fornito dall'utente e
+      ispezionato con parser XML: non sono ipotesi di design, sono requisiti di fedelta).
+      Cosa contiene davvero quel file: (a) l'unica immagine reale e in `word/header1.xml`,
+      `media/image1.png` da 102 KB, con extent `7551317 x 10677155` EMU = 594.6 x 840.7 pt, cioe
+      una CARTA INTESTATA A PIENA PAGINA A4 (595.3 x 841.9 pt) posizionata dietro al testo -
+      non un logo d'angolo; (b) i 4 `w:drawing` nel corpo NON hanno `r:embed` e hanno extent
+      `525.8 x 0.8` e `490.5 x 0.8` pt: sono RIGHE ORIZZONTALI decorative, non immagini;
+      (c) la prima colonna della tabella prodotti impila DUE paragrafi nella stessa cella
+      (`${SID}-${STITLE}` e `${SDESCRIPTION}`).
+      Conseguenze sul contratto: `image.wrap` con il valore `behind_page`; nuovo tipo di blocco
+      `divider`; `products_table.columns[].lines` con `keys` + `separator`. Senza queste tre
+      cose il layout iniziale della 0070 non sarebbe riproducibile e la promessa di fedelta
+      sarebbe falsa. Il file usa `${VAR}` con il dollaro (convenzione PhpWord `TemplateProcessor`
+      del sistema precedente del cliente): la nostra sintassi resta `{categoria.chiave}` a
+      graffe singole, come chiesto dal brief.
+      Il file NON ha footer (`sectPr` non ha `footerReference`) e NON ha numerazione di pagina:
+      il layout iniziale avra quindi footer vuoto. La numerazione resta disponibile nell'editor
+      (`runs[].field`) ma non viene usata dal layout iniziale: nessuna funzione inventata per
+      riempire un requisito che il documento di riferimento non esprime.
+    - D-10 DELETE-GUARD NELLA SPEC 0070. Il brief chiede che un layout in uso non sia
+      cancellabile. Il consumatore (`quotes.layout_id`) nasce nella spec 0070: seguendo il
+      precedente 0068 D-2 (nessun guard senza consumatore reale, per non creare dead code), qui
+      il `delete` non ha guard di utilizzo e il punto di estensione e documentato nel docblock di
+      `DocumentLayoutService::delete()`. Il guard, con il suo messaggio esplicativo e i suoi
+      test, e IN SCOPE nella 0070. Resta invece attivo GIA QUI il guard sul predefinito (D-7).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migration `create_document_layouts_table` (nuova tabella, nessuna esistente toccata).</item>
+      <item>Enum `App\Enums\DocumentLayoutModule` (`quotes`), unica fonte di verita dei moduli supportati.</item>
+      <item>Model `App\Models\DocumentLayout` con `#[Fillable]`, `casts()`, `LogsModelActivity`, relazione `images()`.</item>
+      <item>Factory `DocumentLayoutFactory` + `DemoDocumentLayoutSeeder` registrato in `DemoDataSeeder`.</item>
+      <item>DTO `CreateDocumentLayoutData` / `UpdateDocumentLayoutData` in `App\DataObjects\DocumentLayouts`.</item>
+      <item>FormRequest Store / Update / ForSelect / UploadImage.</item>
+      <item>`App\Services\DocumentLayouts\DocumentLayoutConfigValidator`: validazione strutturale della colonna `config` (allow-list di tipi di blocco, chiavi, enum, limiti dimensionali).</item>
+      <item>`App\Services\DocumentLayouts\DocumentLayoutDefaultManager`: invariante "un solo predefinito per modulo" (D-7).</item>
+      <item>`App\Services\DocumentLayoutService` (loadDetail/create/update/delete/forSelect) + `DocumentLayoutImageService` (upload/list/delete immagini).</item>
+      <item>`App\Services\DocumentLayouts\DocumentLayoutVariableCatalog`: catalogo variabili per modulo, filtrato dai field permission dell'attore (D-6).</item>
+      <item>`App\Support\AddressLabel` (D-5), unica aggiunta a `App\Support`.</item>
+      <item>`DocumentLayoutPolicy extends BasePolicy` (8 ability standard, nessuna aggiunta).</item>
+      <item>`DocumentLayoutsAuthorization` + riga in `config/authorization.php` (permessi di campo).</item>
+      <item>`DocumentLayoutResource`, `DocumentLayoutForSelectResource`, `DocumentLayoutImageResource`.</item>
+      <item>`DocumentLayoutController` (show/store/update/destroy) + `DocumentLayoutForSelectController` + `DocumentLayoutVariableController` + `DocumentLayoutImageController`.</item>
+      <item>Route in `backend/routes/api/document-layouts.php` + `require` in `routes/api.php`.</item>
+      <item>`DocumentLayoutsTableDefinition` + `DocumentLayoutColumnCatalog` + `DocumentLayoutAdvancedFilterCatalog` + riga in `config/tables.php`.</item>
+      <item>Righe in `config/navigation.php`, `config/activity-log.php`, `config/attachments.php` (alias `document_layout`).</item>
+      <item>`backend/lang/{it,en}/document_layouts.php` per i messaggi di errore di business (predefinito, config non valida).</item>
+      <item>Feature frontend `features/document-layouts/` completa: api, types, schema Zod, contratto TS della `config`, payload, hook form, form metadati, detail, screens, table, renderers.</item>
+      <item>Editor visuale `features/document-layouts/editor/`: stato, zone, lista blocchi drag&amp;drop, ispettore proprieta, editor per ciascun tipo di blocco, pannello impostazioni pagina, selettore variabili ricercabile, anteprima A4.</item>
+      <item>`pages/document-layouts-page.tsx` + rotta lista in `routes/router.tsx` + segmento in `routes/breadcrumbs.tsx`.</item>
+      <item>i18n `it-document-layouts.ts` / `en-document-layouts.ts` + montaggio + label di navigazione.</item>
+      <item>Test Pest in `backend/tests/Feature/DocumentLayouts/` e Vitest colocati.</item>
+    </in>
+    <out>
+      <item>Generazione del file `.docx` e qualsiasi dipendenza per produrlo: spec 0070.</item>
+      <item>Colonna `quotes.layout_id`, campo Layout nel form Preventivo, azione "Genera Word": spec 0070.</item>
+      <item>Delete-guard sui layout usati da un Preventivo: spec 0070 (D-10). Il guard sul predefinito e invece in scope qui.</item>
+      <item>Layout iniziale che riproduce il `.docx` del cliente: spec 0070.</item>
+      <item>Categoria variabili `payment_method` (D-3) e colonna `discount` della tabella prodotti (D-4).</item>
+      <item>Editor rich-text a testo libero, formattazione inline arbitraria, incolla-da-Word (D-1).</item>
+      <item>Anteprima pixel-identica a Word e rendering server-side dell'anteprima (D-8).</item>
+      <item>Import di un `.docx` esistente per derivarne un layout (reverse engineering OOXML).</item>
+      <item>Versionamento/storico dei layout, duplicazione, sistema di approvazione.</item>
+      <item>Layout per moduli diversi da `quotes` (l'enum e estendibile, ma nessun altro valore viene aggiunto ora).</item>
+      <item>Riordino (`sort_order`): un layout non ha ordinamento manuale, si ordina per nome.</item>
+      <item>Migrazione dei 14 call-site esistenti che compongono indirizzi a mano su `AddressLabel` (D-5).</item>
+      <item>Inline editing in tabella dei campi del layout, oltre a `is_active` (vedi contratto).</item>
+      <item>Firma digitale, protezione del documento, watermark, filigrane.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <schema>
+      Tabella `document_layouts`:
+        id                bigint PK
+        name              string(191) NOT NULL
+        code              string(64) NOT NULL, unique globale
+        description       string(500) nullable
+        module            string(32) NOT NULL, cast `App\Enums\DocumentLayoutModule`
+        is_active         boolean NOT NULL default true
+        is_default        boolean NOT NULL default false
+        config            json NOT NULL
+        created_at / updated_at   timestamps
+      Indici: unique(`code`); unique(['module','name']) - due moduli possono avere entrambi un
+      layout "Standard", lo stesso modulo no; index(['module','is_active']);
+      index(['module','is_default']).
+      Nessun `deleted_at`, nessun `sort_order`, nessun `system_key`.
+      `#[Fillable(['name','code','description','module','is_active','is_default','config'])]`.
+      `casts()`: `module` => DocumentLayoutModule::class, `is_active` => 'bool',
+      `is_default` => 'bool', `config` => 'array'.
+      Relazione `images()`: `morphMany(Attachment::class, 'attachable')->where('collection', 'layout_image')`,
+      costante `DocumentLayout::IMAGE_COLLECTION = 'layout_image'`.
+    </schema>
+
+    <config_schema>
+      CONTRATTO CONGELATO della colonna `config`. E la superficie condivisa fra editor frontend,
+      validator backend e renderer `.docx` (spec 0070): ogni chiave qui e implementata da tutti e
+      tre, nessuna chiave fuori da qui e ammessa (il validator rifiuta le chiavi sconosciute).
+
+      UNITA DI MISURA, dichiarate una volta per non sbagliarle due volte:
+        - margini pagina: TWIPS (1/1440 di pollice) - stessa unita del `.docx` e di PhpWord;
+        - dimensioni font, altezze, larghezze immagine: PUNTI (interi);
+        - spaziature paragrafo (`space_before`/`space_after`): TWIPS;
+        - larghezze di colonna/tabella: PERCENTUALE intera della larghezza utile;
+        - colori: esadecimale RRGGBB SENZA `#` (convenzione OOXML).
+
+      {
+        "version": 1,
+        "page": {
+          "format": "A4",
+          "orientation": "portrait" | "landscape",
+          "margins": { "top": int, "right": int, "bottom": int, "left": int },   // twips 0..5670
+          "default_font": { "family": string, "size": int, "color": string }     // punti 6..72
+        },
+        "header": { "blocks": Block[] },
+        "body":   { "blocks": Block[] },
+        "footer": { "blocks": Block[] }
+      }
+
+      Block = uno fra i sette tipi seguenti, discriminati da `type`. `id` e una stringa opaca
+      univoca nel documento (generata dal client, usata come chiave React e per il drag&amp;drop).
+
+      1) TEXT - il blocco base, un paragrafo di run formattati.
+      {
+        "id": string, "type": "text",
+        "align": "left"|"center"|"right"|"justify",
+        "space_before": int, "space_after": int, "line_height": number,   // 1.0 .. 3.0
+        "runs": [ { "text": string,
+                    "field": null | "page" | "total_pages",
+                    "bold": bool, "italic": bool, "underline": bool,
+                    "font": string|null, "size": int|null, "color": string|null } ]
+      }
+      `runs[].text` puo contenere token `{categoria.chiave}` (vedi variables). Un run con
+      `field` valorizzato IGNORA `text` e rende un campo Word calcolato: `page` -> numero di
+      pagina, `total_pages` -> numero totale di pagine. E cosi che si soddisfa la
+      "numerazione delle pagine" del brief, ed e disponibile in tutte e tre le zone
+      (tipicamente nel footer). `runs: []` = paragrafo vuoto (spaziatura voluta).
+
+      2) IMAGE - immagine, logo o carta intestata caricata sul layout.
+      { "id": string, "type": "image", "attachment_id": int,
+        "width": int, "height": int|null,          // punti; height null = proporzionale
+        "align": "left"|"center"|"right",
+        "wrap": "inline" | "behind_page" }
+      `attachment_id` DEVE appartenere a questo layout (`attachable` = il layout,
+      `collection` = `layout_image`): il validator lo verifica, altrimenti 422.
+      `wrap` (necessario per la fedelta, vedi D-11): `inline` = immagine nel flusso, occupa
+      spazio e spinge il contenuto; `behind_page` = immagine flottante ancorata alla PAGINA in
+      posizione assoluta 0,0 e collocata DIETRO al testo, che non consuma flusso. E cosi che si
+      rende una carta intestata a piena pagina, e ha senso solo in zona `header` (il validator
+      rifiuta `behind_page` in `body`/`footer`: in quelle zone non si ripeterebbe su ogni pagina
+      e sovrapporrebbe il contenuto). Con `behind_page` i campi `align` e `height` sono
+      obbligatori e `height` non puo essere null (un'immagine di fondo ha dimensioni esplicite).
+
+      3) TABLE - tabella statica.
+      { "id": string, "type": "table", "width_pct": int,
+        "borders": { "size": int, "color": string } | null,     // size in ottavi di punto
+        "columns": [ { "width_pct": int } ],
+        "rows": [ { "is_header": bool,
+                    "cells": [ { "col_span": int, "background": string|null,
+                                 "vertical_align": "top"|"center"|"bottom",
+                                 "blocks": TextBlock[] } ] } ] }
+      Vincolo deliberato: una cella contiene SOLO blocchi `text`. Nessuna tabella in tabella,
+      nessuna immagine in cella. Mantiene il renderer OOXML limitato e testabile.
+
+      4) PRODUCTS_TABLE - tabella dinamica delle righe prodotto del record.
+      { "id": string, "type": "products_table",
+        "source": "offer_lines" | "cost_lines",
+        "width_pct": int, "borders": {...}|null, "show_header": bool,
+        "header_background": string|null,
+        "columns": [ { "lines": [ { "keys": ColumnKey[], "separator": string,
+                                    "bold": bool, "italic": bool, "size": int|null } ],
+                       "label": string, "width_pct": int,
+                       "align": "left"|"center"|"right" } ],
+        "totals": { "show": bool,
+                    "rows": [ { "label": string, "variable": string, "bold": bool } ] },
+        "empty_text": string }
+      Una colonna e composta da `lines`: ogni riga di `lines` diventa un PARAGRAFO dentro la
+      cella, e i suoi `keys` sono concatenati inline con `separator`. Serve alla fedelta (D-11):
+      il documento di riferimento del cliente impila nella prima colonna "codice-nome" su una
+      riga e la descrizione sulla riga sotto, nella STESSA cella. Una colonna semplice ha una
+      sola riga con una sola chiave (`lines: [{ keys: ["quantity"], separator: "" }]`).
+      `label` e l'intestazione della colonna (testo libero localizzato dall'utente, non un token).
+
+      ColumnKey - ALLOW-LIST CHIUSA, ogni chiave ha una fonte dati reale verificata:
+        "code"          -> quote_lines.product.code
+        "name"          -> quote_lines.product.name
+        "description"   -> quote_lines.product.description
+        "quantity"      -> quote_lines.quantity
+        "unit_price"    -> quote_lines.unit_price
+        "vat_rate"      -> quote_lines.vatRate.name (fallback: vatRate.rate)
+        "net_amount"    -> quote_lines.net_amount
+        "vat_amount"    -> quote_lines.vat_amount
+        "total_amount"  -> quote_lines.total_amount
+      `discount` NON esiste (D-4). `totals.rows[].variable` deve essere una variabile della
+      categoria `totals` (validata contro il catalogo).
+
+      NOTA DI NAMING (vincolante, vale anche per il codice): la chiave si chiama `variable`, NON
+      `token`. Motivo pratico, non estetico: l'hook `secret-scan.sh` di questo repo segnala come
+      possibile segreto in chiaro qualunque `token` a cui si assegni un valore letterale, e
+      bloccherebbe ogni file PHP/TS che dichiara queste strutture. `variable` e inoltre il termine
+      che il brief usa ("variabili dinamiche"). Nella prosa "token" resta usato come sinonimo
+      descrittivo di "riferimento a variabile", ma nessuna CHIAVE di contratto si chiama cosi.
+
+      5) PAGE_BREAK  { "id": string, "type": "page_break" }
+      6) SPACER      { "id": string, "type": "spacer", "height": int }   // punti 1..200
+      7) DIVIDER - riga orizzontale di separazione (D-11).
+      { "id": string, "type": "divider", "width_pct": int,
+        "thickness": int, "color": string,                  // thickness in ottavi di punto
+        "space_before": int, "space_after": int }            // twips
+      Reso come paragrafo vuoto con bordo inferiore, non come forma grafica: e la forma robusta
+      e portabile in OOXML, ed e cio che serve per riprodurre le 4 righe orizzontali del
+      documento di riferimento (che nell'originale sono shape da 0.8 pt di altezza).
+
+      LIMITI DIMENSIONALI (costanti nel validator e nel contratto TS, nessun magic value):
+        MAX_CONFIG_BYTES 262144 (256 KB del JSON serializzato)
+        MAX_BLOCKS_PER_ZONE 200 · MAX_RUNS_PER_BLOCK 200 · MAX_RUN_CHARS 5000
+        MAX_TABLE_ROWS 200 · MAX_TABLE_COLUMNS 12 · MAX_PRODUCT_COLUMNS 9
+        MAX_LINES_PER_PRODUCT_COLUMN 3 · MAX_KEYS_PER_LINE 4
+        MAX_TOTALS_ROWS 10 · MAX_IMAGES_PER_LAYOUT 5
+        MARGIN_TWIPS_MAX 5670 · FONT_SIZE_MIN 6 · FONT_SIZE_MAX 72
+        MAX_IMAGE_POINTS 1200 (lato massimo di un'immagine, copre l'A4 in entrambi i versi)
+    </config_schema>
+
+    <validation>
+      name: required (Store) / sometimes+required (Update), string, max:191,
+            unique(document_layouts, ['module','name'])[->ignore(id)]
+      code: required, string, max:64, regex:/^[a-z][a-z0-9_]*$/, unique(document_layouts,code) -- SOLO in Store
+      code (Update): ['prohibited'] -- incondizionato, immutabile per chiunque (stesso
+            precedente di `payment_methods` D-3 e di `products.code`)
+      description: sometimes, nullable, string, max:500
+      module: required, Rule::enum(DocumentLayoutModule::class) -- SOLO in Store
+      module (Update): ['prohibited'] -- il modulo di appartenenza e immutabile: cambiarlo
+            invaliderebbe ogni variabile del layout e il legame con i record che lo usano
+      is_active: sometimes, boolean
+      is_default: sometimes, boolean
+      config: required (Store) / sometimes+required (Update), array; struttura validata da
+            `DocumentLayoutConfigValidator` in `withValidator` (errori su path puntati, es.
+            `config.body.blocks.3.runs.0.size`)
+      Costanti: NAME_MAX=191, CODE_MAX=64, DESCRIPTION_MAX=500.
+    </validation>
+
+    <endpoint method="GET" path="/api/document-layouts/{documentLayout}">
+      <request>route model binding su `documentLayout`</request>
+      <response status="200">
+        { "success": true, "message": "OK",
+          "data": { "id": int, "name": string, "code": string, "description": string|null,
+                    "module": "quotes", "module_label": string,
+                    "is_active": bool, "is_default": bool,
+                    "config": {...contratto config_schema...},
+                    "images": [ { "attachment_id": int, "filename": string,
+                                  "mime_type": string, "size": int } ],
+                    "created_at": iso8601, "updated_at": iso8601 },
+          "permissions": { "resource": "document-layouts", "fields": {...}, "actions": {...} } }
+        `images` e SOLO metadata: i binari si prendono dall'endpoint dedicato, per non gonfiare
+        questa response con base64 (la tabella e il detail non ne hanno bisogno).
+      </response>
+      <errors>401 non autenticato; 403 senza `document-layouts.view`; 404 id inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-layouts">
+      <request>{ name, code, module, config, description?, is_active?, is_default? }</request>
+      <response status="201">envelope `okWithPermissions`, `data` = shape della GET</response>
+      <errors>
+        403 senza `document-layouts.create`; 422 `name` duplicato nel modulo; 422 `code`
+        duplicato o fuori regex; 422 `module` non nell'enum; 422 config strutturalmente
+        invalida (path puntato del primo errore); 422 `is_default: true` con `is_active: false`
+        (D-7c); 422 su campo non editable per i field permission (il 403 sull'ability precede).
+        Il PRIMO layout di un modulo riceve `is_default: true` anche se non richiesto (D-7a).
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/document-layouts/{documentLayout}">
+      <request>{ name?, description?, is_active?, is_default?, config? } -- `code` e `module` PROIBITI</request>
+      <response status="200">envelope `okWithPermissions`, `data` = shape della GET</response>
+      <errors>
+        403 senza `document-layouts.update`; 422 se `code` o `module` sono presenti nel payload
+        (anche col valore attuale); 422 `name` duplicato nel modulo; 422 config invalida;
+        422 `is_active: false` su un layout predefinito (D-7d, messaggio da
+        `lang/{it,en}/document_layouts.php` -> `default_cannot_be_deactivated`);
+        422 `is_default: false` diretto (D-7e, `default_must_be_reassigned`);
+        422 `is_default: true` insieme a `is_active: false`.
+        Con `is_default: true` accettato, gli altri layout del modulo perdono il flag nella
+        stessa transazione (D-7b).
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/document-layouts/{documentLayout}">
+      <request>route model binding</request>
+      <response status="204">nessun body</response>
+      <errors>
+        403 senza `document-layouts.delete`; 404 id inesistente;
+        422 se il layout e predefinito E non e l'unico del suo modulo
+        (`default_cannot_be_deleted`): si designa prima un altro predefinito. Se e l'unico
+        layout del modulo il delete e consentito (il modulo torna a zero layout).
+        Le immagini associate vengono cancellate con il layout (attachment + binario su disco).
+        Nessun guard di utilizzo in questa spec: arriva con `quotes.layout_id` nella 0070 (D-10).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-layouts/for-select">
+      <request>module: required, enum; search?: string; offset?: int; limit?: int (max 100, default 25); ids?: int[]</request>
+      <response status="200">
+        { "items": [ { "id": int, "label": string, "subtitle": string,
+                       "meta": { "is_default": bool, "code": string } } ],
+          "export_link": null,
+          "pagination": { "total": int, "offset": int, "limit": int, "total_pages": int } }
+        `label` = name, `subtitle` = code. Solo record del `module` richiesto con
+        `is_active = true`, ordinati per `is_default` desc (il predefinito primo), poi `name`,
+        poi `id`. `ids[]` idrata anche i record INATTIVI (edit-mode dei consumatori) e NON
+        gonfia `total`.
+      </response>
+      <errors>401; 403 senza `document-layouts.viewAny`; 422 `module` mancante o fuori enum; 422 limit &gt; 100</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-layouts/variables">
+      <request>module: required, enum</request>
+      <response status="200">
+        { "success": true, "message": "OK",
+          "data": { "module": "quotes",
+            "categories": [
+              { "key": string, "label": string,
+                "variables": [ { "variable": "{quote.code}", "label": string,
+                                 "type": "string"|"number"|"date"|"currency",
+                                 "example": string } ] } ] } }
+        Sintassi: graffe singole, `{categoria.chiave}`, minuscolo snake_case. La chiave del
+        contratto e `variable` (vedi NOTA DI NAMING in config_schema).
+        Nota di lingua: i riferimenti sono INGLESI e rispecchiano i nomi reali di colonne e relazioni
+        (engineering.md §1.2: identificatori in inglese); le `label` sono localizzate via
+        i18next e sono cio che l'utente legge nel selettore. Gli esempi del brief
+        (`{preventivo.numero}`) erano illustrativi: la forma congelata e `{quote.code}`.
+
+        CATEGORIE CONGELATE per `module = quotes` - ogni token ha una fonte dati verificata:
+
+        quote          code, title, internal_notes, status_name, created_at, updated_at
+        totals         revenue_net, revenue_vat, revenue_gross, cost_net, cost_vat,
+                       cost_gross, margin_net
+                       (`*_gross` = net + vat, derivato: non e in colonna)
+        client         name, full_name, type, vat_number, tax_code, sdi_code, email, phone,
+                       address, address_line1, address_postal_code, address_city,
+                       address_province, address_state, address_country
+                       (via quote->opportunity->registry; `name` = registries.name;
+                        gli altri dalla scheda personalData / contacts / addresses;
+                        `address` = AddressLabel::singleLine)
+        opportunity    name, status_name, estimated_value, expected_close_date, start_date,
+                       general_notes
+        referent       name, type_name, email, phone   (via opportunity->referent)
+        commercial     name, email, phone               (quote->commercial, Referent)
+        reporter       name, email, phone               (quote->reporter, Referent)
+        supervisor     name, email                      (quote->supervisor, User)
+        company        denomination, vat_number, address, address_city, address_postal_code
+        company_site   name, bank_name, bank_iban, address, address_city, address_postal_code
+        operational_site  label                         (OperationalSiteLabel::compose)
+        custom_fields  una variabile per ogni `CustomFieldDefinition` attiva di `quotes`
+                       (token `{custom_fields.KEY}`, label = definition->label) - DINAMICA
+        opportunity_attributes  una variabile per ogni Attribute in contesto `opportunity`
+                       (token `{opportunity_attributes.CODE}`) - DINAMICA
+        document       generated_at, generated_by
+
+        NON esposte: `payment_method.*` (D-3); qualsiasi token di sconto (D-4); i token di
+        `client`/`referent`/`commercial`/`reporter` la cui sorgente e un campo `personal_data`
+        non visibile per i field permission dell'attore (D-6) - vengono OMESSI dal catalogo.
+      </response>
+      <errors>401; 403 senza `document-layouts.viewAny`; 422 `module` mancante o fuori enum</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/document-layouts/{documentLayout}/images">
+      <request>route model binding</request>
+      <response status="200">
+        { "success": true, "message": "OK",
+          "data": [ { "attachment_id": int, "filename": string, "mime_type": string,
+                      "size": int, "data_uri": "data:image/png;base64,..." } ] }
+        `data_uri` segue il precedente del repo (`CompanySite::logoDataUri()`): nessun URL
+        pubblico, nessun binario servito senza autenticazione. Endpoint separato dal detail
+        proprio perche i base64 non devono viaggiare con la tabella.
+      </response>
+      <errors>401; 403 senza `document-layouts.view`; 404 layout inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-layouts/{documentLayout}/images">
+      <request>multipart/form-data, campo `file`. Regole: required, image, mimes:jpeg,png, extensions:jpg,jpeg,png, max:config('attachments.max_size')</request>
+      <response status="201">
+        { "success": true, "message": "Created",
+          "data": { "attachment_id": int, "filename": string, "mime_type": string,
+                    "size": int, "data_uri": string } }
+        Solo `jpeg` e `png`: sono i formati che il renderer `.docx` (spec 0070) incorpora in
+        modo affidabile. `webp`/`gif` sono deliberatamente esclusi anche se accettati altrove
+        nel repo per gli avatar.
+      </response>
+      <errors>
+        401; 403 senza `document-layouts.update`; 404 layout inesistente;
+        422 file mancante / non immagine / mime o estensione fuori allow-list / oltre max_size;
+        422 se il layout ha gia `MAX_IMAGES_PER_LAYOUT` (5) immagini.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/document-layouts/{documentLayout}/images/{attachment}">
+      <request>route model binding annidato; l'attachment deve appartenere al layout</request>
+      <response status="204">nessun body</response>
+      <errors>
+        401; 403 senza `document-layouts.update`; 404 se l'attachment non appartiene a questo
+        layout (404, non 403: non si conferma l'esistenza di risorse altrui);
+        422 se un blocco `image` della `config` corrente referenzia ancora questo
+        `attachment_id` (`image_in_use`): prima si rimuove il blocco.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/document-layouts/columns">
+      <request>generico, nessun codice nuovo: solo la riga in `config/tables.php`</request>
+      <response status="200">
+        Colonne nell'ordine congelato: name (searchable, sortable, filterType text),
+        code (searchable, sortable, filterType text), module (sortable, filterType text),
+        is_default (boolean, NON editable inline), is_active (boolean, `editable: true`),
+        description (filterable, NON sortable), created_at (datetime), updated_at (datetime).
+        Copre i minimi richiesti dal brief (Nome, Modulo, Predefinito, Stato, Data ultima
+        modifica, Azioni).
+        Azioni: view / edit / delete (type danger, confirm true) / activity, ciascuna con la
+        propria `permission`. defaultSort: name asc. defaultPagination: limit 25.
+        Advanced filters: module (Enum), is_active (Switch), is_default (Switch).
+        `is_default` NON e editabile inline: il suo cambio passa dall'invariante
+        transazionale del DefaultManager (D-7), che la pipeline generica di inline edit
+        (mass-assignment diretto, senza Service) bypasserebbe.
+      </response>
+      <errors>403 senza `document-layouts.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tables/document-layouts/rows/{row}">
+      <request>{ "column": "is_active", "value": bool }</request>
+      <response status="200">{ "success": true, "message": "Row updated", "data": { ...riga rimappata... } }</response>
+      <errors>
+        403 se manca `document-layouts.update` o se i field permission negano `is_active`;
+        422 su qualsiasi `column` diversa da `is_active`; 422 se `value` non e booleano;
+        422 se la riga e il layout predefinito (D-7d: il predefinito non si disattiva) -
+        `authorizeUpdate()`/`updateCell()` di default non basterebbero, serve l'override del
+        guard nella TableDefinition;
+        404 row inesistente.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/document-layouts">
+      <request>generico. Catalogo campi nell'ordine: name, code, description, module, is_active, is_default, config</request>
+      <response status="200">
+        `{success, message, data:{fields:[...]}, permissions:{fields, actions}}`.
+        `permissions.fields.code` e `permissions.fields.module`: `editable` true solo quando il
+        record e nuovo (`$model === null`); su un record esistente SEMPRE readonly.
+        `permissions.actions`: delete / export / import / view_activity.
+      </response>
+      <errors>403 senza `document-layouts.viewAny`</errors>
+    </endpoint>
+
+    <field_permissions>
+      `DocumentLayoutsAuthorization::fields()` nell'ordine congelato:
+        FieldDefinition('name', 'text', mandatory: true)
+        FieldDefinition('code', 'text', mandatory: true)
+        FieldDefinition('description', 'textarea')
+        FieldDefinition('module', 'select', mandatory: true)
+        FieldDefinition('is_active', 'boolean')
+        FieldDefinition('is_default', 'boolean')
+        FieldDefinition('config', 'json', mandatory: true)
+      `fieldPermissionCeiling()`:
+        name    -> mayWrite ? visibleEditable(required: true) : visibleReadonly()
+        code    -> (mayWrite &amp;&amp; $model === null) ? visibleEditable(required: true) : visibleReadonly()
+        module  -> (mayWrite &amp;&amp; $model === null) ? visibleEditable(required: true) : visibleReadonly()
+        config  -> mayWrite ? visibleEditable(required: true) : visibleReadonly()
+        description / is_active / is_default -> mayWrite ? visibleEditable() : visibleReadonly()
+      `actions()`: ['delete', 'export', 'import', 'view_activity'].
+      `config` e un campo dichiarato (e non un dettaglio interno): un ruolo puo cosi avere
+      `update` sui metadati del layout senza poter riscrivere il documento.
+    </field_permissions>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Migration: `migrate:fresh` crea `document_layouts` con le 10 colonne del contratto e i tipi dichiarati, unique su `code`, unique composto su (`module`,`name`), `is_active` default true, `is_default` default false, nessun `deleted_at`, nessun `sort_order`.</criterion>
+    <criterion id="AC-002">Migration: `down()` esegue `dropIfExists('document_layouts')` e il rollback lascia lo schema pulito.</criterion>
+    <criterion id="AC-003">Model: `casts()` restituisce `module` come `DocumentLayoutModule`, `is_active`/`is_default` come bool, `config` come array; un record letto da DB espone `config` come array PHP annidato.</criterion>
+    <criterion id="AC-004">Due layout con lo stesso `name` in moduli diversi sono ammessi; due con lo stesso `name` nello stesso modulo violano l'unique (422 via FormRequest, e vincolo DB a difesa).</criterion>
+
+    <criterion id="AC-010">POST valido completo: 201, envelope `{success,message,data,permissions}`, record persistito, `config` riletta identica a quella inviata (round-trip JSON senza perdita).</criterion>
+    <criterion id="AC-011">POST del PRIMO layout di un modulo senza `is_default`: 201 e il record risulta `is_default: true` (D-7a).</criterion>
+    <criterion id="AC-012">POST del SECONDO layout dello stesso modulo senza `is_default`: 201 con `is_default: false`; il primo resta predefinito.</criterion>
+    <criterion id="AC-013">POST con `is_default: true` su un modulo che ha gia un predefinito: 201, il nuovo e predefinito e il precedente ha `is_default: false` (D-7b), in una sola transazione.</criterion>
+    <criterion id="AC-014">POST con `is_default: true` e `is_active: false`: 422 (D-7c), nessun record creato.</criterion>
+    <criterion id="AC-015">POST con `code` duplicato: 422 su `code`. Con `code` fuori regex (`Standard`, `1abc`, `a-b`, `a b`): 422 su `code` per ciascun caso.</criterion>
+    <criterion id="AC-016">POST con `module` non nell'enum (`invoices`): 422 su `module`.</criterion>
+    <criterion id="AC-017">GET show: 200 con la shape completa del contratto, `module_label` popolato, `images` presente come array di soli metadata (nessun `data_uri`) e il blocco `permissions`.</criterion>
+    <criterion id="AC-018">GET show di un id inesistente: 404 con envelope `{success:false,message}` e nessun nome di classe/model nel messaggio.</criterion>
+    <criterion id="AC-019">PATCH parziale (solo `description`): 200, aggiorna solo quel campo, `config` invariata.</criterion>
+    <criterion id="AC-020">PATCH con `code` nel payload, sia con valore diverso sia con valore IDENTICO all'attuale: 422 su `code` in entrambi i casi. Stesso comportamento per `module`.</criterion>
+    <criterion id="AC-021">PATCH con `code` o `module` eseguita dal ruolo privilegiato (super-admin): 422. L'immutabilita non e bypassabile da alcun ruolo.</criterion>
+    <criterion id="AC-022">PATCH `{is_active: false}` su un layout NON predefinito: 200, record disattivato. Sullo stesso layout se predefinito: 422 con messaggio `default_cannot_be_deactivated` (D-7d).</criterion>
+    <criterion id="AC-023">PATCH `{is_default: false}` su un layout predefinito: 422 con messaggio `default_must_be_reassigned` (D-7e); il flag resta true a DB.</criterion>
+    <criterion id="AC-024">PATCH `{is_default: true}` su un layout attivo non predefinito: 200; a DB esiste esattamente UN record con `is_default: true` per quel modulo.</criterion>
+    <criterion id="AC-025">DELETE di un layout non predefinito: 204, record rimosso. DELETE di un id inesistente: 404.</criterion>
+    <criterion id="AC-026">DELETE di un layout predefinito quando esistono altri layout dello stesso modulo: 422 `default_cannot_be_deleted`, record ancora a DB.</criterion>
+    <criterion id="AC-027">DELETE del layout predefinito quando e l'UNICO del modulo: 204, record rimosso.</criterion>
+    <criterion id="AC-028">DELETE di un layout con 2 immagini: 204, le righe `attachments` sono rimosse e i binari non sono piu presenti sul disco.</criterion>
+
+    <criterion id="AC-030">Config validator: rifiuta con 422 e path puntato ciascuno di questi casi - `version` assente o diversa da 1; zona sconosciuta (`sidebar`); blocco con `type` fuori dai 7 ammessi; chiave sconosciuta dentro un blocco; `orientation` fuori enum; margine negativo o &gt; 5670; `size` fuori 6..72; colore non esadecimale RRGGBB (`#fff`, `rosso`); `align` fuori enum; `line_height` fuori 1.0..3.0.</criterion>
+    <criterion id="AC-031">Config validator: `products_table` con una `columns[].key` fuori allow-list (in particolare `discount`) restituisce 422 sul path della colonna (D-4).</criterion>
+    <criterion id="AC-032">Config validator: `products_table.source` fuori da (`offer_lines`,`cost_lines`) -> 422; `totals.rows[].variable` che non e una variabile reale della categoria `totals` -> 422.</criterion>
+    <criterion id="AC-033">Config validator: un blocco `image` con `attachment_id` che non appartiene a questo layout -> 422; con un `attachment_id` inesistente -> 422.</criterion>
+    <criterion id="AC-034">Config validator: una cella di `table` che contiene un blocco non-`text` (es. `image` o `table`) -> 422 sul path della cella.</criterion>
+    <criterion id="AC-035">Config validator: superati i limiti dimensionali (config &gt; 256 KB; &gt; 200 blocchi in una zona; &gt; 200 run in un blocco; run &gt; 5000 caratteri; &gt; 200 righe di tabella; &gt; 12 colonne; &gt; 9 colonne prodotto; &gt; 10 righe di totali) -> 422 con il limite superato indicato.</criterion>
+    <criterion id="AC-036">Config validator: un `runs[].field` valorizzato a `page`/`total_pages` e valido in tutte e tre le zone; un valore diverso (`section`) -> 422.</criterion>
+    <criterion id="AC-038">Config validator, `image.wrap` (D-11): `behind_page` e accettato in zona `header`; in `body` o `footer` -> 422. Con `wrap: 'behind_page'` e `height: null` -> 422. Un lato oltre `MAX_IMAGE_POINTS` (1200) -> 422. `wrap` fuori dai due valori ammessi -> 422.</criterion>
+    <criterion id="AC-039">Config validator, `products_table.columns[].lines` (D-11): una colonna con 2 righe di cui la prima ha `keys: ['code','name']` e `separator: '-'` e valida; oltre `MAX_LINES_PER_PRODUCT_COLUMN` (3) righe -> 422; oltre `MAX_KEYS_PER_LINE` (4) chiavi -> 422; `lines: []` -> 422 (una colonna senza contenuto non ha senso); una `keys` vuota -> 422.</criterion>
+    <criterion id="AC-039b">Config validator, blocco `divider` (D-11): valido con `width_pct` 1..100, `thickness` 1..96, colore esadecimale RRGGBB; `width_pct` 0 o &gt; 100 -> 422; `thickness` 0 -> 422; colore `#000` -> 422.</criterion>
+    <criterion id="AC-037">Config valida al limite: una config con esattamente i valori massimi ammessi (200 blocchi, 9 colonne prodotto, margine 5670, size 72) viene ACCETTATA con 201/200. Il validator non ha off-by-one.</criterion>
+
+    <criterion id="AC-040">`GET /document-layouts/variables?module=quotes`: 200, il catalogo contiene tutte le categorie congelate; ogni voce ha `variable`, `label`, `type`, `example` non vuoti; nessuna variabile duplicata in tutto il catalogo.</criterion>
+    <criterion id="AC-041">Il catalogo NON contiene alcuna variabile della categoria `payment_method` (D-3) ne alcuna variabile con `discount` nel nome (D-4).</criterion>
+    <criterion id="AC-042">Il catalogo espone come variabili dinamiche i custom field attivi di `quotes` (`{custom_fields.KEY}` per ogni `CustomFieldDefinition`): creando una nuova definizione, la variabile appare senza modifiche al codice.</criterion>
+    <criterion id="AC-043">Il catalogo espone gli attributi in contesto `opportunity` come `{opportunity_attributes.CODE}`.</criterion>
+    <criterion id="AC-044">D-6: per un attore i cui `role_field_permissions` nascondono `tax_code` dei dati personali, il catalogo NON contiene `{client.tax_code}`; per il ruolo privilegiato lo contiene. Nessuna differenza sugli altri token.</criterion>
+    <criterion id="AC-045">`GET .../variables` senza `module`: 422. Con `module` fuori enum: 422. Senza `document-layouts.viewAny`: 403.</criterion>
+    <criterion id="AC-046">`AddressLabel::singleLine(null)` restituisce stringa vuota; con un indirizzo completo compone `line1`, CAP, comune, provincia con i nomi geo localizzati in italiano; con solo `line1` restituisce `line1` senza separatori pendenti. `multiLine` restituisce le righe non vuote nell'ordine dichiarato. Nessuna query DB eseguita dal composer (asserito con `DB::listen`/query count).</criterion>
+
+    <criterion id="AC-050">403 senza la relativa permission su: show (`view`), store (`create`), update (`update`), destroy (`delete`), for-select (`viewAny`), variables (`viewAny`), images index (`view`), images store/destroy (`update`), `GET /tables/document-layouts/columns` (`viewAny`), export (`export`).</criterion>
+    <criterion id="AC-051">`php artisan permissions:sync` crea le 8 permission `document-layouts.{viewAny,view,create,update,delete,export,import,viewActivity}` e nessuna in piu.</criterion>
+    <criterion id="AC-052">`GET /navigation` espone il nodo `document-layouts` solo all'utente con `document-layouts.view` e lo omette agli altri.</criterion>
+    <criterion id="AC-053">Precedenza 403 su 422: un utente senza `document-layouts.update` che invia una `config` invalida riceve 403, non 422.</criterion>
+    <criterion id="AC-054">Con `role_field_permissions` che nega `config`, una PATCH che cambia `config` riceve 422 su `config`; una PATCH che cambia solo `description` riceve 200.</criterion>
+    <criterion id="AC-055">I campi `mandatory` (`name`, `code`, `module`, `config`) restano editable in create anche con una restrizione di ruolo che li negherebbe (bypass mandatory, spec 0008).</criterion>
+
+    <criterion id="AC-060">`GET /meta/document-layouts`: 200 con il catalogo campi nell'ordine congelato; `permissions.fields.code.editable` e `permissions.fields.module.editable` sono true in create e false su un record esistente.</criterion>
+
+    <criterion id="AC-070">`GET /tables/document-layouts/columns`: 200 con le 8 colonne nell'ordine congelato, `searchable: true` su `name` e `code`, `editable: true` sulla sola `is_active`, `is_default` NON editable.</criterion>
+    <criterion id="AC-071">`POST /tables/document-layouts/rows`: la ricerca globale trova il record per termine presente nel solo `name` e nel solo `code`, e non lo trova per un termine assente da entrambi.</criterion>
+    <criterion id="AC-072">Filtri: `module` (Enum) restituisce solo i layout del modulo scelto; `is_active` (Switch) e `is_default` (Switch) filtrano correttamente. Ordinamento di default: `name` asc, limit 25.</criterion>
+    <criterion id="AC-073">Azioni per riga: view/edit/delete/activity compaiono solo con la permission corrispondente; `delete` ha `confirm: true` e `type: 'danger'`.</criterion>
+    <criterion id="AC-074">Export: un utente con `document-layouts.export` ottiene l'export del dominio; senza la permission ottiene 403.</criterion>
+    <criterion id="AC-075">`PATCH /tables/document-layouts/rows/{id}` con `{column:'is_active', value:false}` su un layout non predefinito: 200 e valore persistito. Sullo stesso su un layout PREDEFINITO: 422 (D-7d). Con `column:'is_default'`: 422. Con `value` non booleano: 422. Senza `document-layouts.update`: 403.</criterion>
+
+    <criterion id="AC-080">`GET /document-layouts/for-select?module=quotes`: 200, envelope paginato, mapping `{id, label:name, subtitle:code, meta:{is_default, code}}`; il layout predefinito e il PRIMO elemento.</criterion>
+    <criterion id="AC-081">for-select esclude i record `is_active = false` e i record di un altro `module`.</criterion>
+    <criterion id="AC-082">for-select con `ids[]` idrata anche un record INATTIVO e quel record non incrementa `pagination.total`.</criterion>
+    <criterion id="AC-083">for-select senza `module`: 422. Con `limit` &gt; 100: 422.</criterion>
+
+    <criterion id="AC-090">`POST .../images` con un PNG valido: 201, `data_uri` inizia con `data:image/png;base64,`, il binario esiste sul disco `local` sotto la directory degli attachment, la riga ha `collection = 'layout_image'` e `attachable` = il layout.</criterion>
+    <criterion id="AC-091">`POST .../images` rifiuta con 422: file assente; PDF; `.webp`; `.gif`; file oltre `attachments.max_size`; un file con estensione `.png` ma contenuto non immagine.</criterion>
+    <criterion id="AC-092">`POST .../images` con 5 immagini gia presenti: 422 (`MAX_IMAGES_PER_LAYOUT`).</criterion>
+    <criterion id="AC-093">`GET .../images`: 200 con un `data_uri` per immagine; `DELETE .../images/{attachment}`: 204 e binario rimosso dal disco.</criterion>
+    <criterion id="AC-094">`DELETE .../images/{attachment}` di un attachment appartenente a un ALTRO layout: 404 (non 403, non 204).</criterion>
+    <criterion id="AC-095">`DELETE .../images/{attachment}` quando un blocco `image` della config corrente lo referenzia: 422 `image_in_use`; dopo aver rimosso il blocco dalla config, la DELETE riesce con 204.</criterion>
+
+    <criterion id="AC-100">Activity log: create e update generano eventi con i campi cambiati (log name `document_layouts`); `GET /activity-log/document-layouts/{id}` risponde 200 all'utente con `viewActivity` + `view`, 403 se manca una delle due.</criterion>
+    <criterion id="AC-101">`DemoDocumentLayoutSeeder` e richiamato SOLO da `DemoDataSeeder` (mai da `DatabaseSeeder`) e re-eseguirlo non duplica righe (idempotenza via `updateOrCreate` su `code`).</criterion>
+
+    <criterion id="AC-110">Schema Zod dei metadati: accetta un payload valido; rifiuta `name` vuoto e oltre 191, `code` vuoto/oltre 64/fuori regex, `description` oltre 500, `module` fuori enum.</criterion>
+    <criterion id="AC-111">Contratto TS della config: il tipo `DocumentLayoutConfig` e la sua validazione Zod accettano una config valida e rifiutano gli stessi casi del validator backend (blocco sconosciuto, `discount` fra le colonne prodotto, colore non esadecimale, margine oltre il massimo). I limiti sono le stesse costanti del backend, dichiarate una volta sola nel modulo di config.</criterion>
+    <criterion id="AC-112">`buildCreatePayload` produce la shape completa incluso `config`; `buildUpdatePayload` produce il diff e NON include mai `code` ne `module`.</criterion>
+    <criterion id="AC-113">Form metadati create: rende name, code, description, module, is_active, is_default; un `name` vuoto mostra l'errore inline senza chiamare l'API; il campo errato ha `aria-invalid` e `aria-describedby` verso un messaggio con `role="alert"`.</criterion>
+    <criterion id="AC-114">Form metadati edit: idrata i valori; `code` e `module` sono resi readonly/disabled e la PATCH di submit non li contiene; un 422 del server viene mappato sui campi (`applyServerValidationErrors`).</criterion>
+
+    <criterion id="AC-120">Editor - stato: aggiungere un blocco a una zona lo appende in coda con i default del suo tipo; rimuoverlo lo elimina dalla sola zona interessata; il riordino via drag&amp;drop cambia l'ordine dei blocchi della zona e nessun'altra.</criterion>
+    <criterion id="AC-121">Editor - un blocco `text` permette di modificare testo, allineamento, grassetto/corsivo/sottolineato, font, dimensione e colore del run selezionato, e le modifiche si riflettono nella config emessa.</criterion>
+    <criterion id="AC-122">Editor - selettore variabili: la ricerca filtra per token e per label, le variabili sono raggruppate per categoria, e il click su una variabile inserisce il token nel punto di inserimento del run attivo (non a fine testo, se il cursore e altrove).</criterion>
+    <criterion id="AC-123">Editor - blocco `products_table`: si scelgono le colonne dall'allow-list, si riordinano, si rinominano le label, e la lista NON offre alcuna colonna sconto (D-4).</criterion>
+    <criterion id="AC-124">Editor - pannello pagina: orientamento, i 4 margini e il font di default modificano la config e l'anteprima; un margine fuori range mostra un errore e non produce una config invalida.</criterion>
+    <criterion id="AC-125">Editor - numerazione pagine: si inserisce un run `field: 'page'` e uno `field: 'total_pages'` in un blocco del footer, e l'anteprima li rende come segnaposto ("1" / "1") anziche come testo grezzo.</criterion>
+    <criterion id="AC-126">Editor - blocco immagine: si seleziona un'immagine caricata sul layout, si imposta larghezza e allineamento, e l'anteprima la mostra alla scala corretta; senza immagini caricate il blocco mostra uno stato vuoto con l'azione di upload.</criterion>
+    <criterion id="AC-127">Anteprima A4: il foglio ha il rapporto d'aspetto A4 nell'orientamento scelto, i margini sono resi in scala (twips->px con la stessa costante di conversione), i token delle variabili sono resi come chip con la label leggibile e non come testo grezzo.</criterion>
+    <criterion id="AC-128">Editor - il salvataggio invia esattamente la config mostrata nell'anteprima (round-trip: config caricata dal server -> editor -> payload, senza perdita ne aggiunta di chiavi).</criterion>
+    <criterion id="AC-129">Editor - un 422 del validator backend su un path puntato (`config.body.blocks.3.runs.0.size`) viene mostrato all'utente riferito al blocco corretto, non come errore generico di form.</criterion>
+
+    <criterion id="AC-130">Pagina lista: senza `document-layouts.viewAny` mostra il fallback "forbidden" e non monta la tabella; con la permission monta `TableView` su `domain="document-layouts"`.</criterion>
+    <criterion id="AC-131">Il bottone "Nuovo" e visibile solo con `document-layouts.create`.</criterion>
+    <criterion id="AC-132">Azione di riga delete: successo -> toast e refresh; 422 del guard sul predefinito -> il messaggio mostrato e quello del backend, non un messaggio generico.</criterion>
+    <criterion id="AC-133">Il registry di modulo espone `moduleScreen` per `domain: 'document-layouts'` con `defaultMode: OPEN_MODE_PAGE` (D-9) e i deep-link `/document-layouts/new`, `/:id`, `/:id/edit` risolvono senza rotte dichiarate a mano.</criterion>
+    <criterion id="AC-134">Chiavi i18n presenti e allineate in `it` e `en`: nessuna chiave usata dai componenti risulta mancante in una delle due lingue, incluse le label di tutte le categorie di variabili e di tutti i tipi di blocco.</criterion>
+
+    <criterion id="AC-140">Responsive UI a 375 / 768 / 1024 px: nessuna scrollbar orizzontale sul body, nessuna sovrapposizione, l'anteprima A4 scrolla nel proprio contenitore. Sotto `md` l'editor impila le tre aree (canvas, ispettore, variabili) invece di affiancarle. VERIFICA MANUALE per il rendering pixel; la regola di impilamento e verificata da test.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>NESSUNA nuova dipendenza npm (D-1): l'editor usa solo React 19, shadcn/ui, Tailwind 4, `@dnd-kit/*`, RHF+Zod, TanStack Query, i18next, tutti gia presenti. Nessuna dipendenza composer in questa spec (PhpWord entra nella 0070).</item>
+    <item>Nessuna migration su tabelle esistenti. `quotes`, `attribute_layouts`, `attachments` non cambiano struttura (di `attachments` si usa solo il morph esistente + un alias in `config/attachments.php`).</item>
+    <item>Nessuna modifica a `App\Models\AttributeLayout`, `AttributeLayoutService`, `AttributeLayoutValidator` ne alla spec 0062: sono un concetto diverso che condivide solo la parola "layout".</item>
+    <item>Authz server-side su OGNI endpoint: Policy per il CRUD, `authorizeViewAny()` di default per la tabella, field permission su ogni write, ownership verificata sugli attachment annidati (404, non 403).</item>
+    <item>La `config` NON e mai interpolata in SQL ne eseguita: e un albero di dati validato contro un'allow-list chiusa di tipi e chiavi. Nessun `eval`, nessuna espressione dinamica, nessun template engine.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` con input utente: ricerca, filtri e ordinamenti passano dall'allow-list del motore tabellare generico.</item>
+    <item>Nessun `throttle` su questi endpoint (decisione utente 2026-07-15: rate limiting solo sugli endpoint di credenziali).</item>
+    <item>I binari delle immagini stanno sul disco privato `local` e non sono MAI serviti da URL pubblico: solo data URI dietro autenticazione + permission, come da precedente `CompanySite::logoDataUri()`.</item>
+    <item>D-6 non negoziabile: il catalogo variabili e la loro risoluzione rispettano i field permission dei dati personali. Un layout non e un canale per aggirare la matrice dei permessi di campo.</item>
+    <item>Identificatori in inglese: tabella, colonne, rotte, classi, chiavi della config, token delle variabili. Solo i valori esposti in UI passano da i18next.</item>
+    <item>File entro 300 righe (soft, proponi split) / 500 (hard). L'editor e diviso per responsabilita (stato, zona, tipo di blocco, ispettore, variabili, anteprima) proprio per rispettarlo: nessun componente monolitico.</item>
+    <item>Nessun magic value inline: limiti dimensionali, scala twips->px, formato pagina e default di ogni tipo di blocco sono costanti dichiarate una volta sola per lato.</item>
+    <item>Nessun emoji nel codice o nei commenti. Nessun file `.md` nuovo fuori da `docs/`.</item>
+    <item>Nessun dead code: nessun tipo di blocco, token, categoria o messaggio i18n senza un consumatore reale in questa spec o nella 0070.</item>
+    <item>Definition of Done: Pest e Vitest ESEGUITI e verdi, Pint pulito, ESLint pulito, `cd frontend &amp;&amp; npx tsc -b --force` EXIT=0 (mai `tsc --noEmit`, e un falso verde in questo repo).</item>
+    <item>Test frontend da lanciare con `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` (sensibilita preesistente di locale sulle asserzioni numeriche).</item>
+  </constraints>
+
+</spec>

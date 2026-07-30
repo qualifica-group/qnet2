@@ -3,6 +3,8 @@
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
+use App\Http\Controllers\PaymentMethods\PaymentMethodController;
+use App\Http\Controllers\PaymentMethods\PaymentMethodForSelectController;
 use App\Http\Controllers\QuoteStatuses\QuoteStatusController;
 use App\Http\Controllers\QuoteStatuses\QuoteStatusForSelectController;
 use App\Http\Controllers\RewardStatuses\RewardStatusController;
@@ -180,6 +182,28 @@ Route::get('reward-statuses/{rewardStatus}', [RewardStatusController::class, 'sh
 Route::post('reward-statuses', [RewardStatusController::class, 'store']);
 Route::match(['put', 'patch'], 'reward-statuses/{rewardStatus}', [RewardStatusController::class, 'update']);
 Route::delete('reward-statuses/{rewardStatus}', [RewardStatusController::class, 'destroy']);
+
+// Payment methods CRUD (spec 0068): a standalone, consumer-agnostic lookup
+// describing the payment modalities selectable across the CRM (no consumer
+// module yet, D-2 out of scope). Authorization
+// (payment-methods.view/create/update/delete) is enforced server-side in
+// PaymentMethodController via PaymentMethodPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE payment-methods/{paymentMethod} so the literal
+// `for-select` segment wins over the bound wildcard. Gated by
+// payment-methods.viewAny server-side in PaymentMethodForSelectController.
+Route::get('payment-methods/for-select', PaymentMethodForSelectController::class);
+
+// Resequencing (D-1): `sort_order` is server-managed, this is the only way
+// to change it. Declared ABOVE the bound wildcard for the same
+// literal-segment reason as `for-select`. Gated on payment-methods.update
+// directly in PaymentMethodController::reorder.
+Route::post('payment-methods/reorder', [PaymentMethodController::class, 'reorder']);
+
+Route::get('payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
+Route::post('payment-methods', [PaymentMethodController::class, 'store']);
+Route::match(['put', 'patch'], 'payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
+Route::delete('payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
 
 // VAT rates CRUD: a standalone lookup used to assign a VAT percentage to a
 // Product. Authorization (vat-rates.view/create/update/delete) is enforced

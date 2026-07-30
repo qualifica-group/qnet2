@@ -15,6 +15,7 @@ import {
   OPPORTUNITIES_FOR_SELECT_RESOURCE,
   type OpportunityForSelectItem,
   type OpportunityForSelectMeta,
+  type OpportunityForSelectRoleKey,
 } from '@/features/opportunities/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
@@ -22,6 +23,7 @@ import { QUOTE_STATUSES_FOR_SELECT_RESOURCE } from '@/features/quote-statuses/fo
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
+import { QuoteSitesSection } from '@/features/quotes/quote-sites-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
@@ -67,12 +69,16 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   // user pick/clear, never as a render-time effect that could overwrite a
   // later edit.
   const [inheritedRoles, setInheritedRoles] = useState<OpportunityForSelectMeta | null>(null)
-  /** Writes the three RHF fields only — no React state — so this is also safe to call from the effect below (react-hooks/set-state-in-effect). */
+  /** Writes the inherited RHF fields only — no React state — so this is also safe to call from the effect below (react-hooks/set-state-in-effect). */
   const applyInheritedRoleValues = useCallback(
     (meta: OpportunityForSelectMeta | null) => {
       form.setValue('commercial_id', meta?.commercial?.id ?? null, { shouldDirty: true })
       form.setValue('reporter_id', meta?.reporter?.id ?? null, { shouldDirty: true })
       form.setValue('supervisor_id', meta?.supervisor?.id ?? null, { shouldDirty: true })
+      // Directive 2026-07-30: the sede operativa is inherited on the same
+      // terms as the three roles above (the server applies the same rule when
+      // the key is absent — QuoteService::applySnapshotDefaults).
+      form.setValue('operational_site_id', meta?.operational_site?.id ?? null, { shouldDirty: true })
     },
     [form],
   )
@@ -119,13 +125,16 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   }, [forcedOpportunityId, forcedOpportunityMeta, applyInheritedRoleValues])
 
   /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills; the forced Opportunity's own meta is the fallback source before any user pick. */
+  const inheritedMeta = inheritedRoles ?? forcedOpportunityMeta
   const roleRef = (
-    key: keyof OpportunityForSelectMeta,
+    key: OpportunityForSelectRoleKey,
     loaded: RelationFieldRef | null,
-  ): RelationFieldRef | null => {
-    const meta = inheritedRoles ?? forcedOpportunityMeta
-    return meta ? meta[key] : loaded
-  }
+  ): RelationFieldRef | null => (inheritedMeta ? inheritedMeta[key] : loaded)
+
+  /** The inherited sede operativa as a `{id, name}` ref: the site's label IS its name for display purposes. */
+  const inheritedOperationalSite: RelationFieldRef | null = inheritedMeta?.operational_site
+    ? { id: inheritedMeta.operational_site.id, name: inheritedMeta.operational_site.label }
+    : null
 
   const relationLabels = {
     placeholder: t('quotes.form.selectPlaceholder'),
@@ -235,6 +244,14 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
               />
             </div>
           </FormSection>
+
+          <QuoteSitesSection
+            control={form.control}
+            setValue={form.setValue}
+            original={original}
+            inheritedOperationalSite={inheritedOperationalSite}
+            labels={relationLabels}
+          />
 
           <Tabs defaultValue={OFFER_TAB} className="flex flex-col gap-4">
             <TabsList className={FORM_TAB_LIST_CLASS}>

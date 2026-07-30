@@ -26,6 +26,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
+use App\Models\PaymentMethod;
 use App\Models\PersonalData;
 use App\Models\PipelineStatus;
 use App\Models\Product;
@@ -143,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
             'quote_status' => QuoteStatus::class,
             'commission_configuration' => CommissionConfiguration::class,
             'quote_line_commission' => QuoteLineCommission::class,
+            'payment_method' => PaymentMethod::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

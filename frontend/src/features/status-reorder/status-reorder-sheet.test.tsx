@@ -84,14 +84,14 @@ async function flushSensorAttach() {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-function renderSheet(onReordered = vi.fn()) {
+function renderSheet(onReordered = vi.fn(), resource = 'pipeline-statuses') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <StatusReorderSheet
         open
         onOpenChange={vi.fn()}
-        resource="pipeline-statuses"
+        resource={resource}
         labels={LABELS}
         onReordered={onReordered}
       />
@@ -180,6 +180,83 @@ describe('StatusReorderSheet (spec 0039 AC-011)', () => {
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(LABELS.genericError))
     const rows = screen.getAllByRole('listitem')
     expect(rows.map((row) => row.textContent)).toEqual(['New', 'Alpha', 'Bravo', 'Closed'])
+  })
+})
+
+/**
+ * Payment methods (spec 0068): no system row at all, mirroring the real
+ * shape `use-status-reorder.ts` sees for this resource — every entry is an
+ * ordinary custom row from the start.
+ */
+const PAYMENT_METHOD_ITEMS: StatusReorderItem[] = [
+  { id: 1, name: 'Bank transfer', systemKey: null },
+  { id: 2, name: 'Cash', systemKey: null },
+  { id: 3, name: 'Card', systemKey: null },
+  { id: 4, name: 'Check', systemKey: null },
+]
+
+describe('StatusReorderSheet — D-5 hardening (AC-120)', () => {
+  /**
+   * The MECHANICAL regression guard for the `?? null` fallback lives in
+   * `reconcile-reordered-items.test.ts` — a direct unit test of the
+   * extracted pure mapping, verified to go red when the fallback is removed
+   * and green with it restored (see that file's doc for the criterion).
+   *
+   * THIS suite cannot serve as that guard: `useStatusReorder` never
+   * invalidates/rewrites its own `['status-reorder', resource, 'list']`
+   * query after a successful reorder (spec 0068 §scope.out, a separate,
+   * documented, PRE-EXISTING, OUT-OF-SCOPE issue). Confirmed by direct
+   * observation while building this test (temporarily asserting
+   * post-success row text on the already-green "persists a drag…" test
+   * above): `syncedFrom` diverges from the still-stale `listQuery.data` the
+   * instant the `.then()` handler applies the reconciled response, and the
+   * render-time resync guard (`if (listQuery.data !== syncedFrom) …`)
+   * discards that render and reapplies `listQuery.data` BEFORE it ever
+   * commits — so the reconciled response (hardened or not) is never
+   * actually painted; the sheet's visible post-success state is always the
+   * pre-drag list. A DOM assertion here therefore cannot discriminate
+   * hardened from unhardened code either way.
+   *
+   * What THIS test still verifies, honestly: the full Sheet integration
+   * does not break/crash when the backend response omits `system_key`, and
+   * a `payment-methods`-shaped resource (no system rows, this resource's
+   * real shape) stays fully usable — a drag, a successful save, and a
+   * second drag sending the complete id set. A fixture WITH pinned rows
+   * would only ever show those pinned rows post-success (the stale,
+   * reverted-to list), regardless of the fix, which is why a no-system-row
+   * fixture is used instead of one that would look like it demonstrates the
+   * fallback but actually wouldn't.
+   */
+  it('keeps every row draggable and sends the full id set on the next drag when the response omits system_key', async () => {
+    fetchStatusesForReorderMock.mockResolvedValue(PAYMENT_METHOD_ITEMS)
+    // No `system_key` key at all on any entry — the regression scenario the
+    // hardening guards against.
+    reorderStatusesMock.mockResolvedValueOnce([
+      { id: 2, sort_order: 10 },
+      { id: 3, sort_order: 20 },
+      { id: 1, sort_order: 30 },
+      { id: 4, sort_order: 40 },
+    ])
+    renderSheet(vi.fn(), 'payment-methods')
+    await screen.findByText('Bank transfer')
+    expect(screen.getAllByRole('button', { name: LABELS.dragHandleLabel })).toHaveLength(4)
+
+    await dragFirstCustomDown()
+
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith(LABELS.saved))
+    expect(screen.getAllByRole('button', { name: LABELS.dragHandleLabel })).toHaveLength(4)
+
+    reorderStatusesMock.mockResolvedValueOnce([])
+    const [firstHandle] = screen.getAllByRole('button', { name: LABELS.dragHandleLabel })
+    firstHandle.focus()
+    fireEvent.keyDown(firstHandle, { code: 'Space' })
+    await flushSensorAttach()
+    fireEvent.keyDown(document, { code: 'ArrowDown' })
+    fireEvent.keyDown(document, { code: 'Space' })
+
+    await waitFor(() => expect(reorderStatusesMock).toHaveBeenCalledTimes(2))
+    const secondCallIds = reorderStatusesMock.mock.calls[1][1] as number[]
+    expect([...secondCallIds].sort((a, b) => a - b)).toEqual([1, 2, 3, 4])
   })
 })
 

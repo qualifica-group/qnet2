@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Models\Quote;
@@ -35,6 +36,7 @@ use Illuminate\Validation\Rule;
 class UpdateQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesQuoteCompanySite;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
 
@@ -56,6 +58,9 @@ class UpdateQuoteRequest extends FormRequest
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+            'company_id' => ['sometimes', 'nullable', 'integer', Rule::exists('companies', 'id')],
+            'company_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('company_sites', 'id')],
+            'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());
@@ -67,6 +72,7 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->enforceCommissionFieldPermissions($validator, $this->currentQuote());
             $this->enforceCommissionRecipients($validator, $this->currentQuote());
+            $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
         });
     }
 

@@ -23,6 +23,7 @@ import { customFields } from './en-custom-fields'
 import { sectors } from './en-sectors'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
+import { paymentMethods } from './en-payment-methods'
 import { tags } from './en-tags'
 import { pipelineStatuses } from './en-pipeline-statuses'
 import { projects } from './en-projects'
@@ -449,6 +450,7 @@ export const en = {
   products: { ...products, stats: moduleStats.products },
   sources,
   vatRates,
+  paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },
   pipelineStatuses,

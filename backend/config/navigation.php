@@ -389,6 +389,18 @@ return [
                     'route' => '/commission-configurations',
                     'permission' => 'commission-configurations.view',
                 ],
+                [
+                    // Payment methods (spec 0068): a standalone,
+                    // consumer-agnostic lookup describing the payment
+                    // modalities selectable across the CRM — no single
+                    // consuming module yet, so it belongs among the
+                    // cross-cutting taxonomies rather than a domain group.
+                    'key' => 'payment-methods',
+                    'label' => 'navigation.paymentMethods',
+                    'icon' => 'credit-card',
+                    'route' => '/payment-methods',
+                    'permission' => 'payment-methods.view',
+                ],
             ],
         ],
 

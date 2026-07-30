@@ -32,6 +32,7 @@ const SERVER_ERROR_FIELDS = [
   'description',
   'attributes',
   'business_function_id',
+  'requires_quote',
 ] as const
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues
@@ -87,6 +88,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
           sort_order: assignment.sort_order,
         })),
         business_function_id: category.business_function_id,
+        requires_quote: category.requires_quote,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -98,6 +100,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       description: null,
       attributes: [],
       business_function_id: null,
+      requires_quote: false,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])

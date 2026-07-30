@@ -22,6 +22,8 @@ final readonly class CreateProductCategoryData
         public ?string $description = null,
         public ?array $attributes = null,
         public ?int $businessFunctionId = null,
+        /** Null = not submitted: the flag is then resolved server-side (root's value, or false at root). */
+        public ?bool $requiresQuote = null,
     ) {}
 
     /**
@@ -39,6 +41,7 @@ final readonly class CreateProductCategoryData
             description: array_key_exists('description', $data) ? $data['description'] : null,
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,
+            requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
         );
     }
 

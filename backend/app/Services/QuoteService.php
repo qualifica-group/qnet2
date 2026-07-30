@@ -23,8 +23,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Business logic for the `quotes` resource (spec 0065): create/update (with
- * the server-generated QUO-0001 code, D-13; the 3-role Opportunity snapshot,
- * D-3), the full-replace line sync per tab (D-8), the REVENUE-only
+ * the server-generated QUO-0001 code, D-13; the Opportunity snapshot of the
+ * 3 roles plus the sede operativa, D-3), the full-replace line sync per tab
+ * (D-8), the REVENUE-only
  * opportunity coverage (D-7), and the persisted, always-recalculated
  * economic aggregates (D-9).
  */
@@ -58,6 +59,11 @@ class QuoteService
         'commercial',
         'reporter',
         'supervisor',
+        'company',
+        'companySite',
+        // The site has no own name: its label is composed from the primary
+        // address + city (OperationalSiteLabel), so both are eager-loaded.
+        'operationalSite.addresses.city',
         'offerLines.product.category',
         'offerLines.quote',
         'offerLines.vatRate',
@@ -171,9 +177,15 @@ class QuoteService
     }
 
     /**
-     * Overwrite $attributes' 3 D-3 snapshot roles with the Opportunity's
+     * Overwrite $attributes' D-3 snapshot fields with the Opportunity's
      * CURRENT value for every one NOT submitted by the client (AC-020); a
      * submitted value — even null — always wins (AC-021).
+     *
+     * `operational_site_id` (user directive 2026-07-30) is inherited on the
+     * same terms as the 3 commercial roles: the Opportunity owns one (spec
+     * 0056) and a new quote starts from it, then diverges freely.
+     * `company_id`/`company_site_id` are NOT here: the Opportunity has no
+     * such columns to inherit from.
      *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
@@ -185,6 +197,9 @@ class QuoteService
         $attributes['commercial_id'] = $data->commercialIdSubmitted ? $data->commercialId : $opportunity->commercial_id;
         $attributes['reporter_id'] = $data->reporterIdSubmitted ? $data->reporterId : $opportunity->reporter_id;
         $attributes['supervisor_id'] = $data->supervisorIdSubmitted ? $data->supervisorId : $opportunity->supervisor_id;
+        $attributes['operational_site_id'] = $data->operationalSiteIdSubmitted
+            ? $data->operationalSiteId
+            : $opportunity->operational_site_id;
 
         return $attributes;
     }

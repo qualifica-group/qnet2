@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Company;
 use App\Models\Quote;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -21,6 +23,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `costLines.product.category`, `costLines.vatRate`, so resolving any of them
  * here never N+1s (per-line product/category/business-function resolution is
  * QuoteLineResource's own concern — see its docblock).
+ *
+ * `company`/`company_site`/`operational_site` (user directive 2026-07-30)
+ * follow the same eager-loaded-then-projected rule: the first two as the
+ * standard `{id, name}` ref (a Company's name being its `denomination`), the
+ * third as `{id, label}` via OperationalSiteLabel — the site has no own name
+ * column, exactly as on ProjectResource/OpportunityResource.
  *
  * `summary.*.gross` is DERIVED here (net + vat) at request time — NEVER
  * persisted (D-9): the 5 persisted aggregates (`revenue_net`, `revenue_vat`,
@@ -51,6 +59,12 @@ class QuoteResource extends JsonResource
             'reporter' => $this->summarizeByName($this->reporter),
             'supervisor_id' => $this->supervisor_id,
             'supervisor' => $this->summarizeByName($this->supervisor),
+            'company_id' => $this->company_id,
+            'company' => $this->summarizeCompany($this->company),
+            'company_site_id' => $this->company_site_id,
+            'company_site' => $this->summarizeByName($this->companySite),
+            'operational_site_id' => $this->operational_site_id,
+            'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
@@ -69,6 +83,19 @@ class QuoteResource extends JsonResource
     private function summarizeByName(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * `companies` has no `name` column: its display name IS `denomination`
+     * (spec 0010), projected under `name` so the client keeps the single
+     * `{id, name}` relation-ref shape every other relation here uses — the
+     * same mapping CompanyForSelectResource applies to `label`.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeCompany(?Company $company): ?array
+    {
+        return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
     }
 
     /**

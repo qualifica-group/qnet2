@@ -2,6 +2,261 @@
 
 > Injected at session start. Update at every green state.
 
+## FIX: ICONA MENU "MODALITA' DI PAGAMENTO" (2026-07-30) — VERDE, NON COMMITTATO
+
+`config/navigation.php:400` dichiara `'icon' => 'credit-card'` per `payment-methods`, ma
+`frontend/src/features/navigation/icon-map.ts` non aveva la chiave: `resolveIcon()` cadeva
+sul fallback `Circle`, quindi la voce compariva col pallino neutro. Aggiunta la coppia
+`'credit-card': CreditCard`. Verificato che era l'UNICO nome icona del config privo di
+mapping (confronto tra i 30 valori `'icon' =>` di `navigation.php` e le chiavi della mappa):
+chi aggiunge una voce di menu deve registrare l'icona in ENTRAMBI i posti, il fallback
+silenzioso non segnala nulla.
+
+Verifica: `tsc -b --force` EXIT=0, vitest `src/components src/features/navigation`
+30 file / 274 test pass.
+
+**Nota ambiente (tsc):** un `tsc -b --force` con `node_modules/.tmp/*.tsbuildinfo` stantio
+puo' riportare errori fantasma su file non toccati (visti su `use-status-reorder.ts`,
+inesistenti con `tsc -b tsconfig.app.json --force`). Se compaiono rossi in file fuori
+scope, rilancia il build prima di inseguirli.
+
+## CATEGORIE PRODOTTO: FLAG "PREVEDE PREVENTIVO" EREDITATO (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: nuovo campo booleano sulla categoria prodotto che dice se la categoria
+prevede il preventivo; i figli lo EREDITANO dalla madre e nel loro form lo vedono in sola
+lettura. Scelte confermate dall'utente prima di scrivere codice: **il flag e' del ROOT**
+(solo una categoria senza madre lo scrive, ogni discendente porta il valore della radice —
+non "antenato piu' vicino" come `business_function_id`), **default false** su tutte le
+righe esistenti, **nessun effetto sul flusso Offerte** (solo il campo), visibile **anche
+nel dettaglio e come colonna di tabella**.
+
+### Invariante e chi la mantiene
+
+Colonna `product_categories.requires_quote` (boolean, default false). Il valore e'
+**DENORMALIZZATO su ogni riga**, non risolto con un walk a read time: cosi' griglia,
+filtri, export e for-select leggono una colonna reale senza query per riga. Questo e'
+sicuro solo finche' l'unico scrittore fuori dall'edit della radice e'
+`App\Services\ProductCategories\RequiresQuoteInheritance` (106 righe, classe a se' perche'
+`CategoryHierarchy` e' a 470 righe, vicino all'hard limit di 500):
+`inheritedValueFor(?parentId)` = flag della radice del ramo, `sourceCategoryFor()` = quale
+radice, `syncSubtree()` idempotente (non tocca le righe gia' allineate → niente UPDATE
+inutili ne' rumore nell'activity log).
+
+`ProductCategoryService::update()` chiama `syncSubtree()` sullo stesso trigger del cascade
+business function: `hasParentId() || requiresQuoteSubmitted`. Il **bulk move** (spec 0063)
+passa riga per riga da `update()`, quindi e' coperto senza codice dedicato.
+
+### Guard 422 (e perche' NON e' nel field-permission ceiling)
+
+`assertRequiresQuoteNotOverridden(?parentId, bool)` scatta solo se il valore inviato
+**diverge** da quello ereditato: rieccheggiare il valore mostrato dal form e' un no-op
+accettato. I ruoli di riferimento sono quelli SUBMITTED (parent inviato, non persistito).
+
+`ProductCategoriesAuthorization` lascia il campo `visibleEditable` di proposito. Un
+ceiling contestuale ("readonly se il model ha una madre") era stato scritto e poi
+**rimosso**: il ceiling vede solo il model persistito, quindi avrebbe fatto 422 sul caso
+legittimo "promuovo una figlia a radice E imposto il flag nello stesso salvataggio"
+(payload `{parent_id: null, requires_quote: x}`). Stesso trattamento di
+`business_function_id`: il guard del Service e' l'autorita'. C'e' un test dedicato.
+
+### Contratto (additivo)
+
+- `ProductCategoryResource`: `requires_quote` (bool, gia' EFFETTIVO su ogni riga).
+- Il controller aggiunge in `resourceWithInherited()` — accanto a
+  `effective_business_function` — `requires_quote_source_category`: `{id,name}` della
+  radice, **null quando la categoria E' la radice** (= possiede il flag).
+- Nodo di `GET /product-categories/tree`: nuova chiave `requires_quote`, gia' effettiva.
+  Serve al form per risolvere live cosa erediterebbe da una madre candidata, senza
+  richieste extra.
+- Store/UpdateRequest: `requires_quote` `['sometimes','boolean']`.
+- Tabella: colonna reale `requires_quote` (`type`/`filterType` `boolean`, sortable) —
+  ora **8 colonne**, non 7.
+
+### Frontend
+
+- `requires-quote-inheritance.ts` (`resolveInheritedQuoteFlag`): walk fino alla RADICE
+  sull'albero in cache, riusa `indexCategoryTree` di `business-function-inheritance.ts`.
+- `ProductCategoryRequiresQuoteField`: `Switch` dentro `MetaField`, editabile finche'
+  `parent_id` e' null; appena si seleziona una madre diventa disabled col valore della
+  radice e l'hint che la nomina. Fallback sul `requires_quote_source_category` del
+  dettaglio finche' l'albero non ha risolto (stesso schema del campo business function).
+- **Regola dei payload builder: il flag viaggia SOLO con `parent_id === null`.** Su una
+  figlia il diff non lo manda mai (sarebbe un override); il server riallinea da solo il
+  sottoalbero spostato.
+- Dettaglio: riga sola lettura con badge di provenienza. i18n it/en.
+  **Attenzione:** l'hint ereditato usa un testo DIVERSO da quello del business function
+  ("Ereditato dalla categoria radice X" / "Quoting is inherited from the root category X").
+  Erano identici e i `getByText` dei test business function trovavano due nodi.
+
+### Verifica eseguita
+
+Backend `tests/Feature/ProductCategories/`: **132/133**. Run allargato
+`ProductCategory|Product|Meta|FieldPermission|Role`: **789/791**. Nuovo file
+`ProductCategoryRequiresQuoteTest.php` (15 test: ereditarieta' su create, cascata sul
+sottoalbero, riparent, bulk move, promozione a radice, 422 override, dettaglio, riga
+tabella). Frontend: **410 file / 2814 test pass**, `tsc -b --force` EXIT=0, eslint pulito.
+
+Due test esistenti aggiornati perche' il requisito e' cambiato (dichiarato, non tampering):
+`ProductCategoryTableTest` 7→8 colonne; l'asserzione "root: nessuno switch" in
+`product-category-form-body.test.tsx` ora filtra per nome accessibile
+(`{ name: 'Inherit from parent' }`), altrimenti contava anche il nuovo switch.
+
+**Rossi PREESISTENTI non toccati:** `ProductCategorySecurityTest` e `ProductSecurityTest`
+sul nodo di navigazione — asseriscono la sezione `configuration`, mentre
+`config/navigation.php:272` colloca ormai `product-categories` sotto `products-group`
+(idem `products`). Da triagare a parte.
+
+**Nota ambiente:** i comandi Pest vanno lanciati con `XDEBUG_MODE=off`, altrimenti ogni
+processo PHP stampa su stderr un warning Xdebug che sommerge l'output del test runner.
+
+**Prossimo passo naturale (NON fatto, come deciso):** agganciare il flag al flusso
+Offerte (es. rifiutare righe offerta su categorie non preventivabili) — e' una spec a se'.
+
+## MODALITA' NAZIONALE: NAZIONE DI DEFAULT DA ENV (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: passare da app internazionale a nazionale, con l'Italia come default.
+Deve essere "per ora" una impostazione di env: se attiva, quando il sistema mostra il
+campo nazione pesca direttamente l'Italia. Scelte confermate dall'utente:
+**prefill modificabile** (non bloccato, non nascosto), env **backend** esposta via
+`/api/config`, **solo UI** (nessun default server-side su creazioni/import).
+
+### Contratto (additivo, retro-compatibile)
+
+`DEFAULT_COUNTRY_ISO2` (backend `.env`) → `config/geo.php` `default_country_iso2` →
+`GET /api/config` ora restituisce `data.localization.default_country_iso2`
+(uppercase, oppure `null` = modalita' internazionale). E' un **codice ISO 3166-1
+alpha-2, mai un id DB**: gli id delle countries differiscono per ambiente (in locale
+Italia e' id 107), quindi il client risolve il codice contro la lista countries.
+`ConfigService::localization()` normalizza (trim + uppercase, vuoto → null).
+`.env` locale e `.env.example` gia' valorizzati a `IT`.
+**Se la config e' cachata serve `php artisan config:clear`.**
+
+### Frontend — un solo punto di innesto
+
+Il campo nazione esiste **solo** in `features/geo/geo-select.tsx` (7 call site: companies,
+address personal-data, operational-sites, projects, campaigns, import wizard), quindi il
+default vive tutto lì. Nuovo hook `features/geo/use-default-country.ts`
+(`useDefaultCountryId()`): legge `useConfig()` + `useCountries()` (stessa query key →
+zero richieste extra) e risolve ISO2 → id, `null` se internazionale/non caricato/codice
+sconosciuto. `AppConfig` in `features/config/types.ts` ha la nuova sezione
+`localization: AppLocalization` (required).
+
+**Guardia anti-perdita-dati (importante):** il seeding in `GeoSelect` scatta SOLO se la
+cascata e' *pristine* — tutti e quattro i livelli `null` — e mai se `disabled` o se
+`country` e' in `lockedLevels`. Un valore parziale (paese sconosciuto ma citta' gia'
+risolta, tipico delle righe di import; o scope ereditato da un'entita' collegata) non
+viene mai riscritto, perche' impostare la nazione azzera i discendenti.
+
+**Effetto collaterale noto (accettato):** in projects/campaigns il bridge scrive con
+`shouldDirty: true`, quindi il form si apre `isDirty`. Nessun componente con `GeoSelect`
+gatea il Salva su `isDirty` (l'unico che lo fa e' request-management, che non usa
+`GeoSelect`), quindi nessun impatto funzionale oggi.
+
+### Verifica eseguita
+
+Backend: `pest --filter="Config|Geo"` → **246 pass**; `ConfigTest` da 18 a 22 test
+(uppercase/normalizzazione, null in modalita' internazionale, binding su env).
+`pint --dirty` pulito. End-to-end su `.env` reale: `bootstrap(null)["localization"]` →
+`{"default_country_iso2":"IT"}`; `Country::where("iso2","IT")` risolve.
+Frontend: **409 file / 2802 test pass**, `tsc -b --force` EXIT=0, eslint pulito.
+Nuovo `use-default-country.test.ts` (5 test) + blocco `national mode` in
+`geo-select.test.tsx` (8 test: prefill, seeding una volta sola, modalita'
+internazionale, nessun overwrite, nessun seeding su parziale/disabled/locked).
+
+I 4 test rossi transitori di `review-geo-editor.test.tsx` ("No QueryClient set") erano
+causati dalla nuova dipendenza da `useConfig` dentro `GeoSelect`: risolti stubbando
+`useDefaultCountryId` nei 4 file che renderizzano il `GeoSelect` reale
+(review-geo-editor + i 3 company-form), coerentemente col mock di `use-geo` che quei
+file avevano già. Nessuna asserzione preesistente modificata.
+
+### Segnalazione fuori scope (non implementata)
+
+`geo-select.tsx` e' passato da 301 a 330 righe: era **gia'** oltre il soft limit di 300
+prima di questa modifica. Split naturale disponibile: estrarre il sub-componente privato
+`GeoField` in `features/geo/geo-field.tsx` (~110 righe) lasciando `geo-select.tsx` a ~230.
+Non eseguito per non allargare il blast radius su un file condiviso da 7 call site.
+
+## OFFERTE: SOCIETA', SOCIETA' SEDE, SEDE OPERATIVA (2026-07-30) — VERDE, NON COMMITTATO
+
+Richiesta utente: aggiungere all'Offerta Societa' aziendali, Societa' Sedi e Sedi
+operative, e le stesse tre colonne nella tabella AG Grid. Decisioni prese con l'utente:
+FK proprie sull'offerta con la sede operativa EREDITATA dall'Opportunita'; tutte e tre
+opzionali con cascata Societa' -> Societa' Sede; colonne appese IN CODA al catalogo.
+
+### Schema
+
+Migrazione `2026_07_30_120000_add_company_and_sites_to_quotes_table.php`:
+`company_id`/`company_site_id`/`operational_site_id` su `quotes`, nullable,
+**nullOnDelete** (deviazione voluta dai restrictOnDelete del resto della tabella: stessa
+ragione di spec 0056 BR-3 per l'Opportunita' — togliere una societa'/sede dal catalogo
+non deve bloccare ne' cancellare un'offerta). Nessun `index()` esplicito: `constrained()`
+crea gia' la FK e il suo indice.
+
+### Ereditarieta' e guardia
+
+`QuoteService::applySnapshotDefaults()` ora tratta `operational_site_id` come i 3 ruoli
+D-3: chiave assente nel payload -> valore corrente dell'Opportunita'; valore inviato
+(anche null) -> vince. `company_id`/`company_site_id` NON sono ereditabili (l'Opportunita'
+non ha quelle colonne, rimosse dalla direttiva 2026-07-17).
+
+`App\Http\Requests\Concerns\ValidatesQuoteCompanySite` (nuovo trait, usato da Store e
+Update): il `company_site_id` deve appartenere al `company_id` EFFETTIVO (submitted se
+la chiave c'e', altrimenti persistito) -> altrimenti 422 su `company_site_id`
+(`lang/{it,en}/quotes.php` -> `company_site_mismatch`). La cascata nel form e' solo
+un'affordance: la regola vive server-side (security.md §1).
+
+### Contratto (additivo)
+
+`QuoteResource` espone `company_id`/`company` e `company_site_id`/`company_site` come
+ref `{id, name}` — per la Societa' il `name` E' `denomination` (`companies` non ha
+`name`) — e `operational_site_id`/`operational_site` come `{id, label}` via
+`OperationalSiteLabel` (la sede non ha nome: e' il suo indirizzo primario).
+
+`OpportunityForSelectResource::meta` guadagna `operational_site` ({id,label}) accanto ai
+3 ruoli, cosi' il form Offerta precompila la sede senza una seconda fetch
+(`OpportunityService::forSelectBaseQuery` eager-loada `operationalSite.addresses.city`).
+
+### Tabella AG Grid
+
+`QuoteColumnCatalog`: 3 colonne derivate appese DOPO `created_at` (appese in coda di
+proposito: inserirle in mezzo sposterebbe il layout colonne persistito per utente, spec
+0001). `company`/`company_site` entrano in `QuoteRelationColumns`, che ora supporta una
+`label` column per relazione (default `name`, `denomination` per `companies`);
+`operational_site` e' delegata alla `OperationalSiteColumn` condivisa in
+`QuotesTableDefinition` (filtro/sort/distinct su `line1` dell'indirizzo primario),
+esattamente come su Opportunita'. Advanced filter NON aggiunti (fuori richiesta).
+
+### Frontend
+
+Nuovi file: `quote-sites-section.tsx` (i 3 select, estratti perche' `quote-form-body.tsx`
+era gia' a 306 righe) + il suo test. La sede operativa si precompila dal `meta`
+dell'Opportunita' scelta; il picker Societa' Sede e' `forceDisabled` finche' non c'e' una
+Societa' e si scoping via `params={{ company_id }}`, azzerandosi quando la Societa'
+cambia. Aggiunti anche i 3 campi al `quote-detail.tsx` e i renderer di colonna.
+
+### Verifica eseguita
+
+Frontend: `tsc -b --force` EXIT=0, eslint pulito, **408 file / 2789 test pass** (con
+`LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`, vedi nota ambiente sotto). Backend: Pint passed,
+suite COMPLETA **4318 test / 4303 pass / 14 failed**, con il set dei 14 rossi
+BYTE-IDENTICO a quello della stessa suite su HEAD pulito (baseline 4288/4273/14, misurata
+con `git stash`): zero regressioni introdotte. `--filter="Quote|Opportunity"` 595 pass, nuovo file
+`tests/Feature/Quotes/QuoteCompanySitesTest.php` (11 test: persistenza, ereditarieta',
+submitted-vince, no re-sync, 422 sede estranea, 422 sede senza societa', PATCH contro la
+societa' effettiva, azzeramento, proiezione riga, sort/filtro, distinct values).
+
+**Due test aggiornati per requisito cambiato** (non tampering): `QuoteAuthorizationTest`
+AC-064 (elenco campi `permissions.fields`) e `QuoteTableTest` AC-069c (elenco id
+colonne) congelavano liste ora piu' lunghe di 3 voci.
+
+**Rossi PREESISTENTI confermati su HEAD** (14, verificati con `git stash` + diff dei nomi):
+gli 11 test "navigation node" (`*SecurityTest`/`*PermissionsTest` di attributes, companies,
+company-sites, custom-fields, operational-sites, product-categories, products,
+referent-types, referents, reward-types, vat-rates), `CustomFieldWritePipelineTest`
+(PATCH partial merge), `RequestManagementTableSearchTest` (lunghezza termine) e il test
+`page/per_page -> offset/limit` della migrazione. Nessuno toccato da questa modifica; da
+triagare a parte.
+
 ## COMMISSIONI OFFERTE: DESTINATARIO BLOCCATO (2026-07-30) — VERDE, NON COMMITTATO
 
 Richiesta utente: nel popup commissioni di un'Offerta il destinatario non si sceglie —

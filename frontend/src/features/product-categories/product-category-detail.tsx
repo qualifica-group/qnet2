@@ -71,6 +71,23 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         </DetailSection>
       )}
 
+      <DetailSection title={t('productCategories.form.requiresQuote')}>
+        <DetailGrid>
+          <DetailField label={t('productCategories.form.requiresQuote')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{category.requires_quote ? t('common.yes') : t('common.no')}</span>
+              {category.requires_quote_source_category && (
+                <Badge variant="outline" className="text-xs">
+                  {t('productCategories.detail.requiresQuoteInherited', {
+                    category: category.requires_quote_source_category.name,
+                  })}
+                </Badge>
+              )}
+            </div>
+          </DetailField>
+        </DetailGrid>
+      </DetailSection>
+
       <CategoryAttributesContextSection
         title={t('productCategories.form.sections.productAttributes.title')}
         description={t('productCategories.form.sections.productAttributes.description')}

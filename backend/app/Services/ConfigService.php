@@ -11,7 +11,9 @@ use App\Enums\LocaleEnum;
  * needs before authentication (e.g. enum options for selects/badges on the
  * login and public forms). The exposable surface is a fixed server-side
  * allowlist (config/config.php) — never derived from request input — so no
- * arbitrary class can be reflected from the outside.
+ * arbitrary class can be reflected from the outside. Alongside the enums it
+ * carries the localization defaults (config/geo.php), which tell the client
+ * whether the app runs in national or international mode.
  *
  * Locale is resolved per-request from the (restricted) Accept-Language header
  * before the enums are read, so case labels are translated for the caller even
@@ -26,7 +28,7 @@ class ConfigService
      * alongside `enums`. This is the terminal serialized payload (the API
      * contract), not an internal DTO, so a plain array is the right shape here.
      *
-     * @return array{enums: array<string, array<int, array{value: string, label: string, color: string|null, icon: string|null, is_default: bool, hidden_on_form: bool}>>}
+     * @return array{enums: array<string, array<int, array{value: string, label: string, color: string|null, icon: string|null, is_default: bool, hidden_on_form: bool}>>, localization: array{default_country_iso2: string|null}}
      */
     public function bootstrap(?string $acceptLanguage): array
     {
@@ -34,6 +36,30 @@ class ConfigService
 
         return [
             'enums' => $this->enums(),
+            'localization' => $this->localization(),
+        ];
+    }
+
+    /**
+     * Localization defaults driving national vs international mode.
+     *
+     * `default_country_iso2` is the country code the client preselects on an
+     * empty geo cascade, or null in international mode (config/geo.php ←
+     * DEFAULT_COUNTRY_ISO2). Normalized to uppercase so the client can match it
+     * against the country list without caring how the env was written.
+     *
+     * SECURITY: a static ISO 3166-1 alpha-2 code from server config — not
+     * user-, tenant- or permission-scoped, and not derived from request input —
+     * so it is safe on this PUBLIC endpoint.
+     *
+     * @return array{default_country_iso2: string|null}
+     */
+    private function localization(): array
+    {
+        $iso2 = strtoupper(trim((string) config('geo.default_country_iso2', '')));
+
+        return [
+            'default_country_iso2' => $iso2 === '' ? null : $iso2,
         ];
     }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, HandCoins, Handshake, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { FileText, HandCoins, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
@@ -107,6 +107,15 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           </DetailField>
           <DetailField label={t('quotes.detail.supervisor')}>
             {quote.supervisor ? quote.supervisor.name : <DetailEmpty />}
+          </DetailField>
+          <DetailField label={t('quotes.detail.company')}>
+            {quote.company ? quote.company.name : <DetailEmpty />}
+          </DetailField>
+          <DetailField label={t('quotes.detail.companySite')}>
+            {quote.company_site ? quote.company_site.name : <DetailEmpty />}
+          </DetailField>
+          <DetailField label={t('quotes.detail.operationalSite')} icon={<MapPin />}>
+            {quote.operational_site ? quote.operational_site.label : <DetailEmpty />}
           </DetailField>
         </DetailGrid>
       </DetailSection>

@@ -1,0 +1,566 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0070-quote-word-generation" status="draft" owner="nicola" date="2026-07-30">
+
+  <goal>
+    Rendere operativi i layout della spec 0069 sui Preventivi: aggiungere il campo Layout al
+    Preventivo (precompilato col predefinito, scegliibile fra gli attivi), l'azione "Genera Word"
+    che produce un `.docx` applicando intestazione, corpo, pie di pagina, variabili dinamiche e
+    righe prodotto secondo il layout, il guard che impedisce la cancellazione di un layout in uso,
+    e il layout iniziale predefinito dei Preventivi che riproduce il documento Word fornito dal
+    cliente.
+  </goal>
+
+  <context>
+    DIPENDE DALLA SPEC 0069, che deve essere implementata e verde prima di questa. Da 0069 si
+    danno per esistenti e congelati: tabella `document_layouts`, model `App\Models\DocumentLayout`,
+    enum `App\Enums\DocumentLayoutModule`, il CONTRATTO della colonna `config` (7 tipi di blocco,
+    tre zone, unita di misura), il catalogo variabili
+    `App\Services\DocumentLayouts\DocumentLayoutVariableCatalog`, `App\Support\AddressLabel`,
+    `DocumentLayoutService::delete()` con il punto di estensione documentato, e l'invariante
+    "un solo predefinito per modulo" del `DocumentLayoutDefaultManager`.
+
+    DIPENDENZA ESTERNA AUTORIZZATA DALL'UTENTE (2026-07-30): `phpoffice/phpword`.
+    Verificato in ambiente: versione disponibile su Packagist `1.4.0`; PHP locale 8.4.21 con le
+    estensioni richieste presenti (`dom`, `gd`, `zip` -> `php -m` confermato).
+    NOTA LEGALE DA METTERE A VERBALE: la licenza e **LGPL-3.0-only**, non MIT. E compatibile con
+    l'uso in un prodotto commerciale closed-source finche la libreria resta NON MODIFICATA e
+    usata come dipendenza `vendor/` (linking dinamico), che e esattamente l'uso previsto qui.
+    Vincolo operativo che ne deriva: NESSUNA patch al codice di `vendor/phpoffice/phpword`. Se
+    serve un comportamento che la libreria non ha, si scrive codice nostro sopra la sua API, non
+    si tocca la libreria. Precedente di attenzione alle licenze in questo repo: la nota su
+    `ag-grid-enterprise` in `.claude/rules/security.md` §6.
+    Sara la SECONDA libreria PhpOffice del progetto: `phpoffice/phpspreadsheet ^5.9` e gia
+    presente (usata dal lettore `.xls` legacy degli import), quindi la famiglia e gia in casa.
+
+    STATO REALE VERIFICATO DEL MODULO PREVENTIVI (nomi da riusare esattamente, non ipotizzare):
+    - `quotes` NON ha `layout_id`: e una colonna nuova. Ultima migration su `quotes`:
+      `2026_07_30_120000_add_company_and_sites_to_quotes_table.php` (company/sites, nullOnDelete).
+    - `Quote` usa `#[Fillable(['title','opportunity_id','quote_status_id','commercial_id',
+      'reporter_id','supervisor_id','company_id','company_site_id','operational_site_id',
+      'internal_notes'])]`. Relazioni reali: `opportunity()`, `quoteStatus()`,
+      `commercial()`/`reporter()` (-> `Referent`), `supervisor()` (-> `User`), `company()`,
+      `companySite()`, `operationalSite()`, `lines()`/`offerLines()`/`costLines()` (-> `QuoteLine`,
+      ordinate per `sort_order`, le ultime due filtrate su `line_type`).
+    - `QuoteService`: `loadDetail`, `previewNextCode`, `create`, `update`, `delete`, con
+      `applySnapshotDefaults()` privato e la costante `DETAIL_RELATIONS` (elenco di eager load
+      che include gia `operationalSite.addresses.city`, `offerLines.product.category`,
+      `offerLines.vatRate`, `costLines.*`). Aggregati scritti da `persistAggregates()` con
+      `forceFill()`, aritmetica in `App\Services\Quotes\QuoteTotalsCalculator`.
+    - `StoreQuoteRequest`/`UpdateQuoteRequest` usano i trait
+      `EnforcesFieldPermissions`, `ValidatesQuoteLines`, `ValidatesQuoteCompanySite`,
+      `ValidatesQuoteLineCommissions`. In Update `opportunity_id` e `prohibited`, `summary` e
+      `prohibited` in entrambe.
+    - DTO da estendere: `App\DataObjects\Quotes\CreateQuoteData` (ctor + `fromValidated()` +
+      `attributes()`) e `UpdateQuoteData` (ctor con la coppia `?int $layoutId` /
+      `bool $layoutIdSubmitted` + `fromValidated()` + `submittedAttributes()`).
+    - `QuoteResource` emette i riferimenti di relazione come `{id, name}` (per la Societa il
+      `name` E `denomination`, perche `companies` non ha `name`) e i totali in
+      `summary.revenue{net,vat,gross}` / `summary.cost{...}` / `summary.margin.net`, con il
+      LORDO derivato da `amountTriplet()` (`net + vat`), mai da colonna.
+    - Azioni di riga: dichiarate server-side in
+      `App\Tables\Quotes\QuoteColumnCatalog::actions()` (chiavi attuali `view`, `edit`, `delete`,
+      `activity`) e filtrate per riga in `QuotesTableDefinition::actionsFor()` con
+      `Gate::forUser($actor)->allows(...)`. Il client le dispatcha in
+      `frontend/src/features/quotes/quotes-table.tsx` (`handleAction: RowActionHandler`); le
+      icone non di default si passano con `iconMap` su `TableView` (precedente reale:
+      `opportunities-table.tsx` per `paperclip`). Il renderer generico
+      `features/table/row-actions.tsx` mostra `INLINE_ACTION_LIMIT = 3` azioni e poi un menu
+      overflow: aggiungere una quinta azione manda `delete`/`activity` nell'overflow (effetto
+      atteso, non un bug).
+    - `App\Authorization\QuotesAuthorization`: `fields()` da estendere con `layout_id`,
+      `actions()` attuale `['delete','export','import','view_activity']`.
+    - Download di un binario: precedente reale `ExportController::download()` ->
+      `Storage::disk('local')->download($path, $filename, ['Content-Type' => ...])` che
+      restituisce una `StreamedResponse`; alternativa in-request senza persistenza
+      `response()->streamDownload(...)` (`ImportController::template()`). Lato client:
+      `apiClient.get(..., { responseType: 'blob' })` + `saveBlob()` e
+      `filenameFromContentDisposition()` da `frontend/src/lib/download.ts`.
+    - Non esiste alcuno scheduler registrato (`routes/console.php` ha solo `inspire`,
+      `bootstrap/app.php` non ha `withSchedule`), nessun model `Prunable`, nessun comando di
+      pulizia: i file di export si accumulano indefinitamente. Vedi D-4.
+    - i18n backend: `backend/lang/{it,en}/quotes.php` esiste gia (ci sta dentro
+      `company_site_mismatch`).
+
+    IL DOCUMENTO DI RIFERIMENTO, ISPEZIONATO (non descritto a memoria).
+    File: `Layout Accordo Sindacale_ Qualifica Group Training S.r.l..docx` fornito dall'utente.
+    Struttura reale letta con parser XML:
+    - `sectPr`: `pgSz` 11906 x 16838 twips (A4 verticale), `pgMar` top 1985, right 1134,
+      bottom 1560, left 1134, header 708, footer 708. NESSUN `footerReference`: il documento non
+      ha pie di pagina e non ha numerazione.
+    - `word/header1.xml`: un solo paragrafo con una sola immagine, `media/image1.png` (102020
+      byte), extent 7551317 x 10677155 EMU = 594.6 x 840.7 pt: una CARTA INTESTATA A PIENA
+      PAGINA dietro al testo. E questa, e solo questa, la base grafica del documento.
+    - Corpo, nell'ordine: riga orizzontale; blocco indirizzo societa allineato a destra, Calibri
+      8 pt ("Via Zoe Fontana 220 - 00131 Roma (RM) - C.F. &amp; P.IVA 10447341214",
+      "Tel. 081.834.79.60 - Fax 081.010.41.08",
+      "www.qualificagroup.it - offerte@qualificagroup.it"); riga orizzontale;
+      "Offerta n° ${QUOTATION_NR} del ${DATE}" (Trebuchet MS 9 pt, colore 2B3B4C, poi Calibri);
+      "Spettabile:" e "${CLIENT_INFO}" allineati a destra, Calibri 9 pt;
+      titolo centrato grassetto 14 pt colore 3B3838 "OFFERTA ECONOMICA E CONTRATTO DI
+      AVVALIMENTO"; tabella prodotti a 5 colonne (gridCols 4082/1770/1900/1037/1417 twips =
+      40/17/19/10/14 %), intestazione con sfondo 323E4F e le celle
+      `${DESCRIPTION_HEADER}` / `${AMOUNT_HEADER}` / `${PRICE_PER_UNIT_HEADER}` /
+      `${VAT_HEADER}` / `${LINE_TOTAL_HEADER}`, riga modello con `${SID}-${STITLE}` e
+      `${SDESCRIPTION}` impilati nella PRIMA cella e `${SAMOUNT}` / `${SPRICE_PER_UNIT}` /
+      `${SVAT}` / `${SLINE_TOTAL}` nelle altre; tabella totali a 3 colonne (55/25/20 %) con
+      `${LABEL_TOTALS}` / `${STOTAL_EXCL_VAT}` e una seconda riga con sfondo DEEAF6
+      (`${SIDVAT}`, `${SIVADESC} di ${STOTAL}`, `${STOTAL_VAT}`); riga a destra in grassetto
+      "Totale offerta :  ${STOTAL_INCL_VAT}"; riga orizzontale; riga di firma in Arial Narrow
+      Italic 8 pt grassetto ("_ _ _ _ ..."); "Per accettazione ... Qualifica Group Training srl"
+      in Trebuchet MS 8 pt colore 2B3B4C; riga orizzontale; e infine il blocco condizioni in
+      Calibri 6 pt colore 262626: "COSTI E TERMINI DI PAGAMENTO:" (grassetto), "In caso di
+      accettazione: a) Si prega di rinviare la presente offerta per accettazione all'indirizzo
+      offerte@qualificagroup.it", "Modalita di pagamento:" (grassetto), "Il compenso verra
+      versato dal Committente a Qualifica Group Training S.r.l. con le seguenti modalita:",
+      "saldo alla sottoscrizione alla sottoscrizione del presente accordo".
+    - I placeholder usano la sintassi `${VAR}` di `PhpWord TemplateProcessor` (il prefisso `S`
+      di `${SID}`/`${SAMOUNT}` e la convenzione `cloneRow` del sistema precedente del cliente):
+      conferma che il gestionale da cui arriva usava PhpWord in modalita template. La nostra
+      sintassi e `{categoria.chiave}` a graffe singole (brief), e il documento NON viene usato
+      come file template: viene TRASCRITTO in una `config` (D-5).
+
+    DECISIONI PRESE DALL'UTENTE (2026-07-30), vincolanti:
+    - D-1 GENERAZIONE DA `config`, NON DA FILE TEMPLATE. Il `.docx` si costruisce con l'API
+      builder di PhpWord a partire dalla `config` JSON del layout. L'opzione
+      `TemplateProcessor` sul file allegato e stata scartata dall'utente: renderebbe l'editor
+      visuale decorativo, perche il layout resterebbe definito in Word e non nel gestionale.
+      Conseguenza: il documento allegato serve come SORGENTE GRAFICA da trascrivere una volta
+      (D-5), non come artefatto di runtime.
+    - D-2 GENERAZIONE SINCRONA, NESSUNA PERSISTENZA. Il `.docx` si genera dentro la richiesta e
+      si restituisce in streaming, senza riga di tracciamento e senza file su disco. Non si
+      riusa la pipeline `ExportRun` + job: quella esiste per export tabellari da migliaia di
+      righe con polling, mentre un preventivo ha decine di righe e la generazione e nell'ordine
+      delle centinaia di millisecondi. Il precedente in-request e `ImportController::template()`.
+      Guard-rail: `QuoteLine` per preventivo e limitato a 200 per lato dalla validazione
+      esistente (`ValidatesQuoteLines`), quindi il costo e limitato per costruzione.
+    - D-3 IL LAYOUT SI RISOLVE AL MOMENTO DELLA GENERAZIONE, MA IL CAMPO E PERSISTITO.
+      `quotes.layout_id` e nullable: precompilato col predefinito del modulo alla creazione (come
+      i 3 ruoli snapshot di spec 0056/0065 fanno con l'Opportunita), modificabile, e se nullo al
+      momento della generazione si usa il predefinito corrente del modulo. Se non esiste alcun
+      layout utilizzabile -> 422 esplicativo, non un 500 ne un documento vuoto.
+    - D-4 NESSUN ARTEFATTO DA PULIRE. Corollario voluto di D-2: non generando file su disco, la
+      lacuna nota del repo (nessuno scheduler, nessun prune, i file di export si accumulano) non
+      viene allargata da questa feature. Questa spec NON introduce un cleanup job: sarebbe fuori
+      scope e riguarderebbe gli export esistenti.
+    - D-5 IL LAYOUT INIZIALE E UN SEED DI SISTEMA, NON DATI DEMO. Il layout che riproduce il
+      documento del cliente e il predefinito del modulo `quotes` e deve esistere in ogni
+      ambiente: va quindi in `DatabaseSeeder` (seed pulito), NON in `DemoDataSeeder`. E una
+      deviazione consapevole da `backend.md` §3.1, che vuole nel seed pulito solo
+      inizializzazione/reference: questo layout E dato di reference (la carta intestata
+      dell'azienda), non un dato fake. Il `DemoDocumentLayoutSeeder` della 0069 resta per i
+      layout finti di prova.
+      La carta intestata (`media/image1.png`, 102 KB) va versionata come asset del seeder in
+      `backend/database/seeders/assets/quote-letterhead.png`, estratta dal `.docx` fornito. E il
+      primo binario non-generato versionato nel repo backend: dichiarato qui apposta.
+    - D-6 FEDELTA: COSA SI RIPRODUCE E COSA NO. Si riproducono: formato e margini esatti, carta
+      intestata a piena pagina, tutti i testi statici con font/dimensione/colore/allineamento
+      reali, le 4 righe orizzontali, la tabella prodotti a 5 colonne con le larghezze percentuali
+      reali e lo sfondo 323E4F dell'intestazione, la riga totali con sfondo DEEAF6, il totale
+      offerta in grassetto a destra, il blocco firma e il blocco condizioni.
+      NON si riproduce, e va detto: la riga di dettaglio IVA per aliquota
+      (`${SIDVAT}` / `${SIVADESC} di ${STOTAL}`) diventa una singola riga di IVA AGGREGATA. Il
+      motivo e strutturale: `quotes` persiste `revenue_vat` come totale unico e il contratto
+      `products_table.totals` della 0069 non ha una struttura ripetuta per aliquota. Una
+      ripartizione per aliquota e derivabile da `quote_lines` raggruppate per `vat_rate_id`, ma e
+      una feature a se e NON entra qui.
+    - D-7 DELETE-GUARD (il requisito rimandato da 0069 D-10). Con `quotes.layout_id` esiste il
+      consumatore, quindi il guard si implementa ora, nel `DocumentLayoutService::delete()`, al
+      punto di estensione documentato dalla 0069. Un layout referenziato da almeno un Preventivo
+      NON e cancellabile: 422 con messaggio esplicativo che riporta il NUMERO di preventivi che
+      lo usano e indica la disattivazione come sola via. Il guard sul predefinito della 0069
+      resta e viene valutato per primo.
+      Scelta dello status: 422, non 409. Motivo di coerenza col repo, non di dottrina REST: il
+      client di questo progetto mostra il messaggio del backend sui 422 di business (il
+      precedente e `BulkMoveConflictException` di spec 0063 e il 422 di
+      `ImportConversionNotReadyException`), e la tabella generica non ha un ramo 409.
+    - D-8 `layout_id` NON EREDITA DALL'OPPORTUNITA. `applySnapshotDefaults()` fa lo snapshot dei
+      4 campi che hanno un corrispettivo sull'Opportunita (`commercial_id`, `reporter_id`,
+      `supervisor_id`, `operational_site_id`). `opportunities` non ha `layout_id` e non lo avra
+      in questa spec: il default di `layout_id` viene dal `DocumentLayoutDefaultManager`, non
+      dall'Opportunita. Sono due meccanismi distinti e non vanno confusi in lettura del codice.
+  </context>
+
+  <scope>
+    <in>
+      <item>`composer require phpoffice/phpword` (^1.4) - unica dipendenza nuova, autorizzata.</item>
+      <item>Migration `add_layout_id_to_quotes_table`: `layout_id` FK nullable -> `document_layouts`, `nullOnDelete`.</item>
+      <item>`Quote`: `layout_id` in `#[Fillable]`, relazione `layout()` -> `DocumentLayout`.</item>
+      <item>`CreateQuoteData` / `UpdateQuoteData`: campo `layoutId` (+ `layoutIdSubmitted` in update).</item>
+      <item>`StoreQuoteRequest` / `UpdateQuoteRequest`: regola `layout_id` + validazione che il layout sia del modulo `quotes` e attivo (o quello gia persistito).</item>
+      <item>`QuoteService`: risoluzione del layout di default alla create (D-3), senza toccare `applySnapshotDefaults()` (D-8).</item>
+      <item>`QuotesAuthorization`: `layout_id` in `fields()` e in `fieldPermissionCeiling()`; nuova action `generate_document` in `actions()`/`actionPermissions()`.</item>
+      <item>`QuoteResource`: `layout_id` + `layout` come ref `{id, name}`.</item>
+      <item>`App\Services\DocumentLayouts\Rendering\DocxRenderer`: dalla `config` al `.docx` via PhpWord (pagina, zone, 7 tipi di blocco, campi `page`/`total_pages`).</item>
+      <item>`App\Services\DocumentLayouts\Rendering\VariableResolver`: dai token ai valori per un `Quote`, con il mascheramento dei field permission dei dati personali (0069 D-6).</item>
+      <item>`App\Services\DocumentLayouts\Rendering\ProductsTableRenderer`: righe prodotto e righe totali.</item>
+      <item>`App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator`: orchestrazione (risolvi layout -> carica relazioni -> risolvi variabili -> rendi -> nome file).</item>
+      <item>`POST /api/quotes/{quote}/document`: genera e restituisce il `.docx` in streaming.</item>
+      <item>`POST /api/document-layouts/{documentLayout}/preview`: anteprima `.docx` del layout su un preventivo reale (o su dati di esempio se non ne viene indicato uno).</item>
+      <item>Delete-guard sui layout in uso in `DocumentLayoutService::delete()` (D-7) + messaggi in `lang/{it,en}/document_layouts.php`.</item>
+      <item>Azione di riga `generate_document` in `QuoteColumnCatalog::actions()` + `QuotesTableDefinition::actionsFor()`.</item>
+      <item>Frontend Preventivi: campo Layout nel form (nuovo `quote-layout-section.tsx`), `layout_id` in types/schema/payload/hook, campo nel detail, bottone "Genera Word" nel detail e azione di riga in tabella, download via `saveBlob()`.</item>
+      <item>Seed di sistema del layout iniziale: `QuoteDefaultLayoutSeeder` in `DatabaseSeeder` + asset `database/seeders/assets/quote-letterhead.png` (D-5).</item>
+      <item>i18n: chiavi nuove in `{it,en}-quotes.ts`, `{it,en}-document-layouts.ts`, `lang/{it,en}/document_layouts.php`, `actions.generateWord` nel namespace azioni.</item>
+      <item>Test Pest in `backend/tests/Feature/Quotes/` e `backend/tests/Feature/DocumentLayouts/`, unit test del renderer in `backend/tests/Unit/DocumentLayouts/`, Vitest colocati.</item>
+    </in>
+    <out>
+      <item>Generazione PDF, anteprima PDF, conversione `.docx` -> PDF (PhpWord la offre solo con renderer esterni: nessuno viene aggiunto).</item>
+      <item>Formati diversi da `.docx` (ODT, RTF, HTML).</item>
+      <item>Ripartizione IVA per aliquota nella riga totali (D-6): resta una riga di IVA aggregata.</item>
+      <item>Sconto di riga: non esiste in schema (0069 D-4).</item>
+      <item>Metodo di pagamento sul Preventivo: `quotes.payment_method_id` non viene aggiunto (0069 D-3).</item>
+      <item>Persistenza del documento generato, storico dei documenti prodotti, allegato automatico al Preventivo, invio via email.</item>
+      <item>Job in coda, polling, barra di progresso: la generazione e sincrona (D-2).</item>
+      <item>Cleanup job per gli artefatti di export esistenti (D-4).</item>
+      <item>`layout_id` su Opportunita o su altri moduli; layout per moduli diversi da `quotes`.</item>
+      <item>Import di un `.docx` per derivarne una `config` (il layout iniziale e trascritto una volta a mano, D-5).</item>
+      <item>Modifica di `applySnapshotDefaults()` e di qualunque comportamento di ereditarieta esistente dei Preventivi (D-8).</item>
+      <item>Modifiche a `QuoteTotalsCalculator`, `QuoteLineWriter`, alla pipeline provvigioni e agli aggregati persistiti.</item>
+      <item>Patch a `vendor/phpoffice/phpword` (vincolo di licenza LGPL, vedi context).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <schema>
+      Migration `add_layout_id_to_quotes_table`:
+        `layout_id` unsignedBigInteger nullable, FK -> `document_layouts.id`, `nullOnDelete`.
+      Perche `nullOnDelete` e non `restrictOnDelete`: la protezione contro la perdita del layout
+      e il delete-guard applicativo (D-7), che e piu informativo di un errore di integrita. Il
+      `nullOnDelete` e la rete di sicurezza dello schema, coerente con la scelta fatta per
+      `company_id`/`company_site_id`/`operational_site_id` nella migration del 2026-07-30.
+      Nessun `index()` esplicito: `constrained()` crea gia la FK e il suo indice.
+      `Quote`: `layout_id` aggiunto a `#[Fillable]`; `layout(): BelongsTo` -> `DocumentLayout`.
+      `QuoteService::DETAIL_RELATIONS` estesa con `layout`.
+    </schema>
+
+    <validation>
+      Store: `layout_id` => ['sometimes','nullable','integer','exists:document_layouts,id']
+      Update: `layout_id` => ['sometimes','nullable','integer','exists:document_layouts,id']
+      In aggiunta, in `withValidator` (nuovo trait
+      `App\Http\Requests\Concerns\ValidatesQuoteLayout`, invocato da entrambe le request):
+        - il layout indicato deve avere `module = quotes` -> altrimenti 422 su `layout_id`
+          (`quotes.layout_module_mismatch`);
+        - il layout indicato deve avere `is_active = true`, TRANNE quando e il valore GIA
+          persistito sul preventivo in modifica -> altrimenti 422 su `layout_id`
+          (`quotes.layout_inactive`). L'eccezione evita di rendere non salvabile un preventivo
+          storico il cui layout e stato disattivato dopo.
+      La regola vive server-side: la tendina del form e solo un'affordance (security.md §1).
+    </validation>
+
+    <endpoint method="POST" path="/api/quotes/{quote}/document">
+      <request>
+        route model binding su `quote`. Nessun body.
+        POST e non GET perche l'azione produce un artefatto e non e cacheabile/idempotente in
+        senso utile; e coerente con `POST /api/exports/{domain}`.
+      </request>
+      <response status="200">
+        Corpo binario `.docx` in streaming.
+        `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        `Content-Disposition: attachment; filename="{quote.code}.docx"` (es. `QUO-0001.docx`)
+        Non e l'envelope JSON di progetto: e un download, come
+        `GET /api/exports/{domain}/{run}/download`.
+      </response>
+      <errors>
+        401 non autenticato; 403 senza `quotes.view` (la generazione e una lettura del
+        preventivo: non richiede `update`); 404 preventivo inesistente;
+        422 se il preventivo non ha `layout_id` E il modulo `quotes` non ha alcun layout
+        predefinito attivo (`quotes.no_layout_available`);
+        422 se il layout risolto ha una `config` che non supera il validator (layout corrotto a
+        DB da una modifica manuale: si segnala, non si genera un file rotto);
+        500 solo per fallimenti imprevisti di scrittura (loggati e notificati come da
+        `handleControllerException`).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/document-layouts/{documentLayout}/preview">
+      <request>{ "quote_id": int|null } - se null si usa il preventivo piu recente visibile all'attore; se non ne esiste alcuno si generano dati di esempio deterministici (nessuna dipendenza dallo stato del DB)</request>
+      <response status="200">
+        Corpo binario `.docx` in streaming.
+        `Content-Disposition: attachment; filename="{layout.code}-preview.docx"`.
+        Serve la verifica di fedelta ad alta fedelta promessa dalla 0069 D-8: l'anteprima HTML
+        dell'editor e un'approssimazione, questo endpoint produce il file reale.
+      </response>
+      <errors>
+        401; 403 senza `document-layouts.view`; 404 layout inesistente;
+        403 se `quote_id` e valorizzato ma l'attore non ha `quotes.view` su quel preventivo;
+        404 se `quote_id` non esiste; 422 se la `config` del layout non e valida.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/document-layouts/{documentLayout}">
+      <request>route model binding. Contratto della 0069 ESTESO dal guard di utilizzo (D-7).</request>
+      <response status="204">nessun body, quando nessun guard scatta</response>
+      <errors>
+        Ordine di valutazione dei guard, congelato:
+        1. predefinito e non unico del modulo -> 422 `default_cannot_be_deleted` (guard 0069);
+        2. referenziato da almeno un Preventivo -> 422 `layout_in_use` con il conteggio nel
+           messaggio (es. "Layout utilizzato da 3 preventivi: puoi solo disattivarlo").
+        Il conteggio si legge con una sola `count()` sulla relazione inversa, non caricando i
+        preventivi. 403 senza `document-layouts.delete`; 404 id inesistente.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <request>contratto ESISTENTE, esteso in modo additivo</request>
+      <response status="200">
+        `data` guadagna due chiavi accanto alle esistenti:
+          "layout_id": int|null,
+          "layout": { "id": int, "name": string } | null
+        Stessa forma dei ref di relazione gia emessi da `QuoteResource` (`summarizeByName`).
+        Nessuna chiave esistente cambia forma: e un'aggiunta retro-compatibile.
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/quotes/columns">
+      <request>generico</request>
+      <response status="200">
+        `actions` guadagna una voce:
+          { "key": "generate_document", "label": "actions.generateWord",
+            "icon": "file-text", "type": "action", "confirm": false,
+            "permission": "quotes.view" }
+        Nessuna colonna nuova: il layout non entra nella tabella dei Preventivi (non e
+        un'informazione da griglia). `actionsFor()` la emette solo se
+        `Gate::forUser($actor)->allows('view', $row)`.
+        Effetto atteso sul renderer generico: con 5 azioni, `INLINE_ACTION_LIMIT = 3` manda le
+        ultime nel menu overflow. Non e una regressione.
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <rendering_contract>
+      MAPPATURA CONGELATA `config` -> PhpWord. E il cuore della feature: ogni riga qui e un
+      comportamento verificabile con un test che apre lo `.docx` prodotto (`ZipArchive`) e asserisce
+      sull'XML, non "a occhio".
+
+      PAGINA (`config.page` -> `Section` style):
+        format A4 + orientation -> `pageSizeW`/`pageSizeH` 11906 x 16838 twips, invertiti in
+          `landscape`; margini -> `marginTop`/`marginRight`/`marginBottom`/`marginLeft` in twips
+          (PhpWord li prende in twips: nessuna conversione, il valore della config va dritto);
+        `default_font` -> `PhpWord::setDefaultFontName/Size/Color` (size in punti).
+      ZONE:
+        `header` -> `$section->addHeader()` (tipo default: ripetuto su tutte le pagine);
+        `footer` -> `$section->addFooter()`; `body` -> il `Section` stesso.
+        Una zona con `blocks: []` non produce alcun header/footer (non un header vuoto).
+      BLOCCHI:
+        text -> `addTextRun($paragraphStyle)` + un `addText($text, $fontStyle)` per run.
+          `align` -> `Jc` (`left|center|right|both` per `justify`);
+          `space_before`/`space_after` -> `spaceBefore`/`spaceAfter` in twips;
+          `line_height` -> `lineHeight`; `bold`/`italic`/`underline`/`font`/`size`/`color` ->
+          stile del run. Un run con `field: 'page'` -> `addField('PAGE')`, con
+          `field: 'total_pages'` -> `addField('NUMPAGES')`; il suo `text` viene ignorato.
+          `runs: []` -> `addTextBreak()`.
+        image -> `addImage($absolutePath, $style)`. `width`/`height` in punti;
+          `align` -> `alignment`. `wrap: 'inline'` -> stile inline; `wrap: 'behind_page'` ->
+          `wrappingStyle: 'behind'`, `positioning: absolute`, `posHorizontalRel: 'page'`,
+          `posVerticalRel: 'page'`, `marginTop: 0`, `marginLeft: 0`. Il path e quello del disco
+          privato (`Storage::disk('local')->path(...)`), mai un URL.
+        table -> `addTable($style)` + `addRow()`/`addCell($widthTwips, $cellStyle)`; le
+          `width_pct` si convertono in twips sulla larghezza utile (pagina meno margini),
+          calcolata una volta e riusata: e l'unico posto dove la percentuale diventa assoluta.
+          `borders` -> `borderSize`/`borderColor`; `background` di cella -> `bgColor`;
+          `vertical_align` -> `valign`; `col_span` -> `gridSpan`; `is_header: true` -> ripetizione
+          dell'intestazione sulle pagine successive (`tblHeader`).
+        products_table -> vedi sotto.
+        page_break -> `addPageBreak()`.
+        spacer -> `addTextBreak()` con `spaceAfter` pari all'altezza convertita in twips.
+        divider -> paragrafo vuoto con bordo inferiore: `borderBottomSize` (ottavi di punto),
+          `borderBottomColor`, larghezza resa con `width_pct` sulla larghezza utile.
+      PRODUCTS_TABLE:
+        1. `source` seleziona `offerLines` o `costLines` (relazioni reali, gia ordinate per
+           `sort_order`);
+        2. se `show_header`, una riga di intestazione con `header_background` e le `label` delle
+           colonne, marcata `tblHeader` cosi che si ripeta a ogni pagina;
+        3. una riga per `QuoteLine`; in ogni cella un paragrafo per ogni `lines[]` della colonna,
+           con i `keys` concatenati da `separator`;
+        4. se non ci sono righe, una sola riga con `empty_text` su tutta la larghezza
+           (`gridSpan`);
+        5. se `totals.show`, una riga per ogni `totals.rows[]`: `label` nella penultima cella,
+           valore risolto dalla `variable` nell'ultima, `bold` applicato a entrambe.
+      FORMATTAZIONE DEI VALORI (una sola implementazione, condivisa da variabili e tabella):
+        importi -> 2 decimali, separatore decimale virgola, separatore migliaia punto, senza
+          simbolo di valuta (il simbolo, se serve, e testo statico del layout: cosi il layout
+          resta valido se cambia valuta);
+        quantita -> fino a 2 decimali, senza zeri finali inutili;
+        aliquota IVA -> `vatRate.name` se presente, altrimenti `rate` formattata con `%`;
+        date -> `d/m/Y`; date/ora -> `d/m/Y H:i`;
+        valore assente o mascherato dai field permission -> stringa VUOTA, mai "null", mai "-",
+          mai il token non risolto.
+      VARIABILI NON RISOLVIBILI: un riferimento sintatticamente valido ma non presente nel catalogo (es.
+        residuo di un layout salvato prima che un custom field venisse eliminato) si rende come
+        stringa VUOTA e NON fa fallire la generazione. Un preventivo va prodotto anche se il
+        layout e leggermente disallineato; il posto dove il problema si segnala e il validator
+        in fase di salvataggio del layout, non la generazione del documento del cliente.
+    </rendering_contract>
+
+    <initial_layout>
+      LAYOUT INIZIALE `quotes` (D-5), `code = quote_default`, `name = "Offerta economica"`,
+      `module = quotes`, `is_active = true`, `is_default = true`. Trascrizione del documento
+      ispezionato, con i valori reali letti dal file:
+        page: A4 portrait, margini top 1985 / right 1134 / bottom 1560 / left 1134 twips,
+              font di default Calibri 10 pt colore 000000;
+        header.blocks: [ image (carta intestata, `wrap: 'behind_page'`, width 595, height 842,
+              align left) ];
+        footer.blocks: [] (l'originale non ha footer ne numerazione);
+        body.blocks, nell'ordine:
+          divider (100%, 6/8 pt);
+          text right, Calibri 8: "Via Zoe Fontana 220 - 00131 Roma (RM) - C.F. &amp; P.IVA 10447341214";
+          text right, Calibri 8: "Tel. 081.834.79.60 - Fax 081.010.41.08";
+          text right, Calibri 8: "www.qualificagroup.it - offerte@qualificagroup.it";
+          divider (93%, 6/8 pt);
+          text left: run "Offerta n° " (Trebuchet MS 9, 2B3B4C) + "{quote.code}" +
+              " del " + "{quote.created_at}";
+          text right, Calibri 9: "Spettabile:";
+          text right, Calibri 9: "{client.name}";
+          text right, Calibri 9: "{client.address}";
+          text right, Calibri 9: "P.IVA {client.vat_number}";
+          text center, bold 14, colore 3B3838: "OFFERTA ECONOMICA E CONTRATTO DI AVVALIMENTO";
+          products_table (source `offer_lines`, width 100%, show_header true,
+              header_background 323E4F, 5 colonne con le percentuali reali del documento:
+                40% "Descrizione", lines: [ {keys:["code","name"], separator:"-"},
+                                            {keys:["description"], separator:""} ]
+                17% "Quantita", lines: [ {keys:["quantity"]} ], align right
+                19% "Prezzo unitario", lines: [ {keys:["unit_price"]} ], align right
+                10% "IVA", lines: [ {keys:["vat_rate"]} ], align center
+                14% "Totale", lines: [ {keys:["net_amount"]} ], align right
+              totals.show true, rows:
+                { label "Totale imponibile" -> variable `{totals.revenue_net}`, bold false }
+                { label "IVA"               -> variable `{totals.revenue_vat}`, bold false }
+              empty_text: "Nessun prodotto inserito");
+          text right, bold: "Totale offerta:  {totals.revenue_gross}";
+          divider (100%);
+          text left, Arial Narrow Italic 8 bold: "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _";
+          text left, Trebuchet MS 8, 2B3B4C: "Per accettazione                    Qualifica Group Training srl";
+          divider (100%);
+          text left, Calibri 6 bold, 262626: "COSTI E TERMINI DI PAGAMENTO:";
+          text left, Calibri 6, 262626: "In caso di accettazione: a) Si prega di rinviare la
+              presente offerta per accettazione all'indirizzo offerte@qualificagroup.it";
+          text left, Calibri 6 bold, 262626: "Modalita di pagamento:";
+          text left, Calibri 6, 262626: "Il compenso verra versato dal Committente a Qualifica
+              Group Training S.r.l. con le seguenti modalita:";
+          text left, Calibri 6, 262626: "saldo alla sottoscrizione alla sottoscrizione del
+              presente accordo".
+      I testi statici restano in italiano: sono CONTENUTO di un documento aziendale reale, non
+      stringhe di interfaccia, e non passano da i18next (engineering.md §1.2, eccezione per i
+      valori di dominio). L'utente li modifica dall'editor.
+      Nota su `${SIDVAT}`/`${SIVADESC}`: la riga di dettaglio IVA per aliquota dell'originale
+      diventa la riga "IVA" aggregata (D-6).
+    </initial_layout>
+
+    <field_permissions>
+      `QuotesAuthorization::fields()` guadagna, in coda al gruppo dei riferimenti:
+        FieldDefinition('layout_id', 'select')
+      `fieldPermissionCeiling()`:
+        layout_id -> mayWrite ? visibleEditable() : visibleReadonly()
+      Non e `mandatory`: un preventivo e valido senza layout (D-3), quindi un ruolo puo
+      legittimamente non vederlo.
+      `actions()` guadagna `generate_document`; `actionPermissions()` lo risolve con
+      `$model !== null &amp;&amp; $actor->can('quotes.view')` (azione su record, come `view_activity`).
+    </field_permissions>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-201">`composer require phpoffice/phpword` installa la ^1.4; `composer.lock` aggiornato; la suite Pest esistente resta verde (nessun conflitto con `phpspreadsheet ^5.9` gia presente).</criterion>
+    <criterion id="AC-202">Migration: `quotes.layout_id` esiste, nullable, con FK verso `document_layouts` e `nullOnDelete`; `down()` rimuove FK e colonna e il rollback lascia lo schema pulito.</criterion>
+    <criterion id="AC-203">Cancellando un `DocumentLayout` direttamente a DB (bypassando il guard applicativo), i preventivi che lo usavano hanno `layout_id` a null e restano leggibili (rete di sicurezza dello schema).</criterion>
+
+    <criterion id="AC-210">POST `/api/quotes` senza `layout_id`: 201 e il preventivo ha `layout_id` = id del layout predefinito attivo del modulo `quotes` (D-3).</criterion>
+    <criterion id="AC-211">POST `/api/quotes` senza `layout_id` quando il modulo non ha alcun layout attivo: 201 con `layout_id` null (la creazione del preventivo non dipende dall'esistenza di un layout).</criterion>
+    <criterion id="AC-212">POST con un `layout_id` esplicito di un layout attivo del modulo `quotes`: 201 e vince il valore inviato, non il predefinito.</criterion>
+    <criterion id="AC-213">POST con `layout_id` di un layout di un ALTRO modulo: 422 su `layout_id` (`layout_module_mismatch`). Con un `layout_id` inesistente: 422.</criterion>
+    <criterion id="AC-214">POST con `layout_id` di un layout DISATTIVO: 422 su `layout_id` (`layout_inactive`).</criterion>
+    <criterion id="AC-215">PATCH `{layout_id: null}` su un preventivo che ne aveva uno: 200 e `layout_id` a null (l'esplicito vince, come per gli altri ref).</criterion>
+    <criterion id="AC-216">PATCH di un preventivo il cui `layout_id` persistito e ora DISATTIVO, senza inviare `layout_id`: 200 (il preventivo storico resta salvabile). Inviando esplicitamente lo stesso `layout_id` disattivo: 200 (eccezione del valore persistito). Inviando un ALTRO layout disattivo: 422.</criterion>
+    <criterion id="AC-217">`applySnapshotDefaults()` non e modificato: un preventivo creato senza `layout_id` NON prende alcun valore dall'Opportunita, e i 4 campi snapshot esistenti (`commercial_id`, `reporter_id`, `supervisor_id`, `operational_site_id`) si comportano esattamente come prima (test di regressione su spec 0056/0065) (D-8).</criterion>
+    <criterion id="AC-218">`GET /api/quotes/{id}`: `data.layout_id` e `data.layout` `{id,name}` sono presenti; `layout` e null quando `layout_id` e null; nessuna chiave preesistente della response e cambiata di forma.</criterion>
+    <criterion id="AC-219">Field permission: con `role_field_permissions` che nega `layout_id`, una PATCH che lo cambia riceve 422; `GET /meta/quotes` espone `layout_id` fra i campi con il ceiling atteso.</criterion>
+
+    <criterion id="AC-230">`POST /api/quotes/{quote}/document` con un layout valido: 200, `Content-Type` docx, `Content-Disposition` con `filename="{quote.code}.docx"`, e il corpo e un archivio ZIP valido che contiene `word/document.xml`, `[Content_Types].xml` e `word/header1.xml`.</criterion>
+    <criterion id="AC-231">Il `.docx` generato si apre senza errori di riparazione: `ZipArchive::open` riesce, ogni parte dichiarata in `[Content_Types].xml` esiste nell'archivio, e ogni XML e ben formato (parsing con `DOMDocument` senza errori).</criterion>
+    <criterion id="AC-232">Pagina: `sectPr/pgSz` e 11906 x 16838 e `pgMar` riporta esattamente i 4 margini della config; con `orientation: landscape` larghezza e altezza risultano invertite.</criterion>
+    <criterion id="AC-233">Variabili: un layout con un blocco testo `"Offerta {quote.code} del {quote.created_at}"` produce nel `document.xml` il codice reale del preventivo e la data formattata `d/m/Y`, e NON contiene alcuna graffa residua.</criterion>
+    <criterion id="AC-234">Variabili di relazione: `{client.name}` rende `registries.name` del cliente raggiunto via `quote->opportunity->registry`; `{commercial.name}`, `{reporter.name}`, `{supervisor.name}`, `{company.denomination}`, `{operational_site.label}` rendono i valori attesi; un ref nullo rende stringa vuota.</criterion>
+    <criterion id="AC-235">Totali: `{totals.revenue_net}`, `{totals.revenue_vat}` rendono gli aggregati persistiti e `{totals.revenue_gross}` rende la somma dei due, tutti formattati con 2 decimali e virgola decimale.</criterion>
+    <criterion id="AC-236">Variabili dinamiche: un custom field valorizzato sul preventivo si rende via `{custom_fields.KEY}`; un attributo dell'opportunita via `{opportunity_attributes.CODE}`.</criterion>
+    <criterion id="AC-237">Token non risolvibile (`{quote.does_not_exist}`, o un `{custom_fields.KEY}` la cui definizione e stata eliminata): il documento si genera con 200 e al suo posto c'e stringa vuota, non il token grezzo e non un errore.</criterion>
+    <criterion id="AC-238">D-6 della 0069 in generazione: per un attore i cui field permission nascondono `tax_code`, il documento generato contiene stringa vuota al posto di `{client.tax_code}`; per il ruolo privilegiato contiene il valore. Stesso preventivo, stesso layout, due attori: due documenti diversi.</criterion>
+
+    <criterion id="AC-240">Tabella prodotti: un preventivo con 3 righe offerta produce una tabella con 1 riga di intestazione + 3 righe, nell'ordine di `sort_order`.</criterion>
+    <criterion id="AC-241">Tabella prodotti: le colonne rendono i valori attesi per ciascuna delle 9 chiavi dell'allow-list; `vat_rate` rende `vatRate.name` e, se `vatRate` e null, stringa vuota senza errore.</criterion>
+    <criterion id="AC-242">Colonna multi-riga (0069 D-11): una colonna con `lines: [{keys:['code','name'],separator:'-'},{keys:['description']}]` produce DUE paragrafi nella stessa cella, il primo con codice e nome uniti dal separatore.</criterion>
+    <criterion id="AC-243">Tabella prodotti su un preventivo senza righe: una sola riga con `empty_text` estesa su tutte le colonne (`gridSpan`), nessuna riga vuota, nessun errore.</criterion>
+    <criterion id="AC-244">Righe totali: ogni `totals.rows[]` produce una riga con la `label` e il valore della sua `variable`; con `bold: true` entrambe le celle sono in grassetto.</criterion>
+    <criterion id="AC-245">`source: 'cost_lines'` rende le righe di costo e non quelle di offerta.</criterion>
+    <criterion id="AC-246">L'intestazione della tabella prodotti e marcata come riga ripetuta (`tblHeader` presente nell'XML), cosi da ripetersi su ogni pagina in un documento lungo.</criterion>
+
+    <criterion id="AC-250">Blocco `image` con `wrap: 'behind_page'` nell'header: il media e presente in `word/media/`, la relazione e dichiarata in `word/_rels/header1.xml.rels`, e il drawing e flottante dietro al testo (`behindDoc`/wrapping `behind` nell'XML), non inline.</criterion>
+    <criterion id="AC-251">Blocco `image` con `wrap: 'inline'`: il drawing e inline e le dimensioni in EMU corrispondono ai punti dichiarati (punti x 12700).</criterion>
+    <criterion id="AC-252">Blocco `divider`: produce un paragrafo con bordo inferiore dello spessore e colore dichiarati e nessun testo.</criterion>
+    <criterion id="AC-253">Numerazione pagine: un footer con run `field: 'page'` e `field: 'total_pages'` produce nel `footer1.xml` i campi `PAGE` e `NUMPAGES` (`w:instrText`), non il testo letterale.</criterion>
+    <criterion id="AC-254">Una zona con `blocks: []` non genera la parte corrispondente: un layout senza footer non produce `word/footer1.xml` ne un `footerReference`.</criterion>
+    <criterion id="AC-255">`page_break` produce un'interruzione di pagina; `spacer` produce lo spazio dichiarato convertito in twips; una `table` statica rende righe, celle, `gridSpan`, sfondo cella e bordi dichiarati.</criterion>
+
+    <criterion id="AC-260">`POST /api/quotes/{quote}/document` su un preventivo con `layout_id` null e nessun layout predefinito attivo: 422 `no_layout_available` con envelope `{success:false,message}`, nessun file prodotto.</criterion>
+    <criterion id="AC-261">`POST /api/quotes/{quote}/document` su un preventivo con `layout_id` null ma con un predefinito attivo: 200, usando il predefinito corrente (D-3).</criterion>
+    <criterion id="AC-262">Un layout la cui `config` a DB e stata corrotta manualmente (chiave sconosciuta, tipo di blocco inesistente): la generazione risponde 422 esplicativo, non 500 e non un file danneggiato.</criterion>
+    <criterion id="AC-263">403 senza `quotes.view` sulla generazione; 404 su preventivo inesistente; nessun nome di classe o di model nei messaggi di errore.</criterion>
+    <criterion id="AC-264">La generazione NON scrive alcun file persistente: dopo una generazione riuscita non esistono file nuovi sul disco `local` e non esiste alcuna riga di tracciamento (D-2/D-4).</criterion>
+    <criterion id="AC-265">La generazione non modifica il preventivo: `updated_at`, aggregati e activity log sono invariati dopo una generazione (e una lettura).</criterion>
+
+    <criterion id="AC-270">`POST /api/document-layouts/{id}/preview` senza `quote_id`: 200 con un `.docx` valido anche su un database che non ha alcun preventivo (dati di esempio deterministici).</criterion>
+    <criterion id="AC-271">`POST .../preview` con `quote_id` valido: 200 e il documento contiene i dati di quel preventivo. Con un `quote_id` inesistente: 404. Con `quote_id` valido ma attore senza `quotes.view`: 403.</criterion>
+    <criterion id="AC-272">`POST .../preview` senza `document-layouts.view`: 403. Su un layout con config invalida: 422.</criterion>
+    <criterion id="AC-273">`Content-Disposition` dell'anteprima usa `filename="{layout.code}-preview.docx"`.</criterion>
+
+    <criterion id="AC-280">Delete-guard (D-7): DELETE di un layout referenziato da 3 preventivi -> 422 `layout_in_use`, il messaggio contiene il numero 3, il layout e ancora a DB e resta disattivabile con una PATCH `{is_active:false}` (se non e il predefinito).</criterion>
+    <criterion id="AC-281">Ordine dei guard: un layout che e SIA predefinito (con altri layout nel modulo) SIA in uso restituisce 422 `default_cannot_be_deleted` (guard 1 prima di guard 2).</criterion>
+    <criterion id="AC-282">DELETE di un layout con zero preventivi e non predefinito: 204, record rimosso (il guard non e troppo aggressivo).</criterion>
+    <criterion id="AC-283">Il conteggio dei preventivi del guard e ottenuto senza caricare i modelli (asserito sul numero di query o sull'assenza di idratazione).</criterion>
+
+    <criterion id="AC-290">Seed di sistema (D-5): `php artisan migrate:fresh --seed` crea il layout `quote_default` per il modulo `quotes`, attivo e predefinito, con l'immagine di carta intestata come attachment del layout; ri-eseguire il seeder non duplica ne il layout ne l'immagine (idempotenza su `code`).</criterion>
+    <criterion id="AC-291">La `config` del layout seedato supera `DocumentLayoutConfigValidator` (il seed non puo introdurre una config che l'API rifiuterebbe).</criterion>
+    <criterion id="AC-292">Fedelta del layout iniziale: generando un documento con `quote_default` si ottiene un `.docx` i cui `pgSz`/`pgMar` coincidono con quelli del file di riferimento (11906 x 16838; 1985/1134/1560/1134), la carta intestata e presente dietro al testo, la tabella prodotti ha 5 colonne con le percentuali 40/17/19/10/14 e intestazione con sfondo 323E4F, e sono presenti tutti i testi statici trascritti.</criterion>
+    <criterion id="AC-293">`DemoDocumentLayoutSeeder` (0069) resta separato e non viene richiamato da `DatabaseSeeder`.</criterion>
+
+    <criterion id="AC-300">Azione di riga: `GET /tables/quotes/columns` include `generate_document` con `permission: 'quotes.view'`; `actionsFor()` la omette per un attore senza `view` sulla riga.</criterion>
+    <criterion id="AC-301">Le 4 azioni preesistenti dei Preventivi (`view`, `edit`, `delete`, `activity`) restano presenti e con lo stesso contratto: nessuna regressione sul catalogo azioni.</criterion>
+    <criterion id="AC-302">Frontend tabella: il click su "Genera Word" scarica il file (blob + `saveBlob` con il nome preso da `Content-Disposition`), mostra un toast di successo e NON provoca un refresh della griglia (non e una mutazione).</criterion>
+    <criterion id="AC-303">Frontend: un 422 `no_layout_available` mostra il messaggio del backend, non un errore generico; un 403 mostra il messaggio di permesso negato.</criterion>
+    <criterion id="AC-304">Frontend detail del preventivo: il bottone "Genera Word" e visibile solo con `quotes.view` (via `quote.permissions`) e mostra lo stato di caricamento durante la generazione, senza doppio invio se cliccato due volte.</criterion>
+
+    <criterion id="AC-310">Frontend form Preventivo: il campo Layout e una `RelationSelectField` su `metaKey='layout_id'` che elenca solo i layout attivi del modulo `quotes`; in create e precompilato col predefinito senza che l'utente lo scelga.</criterion>
+    <criterion id="AC-311">Frontend form: cambiando layout, il payload di submit contiene il nuovo `layout_id`; `buildUpdatePayload` lo include solo se cambiato.</criterion>
+    <criterion id="AC-312">Frontend form edit di un preventivo il cui layout e disattivato: la tendina mostra comunque il valore corrente (idratazione via `ids[]`, contratto for-select della 0069) e non lo azzera al salvataggio.</criterion>
+    <criterion id="AC-313">Frontend: con i field permission che rendono `layout_id` readonly, il campo e disabilitato e il submit non lo invia.</criterion>
+    <criterion id="AC-314">Frontend detail: il layout e mostrato come campo del riepilogo; se null mostra il placeholder del kit detail.</criterion>
+    <criterion id="AC-315">Chiavi i18n presenti e allineate in `it` e `en` per: campo e placeholder del Layout, `actions.generateWord`, tutti i messaggi di errore nuovi. Nessuna chiave usata dai componenti manca in una delle due lingue.</criterion>
+
+    <criterion id="AC-320">Nessuna regressione: l'intera suite Pest dei Preventivi (`QuoteCrudTest`, `QuoteAuthorizationTest`, `QuoteTableTest`, `QuoteCommission*`, `QuoteSchemaTest`) e la suite Vitest di `features/quotes/` restano verdi.</criterion>
+    <criterion id="AC-321">Prestazioni: la generazione di un documento per un preventivo con 50 righe prodotto completa in meno di 2 secondi in ambiente locale (misurato nel test, soglia dichiarata come costante e non come numero magico).</criterion>
+    <criterion id="AC-322">`vendor/phpoffice/phpword` non e modificato: nessuna patch, nessun file sovrascritto (vincolo LGPL del context).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Unica dipendenza nuova consentita: `phpoffice/phpword` ^1.4 (autorizzata dall'utente). Nessuna dipendenza npm nuova. Nessun renderer PDF.</item>
+    <item>Licenza LGPL-3.0-only di PhpWord: la libreria si usa NON MODIFICATA come dipendenza `vendor/`. Nessuna patch, nessun fork, nessun file copiato nel nostro sorgente.</item>
+    <item>Nessuna modifica a `applySnapshotDefaults()`, `QuoteTotalsCalculator`, `QuoteLineWriter`, alla pipeline provvigioni e agli aggregati persistiti (D-8).</item>
+    <item>La generazione e una LETTURA: richiede `quotes.view`, non modifica il preventivo, non scrive activity log, non produce file persistenti (D-2).</item>
+    <item>Authz server-side su ogni endpoint nuovo, incluso il controllo che il `quote_id` dell'anteprima sia visibile all'attore. Nessuna scorciatoia "e solo un'anteprima".</item>
+    <item>La `config` non e mai eseguita ne interpolata: e un albero validato contro l'allow-list della 0069. La sostituzione dei token e una sostituzione di stringhe su un catalogo chiuso, non un template engine.</item>
+    <item>I field permission dei dati personali valgono anche in generazione (0069 D-6): un documento non e un canale per aggirare la matrice dei permessi di campo.</item>
+    <item>Nessun `throttle` sui nuovi endpoint (decisione utente 2026-07-15).</item>
+    <item>Le immagini si leggono dal disco privato via `Storage::disk('local')->path()`, mai da URL. Nessun accesso a rete durante la generazione.</item>
+    <item>Identificatori in inglese: colonna, rotte, classi, chiavi. I testi statici del layout iniziale sono contenuto di dominio in italiano e NON passano da i18next (eccezione dichiarata in `initial_layout`).</item>
+    <item>File entro 300 righe (soft) / 500 (hard): il renderer e diviso in `DocxRenderer` (pagina e zone), un renderer per famiglia di blocchi, `ProductsTableRenderer`, `VariableResolver` e il formattatore dei valori. Nessuna classe monolitica.</item>
+    <item>Nessun magic value: unita di misura, conversioni (punti-EMU, punti-twips, percentuale-twips), formati di data e soglie sono costanti dichiarate una volta sola.</item>
+    <item>Nessun emoji nel codice o nei commenti. Nessun file `.md` nuovo fuori da `docs/`.</item>
+    <item>I test sul `.docx` asseriscono sull'XML estratto dallo ZIP, non su "il file esiste": un file prodotto ma non apribile da Word e un test rosso.</item>
+    <item>Definition of Done: Pest e Vitest ESEGUITI e verdi, Pint pulito, ESLint pulito, `cd frontend &amp;&amp; npx tsc -b --force` EXIT=0 (mai `tsc --noEmit`, e un falso verde in questo repo).</item>
+    <item>Test frontend da lanciare con `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` (sensibilita preesistente di locale sulle asserzioni numeriche).</item>
+  </constraints>
+
+</spec>

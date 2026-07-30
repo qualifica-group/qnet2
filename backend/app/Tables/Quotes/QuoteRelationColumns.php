@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
  * The GENERIC relation-derived column machinery for the `quotes` domain
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
  * split, engineering.md §6): `opportunity`/`quote_status`/`commercial`/
- * `reporter`/`supervisor` (own-FK, simple relation-name columns) — a
+ * `reporter`/`supervisor`/`company`/`company_site` (own-FK, simple
+ * relation-label columns) — a
  * `whereHas` set filter (allow-listed columns only, never orderByRaw/
  * whereRaw on raw input — backend.md §8), a correlated subquery sort, and
  * Excel-like distinct values (spec 0004/0005), mirroring
@@ -25,10 +26,24 @@ final class QuoteRelationColumns
     private const int MAX_FILTER_VALUES = 200;
 
     /**
+     * The label column of a related row, used unless the relation overrides
+     * it: every table here but `companies` calls it `name`.
+     */
+    private const string DEFAULT_LABEL_COLUMN = 'name';
+
+    /**
      * Simple (single-hop) relation-name derived columns: relation accessor,
-     * related table and owning FK column, keyed by the derived column id.
+     * related table, owning FK column and — only where it is not `name` —
+     * the related row's label column, keyed by the derived column id.
      *
-     * @var array<string, array{relation: string, table: string, fk: string}>
+     * `company` (user directive 2026-07-30) is the one entry with a
+     * different label column: `companies` has no `name`, its display name is
+     * `denomination` (spec 0010). `operational_site` is deliberately ABSENT:
+     * the site has no label COLUMN at all (its identity is its primary
+     * address), so it is delegated to the shared OperationalSiteColumn by
+     * QuotesTableDefinition, exactly as on Opportunities.
+     *
+     * @var array<string, array{relation: string, table: string, fk: string, label?: string}>
      */
     private const array DERIVED_RELATIONS = [
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
@@ -36,6 +51,8 @@ final class QuoteRelationColumns
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
         'reporter' => ['relation' => 'reporter', 'table' => 'referents', 'fk' => 'reporter_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
+        'company' => ['relation' => 'company', 'table' => 'companies', 'fk' => 'company_id', 'label' => 'denomination'],
+        'company_site' => ['relation' => 'companySite', 'table' => 'company_sites', 'fk' => 'company_site_id'],
     ];
 
     /**
@@ -57,8 +74,10 @@ final class QuoteRelationColumns
         $values = $this->filterValues($filter);
 
         if ($values !== []) {
-            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($values): void {
-                $relatedQuery->whereIn('name', $values);
+            $label = $this->labelColumn($config);
+
+            $query->whereHas($config['relation'], static function (Builder $relatedQuery) use ($label, $values): void {
+                $relatedQuery->whereIn($label, $values);
             });
         }
 
@@ -79,7 +98,7 @@ final class QuoteRelationColumns
         }
 
         $subquery = DB::table($config['table'])
-            ->select('name')
+            ->select($this->labelColumn($config))
             ->whereColumn("{$config['table']}.id", "quotes.{$config['fk']}")
             ->limit(1);
 
@@ -104,18 +123,31 @@ final class QuoteRelationColumns
         }
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);
+        $label = $this->labelColumn($config);
 
         return DB::table($config['table'])
             ->whereIn('id', $relatedIds)
-            ->when($search !== null && $search !== '', function ($builder) use ($search): void {
-                $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
+            ->when($search !== null && $search !== '', function ($builder) use ($label, $search): void {
+                $builder->where($label, 'like', '%'.$this->escapeLike($search).'%');
             })
             ->distinct()
-            ->orderBy('name')
+            ->orderBy($label)
             ->limit($limit)
-            ->pluck('name')
+            ->pluck($label)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+    }
+
+    /**
+     * The related row's label column. Comes from the static DERIVED_RELATIONS
+     * map only — never from request input, so it is safe as a column
+     * identifier (backend.md §8: allow-list, never raw input).
+     *
+     * @param  array{relation: string, table: string, fk: string, label?: string}  $config
+     */
+    private function labelColumn(array $config): string
+    {
+        return $config['label'] ?? self::DEFAULT_LABEL_COLUMN;
     }
 
     /**

@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0068-payment-methods-module" status="approved" owner="nicola" date="2026-07-30">
+
+  <goal>
+    Introdurre il modulo lookup `payment-methods`: una tabella di supporto centralizzata,
+    agnostica rispetto ai moduli che la consumeranno (preventivi, offerte, contratti, ordini,
+    fatture e moduli futuri), che descrive le modalita di pagamento selezionabili nel gestionale.
+    Full CRUD con permessi granulari, tabella backend-driven, activine/disattivazione, riordino,
+    activity log ed export, allo stesso livello di completezza di `reward-statuses` (spec 0060).
+  </goal>
+
+  <context>
+    Modulo interamente nuovo: `payment_methods`, `PaymentMethod`, `payment-methods` non esistono
+    in nessuna forma (backend, frontend, config, docs). Verificato per grep sull'intero repo.
+
+    RIFERIMENTO CANONICO: `reward-statuses` (spec 0060) - unico lookup che combina
+    `description` + `sort_order` + `is_active` + reorder + delete-guard. Ogni artefatto di questo
+    modulo si clona da lì, sostituendo le parti elencate sotto come DIVERGENZE.
+    Riferimenti secondari: `reward-types` (spec 0058, variante senza system row);
+    `attributes` (unico precedente di `code` unique fornito dall'utente, string(64), regex);
+    `products` (precedente di `code` readonly dopo la create).
+
+    CONVENZIONI REALI VERIFICATE (nomi da riusare esattamente, non ipotizzare):
+    - Model: estende `App\Models\Abstracts\BaseModel`; mass-assignment via attributo PHP
+      `#[Fillable([...])]` (NON la proprieta `$fillable`); `casts()` come METODO protetto;
+      activity log via concern `App\Models\Concerns\LogsModelActivity`.
+    - Nessun soft delete (nessun lookup del repo ne ha). Timestamps si.
+    - Permessi CRUD DERIVATI: `PaymentMethodPolicy extends App\Policies\Abstracts\BasePolicy`
+      con `resource() === 'payment-methods'`; `php artisan permissions:sync` legge
+      `glob(app_path('Policies/*.php'))` e crea le 8 permission
+      (`viewAny|view|create|update|delete|export|import|viewActivity`). Nessun catalogo
+      hardcoded, nessuna registrazione policy (auto-discovery per convenzione).
+    - Permessi di campo: `App\Authorization\PaymentMethodsAuthorization extends
+      AbstractResourceAuthorization` + riga in `config/authorization.php`. `fieldPermissions()`
+      e `final`: interseca `fieldPermissionCeiling()` con `role_field_permissions` (bypass
+      totale per `RoleAssignmentGuard::PRIVILEGED_ROLE`, bypass intersezione per i campi
+      `mandatory: true`). Enforcement sulla write via trait
+      `App\Http\Requests\Concerns\EnforcesFieldPermissions` (metodi astratti
+      `authorizationResource()`/`authorizationModel()`, invocato in `withValidator`).
+    - Tabella: riga in `config/tables.php` + `App\Tables\PaymentMethodsTableDefinition` (flat)
+      + `App\Tables\PaymentMethods\PaymentMethodColumnCatalog` e
+      `...\PaymentMethodAdvancedFilterCatalog` (split per dimensione, engineering.md §6).
+      `TableRegistry` non richiede codice. `authorizeViewAny()` NON si overrida (default
+      fail-closed su `Gate::allows('viewAny', modelClass())`).
+    - Export: nessun registro per-dominio. Una TableDefinition registrata ha export "gratis";
+      serve solo la permission `payment-methods.export`.
+    - Route: `backend/routes/api/lookups.php`, dentro il gruppo `auth:sanctum`. NON si usa
+      `Route::resource` e NON esiste `index()`: la lista passa da `/api/tables/{domain}/rows`.
+      I segmenti letterali (`for-select`, `reorder`) vanno SOPRA il wildcard bindato.
+    - Envelope: `BaseApiController::okWithPermissions()` -> `{success, message, data, permissions}`;
+      `ok()` -> `{success, message, data}`; `destroy` -> 204 via `noContent()`;
+      `paginatedResponse()` -> `{items, export_link, pagination:{total,offset,limit,total_pages}}`.
+      Ogni metodo del controller e avvolto in `try/catch (Throwable) -> handleControllerException()`.
+    - Navigazione backend-driven: nodo in `backend/config/navigation.php` (il frontend non
+      dichiara voci di menu, legge `GET /navigation`).
+    - Activity log endpoint: riga in `backend/config/activity-log.php`.
+    - Frontend: registry per convenzione via `import.meta.glob('../*/*-screens.tsx')` in
+      `features/modules/module-registry.ts`; i deep-link (`new`, `:id`, `:id/edit`,
+      `:id/duplicate`) sono generati da `buildModuleRoutes()`. In `routes/router.tsx` va
+      aggiunta solo la rotta lista. Apertura record via `useModuleOpener` (Sheet, o pagina se
+      la preferenza utente e `page`).
+    - i18n: moduli TypeScript `i18n/locales/{it,en}-payment-methods.ts` (NON file JSON),
+      importati e montati in `it.ts`/`en.ts` come `paymentMethods`. `en.ts` e la fonte dei tipi
+      (`TranslationResources`). Label nav: `navigation.paymentMethods` in `en-navigation.ts` e
+      nel blocco `navigation` inline di `it.ts`.
+    - Test: Pest in `backend/tests/Feature/PaymentMethods/` (ogni file dichiara
+      `uses(RefreshDatabase::class)`, non c'e default globale); Vitest colocati nella feature,
+      soglia coverage 85%. Non esiste un `test-utils.tsx` condiviso: ogni suite crea il proprio
+      `QueryClient` per test.
+
+    DECISIONI PRESE DALL'UTENTE (2026-07-30), vincolanti:
+    - D-1 RIORDINO: sheet drag&drop, `sort_order` server-managed e FUORI dal form. Riuso del
+      componente condiviso `features/status-reorder/StatusReorderToggle` (gia domain-agnostic).
+      `App\Services\Statuses\StatusOrderManager` NON e riutilizzabile: dipende da
+      `whereNull('system_key')`, da `$modelClass::SYSTEM_HEAD_KEY->value` e da una union chiusa
+      di 4 class-string (`StatusOrderManager.php:47,82,122`). Serve un resequencer dedicato
+      SENZA concetto di head/tail. `StatusOrderManager` non va toccato (blast radius sui 4
+      status esistenti).
+    - D-2 DELETE: si segue il pattern del repo (relazione esplicita nel Service). Non esistendo
+      oggi alcun consumatore, in questa iterazione il delete NON ha guard e restituisce 204.
+      Il punto di estensione e documentato nel docblock di `PaymentMethodService::delete()`.
+      Il messaggio esplicativo richiesto dal brief arrivera con il primo consumatore reale.
+    - D-3 CODICE: `code` immutabile SEMPRE dopo la create, per chiunque, nessuna eccezione
+      amministrativa. Non si introduce l'ability `payment-methods.updateCode`. L'immutabilita
+      non puo poggiare sui soli field permission (il ruolo privilegiato li bypassa per
+      progetto): serve un guard incondizionato nella UpdateRequest (regola `prohibited`).
+    - D-4 STATO: `is_active` editabile inline in tabella tramite la pipeline generica
+      `PATCH /api/tables/{domain}/rows/{row}` (spec 0053). Sarebbe il PRIMO caso nel repo di
+      colonna `type: 'boolean'` con `'editable' => true`: il ramo `'boolean' => ['boolean']` di
+      `CellValueValidator::typeRules()` esiste ma non e mai stato esercitato da un test.
+    - D-5 `system_key` NELLA RESPONSE DI REORDER: `use-status-reorder.ts:80` legge
+      `entry.system_key` SENZA fallback e `ReorderedStatusEntry.system_key` non e opzionale.
+      Se la response omettesse la chiave, `systemKey` diventerebbe `undefined`,
+      `isPinned={(row) => row.systemKey !== null}` diventerebbe true per TUTTE le righe e dopo
+      il primo drag lo sheet perderebbe ogni maniglia. Contratto congelato: il backend emette
+      SEMPRE `"system_key": null` letterale. In aggiunta si applica l'hardening difensivo
+      `?? null` nel feature condiviso (una riga + tipo opzionale), coperto da test di
+      regressione: senza di esso il riuso del componente poggia su un'assunzione non garantita.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migration `create_payment_methods_table` (nuova tabella, nessuna tabella esistente toccata).</item>
+      <item>Model `App\Models\PaymentMethod` con `#[Fillable]`, `casts()`, `LogsModelActivity`.</item>
+      <item>Factory `PaymentMethodFactory` + `DemoPaymentMethodSeeder` registrato in `DemoDataSeeder`.</item>
+      <item>DTO `CreatePaymentMethodData` / `UpdatePaymentMethodData` in `App\DataObjects\PaymentMethods`.</item>
+      <item>FormRequest Store / Update / ForSelect + riuso di `ReorderStatusesRequest`.</item>
+      <item>`PaymentMethodPolicy extends BasePolicy` (8 ability standard, nessuna aggiunta).</item>
+      <item>`PaymentMethodsAuthorization` + riga in `config/authorization.php` (permessi di campo).</item>
+      <item>`PaymentMethodResource` + `PaymentMethodForSelectResource`.</item>
+      <item>`PaymentMethodController` (show/store/update/destroy/reorder) + `PaymentMethodForSelectController`.</item>
+      <item>`PaymentMethodService` (loadDetail/create/update/delete/reorder/forSelect).</item>
+      <item>`PaymentMethodOrderManager`: resequencer `sort_order` senza system row (D-1).</item>
+      <item>Route in `routes/api/lookups.php` (letterali sopra il wildcard).</item>
+      <item>`PaymentMethodsTableDefinition` + `PaymentMethodColumnCatalog` + `PaymentMethodAdvancedFilterCatalog` + riga in `config/tables.php`.</item>
+      <item>Riga in `config/navigation.php` e in `config/activity-log.php`.</item>
+      <item>Feature frontend `features/payment-methods/` completa (api, types, schema, payload, hook form, form, detail, screens, table, renderers).</item>
+      <item>`pages/payment-methods-page.tsx` + rotta lista in `routes/router.tsx` + segmento in `routes/breadcrumbs.tsx`.</item>
+      <item>Entry `'credit-card'` in `frontend/src/features/navigation/icon-map.ts`. OMESSA per errore nella prima stesura di questa spec: il nodo di `config/navigation.php` dichiara `'icon' => 'credit-card'`, ma senza la chiave nella mappa `resolveIcon()` cade sul fallback `Circle` e la voce di menu compare col pallino neutro. Il nome dell'icona va registrato in ENTRAMBI i posti (config backend + mappa frontend).</item>
+      <item>i18n `it-payment-methods.ts` / `en-payment-methods.ts` + montaggio + label di navigazione.</item>
+      <item>Hardening difensivo `?? null` in `features/status-reorder/use-status-reorder.ts` + tipo `system_key` opzionale in `types.ts`, con test di regressione (D-5).</item>
+      <item>Test Pest (feature) e Vitest per tutti gli AC.</item>
+    </in>
+    <out>
+      <item>Aggiunta di `payment_method_id` a QUALSIASI modulo consumatore (quotes/offerte, opportunita, fatture, contratti, ordini). Nessuna migration su tabelle esistenti, nessuna modifica alle spec 0065/0067.</item>
+      <item>Guard di eliminazione con relazioni reali e relativo messaggio esplicativo: rinviato al primo consumatore (D-2).</item>
+      <item>Ability `payment-methods.updateCode` e ogni eccezione amministrativa all'immutabilita del codice (D-3).</item>
+      <item>Calcolo automatico della data di scadenza a partire da `payment_days`: appartiene al modulo consumatore, qui si espone solo il dato.</item>
+      <item>Import (il permesso `payment-methods.import` nasce dal catalogo standard, ma nessun mapping/wizard di import viene predisposto).</item>
+      <item>Modifiche a `App\Services\Statuses\StatusOrderManager` e ai 4 moduli status esistenti.</item>
+      <item>Soft delete, versioning dei record, campi valuta/importo, allegati.</item>
+      <item>SEGNALATO, FUORI SCOPE: `use-status-reorder.ts` non invalida ne riscrive la propria query `['status-reorder', resource, 'list']` dopo un reorder riuscito, quindi lo stato locale puo essere risincronizzato sull'ordine precedente. Difetto PREESISTENTE che affligge i 4 moduli status attuali e non introdotto qui; nessun test attuale copre l'ordine visivo post-successo. Da triagare in una spec dedicata.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <schema table="payment_methods">
+      id: bigint unsigned, PK
+      name: string(191), NOT NULL, UNIQUE
+      code: string(64), NOT NULL, UNIQUE
+      description: string(500), NULL
+      payment_instructions: text, NULL
+      payment_days: unsignedSmallInteger, NULL
+      sort_order: integer, NOT NULL, default 0
+      is_active: boolean, NOT NULL, default true
+      created_at / updated_at: timestamps
+      Nessun soft delete, nessuna colonna `system_key`, nessuna FK.
+      Fillable: name, code, description, payment_instructions, payment_days, sort_order, is_active.
+      `sort_order` E fillable - serve al Service per assegnarlo tramite `create()`/`fill()`
+      (convenzione identica a `RewardStatus`) - ma NON e accettato da Store/UpdateRequest ne
+      esposto dai DTO: e server-managed (D-1). L'esclusione vive al livello FormRequest/DTO.
+      casts(): payment_days => 'int', sort_order => 'int', is_active => 'bool'.
+    </schema>
+
+    <validation>
+      name: required (Store) / sometimes+required (Update), string, max:191, unique(payment_methods,name)[->ignore(id)]
+      code: required, string, max:64, regex:/^[a-z][a-z0-9_]*$/, unique(payment_methods,code) -- SOLO in Store
+      code (Update): ['prohibited'] -- incondizionato, nessun bypass di ruolo (D-3)
+      description: sometimes, nullable, string, max:500
+      payment_instructions: sometimes, nullable, string, max:5000
+      payment_days: sometimes, nullable, integer, min:0, max:3650
+      is_active: sometimes, boolean
+      sort_order: NON accettato in Store/Update (server-managed); se inviato viene ignorato.
+      Costanti: NAME_MAX=191, CODE_MAX=64, DESCRIPTION_MAX=500, INSTRUCTIONS_MAX=5000, PAYMENT_DAYS_MAX=3650.
+    </validation>
+
+    <endpoint method="GET" path="/api/payment-methods/{paymentMethod}">
+      <request>route model binding su `paymentMethod`</request>
+      <response status="200">
+        { "success": true, "message": "OK",
+          "data": { "id": int, "name": string, "code": string, "description": string|null,
+                    "payment_instructions": string|null, "payment_days": int|null,
+                    "sort_order": int, "is_active": bool,
+                    "created_at": iso8601, "updated_at": iso8601 },
+          "permissions": { "resource": "payment-methods", "fields": {...}, "actions": {...} } }
+      </response>
+      <errors>401 non autenticato; 403 senza `payment-methods.view`; 404 id inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/payment-methods">
+      <request>{ name, code, description?, payment_instructions?, payment_days?, is_active? }</request>
+      <response status="201">envelope `okWithPermissions`, `data` = shape della GET; `sort_order` assegnato dal server</response>
+      <errors>403 senza `payment-methods.create`; 422 name o code duplicato / code fuori regex / payment_days negativo o &gt; 3650; 422 su campo non editable per i field permission (il 403 sull'ability precede il 422)</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/payment-methods/{paymentMethod}">
+      <request>{ name?, description?, payment_instructions?, payment_days?, is_active? } -- `code` PROIBITO</request>
+      <response status="200">envelope `okWithPermissions`, `data` = shape della GET</response>
+      <errors>403 senza `payment-methods.update`; 422 con messaggio su `code` se `code` e presente nel payload (anche se identico al valore attuale); 422 name duplicato di altro record; 422 su campo non editable</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/payment-methods/{paymentMethod}">
+      <request>route model binding</request>
+      <response status="204">nessun body</response>
+      <errors>403 senza `payment-methods.delete`; 404 id inesistente. Nessun 409 in questa iterazione (D-2)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/payment-methods/for-select">
+      <request>search?: string; offset?: int; limit?: int (max 100, default 25); ids?: int[]</request>
+      <response status="200">
+        { "items": [ { "id": int, "label": string, "subtitle": string, "meta": { "payment_days": int|null } } ],
+          "export_link": null,
+          "pagination": { "total": int, "offset": int, "limit": int, "total_pages": int } }
+        `label` = name, `subtitle` = code. Solo record con `is_active = true`, ordinati per
+        `sort_order` asc, poi `name`, poi `id`. `ids[]` idrata anche i record INATTIVI
+        (edit-mode dei consumatori) e NON gonfia `total`.
+      </response>
+      <errors>401; 403 senza `payment-methods.viewAny`; 422 limit &gt; 100</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/payment-methods/reorder">
+      <request>{ "ordered_ids": int[] } -- riuso di `ReorderStatusesRequest` (required|array|min:1, items integer|distinct)</request>
+      <response status="200">
+        { "success": true, "message": "OK",
+          "data": [ { "id": int, "sort_order": int, "system_key": null } ] }
+        Lista COMPLETA e ordinata. `sort_order` resequenziato 10, 20, 30, ...
+        `system_key` e emesso SEMPRE con valore letterale `null` (D-5): la tabella non ha la
+        colonna, ma il contratto del feature condiviso lo richiede.
+      </response>
+      <errors>403 senza `payment-methods.update`; 422 se `ordered_ids` non e esattamente l'insieme completo degli id (duplicati, id inesistente, id mancante)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/payment-methods/columns">
+      <request>generico, nessun codice nuovo: solo la riga in `config/tables.php`</request>
+      <response status="200">
+        Colonne nell'ordine congelato: name (searchable, sortable, filterType text),
+        code (searchable, sortable, filterType text), description (filterable, NON sortable),
+        payment_days (number), sort_order (number), is_active (boolean, `editable: true`),
+        created_at (datetime/date), updated_at (datetime/date).
+        Azioni: view / edit / delete (type danger, confirm true) / activity, ciascuna con la
+        propria `permission`. defaultSort: sort_order asc. defaultPagination: limit 25.
+        Advanced filters: is_active (Switch), payment_days (NumberRange).
+      </response>
+      <errors>403 senza `payment-methods.viewAny`</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/tables/payment-methods/rows/{row}">
+      <request>{ "column": "is_active", "value": bool }</request>
+      <response status="200">{ "success": true, "message": "Row updated", "data": { ...riga rimappata, "editable": bool, "actions": [...] } }</response>
+      <errors>
+        403 se `Gate::allows('update', $row)` nega (default `authorizeUpdate()`, quindi manca
+        `payment-methods.update`); 403 se i field permission negano `is_active`;
+        422 su qualsiasi `column` diversa da `is_active` (unica colonna con `editable: true`);
+        422 se `value` e omesso o non booleano (`is_active` non e `nullable`);
+        404 row inesistente; 403 senza `viewAny`.
+        `value: false` e valido: la rule `required` di Laravel non scarta `false`.
+        La scrittura usa il default `ResolvesEditableColumns::updateCell()` (mass-assignment
+        Eloquent, `is_active` deve essere in `#[Fillable]`), NON passa dal Service: nessuna
+        regola di business su `is_active` deve esistere. Activity log garantito dal ciclo
+        Eloquent standard di `LogsModelActivity`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/payment-methods">
+      <request>generico. Catalogo campi nell'ordine: name, code, description, payment_instructions, payment_days, is_active</request>
+      <response status="200">
+        `{success, message, data:{fields:[...]}, permissions:{fields, actions}}`.
+        `permissions.fields.code`: `editable` true solo quando il record e nuovo
+        (`$model === null`); su un record esistente e SEMPRE readonly.
+        `permissions.actions`: delete / export / import / view_activity.
+      </response>
+      <errors>403 senza `payment-methods.viewAny`</errors>
+    </endpoint>
+
+    <field_permissions>
+      `PaymentMethodsAuthorization::fields()` nell'ordine congelato:
+        FieldDefinition('name', 'text', mandatory: true)
+        FieldDefinition('code', 'text', mandatory: true)
+        FieldDefinition('description', 'textarea')
+        FieldDefinition('payment_instructions', 'textarea')
+        FieldDefinition('payment_days', 'number')
+        FieldDefinition('is_active', 'boolean')
+      `fieldPermissionCeiling()`:
+        name  -> mayWrite ? visibleEditable(required: true) : visibleReadonly()
+        code  -> (mayWrite &amp;&amp; $model === null) ? visibleEditable(required: true) : visibleReadonly()
+        description / payment_instructions / payment_days / is_active
+              -> mayWrite ? visibleEditable() : visibleReadonly()
+      `actions()`: ['delete', 'export', 'import', 'view_activity'].
+      `sort_order` NON e un campo dichiarato: e server-managed e non appare nel catalogo.
+    </field_permissions>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Migration: `migrate:fresh` crea `payment_methods` con le 9 colonne del contratto, i tipi dichiarati, unique su `name` e su `code`, `sort_order` default 0, `is_active` default true, nessuna colonna `system_key`, nessun `deleted_at`.</criterion>
+    <criterion id="AC-002">Migration: `down()` esegue `dropIfExists('payment_methods')` e il rollback lascia lo schema pulito.</criterion>
+    <criterion id="AC-003">`sort_order` e server-managed al livello HTTP: `CreatePaymentMethodData` e `UpdatePaymentMethodData` non espongono `sort_order`, e `StorePaymentMethodRequest::rules()`/`UpdatePaymentMethodRequest::rules()` non lo dichiarano (resta fillable sul model per l'uso interno del Service).</criterion>
+    <criterion id="AC-004">Model: `casts()` restituisce `payment_days` int, `sort_order` int, `is_active` bool; un record letto da DB espone `is_active` come booleano PHP.</criterion>
+
+    <criterion id="AC-010">POST con payload valido completo: 201, envelope `{success,message,data,permissions}`, record persistito con tutti i campi, `sort_order` assegnato dal server.</criterion>
+    <criterion id="AC-011">POST con solo `name` e `code`: 201, `description`/`payment_instructions`/`payment_days` null, `is_active` true.</criterion>
+    <criterion id="AC-012">POST con `sort_order` nel payload: 201 e il valore inviato viene IGNORATO (vale la sequenza server).</criterion>
+    <criterion id="AC-013">POST con `name` gia esistente: 422 su `name`, nessun record creato.</criterion>
+    <criterion id="AC-014">POST con `code` gia esistente: 422 su `code`, nessun record creato.</criterion>
+    <criterion id="AC-015">POST con `code` fuori regex (`Bonifico`, `1abc`, `a-b`, `a b`) : 422 su `code` per ciascun caso.</criterion>
+    <criterion id="AC-016">POST con `payment_days` = -1 e con 3651: 422 su `payment_days` in entrambi i casi; 0 e 3650 sono accettati.</criterion>
+    <criterion id="AC-017">POST con `name` mancante o vuoto: 422 su `name`. POST con `code` mancante: 422 su `code`.</criterion>
+    <criterion id="AC-018">GET show: 200 con la shape completa del contratto e il blocco `permissions`.</criterion>
+    <criterion id="AC-019">GET show di un id inesistente: 404 con envelope `{success:false,message}` e nessun nome di classe/model nel messaggio.</criterion>
+    <criterion id="AC-020">PATCH parziale (solo `description`): 200, aggiorna solo quel campo, gli altri restano invariati.</criterion>
+    <criterion id="AC-021">PATCH `{is_active: false}`: 200 e il record risulta disattivato.</criterion>
+    <criterion id="AC-022">PATCH `{name}` con un nome gia usato da un ALTRO record: 422; PATCH con il PROPRIO nome invariato: 200 (unique ignore self).</criterion>
+    <criterion id="AC-023">PATCH con `code` nel payload, valore DIVERSO dall'attuale: 422 su `code`, `code` invariato a DB.</criterion>
+    <criterion id="AC-024">PATCH con `code` nel payload, valore IDENTICO all'attuale: 422 su `code` (la regola `prohibited` non ammette la presenza della chiave).</criterion>
+    <criterion id="AC-025">PATCH con `code` eseguita da un utente con il ruolo privilegiato (super-admin): 422 su `code`. L'immutabilita non e bypassabile da alcun ruolo (D-3).</criterion>
+    <criterion id="AC-026">DELETE con `payment-methods.delete`: 204, record rimosso dal DB.</criterion>
+    <criterion id="AC-027">DELETE di un id inesistente: 404.</criterion>
+
+    <criterion id="AC-030">403 senza la relativa permission su: show (`view`), store (`create`), update (`update`), destroy (`delete`), for-select (`viewAny`), reorder (`update`), `GET /tables/payment-methods/columns` (`viewAny`), export (`export`).</criterion>
+    <criterion id="AC-031">`php artisan permissions:sync` crea le 8 permission `payment-methods.{viewAny,view,create,update,delete,export,import,viewActivity}` e nessuna in piu.</criterion>
+    <criterion id="AC-032">`GET /navigation` espone il nodo `payment-methods` solo all'utente con `payment-methods.view` e lo omette agli altri.</criterion>
+    <criterion id="AC-033">Precedenza 403 su 422: un utente senza `payment-methods.update` che invia un campo non editable riceve 403, non 422.</criterion>
+    <criterion id="AC-034">Con `role_field_permissions` che nega `description`, una PATCH che cambia `description` riceve 422 su `description`; una PATCH che non la tocca riceve 200.</criterion>
+    <criterion id="AC-035">I campi `mandatory` (`name`, `code`) restano editable in create anche con una restrizione di ruolo che li negherebbe (bypass mandatory, spec 0008).</criterion>
+
+    <criterion id="AC-040">`GET /meta/payment-methods`: 200 con il catalogo campi nell'ordine congelato e `permissions.fields`/`permissions.actions` popolati.</criterion>
+    <criterion id="AC-041">`GET /meta/payment-methods`: `permissions.fields.code.editable` e true quando non c'e modello di contesto (create) e false/readonly su un record esistente.</criterion>
+    <criterion id="AC-042">`GET /meta/payment-methods`: `permissions.fields` non contiene `sort_order`.</criterion>
+
+    <criterion id="AC-050">`GET /tables/payment-methods/columns`: 200 con le 8 colonne nell'ordine congelato, i rispettivi `sortable`/`filterable`/`filterType`, `searchable: true` su `name` e `code`, `editable: true` sulla sola `is_active`.</criterion>
+    <criterion id="AC-051">`POST /tables/payment-methods/rows`: la ricerca globale su un termine presente nel solo `code` restituisce il record; su un termine presente nel solo `name` lo restituisce; su un termine assente da entrambi non lo restituisce.</criterion>
+    <criterion id="AC-052">Filtro `is_active`: filtrando su true si ottengono solo gli attivi, su false solo gli inattivi.</criterion>
+    <criterion id="AC-053">Ordinamento: `sort_order` asc/desc e `name` asc/desc producono l'ordine atteso; senza sort esplicito l'ordine di default e `sort_order` asc, paginazione default limit 25.</criterion>
+    <criterion id="AC-054">Azioni per riga: view/edit/delete/activity compaiono solo se l'utente ha la permission corrispondente; `delete` ha `confirm: true` e `type: 'danger'`.</criterion>
+    <criterion id="AC-055">Export: il dominio `payment-methods` e servito dal motore generico e un utente con `payment-methods.export` ottiene l'export; senza la permission ottiene 403.</criterion>
+    <criterion id="AC-056">Advanced filters: `is_active` di tipo Switch e `payment_days` di tipo NumberRange sono esposti dal catalogo e filtrano correttamente.</criterion>
+    <criterion id="AC-057">Guard preesistenti soddisfatti senza modifiche: `InlineCellEditingGuardTest` (AC-012/AC-013 di spec 0053) passa per il nuovo dominio - `payment-methods` e in `config/authorization.php`, e `is_active` e una colonna DB reale presente in `#[Fillable]`.</criterion>
+
+    <criterion id="AC-060">`PATCH /tables/payment-methods/rows/{id}` con `{column:'is_active', value:false}`: 200, valore persistito, `data.editable` presente nella riga restituita.</criterion>
+    <criterion id="AC-061">Stessa PATCH con `value: true` su un record inattivo: 200 e record riattivato. Il valore `false` non viene scartato dalla rule `required`.</criterion>
+    <criterion id="AC-062">PATCH con `column: 'name'` (colonna esistente ma non editable): 422 su `column`. PATCH con `column: 'sort_order'`: 422.</criterion>
+    <criterion id="AC-063">PATCH con `value` non booleano (`'maybe'`): 422. PATCH senza la chiave `value`: 422 (`is_active` non e nullable).</criterion>
+    <criterion id="AC-064">PATCH senza `payment-methods.update`: 403. PATCH con `role_field_permissions` che nega `is_active`: 403.</criterion>
+    <criterion id="AC-065">La PATCH inline scrive una entry di activity log sul record (log name `payment_methods`) con il campo cambiato.</criterion>
+
+    <criterion id="AC-070">`GET /payment-methods/for-select`: 200 con envelope paginato e mapping `{id, label:name, subtitle:code, meta:{payment_days}}`.</criterion>
+    <criterion id="AC-071">for-select esclude i record con `is_active = false` e ordina per `sort_order` asc.</criterion>
+    <criterion id="AC-072">for-select con `ids[]` idrata anche un record INATTIVO e quel record non incrementa `pagination.total`.</criterion>
+    <criterion id="AC-073">for-select con `search`: filtra sul nome; `limit` &gt; 100: 422.</criterion>
+
+    <criterion id="AC-080">`POST /payment-methods/reorder` con una permutazione valida di tutti gli id: 200, `sort_order` resequenziato a 10/20/30..., `data` contiene la lista completa ordinata.</criterion>
+    <criterion id="AC-081">Ogni entry di `data` del reorder contiene la chiave `system_key` con valore letterale `null` (D-5).</criterion>
+    <criterion id="AC-082">Reorder con un id duplicato: 422. Con un id mancante: 422. Con un id inesistente: 422. Con `ordered_ids: []`: 422.</criterion>
+    <criterion id="AC-083">Un nuovo record creato dopo un reorder riceve `sort_order` = (max esistente + 10) e si posiziona in coda.</criterion>
+    <criterion id="AC-084">Reorder senza `payment-methods.update`: 403.</criterion>
+
+    <criterion id="AC-090">Activity log: create e update generano eventi con i campi cambiati; `GET /activity-log/payment-methods/{id}` risponde 200 all'utente con `viewActivity` + `view`.</criterion>
+    <criterion id="AC-091">`GET /activity-log/payment-methods/{id}` senza `payment-methods.viewActivity`: 403. Con `viewActivity` ma senza `payment-methods.view`: 403.</criterion>
+
+    <criterion id="AC-100">Schema Zod: accetta un payload valido; rifiuta `name` vuoto e oltre 191; `code` vuoto, oltre 64 e fuori regex; `description` oltre 500; `payment_instructions` oltre 5000; `payment_days` negativo, non intero e oltre 3650; accetta `payment_days` null.</criterion>
+    <criterion id="AC-101">`buildCreatePayload` produce la shape completa e NON include `sort_order`. `buildUpdatePayload` produce il diff campo per campo e NON include mai `code`.</criterion>
+    <criterion id="AC-102">Form create: rende i campi name, code, description, payment_instructions, payment_days, is_active e NON rende alcun input per `sort_order`.</criterion>
+    <criterion id="AC-103">Form create: un `name` vuoto mostra l'errore inline e non effettua alcuna chiamata API; il campo errato ha `aria-invalid` e `aria-describedby` verso un messaggio con `role="alert"`.</criterion>
+    <criterion id="AC-104">Form create: il submit valido invia il payload atteso a `POST /payment-methods`.</criterion>
+    <criterion id="AC-105">Form edit: idrata i valori del record; il campo `code` e reso in sola lettura/disabilitato e la PATCH di submit non contiene `code`.</criterion>
+    <criterion id="AC-106">Form edit: un 422 del server viene mappato sui campi del form (`applyServerValidationErrors`).</criterion>
+    <criterion id="AC-107">Detail view: mostra name, code, description, payment_instructions, payment_days, stato e le date; i campi vuoti usano il placeholder del kit detail.</criterion>
+
+    <criterion id="AC-110">Pagina lista: senza `payment-methods.viewAny` mostra il fallback "forbidden" e non monta la tabella; con la permission monta `TableView` su `domain="payment-methods"`.</criterion>
+    <criterion id="AC-111">Il bottone "Nuovo" e visibile solo con `payment-methods.create`; il bottone "Riordina" solo con `payment-methods.update`.</criterion>
+    <criterion id="AC-112">Azione di riga delete: successo -> toast e refresh della griglia; 403 -> messaggio di permesso negato; il messaggio di errore mostrato proviene dalla response del backend.</criterion>
+    <criterion id="AC-113">Il registry di modulo espone `moduleScreen` per `domain: 'payment-methods'` e i deep-link `/payment-methods/new`, `/:id`, `/:id/edit` risolvono senza rotte dichiarate a mano.</criterion>
+    <criterion id="AC-114">Chiavi i18n presenti e allineate in `it` e `en`: nessuna chiave usata dai componenti risulta mancante in una delle due lingue; le 8 label di `reorder` sono tutte definite.</criterion>
+
+    <criterion id="AC-115">L'icona del nodo di navigazione del modulo risolve a un componente reale e NON al fallback `Circle`: la chiave dichiarata in `config/navigation.php` (`credit-card`) e presente in `frontend/src/features/navigation/icon-map.ts`.</criterion>
+
+    <criterion id="AC-120">`use-status-reorder.ts`: dopo un reorder riuscito la cui response non contiene la chiave `system_key`, tutte le righe restano draggabili (nessuna riga diventa pinnata) e un secondo drag invia l'insieme completo degli id. Test di regressione dell'hardening D-5.</criterion>
+    <criterion id="AC-121">I 4 moduli status esistenti (pipeline/opportunity/quote/reward) non regrediscono: la suite `status-reorder-sheet.test.tsx` e `sortable-list.test.tsx` restano verdi dopo l'hardening.</criterion>
+
+    <criterion id="AC-130">`DemoPaymentMethodSeeder` e richiamato SOLO da `DemoDataSeeder` (mai da `DatabaseSeeder`), e re-eseguirlo non duplica righe (idempotenza via `updateOrCreate` su `code`).</criterion>
+    <criterion id="AC-131">Il seeder demo crea almeno: Bonifico bancario, Carta di credito, Contanti, Assegno, Addebito diretto, Pagamento rateale, con codici snake_case univoci e `sort_order` progressivo.</criterion>
+
+    <criterion id="AC-140">Responsive UI a 375 / 768 / 1024 px: nessuna scrollbar orizzontale, nessuna sovrapposizione, testi lunghi troncati. VERIFICA MANUALE (non automatizzabile in questo ambiente).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer o npm). Solo librerie gia presenti.</item>
+    <item>Nessuna modifica a `App\Services\Statuses\StatusOrderManager` ne ai 4 moduli status.</item>
+    <item>Nessuna migration su tabelle esistenti. Nessuna modifica a `Quote`, `Opportunity`, `Invoice` o alle loro spec.</item>
+    <item>Authz server-side su OGNI endpoint: Policy per il CRUD, `authorizeViewAny()` di default per la tabella, `authorizeUpdate()` di default per l'inline edit, field permission su ogni write.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` con input utente: ricerca, filtri e ordinamenti passano dall'allow-list di colonne del motore tabellare generico.</item>
+    <item>Nessun `throttle` su questi endpoint (decisione utente 2026-07-15: rate limiting solo sugli endpoint di credenziali).</item>
+    <item>Identificatori in inglese: tabella, colonne, rotte, classi, chiavi. Solo i valori esposti in UI passano da i18next.</item>
+    <item>File entro 300 righe (soft, proponi split) / 500 (hard). Il catalogo colonne e i filtri avanzati sono gia in classi separate per questo motivo.</item>
+    <item>Nessun magic value inline: i limiti di lunghezza e `PAYMENT_DAYS_MAX` sono costanti (PHP nel FormRequest, TS nello schema Zod).</item>
+    <item>Nessun emoji nel codice o nei commenti. Nessun file `.md` nuovo fuori da `docs/`.</item>
+    <item>Nessun dead code: nessun guard, messaggio i18n o relazione predisposta "per il futuro" senza consumatore reale (D-2).</item>
+    <item>Definition of Done: Pest e Vitest ESEGUITI e verdi, Pint pulito, ESLint pulito, `cd frontend &amp;&amp; npx tsc -b --force` EXIT=0 (mai `tsc --noEmit`, e un falso verde in questo repo).</item>
+    <item>Test frontend da lanciare con `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` (sensibilita preesistente di locale sulle asserzioni numeriche).</item>
+  </constraints>
+
+</spec>

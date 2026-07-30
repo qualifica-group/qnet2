@@ -74,6 +74,19 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Whether the category is quoted. Owned by the branch ROOT
+                // and mirrored onto every descendant by
+                // RequiresQuoteInheritance, so this IS a real column here:
+                // sorting/filtering need no derived-column handling.
+                'id' => 'requires_quote',
+                'label' => 'productCategories.columns.requires_quote',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Number of attributes directly assigned to this category
                 // (own assignments only — NOT the effective/inherited count),
                 // via withCount('attributes'). AGGREGATE (no real DB column).
@@ -118,6 +131,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'parent', 'type' => 'set'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'business_function', 'type' => 'set'],
+            ['columnId' => 'requires_quote', 'type' => 'boolean'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

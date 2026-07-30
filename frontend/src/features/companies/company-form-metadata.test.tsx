@@ -31,6 +31,12 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
+// Same reason for the national default of the cascade (public config + country
+// list): stubbed to international mode, covered by `use-default-country.test.ts`.
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => null,
+}))
+
 vi.mock('@/features/geo/use-geo', () => ({
   useCountries: () => ({ data: [{ id: 1, name: 'Italy', iso2: 'IT' }], isPending: false, isError: false }),
   useStates: () => ({ data: [], isPending: false, isError: false }),

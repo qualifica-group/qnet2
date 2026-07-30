@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Opportunity;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -13,9 +14,12 @@ use Illuminate\Http\Request;
  * D-5 — the only opportunity-owned descriptive column). Feeds the
  * `rewarded-referents` "opportunity" advanced filter (spec 0059).
  *
- * `meta` carries the three commercial roles a new Quote snapshots from its
- * opportunity (spec 0065 D-3, directive 2026-07-29) — always present, each
- * key null when the opportunity has none. Mirrors RegistryForSelectResource.
+ * `meta` carries what a new Quote snapshots from its opportunity: the three
+ * commercial roles (spec 0065 D-3, directive 2026-07-29) plus the sede
+ * operativa (directive 2026-07-30) — always present, each key null when the
+ * opportunity has none. Mirrors RegistryForSelectResource. The site is a
+ * `{id, label}` ref (OperationalSiteLabel), not `{id, name}`: it has no name
+ * column of its own.
  *
  * @mixin Opportunity
  */
@@ -33,6 +37,7 @@ class OpportunityForSelectResource extends ForSelectResource
                 'commercial' => $this->relationRef($this->commercial),
                 'reporter' => $this->relationRef($this->reporter),
                 'supervisor' => $this->relationRef($this->supervisor),
+                'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             ],
         ];
     }

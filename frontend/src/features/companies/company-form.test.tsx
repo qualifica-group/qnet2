@@ -43,6 +43,12 @@ vi.mock('@/features/authorization/api', () => ({
 // The cascading geo selects are network-backed (covered by their own
 // component test); stub them so this suite focuses on the company form's own
 // logic without touching `@/features/geo/api`.
+// Same reason for the national default of the cascade (public config + country
+// list): stubbed to international mode, covered by `use-default-country.test.ts`.
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => null,
+}))
+
 vi.mock('@/features/geo/use-geo', () => ({
   useCountries: () => ({ data: [{ id: 1, name: 'Italy', iso2: 'IT' }], isPending: false, isError: false }),
   useStates: () => ({ data: [{ id: 10, name: 'Lombardy', country_id: 1 }], isPending: false, isError: false }),

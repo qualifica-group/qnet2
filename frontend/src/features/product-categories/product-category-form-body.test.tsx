@@ -79,8 +79,10 @@ function category(
     inherited_attributes: [],
     created_at: '2026-01-01T00:00:00Z',
     business_function_id: null,
+    requires_quote: false,
     business_function: null,
     effective_business_function: null,
+    requires_quote_source_category: null,
     permissions: permissivePermissions(),
     ...overrides,
   }
@@ -174,6 +176,8 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
 
     await screen.findByRole('button', { name: 'Save' })
 
-    expect(screen.queryAllByRole('switch')).toHaveLength(0)
+    // Scoped by accessible name: the identity section carries its own,
+    // unrelated switch (the quote flag), which a bare role query would count.
+    expect(screen.queryAllByRole('switch', { name: 'Inherit from parent' })).toHaveLength(0)
   })
 })

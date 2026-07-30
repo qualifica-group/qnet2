@@ -2,6 +2,7 @@
 
 namespace App\Tables;
 
+use App\Models\Company;
 use App\Models\Quote;
 use App\Models\QuoteStatus;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Services\QuoteService;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
+use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -22,11 +24,27 @@ use Illuminate\Support\Facades\Gate;
  * `reporter`/`supervisor` are relation-derived columns delegated to
  * QuoteRelationColumns (file-size split, engineering.md §6): own-FK simple
  * relations, mirroring OpportunitiesTableDefinition.
+ *
+ * User directive 2026-07-30 adds three more: `company`/`company_site` join
+ * the QuoteRelationColumns set, while `operational_site` is SPECIALLY derived
+ * (the site has no label column — its identity is its primary address) and is
+ * handled here against the shared OperationalSiteColumn, exactly as
+ * OpportunitiesTableDefinition does.
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
+    /** The specially-derived site column (no label column of its own). */
+    private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
+
+    private const string OPERATIONAL_SITE_RELATION = 'operationalSite';
+
+    private const string OPERATIONAL_SITE_FK = 'operational_site_id';
+
+    private const string QUOTES_TABLE = 'quotes';
+
     public function __construct(
         private readonly QuoteRelationColumns $relationColumns,
+        private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly QuoteService $service,
     ) {}
 
@@ -56,7 +74,13 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // supervisor pulls its avatar relation too, so the row can project the
         // inline avatar (data URI) without a per-row query — mirrors
         // OpportunitiesTableDefinition's own supervisor.avatar eager-load.
-        return Quote::query()->with(['opportunity', 'quoteStatus', 'commercial', 'reporter', 'supervisor.avatar']);
+        return Quote::query()->with([
+            'opportunity', 'quoteStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            'company', 'companySite',
+            // The site has no own name: the composed label needs its primary
+            // address + city (mirrors OpportunitiesTableDefinition).
+            'operationalSite.addresses.city',
+        ]);
     }
 
     /**
@@ -131,6 +155,9 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'cost_net' => $row->cost_net,
             'margin_net' => $row->margin_net,
             'created_at' => $row->created_at,
+            'company' => $this->summarizeCompany($row->company),
+            'company_site' => $this->summarize($row->companySite),
+            'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
         ];
     }
 
@@ -140,6 +167,18 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private function summarize(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * `companies` has no `name` column — its display name is `denomination`
+     * (spec 0010), projected under `name` so the grid's generic RelationCell
+     * reads it like any other `{id, name}` ref.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeCompany(?Company $company): ?array
+    {
+        return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
     }
 
     /**
@@ -207,7 +246,27 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
+            $this->operationalSiteColumn->applyFilter($query, self::OPERATIONAL_SITE_RELATION, $this->filterValues($filter));
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return array<int, string>
+     */
+    private function filterValues(array $filter): array
+    {
+        $values = $filter['values'] ?? null;
+
+        return is_array($values) ? array_values(array_filter(
+            $values,
+            static fn ($value): bool => is_string($value) && $value !== '',
+        )) : [];
     }
 
     /**
@@ -215,6 +274,12 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
+            $this->operationalSiteColumn->applySort($query, self::QUOTES_TABLE, self::OPERATIONAL_SITE_FK, $direction);
+
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
@@ -227,6 +292,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === self::OPERATIONAL_SITE_COLUMN) {
+            return $this->operationalSiteColumn->distinctValues($query, self::OPERATIONAL_SITE_FK, $search, $limit);
+        }
+
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
     }
 

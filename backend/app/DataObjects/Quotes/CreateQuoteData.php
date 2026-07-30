@@ -16,6 +16,10 @@ namespace App\DataObjects\Quotes;
  * (QuoteService inherits the Opportunity's current value, AC-020) from "the
  * client explicitly submitted a value, even null" (that exact value wins,
  * AC-021) — a plain nullable property cannot express that difference.
+ * `operationalSiteId` (user directive 2026-07-30) joins that snapshot set and
+ * carries the same flag; `companyId`/`companySiteId` do not — they have no
+ * Opportunity counterpart to inherit from, so a plain nullable value is
+ * enough.
  *
  * `offerLines`/`costLines` follow the CreateOpportunityData::$productLines
  * convention: null means "no rows submitted for this tab", an array
@@ -41,6 +45,13 @@ final readonly class CreateQuoteData
         public ?string $internalNotes,
         public ?array $offerLines = null,
         public ?array $costLines = null,
+        // Appended after the pre-existing parameters (user directive
+        // 2026-07-30) so every positional/partial construction of this DTO
+        // keeps working unchanged.
+        public ?int $companyId = null,
+        public ?int $companySiteId = null,
+        public ?int $operationalSiteId = null,
+        public bool $operationalSiteIdSubmitted = false,
     ) {}
 
     /**
@@ -64,6 +75,10 @@ final readonly class CreateQuoteData
             internalNotes: $data['internal_notes'] ?? null,
             offerLines: array_key_exists('offer_lines', $data) ? self::normalizeLines($data['offer_lines']) : null,
             costLines: array_key_exists('cost_lines', $data) ? self::normalizeLines($data['cost_lines']) : null,
+            companyId: isset($data['company_id']) ? (int) $data['company_id'] : null,
+            companySiteId: isset($data['company_site_id']) ? (int) $data['company_site_id'] : null,
+            operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
+            operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
         );
     }
 
@@ -116,6 +131,9 @@ final readonly class CreateQuoteData
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,
             'supervisor_id' => $this->supervisorId,
+            'company_id' => $this->companyId,
+            'company_site_id' => $this->companySiteId,
+            'operational_site_id' => $this->operationalSiteId,
             'internal_notes' => $this->internalNotes,
         ];
     }

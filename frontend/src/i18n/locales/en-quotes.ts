@@ -21,6 +21,9 @@ export const quotes = {
     costNet: 'Net cost',
     marginNet: 'Net margin',
     createdAt: 'Created at',
+    company: 'Company',
+    companySite: 'Company site',
+    operationalSite: 'Operational site',
   },
   advancedFilters: {
     opportunity: 'Opportunity',
@@ -36,6 +39,9 @@ export const quotes = {
     commercial: 'Commercial',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
+    company: 'Company',
+    companySite: 'Company site',
+    operationalSite: 'Operational site',
     createdAt: 'Created at',
     linesEmpty: 'No rows yet.',
   },
@@ -64,6 +70,16 @@ export const quotes = {
     reporterSearch: 'Search reporters…',
     supervisor: 'Supervisor',
     supervisorSearch: 'Search supervisors…',
+    company: 'Company',
+    companySearch: 'Search companies…',
+    companySite: 'Company site',
+    companySiteSearch: 'Search sites…',
+    operationalSite: 'Operational site',
+    operationalSiteSearch: 'Search operational sites…',
+    hints: {
+      companySite: 'Pick the company first: only its own sites are listed.',
+      operationalSite: 'Prefilled from the selected opportunity; you can change it.',
+    },
     internalNotes: 'Internal notes',
     internalNotesMax: 'Internal notes must be at most 5000 characters.',
     selectPlaceholder: 'Select…',
@@ -82,6 +98,10 @@ export const quotes = {
       identity: {
         title: 'Quote',
         description: 'Code, title, linked opportunity and commercial team.',
+      },
+      sites: {
+        title: 'Company and sites',
+        description: 'Issuing company and site, plus the reference operational site.',
       },
       offer: {
         title: 'Offer',

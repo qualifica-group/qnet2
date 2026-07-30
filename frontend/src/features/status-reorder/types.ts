@@ -25,9 +25,16 @@ export interface StatusReorderItem {
   systemKey: SystemStatusKey
 }
 
-/** A single entry of the fresh, full list returned by `POST /{resource}/reorder`. */
+/**
+ * A single entry of the fresh, full list returned by `POST /{resource}/reorder`.
+ * `system_key` is optional defensively (spec 0068 D-5): every current backend
+ * always emits it, but a resource that omitted the key would otherwise
+ * resolve to `undefined`, which `isPinned={(row) => row.systemKey !== null}`
+ * (`StatusReorderSheet`) would treat as pinned for every row. The consuming
+ * hook falls back to `null` (see `use-status-reorder.ts`).
+ */
 export interface ReorderedStatusEntry {
   id: number
   sort_order: number
-  system_key: SystemStatusKey
+  system_key?: SystemStatusKey
 }

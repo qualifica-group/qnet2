@@ -13,6 +13,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
+use App\Models\PaymentMethod;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -115,6 +116,9 @@ return [
         ],
         'opportunity-workflow-statuses' => [
             'model' => OpportunityWorkflowStatus::class,
+        ],
+        'payment-methods' => [
+            'model' => PaymentMethod::class,
         ],
         'pipeline-statuses' => [
             'model' => PipelineStatus::class,

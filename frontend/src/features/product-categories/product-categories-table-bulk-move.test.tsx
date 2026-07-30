@@ -59,6 +59,7 @@ const TREE: ProductCategoryTreeNode[] = [
     attributes_count: 0,
     products_count: 0,
     business_function_id: null,
+    requires_quote: false,
     children: [
       {
         id: 2,
@@ -67,6 +68,7 @@ const TREE: ProductCategoryTreeNode[] = [
         attributes_count: 0,
         products_count: 0,
         business_function_id: null,
+        requires_quote: false,
         children: [
           {
             id: 3,
@@ -75,6 +77,7 @@ const TREE: ProductCategoryTreeNode[] = [
             attributes_count: 0,
             products_count: 0,
             business_function_id: null,
+            requires_quote: false,
             children: [],
           },
         ],
@@ -88,6 +91,7 @@ const TREE: ProductCategoryTreeNode[] = [
     attributes_count: 0,
     products_count: 0,
     business_function_id: null,
+    requires_quote: false,
     children: [],
   },
 ]

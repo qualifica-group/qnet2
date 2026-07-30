@@ -14,7 +14,12 @@ namespace App\Tables\Quotes;
  * `quote_status`/`commercial`/`reporter`/`supervisor` are STANDARD
  * relation-name derived columns (own FK on the quote), resolved by
  * QuotesTableDefinition/QuoteRelationColumns — all 5 sortable (a correlated
- * subquery), mirroring OpportunityColumnCatalog.
+ * subquery), mirroring OpportunityColumnCatalog. `company`/`company_site`
+ * (user directive 2026-07-30) join that set — `company` labelled by its
+ * `denomination`, see QuoteRelationColumns — while `operational_site` is a
+ * SPECIALLY-derived column (the site has no label column at all: it is
+ * identified by its primary address), delegated by QuotesTableDefinition to
+ * the shared OperationalSiteColumn exactly as on Opportunities.
  */
 final class QuoteColumnCatalog
 {
@@ -85,13 +90,19 @@ final class QuoteColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
+            // Appended LAST on purpose (user directive 2026-07-30): a column
+            // added in the middle would shift every user's persisted column
+            // layout (spec 0001); appended, it just shows up at the end.
+            self::derivedColumn('company', 'quotes.columns.company'),
+            self::derivedColumn('company_site', 'quotes.columns.companySite'),
+            self::derivedColumn('operational_site', 'quotes.columns.operationalSite'),
         ];
     }
 
     /**
-     * A DERIVED (related-row-name) column declaration: filterable via the
-     * `set` widget and sortable (every one of the 5 relational columns here
-     * has a correlated-subquery sort).
+     * A DERIVED (related-row-label) column declaration: filterable via the
+     * `set` widget and sortable (every relational column here has a
+     * correlated-subquery sort).
      *
      * @return array<string, mixed>
      */

@@ -121,16 +121,22 @@ class OpportunityService
 
     /**
      * Base for-select query: opportunities with the three commercial roles
-     * eager-loaded, so OpportunityForSelectResource's `meta` (the Quote
-     * snapshot prefill, spec 0065 D-3) never N+1s.
+     * AND the sede operativa eager-loaded, so OpportunityForSelectResource's
+     * `meta` (the Quote snapshot prefill, spec 0065 D-3 + directive
+     * 2026-07-30) never N+1s.
      *
      * @return Builder<Opportunity>
      */
     private function forSelectBaseQuery(): Builder
     {
         return Opportunity::query()
-            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id'])
-            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name']);
+            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
+            ->with([
+                'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
+                // The sede operativa's label is composed from its primary
+                // address + city (it has no name column of its own).
+                'operationalSite.addresses.city',
+            ]);
     }
 
     /**

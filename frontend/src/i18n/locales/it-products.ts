@@ -79,6 +79,7 @@ export const productCategories = {
     attributes_count: 'Attributi',
     products_count: 'Prodotti',
     business_function: 'Funzione aziendale',
+    requires_quote: 'Prevede preventivo',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
     productsMore: '+{{count}} altri',
@@ -88,6 +89,7 @@ export const productCategories = {
     subtitle: 'Vista di sola lettura della categoria selezionata.',
     loadError: 'Impossibile caricare la categoria. Riprova.',
     businessFunctionInherited: 'Ereditata da {{category}}',
+    requiresQuoteInherited: 'Ereditato da {{category}}',
   },
   bulkMove: {
     tableButton: 'Sposta sotto…',
@@ -149,6 +151,11 @@ export const productCategories = {
     businessFunctionError: 'Impossibile caricare le funzioni aziendali.',
     businessFunctionInheritedHint:
       'Ereditata da "{{category}}". Per modificarla, agisci su quella categoria.',
+    requiresQuote: 'Prevede preventivo',
+    requiresQuoteHint:
+      'Se attivo, questa categoria e tutte le sue sottocategorie prevedono il preventivo.',
+    requiresQuoteInheritedHint:
+      'Ereditato dalla categoria radice "{{category}}". Per modificarlo, agisci su quella categoria.',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',

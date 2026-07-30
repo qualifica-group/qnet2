@@ -57,6 +57,9 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     commercial_id: values.commercial_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
+    company_id: values.company_id,
+    company_site_id: values.company_site_id,
+    operational_site_id: values.operational_site_id,
     internal_notes: values.internal_notes,
     offer_lines: toLineInputs(values.offer_lines),
     cost_lines: toLineInputs(values.cost_lines),
@@ -141,6 +144,15 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.supervisor_id !== original.supervisor_id) {
     payload.supervisor_id = values.supervisor_id
+  }
+  if (values.company_id !== original.company_id) {
+    payload.company_id = values.company_id
+  }
+  if (values.company_site_id !== original.company_site_id) {
+    payload.company_site_id = values.company_site_id
+  }
+  if (values.operational_site_id !== original.operational_site_id) {
+    payload.operational_site_id = values.operational_site_id
   }
   if (values.internal_notes !== original.internal_notes) {
     payload.internal_notes = values.internal_notes

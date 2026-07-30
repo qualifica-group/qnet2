@@ -101,6 +101,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0066 `commission-configurations` (independent commission-rule
         // catalogue with field-level permissions).
         'commission-configurations',
+        // spec 0068 `payment-methods` (PaymentMethodsAuthorization: the
+        // consumer-agnostic payment-modality lookup — name/code mandatory,
+        // `code` writable only on create, D-3).
+        'payment-methods',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

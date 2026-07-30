@@ -14,6 +14,13 @@ use Illuminate\Database\Eloquent\Model;
  * the actor may write (create/update), else visible+readonly. `attributes`
  * is a nested, custom-rendered editor (attribute_id/is_required/sort_order
  * rows); inherited attributes are read-only metadata, never submitted here.
+ *
+ * `requires_quote` is deliberately NOT narrowed here even though only a ROOT
+ * category authors it: whether the flag is inherited depends on the SUBMITTED
+ * parent (a child being promoted to root in the same save owns it from that
+ * request on), which this ceiling cannot see. The no-override guard in
+ * ProductCategoryService, which does see it, is the authority — mirroring how
+ * `business_function_id` is handled.
  */
 class ProductCategoriesAuthorization extends AbstractResourceAuthorization
 {
@@ -39,6 +46,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('inherits_opportunity_attributes', 'boolean'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('business_function_id', 'select'),
+            new FieldDefinition('requires_quote', 'boolean'),
             new FieldDefinition('attributes', 'custom'),
         ];
     }
@@ -65,6 +73,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'inherits_opportunity_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'requires_quote' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }

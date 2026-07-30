@@ -12,6 +12,7 @@ use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
 use App\Authorization\OpportunityStatusesAuthorization;
 use App\Authorization\OpportunityWorkflowsAuthorization;
+use App\Authorization\PaymentMethodsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
@@ -78,6 +79,7 @@ return [
         'opportunities' => OpportunitiesAuthorization::class,
         'opportunity-statuses' => OpportunityStatusesAuthorization::class,
         'opportunity-workflows' => OpportunityWorkflowsAuthorization::class,
+        'payment-methods' => PaymentMethodsAuthorization::class,
         'quote-statuses' => QuoteStatusesAuthorization::class,
         'quotes' => QuotesAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,

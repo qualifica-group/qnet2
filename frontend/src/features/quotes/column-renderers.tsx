@@ -1,4 +1,4 @@
-import { Briefcase, Handshake, UserRound } from 'lucide-react'
+import { Briefcase, Building, Building2, Handshake, MapPin, UserRound } from 'lucide-react'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import { CodeBadgeCell, CurrencyCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
@@ -15,7 +15,11 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * `supervisor` is a `users` FK, rendered as a person avatar+name (mirrors
  * `opportunityColumnRenderers.supervisor`); `revenue_net`/`cost_net`/
  * `margin_net` are the persisted aggregates (D-9); `created_at` reuses the
- * shared datetime renderer.
+ * shared datetime renderer. `company`/`company_site`/`operational_site`
+ * (directive 2026-07-30) are relations too — the last one projected as
+ * `{id, label}` (the site has no name), the exact shape
+ * `opportunityColumnRenderers.operational_site` already renders with the same
+ * `RelationCell`.
  */
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
@@ -28,4 +32,7 @@ export const quoteColumnRenderers: TableRendererMap = {
   cost_net: (params) => <CurrencyCell {...params} />,
   margin_net: (params) => <CurrencyCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
+  company: (params) => <RelationCell {...params} icon={Building2} />,
+  company_site: (params) => <RelationCell {...params} icon={Building} />,
+  operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
 }

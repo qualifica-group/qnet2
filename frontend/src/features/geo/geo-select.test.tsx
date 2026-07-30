@@ -8,6 +8,16 @@ const useStatesMock = vi.fn()
 const useProvincesMock = vi.fn()
 const useCitiesMock = vi.fn()
 
+// National mode is resolved by its own hook (network-backed: it reads the public
+// config plus the country list, covered by `use-default-country.test.ts`).
+// Stubbed to international mode by default, so every pre-existing expectation
+// below describes a cascade with nothing preselected.
+const useDefaultCountryIdMock = vi.fn<() => number | null>()
+
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => useDefaultCountryIdMock(),
+}))
+
 vi.mock('@/features/geo/use-geo', () => ({
   useCountries: () => useCountriesMock(),
   useStates: (countryId: number | null) => useStatesMock(countryId),
@@ -63,6 +73,8 @@ beforeEach(() => {
   useStatesMock.mockReset()
   useProvincesMock.mockReset()
   useCitiesMock.mockReset()
+  useDefaultCountryIdMock.mockReset()
+  useDefaultCountryIdMock.mockReturnValue(null)
 
   useCountriesMock.mockReturnValue(
     query([
@@ -389,6 +401,96 @@ describe('GeoSelect', () => {
       for (const select of screen.getAllByRole('combobox')) {
         expect(select).not.toBeDisabled()
       }
+    })
+  })
+
+  describe('national mode (default country)', () => {
+    const ITALY_SEEDED: GeoValue = {
+      country_id: 1,
+      state_id: null,
+      province_id: null,
+      city_id: null,
+    }
+
+    it('preselects the configured default country on a pristine cascade', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+
+      render(<GeoSelect value={empty} onChange={onChange} />)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledWith(ITALY_SEEDED)
+    })
+
+    it('shows the preselected country and unlocks the state level once applied', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const { rerender } = render(<GeoSelect value={empty} onChange={vi.fn()} />)
+
+      // The cascade is controlled: replay the seeding the caller just persisted.
+      rerender(<GeoSelect value={ITALY_SEEDED} onChange={vi.fn()} />)
+
+      const selects = screen.getAllByRole('combobox')
+      expect(selects[0]).toHaveTextContent('Italy')
+      expect(selects[1]).not.toBeDisabled()
+    })
+
+    it('seeds once: an applied default is not re-emitted on re-render', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+      const { rerender } = render(<GeoSelect value={empty} onChange={onChange} />)
+
+      rerender(<GeoSelect value={ITALY_SEEDED} onChange={onChange} />)
+      rerender(<GeoSelect value={ITALY_SEEDED} onChange={onChange} />)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('international mode: leaves the cascade empty when no default is configured', () => {
+      const onChange = vi.fn()
+
+      render(<GeoSelect value={empty} onChange={onChange} />)
+
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it('never overwrites a country already chosen', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+
+      render(<GeoSelect value={{ ...empty, country_id: 2 }} onChange={onChange} />)
+
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it('never seeds a partially filled cascade, so no descendant is reset', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+
+      // A row/entity whose country is unknown but whose city is already known:
+      // seeding would wipe the city (the cascade resets descendants).
+      render(<GeoSelect value={{ ...empty, city_id: 100 }} onChange={onChange} />)
+
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it('does not seed a read-only cascade', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+
+      render(<GeoSelect value={empty} onChange={onChange} disabled />)
+
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it('does not seed when the country level is owned by a linked parent', () => {
+      useDefaultCountryIdMock.mockReturnValue(1)
+      const onChange = vi.fn()
+
+      render(
+        <GeoSelect value={empty} onChange={onChange} lockedLevels={['country']} />,
+      )
+
+      expect(onChange).not.toHaveBeenCalled()
     })
   })
 })

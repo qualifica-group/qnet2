@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { ApiErrorResponse } from '@/api/types'
 import { forSelectKeys } from '@/features/for-select/query-keys'
 import { fetchStatusesForReorder, reorderStatuses } from '@/features/status-reorder/api'
+import { reconcileReorderedItems } from '@/features/status-reorder/reconcile-reordered-items'
 import type { StatusReorderItem } from '@/features/status-reorder/types'
 
 /** Query key for a resource's reorder-sheet list (fresh-on-open pattern). */
@@ -75,9 +76,7 @@ export function useStatusReorder({ resource, enabled, labels, onReordered }: Use
       reorderStatuses(resource, customIds)
         .then((fresh) => {
           const nameById = new Map(nextItems.map((item) => [item.id, item.name]))
-          const reconciled = [...fresh]
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((entry) => ({ id: entry.id, systemKey: entry.system_key, name: nameById.get(entry.id) ?? '' }))
+          const reconciled = reconcileReorderedItems(fresh, nameById)
           setItems(reconciled)
           setSyncedFrom(reconciled)
           toast.success(labels.saved)

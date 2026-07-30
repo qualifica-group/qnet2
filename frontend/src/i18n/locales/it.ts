@@ -1,4 +1,5 @@
 import type { TranslationResources } from '@/i18n/locales/en'
+import { navigation } from './it-navigation'
 import { personalData, personalDataFieldLabels } from './it-personal-data'
 import { enums } from './it-enums'
 import { companies } from './it-companies'
@@ -16,6 +17,7 @@ import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
+import { paymentMethods } from './it-payment-methods'
 import { tags } from './it-tags'
 import { pipelineStatuses } from './it-pipeline-statuses'
 import { projects } from './it-projects'
@@ -75,49 +77,7 @@ export const it: TranslationResources = {
       retry: 'Riprova',
     },
   },
-  navigation: {
-    dashboard: 'Dashboard',
-    users: 'Utenti',
-    roles: 'Ruoli',
-    companies: 'Società aziendali',
-    companySites: 'Società sedi',
-    businessFunctions: 'Funzioni aziendali',
-    referents: 'Referenti',
-    referentTypes: 'Tipi referente',
-    registries: 'Anagrafiche',
-    operationalSites: 'Sedi operative',
-    attributes: 'Attributi',
-    customFields: 'Campi personalizzati',
-    productCategories: 'Categorie Prodotto',
-    sectors: 'Settori',
-    products: 'Prodotti',
-    sources: 'Fonti',
-    vatRates: 'IVA',
-    tags: 'Tag',
-    projects: 'Progetti',
-    campaigns: 'Campagne',
-    leads: 'Lead',
-    opportunities: 'Opportunità',
-    opportunityStatuses: 'Stati Opportunità',
-    opportunityWorkflows: 'Configuratore Stati Lavorazione',
-    quoteStatuses: 'Stati Offerta',
-    quotes: 'Offerte',
-    commissionConfigurations: 'Configuratore Commissioni',
-    requestManagement: 'Gestione Richieste',
-    rewards: 'Premi e Incentivi',
-    rewardTypes: 'Buoni, Premi e Incentivi',
-    rewardStatuses: 'Stati Buoni Collegati',
-    rewardedReferents: 'Referenti con Buoni',
-    opportunitiesAndCommesse: 'Opportunità e Commesse',
-    imports: 'Importa lead',
-    pipelineStatuses: 'Stati progetto/campagna',
-    marketingLeads: 'Marketing e Lead',
-    management: 'Gestione',
-    configuration: 'Configurazione',
-    administration: 'Amministrazione',
-    settings: 'Impostazioni',
-    toggleSidebar: 'Apri/chiudi sidebar',
-  },
+  navigation,
   theme: {
     toggle: 'Cambia tema',
     light: 'Chiaro',
@@ -474,6 +434,7 @@ export const it: TranslationResources = {
   products: { ...products, stats: moduleStats.products },
   sources,
   vatRates,
+  paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },
   pipelineStatuses,

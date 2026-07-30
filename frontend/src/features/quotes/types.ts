@@ -67,10 +67,21 @@ export type QuoteLineCommissionInput = Omit<
 > & { value: number }
   & { recipient?: QuoteRelationRef | null }
 
-/** A hydrated `{id, name}` relation projection (opportunity/commercial/reporter/supervisor). */
+/** A hydrated `{id, name}` relation projection (opportunity/commercial/reporter/supervisor/company/company_site). */
 export interface QuoteRelationRef {
   id: number
   name: string
+}
+
+/**
+ * The linked sede operativa's identity, as exposed by
+ * `QuoteResource.operational_site` (mirrors `ProjectOperationalSiteRef`):
+ * `operational_sites` has no `name` column — the site IS its primary address,
+ * composed server-side as "{line1} - {city}".
+ */
+export interface QuoteOperationalSiteRef {
+  id: number
+  label: string
 }
 
 /**
@@ -156,9 +167,11 @@ export interface QuoteSummary {
 
 /**
  * Single quote detail returned by GET/POST/PATCH /quotes (envelope `data`).
- * Matches `QuoteResource`. `commercial`/`reporter`/`supervisor` are a
- * SNAPSHOT (D-3): precompiled from the opportunity at creation, then freely
- * editable on the quote itself — never re-derived from the opportunity again.
+ * Matches `QuoteResource`. `commercial`/`reporter`/`supervisor` — and, since
+ * the 2026-07-30 directive, `operational_site` — are a SNAPSHOT (D-3):
+ * precompiled from the opportunity at creation, then freely editable on the
+ * quote itself, never re-derived from the opportunity again. `company`/
+ * `company_site` have no opportunity counterpart: always picked by hand.
  */
 export interface QuoteDetail {
   id: number
@@ -174,6 +187,12 @@ export interface QuoteDetail {
   reporter: QuoteRelationRef | null
   supervisor_id: number | null
   supervisor: QuoteRelationRef | null
+  company_id: number | null
+  company: QuoteRelationRef | null
+  company_site_id: number | null
+  company_site: QuoteRelationRef | null
+  operational_site_id: number | null
+  operational_site: QuoteOperationalSiteRef | null
   internal_notes: string | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
@@ -223,6 +242,10 @@ export interface CreateQuotePayload {
   commercial_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
+  company_id?: number | null
+  company_site_id?: number | null
+  /** When omitted, inherited from the opportunity server-side (directive 2026-07-30), like the 3 roles above. */
+  operational_site_id?: number | null
   internal_notes?: string | null
   /** Full-replace, max 200 rows (D-8/AC-035); always sent in full on create. */
   offer_lines?: QuoteLineInput[]

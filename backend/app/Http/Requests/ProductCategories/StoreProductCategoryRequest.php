@@ -45,6 +45,9 @@ class StoreProductCategoryRequest extends FormRequest
             'inherits_opportunity_attributes' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
             'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],
+            // Only meaningful on a ROOT category: under a parent the value is
+            // inherited, and ProductCategoryService refuses a divergent one.
+            'requires_quote' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

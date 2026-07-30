@@ -13,6 +13,7 @@ use App\Tables\OperationalSitesTableDefinition;
 use App\Tables\OpportunitiesTableDefinition;
 use App\Tables\OpportunityStatusesTableDefinition;
 use App\Tables\OpportunityWorkflowsTableDefinition;
+use App\Tables\PaymentMethodsTableDefinition;
 use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
@@ -81,6 +82,7 @@ return [
         'opportunities' => OpportunitiesTableDefinition::class,
         'opportunity-statuses' => OpportunityStatusesTableDefinition::class,
         'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
+        'payment-methods' => PaymentMethodsTableDefinition::class,
         'quote-statuses' => QuoteStatusesTableDefinition::class,
         'quotes' => QuotesTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,

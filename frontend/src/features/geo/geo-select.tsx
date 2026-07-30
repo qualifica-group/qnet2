@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useDefaultCountryId } from '@/features/geo/use-default-country'
 import {
   useCities,
   useCountries,
@@ -139,6 +140,10 @@ function GeoField({
  * geo queries; each select shows a skeleton while loading and an inline
  * error/empty state.
  *
+ * National mode (backend `DEFAULT_COUNTRY_ISO2`): when a default country is
+ * configured, a cascade that opens completely empty is seeded with it — the
+ * field is still editable, so nothing prevents an international selection.
+ *
  * The province level is optional: many countries have none, so the province
  * select simply shows its empty state and the city select falls back to filter
  * by state (cities load as soon as a state is chosen, with or without a
@@ -180,6 +185,30 @@ export function GeoSelect({
     () => cities.data?.pages.flat() ?? [],
     [cities.data?.pages],
   )
+
+  // National mode: preselect the configured default country, but ONLY on a
+  // pristine cascade. Requiring all four levels to be empty is what makes this
+  // safe for every caller — an existing selection, a scope inherited from a
+  // linked parent entity or the ids already resolved onto an import row are
+  // never rewritten, so no data can be lost to a default.
+  const defaultCountryId = useDefaultCountryId()
+  const isPristine =
+    value.country_id === null &&
+    value.state_id === null &&
+    value.province_id === null &&
+    value.city_id === null
+
+  useEffect(() => {
+    if (disabled || countryLocked || defaultCountryId === null || !isPristine) {
+      return
+    }
+    onChange({
+      country_id: defaultCountryId,
+      state_id: null,
+      province_id: null,
+      city_id: null,
+    })
+  }, [countryLocked, defaultCountryId, disabled, isPristine, onChange])
 
   const handleCountry = (countryId: number) => {
     setCitySearch('')

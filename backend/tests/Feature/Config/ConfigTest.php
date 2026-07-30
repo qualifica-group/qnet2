@@ -191,3 +191,39 @@ it('no longer exposes the removed per-enum endpoint', function () {
     $this->getJson('/api/enums/contact-type')->assertNotFound();
     $this->getJson('/api/enums/notification-level')->assertNotFound();
 });
+
+// ---------------------------------------------------------------------------
+// National mode — data.localization.default_country_iso2 (config/geo.php)
+// ---------------------------------------------------------------------------
+
+it('exposes data.localization.default_country_iso2 alongside the enums', function () {
+    config(['geo.default_country_iso2' => 'IT']);
+
+    $this->getJson('/api/config')
+        ->assertOk()
+        ->assertJsonStructure(['data' => ['enums', 'localization' => ['default_country_iso2']]])
+        ->assertJsonPath('data.localization.default_country_iso2', 'IT');
+});
+
+it('normalizes the configured country code to uppercase', function () {
+    config(['geo.default_country_iso2' => ' it ']);
+
+    $this->getJson('/api/config')
+        ->assertOk()
+        ->assertJsonPath('data.localization.default_country_iso2', 'IT');
+});
+
+it('reports null in international mode (code unset or blank)', function () {
+    foreach ([null, '', '   '] as $configured) {
+        config(['geo.default_country_iso2' => $configured]);
+
+        $this->getJson('/api/config')
+            ->assertOk()
+            ->assertJsonPath('data.localization.default_country_iso2', null);
+    }
+});
+
+it('reads the country code from the DEFAULT_COUNTRY_ISO2 env binding', function () {
+    // The value must reach the payload through config/geo.php, not a literal.
+    expect(config('geo.default_country_iso2'))->toBe(env('DEFAULT_COUNTRY_ISO2'));
+});

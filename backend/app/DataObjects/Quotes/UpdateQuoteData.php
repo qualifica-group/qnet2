@@ -41,6 +41,15 @@ final readonly class UpdateQuoteData
         public bool $internalNotesSubmitted = false,
         public ?array $offerLines = null,
         public ?array $costLines = null,
+        // Appended after the pre-existing parameters (user directive
+        // 2026-07-30) so every positional/partial construction of this DTO
+        // keeps working unchanged.
+        public ?int $companyId = null,
+        public bool $companyIdSubmitted = false,
+        public ?int $companySiteId = null,
+        public bool $companySiteIdSubmitted = false,
+        public ?int $operationalSiteId = null,
+        public bool $operationalSiteIdSubmitted = false,
     ) {}
 
     /**
@@ -65,6 +74,12 @@ final readonly class UpdateQuoteData
             internalNotesSubmitted: array_key_exists('internal_notes', $data),
             offerLines: array_key_exists('offer_lines', $data) ? self::normalizeLines($data['offer_lines']) : null,
             costLines: array_key_exists('cost_lines', $data) ? self::normalizeLines($data['cost_lines']) : null,
+            companyId: self::nullableInt($data, 'company_id'),
+            companyIdSubmitted: array_key_exists('company_id', $data),
+            companySiteId: self::nullableInt($data, 'company_site_id'),
+            companySiteIdSubmitted: array_key_exists('company_site_id', $data),
+            operationalSiteId: self::nullableInt($data, 'operational_site_id'),
+            operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
         );
     }
 
@@ -117,6 +132,18 @@ final readonly class UpdateQuoteData
 
         if ($this->supervisorIdSubmitted) {
             $attributes['supervisor_id'] = $this->supervisorId;
+        }
+
+        if ($this->companyIdSubmitted) {
+            $attributes['company_id'] = $this->companyId;
+        }
+
+        if ($this->companySiteIdSubmitted) {
+            $attributes['company_site_id'] = $this->companySiteId;
+        }
+
+        if ($this->operationalSiteIdSubmitted) {
+            $attributes['operational_site_id'] = $this->operationalSiteId;
         }
 
         if ($this->internalNotesSubmitted) {

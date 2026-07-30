@@ -57,10 +57,14 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // (the real DB columns the quick-search spans), not as a per-column key.
     expect($data['searchable'])->toContain('code');
 
+    // The 2026-07-30 directive appends company/company_site/operational_site
+    // LAST on purpose: inserting them mid-list would shift every user's
+    // persisted column layout (spec 0001).
     $ids = $columns->pluck('id')->all();
     expect($ids)->toBe([
         'id', 'code', 'title', 'opportunity', 'quote_status', 'commercial',
         'reporter', 'supervisor', 'revenue_net', 'cost_net', 'margin_net', 'created_at',
+        'company', 'company_site', 'operational_site',
     ]);
 });
 

@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use Illuminate\Contracts\Validation\Validator;
@@ -33,6 +34,7 @@ use Illuminate\Validation\Rule;
 class StoreQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesQuoteCompanySite;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
 
@@ -55,6 +57,9 @@ class StoreQuoteRequest extends FormRequest
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
+            'company_site_id' => ['nullable', 'integer', Rule::exists('company_sites', 'id')],
+            'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'internal_notes' => ['nullable', 'string', 'max:5000'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());
@@ -66,6 +71,7 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->enforceCommissionFieldPermissions($validator, null);
             $this->enforceCommissionRecipients($validator, null);
+            $this->enforceCompanySiteBelongsToCompany($validator, null);
         });
     }
 

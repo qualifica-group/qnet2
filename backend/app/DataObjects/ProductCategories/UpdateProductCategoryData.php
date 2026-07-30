@@ -36,6 +36,8 @@ final readonly class UpdateProductCategoryData
         public ?array $attributes = null,
         public ?int $businessFunctionId = null,
         public bool $businessFunctionIdSubmitted = false,
+        public ?bool $requiresQuote = null,
+        public bool $requiresQuoteSubmitted = false,
     ) {}
 
     /**
@@ -58,6 +60,8 @@ final readonly class UpdateProductCategoryData
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,
             businessFunctionIdSubmitted: array_key_exists('business_function_id', $data),
+            requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
+            requiresQuoteSubmitted: array_key_exists('requires_quote', $data),
         );
     }
 
@@ -108,6 +112,13 @@ final readonly class UpdateProductCategoryData
 
         if ($this->businessFunctionIdSubmitted) {
             $attributes['business_function_id'] = $this->businessFunctionId;
+        }
+
+        // Only a ROOT category authors this flag; on a child the value written
+        // here is immediately re-aligned on the root's by
+        // RequiresQuoteInheritance::syncSubtree (ProductCategoryService).
+        if ($this->requiresQuoteSubmitted) {
+            $attributes['requires_quote'] = $this->requiresQuote;
         }
 
         return $attributes;

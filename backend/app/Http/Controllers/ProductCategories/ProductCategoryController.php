@@ -221,6 +221,10 @@ class ProductCategoryController extends BaseApiController
             [
                 'inherited_attributes' => $this->service->inheritedAttributes($productCategory)->values(),
                 'effective_business_function' => $this->service->effectiveBusinessFunction($productCategory),
+                // The root the quote flag comes from (null when this category
+                // IS the root): the form/detail render it as the read-only
+                // "inherited from X" hint.
+                'requires_quote_source_category' => $this->service->requiresQuoteSourceCategory($productCategory),
             ],
         );
     }

@@ -25,6 +25,8 @@ export interface ProductCategoryTreeNode {
   products_count: number
   /** The node's OWN business function, null if it has none (spec 0023 AC-018). NOT the effective/inherited one. */
   business_function_id: number | null
+  /** The EFFECTIVE quote flag: authored by the branch root, mirrored on every descendant server-side. */
+  requires_quote: boolean
 }
 
 /**
@@ -97,6 +99,10 @@ export interface ProductCategoryDetail {
   business_function: ProductCategoryBusinessFunction | null
   /** Own or inherited business function; invariant: `inherited === true` implies `business_function_id === null`. */
   effective_business_function: EffectiveBusinessFunction | null
+  /** Whether the category is quoted — authored by the branch ROOT, mirrored here on every descendant. */
+  requires_quote: boolean
+  /** The root `requires_quote` is inherited from; null when this category IS the root and owns the flag. */
+  requires_quote_source_category: { id: number; name: string } | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
 }
@@ -172,6 +178,8 @@ export interface CreateProductCategoryPayload {
   attributes?: AttributeAssignmentInput[]
   /** Own business function; omit or null when the category has none of its own (spec 0023). */
   business_function_id?: number | null
+  /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the flag and the server refuses a divergent value. */
+  requires_quote?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

@@ -32,6 +32,12 @@ class ProductCategoryResource extends JsonResource
             'inherits_product_attributes' => (bool) $this->inherits_product_attributes,
             'inherits_opportunity_attributes' => (bool) $this->inherits_opportunity_attributes,
             'description' => $this->description,
+            // The EFFECTIVE flag: on a child this already mirrors its root
+            // (RequiresQuoteInheritance keeps the column in sync), so no walk
+            // is needed here. `requires_quote_source_category` — which root it
+            // comes from — is attached by the controller alongside
+            // `effective_business_function`.
+            'requires_quote' => (bool) $this->requires_quote,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

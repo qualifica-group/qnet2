@@ -30,6 +30,9 @@ export function buildCreatePayload(
     description: values.description,
     attributes: values.attributes,
     business_function_id: values.business_function_id,
+    // Only a ROOT category authors the quote flag; under a parent it is
+    // inherited and the server resolves it (a divergent value is a 422).
+    ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -66,6 +69,14 @@ export function buildUpdatePayload(
   // satisfies "never send business_function_id when inherited" (spec AC-015).
   if (values.business_function_id !== original.business_function_id) {
     payload.business_function_id = values.business_function_id
+  }
+
+  // Sent only while the category stays (or becomes) a ROOT: on a child the
+  // field is read-only and merely mirrors the root, so a diff there would be
+  // an override attempt the server refuses. A reparent alone is enough — the
+  // server re-aligns the moved subtree on its new root.
+  if (values.parent_id === null && values.requires_quote !== original.requires_quote) {
+    payload.requires_quote = values.requires_quote
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

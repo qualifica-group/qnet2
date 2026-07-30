@@ -25,6 +25,7 @@ import {
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
+import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
   AttributeContext,
@@ -167,7 +168,8 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
     fieldPermission('name').visible ||
     fieldPermission('parent_id').visible ||
     fieldPermission('description').visible ||
-    fieldPermission('business_function_id').visible
+    fieldPermission('business_function_id').visible ||
+    fieldPermission('requires_quote').visible
   const attributesVisible = fieldPermission('attributes').visible
 
   return (
@@ -250,6 +252,8 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
               </MetaField>
 
               <ProductCategoryBusinessFunctionField control={form.control} mode={mode} parentId={parentId} />
+
+              <ProductCategoryRequiresQuoteField control={form.control} mode={mode} parentId={parentId} />
             </FormSection>
           )}
 

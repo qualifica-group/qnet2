@@ -79,6 +79,7 @@ export const productCategories = {
     attributes_count: 'Attributes',
     products_count: 'Products',
     business_function: 'Business function',
+    requires_quote: 'Quoted',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
     productsMore: '+{{count}} more',
@@ -88,6 +89,7 @@ export const productCategories = {
     subtitle: 'Read-only view of the selected category.',
     loadError: 'Unable to load the category. Please try again.',
     businessFunctionInherited: 'Inherited from {{category}}',
+    requiresQuoteInherited: 'Inherited from {{category}}',
   },
   bulkMove: {
     tableButton: 'Move under…',
@@ -148,6 +150,10 @@ export const productCategories = {
     businessFunctionError: 'Unable to load business functions.',
     businessFunctionInheritedHint:
       'Inherited from "{{category}}". To change it, edit that category instead.',
+    requiresQuote: 'Quoted',
+    requiresQuoteHint: 'When on, this category and every subcategory below it are quoted.',
+    requiresQuoteInheritedHint:
+      'Quoting is inherited from the root category "{{category}}". To change it, edit that category instead.',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
