@@ -52,14 +52,19 @@ class PaymentMethodService
     }
 
     /**
-     * Plain delete, no guard (spec 0068, D-2): no module consumes
-     * `payment-methods` yet in this iteration, so there is no relation to
-     * protect. The extension point for the first real consumer (a
-     * referenced-by guard mirroring RewardStatusService::delete()) is
-     * documented here rather than implemented ahead of a consumer.
+     * Delete-guard (mirrors RewardStatusService::delete()): `quotes` is the
+     * first module to consume this lookup (user directive 2026-07-30), so a
+     * payment method still referenced by a Quote cannot be removed — the
+     * schema's `nullOnDelete` would otherwise silently blank the payment
+     * modality agreed on an offerta. Defense in depth: this 409 is the
+     * informative half, `nullOnDelete` the schema's own safety net.
      */
     public function delete(PaymentMethod $paymentMethod): void
     {
+        if ($paymentMethod->quotes()->exists()) {
+            abort(409, 'This payment method is used by a quote and cannot be deleted.');
+        }
+
         $paymentMethod->delete();
     }
 

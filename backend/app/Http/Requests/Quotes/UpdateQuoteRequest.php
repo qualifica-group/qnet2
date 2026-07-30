@@ -64,6 +64,7 @@ class UpdateQuoteRequest extends FormRequest
             'company_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('company_sites', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'layout_id' => ['sometimes', 'nullable', 'integer', Rule::exists('document_layouts', 'id')],
+            'payment_method_id' => ['sometimes', 'nullable', 'integer', Rule::exists('payment_methods', 'id')],
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());

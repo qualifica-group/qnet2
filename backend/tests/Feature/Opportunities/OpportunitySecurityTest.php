@@ -29,13 +29,13 @@ it('navigation: the opportunities node only shows with opportunities.view (AC-08
     // parent (alongside the new `opportunity-statuses`) — was `management`.
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('opportunities');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('opportunities.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('opportunities');
 });
 

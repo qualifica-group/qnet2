@@ -30,7 +30,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * third as `{id, label}` via OperationalSiteLabel — the site has no own name
  * column, exactly as on ProjectResource/OpportunityResource.
  *
- * `layout`/`layout_id` (spec 0070) follow the standard `{id, name}` ref shape
+ * `layout`/`layout_id` (spec 0070) and `payment_method`/`payment_method_id`
+ * (user directive 2026-07-30) follow the standard `{id, name}` ref shape
  * (`summarizeByName`), additive alongside every pre-existing key.
  *
  * `summary.*.gross` is DERIVED here (net + vat) at request time — NEVER
@@ -70,6 +71,8 @@ class QuoteResource extends JsonResource
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             'layout_id' => $this->layout_id,
             'layout' => $this->summarizeByName($this->layout),
+            'payment_method_id' => $this->payment_method_id,
+            'payment_method' => $this->summarizeByName($this->paymentMethod),
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),

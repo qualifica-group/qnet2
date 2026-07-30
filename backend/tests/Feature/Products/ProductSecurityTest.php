@@ -157,12 +157,12 @@ it('navigation: the products node only shows with products.view', function () {
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'management'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('products');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('products.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'management'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('products');
 });

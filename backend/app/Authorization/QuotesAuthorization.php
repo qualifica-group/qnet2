@@ -56,6 +56,9 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // Not mandatory (spec 0070, D-3): a preventivo is valid without a
             // layout, so a role may legitimately not see this field at all.
             new FieldDefinition('layout_id', 'select'),
+            // Not mandatory either (user directive 2026-07-30): an offerta is
+            // valid before the payment modality is agreed.
+            new FieldDefinition('payment_method_id', 'select'),
             new FieldDefinition('internal_notes', 'textarea'),
             new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('cost_lines', 'lines'),
@@ -98,6 +101,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'company_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operational_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'layout_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'payment_method_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

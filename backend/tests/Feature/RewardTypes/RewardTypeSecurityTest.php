@@ -216,12 +216,12 @@ it('navigation: the reward-types node only shows with reward-types.view (AC-015)
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('reward-types');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('reward-types.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('reward-types');
 });

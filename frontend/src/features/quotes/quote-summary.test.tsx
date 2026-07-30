@@ -30,6 +30,7 @@ const EMPTY_VALUES: QuoteFormValues = {
   company_site_id: null,
   operational_site_id: null,
   layout_id: null,
+  payment_method_id: null,
   internal_notes: null,
   offer_lines: [{ product_id: 1, quantity: 1, unit_price: 10, vat_rate_id: 5 }],
   cost_lines: [{ product_id: 2, quantity: 1, unit_price: 3, vat_rate_id: null }],

@@ -97,12 +97,12 @@ it('navigation: the vat-rates node only shows with vat-rates.view', function () 
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('vat-rates');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('vat-rates.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'configuration'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('vat-rates');
 });

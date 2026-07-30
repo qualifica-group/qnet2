@@ -87,6 +87,8 @@ function quoteFixture(): QuoteDetailWithPermissions {
     operational_site: null,
     layout_id: null,
     layout: null,
+    payment_method_id: null,
+    payment_method: null,
     internal_notes: null,
     offer_lines: [],
     cost_lines: [],

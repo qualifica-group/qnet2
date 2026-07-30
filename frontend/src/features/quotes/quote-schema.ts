@@ -171,6 +171,9 @@ function baseFields(t: TFunction) {
     // refine — an inactive/mismatched layout is a server-side 422
     // (`ValidatesQuoteLayout`), the picker here is only an affordance.
     layout_id: z.number().nullable(),
+    // Metodo di pagamento concordato (directive 2026-07-30): optional, lives
+    // in the "Note e pagamenti" tab alongside `internal_notes`.
+    payment_method_id: z.number().nullable(),
     internal_notes: z
       .string()
       .max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.internalNotesMax'))

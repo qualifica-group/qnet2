@@ -33,9 +33,8 @@ it('shows the /company-sites navigation node with company-sites.view', function 
     Sanctum::actingAs($actor);
 
     $items = $this->getJson('/api/navigation')->assertOk()->json('data');
-    $group = collect($items)->firstWhere('key', 'management');
 
-    expect(collect($group['children'] ?? [])->pluck('key'))->toContain('company-sites');
+    expect(navigationNodeKeys($items))->toContain('company-sites');
 });
 
 it('a super-admin bypasses company-sites authorization via Gate::before', function () {

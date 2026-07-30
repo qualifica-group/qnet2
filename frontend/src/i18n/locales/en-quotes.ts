@@ -43,6 +43,7 @@ export const quotes = {
     companySite: 'Company site',
     operationalSite: 'Operational site',
     layout: 'Layout',
+    paymentMethod: 'Payment method',
     createdAt: 'Created at',
     linesEmpty: 'No rows yet.',
     generatingDocument: 'Generating…',
@@ -83,6 +84,8 @@ export const quotes = {
     operationalSiteSearch: 'Search operational sites…',
     layout: 'Layout',
     layoutSearch: 'Search layouts…',
+    paymentMethod: 'Payment method',
+    paymentMethodSearch: 'Search payment methods…',
     hints: {
       companySite: 'Pick the company first: only its own sites are listed.',
       operationalSite: 'Prefilled from the selected opportunity; you can change it.',
@@ -123,14 +126,14 @@ export const quotes = {
         description: 'Cost rows expected from the quote.',
       },
       notes: {
-        title: 'Notes',
-        description: 'Internal remarks, never shown to the customer.',
+        title: 'Notes and payments',
+        description: 'Agreed payment method plus internal remarks, never shown to the customer.',
       },
     },
     tabs: {
       offer: 'Offer',
       costs: 'Costs',
-      notes: 'Notes',
+      notes: 'Notes and payments',
       tabHasErrors: 'This section has errors',
     },
     offerTab: {

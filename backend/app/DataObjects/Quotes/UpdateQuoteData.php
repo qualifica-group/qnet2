@@ -55,6 +55,11 @@ final readonly class UpdateQuoteData
         // toggle, exactly like every other optional FK here.
         public ?int $layoutId = null,
         public bool $layoutIdSubmitted = false,
+        // Appended after the pre-existing parameters (user directive
+        // 2026-07-30): a plain submitted/persisted toggle, like every other
+        // optional FK here.
+        public ?int $paymentMethodId = null,
+        public bool $paymentMethodIdSubmitted = false,
     ) {}
 
     /**
@@ -87,6 +92,8 @@ final readonly class UpdateQuoteData
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
             layoutId: self::nullableInt($data, 'layout_id'),
             layoutIdSubmitted: array_key_exists('layout_id', $data),
+            paymentMethodId: self::nullableInt($data, 'payment_method_id'),
+            paymentMethodIdSubmitted: array_key_exists('payment_method_id', $data),
         );
     }
 
@@ -155,6 +162,10 @@ final readonly class UpdateQuoteData
 
         if ($this->layoutIdSubmitted) {
             $attributes['layout_id'] = $this->layoutId;
+        }
+
+        if ($this->paymentMethodIdSubmitted) {
+            $attributes['payment_method_id'] = $this->paymentMethodId;
         }
 
         if ($this->internalNotesSubmitted) {

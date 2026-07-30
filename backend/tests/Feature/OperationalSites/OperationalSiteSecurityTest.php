@@ -147,12 +147,12 @@ it('navigation: the operational-sites node only shows with operational-sites.vie
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'management'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('operational-sites');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('operational-sites.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'management'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('operational-sites');
 });

@@ -127,12 +127,12 @@ it('navigation: the opportunity-statuses node only shows with opportunity-status
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('opportunity-statuses');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('opportunity-statuses.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('opportunity-statuses');
 });

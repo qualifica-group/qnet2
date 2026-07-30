@@ -64,6 +64,11 @@ final readonly class CreateQuoteData
         // same positional-compat reason as the block above.
         public ?int $layoutId = null,
         public bool $layoutIdSubmitted = false,
+        // Appended after the pre-existing parameters (user directive
+        // 2026-07-30) for the same positional-compat reason. No `*Submitted`
+        // flag: nothing is inherited or defaulted for this field, so a plain
+        // nullable value already says everything (see attributes() below).
+        public ?int $paymentMethodId = null,
     ) {}
 
     /**
@@ -93,6 +98,7 @@ final readonly class CreateQuoteData
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
             layoutId: isset($data['layout_id']) ? (int) $data['layout_id'] : null,
             layoutIdSubmitted: array_key_exists('layout_id', $data),
+            paymentMethodId: isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null,
         );
     }
 
@@ -148,6 +154,7 @@ final readonly class CreateQuoteData
             'company_id' => $this->companyId,
             'company_site_id' => $this->companySiteId,
             'operational_site_id' => $this->operationalSiteId,
+            'payment_method_id' => $this->paymentMethodId,
             'internal_notes' => $this->internalNotes,
         ];
     }

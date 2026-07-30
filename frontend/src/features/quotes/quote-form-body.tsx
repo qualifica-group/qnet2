@@ -48,7 +48,7 @@ const NO_ROW_ERRORS: undefined = undefined
 /**
  * The quote create/edit form UI (spec 0065 AC-070): testata fields (code,
  * title, opportunity, quote status, commercial/reporter/supervisor) OUTSIDE
- * the tabs, then a compact tab strip (Offerta/Costi/Note) and, always
+ * the tabs, then a compact tab strip (Offerta/Costi/Note e pagamenti) and, always
  * visible below it regardless of the active tab, the live economic summary
  * (`QuoteLiveSummary`, AC-071). Every field is wrapped in `MetaField`
  * (spec 0004, AC-077); all non-render logic lives in `useQuoteForm`.
@@ -150,7 +150,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   const costErrors = (errors.cost_lines as unknown as (QuoteLineRowErrors | undefined)[] | undefined) ?? NO_ROW_ERRORS
   const offerHasError = Boolean(errors.offer_lines)
   const costHasError = Boolean(errors.cost_lines)
-  const notesHasError = Boolean(errors.internal_notes)
+  const notesHasError = Boolean(errors.internal_notes) || Boolean(errors.payment_method_id)
   const tabHasErrorsLabel = t('quotes.form.tabs.tabHasErrors')
 
   return (
@@ -302,7 +302,11 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
             </TabsContent>
 
             <TabsContent value={NOTES_TAB} className="flex flex-col gap-4">
-              <QuoteNotesTab control={form.control} />
+              <QuoteNotesTab
+                control={form.control}
+                selectedPaymentMethod={original?.payment_method ?? null}
+                labels={relationLabels}
+              />
             </TabsContent>
           </Tabs>
 

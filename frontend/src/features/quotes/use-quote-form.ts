@@ -29,6 +29,7 @@ const SERVER_ERROR_FIELDS = [
   'company_site_id',
   'operational_site_id',
   'layout_id',
+  'payment_method_id',
   'internal_notes',
   'offer_lines',
   'cost_lines',
@@ -108,6 +109,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         company_site_id: quote.company_site_id,
         operational_site_id: quote.operational_site_id,
         layout_id: quote.layout_id,
+        payment_method_id: quote.payment_method_id,
         internal_notes: quote.internal_notes,
         offer_lines: linesToFormValues(quote.offer_lines),
         cost_lines: linesToFormValues(quote.cost_lines),
@@ -133,6 +135,9 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       // `QuoteLayoutSection` (spec 0070 D-3/AC-310), not here: resolving it
       // needs a network round trip, out of scope for a synchronous default.
       layout_id: null,
+      // No server-side default to mirror (unlike `layout_id`): a new quote
+      // starts with no payment method until the user picks one.
+      payment_method_id: null,
       internal_notes: null,
       offer_lines: [],
       cost_lines: [],

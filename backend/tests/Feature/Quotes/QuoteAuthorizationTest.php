@@ -191,11 +191,12 @@ it('AC-064: GET show exposes permissions.fields with the full key set, code read
     $fields = $response->json('permissions.fields');
 
     // company_id/company_site_id/operational_site_id joined the field set with
-    // the 2026-07-30 directive; layout_id joined it with spec 0070 (AC-219).
+    // the 2026-07-30 directive; layout_id joined it with spec 0070 (AC-219);
+    // payment_method_id with the 2026-07-30 "Note e pagamenti" directive.
     expect(array_keys($fields))->toEqual([
         'code', 'title', 'opportunity_id', 'quote_status_id', 'commercial_id',
         'reporter_id', 'supervisor_id', 'company_id', 'company_site_id', 'operational_site_id',
-        'layout_id', 'internal_notes', 'offer_lines', 'cost_lines',
+        'layout_id', 'payment_method_id', 'internal_notes', 'offer_lines', 'cost_lines',
         'commissions', 'commission_recipient', 'commission_type', 'commission_value',
         'commission_internal_note',
     ])
@@ -223,12 +224,12 @@ it('AC-065: the quotes navigation node only shows with quotes.view', function ()
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('quotes');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('quotes.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('quotes');
 });

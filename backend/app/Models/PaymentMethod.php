@@ -7,13 +7,14 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\PaymentMethodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Payment method lookup entity (spec 0068): a consumer-agnostic anagraphic
  * (name/code/description/payment_instructions/payment_days/is_active)
  * describing a payment modality selectable by the modules that will consume
- * it (quotes, offers, contracts, orders, invoices — none yet, D-2 out of
- * scope). `name`/`code` are unique; `code` is immutable after create (D-3,
+ * it. `quotes` is the FIRST such consumer (user directive 2026-07-30) and is
+ * what makes delete() a guarded operation. `name`/`code` are unique; `code` is immutable after create (D-3,
  * enforced in UpdatePaymentMethodRequest, not here). `sort_order` stays
  * fillable — server-managed by
  * App\Services\PaymentMethods\PaymentMethodOrderManager, never accepted from
@@ -35,5 +36,17 @@ class PaymentMethod extends BaseModel
             'sort_order' => 'int',
             'is_active' => 'bool',
         ];
+    }
+
+    /**
+     * The Quotes that agreed on this payment modality (user directive
+     * 2026-07-30) — the referenced-by set PaymentMethodService::delete()
+     * guards against.
+     *
+     * @return HasMany<Quote, $this>
+     */
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
     }
 }

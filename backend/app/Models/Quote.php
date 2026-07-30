@@ -40,6 +40,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * snapshot set above: `opportunities` has no `layout_id` column at all, and
  * this one is defaulted from `App\Services\DocumentLayouts\DocumentLayoutDefaultManager`'s
  * module default (QuoteService), a wholly separate mechanism (D-8).
+ *
+ * `payment_method_id` (user directive 2026-07-30) is the agreed payment
+ * modality, nullOnDelete. It has neither an Opportunity counterpart to
+ * inherit from nor a module default to resolve: a plain optional FK, written
+ * only when the client submits it.
  */
 #[Fillable([
     'title',
@@ -52,6 +57,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'company_site_id',
     'operational_site_id',
     'layout_id',
+    'payment_method_id',
     'internal_notes',
 ])]
 class Quote extends BaseModel
@@ -155,6 +161,17 @@ class Quote extends BaseModel
     public function layout(): BelongsTo
     {
         return $this->belongsTo(DocumentLayout::class);
+    }
+
+    /**
+     * The agreed payment modality (spec 0068's lookup, user directive
+     * 2026-07-30). Optional and never defaulted: unlike `layout_id` there is
+     * no "module default" concept on `payment_methods`, so an omitted key
+     * simply leaves it null.
+     */
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
 
     /**

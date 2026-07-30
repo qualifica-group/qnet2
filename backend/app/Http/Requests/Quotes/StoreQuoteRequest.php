@@ -63,6 +63,7 @@ class StoreQuoteRequest extends FormRequest
             'company_site_id' => ['nullable', 'integer', Rule::exists('company_sites', 'id')],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'layout_id' => ['sometimes', 'nullable', 'integer', Rule::exists('document_layouts', 'id')],
+            'payment_method_id' => ['nullable', 'integer', Rule::exists('payment_methods', 'id')],
             'internal_notes' => ['nullable', 'string', 'max:5000'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, FileText, HandCoins, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { CreditCard, Download, FileText, HandCoins, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
@@ -168,7 +168,10 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           <TabsContent value={COSTS_TAB}>
             <QuoteLinesReadOnlyList lines={quote.cost_lines} />
           </TabsContent>
-          <TabsContent value={NOTES_TAB}>
+          <TabsContent value={NOTES_TAB} className="flex flex-col gap-3">
+            <DetailField label={t('quotes.detail.paymentMethod')} icon={<CreditCard />}>
+              {quote.payment_method ? quote.payment_method.name : <DetailEmpty />}
+            </DetailField>
             <p className="text-sm whitespace-pre-wrap text-foreground">
               {quote.internal_notes ?? <DetailEmpty />}
             </p>

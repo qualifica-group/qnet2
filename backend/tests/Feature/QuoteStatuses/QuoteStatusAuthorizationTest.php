@@ -33,12 +33,12 @@ it('AC-065: the quote-statuses navigation node only shows with quote-statuses.vi
 
     $withoutView = User::factory()->create();
     Sanctum::actingAs($withoutView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->not->toContain('quote-statuses');
 
     $withView = User::factory()->create();
     $withView->givePermissionTo('quote-statuses.view');
     Sanctum::actingAs($withView);
-    expect(navigationSectionKeys($this->getJson('/api/navigation')->json('data'), 'opportunities-group'))
+    expect(navigationNodeKeys($this->getJson('/api/navigation')->json('data')))
         ->toContain('quote-statuses');
 });

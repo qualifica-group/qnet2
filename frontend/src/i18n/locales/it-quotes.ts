@@ -43,6 +43,7 @@ export const quotes = {
     companySite: 'Società sede',
     operationalSite: 'Sede operativa',
     layout: 'Layout',
+    paymentMethod: 'Metodo di pagamento',
     createdAt: 'Creato il',
     linesEmpty: 'Nessuna riga presente.',
     generatingDocument: 'Generazione…',
@@ -83,6 +84,8 @@ export const quotes = {
     operationalSiteSearch: 'Cerca sedi operative…',
     layout: 'Layout',
     layoutSearch: 'Cerca layout…',
+    paymentMethod: 'Metodo di pagamento',
+    paymentMethodSearch: 'Cerca metodi di pagamento…',
     hints: {
       companySite: 'Seleziona prima la società: le sedi mostrate sono solo le sue.',
       operationalSite: "Precompilata dall'opportunità selezionata; puoi cambiarla.",
@@ -123,14 +126,14 @@ export const quotes = {
         description: "Righe di costo previste dall'offerta.",
       },
       notes: {
-        title: 'Note',
-        description: 'Annotazioni interne, non visibili al cliente.',
+        title: 'Note e pagamenti',
+        description: 'Metodo di pagamento concordato e annotazioni interne, non visibili al cliente.',
       },
     },
     tabs: {
       offer: 'Offerta',
       costs: 'Costi',
-      notes: 'Note',
+      notes: 'Note e pagamenti',
       tabHasErrors: 'Questa sezione contiene errori',
     },
     offerTab: {

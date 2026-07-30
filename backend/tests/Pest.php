@@ -57,17 +57,25 @@ function something()
 }
 
 /**
- * Pluck the leaf keys of a top-level navigation section (management,
- * configuration, administration) from the `/api/navigation` `data` payload.
+ * Every node key of the `/api/navigation` `data` payload, at any depth.
+ *
+ * Deliberately tree-wide instead of scoped to one top-level section: a section
+ * whose children are all hidden is dropped entirely by NavigationService, so a
+ * section-scoped lookup returns an empty collection for a user without the
+ * permission and turns every `not->toContain()` gate assertion vacuous — it
+ * would keep passing even if the node leaked. Collecting the whole tree also
+ * survives the navigation being reorganised, which is what silently stranded
+ * these assertions on the removed `management` section.
  *
  * @param  array<int, array<string, mixed>>  $data
  * @return Collection<int, string>
  */
-function navigationSectionKeys(array $data, string $sectionKey): Collection
+function navigationNodeKeys(array $data): Collection
 {
-    $section = collect($data)->firstWhere('key', $sectionKey);
-
-    return collect(data_get($section, 'children', []))->pluck('key');
+    return collect($data)->flatMap(fn (array $item): array => [
+        $item['key'] ?? null,
+        ...navigationNodeKeys($item['children'] ?? [])->all(),
+    ])->filter()->values();
 }
 
 /**

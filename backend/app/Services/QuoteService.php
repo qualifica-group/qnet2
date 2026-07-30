@@ -65,6 +65,7 @@ class QuoteService
         // address + city (OperationalSiteLabel), so both are eager-loaded.
         'operationalSite.addresses.city',
         'layout',
+        'paymentMethod',
         'offerLines.product.category',
         'offerLines.quote',
         'offerLines.vatRate',

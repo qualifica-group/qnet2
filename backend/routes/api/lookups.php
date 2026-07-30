@@ -183,9 +183,10 @@ Route::post('reward-statuses', [RewardStatusController::class, 'store']);
 Route::match(['put', 'patch'], 'reward-statuses/{rewardStatus}', [RewardStatusController::class, 'update']);
 Route::delete('reward-statuses/{rewardStatus}', [RewardStatusController::class, 'destroy']);
 
-// Payment methods CRUD (spec 0068): a standalone, consumer-agnostic lookup
-// describing the payment modalities selectable across the CRM (no consumer
-// module yet, D-2 out of scope). Authorization
+// Payment methods CRUD (spec 0068): a standalone lookup describing the
+// payment modalities selectable across the CRM; `quotes` is its first
+// consumer (user directive 2026-07-30, `quotes.payment_method_id`), which is
+// why destroy() is now guarded against referencing quotes. Authorization
 // (payment-methods.view/create/update/delete) is enforced server-side in
 // PaymentMethodController via PaymentMethodPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011).

@@ -202,6 +202,13 @@ export interface QuoteDetail {
    */
   layout_id: number | null
   layout: QuoteRelationRef | null
+  /**
+   * The agreed payment modality (directive 2026-07-30), picked from the
+   * `payment-methods` lookup. Unlike `layout_id` it is never defaulted nor
+   * inherited from the opportunity: `null` until someone picks one.
+   */
+  payment_method_id: number | null
+  payment_method: QuoteRelationRef | null
   internal_notes: string | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
@@ -257,6 +264,8 @@ export interface CreateQuotePayload {
   operational_site_id?: number | null
   /** When omitted, resolved server-side to the `quotes` module's active default layout, if any (spec 0070 D-3). */
   layout_id?: number | null
+  /** No server-side default: omitted means "no payment method" (directive 2026-07-30). */
+  payment_method_id?: number | null
   internal_notes?: string | null
   /** Full-replace, max 200 rows (D-8/AC-035); always sent in full on create. */
   offer_lines?: QuoteLineInput[]
