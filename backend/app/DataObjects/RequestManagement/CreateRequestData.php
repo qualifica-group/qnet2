@@ -25,6 +25,15 @@ use App\DataObjects\Users\ProfileData;
  * `operationalSiteId` is the Sede operativa (spec 0056, user directive
  * 2026-07-31): the same field the work panel edits, available at creation
  * because it is what scopes the operator list the form offers.
+ *
+ * The last five (user directive 2026-07-31, "la create il piu' simile
+ * possibile al pannello") are the operative fields the work panel edits, all
+ * OPTIONAL at creation: `workflowStatusId` + its `statusNote` (the working
+ * state and the note a `requires_note` status demands), `nextCallbackAt`
+ * (the planned follow-up call), `generalNotes` and `attributeValues` (the
+ * dynamic per-category fields). `null` means "not submitted" for each: the
+ * status then stays whatever OpportunityWorkflowResolver derives, and the
+ * other four simply stay unset.
  */
 final readonly class CreateRequestData
 {
@@ -32,6 +41,7 @@ final readonly class CreateRequestData
      * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
      * @param  array<int, int>|null  $productsOfInterest  product ids, `null` when the key was absent (nothing to record yet); already checked against `productLines` by StoreRequestRequest (user directive 2026-07-31)
      * @param  array<int, int>|null  $rewards  reward-type ids synced by RewardAssignmentWriter (beneficiary = the created Opportunity's reporter)
+     * @param  array<string, mixed>|null  $attributeValues  submitted dynamic values keyed by attribute `code`, validated post-insert by RequestAttributeValueWriter against the applicable set; `null` when the key was absent
      */
     public function __construct(
         public ?int $registryId,
@@ -43,5 +53,10 @@ final readonly class CreateRequestData
         public ?array $rewards = null,
         public ?int $operatorId = null,
         public ?int $operationalSiteId = null,
+        public ?int $workflowStatusId = null,
+        public ?string $statusNote = null,
+        public ?string $nextCallbackAt = null,
+        public ?string $generalNotes = null,
+        public ?array $attributeValues = null,
     ) {}
 }

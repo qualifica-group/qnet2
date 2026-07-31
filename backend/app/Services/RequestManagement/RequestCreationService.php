@@ -40,6 +40,8 @@ final class RequestCreationService
         private readonly RegistryService $registryService,
         private readonly OpportunityService $opportunityService,
         private readonly RequestManagementService $panel,
+        private readonly RequestAttributeValueWriter $attributeValueWriter,
+        private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
     ) {}
 
     /**
@@ -83,12 +85,61 @@ final class RequestCreationService
                 expectedCloseDate: null,
                 successProbability: null,
                 rewards: $data->rewards,
+                generalNotes: $data->generalNotes,
             ));
+
+            // Step 3: the operative fields the work panel edits, submitted at
+            // creation too (user directive 2026-07-31). They run AFTER the
+            // insert on purpose: none of the three is mass-assignable (D-4
+            // guard), and both the working status and the dynamic values are
+            // validated against sets that only exist once the product lines
+            // are persisted.
+            $this->applyOperativeFields($opportunity, $actor, $data);
 
             // Spec 0062, D3: the distinct "new request" form, never the full
             // edit work panel's own layout.
             return $this->panel->loadWorkPanel($opportunity, FormMode::Create);
         });
+    }
+
+    /**
+     * The working status, the planned callback and the dynamic values, all
+     * optional (user directive 2026-07-31). Each goes through the SAME writer
+     * the panel's PATCH uses, so the two channels can never diverge on the
+     * rules attached to them — most notably the note a `requires_note` status
+     * demands (spec 0054 D-5), enforced here exactly as on an advance.
+     *
+     * Nothing submitted means nothing to save: the early return keeps a plain
+     * create at the single insert it has always been.
+     */
+    private function applyOperativeFields(Opportunity $opportunity, User $actor, CreateRequestData $data): void
+    {
+        // Discarded: on create there is no previous state to diff against, and
+        // the record's own `created` activity entry is the audit trail (the
+        // panel's explicit entry exists only because a PATCH of these
+        // non-fillable columns would otherwise leave no trace at all).
+        $changed = [];
+        $old = [];
+
+        if ($data->workflowStatusId !== null) {
+            $this->workflowStatusWriter->apply($opportunity, $data->workflowStatusId, $actor, $data->statusNote, $changed, $old);
+            // OpportunityService::create left the resolver's own status loaded
+            // on the relation; the panel below reads it through loadMissing(),
+            // which would keep serving that stale row.
+            $opportunity->unsetRelation('workflowStatus');
+        }
+
+        if ($data->nextCallbackAt !== null) {
+            $opportunity->next_callback_at = $data->nextCallbackAt;
+        }
+
+        if ($data->attributeValues !== null) {
+            $this->attributeValueWriter->apply($opportunity, $data->attributeValues, $changed, $old);
+        }
+
+        if ($opportunity->isDirty()) {
+            $opportunity->save();
+        }
     }
 
     /**

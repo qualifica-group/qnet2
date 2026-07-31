@@ -5,7 +5,10 @@ import { FormSection } from '@/components/form-section'
 import { formatDecimal } from '@/features/products/column-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
-const EMPTY_VALUE = '—'
+export const EMPTY_VALUE = '—'
+
+/** The summary list's own chrome, exported so the create form's live recap renders the identical rows. */
+export const SUMMARY_LIST_CLASS = 'min-w-0 divide-y divide-border/60'
 
 /** Formats a `Y-m-d` date for display, `null` when missing/unparsable. */
 function formatDate(value: string | null): string | null {
@@ -16,8 +19,8 @@ function formatDate(value: string | null): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString()
 }
 
-/** One `label / value` row of the summary list. */
-function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
+/** One `label / value` row of the summary list. Exported: the create form's live recap uses the same row. */
+export function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 py-2">
       <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -50,7 +53,7 @@ export function RequestWorkSummary({ panel }: { panel: RequestWorkPanel }) {
       })}
       className="min-w-0"
     >
-      <dl className="min-w-0 divide-y divide-border/60">
+      <dl className={SUMMARY_LIST_CLASS}>
         <SummaryRow label={t('requestManagement.workPanel.summary.registry', { defaultValue: 'Client' })}>
           {panel.registry?.name ?? EMPTY_VALUE}
         </SummaryRow>

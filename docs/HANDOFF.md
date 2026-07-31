@@ -3,6 +3,85 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CREATE RICHIESTA = GEMELLA DEL PANNELLO DI LAVORAZIONE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente**: "la scheda di gestione richieste e il form di creazione il piu' simile
+possibile alla scheda di gestione richieste (`/request-management/14`)". Scope scelto via
+AskUserQuestion: **layout + campi mancanti** (non solo il riordino).
+
+**Nuovo endpoint (contratto congelato)**: `POST /api/request-management/form-context`, gated da
+`request-management.create`. Body `{source_id?, product_lines?}` -> `{applicable_attributes,
+attribute_layout, workflow_statuses}`. E' READ-ONLY malgrado il verbo: i criteri sono una collezione
+di oggetti, che non ha una codifica sensata in query string (stessa ragione degli endpoint bulk del
+modulo). **Lenient dove lo Store e' strict**: una riga di prodotto a meta' viene SCARTATA, non 422 —
+si chiama mentre l'operatore sta ancora compilando. `RequestFormContextResolver` costruisce una
+**Opportunity TRANSIENTE** (`setRelation('productLines', ...)`) e la passa ai resolver ESISTENTI:
+stesso identico pattern che `ValidatesWorkflowStatus` usa gia' in produzione. Nessuna regola
+ri-implementata, nessuna duplicazione lato frontend.
+
+**POST /api/request-management esteso** (additivo, tutte le chiavi opzionali):
+`opportunity_workflow_status_id` (+ `note`), `next_callback_at`, `general_notes`, `attribute_values`.
+Lo stato passa da `RequestWorkflowStatusWriter` (NON da `CreateOpportunityData::workflowStatusId`)
+apposta: cosi' la regola della nota obbligatoria (spec 0054 D-5) e' letteralmente la stessa del
+pannello. `general_notes` viaggia invece dentro `CreateOpportunityData` (e' fillable).
+
+**Due estrazioni DRY** (non refactor gratuiti — servono a impedire il drift fra i due canali):
+- `RequestAttributeValueWriter` — estratto da `RequestManagementService::applyAttributeValues`, ora
+  usato da PATCH **e** da create. `RequestManagementService` perde 2 dipendenze dal costruttore.
+- `SummarizesWorkflowStatuses` (trait Resource) — la proiezione dello stato, condivisa fra
+  `RequestManagementResource` e il nuovo `RequestFormContextResource`. Se divergesse anche solo su
+  `requires_note`, la create disabiliterebbe in silenzio la regola della nota.
+- FE: `attribute-values-schema.ts` — lo shape Zod per-tipo, condiviso da work e create schema.
+
+**Frontend — la create NON "assomiglia" al pannello, ne RIUSA le primitive.** Prima passata era
+solo l'ordine delle sezioni e l'utente ha giustamente risposto "non e' uguale": mancava lo
+scheletro. Ora `request-create-form.tsx` importa DAL pannello `PANEL_GRID_CLASS`,
+`SIDE_COLUMN_CLASS`, `MAIN_COLUMN_CLASS` (`request-work-panel.tsx`), `REQUEST_HEADER_CLASS` e
+`StatusBadge` (`request-work-header.tsx`), `SummaryRow`/`SUMMARY_LIST_CLASS`/`EMPTY_VALUE`
+(`request-work-summary.tsx`), `GENERAL_NOTES_CALLOUT_CLASS`/`GENERAL_NOTES_TITLE_CLASS`
+(`request-general-notes-callout.tsx`). **Non copiare quelle classi: importarle.** Un `.tsx` che
+duplica una di queste stringhe e' un bug in attesa.
+
+Struttura risultante, identica al pannello: `@container bg-surface` -> header sticky (titolo +
+pillole live Lavorazione/Prossimo richiamo + le sole azioni) -> griglia due colonne a `@4xl` con
+**aside PRIMA del form nel DOM** (note generali + riepilogo, riordinato a destra) -> colonna
+principale con stato+richiamo, attribuzione, campi dinamici, linee di prodotto, prodotti di
+interesse, anagrafica. Le **note generali stanno nella colonna laterale**, dentro lo stesso callout
+ambra da cui il pannello le legge: la create e' dove si scrivono (il pannello le mostra read-only,
+spec 0049 D-5). Etichette prese dalle chiavi `workPanel.*`; le `form.create.productLines.*` sono
+state CANCELLATE perche' diventate morte.
+
+**Le uniche differenze rimaste sono strutturali, non cosmetiche** (non "sistemarle" inventando dati):
+`#id` e la pillola "Commerciale" (stato pipeline) non esistono prima del record; il blocco
+collaborazione (note/documenti/storico) ha bisogno di un record a cui agganciarsi; il riepilogo
+laterale elenca cosa si sta per creare invece del contesto commerciale, che prima del primo salvataggio
+e' vuoto per definizione.
+
+**Tre dettagli da NON "correggere" senza capirli**:
+- Stato di lavorazione e campi dinamici **non si vedono finche' non scegli una categoria prodotto**:
+  entrambi sono risolti DA essa. Compaiono sopra le linee di prodotto appena le compili. Se l'utente
+  preferisce evitare il salto di layout, la soluzione e' spostare le linee di prodotto in alto —
+  non far comparire card vuote.
+- `useRequestCreateForm` passa a `useForm` un **resolver indiretto** (`resolverRef`): lo schema
+  dipende da valori osservati DA QUESTO form (le categorie), quindi non puo' esistere prima di lui.
+  Il ref si aggiorna in `useEffect`, mai durante il render (react-hooks.md).
+- `attribute_values` viaggia **tutto o niente**, sulla stessa condizione che lo schema usa per le
+  regole `is_required` (`attributeValuesFilled`, esportato dal payload builder): il server controlla
+  `is_required` solo sui codici SOTTOMESSI, quindi mandare una mappa di valori vuoti renderebbe
+  obbligatorio ogni attributo di una richiesta che nessuno ha ancora lavorato.
+- I test hook della create sono **due file** (`use-request-create-form.test.ts` +
+  `-operative.test.ts`) con fixture condivise in `request-create-form-harness.ts`: il file unico
+  superava il hard limit di 500 righe.
+
+**Verifica**: BE `pest` suite completa **4905 test, 4903 passed, 1 skipped, 1 failed** =
+`AssignablePermissionCatalogueTest` (rosso PREESISTENTE, roba `attachments.*`, non toccato da qui);
+i 12 test nuovi in `RequestManagementCreateOperativeFieldsTest` passano; `pint --dirty` pulito.
+FE `vitest` **3264 passed (462 file)**, `tsc -b --force` EXIT=0, `eslint` pulito.
+Il nuovo `request-create-form.test.tsx` blocca lo scheletro (salvataggio nella barra sticky legato
+via `form=`, aside prima del form nel DOM, ordine delle sezioni): e' li' apposta perche' una modifica
+futura non lo smonti in silenzio. **Nessuna verifica visiva a schermo**: il repo non ha
+Playwright/puppeteer, quindi "sembra uguale" resta da confermare a occhio dall'utente.
+
 ## TAB DEI MODULI: CHIP BIANCO + COLLASSO IN SELECT (2026-07-31) — VERDE, NON COMMITTATO
 
 **Richiesta utente**: i tab dei moduli devono essere "bianchi, non grigio su grigio"; quando i tab
@@ -26,6 +105,20 @@ tailwind-merge** e rendeva imprevedibile il chip attivo.
 `container.clientWidth` con un `ResizeObserver` e, quando i tab non entrano, mostra al loro posto
 un `Select` a tutta larghezza costruito dai `TabsTrigger` figli (`value` + `children`).
 
+**Secondo giro — "i tab escono comunque dallo schermo"**: la prima versione misurava solo
+`container.clientWidth`, ma il contenitore **era allargato dai tab stessi**. La `main` del layout
+(`SidebarInset`) e' un flex item senza larghezza definita: un box che contribuisce con la propria
+max-content la fa crescere e la pagina scorre in orizzontale, mentre la misura vedeva "ci sta".
+Correzione in due mosse:
+- Contenitore `w-0 min-w-full overflow-x-clip`: `w-0` lo toglie dal calcolo della max-content del
+  genitore, `min-w-full` gli fa comunque prendere tutta la larghezza della colonna, `overflow-x-clip`
+  azzera la sua automatic minimum size (`clip` e non `hidden`: ring e ombre restano visibili in
+  verticale). Da qui in poi la strip **segue** la larghezza della colonna, non la determina.
+- `availableWidth()` confronta anche con il viewport (`documentElement.clientWidth`, fallback
+  `innerWidth` per jsdom): se il contenitore e' comunque piu' largo dello schermo, vince lo schermo.
+  Aggiunto un listener `resize` perche' un contenitore content-sized puo' non cambiare box quando
+  cambia la finestra.
+
 **Tre dettagli da NON "correggere" senza capirli**:
 - La `TabsList` **resta montata** anche in modalita' select, ma `invisible absolute w-max`: serve a
   restare misurabile (cosi' la strip torna quando c'e' di nuovo spazio) e `visibility:hidden` la
@@ -38,9 +131,10 @@ un `Select` a tutta larghezza costruito dai `TabsTrigger` figli (`value` + `chil
 
 **Chiave i18n nuova**: `common.tabsSelectLabel` (it "Sezione" / en "Section"), aria-label del select.
 
-**Verifica**: `vitest run` **3251 passed (460 file)** — incluso il nuovo
-`src/components/form-tab-strip.test.tsx` (3 casi: strip che entra, collasso in select, cambio tab
-dal select e ritorno alla strip); `tsc -b --force` EXIT=0; `eslint` pulito sui file toccati.
+**Verifica**: `vitest run` **3252 passed (460 file)** — incluso il nuovo
+`src/components/form-tab-strip.test.tsx` (4 casi: strip che entra, collasso in select, collasso per
+viewport con contenitore piu' largo dello schermo, cambio tab dal select e ritorno alla strip);
+`tsc -b --force` EXIT=0; `eslint` pulito sui file toccati.
 Nessuna verifica visiva a schermo: il repo non ha Playwright/puppeteer.
 
 ## CREATE RICHIESTA: ORDINE CAMPI = WORK PANEL + SEDE OPERATIVA (2026-07-31) — VERDE, NON COMMITTATO

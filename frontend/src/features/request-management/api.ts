@@ -5,6 +5,8 @@ import type {
   AssignRequestOperatorsPayload,
   AssignRequestOperatorsResult,
   CreateRequestPayload,
+  RequestFormContext,
+  RequestFormContextPayload,
   RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
@@ -20,6 +22,23 @@ import type {
  */
 export async function createRequest(payload: CreateRequestPayload): Promise<RequestWorkPanel> {
   const { data } = await apiClient.post<ApiResponse<RequestWorkPanel>>('/request-management', payload)
+  return data.data
+}
+
+/**
+ * Resolves the create form's context (user directive 2026-07-31): the working
+ * statuses, the applicable dynamic attributes and their layout for the
+ * criteria typed so far. POST despite being read-only — the criteria are a
+ * collection of objects, which has no sane query-string encoding (same reason
+ * as this module's bulk endpoints).
+ */
+export async function fetchRequestFormContext(
+  payload: RequestFormContextPayload,
+): Promise<RequestFormContext> {
+  const { data } = await apiClient.post<ApiResponse<RequestFormContext>>(
+    '/request-management/form-context',
+    payload,
+  )
   return data.data
 }
 

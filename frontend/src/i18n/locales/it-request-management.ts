@@ -78,9 +78,15 @@ export const requestManagement = {
         contactsGroup: 'Contatti',
         addressGroup: 'Indirizzo',
       },
-      productLines: {
-        title: 'Linee di prodotto',
-        description: 'Funzione aziendale e categoria prodotto della richiesta.',
+      /** Identity bar of the create form, the twin of `workPanel.header.title`. */
+      title: 'Nuova richiesta',
+      generalNotes: {
+        label: 'Note generali',
+        placeholder: 'Cosa ha chiesto il cliente, con le sue parole…',
+      },
+      summary: {
+        description: 'Cosa stai per creare.',
+        existingRegistry: 'Anagrafica esistente',
       },
       attribution: {
         title: 'Attribuzione',

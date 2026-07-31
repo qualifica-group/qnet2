@@ -1,11 +1,14 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
+import {
+  buildAttributeValuesSchema,
+  type TypedAttributeValuesSchema,
+} from '@/features/request-management/attribute-values-schema'
 import {
   attributeValuesChanged,
   clientAddressChanged,
@@ -24,65 +27,13 @@ import type {
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
  * AC-062/063): the working-state select and the dynamic `attribute_values`
- * map, one entry per `applicable_attributes` row, keyed by `code`. MIRRORS the
- * backend's `AttributeValueValidator` (per-type rule + `is_required`), it does
- * not replace it — the server stays authoritative (406/422 still applies).
+ * map, one entry per `applicable_attributes` row, keyed by `code`. The map's
+ * per-type shape comes from the shared `buildAttributeValuesSchema` (the create
+ * form builds the identical one); `is_required` is added by the refinement
+ * below, which alone knows whether the map is going to be sent at all. MIRRORS
+ * the backend's `AttributeValueValidator`, it does not replace it — the server
+ * stays authoritative (406/422 still applies).
  */
-
-/** `enum` is checked against `attribute.options`; every other type gets its native shape. */
-function buildAttributeScalarSchema(attribute: ApplicableAttribute, t: TFunction): z.ZodTypeAny {
-  switch (attribute.type) {
-    case 'integer':
-    case 'decimal':
-      return z.number().nullable()
-    case 'boolean':
-      return z.boolean()
-    case 'enum': {
-      const values = new Set(attribute.options.map((option) => option.value))
-      return z
-        .string()
-        .nullable()
-        .superRefine((value, ctx) => {
-          if (value !== null && !values.has(value)) {
-            ctx.addIssue({
-              code: 'custom',
-              message: t('requestManagement.workPanel.validation.enumInvalid', {
-                defaultValue: 'Select a valid option.',
-              }),
-            })
-          }
-        })
-    }
-    case 'relation':
-      return z.union([z.number(), z.array(z.number()), z.null()])
-    // text/textarea + the string-backed scalars (date/datetime/time/email/url/color).
-    default:
-      return z.string().nullable()
-  }
-}
-
-/**
- * Builds the dynamic `attribute_values` shape, one key per applicable
- * attribute `code`. Per-TYPE rules only: `is_required` is enforced by the
- * top-level refinement, which alone knows whether the map is going to be sent
- * (see `buildRequestWorkSchema`).
- */
-function buildAttributeValuesSchema(attributes: ApplicableAttribute[], t: TFunction) {
-  const shape: Record<string, z.ZodTypeAny> = {}
-  for (const attribute of attributes) {
-    shape[attribute.code] = buildAttributeScalarSchema(attribute, t)
-  }
-
-  return z.object(shape)
-}
-
-/**
- * `buildAttributeValuesSchema` derives its shape from a runtime-keyed
- * `Record<string, ZodTypeAny>`, so Zod infers it as `Record<string, unknown>`
- * — re-typed to the real value domain (mirrors `asCustomFieldsField`) so it
- * embeds cleanly under the form's `attribute_values` key.
- */
-type TypedAttributeValuesSchema = z.ZodType<Record<string, CustomFieldValue>, Record<string, CustomFieldValue>>
 
 /**
  * The three collectors below are invoked from the top-level refinement rather

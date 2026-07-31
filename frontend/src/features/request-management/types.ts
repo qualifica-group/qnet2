@@ -366,6 +366,47 @@ export interface CreateRequestPayload {
   operational_site_id?: number
   /** Spec 0059: reward assignments for the reporter, sent only when at least one is picked. */
   rewards?: RequestRewardInput[]
+  /**
+   * The five operative fields the work panel edits, available at creation too
+   * (user directive 2026-07-31, "la create il piu' simile possibile al
+   * pannello"). All optional and, like the two blocks above, sent only when
+   * they carry something: on create there is no persisted value a null could
+   * clear, so an empty key would be pure noise on the wire.
+   *
+   * The working status must belong to the set resolved for the submitted
+   * `source_id`/`product_lines` — the set
+   * `POST /request-management/form-context` previewed; `note` is mandatory
+   * server-side when that status is flagged `requires_note` (spec 0054 D-5).
+   */
+  opportunity_workflow_status_id?: number
+  note?: string
+  /** `"Y-m-d\TH:i"` local format, same shape the panel PATCHes. */
+  next_callback_at?: string
+  general_notes?: string
+  /** Dynamic values keyed by attribute `code`, validated against the applicable set of the created request. */
+  attribute_values?: Record<string, unknown>
+}
+
+/**
+ * Body of POST /request-management/form-context (user directive 2026-07-31):
+ * the criteria the create form has collected so far. Half-filled product lines
+ * are dropped client-side (they scope nothing) exactly as the server does.
+ */
+export interface RequestFormContextPayload {
+  source_id: number | null
+  product_lines: RequestProductLinePayload[]
+}
+
+/**
+ * Response of the same endpoint: the three blocks the create form needs before
+ * anything is persisted, resolved from the criteria above. Same keys and same
+ * per-item shapes as the work panel's own — the two forms render the identical
+ * sections from the identical types.
+ */
+export interface RequestFormContext {
+  applicable_attributes: ApplicableAttribute[]
+  attribute_layout: LayoutBlob | null
+  workflow_statuses: RequestWorkflowStatusRef[]
 }
 
 /**

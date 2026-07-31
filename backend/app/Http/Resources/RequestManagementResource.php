@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\SummarizesWorkflowStatuses;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
@@ -37,6 +38,8 @@ use Illuminate\Support\Collection;
  */
 class RequestManagementResource extends JsonResource
 {
+    use SummarizesWorkflowStatuses;
+
     /**
      * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}  $resource
      */
@@ -116,33 +119,6 @@ class RequestManagementResource extends JsonResource
     private function summarizeStatus(?Model $status): ?array
     {
         return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
-    }
-
-    /**
-     * @return array{id: int, name: string, description: string|null, color: string|null, system_key: string|null, requires_note: bool}|null
-     */
-    private function summarizeWorkflowStatus(?OpportunityWorkflowStatus $status): ?array
-    {
-        return $status === null ? null : [
-            'id' => $status->id,
-            'name' => $status->name,
-            'description' => $status->description,
-            'color' => $status->color,
-            'system_key' => $status->system_key,
-            'requires_note' => $status->requires_note,
-        ];
-    }
-
-    /**
-     * @param  Collection<int, OpportunityWorkflowStatus>  $statuses
-     * @return array<int, array{id: int, name: string, description: string|null, color: string|null, system_key: string|null, requires_note: bool}>
-     */
-    private function summarizeWorkflowStatuses(Collection $statuses): array
-    {
-        return $statuses
-            ->map(fn (OpportunityWorkflowStatus $status): array => $this->summarizeWorkflowStatus($status))
-            ->values()
-            ->all();
     }
 
     /**

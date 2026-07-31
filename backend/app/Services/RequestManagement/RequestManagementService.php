@@ -13,8 +13,6 @@ use App\Models\OpportunityWorkflowStatus;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
-use App\RequestManagement\AttributeValueNormalizer;
-use App\RequestManagement\AttributeValueValidator;
 use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
@@ -94,10 +92,9 @@ final class RequestManagementService
     public function __construct(
         private readonly ApplicableAttributesResolver $attributesResolver,
         private readonly OpportunityAttributeLayoutResolver $attributeLayoutResolver,
-        private readonly AttributeValueValidator $attributeValueValidator,
-        private readonly AttributeValueNormalizer $attributeValueNormalizer,
         private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
+        private readonly RequestAttributeValueWriter $attributeValueWriter,
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly RequestProductCategoryCoherence $coherence,
@@ -153,7 +150,7 @@ final class RequestManagementService
             // keyed attribute_values.<code> on failure), then merge into the
             // existing map (sparse: unset codes keep their persisted value).
             if (array_key_exists('attribute_values', $data)) {
-                $this->applyAttributeValues($opportunity, (array) $data['attribute_values'], $changed, $old);
+                $this->attributeValueWriter->apply($opportunity, (array) $data['attribute_values'], $changed, $old);
             }
 
             // Step 2: funzione aziendale + categoria prodotto (user directive
@@ -424,33 +421,6 @@ final class RequestManagementService
     private function callbackInstantKey(?Carbon $value): ?string
     {
         return $value?->format('Y-m-d\TH:i');
-    }
-
-    /**
-     * @param  array<string, mixed>  $submitted
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     *
-     * @throws ValidationException
-     */
-    private function applyAttributeValues(Opportunity $opportunity, array $submitted, array &$changed, array &$old): void
-    {
-        $applicable = $this->attributesResolver->resolve($opportunity);
-        $validated = $this->attributeValueValidator->validate($applicable, $submitted);
-        $normalized = $this->attributeValueNormalizer->normalize($applicable, $validated);
-
-        $current = $opportunity->attribute_values ?? [];
-        $merged = array_merge($current, $normalized);
-
-        if ($merged === $current) {
-            return;
-        }
-
-        $old['attribute_values'] = $current;
-        // `attribute_values` is NOT in Opportunity::$fillable (D-4 mass-
-        // assignment guard): forceFill is the deliberate, single write path.
-        $opportunity->forceFill(['attribute_values' => $merged]);
-        $changed['attribute_values'] = $merged;
     }
 
     /**

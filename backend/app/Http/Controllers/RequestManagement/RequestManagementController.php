@@ -9,13 +9,16 @@ use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\AssignRequestOperatorsRequest;
+use App\Http\Requests\RequestManagement\RequestFormContextRequest;
 use App\Http\Requests\RequestManagement\StoreRequestRequest;
 use App\Http\Requests\RequestManagement\UpdateRequestRequest;
+use App\Http\Resources\RequestFormContextResource;
 use App\Http\Resources\RequestManagementResource;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
+use App\Services\RequestManagement\RequestFormContextResolver;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Services\RequestManagement\RequestManagementService;
 use Illuminate\Http\JsonResponse;
@@ -44,9 +47,31 @@ class RequestManagementController extends BaseApiController
         private readonly RequestManagementScope $scope,
         private readonly RequestAssignmentService $assignmentService,
         private readonly RequestCreationService $creationService,
+        private readonly RequestFormContextResolver $formContextResolver,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
+
+    /**
+     * POST /api/request-management/form-context (user directive 2026-07-31):
+     * the working-status set, the applicable dynamic attributes and their
+     * layout for the criteria the create form has collected so far. Read-only
+     * (nothing is persisted), gated by the SAME `request-management.create`
+     * that gates the form itself — it exposes exactly what a create is about
+     * to render.
+     */
+    public function formContext(RequestFormContextRequest $request): JsonResponse
+    {
+        try {
+            abort_unless($request->user()->can('request-management.create'), 403);
+
+            return $this->ok(new RequestFormContextResource(
+                $this->formContextResolver->resolve($request->sourceId(), $request->productLines()),
+            ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
 
     /**
      * POST /api/request-management (spec 0057): creates the Opportunity

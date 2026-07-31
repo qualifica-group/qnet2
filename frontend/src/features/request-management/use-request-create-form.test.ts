@@ -1,8 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import i18n from '@/i18n'
-import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
-import type { PersonalDataDraft } from '@/features/personal-data/types'
+import {
+  COMPLETE_ROW,
+  EMPTY_FORM_CONTEXT,
+  TEST_SOURCE_ID,
+  completeIdentity,
+  renderCreateForm,
+} from '@/features/request-management/request-create-form-harness'
 
 /**
  * Spec 0057 D-2/D-3/AC-016: the create form's non-render logic — the two
@@ -13,31 +18,17 @@ import type { PersonalDataDraft } from '@/features/personal-data/types'
  */
 
 const createRequestMock = vi.fn()
+/**
+ * The create form resolves its working statuses / dynamic fields server-side
+ * (user directive 2026-07-31). These tests are about the submit logic, so the
+ * context stays empty — the sections it feeds render nothing and the payload
+ * carries none of their keys.
+ */
+const fetchRequestFormContextMock = vi.fn(async () => EMPTY_FORM_CONTEXT)
 vi.mock('@/features/request-management/api', () => ({
   createRequest: (...args: unknown[]) => createRequestMock(...args),
+  fetchRequestFormContext: () => fetchRequestFormContextMock(),
 }))
-
-const COMPLETE_ROW = { business_function_id: 1, product_category_id: 2 }
-/** The Fonte every submitting case must set: mandatory since the user directive 2026-07-29. */
-const TEST_SOURCE_ID = 7
-
-function completeIdentity(): PersonalDataDraft {
-  return {
-    type: 'individual',
-    first_name: 'Mario',
-    last_name: 'Rossi',
-    company_name: null,
-    tax_code: null,
-    vat_number: null,
-    sdi_code: null,
-    birth_date: null,
-    birth_city_id: null,
-    residence_city_id: null,
-    gender: 'male',
-    contacts: [],
-    addresses: [],
-  }
-}
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -45,12 +36,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRequestMock.mockReset()
+  fetchRequestFormContextMock.mockClear()
 })
 
 describe('useRequestCreateForm', () => {
   it('blocks submit and surfaces a client banner when neither a registry nor a complete identity is provided', async () => {
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
@@ -72,7 +64,7 @@ describe('useRequestCreateForm', () => {
    * it is incomplete, not absent.
    */
   it('opens on one empty product-line row', () => {
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+    const { result } = renderCreateForm(vi.fn())
 
     expect(result.current.form.getValues('product_lines')).toEqual([
       { business_function_id: null, product_category_id: null },
@@ -82,7 +74,7 @@ describe('useRequestCreateForm', () => {
   /** User directive 2026-07-29: the Fonte is mandatory, mirroring StoreRequestRequest's `required`. */
   it('blocks submit when no source is chosen', async () => {
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -105,7 +97,7 @@ describe('useRequestCreateForm', () => {
    */
   it('sends operator_id when set, and omits the key entirely when it is not', async () => {
     createRequestMock.mockResolvedValue({ id: 45 })
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+    const { result } = renderCreateForm(vi.fn())
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -135,7 +127,7 @@ describe('useRequestCreateForm', () => {
    */
   it('sends operational_site_id when set, and omits the key entirely when it is not', async () => {
     createRequestMock.mockResolvedValue({ id: 46 })
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+    const { result } = renderCreateForm(vi.fn())
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -160,7 +152,7 @@ describe('useRequestCreateForm', () => {
 
   it('blocks submit when product_lines is empty (D-3)', async () => {
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     await act(async () => {
       await result.current.onSubmit()
@@ -173,7 +165,7 @@ describe('useRequestCreateForm', () => {
   it('submits the registry branch, dropping the client buffer entirely (D-2)', async () => {
     createRequestMock.mockResolvedValue({ id: 42 })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -203,7 +195,7 @@ describe('useRequestCreateForm', () => {
   it('sends the initial attribution (source/reporter/rewards) when set (user directive 2026-07-24)', async () => {
     createRequestMock.mockResolvedValue({ id: 44 })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -234,7 +226,7 @@ describe('useRequestCreateForm', () => {
    */
   it('sends the products of interest only once at least one is picked', async () => {
     createRequestMock.mockResolvedValue({ id: 45 })
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+    const { result } = renderCreateForm(vi.fn())
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -270,7 +262,7 @@ describe('useRequestCreateForm', () => {
         },
       },
     })
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+    const { result } = renderCreateForm(vi.fn())
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -297,7 +289,7 @@ describe('useRequestCreateForm', () => {
       },
     })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 10)
@@ -317,7 +309,7 @@ describe('useRequestCreateForm', () => {
   it('submits the new-client branch with the buffered identity/contacts/address', async () => {
     createRequestMock.mockResolvedValue({ id: 43 })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.setIdentityDraft(completeIdentity())
@@ -353,7 +345,7 @@ describe('useRequestCreateForm', () => {
       },
     })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 999)
@@ -379,7 +371,7 @@ describe('useRequestCreateForm', () => {
       },
     })
     const onSuccess = vi.fn()
-    const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
+    const { result } = renderCreateForm(onSuccess)
 
     act(() => {
       result.current.form.setValue('registry_id', 10)

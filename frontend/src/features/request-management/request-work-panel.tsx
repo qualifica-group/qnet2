@@ -36,10 +36,13 @@ const REQUEST_WORK_FORM_ID = 'request-work-form'
  * `@container` + `@4xl:` (56rem) instead of `lg:`/`xl:`. Below that width the
  * whole panel collapses to a single column.
  */
-const PANEL_GRID_CLASS = 'grid items-start gap-4 p-4 @4xl:grid-cols-[minmax(0,1fr)_20rem]'
+export const PANEL_GRID_CLASS = 'grid items-start gap-4 p-4 @4xl:grid-cols-[minmax(0,1fr)_20rem]'
 
 /** Clears the sticky header (`py-3` around a badge row) so the side column never scrolls under it. */
-const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16 @4xl:order-2'
+export const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16 @4xl:order-2'
+
+/** The main column: its own `@container`, so the sections split on ITS width, not the panel's. */
+export const MAIN_COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4 @4xl:order-1'
 
 /** Props shape matches the module registry's `ModuleDetailScreenProps` (spec 0042), so this mounts as-is as the module's `DetailScreen`. */
 interface RequestWorkPanelScreenProps {
@@ -56,7 +59,7 @@ export function RequestWorkPanelSkeleton() {
         <Skeleton className="ml-auto h-8 w-20" />
       </div>
       <div className={PANEL_GRID_CLASS}>
-        <div className="flex min-w-0 flex-col gap-4 @4xl:order-1">
+        <div className={MAIN_COLUMN_CLASS}>
           {[0, 1, 2].map((section) => (
             <div key={section} className="rounded-xl border bg-card p-4 shadow-sm">
               <Skeleton className="h-3.5 w-40" />
@@ -146,9 +149,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           <RequestWorkSummary panel={panel} />
         </aside>
 
-        {/* Its own `@container`: the sections below split on the width of THIS
-            column, not of the whole panel. */}
-        <div className="@container flex min-w-0 flex-col gap-4 @4xl:order-1">
+        <div className={MAIN_COLUMN_CLASS}>
           <Form {...form}>
             {/* `display: contents`: this native `<form>` only scopes the HTML submit
                 boundary, it must not become an extra flex box in the stack below. */}
