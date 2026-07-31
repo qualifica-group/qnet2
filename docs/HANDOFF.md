@@ -3,6 +3,132 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MODULO CONTRATTI (spec 0072) — VERDE, NON COMMITTATO (2026-07-31)
+
+**Il principio da non violare: un contratto NON e' una copia del preventivo.** E' lo stesso
+record `quotes` il cui stato appartiene al gruppo `closed_won`, piu' una riga 1-1 `contracts`
+che contiene SOLO i dati contrattuali aggiuntivi. Nessuna colonna di `contracts` duplica
+cliente, opportunita', prodotti, importi, commissioni o documenti: sono tutti proiettati
+attraverso `contracts.quote_id`. AC-040 lo verifica asserendo direttamente su
+`Schema::getColumnListing('contracts')` — chi aggiunge li' una colonna gia' presente su
+`quotes` rompe quel test, ed e' voluto.
+
+**Decisioni utente 2026-07-31** (non deducibili dal codice, non cambiarle senza chiedere):
+- **Nessun codice contratto**: la colonna "codice" mostra `quotes.code` (QUO-0001). Non esiste
+  `contracts.code` e non va aggiunta.
+- **"Data preventivo" = `quotes.created_at`**: `quotes` non ha alcuna colonna data.
+- **Riapertura del preventivo**: il contratto RESTA visibile e passa allo stato di sistema
+  "Sospeso", memorizzando `status_before_suspension_id` e `suspended_at`. Il rientro in
+  `closed_won` **non** riattiva da solo: serve l'azione esplicita `POST /contracts/{id}/reactivate`
+  (permesso `contracts.reactivate`), che rifiuta con 422 se il preventivo non e' tornato closed_won.
+  Nessun dato contrattuale viene mai cancellato automaticamente.
+- **7 stati seminati nella migration**: "Da validare" (`new`, open, HEAD, **unico is_default**),
+  "Da programmare"/"Programmato"/"In scadenza" (pending, righe NORMALI eliminabili),
+  "Sospeso" (`suspended`, pending), "Annullato" (`cancelled`, closed_lost), "Disdetto"
+  (`terminated`, closed_lost). Le ultime tre + "Da validare" sono di sistema (TAIL nell'ordine
+  Sospeso→Annullato→Disdetto).
+- **Conseguenza da ricordare**: "Programmato" e' una riga ELIMINABILE, quindi nessuna azione
+  puo' risolverla per `system_key`. Per questo `POST /schedule` richiede `contract_status_id`
+  dal client, e `POST /validate` lo accetta opzionale. Solo `/terminate` ha un default di
+  sistema (`terminated`), perche' quella riga esiste sempre.
+- **Indicatori scadenza/rinnovo**: calcolati a lettura da `ContractAlertResolver` con soglie in
+  `config/contracts.php` (default 30 gg), mai persistiti. Un contratto in gruppo `closed_lost`
+  non produce mai alert. Lo stato "In scadenza" resta selezionabile a mano ed e' indipendente.
+
+**Enum dedicato, non condiviso**: `App\Enums\ContractStatusGroup` (open/pending/closed_won/
+closed_lost) e' nuovo e usato solo da `ContractStatus` — stesso precedente di `QuoteStatusGroup`
+del 2026-07-31. `App\Enums\StatusSystemKey` ha invece 3 casi NUOVI (`suspended`, `cancelled`,
+`terminated`), additivi: e' condiviso, non toglierli. `SystemStatusGuard` e `StatusOrderManager`
+sono stati ESTESI alla nuova union di class-string, non clonati: la loro logica e' rimasta
+byte-identica per gli altri quattro configuratori (regressione verificata, 171/171).
+
+**Permessi non standard**: `ContractPolicy::abilities()` NON espone `create`, `delete`, `import`
+(un contratto nasce solo dall'automazione e muore solo col preventivo, `cascadeOnDelete`).
+Espone invece 5 ability di dominio: `validate`, `terminate`, `schedule`, `changeStatus`,
+`reactivate`. Nascono da sole con `permissions:sync`, nessun seeder da toccare.
+
+**Due trappole trovate in corso d'opera, gia' corrette — non reintrodurle:**
+1. `SystemStatusGuard` riceveva gli attributi gia' privi di `is_default` (escluso perche'
+   applicato dal default-manager): una riga di SISTEMA poteva essere promossa a predefinita
+   aggirando la protezione. Il guard va alimentato con un array che re-include `is_default`.
+2. `ContractStatusFactory` randomizzava `group` tra i 4 valori. Poiche' BR-6 sopprime ogni
+   alert su `closed_lost`, i test sugli indicatori fallivano ~1 volta su 4. Ora il default e'
+   `Open` (deterministico); lo state `group()` resta l'unico modo esplicito per cambiarlo.
+   **Non randomizzare attributi che governano regole di dominio.**
+
+**Integrazione i18n↔backend — la classe di bug che i test di parita' NON vedono.** I cataloghi
+backend (`ContractColumnCatalog`, `ContractAdvancedFilterCatalog`, e i gemelli di
+ContractStatuses) inviano CHIAVI i18n che il frontend rende con `t(key)`. Una chiave assente in
+ENTRAMBE le lingue supera il test di parita' IT/EN e si manifesta solo a video come stringa
+grezza. Ne sono state trovate quattro (interi blocchi `advancedFilters` mancanti, `forbidden`
+mancante, e `contracts.actions.*` che erano OGGETTI dove `row-actions.tsx` si aspetta una
+stringa). Esistono ora test dedicati che asseriscono che **ogni chiave inviata dal backend
+risolve a una stringa non vuota** nel bundle REALE mergiato (`contracts-i18n.test.ts`,
+`contract-statuses-i18n.test.ts`). Se aggiungi una colonna o un filtro a un catalogo backend,
+aggiorna anche quelle liste.
+
+**Riuso, non duplicazione**: le righe prodotto nella view Contratto usano
+`QuoteLinesReadOnlyList` (estratto da `quote-detail.tsx` in
+`features/quotes/quote-lines-read-only.tsx`), in sola lettura. I documenti opportunita' sono
+montati con `canUpload={false} canDelete={false}` SEMPRE, indipendentemente dai permessi.
+
+**Rettifica alla spec in corsa**: AC-017 diceva che una data futura e' 422 anche su `/schedule`.
+Era un errore della spec: programmare significa per definizione fissare date future. Il vincolo
+vale solo per `validated_at` e `terminated_at`. La spec e' stata annotata.
+
+**Verifica**: backend `4833 test, 4832 passed, 1 skipped, 0 failed` (baseline pre-feature 4702);
+`tests/Feature/Contracts` 60/60 su 3 run consecutivi; frontend `456 file, 3187 test, tutti PASS`;
+`tsc -b --force` EXIT=0; `pint --test` passed.
+- **ESLint**: `npx eslint src --max-warnings=0` riporta 2 errori + 3 warning, TUTTI in file non
+  toccati dalla feature (`referents/referent-form-metadata.test.tsx`,
+  `registries/registry-form-metadata.test.tsx`, `leads/column-renderers.tsx`,
+  `imports/wizard/import-step-{mapping,upload}.tsx`) — assenti da `git status`, quindi
+  preesistenti sul branch. Debito noto, non introdotto qui.
+- **Flake noto, preesistente**: `tests/Feature/Attachments/AttachmentIndexTest.php::'view: 200
+  streams the file inline'` fallisce con 404 circa 1 volta su 7 in esecuzione combinata, verde
+  in isolamento e in 6 run ripetuti. Nessun nesso con la feature (ordine-dipendenza nella suite
+  Attachments). Non risolto: sarebbe stato scope creep.
+
+**Sopra il soft limit di 300 righe** (sotto l'hard limit di 500, giustificati dalla natura
+multi-hop del dominio contracts→quotes→opportunities→registries):
+`app/Tables/ContractsTableDefinition.php` ~469, `app/Tables/Contracts/ContractRelationColumns.php`
+~356. Se cresce ancora, il candidato allo split e' la logica del filtro `alert`.
+
+## ALTEZZA TABELLE: DAL FISSO `h-[600px]` AL FIT SULLO SCHERMO (2026-07-31) — VERDE, NON COMMITTATO
+
+Richiesta utente: la lunghezza delle tabelle nei moduli deve adattarsi all'altezza dello
+schermo. Il contenitore della griglia in `table-view.tsx` aveva `h-[600px]` fisso (violava
+anche `ui-design.md §3`, "mai altezze fisse"): su un monitor grande restava una tabella corta
+con mezza pagina vuota sotto, su un portatile scrollava internamente.
+
+**Nuovo hook `features/table/use-viewport-table-height.ts`** (misurato, non CSS: l'offset
+sopra la griglia cambia per modulo — page header, stats, tab categoria, pannello filtri
+avanzati — e nessuna formula `calc(100dvh - X)` lo copre tutto).
+Altezza = `clamp(pavimento, viewport - offset - 24px, tetto)`:
+- **offset misurato dal top del DOCUMENTO** (`rect.top + scrollY`), non dal viewport: leggerlo
+  a pagina scrollata farebbe crescere la griglia -> pagina piu' lunga -> altro scroll (loop).
+  Chi tocca questa riga reintroduce il loop.
+- **pavimento** = `max(320px, 50% del viewport)`: il pavimento segue anch'esso lo schermo,
+  altrimenti una griglia incassata in fondo a una pagina lunga (pannello Offerte nel dettaglio
+  Opportunita') collasserebbe a 320px contro i 600px di prima.
+- **tetto** = `estimateGridHeight(pageSize, factor)`, nuova export di `data-table-theme.ts`
+  (header 32 + righe 28 + pannello paginazione `max(rowHeight, 22)`, tutto x UI scale): senza
+  tetto un 1440p disegnerebbe ~500px di griglia vuota sotto l'ultima riga della pagina da 25.
+  `paginationAutoPageSize` di AG Grid NON e' un'alternativa: e' solo Client-Side Row Model.
+- Ricalcolo su `resize` + `ResizeObserver` su `document.body` (il pannello filtri avanzati che
+  si apre non emette resize). Converge: a offset invariato `setHeight` riscrive lo stesso
+  numero e React esce.
+- **Fullscreen invariato**: hook disabilitato, resta `flex-1` sul parent flex.
+
+**Conseguenza sui test**: `TableView` ora legge `useUiScale` -> ogni render *reale* di
+`TableView` richiede `UiScaleContext`. In tutta la suite lo fa solo `table-view.test.tsx`
+(gli adapter di dominio mockano `TableView`), sistemato con l'helper `withProviders`.
+
+**Verifica**: `vitest run` intero 3070/3070 (445 file), poi `src/features/table` +
+`src/components/data-table` 320/320 dopo l'ultimo giro; ESLint pulito sui file toccati
+(la prima stesura era bloccata da `react-hooks/set-state-in-effect`: il reset a `null` ora e'
+derivato in render, non nell'effect); `tsc -b --force` EXIT=0.
+
 ## I FOR-SELECT NON SONO PIU' GATED SU `viewAny` (2026-07-31) — VERDE, NON COMMITTATO
 
 Segnalazione utente: il ruolo Commerciale, che non ha i permessi di modulo su funzioni /

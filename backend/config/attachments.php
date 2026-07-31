@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CompanySite;
+use App\Models\Contract;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\User;
@@ -88,6 +89,12 @@ return [
         'company_site' => CompanySite::class,
         'opportunity' => Opportunity::class,
         'document_layout' => DocumentLayout::class,
+        // Contract documents (spec 0072): attachable_type = 'contract'. Quote
+        // documents are never re-attached here — the quote's own layout
+        // documents stay tied to the quote (spec 0070); a contract's
+        // "Documenti opportunita'" section is a read-only mount of the
+        // existing 'opportunity' alias, not a second alias.
+        'contract' => Contract::class,
     ],
 
 ];

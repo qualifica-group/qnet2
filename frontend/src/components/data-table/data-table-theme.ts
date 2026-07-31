@@ -23,6 +23,30 @@ const BASE_HEADER_FONT_SIZE = 10
 const BASE_CELL_HORIZONTAL_PADDING = 10
 
 /**
+ * AG Grid draws the pagination panel at `max(rowHeight, 22px)` (Quartz default
+ * for `paginationPanelHeight`); the 22px floor is an absolute pixel value the
+ * theme does not scale.
+ */
+const MIN_PAGINATION_PANEL_HEIGHT = 22
+
+/**
+ * Pixel height a grid needs to show `rowCount` rows without scrolling
+ * internally: column header + rows + pagination panel, at the given UI scale.
+ * Callers sizing a grid container use it as the ceiling, so a tall viewport
+ * does not leave empty grid below the last row of the page.
+ */
+export function estimateGridHeight(rowCount: number, factor: number): number {
+  const rowHeight = Math.round(BASE_ROW_HEIGHT * factor)
+  const headerHeight = Math.round(BASE_HEADER_HEIGHT * factor)
+
+  return (
+    headerHeight +
+    rowHeight * Math.max(rowCount, 0) +
+    Math.max(rowHeight, MIN_PAGINATION_PANEL_HEIGHT)
+  )
+}
+
+/**
  * Compact grid theme aligned to the app's design tokens, scaled by `factor` (the
  * per-user UI scale). The grid sits on the white `--card` surface so it stands
  * out against the grey `--background` body, while borders/hover/header text

@@ -8,9 +8,19 @@
 /**
  * Marks a system-managed status row; `null` on an ordinary custom row.
  * `lost` is opportunity-statuses only (spec 0043 D-2): "Persa", closed, the
- * fixed last row of the tail.
+ * fixed last row of the tail. `suspended`/`cancelled`/`terminated` are
+ * contract-statuses only (spec 0072 D-2): the TAIL trio ("Sospeso"/
+ * "Annullato"/"Disdetto"), in that declared order.
  */
-export type SystemStatusKey = 'new' | 'won' | 'lost' | 'closed' | null
+export type SystemStatusKey =
+  | 'new'
+  | 'won'
+  | 'lost'
+  | 'closed'
+  | 'suspended'
+  | 'cancelled'
+  | 'terminated'
+  | null
 
 /** Fixed enum of status groups, replacing the former "status groups" lookup module. */
 export const STATUS_GROUPS = ['open', 'pending', 'closed'] as const
@@ -29,6 +39,18 @@ export const QUOTE_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_los
 
 /** One of the four fixed quote status group values. */
 export type QuoteStatusGroupValue = (typeof QUOTE_STATUS_GROUPS)[number]
+
+/**
+ * Contract statuses classify on their OWN enum (backend `App\Enums\
+ * ContractStatusGroup`, spec 0072 D-5): a dedicated vocabulary, not a reuse of
+ * `QuoteStatusGroup`, even though it shares the same four string values today
+ * — coupling the two modules' enums together was rejected for the same
+ * reason `QuoteStatusGroup` was split off `StatusGroup`/`WorkflowStatusGroup`.
+ */
+export const CONTRACT_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
+
+/** One of the four fixed contract status group values. */
+export type ContractStatusGroupValue = (typeof CONTRACT_STATUS_GROUPS)[number]
 
 /** One row as reordered in the sheet: id, display name and its pin state. */
 export interface StatusReorderItem {

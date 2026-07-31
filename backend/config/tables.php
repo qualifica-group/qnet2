@@ -6,6 +6,8 @@ use App\Tables\CampaignsTableDefinition;
 use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
+use App\Tables\ContractsTableDefinition;
+use App\Tables\ContractStatusesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
@@ -64,6 +66,9 @@ return [
         'companies' => CompaniesTableDefinition::class,
         'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,
+        // spec 0072: il modulo Contratti e il suo configuratore di stati.
+        'contracts' => ContractsTableDefinition::class,
+        'contract-statuses' => ContractStatusesTableDefinition::class,
         'operational-sites' => OperationalSitesTableDefinition::class,
         'referent-types' => ReferentTypesTableDefinition::class,
         'referents' => ReferentsTableDefinition::class,

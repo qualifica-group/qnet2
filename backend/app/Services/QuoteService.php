@@ -16,6 +16,7 @@ use App\Models\Quote;
 use App\Models\QuoteStatus;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Quotes\QuoteLineWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
@@ -29,6 +30,11 @@ use Illuminate\Support\Facades\DB;
  * 3 roles plus the sede operativa, D-3), the full-replace line sync per tab
  * (D-8), the REVENUE-only opportunity coverage (D-7), and the persisted,
  * always-recalculated economic aggregates (D-9).
+ *
+ * Also hooks the Contract lifecycle automation (spec 0072, BR-1): every
+ * create/update calls ContractLifecycleManager INSIDE this same transaction,
+ * right after the quote's status is persisted, comparing its
+ * QuoteStatusGroup before/after the write.
  */
 class QuoteService
 {
@@ -82,6 +88,7 @@ class QuoteService
         private readonly QuoteTotalsCalculator $totalsCalculator,
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly QuoteLineCommissionWriter $commissionWriter,
+        private readonly ContractLifecycleManager $contractLifecycleManager,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -134,6 +141,10 @@ class QuoteService
             // Step 5: persist the recalculated aggregates (D-9).
             $this->persistAggregates($quote);
 
+            // Step 6: Contract lifecycle automation (spec 0072, BR-1) — a
+            // fresh quote never had a prior status group.
+            $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
+
             return $quote;
         });
 
@@ -150,6 +161,11 @@ class QuoteService
     public function update(Quote $quote, UpdateQuoteData $data): Quote
     {
         DB::transaction(function () use ($quote, $data): void {
+            // Captured BEFORE the write (spec 0072, BR-1): the quote's
+            // status group as persisted right now, needed to detect a
+            // closed_won transition either way once this method has saved.
+            $previousStatusId = $quote->quote_status_id;
+
             // Unconditional save: mirrors OpportunityService/ProjectService's
             // own update() — a clean save runs no UPDATE query.
             $quote->fill($data->submittedAttributes())->save();
@@ -168,6 +184,9 @@ class QuoteService
             }
 
             $this->persistAggregates($quote);
+
+            // Contract lifecycle automation (spec 0072, BR-1).
+            $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
         });
 
         return $this->loadDetail($quote);

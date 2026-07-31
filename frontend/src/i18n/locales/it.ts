@@ -29,6 +29,8 @@ import { opportunityStatuses } from './it-opportunity-statuses'
 import { opportunityWorkflows } from './it-opportunity-workflows'
 import { quoteStatuses } from './it-quote-statuses'
 import { quotes } from './it-quotes'
+import { contractStatuses } from './it-contract-statuses'
+import { contracts } from './it-contracts'
 import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
@@ -449,6 +451,8 @@ export const it: TranslationResources = {
   opportunityWorkflows,
   quoteStatuses,
   quotes,
+  contractStatuses,
+  contracts,
   commissionConfigurations,
   requestManagement,
   rewardTypes,

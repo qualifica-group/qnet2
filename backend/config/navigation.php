@@ -175,6 +175,32 @@ return [
                     'permission' => 'quotes.view',
                 ],
                 [
+                    // Contract statuses (spec 0072): the Contract working-state
+                    // pick-list (BR-5 exclusive default), same
+                    // status-before-its-entity placement as quote-statuses
+                    // above quotes.
+                    'key' => 'contract-statuses',
+                    'label' => 'navigation.contractStatuses',
+                    'icon' => 'tag',
+                    'route' => '/contract-statuses',
+                    'permission' => 'contract-statuses.view',
+                ],
+                [
+                    // Contracts (spec 0072): the additional lifecycle data
+                    // (validation/scheduling/termination/reactivation) for a
+                    // Quote that reached `closed_won` — never created/deleted
+                    // by hand (D-6), gated by its own `contracts.*` set.
+                    // Icon: 'files' (already mapped in icon-map.ts) rather
+                    // than 'file-signature'/'file-check' — neither is mapped
+                    // yet (MT-09's map), and an unmapped name would silently
+                    // fall back to the neutral Circle icon.
+                    'key' => 'contracts',
+                    'label' => 'navigation.contracts',
+                    'icon' => 'files',
+                    'route' => '/contracts',
+                    'permission' => 'contracts.view',
+                ],
+                [
                     // Request Management (spec 0049): the operative
                     // "Gestione Richieste" view over Opportunities for
                     // commercial operators (D-1, no new entity). Gated by its

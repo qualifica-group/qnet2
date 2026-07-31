@@ -6,6 +6,8 @@ use App\Authorization\CampaignsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
+use App\Authorization\ContractsAuthorization;
+use App\Authorization\ContractStatusesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\LeadsAuthorization;
@@ -62,6 +64,9 @@ return [
         'companies' => CompaniesAuthorization::class,
         'commission-configurations' => CommissionConfigurationsAuthorization::class,
         'company-sites' => CompanySitesAuthorization::class,
+        // spec 0072: il modulo Contratti e il suo configuratore di stati.
+        'contracts' => ContractsAuthorization::class,
+        'contract-statuses' => ContractStatusesAuthorization::class,
         'operational-sites' => OperationalSitesAuthorization::class,
         'referent-types' => ReferentTypesAuthorization::class,
         'referents' => ReferentsAuthorization::class,

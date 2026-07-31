@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Quote entity (spec 0065): a quote belonging to exactly one Opportunity
@@ -172,6 +173,18 @@ class Quote extends BaseModel
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    /**
+     * The Contract lifecycle data for this quote (spec 0072): exists only
+     * once the quote reaches a `closed_won` status (D-6's automation),
+     * one-to-one, never created/deleted by hand.
+     *
+     * @return HasOne<Contract, $this>
+     */
+    public function contract(): HasOne
+    {
+        return $this->hasOne(Contract::class);
     }
 
     /**

@@ -35,6 +35,8 @@ import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { quoteStatuses } from './en-quote-statuses'
 import { quotes } from './en-quotes'
+import { contractStatuses } from './en-contract-statuses'
+import { contracts } from './en-contracts'
 import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
@@ -465,6 +467,8 @@ export const en = {
   opportunityWorkflows,
   quoteStatuses,
   quotes,
+  contractStatuses,
+  contracts,
   commissionConfigurations,
   requestManagement,
   rewardTypes,

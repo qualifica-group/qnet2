@@ -109,6 +109,12 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // block-based document layout catalogue — name/code/module/config
         // mandatory, `code`/`module` writable only on create, D-2).
         'document-layouts',
+        // spec 0072 `contract-statuses` AND `contracts`
+        // (ContractStatusesAuthorization: the "Stati Contratto" lookup —
+        // name/color mandatory, description/group/is_active/is_default
+        // optional, BR-5; ContractsAuthorization: the Contracts module
+        // resource, editable-field surface only, D-6 — no create/delete).
+        'contract-statuses', 'contracts',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

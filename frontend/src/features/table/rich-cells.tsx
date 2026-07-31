@@ -16,7 +16,11 @@ import { StatusDescriptionHint } from '@/features/opportunity-workflows/status-d
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName, type GeoScope, type GeoScopeNames } from '@/features/geo/geo-scope'
-import type { QuoteStatusGroupValue, StatusGroupValue } from '@/features/status-reorder/types'
+import type {
+  ContractStatusGroupValue,
+  QuoteStatusGroupValue,
+  StatusGroupValue,
+} from '@/features/status-reorder/types'
 
 /**
  * Cross-module cell library. Every table (projects, campaigns, leads, imports,
@@ -210,12 +214,16 @@ export function ColorSwatchCell({ value }: ICellRendererParams) {
 
 /**
  * Static swatch token per status group (spec 0039: no per-row color stored).
- * Covers both vocabularies: the shared 3-value one (pipeline / opportunity
- * statuses) and the quote statuses one, whose closed phase carries its
- * outcome — closed_won reuses the positive green family, closed_lost the red
- * of the flat `closed`.
+ * Covers all three vocabularies: the shared 3-value one (pipeline /
+ * opportunity statuses), the quote statuses one and the contract statuses one
+ * (spec 0072 D-5, a dedicated enum sharing the same 4 string values), whose
+ * closed phase carries its outcome — closed_won reuses the positive green
+ * family, closed_lost the red of the flat `closed`.
  */
-const GROUP_SWATCH_TOKENS: Record<StatusGroupValue | QuoteStatusGroupValue, string> = {
+const GROUP_SWATCH_TOKENS: Record<
+  StatusGroupValue | QuoteStatusGroupValue | ContractStatusGroupValue,
+  string
+> = {
   open: 'green',
   pending: 'orange',
   closed: 'red',
@@ -233,7 +241,12 @@ export function GroupCell({
   labelPrefix,
 }: ICellRendererParams & { labelPrefix: string }) {
   const { t } = useTranslation()
-  const group = value as StatusGroupValue | QuoteStatusGroupValue | null | undefined
+  const group = value as
+    | StatusGroupValue
+    | QuoteStatusGroupValue
+    | ContractStatusGroupValue
+    | null
+    | undefined
   if (!group) {
     return <EmptyCell align="left" />
   }

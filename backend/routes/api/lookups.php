@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ContractStatuses\ContractStatusController;
+use App\Http\Controllers\ContractStatuses\ContractStatusForSelectController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
 use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
@@ -218,3 +220,26 @@ Route::get('vat-rates/{vatRate}', [VatRateController::class, 'show']);
 Route::post('vat-rates', [VatRateController::class, 'store']);
 Route::match(['put', 'patch'], 'vat-rates/{vatRate}', [VatRateController::class, 'update']);
 Route::delete('vat-rates/{vatRate}', [VatRateController::class, 'destroy']);
+
+// Contract statuses CRUD (spec 0072): the Contract working-state pick-list,
+// combining reward-statuses' description/is_active shape with
+// document-layouts' exclusive default (BR-5, delete-guard lives in
+// ContractStatusService). Authorization (contract-statuses.view/create/
+// update/delete) is enforced server-side in ContractStatusController via
+// ContractStatusPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE contract-statuses/{contractStatus} so the literal
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
+Route::get('contract-statuses/for-select', ContractStatusForSelectController::class);
+
+// Custom-row resequencing: `sort_order` is server-managed, this is the only
+// way to change it. Declared ABOVE the bound wildcard for the same
+// literal-segment reason as `for-select`. Gated on contract-statuses.update
+// directly in ContractStatusController::reorder.
+Route::post('contract-statuses/reorder', [ContractStatusController::class, 'reorder']);
+
+Route::get('contract-statuses/{contractStatus}', [ContractStatusController::class, 'show']);
+Route::post('contract-statuses', [ContractStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'contract-statuses/{contractStatus}', [ContractStatusController::class, 'update']);
+Route::delete('contract-statuses/{contractStatus}', [ContractStatusController::class, 'destroy']);

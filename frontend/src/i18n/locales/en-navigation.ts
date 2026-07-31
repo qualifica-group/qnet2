@@ -32,6 +32,8 @@ export const navigation = {
   opportunityWorkflows: 'Workflow Configurator',
   quoteStatuses: 'Quote Statuses',
   quotes: 'Quotes',
+  contractStatuses: 'Contract Statuses',
+  contracts: 'Contracts',
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
   rewards: 'Rewards & Incentives',

@@ -14,7 +14,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { ACTIONS_COLUMN_ID, DataTable } from '@/components/data-table/data-table'
+import { estimateGridHeight } from '@/components/data-table/data-table-theme'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { useUiScale } from '@/features/appearance/ui-scale-context'
+import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
 import { SavedViewsSlot } from '@/features/table/saved-views-slot'
 import { TableToolbar } from '@/features/table/table-toolbar'
@@ -34,6 +37,13 @@ import { useTableConfig, type TableConfigScope } from '@/features/table/use-tabl
 import { EMPTY_FILTER_MODEL, useTableLayoutPersistence } from '@/features/table/use-table-layout-persistence'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { TableRow, TableRowScope } from '@/features/table/types'
+
+/**
+ * Page size assumed while the config is still loading, only to size the grid
+ * container: it mirrors the limit every `TableDefinition::defaultPagination`
+ * returns, so the skeleton block does not resize when the real config lands.
+ */
+const FALLBACK_PAGE_SIZE = 25
 
 /** Imperative handle exposed by the generic table to its domain adapter. */
 export interface TableViewHandle {
@@ -322,6 +332,20 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       })
     }, [config, onAction, isBusy, decorateRow, iconMap])
 
+    // Fit the grid to the screen instead of a fixed height: it takes what is
+    // left of the viewport below this module's chrome, never taller than the
+    // page of rows needs (no empty grid under the last row on a large screen).
+    // Skipped in fullscreen, where the flex parent owns the height.
+    const { factor } = useUiScale()
+    const maxGridHeight = useMemo(
+      () => estimateGridHeight(config?.defaultPagination.limit ?? FALLBACK_PAGE_SIZE, factor),
+      [config?.defaultPagination.limit, factor],
+    )
+    const { containerRef: gridContainerRef, height: gridHeight } = useViewportTableHeight({
+      enabled: !toolbar.fullscreen,
+      maxHeight: maxGridHeight,
+    })
+
     let content: ReactNode
     if (isPending) {
       content = (
@@ -442,10 +466,9 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             ) : null}
 
             <div
-              className={cn(
-                'min-h-0 w-full',
-                toolbar.fullscreen ? 'flex-1' : 'h-[600px]',
-              )}
+              ref={gridContainerRef}
+              className={cn('min-h-0 w-full', toolbar.fullscreen && 'flex-1')}
+              style={gridHeight === null ? undefined : { height: gridHeight }}
             >
               {content}
             </div>

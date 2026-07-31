@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/routes/protected-route'
 import { AppLayout } from '@/layouts/app-layout'
 import { MigrationRouteGuard } from '@/features/migrations/migration-route-guard'
 import { buildModuleRoutes } from '@/features/modules/module-routes'
+import ModuleDetailPage from '@/features/modules/module-detail-page'
 
 const LoginPage = lazy(() => import('@/pages/login-page'))
 const ForgotPasswordPage = lazy(() => import('@/pages/forgot-password-page'))
@@ -43,6 +44,8 @@ const OpportunityStatusesPage = lazy(() => import('@/pages/opportunity-statuses-
 const OpportunityWorkflowsPage = lazy(() => import('@/pages/opportunity-workflows-page'))
 const QuoteStatusesPage = lazy(() => import('@/pages/quote-statuses-page'))
 const QuotesPage = lazy(() => import('@/pages/quotes-page'))
+const ContractStatusesPage = lazy(() => import('@/pages/contract-statuses-page'))
+const ContractsPage = lazy(() => import('@/pages/contracts-page'))
 const CommissionConfigurationsPage = lazy(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazy(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazy(() => import('@/pages/reward-types-page'))
@@ -224,6 +227,24 @@ export const router = createBrowserRouter([
           {
             path: 'quotes',
             element: <QuotesPage />,
+          },
+          {
+            path: 'contract-statuses',
+            element: <ContractStatusesPage />,
+          },
+          {
+            path: 'contracts',
+            element: <ContractsPage />,
+          },
+          // A contract is never created nor deleted by hand (spec 0072 D-6):
+          // `contracts` sets `generateRoutes: false` on its `moduleScreen`, so
+          // `buildModuleRoutes()` below generates NO route for this domain.
+          // Only the read-only detail route is added, by hand, mounting the
+          // generic `ModuleDetailPage` directly (mirrors how `module-routes.tsx`
+          // itself imports it, non-lazy, since it takes a `domain` prop).
+          {
+            path: 'contracts/:id',
+            element: <ModuleDetailPage domain="contracts" />,
           },
           {
             path: 'commission-configurations',

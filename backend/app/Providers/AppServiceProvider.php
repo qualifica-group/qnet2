@@ -16,6 +16,8 @@ use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contact;
+use App\Models\Contract;
+use App\Models\ContractStatus;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\DocumentLayout;
@@ -159,6 +161,12 @@ class AppServiceProvider extends ServiceProvider
             // (Model::getMorphClass()/MorphOneOrMany::__construct) before adding
             // it — it is not a guess. No other file in this list was touched.
             'document_layout' => DocumentLayout::class,
+            // Spec 0072 (contracts module): Contract/ContractStatus both use
+            // LogsModelActivity — same reasoning as document_layout above.
+            // Contract is also a HasAttachments owner, so this 'contract'
+            // alias must match config('attachments.attachable_types').
+            'contract' => Contract::class,
+            'contract_status' => ContractStatus::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

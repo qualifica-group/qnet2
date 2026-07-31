@@ -8,9 +8,13 @@ namespace App\Enums;
  * on "Chiuso con successo" (`Won`) plus the opportunity-only terminal row
  * "Persa" (`Lost`, ALWAYS last — App\Models\OpportunityStatus::SYSTEM_TAIL_KEYS).
  * Reward statuses (spec 0060) carry a single HEAD row instead, "In attesa"
- * (`Pending`, App\Models\RewardStatus::SYSTEM_HEAD_KEY — no tail). Persisted
- * as `pipeline_statuses.system_key`/`opportunity_statuses.system_key`/
- * `reward_statuses.system_key` (nullable — custom rows have none). Never
+ * (`Pending`, App\Models\RewardStatus::SYSTEM_HEAD_KEY — no tail). Contract
+ * statuses (spec 0072, D-2) carry a HEAD row, "Da validare" (`New`), plus a
+ * three-row TAIL — "Sospeso" (`Suspended`), "Annullato" (`Cancelled`),
+ * "Disdetto" (`Terminated`) — App\Models\ContractStatus::SYSTEM_TAIL_KEYS, in
+ * that declared order. Persisted as `pipeline_statuses.system_key`/
+ * `opportunity_statuses.system_key`/`reward_statuses.system_key`/
+ * `contract_statuses.system_key` (nullable — custom rows have none). Never
  * mass-assignable (App\Services\Statuses\SystemStatusGuard/StatusOrderManager
  * are the only writers).
  */
@@ -21,4 +25,7 @@ enum StatusSystemKey: string
     case Won = 'won';
     case Lost = 'lost';
     case Pending = 'pending';
+    case Suspended = 'suspended';
+    case Cancelled = 'cancelled';
+    case Terminated = 'terminated';
 }

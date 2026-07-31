@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0072 — Modulo Contratti.
+  Contract-first: il data_contract qui sotto e' congelato PRIMA del dispatch.
+  Backend e frontend lavorano in parallelo contro questa shape, senza messaggiarsi.
+-->
+<spec id="0072-contracts-module" status="draft" owner="utente" date="2026-07-31">
+
+  <goal>
+    Rendere gestibile come "Contratto" un preventivo che ha raggiunto uno stato di categoria
+    "Chiuso positivo", senza duplicarne alcun dato: lo stesso record `quotes` resta l'unica
+    fonte di verita' per cliente, opportunita', prodotti, importi, commissioni e documenti,
+    mentre i soli dati contrattuali aggiuntivi (stato, date di ciclo di vita, disdetta, note)
+    vivono in una relazione uno-a-uno dedicata, con un proprio configuratore di stati, la
+    propria tabella backend-driven, la propria vista di dettaglio e le proprie azioni di
+    dominio (validazione, programmazione, disdetta, riattivazione).
+  </goal>
+
+  <context>
+    <!-- Fatti tecnici VERIFICATI sul codice reale (non ipotizzati). -->
+
+    <fact>
+      `App\Enums\QuoteStatusGroup` (open | pending | closed_won | closed_lost) e' il
+      vocabolario di `quote_statuses.group`, introdotto il 2026-07-31. "Chiuso positivo"
+      = `closed_won`. La riga di sistema "Accettata" (`system_key = 'won'`) e' l'unica
+      seminata in quel gruppo; una riga custom classificata `closed_won` dall'utente
+      e' altrettanto valida ed e' il trigger.
+    </fact>
+    <fact>
+      `quotes` NON ha una colonna data: la "data preventivo" e' `quotes.created_at`.
+      Colonne reali: id, code (QUO-0001, unique), title, opportunity_id, quote_status_id,
+      commercial_id (referents), reporter_id (referents), supervisor_id (users),
+      company_id, company_site_id, operational_site_id, layout_id, payment_method_id,
+      internal_notes, revenue_net, revenue_vat, cost_net, cost_vat, margin_net, timestamps.
+      Gli aggregati sono PERSISTITI e riscritti dal service a ogni write (spec 0065 D-9);
+      il lordo (`gross`) e' sempre derivato a runtime, mai persistito.
+    </fact>
+    <fact>
+      Il cliente NON e' sul preventivo: la catena e' `quotes.opportunity_id` ->
+      `opportunities.registry_id` -> `registries`. `Opportunity` usa
+      `HasAttachments`, `HasNotes`, `LogsModelActivity`.
+    </fact>
+    <fact>
+      Configuratori di stato: `App\Services\Statuses\SystemStatusGuard`
+      (assertDeletable / assertUpdatable — una riga di sistema accetta SOLO name e color;
+      resolveNewStatusId per system_key) e `App\Services\Statuses\StatusOrderManager`
+      (placeNew / reorder; invariante SYSTEM_HEAD_KEY=0, custom=10,20,..., poi
+      SYSTEM_TAIL_KEYS nell'ordine dichiarato). Entrambi sono generici su una union di
+      class-string: vanno estesi con `ContractStatus`, non clonati.
+      `App\Enums\StatusSystemKey` e' l'enum condiviso delle system_key.
+    </fact>
+    <fact>
+      Tabelle backend-driven: `App\Tables\AbstractTableDefinition` + registrazione di UNA
+      riga in `config/tables.php` (`'contracts' => ContractsTableDefinition::class`).
+      Endpoint generici gia' esistenti, nessuna route nuova: GET `/api/tables/{domain}/columns`,
+      POST `/api/tables/{domain}/rows`, POST `/api/tables/{domain}/values`,
+      POST `/api/tables/{domain}/bulk-delete`, preferenze/filtri/filter-views, ed export via
+      POST `/api/exports/{domain}` + GET `/api/exports/{domain}/{exportRun}/download`.
+      Ordinamento/filtri derivati passano da `applyDerivedSort`/`applyDerivedFilter`/
+      `distinctValues`: allow-list di colonne, mai input grezzo in SQL.
+    </fact>
+    <fact>
+      Permessi: `App\Policies\Abstracts\BasePolicy` genera `{resource}.{ability}` per
+      `abilities()` = viewAny, view, create, update, delete, export, import, viewActivity.
+      Il comando `permissions:sync` raccoglie i permessi da `config/navigation.php` +
+      da ogni Policy che estende BasePolicy: un'ability custom aggiunta a `abilities()`
+      viene sincronizzata automaticamente, senza toccare seeder.
+      Permessi per-campo: `App\Authorization\AbstractResourceAuthorization`
+      (fields() / actions() / fieldPermissionCeiling() / actionPermissions()), esposti da
+      GET `/api/meta/{resource}` e nel blocco `permissions` di ogni Resource.
+    </fact>
+    <fact>
+      Documenti: `attachments` polimorfico, allow-list in `config('attachments.attachable_types')`
+      (alias stabile -> classe). Endpoint generici gia' esistenti (`/api/attachments`,
+      `/{id}/download`, `/{id}/view`). Frontend: `features/attachments/documents-section.tsx`
+      espone `DocumentsSection({ resource, id, collection?, canUpload, canDelete })` e non
+      fa gating proprio — decide il chiamante.
+    </fact>
+    <fact>
+      Navigazione: `config/navigation.php` (backend-driven, filtrata server-side per
+      `permission`). Il frontend non ha alcun array di voci di menu. Icone: alias stringa
+      risolto da `frontend/src/features/navigation/icon-map.ts`.
+      Schermate: registry FE auto-collezionato via `import.meta.glob('../*/*-screens.tsx')`
+      — basta esportare `moduleScreen: ModuleRegistryEntry` da `features/&lt;modulo&gt;/&lt;nome&gt;-screens.tsx`.
+      Breadcrumb: `frontend/src/routes/breadcrumbs.tsx` (`SEGMENT_LABELS`).
+    </fact>
+    <fact>
+      Default esclusivo: precedente reale in `App\Services\DocumentLayouts\DocumentLayoutDefaultManager`
+      (`is_default` + `is_active`, invariante mantenuta in transazione perche' non
+      esprimibile come indice unique parziale portabile su MySQL+SQLite).
+    </fact>
+
+    <!-- DECISIONI DI BUSINESS fornite dall'utente il 2026-07-31 (non deducibili dal repo). -->
+
+    <decision id="D-1">
+      Il contratto NON ha un codice proprio: la colonna "codice" mostra `quotes.code`
+      (QUO-0001). Nessuna colonna `code` su `contracts`, nessun generatore sequenziale.
+    </decision>
+    <decision id="D-2">
+      Mappatura stati iniziali su categoria di sistema, e quali sono righe di sistema
+      (non eliminabili, label/colore modificabili):
+        - "Da validare"    open        SISTEMA (system_key `new`, HEAD, is_default = true)
+        - "Da programmare" pending     riga normale (eliminabile se non usata)
+        - "Programmato"    pending     riga normale
+        - "In scadenza"    pending     riga normale
+        - "Sospeso"        pending     SISTEMA (system_key `suspended`, TAIL[0])
+        - "Annullato"      closed_lost SISTEMA (system_key `cancelled`, TAIL[1])
+        - "Disdetto"       closed_lost SISTEMA (system_key `terminated`, TAIL[2])
+      Conseguenza accettata: "Programmato" e "Da programmare" sono righe eliminabili, quindi
+      NESSUNA azione di dominio puo' risolverle per system_key. Le azioni "Valida" e
+      "Programma" ricevono percio' lo stato di destinazione dal client (vedi data_contract),
+      mentre "Disdici" ha un default di sistema (`terminated`) perche' quella riga esiste
+      sempre.
+    </decision>
+    <decision id="D-3">
+      Riapertura del preventivo (esce da `closed_won`): il contratto RESTA visibile nel
+      modulo, passa automaticamente allo stato di sistema "Sospeso", memorizza lo stato
+      precedente e la data di sospensione, e mostra un badge di avviso. Il rientro del
+      preventivo in `closed_won` NON riattiva da solo: serve l'azione esplicita
+      "Riattiva contratto", gated su `contracts.reactivate`, che ripristina lo stato
+      precedente. Nessun dato contrattuale viene mai cancellato automaticamente.
+    </decision>
+    <decision id="D-4">
+      Indicatori "in scadenza" / "da rinnovare": calcolati server-side confrontando
+      `expiry_date` / `renewal_date` con la data odierna, con soglia configurabile in
+      `config/contracts.php` (default 30 giorni). Lo stato "In scadenza" resta comunque
+      selezionabile a mano ed e' indipendente dal badge calcolato.
+    </decision>
+    <decision id="D-5">
+      `App\Enums\ContractStatusGroup` e' un enum NUOVO e specifico del modulo
+      (open | pending | closed_won | closed_lost), non un riuso di `QuoteStatusGroup`.
+      Stesso precedente gia' applicato il 2026-07-31 (`QuoteStatusGroup` accanto a
+      `StatusGroup` e `WorkflowStatusGroup`): allargare o condividere un enum di un altro
+      modulo lo accoppierebbe a questo.
+    </decision>
+    <decision id="D-6">
+      Un contratto non si crea ne' si elimina a mano: nasce solo dall'automazione e vive
+      finche' vive il preventivo. `ContractPolicy::abilities()` NON espone
+      `create`/`delete`/`import`. `contracts.quote_id` e' `cascadeOnDelete`: eliminare il
+      preventivo elimina la riga contrattuale (l'unico caso in cui sparisce).
+    </decision>
+    <decision id="D-7">
+      "Data accettazione" e' scritta UNA SOLA VOLTA, alla prima creazione del contratto
+      (data odierna). Una sospensione e successiva riattivazione, o un secondo passaggio
+      in `closed_won`, non la riscrivono mai.
+    </decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migration `contract_statuses` (7 righe seminate) e `contracts` (1-1 con `quotes`).</item>
+      <item>Enum `ContractStatusGroup`; nuovi casi `Suspended`/`Cancelled`/`Terminated` in `StatusSystemKey`.</item>
+      <item>Estensione di `SystemStatusGuard` e `StatusOrderManager` al nuovo model (union di class-string).</item>
+      <item>Model `Contract`, `ContractStatus` (+ factory), relazione `Quote::contract()`.</item>
+      <item>Configuratore Stati Contratto full-CRUD + for-select + reorder + default esclusivo.</item>
+      <item>CRUD parziale Contratti (show + PATCH dati editabili) e 4 azioni di dominio.</item>
+      <item>Automazione sulla transizione di stato del preventivo (create + update), idempotente.</item>
+      <item>Policy, FormRequest, DataObject, Resource, Authorization (permessi per-campo) per entrambe le risorse.</item>
+      <item>`ContractsTableDefinition` + `ContractStatusesTableDefinition` + cataloghi colonne/filtri; registrazione in `config/tables.php`.</item>
+      <item>Voci in `config/navigation.php`; alias `contract` in `config/attachments.php`; nuovo `config/contracts.php`.</item>
+      <item>Frontend: `features/contracts/` (tabella, vista dettaglio, azioni con dialog, documenti) e `features/contract-statuses/` (configuratore).</item>
+      <item>Estrazione del componente righe-preventivo in sola lettura da `quote-detail.tsx` a modulo condiviso, per riuso senza duplicazione.</item>
+      <item>Traduzioni IT/EN; test Pest e Vitest mappati 1:1 sugli AC.</item>
+    </in>
+    <out>
+      <item>Qualsiasi duplicazione di preventivo, righe prodotto, cliente, opportunita', importi, commissioni o documenti: il contratto NON copia nulla.</item>
+      <item>Creazione o eliminazione manuale di un contratto (D-6); import di contratti.</item>
+      <item>Modifica delle righe prodotto/commissioni dalla vista Contratto: sono in sola lettura e restano di competenza del modulo Offerte.</item>
+      <item>Configuratore di workflow con criteri e transizioni obbligate (equivalente `opportunity_workflows`): fuori scope, come gia' per gli stati offerta.</item>
+      <item>Notifiche, e-mail o job schedulati sulle scadenze: gli indicatori sono calcolati a lettura (D-4), non c'e' alcun invio.</item>
+      <item>Generazione `.docx` del contratto (il layout documenti resta legato al preventivo, spec 0070).</item>
+      <item>Rinnovo automatico che crea un nuovo contratto o un nuovo preventivo alla scadenza.</item>
+      <item>Modifica dello stato del preventivo dalla vista Contratto.</item>
+      <item>Custom fields e note collaborative sul contratto.</item>
+      <item>Stats panel del modulo Contratti.</item>
+    </out>
+  </scope>
+
+  <data_model>
+    <table name="contract_statuses">
+      <column>id</column>
+      <column>name — string(191), unique</column>
+      <column>description — string(500), nullable</column>
+      <column>color — string(32)</column>
+      <column>sort_order — integer, default 0 (server-managed: StatusOrderManager)</column>
+      <column>is_active — boolean, default true</column>
+      <column>is_default — boolean, default false (esclusivo, invariante applicativa)</column>
+      <column>system_key — string(16), nullable, unique (mai mass-assignable)</column>
+      <column>group — string(16), default 'open' (ContractStatusGroup)</column>
+      <column>timestamps</column>
+      <index>['is_active', 'sort_order']</index>
+      <seed>
+        Le 7 righe di D-2 sono seminate NELLA MIGRATION (stesso precedente di
+        `create_quote_statuses_table`), cosi' esistono anche su un DB creato senza seeder.
+        "Da validare" e' l'unica con `is_default = true`.
+      </seed>
+    </table>
+
+    <table name="contracts">
+      <column>id</column>
+      <column>quote_id — FK quotes, UNIQUE, cascadeOnDelete (D-6)</column>
+      <column>contract_status_id — FK contract_statuses, NOT NULL, restrictOnDelete</column>
+      <column>accepted_at — date, nullable (scritta una sola volta, D-7)</column>
+      <column>validated_at — date, nullable</column>
+      <column>validated_by — FK users, nullable, nullOnDelete</column>
+      <column>renewal_date — date, nullable</column>
+      <column>expiry_date — date, nullable</column>
+      <column>terminated_at — date, nullable</column>
+      <column>terminated_by — FK users, nullable, nullOnDelete</column>
+      <column>termination_reason — text, nullable</column>
+      <column>payment_notes — text, nullable</column>
+      <column>comments — text, nullable</column>
+      <column>suspended_at — datetime, nullable (D-3)</column>
+      <column>status_before_suspension_id — FK contract_statuses, nullable, nullOnDelete (D-3)</column>
+      <column>timestamps</column>
+      <index>contract_status_id; expiry_date; renewal_date</index>
+    </table>
+
+    <fillable>
+      `Contract::$fillable` contiene SOLO i campi che un PATCH puo' toccare:
+      contract_status_id, renewal_date, expiry_date, payment_notes, comments.
+      quote_id, accepted_at, validated_at, validated_by, terminated_at, terminated_by,
+      termination_reason, suspended_at, status_before_suspension_id sono scritti
+      esclusivamente dal service (forceFill/assegnazione diretta), mai mass-assignable.
+    </fillable>
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope di progetto: { success, message, data } (+ `permissions` dove indicato). -->
+
+    <endpoint method="GET" path="/api/contracts/{contract}">
+      <request>nessun parametro</request>
+      <response status="200">
+        data: {
+          id, quote_id,
+          quote: { id, code, title, created_at, revenue_net, revenue_vat, revenue_gross, cost_net, margin_net },
+          registry: { id, name } | null,
+          opportunity: { id, name } | null,
+          company: { id, name } | null,
+          company_site: { id, name } | null,
+          operational_site: { id, label } | null,
+          commercial: { id, name } | null,
+          reporter: { id, name } | null,
+          supervisor: { id, name } | null,
+          payment_method: { id, name } | null,
+          contract_status_id,
+          contract_status: { id, name, color, group },
+          accepted_at, validated_at, renewal_date, expiry_date, terminated_at,
+          termination_reason, payment_notes, comments,
+          validated_by: { id, name } | null,
+          terminated_by: { id, name } | null,
+          suspended_at,
+          status_before_suspension: { id, name, color, group } | null,
+          is_suspended: boolean,
+          alert: 'expiring' | 'renewal_due' | null,
+          days_to_expiry: int | null,
+          days_to_renewal: int | null,
+          offer_lines: [ QuoteLineResource ],
+          summary: { revenue: {net,vat,gross}, cost: {net,vat,gross}, margin: {net} },
+          created_at, updated_at
+        }
+        permissions: { resource, fields, actions }
+      </response>
+      <errors>403 senza `contracts.view`; 404 id inesistente</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/contracts/{contract}">
+      <request>
+        parziale, tutte le chiavi opzionali:
+        contract_status_id: int (exists, deve essere is_active), renewal_date: date|null,
+        expiry_date: date|null, payment_notes: string|null, comments: string|null
+      </request>
+      <response status="200">identica a GET /api/contracts/{contract}</response>
+      <errors>403 senza `contracts.update`; 422 stato inesistente/non attivo; 422 se un campo e' readonly per il ruolo (permessi per-campo)</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/validate">
+      <request>
+        validated_at: date (opzionale, default oggi; mai futura),
+        contract_status_id: int (opzionale — stato attivo verso cui portare il contratto)
+      </request>
+      <response status="200">identica a GET /api/contracts/{contract}</response>
+      <errors>403 senza `contracts.validate`; 422 se gia' validato; 422 se il contratto e' sospeso; 422 data futura</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/schedule">
+      <request>
+        expiry_date: date (obbligatoria),
+        renewal_date: date (opzionale, non successiva a expiry_date),
+        contract_status_id: int (obbligatorio, stato attivo — D-2: "Programmato" non e' risolvibile per system_key)
+      </request>
+      <response status="200">identica a GET /api/contracts/{contract}</response>
+      <errors>403 senza `contracts.schedule`; 422 se il contratto e' sospeso o gia' disdetto; 422 renewal_date &gt; expiry_date</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/terminate">
+      <request>
+        terminated_at: date (obbligatoria, mai futura),
+        termination_reason: string (obbligatoria, max 2000),
+        contract_status_id: int (opzionale — default: riga di sistema `terminated`; se fornito DEVE appartenere al gruppo closed_lost)
+      </request>
+      <response status="200">identica a GET /api/contracts/{contract}</response>
+      <errors>403 senza `contracts.terminate`; 422 se gia' disdetto; 422 se lo stato indicato non e' closed_lost; 422 data futura</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/reactivate">
+      <request>nessun body</request>
+      <response status="200">identica a GET /api/contracts/{contract}</response>
+      <errors>403 senza `contracts.reactivate`; 422 se il contratto non e' sospeso; 422 se il preventivo non e' tornato in un gruppo closed_won</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contract-statuses/for-select">
+      <request>search?: string, ids?: int[], offset?: int, limit?: int (standard ADR 0011)</request>
+      <response status="200">{ items: [{ id, label, subtitle }], total, offset, limit }</response>
+      <errors>401 non autenticato (nessun gate di permesso, emendamento ADR 0011 del 2026-07-31)</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/contract-statuses[/{contractStatus}]">
+      <request>
+        store: name (req, unique), description?, color (req), group (req, ContractStatusGroup),
+               is_active? (default true), is_default? (default false)
+        update: parziale sugli stessi campi. `sort_order` e `system_key` NON sono accettati.
+      </request>
+      <response status="200|201">
+        data: { id, name, description, color, sort_order, is_active, is_default, system_key, group, created_at, updated_at }
+        permissions: { resource, fields, actions }
+      </response>
+      <errors>
+        403 senza il permesso corrispondente;
+        422 su riga di sistema per qualsiasi campo diverso da name/color (SystemStatusGuard);
+        422 DELETE di una riga di sistema;
+        409 DELETE di uno stato referenziato da almeno un contratto;
+        422 is_default = true con is_active = false;
+        422 tentativo di azzerare is_default direttamente (si riassegna, non si toglie)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contract-statuses/reorder">
+      <request>ordered_ids: int[] — esattamente l'insieme delle righe NON di sistema</request>
+      <response status="200">data: [{ id, sort_order, system_key }]</response>
+      <errors>403 senza `contract-statuses.update`; 422 se l'insieme non e' esatto</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/tables/contracts/*">
+      <request>engine generico, nessuna route nuova (registrazione in `config/tables.php`)</request>
+      <response status="200">
+        colonne (in quest'ordine): code, title, registry, opportunity, commercial, reporter,
+        supervisor, contract_status, quote_date, accepted_at, validated_at, renewal_date,
+        expiry_date, terminated_at, revenue_net, revenue_vat, revenue_gross, alert.
+        row: come mapRow, con `alert` calcolato (D-4) e `actions` allegate dall'engine.
+      </response>
+      <errors>403 senza `contracts.viewAny`; 404 dominio non registrato</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|DELETE" path="/api/attachments">
+      <request>
+        Documenti contratto: attachable_type = 'contract', attachable_id = contract.id,
+        collection = 'documents' (upload multiplo, download, anteprima, delete).
+        Documenti opportunita': attachable_type = 'opportunity',
+        attachable_id = contract.quote.opportunity_id — SOLA LETTURA (nessun upload/delete dal modulo).
+      </request>
+      <response status="200">shape esistente di AttachmentResource (invariata)</response>
+      <errors>403 senza `attachments.*`; 422 alias non in allow-list</errors>
+    </endpoint>
+  </data_contract>
+
+  <business_rules>
+    <rule id="BR-1">
+      Automazione (idempotente). `QuoteService::create()` e `QuoteService::update()`
+      delegano a `App\Services\Contracts\ContractLifecycleManager`, chiamato DENTRO la
+      transazione gia' esistente, confrontando il gruppo dello stato PRIMA e DOPO la write:
+        - non-closed_won -> closed_won: crea la riga `contracts` se e solo se non esiste
+          (`quote_id` unique + firstOrCreate), con lo stato `is_default` attivo (fallback:
+          riga di sistema `new`), `accepted_at` = oggi (D-7), e scrive l'activity log
+          `contract.created`;
+        - closed_won -> non-closed_won: se la riga esiste e non e' gia' sospesa, salva
+          `status_before_suspension_id` = stato corrente, imposta lo stato di sistema
+          `suspended`, `suspended_at` = adesso, activity log `contract.suspended`.
+          Non cancella nulla;
+        - closed_won -> closed_won o nessun cambio di gruppo: nessun effetto.
+    </rule>
+    <rule id="BR-2">
+      Riattivazione (D-3): consentita solo se `suspended_at` non e' null E il preventivo
+      e' attualmente in un gruppo `closed_won`. Ripristina
+      `status_before_suspension_id`, azzera `suspended_at` e `status_before_suspension_id`,
+      activity log `contract.reactivated`. Se lo stato precedente nel frattempo e' stato
+      disattivato, ricade sullo stato `is_default` attivo.
+    </rule>
+    <rule id="BR-3">
+      Validazione: scrive `validated_at` (default oggi) e `validated_by` = attore,
+      opzionalmente cambia stato, e scrive l'activity log `contract.validated` con
+      proprieta' { validated_at, validated_by, contract_status_id }. Non ripetibile.
+    </rule>
+    <rule id="BR-4">
+      Disdetta: richiede data e motivazione, scrive `terminated_at`, `termination_reason`,
+      `terminated_by` = attore, e porta il contratto a uno stato di gruppo `closed_lost`
+      (default: riga di sistema `terminated`). Non cancella nulla: date, validazione e
+      storico restano leggibili. Activity log `contract.terminated`.
+    </rule>
+    <rule id="BR-5">
+      Default esclusivo su `contract_statuses` (stesso modello di DocumentLayoutDefaultManager,
+      in transazione): la PRIMA riga creata e' default; impostare `is_default = true`
+      azzera il flag su ogni altra riga; `is_default = true` richiede `is_active = true`;
+      una riga predefinita non puo' essere disattivata ne' perdere il flag con un PATCH
+      diretto (si riassegna il default a un'altra riga).
+    </rule>
+    <rule id="BR-6">
+      Indicatori (D-4), calcolati a lettura, mai persistiti:
+      `alert = 'expiring'` se `expiry_date` cade tra oggi e oggi + `config('contracts.expiring_within_days')`;
+      `alert = 'renewal_due'` se `renewal_date` cade tra oggi e oggi + `config('contracts.renewal_within_days')`;
+      la scadenza ha precedenza sul rinnovo se entrambe ricadono nella finestra;
+      un contratto in stato di gruppo `closed_lost` non produce mai alert.
+    </rule>
+    <rule id="BR-7">
+      Le righe prodotto mostrate nella vista Contratto sono `quote.offerLines` in SOLA
+      LETTURA, rese con lo stesso componente della vista Offerta (estratto e condiviso,
+      non duplicato). Nessun endpoint di scrittura sulle righe e' esposto dal modulo.
+    </rule>
+    <rule id="BR-8">
+      Permessi. `ContractPolicy::abilities()` = [viewAny, view, update, export, viewActivity,
+      validate, terminate, schedule, changeStatus, reactivate] — senza create/delete/import
+      (D-6). `ContractStatusPolicy` usa le abilities standard di BasePolicy.
+      Tutti sincronizzati da `permissions:sync` senza modifiche ai seeder.
+    </rule>
+  </business_rules>
+
+  <acceptance_criteria>
+    <!-- Automazione -->
+    <criterion id="AC-001">Dato un preventivo con stato di gruppo `open`, quando il suo stato passa a una riga di gruppo `closed_won`, allora esiste una riga `contracts` con `quote_id` = quel preventivo, `contract_status_id` = lo stato `is_default` attivo e `accepted_at` = data odierna. (Pest)</criterion>
+    <criterion id="AC-002">Dato lo stesso preventivo, quando lo stato viene riportato a `closed_won` una seconda volta (dopo essere uscito e rientrato), allora `contracts` contiene ancora UNA sola riga per quel preventivo e `accepted_at` e' invariata rispetto alla prima creazione. (Pest)</criterion>
+    <criterion id="AC-003">Dato un preventivo creato direttamente con uno stato di gruppo `closed_won`, quando la POST /api/quotes va a buon fine, allora la riga contrattuale esiste gia' nella stessa transazione. (Pest)</criterion>
+    <criterion id="AC-004">Dato un contratto in stato "Programmato", quando il preventivo esce da `closed_won`, allora il contratto ha `contract_status_id` = riga di sistema `suspended`, `status_before_suspension_id` = id di "Programmato", `suspended_at` valorizzato, e nessun altro campo contrattuale e' cambiato. (Pest)</criterion>
+    <criterion id="AC-005">Dato un contratto sospeso, quando il preventivo rientra in `closed_won`, allora il contratto resta sospeso (nessuna riattivazione automatica) e compare comunque nell'elenco Contratti. (Pest)</criterion>
+    <criterion id="AC-006">Dato un contratto sospeso il cui preventivo e' tornato `closed_won`, quando un utente con `contracts.reactivate` chiama POST /reactivate, allora lo stato torna quello precedente, `suspended_at` e `status_before_suspension_id` sono null, e viene scritta una activity `contract.reactivated`. (Pest)</criterion>
+    <criterion id="AC-007">Dato un contratto sospeso il cui preventivo NON e' `closed_won`, quando si chiama POST /reactivate, allora la risposta e' 422 e nulla cambia. (Pest)</criterion>
+    <criterion id="AC-008">Dato un preventivo con contratto, quando il preventivo viene eliminato, allora la riga `contracts` viene eliminata a cascata e nessun altro contratto e' toccato. (Pest)</criterion>
+
+    <!-- Azioni di dominio -->
+    <criterion id="AC-009">Dato un contratto non validato, quando un utente con `contracts.validate` chiama POST /validate senza body, allora `validated_at` = oggi, `validated_by` = quell'utente, ed esiste una activity `contract.validated` con quelle proprieta'. (Pest)</criterion>
+    <criterion id="AC-010">Dato un contratto gia' validato, quando si chiama di nuovo POST /validate, allora la risposta e' 422 e `validated_at`/`validated_by` restano invariati. (Pest)</criterion>
+    <criterion id="AC-011">Dato un utente senza `contracts.validate`, quando chiama POST /validate, allora la risposta e' 403 e nessun campo e' scritto. (Pest)</criterion>
+    <criterion id="AC-012">Dato un contratto attivo, quando si chiama POST /schedule con `expiry_date`, `renewal_date` e uno `contract_status_id` attivo, allora le due date e lo stato sono persistiti e viene scritta una activity `contract.scheduled`. (Pest)</criterion>
+    <criterion id="AC-013">Dato POST /schedule con `renewal_date` successiva a `expiry_date`, allora la risposta e' 422 e nulla e' persistito. (Pest)</criterion>
+    <criterion id="AC-014">Dato un contratto attivo, quando si chiama POST /terminate con data e motivazione senza `contract_status_id`, allora lo stato diventa la riga di sistema `terminated` (gruppo closed_lost), `terminated_at`/`termination_reason`/`terminated_by` sono persistiti, ed esiste una activity `contract.terminated`. (Pest)</criterion>
+    <criterion id="AC-015">Dato POST /terminate con un `contract_status_id` di gruppo diverso da `closed_lost`, allora la risposta e' 422. (Pest)</criterion>
+    <criterion id="AC-016">Dato un contratto disdetto, quando si legge GET /api/contracts/{id}, allora `validated_at`, `accepted_at` e le date di programmazione sono ancora presenti (storico mantenuto). (Pest)</criterion>
+    <criterion id="AC-017">Dato POST /validate con `validated_at` futura, o POST /terminate con `terminated_at` futura, allora la risposta e' 422 sul campo data. (Pest)
+      RETTIFICA 2026-07-31: la formulazione originale includeva anche /schedule. Era un errore della spec, non dell'implementazione: programmare un contratto significa per definizione fissare `expiry_date`/`renewal_date` NEL FUTURO, e i doc dei tre endpoint nel data_contract dichiarano "mai futura" solo per validate e terminate. Il vincolo NON si applica a /schedule.</criterion>
+
+    <!-- Configuratore stati -->
+    <criterion id="AC-018">Dopo la migration, `contract_statuses` contiene esattamente le 7 righe di D-2, con i `group` e i `system_key` indicati, e "Da validare" e' l'unica con `is_default = true`. (Pest)</criterion>
+    <criterion id="AC-019">Dato uno stato di sistema, quando si invia PATCH con solo `name` e `color`, allora la risposta e' 200 e i valori sono aggiornati. (Pest)</criterion>
+    <criterion id="AC-020">Dato uno stato di sistema, quando si invia PATCH con `group` (o qualsiasi altro campo), allora la risposta e' 422 e nulla e' aggiornato. (Pest)</criterion>
+    <criterion id="AC-021">Dato uno stato di sistema, quando si invia DELETE, allora la risposta e' 422. (Pest)</criterion>
+    <criterion id="AC-022">Dato uno stato NON di sistema referenziato da almeno un contratto, quando si invia DELETE, allora la risposta e' 409 e la riga esiste ancora. (Pest)</criterion>
+    <criterion id="AC-023">Dato uno stato NON di sistema non referenziato, quando si invia DELETE, allora la risposta e' 204 e la riga non esiste piu'. (Pest)</criterion>
+    <criterion id="AC-024">Dato uno stato con `is_default = true`, quando si crea o aggiorna un altro stato con `is_default = true`, allora il primo perde il flag nella stessa transazione ed esiste esattamente una riga predefinita. (Pest)</criterion>
+    <criterion id="AC-025">Dato POST/PATCH con `is_default = true` e `is_active = false`, allora la risposta e' 422. (Pest)</criterion>
+    <criterion id="AC-026">Dato POST /api/contract-statuses/reorder con l'insieme esatto delle righe non di sistema, allora "Da validare" resta a `sort_order` 0 e "Sospeso"/"Annullato"/"Disdetto" restano in coda in quest'ordine. (Pest)</criterion>
+    <criterion id="AC-027">Dato POST /reorder con un id di sistema o un id mancante, allora la risposta e' 422 e nessun `sort_order` cambia. (Pest)</criterion>
+    <criterion id="AC-028">Dato un utente autenticato senza alcun permesso di modulo, quando chiama GET /api/contract-statuses/for-select, allora la risposta e' 200 (nessun gate di permesso, emendamento ADR 0011). (Pest)</criterion>
+
+    <!-- Tabella, filtri, export -->
+    <criterion id="AC-029">Dato GET /api/tables/contracts/columns, allora l'elenco contiene, in quest'ordine, le colonne code, title, registry, opportunity, commercial, reporter, supervisor, contract_status, quote_date, accepted_at, validated_at, renewal_date, expiry_date, terminated_at, revenue_net, revenue_vat, revenue_gross, alert. (Pest)</criterion>
+    <criterion id="AC-030">Dato POST /api/tables/contracts/rows con ordinamento su `registry`, `opportunity`, `commercial`, `reporter`, `supervisor` o `contract_status`, allora l'ordinamento e' applicato server-side e nessun input dell'utente raggiunge una espressione SQL grezza. (Pest)</criterion>
+    <criterion id="AC-031">Dato POST /api/tables/contracts/rows con filtro `set` su `contract_status`, allora sono restituite solo le righe con quegli stati. (Pest)</criterion>
+    <criterion id="AC-032">Dato un contratto con `expiry_date` entro la soglia configurata, quando si leggono le righe, allora la riga espone `alert = 'expiring'`; con `renewal_date` entro soglia e nessuna scadenza imminente, `alert = 'renewal_due'`; altrimenti null. (Pest)</criterion>
+    <criterion id="AC-033">Dato un contratto in stato di gruppo `closed_lost` con `expiry_date` entro soglia, allora `alert` e' null. (Pest)</criterion>
+    <criterion id="AC-034">Dato POST /api/tables/contracts/rows con ricerca globale sul codice o sul titolo del preventivo, allora sono restituite le righe corrispondenti. (Pest)</criterion>
+    <criterion id="AC-035">Dato un utente senza `contracts.viewAny`, quando chiama qualunque endpoint `/api/tables/contracts/*`, allora la risposta e' 403. (Pest)</criterion>
+    <criterion id="AC-036">Dato un utente con `contracts.export`, quando avvia POST /api/exports/contracts, allora l'export produce un file con le stesse colonne visibili della tabella. (Pest)</criterion>
+    <criterion id="AC-037">Dato che il modulo non espone `create`/`delete`, quando `permissions:sync` viene eseguito, allora esistono i permessi `contracts.validate`, `contracts.terminate`, `contracts.schedule`, `contracts.changeStatus`, `contracts.reactivate` e NON esistono `contracts.create` ne' `contracts.delete`. (Pest)</criterion>
+
+    <!-- Permessi per-campo e resource -->
+    <criterion id="AC-038">Dato GET /api/meta/contracts, allora `fields` elenca contract_status_id, accepted_at, validated_at, renewal_date, expiry_date, terminated_at, termination_reason, payment_notes, comments, e `actions` elenca validate, terminate, schedule, change_status, reactivate, export, view_activity. (Pest)</criterion>
+    <criterion id="AC-039">Dato un ruolo per cui `payment_notes` e' readonly nella matrice per-campo, quando invia PATCH con `payment_notes`, allora la risposta e' 422 e il valore non cambia. (Pest)</criterion>
+    <criterion id="AC-040">Dato GET /api/contracts/{id}, allora la risposta non contiene alcun campo copiato/duplicato dal preventivo persistito su `contracts`: cliente, opportunita', ruoli commerciali, importi e righe sono proiettati dalle relazioni del preventivo. (Pest — asserzione sulle colonne reali della tabella `contracts`)</criterion>
+
+    <!-- Documenti -->
+    <criterion id="AC-041">Dato un contratto, quando si caricano piu' file con `attachable_type = 'contract'`, allora tutti risultano elencati per quel contratto e scaricabili dall'endpoint autenticato. (Pest)</criterion>
+    <criterion id="AC-042">Dato un `attachable_type` non presente in allow-list, allora l'upload e' rifiutato con 422. (Pest)</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-043">Data la vista Contratto, allora mostra titolo, codice del preventivo, badge dello stato contratto, cliente, societa'/sede, opportunita', commerciale, segnalatore, supervisore, data preventivo, accettazione, validazione, rinnovo, scadenza, disdetta, note pagamento e commenti. (Vitest)</criterion>
+    <criterion id="AC-044">Data la vista Contratto per un utente privo di `contracts.validate`, allora il pulsante "Valida contratto" non e' renderizzato. Idem per Programma/Disdici/Riattiva/Modifica con i rispettivi permessi. (Vitest)</criterion>
+    <criterion id="AC-045">Dato il dialog "Disdici contratto", quando si conferma senza motivazione o senza data, allora la mutation non parte e l'errore e' annunciato con `role="alert"` collegato al campo via `aria-describedby`/`aria-invalid`. (Vitest)</criterion>
+    <criterion id="AC-046">Data la sezione Prodotti della vista Contratto, allora rende le righe con lo stesso componente della vista Offerta, in sola lettura: nessun controllo di modifica, nessuna riga aggiungibile. (Vitest)</criterion>
+    <criterion id="AC-047">Data la vista Contratto, allora la sezione "Documenti contratto" consente upload/eliminazione solo con i permessi attachments corrispondenti, mentre "Documenti opportunita'" e' montata con `canUpload={false}` e `canDelete={false}`. (Vitest)</criterion>
+    <criterion id="AC-048">Dato un contratto sospeso, allora la vista mostra il badge "Sospeso" con il motivo e la data, e l'azione "Riattiva contratto" e' visibile solo con `contracts.reactivate`. (Vitest)</criterion>
+    <criterion id="AC-049">Data la tabella Contratti, allora una riga con `alert = 'expiring'` mostra l'indicatore visivo di scadenza e una con `alert = 'renewal_due'` quello di rinnovo, entrambi non veicolati dal solo colore (icona + testo). (Vitest)</criterion>
+    <criterion id="AC-050">Dato il form Stati contratto, allora espone nome, descrizione, colore, categoria di sistema, attivo e predefinito; su una riga di sistema i campi diversi da nome e colore sono disabilitati e l'azione di eliminazione non e' offerta. (Vitest)</criterion>
+    <criterion id="AC-051">Date le viste Contratti e Stati contratto, allora nessuna stringa e' hardcoded: tutte passano da i18next, con chiavi presenti sia in IT sia in EN. (Vitest — test di parita' delle chiavi, come `quotes-i18n.test.ts`)</criterion>
+    <criterion id="AC-052">A 375px, 768px e 1024px la vista Contratto e la tabella non producono scrollbar orizzontale sul body; le tabelle larghe scorrono nel proprio contenitore. (Verifica manuale UI + revisione responsive)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <constraint>Nessuna nuova dipendenza npm o composer. Solo cio' che e' gia' in `composer.json` / `package.json`.</constraint>
+    <constraint>Autorizzazione server-side su OGNI endpoint (Policy o `authorize()`), incluso il framework tabellare (`viewAny` della TableDefinition). L'UI nasconde, il backend autorizza.</constraint>
+    <constraint>Nessun `whereRaw`/`orderByRaw`/`groupByRaw` costruito da input utente: ordinamenti e filtri derivati partono da allow-list di colonne.</constraint>
+    <constraint>`$fillable` esplicito su entrambi i model; i campi scritti solo dal service restano fuori dal mass-assignment.</constraint>
+    <constraint>Identificatori in inglese (colonne, rotte, chiavi, classi). Solo i valori esposti all'utente sono in italiano, via i18n.</constraint>
+    <constraint>File entro 300 righe (soft) / 500 (hard): cataloghi colonne, relazioni derivate e dialog vanno splittati come gia' fatto per `QuoteColumnCatalog`/`QuoteRelationColumns`.</constraint>
+    <constraint>`SystemStatusGuard` e `StatusOrderManager` vanno ESTESI alla nuova union di class-string, non clonati.</constraint>
+    <constraint>Soglie di scadenza/rinnovo in `config/contracts.php`, mai hardcoded nel codice.</constraint>
+    <constraint>Nessun file `.md` o README nuovo oltre a questa spec e all'aggiornamento di `docs/HANDOFF.md`.</constraint>
+    <constraint>Test eseguiti davvero: `XDEBUG_MODE=off ./vendor/bin/pest` (sequenziale, non `--parallel`), `npx vitest run`, `npx tsc -b --force`, `./vendor/bin/pint`.</constraint>
+  </constraints>
+
+</spec>

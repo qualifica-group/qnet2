@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -6,6 +6,7 @@ import type { IServerSideDatasource, IServerSideGetRowsParams } from 'ag-grid-co
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import { UiScaleContext } from '@/features/appearance/ui-scale-context'
 import { TableView } from '@/features/table/table-view'
 import { fetchTableConfig, fetchTableRows } from '@/features/table/api'
 import type { TableConfig, TableRow } from '@/features/table/types'
@@ -100,17 +101,22 @@ function stubParams(): IServerSideGetRowsParams<TableRow> {
   } as unknown as IServerSideGetRowsParams<TableRow>
 }
 
+/** `TableView` sizes its grid off the UI scale, so the context is mandatory. */
+function withProviders(client: QueryClient, node: ReactNode) {
+  return (
+    <QueryClientProvider client={client}>
+      <UiScaleContext.Provider value={{ scale: 40, factor: 1, setScale: vi.fn() }}>
+        <TooltipProvider>
+          <ConfirmDialogProvider>{node}</ConfirmDialogProvider>
+        </TooltipProvider>
+      </UiScaleContext.Provider>
+    </QueryClientProvider>
+  )
+}
+
 function renderTableView(props: Partial<ComponentProps<typeof TableView>> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={client}>
-      <TooltipProvider>
-        <ConfirmDialogProvider>
-          <TableView domain="quotes" onAction={vi.fn()} {...props} />
-        </ConfirmDialogProvider>
-      </TooltipProvider>
-    </QueryClientProvider>,
-  )
+  render(withProviders(client, <TableView domain="quotes" onAction={vi.fn()} {...props} />))
 }
 
 beforeAll(async () => {
@@ -180,26 +186,20 @@ describe('TableView — rowScope (spec 0067 D-1)', () => {
   it('does not rebuild the datasource when rowScope is a fresh object with the same opportunityId', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <TooltipProvider>
-          <ConfirmDialogProvider>
-            <TableView domain="quotes" onAction={vi.fn()} rowScope={{ opportunityId: 7 }} />
-          </ConfirmDialogProvider>
-        </TooltipProvider>
-      </QueryClientProvider>,
+      withProviders(
+        client,
+        <TableView domain="quotes" onAction={vi.fn()} rowScope={{ opportunityId: 7 }} />,
+      ),
     )
     await screen.findByRole('grid')
     const firstDatasource = (dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps)
       .datasource
 
     rerender(
-      <QueryClientProvider client={client}>
-        <TooltipProvider>
-          <ConfirmDialogProvider>
-            <TableView domain="quotes" onAction={vi.fn()} rowScope={{ opportunityId: 7 }} />
-          </ConfirmDialogProvider>
-        </TooltipProvider>
-      </QueryClientProvider>,
+      withProviders(
+        client,
+        <TableView domain="quotes" onAction={vi.fn()} rowScope={{ opportunityId: 7 }} />,
+      ),
     )
     await waitFor(() => expect(dataTablePropsSpy.mock.calls.length).toBeGreaterThan(1))
     const secondDatasource = (dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps)
