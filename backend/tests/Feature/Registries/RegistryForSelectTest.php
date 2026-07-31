@@ -37,11 +37,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/registries/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without registries.viewAny (403)', function () {
+it('allows actors without registries.viewAny (200 — ADR 0011 amended)', function () {
     $actor = registryUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/registries/for-select')->assertForbidden();
+    $this->getJson('/api/registries/for-select')->assertOk();
 });
 
 it('allows actors with registries.viewAny (200) and returns the paginated envelope', function () {

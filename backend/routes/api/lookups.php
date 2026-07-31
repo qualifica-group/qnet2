@@ -42,7 +42,7 @@ use Illuminate\Support\Facades\Route;
 // Minimal searchable/paginated source list for entity-backed selects
 // (for-select standard, ADR 0011). Declared ABOVE sources/{source} so
 // the literal `for-select` segment wins over the bound wildcard.
-// Gated by sources.viewAny server-side in SourceForSelectController.
+// The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('sources/for-select', SourceForSelectController::class);
 
 Route::get('sources/{source}', [SourceController::class, 'show']);
@@ -56,8 +56,8 @@ Route::delete('sources/{source}', [SourceController::class, 'destroy']);
 // server-side in TagController via TagPolicy on every endpoint.
 // Minimal searchable/paginated tag list for entity-backed selects
 // (for-select standard, ADR 0011). Declared ABOVE tags/{tag} so the
-// literal `for-select` segment wins over the bound wildcard. Gated
-// by tags.viewAny server-side in TagForSelectController.
+// literal `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('tags/for-select', TagForSelectController::class);
 
 Route::get('tags/{tag}', [TagController::class, 'show']);
@@ -76,8 +76,8 @@ Route::get('sectors/tree', [SectorController::class, 'tree']);
 
 // Minimal searchable/paginated sector list for entity-backed selects
 // (for-select standard, ADR 0011, spec 0020 — first producer: the
-// Registries form). Gated by sectors.viewAny server-side in
-// SectorForSelectController.
+// Registries form). The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
 Route::get('sectors/for-select', SectorForSelectController::class);
 
 Route::get('sectors/{sector}', [SectorController::class, 'show']);
@@ -92,9 +92,8 @@ Route::delete('sectors/{sector}', [SectorController::class, 'destroy']);
 // OpportunityStatusPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011).
 // Declared ABOVE opportunity-statuses/{opportunityStatus} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// opportunity-statuses.viewAny server-side in
-// OpportunityStatusForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('opportunity-statuses/for-select', OpportunityStatusForSelectController::class);
 
 // Custom-row resequencing (spec 0039, D-5): `sort_order` is server-managed,
@@ -131,8 +130,8 @@ Route::delete('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflo
 // QuoteStatusPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011).
 // Declared ABOVE quote-statuses/{quoteStatus} so the literal `for-select`
-// segment wins over the bound wildcard. Gated by quote-statuses.viewAny
-// server-side in QuoteStatusForSelectController.
+// segment wins over the bound wildcard. The only gate is auth:sanctum (ADR
+// 0011, amended 2026-07-31).
 Route::get('quote-statuses/for-select', QuoteStatusForSelectController::class);
 
 // Custom-row resequencing: `sort_order` is server-managed, this is the only
@@ -153,8 +152,8 @@ Route::delete('quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'de
 // server-side in RewardTypeController via RewardTypePolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011,
 // D-7). Declared ABOVE reward-types/{rewardType} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// reward-types.viewAny server-side in RewardTypeForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('reward-types/for-select', RewardTypeForSelectController::class);
 
 Route::get('reward-types/{rewardType}', [RewardTypeController::class, 'show']);
@@ -168,8 +167,8 @@ Route::delete('reward-types/{rewardType}', [RewardTypeController::class, 'destro
 // RewardStatusController via RewardStatusPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011,
 // BR-5). Declared ABOVE reward-statuses/{rewardStatus} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// reward-statuses.viewAny server-side in RewardStatusForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('reward-statuses/for-select', RewardStatusForSelectController::class);
 
 // Custom-row resequencing (D-3): `sort_order` is server-managed, this is the
@@ -191,8 +190,8 @@ Route::delete('reward-statuses/{rewardStatus}', [RewardStatusController::class, 
 // PaymentMethodController via PaymentMethodPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011).
 // Declared ABOVE payment-methods/{paymentMethod} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// payment-methods.viewAny server-side in PaymentMethodForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('payment-methods/for-select', PaymentMethodForSelectController::class);
 
 // Resequencing (D-1): `sort_order` is server-managed, this is the only way
@@ -211,8 +210,8 @@ Route::delete('payment-methods/{paymentMethod}', [PaymentMethodController::class
 // server-side in VatRateController via VatRatePolicy on every endpoint.
 // Minimal searchable/paginated list for entity-backed selects (for-select
 // standard, ADR 0011). Declared ABOVE vat-rates/{vatRate} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// vat-rates.viewAny server-side in VatRateForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('vat-rates/for-select', VatRateForSelectController::class);
 
 Route::get('vat-rates/{vatRate}', [VatRateController::class, 'show']);

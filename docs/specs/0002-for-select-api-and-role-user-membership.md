@@ -35,8 +35,9 @@ Two additive backend changes, no breaking change to existing endpoints:
 
 - **Auth**: `auth:sanctum`, in the existing users `throttle:60,1` group,
   declared ABOVE `users/{user}` (literal segment wins over the bound wildcard).
-- **Authorization**: `users.viewAny` (`UserPolicy::viewAny`, via
-  `$this->authorize('viewAny', User::class)`).
+- **Authorization**: `auth:sanctum` only. The original `users.viewAny` gate was
+  removed on 2026-07-31 (see the amendment at the top of ADR 0011): it made the
+  select unreadable to actors entitled to fill the form.
 - **Query params**:
 
   | Param    | Rules                                       | Default |
@@ -132,8 +133,8 @@ proceed and are then governed by the actor rule in the guard:
 
 **UserForSelectTest**
 - 401 without auth.
-- 403 without `users.viewAny`.
-- 200 + pagination shape (total, offset, limit, total_pages) with `users.viewAny`.
+- 200 without `users.viewAny` (amended 2026-07-31, ADR 0011 — was 403).
+- 200 + pagination shape (total, offset, limit, total_pages).
 - search by name; search by email.
 - `ids[]` appends selected users even when filtered out by search, deduplicated,
   and does NOT inflate `pagination.total`.

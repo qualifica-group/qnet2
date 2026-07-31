@@ -107,7 +107,7 @@ it('update: 422 when a system row payload includes group, nothing persists (AC-0
     $originalGroup = $newStatus->group->value;
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/quote-statuses/{$newStatus->id}", ['group' => 'closed'])
+    $this->patchJson("/api/quote-statuses/{$newStatus->id}", ['group' => 'closed_lost'])
         ->assertStatus(422)
         ->assertJsonPath('message', 'System statuses accept only name and color changes.');
 

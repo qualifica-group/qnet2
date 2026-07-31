@@ -100,15 +100,18 @@ Reuses `BaseApiController::paginatedResponse($items, $total, $offset, $limit)`
 | Condition | Status |
 |---|---|
 | Unauthenticated | **401** |
-| Missing the endpoint's authorization gate (e.g. `users.viewAny`) | **403** |
 | Invalid query param (`offset`/`limit`/`search`/`ids.*`) | **422** |
 | Rate limit exceeded | **429** |
+
+There is no **403** row: since the 2026-07-31 amendment to ADR 0011 the only
+gate is `auth:sanctum` (see "Security rule" below).
 
 ---
 
 ## `GET /api/users/for-select` (first implementation)
 
-- **Authorization**: `users.viewAny` (`UserPolicy::viewAny`).
+- **Authorization**: `auth:sanctum` only (amended 2026-07-31 — the former
+  `users.viewAny` gate is gone).
 - **Search**: case-insensitive on `name` OR `email`, substring (`LIKE %term%`).
   A `name` index is added (`email` already unique-indexed) to bound the scan;
   the leading wildcard is deliberately accepted for typeahead UX and is not
@@ -117,10 +120,10 @@ Reuses `BaseApiController::paginatedResponse($items, $total, $offset, $limit)`
 - **Item**: `{ id, label: name, subtitle: email }`. No `avatar`/`meta`
   (minimal payload, deliberate per ADR 0011).
 
-> **Security — PII exposure.** `subtitle` carries each user's **email address**, so
-> `users.viewAny` grants read access to user emails through this endpoint. It is a
-> PII-bearing permission and must not be granted casually. The authoritative note
-> lives in **ADR 0011 → Consequences**; do not duplicate the rationale here.
+> **Security — PII exposure.** `subtitle` carries each user's **email address**,
+> so since the 2026-07-31 amendment every authenticated user can read the user
+> directory's emails through this endpoint. Accepted knowingly with that
+> decision; the authoritative note lives in **ADR 0011 → Amendment**.
 
 ---
 
@@ -172,16 +175,20 @@ The reusable surface is intentionally thin (no generic engine yet — see ADR 00
 
 ## Security rule (binding for every for-select endpoint)
 
-1. **Server-side authorize gate, always.** The controller must `authorize(...)`
-   the appropriate permission (`users.viewAny` for users). The frontend is never
-   trusted. A consumer that can edit a form but lacks the gate cannot enumerate
-   the entity.
+1. **`auth:sanctum` is the whole read gate** (amended 2026-07-31, ADR 0011). A
+   for-select endpoint carries **no** per-resource permission check: the option
+   list of a module must answer even to an actor who cannot browse that module,
+   otherwise every form they are entitled to fill renders empty selects. Do not
+   re-add an `authorize(...)` call to a `*ForSelectController` — and do not
+   mirror one in a collaborator either (see `RelationValueScopeChecker`).
+   Authentication is still mandatory: these endpoints are never public.
 2. **Minimal projection.** Emit only what the option needs (`id`, `label`, and at
    most a non-sensitive `subtitle`/`avatar`/`meta`). Do not leak entity internals
    or extra PII through a select.
-3. **PII awareness.** If a `subtitle` (or any field) carries PII — as `email` does
-   for users — the gating permission is PII-bearing and must be granted
-   conservatively. See ADR 0011 → Consequences.
+3. **PII awareness.** If a `subtitle` (or any field) carries PII — as `email`
+   does for users — every authenticated user can now read it through this
+   endpoint. Weigh that before adding a PII-bearing field to an item; the
+   projection is the only remaining control. See ADR 0011 → Amendment.
 
 ---
 

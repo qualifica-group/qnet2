@@ -3,9 +3,9 @@
  * mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6). Clone di `opportunity-statuses` (D-2),
  * con il messaggio del delete-guard adattato alle Offerte. Gli stati di
- * sistema sono "Bozza"/"Accettata"/"Rifiutata" e un enum `group` fisso a 3
- * valori (open/pending/closed), oltre allo sheet di riordino drag & drop per
- * le righe personalizzate.
+ * sistema sono "Bozza"/"Accettata"/"Rifiutata" e un enum `group` fisso in cui
+ * la fase chiusa porta con sé l'esito (open/pending/closed_won/closed_lost),
+ * oltre allo sheet di riordino drag & drop per le righe personalizzate.
  */
 
 export const quoteStatuses = {
@@ -45,7 +45,8 @@ export const quoteStatuses = {
       label: 'Gruppo',
       open: 'Aperto',
       pending: 'In pending',
-      closed: 'Chiuso',
+      closed_won: 'Chiuso positivo',
+      closed_lost: 'Chiuso negativo',
     },
     save: 'Salva',
     saving: 'Salvataggio…',

@@ -71,6 +71,39 @@ TDD + 85% coverage (Pest) and SDD (spec before code) are mandatory.
 
 ---
 
+## Amendment — 2026-07-31: the authorization gate is dropped
+
+**Supersedes §6 below and every "gated by `{resource}.viewAny`" statement in
+this ADR.** Every `*/for-select` endpoint is now gated by **`auth:sanctum`
+alone** — no per-resource permission — aligning the 26 entity endpoints with
+the geo reference endpoints (`states/for-select`), which were already open.
+
+Reason (user decision, 2026-07-31). `viewAny` was doing double duty: "may
+browse this module" and "may resolve the options of a dropdown in a form I am
+entitled to fill". A commercial role that must file a request holds no browse
+right on Registries / Sources / Business functions / Users, so every select in
+that form answered 403 and rendered empty. The gate did not protect the form —
+it broke it, in every form, not just Request management.
+
+Consequences accepted with the decision:
+
+- Any authenticated user can enumerate `{id, label, subtitle}` of every
+  for-select resource, including registries, referents, leads, companies and
+  users (whose `subtitle` is the email). This is a real widening of read
+  access and was chosen knowingly over the granular alternative (a separate
+  `selectAny` ability per resource, assignable in the role matrix).
+- Two collaborators that mirrored the gate had to follow, or the change would
+  have been self-defeating: `RelationValueScopeChecker::inScope()` (dropped its
+  `{resource}.viewAny` pre-check — it would have refused a value the picker
+  itself offered) and `ResolvesEditableColumns` (dropped
+  `mayPickRelationValue()`, which marked a relation cell read-only for exactly
+  the actor this amendment unblocks).
+- Writes are untouched. `{resource}.create/update/delete`, the quick-create
+  button (`<Can permission=...>`), the role-assignment privilege guards and the
+  per-field permission matrix all keep their own gates.
+
+---
+
 ## Decision
 
 Introduce a thin, reusable **`for-select` convention** plus a shared base
@@ -193,6 +226,10 @@ exercise. When a 2nd/3rd select lands and the query logic visibly repeats, an
 optional `ForSelectAction`/trait can be extracted then (tracked as deferred).
 
 ### 6. Authorization — two distinct gates
+
+> SUPERSEDED by the 2026-07-31 amendment at the top of this file: the
+> for-select gate is now `auth:sanctum` alone. The `roles.update` gate on the
+> membership WRITE below is unchanged and still in force. Kept for the record.
 
 - **The users-for-select endpoint is gated by `users.viewAny`.** Listing users to
   pick from is "viewing the user collection"; it reuses the existing

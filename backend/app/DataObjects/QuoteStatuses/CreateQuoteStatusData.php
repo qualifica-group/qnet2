@@ -9,7 +9,7 @@ namespace App\DataObjects\QuoteStatuses;
  * `sort_order` is GONE from this DTO — server-managed, placed by
  * App\Services\Statuses\StatusOrderManager::placeNew() inside
  * QuoteStatusService::create(), never accepted from the client. `group`
- * (App\Enums\StatusGroup) is REQUIRED — every row, system or custom, carries
+ * (App\Enums\QuoteStatusGroup) is REQUIRED — every row, system or custom, carries
  * a classification.
  */
 final readonly class CreateQuoteStatusData

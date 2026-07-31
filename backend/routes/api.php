@@ -225,7 +225,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Minimal searchable/paginated user list for entity-backed selects
     // (for-select standard, ADR 0011). Declared ABOVE users/{user} so the
     // literal `for-select` segment wins over the bound {user} wildcard.
-    // Gated by users.viewAny server-side in UserForSelectController.
+    // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('users/for-select', UserForSelectController::class);
 
     Route::get('users/{user}', [UserController::class, 'show']);
@@ -271,8 +271,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // selects (for-select standard, ADR 0011), feeding the spec 0015 user-
     // form "function" select. Declared ABOVE business-functions/{businessFunction}
     // so the literal `for-select` segment wins over the bound wildcard.
-    // Gated by business-functions.viewAny server-side in
-    // BusinessFunctionForSelectController.
+    // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('business-functions/for-select', BusinessFunctionForSelectController::class);
 
     Route::get('business-functions/{businessFunction}', [BusinessFunctionController::class, 'show']);
@@ -287,8 +286,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Minimal searchable/paginated company list for entity-backed selects
     // (for-select standard, ADR 0011), feeding the spec 0015 user-form
     // "company" select. Declared ABOVE companies/{company} so the literal
-    // `for-select` segment wins over the bound wildcard. Gated by
-    // companies.viewAny server-side in CompanyForSelectController.
+    // `for-select` segment wins over the bound wildcard. The only gate is
+    // auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('companies/for-select', CompanyForSelectController::class);
 
     Route::get('companies/{company}', [CompanyController::class, 'show']);
@@ -304,8 +303,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // selects (for-select standard, ADR 0011), feeding the spec 0015 user-
     // form "site" select. Declared ABOVE operational-sites/{operationalSite}
     // so the literal `for-select` segment wins over the bound wildcard.
-    // Gated by operational-sites.viewAny server-side in
-    // OperationalSiteForSelectController.
+    // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('operational-sites/for-select', OperationalSiteForSelectController::class);
 
     Route::get('operational-sites/{operationalSite}', [OperationalSiteController::class, 'show']);
@@ -321,8 +319,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // selects (for-select standard, ADR 0011), feeding the referent-form
     // "Referent type" select. Declared ABOVE referent-types/{referentType}
     // so the literal `for-select` segment wins over the bound wildcard.
-    // Gated by referent-types.viewAny server-side in
-    // ReferentTypeForSelectController.
+    // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('referent-types/for-select', ReferentTypeForSelectController::class);
 
     Route::get('referent-types/{referentType}', [ReferentTypeController::class, 'show']);
@@ -415,8 +412,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Opportunity form's "company site" select, optionally filtered by
     // `company_id`). Declared ABOVE company-sites/{companySite} so the
     // literal `for-select` segment wins over the bound wildcard, mirroring
-    // every other for-select precedent. Gated by company-sites.viewAny
-    // server-side in CompanySiteForSelectController.
+    // every other for-select precedent. The only gate is auth:sanctum (ADR
+    // 0011, amended 2026-07-31).
     Route::get('company-sites/for-select', CompanySiteForSelectController::class);
 
     // The `set-default`/`logo` literal segments are declared ABOVE the plain

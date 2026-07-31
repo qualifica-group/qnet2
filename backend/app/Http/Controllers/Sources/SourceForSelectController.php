@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Sources;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Sources\SourceForSelectRequest;
 use App\Http\Resources\SourceForSelectResource;
-use App\Models\Source;
 use App\Services\SourceService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -17,22 +15,20 @@ use Throwable;
  * standard), mirroring ReferentTypeForSelectController.
  *
  * Thin invokable controller: validation (SourceForSelectRequest),
- * server-side authorization (sources.viewAny via SourcePolicy), Service
- * call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see SourceService::forSelect
  */
 class SourceForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly SourceService $service) {}
 
     public function __invoke(SourceForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Source::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

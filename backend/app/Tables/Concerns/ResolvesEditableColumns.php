@@ -35,6 +35,12 @@ trait ResolvesEditableColumns
      * PATCH endpoint never trusts this list, it re-derives its own guards
      * against the REAL row (D-2).
      *
+     * A RELATION column needs NO `{relation.resource}.viewAny` on top: since
+     * ADR 0011 was amended (2026-07-31) the pickers are gated by
+     * `auth:sanctum` alone, so the actor who may update this resource can
+     * always populate the dropdown. Re-adding that check would make the cell
+     * read-only for exactly the actor the amendment set out to unblock.
+     *
      * @return array<int, string>
      */
     public function editableColumnIds(User $actor): array
@@ -65,37 +71,12 @@ trait ResolvesEditableColumns
                 continue; // declaration missing, or D-3(b): unknown field key.
             }
 
-            if (! $this->mayPickRelationValue($column, $actor)) {
-                continue;
-            }
-
             if ($permissions[$fieldKey]->editable ?? false) {
                 $ids[] = $id;
             }
         }
 
         return $ids;
-    }
-
-    /**
-     * Whether the actor could pick ANY value for a relation column — i.e.
-     * whether they hold `{relation.resource}.viewAny`, the gate every
-     * `*ForSelectController` applies before running its query, and the same
-     * one RelationValueScopeChecker re-checks on write (spec 0054, D-2).
-     *
-     * Without this, a relation column advertised `editable: true` to an actor
-     * who cannot read the target resource: the picker's `/for-select` call
-     * 403s (an empty, broken dropdown) and any pick 422s. That contradicts
-     * spec 0053 D-2 head-on — the config must never mark editable a cell the
-     * server would reject. Non-relation columns are unaffected.
-     *
-     * @param  array<string, mixed>  $column
-     */
-    private function mayPickRelationValue(array $column, User $actor): bool
-    {
-        $resource = $column['relation']['resource'] ?? null;
-
-        return ! is_string($resource) || $actor->can("{$resource}.viewAny");
     }
 
     /**

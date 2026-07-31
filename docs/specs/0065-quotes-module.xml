@@ -139,7 +139,7 @@
   <scope>
     <in>
       <item>Modulo Stati Offerta: migration `quote_statuses` con seed delle 3 righe di sistema
-        ("Bozza" `new` open, "Accettata" `won` closed, "Rifiutata" `lost` closed), model, service,
+        ("Bozza" `new` open, "Accettata" `won` closed_won, "Rifiutata" `lost` closed_lost), model, service,
         FormRequest store/update, reorder, policy, authorization, resource, controller, route,
         TableDefinition + column catalog, activity log, navigazione.</item>
       <item>Estensione di `App\Services\Statuses\SystemStatusGuard` (union type reale su 2 firme) e dei
@@ -204,7 +204,7 @@
       <response status="200">
         { success: true, message: "OK",
           data: { id: int, name: string, color: string|null, sort_order: int,
-                  system_key: "new"|"won"|"lost"|null, group: "open"|"pending"|"closed",
+                  system_key: "new"|"won"|"lost"|null, group: "open"|"pending"|"closed_won"|"closed_lost",
                   created_at: string },
           permissions: { resource: {...}, fields: {...}, actions: {...} } }
       </response>
@@ -213,7 +213,7 @@
 
     <endpoint method="POST" path="/api/quote-statuses">
       <request>{ name: string (required, max 191, unique), color?: string|null (max 32),
-                 group: "open"|"pending"|"closed" (required) }</request>
+                 group: "open"|"pending"|"closed_won"|"closed_lost" (required) }</request>
       <response status="201">come GET /{quoteStatus}, con `sort_order` assegnato dal server
         (`StatusOrderManager::placeNew`) e `system_key: null`</response>
       <errors>403 senza `quote-statuses.create`, 422 nome duplicato / group non valido /
@@ -221,7 +221,7 @@
     </endpoint>
 
     <endpoint method="PUT|PATCH" path="/api/quote-statuses/{quoteStatus}">
-      <request>{ name?: string, color?: string|null, group?: "open"|"pending"|"closed" }</request>
+      <request>{ name?: string, color?: string|null, group?: "open"|"pending"|"closed_won"|"closed_lost" }</request>
       <response status="200">come GET /{quoteStatus}</response>
       <errors>403, 404, 422 (su riga di sistema sono modificabili SOLO `name` e `color`:
         qualsiasi altra chiave => 422)</errors>
@@ -435,7 +435,9 @@
       id; name string(191) UNIQUE; color string(32) nullable; sort_order int default 0;
       system_key string(16) nullable UNIQUE; group string(16) default 'open'; timestamps.
       Seed righe di sistema: ('Bozza','slate',0,'new','open'),
-      ('Accettata','green',10,'won','closed'), ('Rifiutata','red',20,'lost','closed').
+      ('Accettata','green',10,'won','closed_won'), ('Rifiutata','red',20,'lost','closed_lost')
+      (migration 2026_07_31_090000_split_quote_status_closed_group: `group` usa
+      `App\Enums\QuoteStatusGroup`, non piu' lo `StatusGroup` condiviso).
     </table>
     <table name="quotes">
       id; code string(32) NOT NULL UNIQUE; title string(191) INDEX;

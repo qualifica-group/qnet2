@@ -3,7 +3,7 @@
 namespace App\Http\Requests\QuoteStatuses;
 
 use App\DataObjects\QuoteStatuses\UpdateQuoteStatusData;
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\QuoteStatus;
 use Illuminate\Contracts\Validation\Validator;
@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
  * 0004) additionally rejects any submitted field the actor cannot edit on
  * this specific model. `name` is unique ignoring self. `sort_order` is not
  * accepted here (see App\Services\Statuses\StatusOrderManager); `group`
- * (App\Enums\StatusGroup) — App\Services\Statuses\SystemStatusGuard rejects
+ * (App\Enums\QuoteStatusGroup) — App\Services\Statuses\SystemStatusGuard rejects
  * it outright, at the Service layer, when the target row is a system
  * status.
  */
@@ -46,7 +46,7 @@ class UpdateQuoteStatusRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:191', Rule::unique('quote_statuses', 'name')->ignore($quoteStatus->id)],
             'color' => ['sometimes', 'nullable', 'string', 'max:32'],
-            'group' => ['sometimes', 'string', Rule::enum(StatusGroup::class)],
+            'group' => ['sometimes', 'string', Rule::enum(QuoteStatusGroup::class)],
         ];
     }
 

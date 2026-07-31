@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Companies;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Companies\CompanyForSelectRequest;
 use App\Http\Resources\CompanyForSelectResource;
-use App\Models\Company;
 use App\Services\CompanyService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -16,24 +14,22 @@ use Throwable;
  * feeding the user-form "company" select (spec 0015, ADR 0011 the for-select
  * standard), mirroring UserForSelectController.
  *
- * Thin invokable controller: validation (CompanyForSelectRequest), server-side
- * authorization (companies.viewAny via CompanyPolicy), Service call, paginated
- * response. The query/search/hydration logic lives in CompanyService::forSelect,
- * not here.
+ * Thin invokable controller: validation (CompanyForSelectRequest),
+ * Service call, paginated response. The query/search/hydration logic
+ * lives in CompanyService::forSelect, not here. No permission gate
+ * beyond `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists
+ * feed forms whose actor may legitimately lack browse rights on the
+ * source module.
  *
  * @see CompanyService::forSelect
  */
 class CompanyForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly CompanyService $service) {}
 
     public function __invoke(CompanyForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Company::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/opportunity-statuses/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without opportunity-statuses.viewAny (403)', function () {
+it('allows actors without opportunity-statuses.viewAny (200 — ADR 0011 amended)', function () {
     $actor = opportunityStatusUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/opportunity-statuses/for-select')->assertForbidden();
+    $this->getJson('/api/opportunity-statuses/for-select')->assertOk();
 });
 
 it('allows actors with opportunity-statuses.viewAny (200) and returns the paginated envelope', function () {

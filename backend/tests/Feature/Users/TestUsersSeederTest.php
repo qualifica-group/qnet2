@@ -211,12 +211,13 @@ it('blocks the marketing role server-side on the modules its menu hides', functi
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     }
 
-    // The for-select endpoints the project/campaign/lead forms need stay open.
-    foreach (['business-functions', 'referents', 'product-categories', 'operational-sites', 'registries', 'sources', 'users'] as $resource) {
+    // Every option list answers, `companies` included (ADR 0011 amended
+    // 2026-07-31): the module above is closed to this role, its for-select is
+    // not — that is the whole point, a form stays fillable without granting
+    // browse rights on the source module.
+    foreach (['business-functions', 'referents', 'product-categories', 'operational-sites', 'registries', 'sources', 'users', 'companies'] as $resource) {
         $this->getJson("/api/{$resource}/for-select")->assertOk();
     }
-
-    $this->getJson('/api/companies/for-select')->assertForbidden();
 });
 
 it('drops the administration, configuration and restricted anagrafiche entries from the supervisor menu', function () {
@@ -255,8 +256,9 @@ it('blocks the commercial role server-side on the modules its menu hides', funct
         $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
     }
 
-    // The for-select endpoints the work panel needs stay open — that is the
-    // whole point of the viewAny-only grants.
+    // The for-select endpoints the work panel needs answer. Since ADR 0011 was
+    // amended (2026-07-31) they would answer even without the seed's
+    // viewAny-only grants — see the note on the next test.
     foreach (['registries', 'sources', 'referents', 'operational-sites', 'users'] as $resource) {
         $this->getJson("/api/{$resource}/for-select")->assertOk();
     }
@@ -264,11 +266,15 @@ it('blocks the commercial role server-side on the modules its menu hides', funct
 
 /**
  * Documented residual of the viewAny-only grants, pinned so it cannot change
- * unnoticed: the generic table endpoint authorizes on the SAME ability the
- * for-select endpoint needs (`<resource>.viewAny`), so the resources feeding a
- * role's relation controls stay list-readable through a hand-typed URL even
- * though their menu entry (gated on `<resource>.view`) is hidden. Closing this
- * needs a dedicated select-only ability, not a different seed.
+ * unnoticed: the generic table endpoint authorizes on `<resource>.viewAny`, so
+ * the resources feeding a role's relation controls stay list-readable through a
+ * hand-typed URL even though their menu entry (gated on `<resource>.view`) is
+ * hidden.
+ *
+ * Those grants existed ONLY to keep the selects populated. Since ADR 0011 was
+ * amended (2026-07-31) the selects no longer need them, so dropping them from
+ * TestUsersSeeder would close this residual outright — a seed change, still
+ * pending an explicit decision, hence this test pins today's behaviour.
  */
 it('leaves the select-only resources list-readable, writes excluded', function () {
     $this->seed(TestUsersSeeder::class);
@@ -287,14 +293,15 @@ it('blocks the supervisor server-side on administration and configuration', func
 
     Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
 
-    // The resources with no select to feed hold no ability at all: neither the
-    // module nor its option list answers.
+    // The modules it does not hold answer nothing.
     foreach (['roles', 'companies', 'company-sites', 'tags'] as $domain) {
         $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     }
 
-    $this->getJson('/api/companies/for-select')->assertForbidden();
+    // The option list of a closed module still answers (ADR 0011 amended
+    // 2026-07-31): browsing the module and filling a select are distinct.
+    $this->getJson('/api/companies/for-select')->assertOk();
 
     // The operational modules it keeps do answer.
     $this->getJson('/api/tables/registries/columns')->assertOk();

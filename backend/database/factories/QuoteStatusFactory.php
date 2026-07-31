@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Models\QuoteStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -37,7 +37,7 @@ class QuoteStatusFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'color' => fake()->randomElement(self::COLOR_TOKENS),
             'sort_order' => self::$nextSortOrder++,
-            'group' => StatusGroup::Open,
+            'group' => QuoteStatusGroup::Open,
         ];
     }
 
@@ -50,13 +50,13 @@ class QuoteStatusFactory extends Factory
     public function system(string $key): static
     {
         return $this->state(fn () => match ($key) {
-            'won' => ['system_key' => 'won', 'name' => 'Accettata', 'color' => 'green', 'sort_order' => 998, 'group' => StatusGroup::Closed],
-            'lost' => ['system_key' => 'lost', 'name' => 'Rifiutata', 'color' => 'red', 'sort_order' => 999, 'group' => StatusGroup::Closed],
-            default => ['system_key' => 'new', 'name' => 'Bozza', 'color' => 'slate', 'sort_order' => 0, 'group' => StatusGroup::Open],
+            'won' => ['system_key' => 'won', 'name' => 'Accettata', 'color' => 'green', 'sort_order' => 998, 'group' => QuoteStatusGroup::ClosedWon],
+            'lost' => ['system_key' => 'lost', 'name' => 'Rifiutata', 'color' => 'red', 'sort_order' => 999, 'group' => QuoteStatusGroup::ClosedLost],
+            default => ['system_key' => 'new', 'name' => 'Bozza', 'color' => 'slate', 'sort_order' => 0, 'group' => QuoteStatusGroup::Open],
         });
     }
 
-    public function group(StatusGroup $group): static
+    public function group(QuoteStatusGroup $group): static
     {
         return $this->state(fn () => ['group' => $group]);
     }

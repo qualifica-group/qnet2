@@ -38,11 +38,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/opportunities/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without opportunities.viewAny (403)', function () {
+it('allows actors without opportunities.viewAny (200 — ADR 0011 amended)', function () {
     $actor = opportunityForSelectUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/opportunities/for-select')->assertForbidden();
+    $this->getJson('/api/opportunities/for-select')->assertOk();
 });
 
 it('200: envelope {items, export_link, pagination} with {id, label} items, filtered by search', function () {

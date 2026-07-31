@@ -75,11 +75,11 @@ it('DELETE destroy: 403 without document-layouts.delete, record still exists (AC
     $this->assertDatabaseHas('document_layouts', ['id' => $target->id]);
 });
 
-it('GET for-select: 403 without document-layouts.viewAny (AC-050)', function () {
+it('GET for-select: 200 without document-layouts.viewAny (AC-050, ADR 0011 amended)', function () {
     $actor = documentLayoutUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/document-layouts/for-select?module=quotes')->assertForbidden();
+    $this->getJson('/api/document-layouts/for-select?module=quotes')->assertOk();
 });
 
 it('GET variables: 403 without document-layouts.viewAny (AC-050)', function () {

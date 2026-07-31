@@ -35,8 +35,8 @@ use Illuminate\Support\Facades\Route;
 // server-side in PipelineStatusController via PipelineStatusPolicy.
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011).
 // Declared ABOVE pipeline-statuses/{pipelineStatus} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// pipeline-statuses.viewAny server-side in PipelineStatusForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('pipeline-statuses/for-select', PipelineStatusForSelectController::class);
 
 // Custom-row resequencing (spec 0039, D-5): `sort_order` is server-managed,
@@ -57,14 +57,14 @@ Route::delete('pipeline-statuses/{pipelineStatus}', [PipelineStatusController::c
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011),
 // carrying the Campaign form's default `meta`. Declared ABOVE
 // projects/{project} so the literal `for-select` segment wins over the
-// bound wildcard. Gated by projects.viewAny server-side in
-// ProjectForSelectController.
+// bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
 Route::get('projects/for-select', ProjectForSelectController::class);
 
 // KPI tiles for the card grid (spec 0025, D-3). Declared ABOVE
 // projects/{project} so the literal `summary` segment wins over the
-// bound wildcard. Gated by projects.viewAny server-side in
-// ProjectSummaryController.
+// bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
 Route::get('projects/summary', ProjectSummaryController::class);
 
 // Next sequential code suggestion for the create form's auto-fill (spec
@@ -75,7 +75,7 @@ Route::get('projects/next-code', [ProjectController::class, 'nextCode']);
 
 // Card-grid list (spec 0025, D-3): a plain index, distinct from the
 // table framework — the card payload differs from the table row
-// payload. Gated by projects.viewAny server-side in ProjectController.
+// payload. The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('projects', [ProjectController::class, 'index']);
 
 Route::get('projects/{project}', [ProjectController::class, 'show']);
@@ -90,8 +90,8 @@ Route::delete('projects/{project}', [ProjectController::class, 'destroy']);
 // Minimal searchable/paginated list for entity-backed selects (ADR 0011,
 // spec 0024 — feeds the Lead form's campaign field). Declared ABOVE
 // campaigns/{campaign} so the literal `for-select` segment wins over the
-// bound wildcard. Gated by campaigns.viewAny server-side in
-// CampaignForSelectController.
+// bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
 Route::get('campaigns/for-select', CampaignForSelectController::class);
 
 // Next sequential code suggestion for the create form's auto-fill (spec

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { STATUS_GROUPS } from '@/features/status-reorder/types'
+import { QUOTE_STATUS_GROUPS } from '@/features/status-reorder/types'
 
 /**
  * Zod schema for the quote status create/edit form, built as a factory so
@@ -25,10 +25,10 @@ function baseFields(t: TFunction) {
       .min(1, t('quoteStatuses.form.nameRequired'))
       .max(NAME_MAX_LENGTH, t('quoteStatuses.form.nameMax')),
     color: z.string().max(COLOR_MAX_LENGTH, t('quoteStatuses.form.colorMax')),
-    // Fixed 3-value enum. System rows only ever
+    // Fixed 4-value enum (the closed phase carries its outcome). System rows only ever
     // accept `name`/`color` — the group control is disabled for them in the
     // form body, so this field never diverges from its hydrated value.
-    group: z.enum(STATUS_GROUPS),
+    group: z.enum(QUOTE_STATUS_GROUPS),
   }
 }
 

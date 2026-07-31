@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Products;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Products\ProductForSelectRequest;
 use App\Http\Resources\ProductForSelectResource;
-use App\Models\Product;
 use App\Services\ProductService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -19,22 +17,20 @@ use Throwable;
  * work panel, optionally scoped by `category_ids[]`.
  *
  * Thin invokable controller: validation (ProductForSelectRequest),
- * server-side authorization (products.viewAny via ProductPolicy), Service
- * call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see ProductService::forSelect
  */
 class ProductForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly ProductService $service) {}
 
     public function __invoke(ProductForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Product::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

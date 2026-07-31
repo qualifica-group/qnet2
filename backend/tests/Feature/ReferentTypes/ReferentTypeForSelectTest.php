@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/referent-types/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without referent-types.viewAny (403)', function () {
+it('allows actors without referent-types.viewAny (200 — ADR 0011 amended)', function () {
     $actor = referentTypeUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/referent-types/for-select')->assertForbidden();
+    $this->getJson('/api/referent-types/for-select')->assertOk();
 });
 
 it('allows actors with referent-types.viewAny (200) and returns the paginated envelope', function () {

@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Roles;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Roles\RoleForSelectRequest;
 use App\Http\Resources\RoleForSelectResource;
-use App\Models\Role;
 use App\Models\User;
 use App\Services\RoleService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -17,25 +15,24 @@ use Throwable;
  * the User-form role multi-select (ADR 0011, the for-select standard). The role
  * counterpart of UserForSelectController.
  *
- * Thin invokable controller: validation (RoleForSelectRequest), server-side
- * authorization (roles.viewAny via RolePolicy), Service call, paginated response.
- * The options are scoped to the ACTOR's assignable roles (a non super-admin never
- * sees `super-admin`) inside RoleService::forSelect — same source of truth as the
- * user-form role rule and the users table `roles` filter.
+ * Thin invokable controller: validation (RoleForSelectRequest), Service
+ * call, paginated response. The options are scoped to the ACTOR's
+ * assignable roles (a non super-admin never sees `super-admin`) inside
+ * RoleService::forSelect — same source of truth as the user-form role
+ * rule and the users table `roles` filter. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see RoleService::forSelect
  */
 class RoleForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly RoleService $service) {}
 
     public function __invoke(RoleForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Role::class);
-
             /** @var User $actor */
             $actor = $request->user();
 

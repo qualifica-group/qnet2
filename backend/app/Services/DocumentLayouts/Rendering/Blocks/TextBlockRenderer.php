@@ -8,7 +8,9 @@ use App\Services\DocumentLayouts\Rendering\RenderContext;
 use App\Services\DocumentLayouts\Rendering\VariableResolver;
 use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\Element\TextRun;
+use PhpOffice\PhpWord\SimpleType\LineSpacingRule;
 use PhpOffice\PhpWord\Style\Font;
+use PhpOffice\PhpWord\Style\Paragraph;
 
 /**
  * Renders a `text` block (spec 0069 config_schema #1 / spec 0070
@@ -84,7 +86,13 @@ final class TextBlockRenderer
         }
 
         if (isset($block['line_height'])) {
-            $style['lineHeight'] = $block['line_height'];
+            // NOT PhpWord's `lineHeight` shortcut: it stores (lineHeight - 1) *
+            // 240 as a FLOAT and Writer\Style\Spacing prints that value verbatim
+            // into `w:line` (line_height 1.08 -> w:line="259.20000000000005"),
+            // while OOXML types the attribute as an integer twips measure. Same
+            // computation, rounded to whole twips.
+            $style['spacing'] = (int) round(((float) $block['line_height'] - 1) * Paragraph::LINE_HEIGHT);
+            $style['spacingLineRule'] = LineSpacingRule::AUTO;
         }
 
         return $style;

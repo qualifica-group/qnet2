@@ -3,7 +3,7 @@
 namespace App\Http\Requests\QuoteStatuses;
 
 use App\DataObjects\QuoteStatuses\CreateQuoteStatusData;
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
  * (create-context, model = null). `name` is unique. `sort_order` is not
  * accepted here (absent from rules() -> validated() silently drops it,
  * "unknown field ignorato") — server-managed, see
- * App\Services\Statuses\StatusOrderManager. `group` (App\Enums\StatusGroup)
+ * App\Services\Statuses\StatusOrderManager. `group` (App\Enums\QuoteStatusGroup)
  * is REQUIRED — every row carries a classification.
  */
 class StoreQuoteStatusRequest extends FormRequest
@@ -41,7 +41,7 @@ class StoreQuoteStatusRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:191', Rule::unique('quote_statuses', 'name')],
             'color' => ['nullable', 'string', 'max:32'],
-            'group' => ['required', 'string', Rule::enum(StatusGroup::class)],
+            'group' => ['required', 'string', Rule::enum(QuoteStatusGroup::class)],
         ];
     }
 

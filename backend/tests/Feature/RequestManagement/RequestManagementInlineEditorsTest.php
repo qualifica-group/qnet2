@@ -348,11 +348,6 @@ it('AC-010: clearing phone removes the telephone row instead of leaving an empty
 
 it('AC-008: PATCH operator_ga2 reassigns the GA2 pivot row and re-projects the new operator', function () {
     $actor = inlineEditorsActor(['viewAny', 'update', 'viewAll']);
-    // The relation editor's scope check (spec 0054, D-2) runs the users
-    // `/for-select` query, gated by `users.viewAny` — same gate the real
-    // endpoint applies, so the actor must hold it here too.
-    Permission::findOrCreate('users.viewAny');
-    $actor->givePermissionTo('users.viewAny');
     $opportunity = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
@@ -367,8 +362,6 @@ it('AC-008: PATCH operator_ga2 reassigns the GA2 pivot row and re-projects the n
 
 it('AC-008: an operator id the actor could not pick -> 422', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    Permission::findOrCreate('users.viewAny');
-    $actor->givePermissionTo('users.viewAny');
     $opportunity = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
@@ -405,33 +398,25 @@ it('AC-011: an anagraphic inline edit leaves an activity entry on the request', 
 });
 
 // ---------------------------------------------------------------------------
-// The relation column is only editable for an actor who can PICK a value
+// The relation column does NOT depend on the target module's browse right
 // ---------------------------------------------------------------------------
 
-it('operator_ga2 is read-only for an actor without users.viewAny (the picker would 403)', function () {
+it('operator_ga2 is editable, pickable and savable for an actor without users.viewAny', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $opportunity = inlineEditorsRequest($actor);
+    $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    // Reproduces the real complaint: the config used to advertise the column as
-    // editable, the picker's own endpoint 403'd, and the save 422'd — a cell
-    // that looked editable and could never be saved (spec 0053, D-2).
-    expect(inlineEditorsColumns()['operator_ga2']['editable'])->toBeFalse();
+    // The real complaint (2026-07-31): a commercial actor holds no browse right
+    // on the users module, so the cell was advertised read-only, the picker
+    // 403'd and the save 422'd. Since ADR 0011 was amended the three layers
+    // agree — config, picker and write all accept the same actor.
+    expect(inlineEditorsColumns()['operator_ga2']['editable'])->toBeTrue();
 
-    $this->getJson('/api/users/for-select')->assertForbidden();
+    $this->getJson('/api/users/for-select')->assertOk();
 
     $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
         'column' => 'operator_ga2',
-        'value' => User::factory()->create()->id,
-    ])->assertStatus(422);
-});
-
-it('granting users.viewAny is all it takes to make the column editable', function () {
-    $actor = inlineEditorsActor(['viewAny', 'update']);
-    Permission::findOrCreate('users.viewAny');
-    $actor->givePermissionTo('users.viewAny');
-    inlineEditorsRequest($actor);
-    Sanctum::actingAs($actor);
-
-    expect(inlineEditorsColumns()['operator_ga2']['editable'])->toBeTrue();
+        'value' => $newOperator->id,
+    ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);
 });

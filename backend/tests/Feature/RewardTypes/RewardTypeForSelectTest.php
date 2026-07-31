@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/reward-types/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without reward-types.viewAny (AC-007)', function () {
+it('allows actors without reward-types.viewAny (200 — ADR 0011 amended)', function () {
     $actor = rewardTypeUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/reward-types/for-select')->assertForbidden();
+    $this->getJson('/api/reward-types/for-select')->assertOk();
 });
 
 it('allows actors with reward-types.viewAny (200) and returns the paginated envelope', function () {

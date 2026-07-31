@@ -5,9 +5,7 @@ namespace App\Http\Controllers\CompanySites;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\CompanySites\CompanySiteForSelectRequest;
 use App\Http\Resources\CompanySiteForSelectResource;
-use App\Models\CompanySite;
 use App\Services\CompanySiteService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -18,23 +16,21 @@ use Throwable;
  * CompanyForSelectController.
  *
  * Thin invokable controller: validation (CompanySiteForSelectRequest),
- * server-side authorization (company-sites.viewAny via CompanySitePolicy),
- * Service call, paginated response. The query/search/hydration/scope logic
- * lives in CompanySiteService::forSelect, not here.
+ * Service call, paginated response. The query/search/hydration/scope
+ * logic lives in CompanySiteService::forSelect, not here. No permission
+ * gate beyond `auth:sanctum` (ADR 0011, amended 2026-07-31): option
+ * lists feed forms whose actor may legitimately lack browse rights on
+ * the source module.
  *
  * @see CompanySiteService::forSelect
  */
 class CompanySiteForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly CompanySiteService $service) {}
 
     public function __invoke(CompanySiteForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', CompanySite::class);
-
             $result = $this->service->forSelect($request->toData(), $request->companyId());
 
             return $this->paginatedResponse(

@@ -37,11 +37,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/product-categories/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without product-categories.viewAny (403)', function () {
+it('allows actors without product-categories.viewAny (200 — ADR 0011 amended)', function () {
     $actor = productCategoryUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/product-categories/for-select')->assertForbidden();
+    $this->getJson('/api/product-categories/for-select')->assertOk();
 });
 
 it('allows actors with product-categories.viewAny (200) and returns the paginated envelope', function () {

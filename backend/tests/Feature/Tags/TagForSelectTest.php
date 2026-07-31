@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/tags/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without tags.viewAny (403)', function () {
+it('allows actors without tags.viewAny (200 — ADR 0011 amended)', function () {
     $actor = tagUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/tags/for-select')->assertForbidden();
+    $this->getJson('/api/tags/for-select')->assertOk();
 });
 
 it('allows actors with tags.viewAny (200) and returns the paginated envelope', function () {

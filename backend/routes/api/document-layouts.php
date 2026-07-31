@@ -33,8 +33,7 @@ use Illuminate\Support\Facades\Route;
 
 // Minimal searchable/paginated document layout list for entity-backed
 // selects (for-select standard, ADR 0011), scoped to a required `module`.
-// Gated by document-layouts.viewAny server-side in
-// DocumentLayoutForSelectController.
+// The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('document-layouts/for-select', DocumentLayoutForSelectController::class);
 
 // The variable catalogue (`{category.key}` tokens) for a `module`, masked by

@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/document-layouts/for-select?module=quotes')->assertUnauthorized();
 });
 
-it('forbids actors without document-layouts.viewAny (403)', function () {
+it('allows actors without document-layouts.viewAny (200 — ADR 0011 amended)', function () {
     $actor = documentLayoutUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/document-layouts/for-select?module=quotes')->assertForbidden();
+    $this->getJson('/api/document-layouts/for-select?module=quotes')->assertOk();
 });
 
 // ---------------------------------------------------------------------------

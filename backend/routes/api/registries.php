@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 // Minimal searchable/paginated registry list for entity-backed selects
 // (for-select standard, ADR 0011). Declared ABOVE registries/{registry}
 // so the literal `for-select` segment wins over the bound wildcard.
-// Gated by registries.viewAny server-side in RegistryForSelectController.
+// The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('registries/for-select', RegistryForSelectController::class);
 
 Route::get('registries/{registry}', [RegistryController::class, 'show']);

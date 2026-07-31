@@ -3,6 +3,94 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## I FOR-SELECT NON SONO PIU' GATED SU `viewAny` (2026-07-31) — VERDE, NON COMMITTATO
+
+Segnalazione utente: il ruolo Commerciale, che non ha i permessi di modulo su funzioni /
+anagrafiche / fonti / utenti, non riusciva a popolare i select in Gestione richieste — e
+"succede in tutti i form". Diagnosi confermata: tutti i 26 `*ForSelectController` facevano
+`$this->authorize('viewAny', X::class)`, quindi il picker rispondeva **403** a chi era
+legittimato a compilare il form. `viewAny` faceva doppio lavoro: "posso navigare il modulo"
+e "posso risolvere le opzioni di una tendina".
+
+**Decisione utente (2026-07-31): gate rimosso, resta solo `auth:sanctum`.** Scartata
+l'alternativa granulare (nuova ability `selectAny` per risorsa, assegnabile nella matrice
+ruoli). **Conseguenza accettata consapevolmente: qualsiasi utente autenticato puo' enumerare
+`{id, label, subtitle}` di anagrafiche, referenti, lead, aziende e utenti (subtitle = email).**
+Chi rimette un `authorize()` su un for-select riapre il bug originale: leggere l'emendamento
+in testa a `docs/adr/0011-for-select-api-standard.md` prima di toccare.
+
+**La rimozione andava propagata in altri 2 punti**, altrimenti il fix era autolesionista:
+- `RelationValueScopeChecker::inScope()` rifiutava (422) un id se l'attore non aveva
+  `{resource}.viewAny` → avrebbe respinto proprio il valore che il picker adesso offre.
+  Tolto il pre-check; resta il controllo vero (l'id deve risolvere attraverso la STESSA
+  query di `<Resource>Service::forSelect()`). Il parametro `User $actor` e' diventato morto
+  ed e' stato rimosso lungo la catena `inScope` → `CellValueValidator::validate` →
+  `TableCellUpdateService` (unico chiamante).
+- `ResolvesEditableColumns::mayPickRelationValue()` marcava non-editabile una colonna
+  relazione se mancava `{relation.resource}.viewAny` → le celle di Gestione richieste
+  restavano in sola lettura per l'utente che l'emendamento voleva sbloccare. Metodo
+  eliminato; i gate rimasti sono `{resource}.update` + matrice per-campo.
+
+**Frontend: nessuna modifica necessaria.** I picker non hanno mai avuto gating sui permessi
+(subivano solo il 403); il bottone quick-create dentro il select resta gated su `.create`
+via `<Can>` ed e' corretto cosi'.
+
+**Documenti allineati** (niente sovrascritture silenziose): emendamento in testa a ADR 0011 +
+§6 marcata SUPERSEDED, `docs/api/0005-for-select.md` (riga 403 tolta dal contratto d'errore,
+regola di sicurezza riscritta), `docs/specs/0002`.
+
+**Verifica**: backend `4702 test, 4701 passed, 1 skipped, 0 failed`; Pint `passed`;
+`tsc -b --force` EXIT=0.
+- **Nota sull'ambiente**: `./vendor/bin/pest` va lanciato con **`XDEBUG_MODE=off`**, altrimenti
+  `tests/Unit/Migrations/ExternalApiClientTest.php` va in **segfault (139)** e trascina giu'
+  l'intero run. Non e' una regressione del codice. In piu' `--parallel` produce ~56 errori
+  fasulli `Call to undefined function <helper>()`: gli helper Pest definiti in un file
+  fratello non arrivano ai worker. **Il run attendibile e' sequenziale.**
+
+**Da decidere (non fatto, e' una modifica al seed dei ruoli)**: `TestUsersSeeder` concede al
+ruolo commerciale `registries/sources/referents/operational-sites/users.viewAny` **solo** per
+tenere vivi i select. Ora quei grant sono inutili e come effetto collaterale lasciano quelle
+griglie leggibili da URL digitato a mano (residuo gia' documentato in
+`TestUsersSeederTest`). Toglierli chiuderebbe il residuo: serve un via libera esplicito.
+
+## STATI OFFERTA: IL GRUPPO `closed` DIVENTA `closed_won`/`closed_lost` (2026-07-31) — VERDE, NON COMMITTATO
+
+Richiesta utente: negli Stati offerta, al posto del gruppo di sistema "chiuso" devono esserci
+"chiuso positivo" e "chiuso negativo" — "Accettata" positivo, "Rifiutata" negativo.
+
+**Decisione: enum dedicato al modulo, non modifica di quello condiviso.** `App\Enums\StatusGroup`
+(open/pending/closed) e' usato ANCHE da `pipeline_statuses` e `opportunity_statuses`: allargarlo
+avrebbe cambiato tre configuratori per una richiesta che ne riguarda uno. Nuovo
+**`App\Enums\QuoteStatusGroup`** (open/pending/closed_won/closed_lost) usato solo da
+`QuoteStatus` — stesso precedente gia' in casa, `App\Enums\WorkflowStatusGroup` (meno la fase
+`validated`). `StatusGroup` resta invariato per gli altri due moduli.
+
+**Migrazione dati** `2026_07_31_090000_split_quote_status_closed_group`: `system_key='won'` ->
+`closed_won`, tutto il resto ancora a `closed` -> `closed_lost`. La colonna resta `string(16)`
+(`closed_lost` = 11 char), nessun cambio di schema. `down()` ricompatta su `closed`. La migration
+di creazione (gia' committata) NON e' stata toccata: continua a seminare `closed` e questa la
+converte subito dopo.
+**Da sapere:** una riga CUSTOM classificata `closed` finisce su `closed_lost`. L'esito positivo si
+assume solo per la riga di sistema `won`, mai per una riga creata dall'utente — se serve il
+contrario e' una riga di quella migration.
+
+**Superficie toccata (solo quote):** cast del Model, `Rule::enum` su Store/Update request,
+`options` del filtro `set` in `QuoteStatusColumnCatalog`, `QuoteStatusFactory`. Frontend:
+`QUOTE_STATUS_GROUPS` accanto a `STATUS_GROUPS` in `features/status-reorder/types.ts` (e' il modulo
+del vocabolario status condiviso, non un import cross-feature), schema Zod, select del form,
+`GROUP_SWATCH_TOKENS` di `GroupCell` allargato a entrambi i vocabolari (closed_won = emerald,
+closed_lost = red). i18n IT "Chiuso positivo"/"Chiuso negativo", EN "Closed (positive)"/"(negative)".
+Spec `0065-quotes-module.xml` aggiornata al nuovo contratto (3 endpoint + seed).
+
+**Verifica:** `pest tests/Feature/QuoteStatuses tests/Unit/Models/QuoteStatusTest.php` 45/45,
+`vitest run` su quote-statuses+quotes+table 351/351, `tsc -b --force` EXIT=0, ESLint pulito,
+`pint --test` passed. Suite complete: frontend 3056/3057 (l'unico rosso e'
+`stats-widget.test.tsx`, flaky su `findByRole('list')` sotto carico — verde da solo);
+backend 4664/4700 con **35 rossi tutti sugli endpoint `for-select`** (403 atteso, 200 ricevuto):
+appartengono a un lavoro IN CORSO DI UN'ALTRA SESSIONE sullo stesso working tree, che rimuove
+`authorize('viewAny')` dai `*ForSelectController` citando un emendamento ADR 0011 del 2026-07-31
+senza aver ancora aggiornato i test. Nessuno di quei file e' nello scope di questo lavoro.
+
 ## SUITE INTERAMENTE VERDE: AZZERATI I 17 ROSSI STORICI (2026-07-30) — VERDE, NON COMMITTATO
 
 Richiesta utente: chiudere i rossi rimasti e ripulire. I 14 rossi backend + 3 frontend che da

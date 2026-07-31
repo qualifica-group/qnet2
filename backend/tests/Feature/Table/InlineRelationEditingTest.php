@@ -20,24 +20,18 @@ uses(RefreshDatabase::class);
 
 if (! function_exists('leadInlineEditActor')) {
     /**
-     * A direct-permission actor for `leads` + the given target-relation
-     * abilities (each `{resource}.viewAny`, mirroring what the real
-     * `/for-select` endpoint requires — RelationValueScopeChecker).
-     *
-     * @param  array<int, string>  $relationResources
+     * A direct-permission actor for `leads` only. It deliberately holds NO
+     * ability on the target relation resources: since ADR 0011 was amended
+     * (2026-07-31) neither the picker nor RelationValueScopeChecker consults
+     * `{resource}.viewAny`, so granting them here would prove nothing.
      */
-    function leadInlineEditActor(array $relationResources = ['registries', 'campaigns', 'operational-sites', 'sources', 'users']): User
+    function leadInlineEditActor(): User
     {
         foreach (['viewAny', 'update'] as $ability) {
             Permission::findOrCreate("leads.{$ability}");
         }
 
-        foreach ($relationResources as $resource) {
-            Permission::findOrCreate("{$resource}.viewAny");
-        }
-
         $user = User::factory()->create();
-        $user->givePermissionTo(array_map(static fn (string $r): string => "{$r}.viewAny", $relationResources));
         $user->givePermissionTo(['leads.viewAny', 'leads.update']);
 
         return $user;
@@ -54,12 +48,8 @@ if (! function_exists('leadInlineEditActorWithRole')) {
             Permission::findOrCreate("leads.{$ability}");
         }
 
-        foreach (['registries', 'campaigns', 'operational-sites', 'sources', 'users'] as $resource) {
-            Permission::findOrCreate("{$resource}.viewAny");
-        }
-
         $role = Role::create(['name' => 'lead-inline-edit-role-'.uniqid()]);
-        $role->givePermissionTo(['leads.viewAny', 'leads.update', 'registries.viewAny', 'campaigns.viewAny', 'operational-sites.viewAny', 'sources.viewAny', 'users.viewAny']);
+        $role->givePermissionTo(['leads.viewAny', 'leads.update']);
 
         if ($matrixRow !== null) {
             $role->fieldPermissions()->create($matrixRow);
@@ -221,12 +211,12 @@ it('AC-005: a nonexistent user id on `operator` -> 422, no write', function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-006 — existing id, but the actor could never select it via /for-select
-// (no `users.viewAny`): out of scope, mirrors what the real endpoint enforces.
+// AC-006 — an existing id the picker offers is accepted even though the actor
+// holds no ability on the target module (ADR 0011 amended 2026-07-31).
 // ---------------------------------------------------------------------------
 
-it('AC-006: an existing user id, but the actor lacks users.viewAny -> 422, no write', function () {
-    $actor = leadInlineEditActor(relationResources: ['registries', 'campaigns', 'operational-sites', 'sources']); // users.viewAny NOT granted
+it('AC-006: an existing user id is written even though the actor lacks users.viewAny', function () {
+    $actor = leadInlineEditActor(); // holds leads.* only, nothing on users
     $lead = Lead::factory()->create();
     $existingUser = User::factory()->create();
     Sanctum::actingAs($actor);
@@ -234,9 +224,9 @@ it('AC-006: an existing user id, but the actor lacks users.viewAny -> 422, no wr
     $this->patchJson("/api/tables/leads/rows/{$lead->id}", [
         'column' => 'operator',
         'value' => $existingUser->id,
-    ])->assertStatus(422);
+    ])->assertOk();
 
-    expect($lead->fresh()->operator_id)->toBeNull();
+    expect($lead->fresh()->operator_id)->toBe($existingUser->id);
 });
 
 // ---------------------------------------------------------------------------

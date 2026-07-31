@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Projects;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Projects\ProjectForSelectRequest;
 use App\Http\Resources\ProjectForSelectResource;
-use App\Models\Project;
 use App\Services\ProjectService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -19,22 +17,20 @@ use Throwable;
  * product_category + budget figures).
  *
  * Thin invokable controller: validation (ProjectForSelectRequest),
- * server-side authorization (projects.viewAny via ProjectPolicy), Service
- * call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see ProjectService::forSelect
  */
 class ProjectForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly ProjectService $service) {}
 
     public function __invoke(ProjectForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Project::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

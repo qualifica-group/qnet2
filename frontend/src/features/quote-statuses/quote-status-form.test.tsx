@@ -134,7 +134,7 @@ describe('QuoteStatusForm — create/edit (spec 0065)', () => {
   })
 
   it('submits the newly picked group on change', async () => {
-    updateQuoteStatusMock.mockResolvedValue(quoteStatus({ group: 'closed' }))
+    updateQuoteStatusMock.mockResolvedValue(quoteStatus({ group: 'closed_lost' }))
 
     render(
       <QuoteStatusForm
@@ -146,12 +146,12 @@ describe('QuoteStatusForm — create/edit (spec 0065)', () => {
     )
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Group' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Closed' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Closed (negative)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateQuoteStatusMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateQuoteStatusMock.mock.calls[0]
-    expect(payload).toEqual({ group: 'closed' })
+    expect(payload).toEqual({ group: 'closed_lost' })
   })
 })
 

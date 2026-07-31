@@ -18,6 +18,18 @@ export const STATUS_GROUPS = ['open', 'pending', 'closed'] as const
 /** One of the three fixed status group values. */
 export type StatusGroupValue = (typeof STATUS_GROUPS)[number]
 
+/**
+ * Quote statuses classify on their own enum (backend `App\Enums\
+ * QuoteStatusGroup`): the terminal phase is split into its two OUTCOMES —
+ * `closed_won` (chiuso positivo, the "Accettata" system row) and
+ * `closed_lost` (chiuso negativo, "Rifiutata"). The flat `closed` value is
+ * NOT accepted by that module.
+ */
+export const QUOTE_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
+
+/** One of the four fixed quote status group values. */
+export type QuoteStatusGroupValue = (typeof QUOTE_STATUS_GROUPS)[number]
+
 /** One row as reordered in the sheet: id, display name and its pin state. */
 export interface StatusReorderItem {
   id: number

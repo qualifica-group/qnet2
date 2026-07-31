@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Route;
 // Minimal searchable/paginated lead list for entity-backed selects
 // (amendment rev.1 A-1, ADR 0011) — feeds the Opportunity form's "Lead"
 // select (spec 0040). Declared ABOVE leads/{lead} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// leads.viewAny server-side in LeadForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('leads/for-select', LeadForSelectController::class);
 
 // Opportunity BR-1 defaults for the "create opportunity from lead" form

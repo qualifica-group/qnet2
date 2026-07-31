@@ -5,9 +5,7 @@ namespace App\Http\Controllers\VatRates;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\VatRates\VatRateForSelectRequest;
 use App\Http\Resources\VatRateForSelectResource;
-use App\Models\VatRate;
 use App\Services\VatRateService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -17,22 +15,20 @@ use Throwable;
  * mirroring SourceForSelectController.
  *
  * Thin invokable controller: validation (VatRateForSelectRequest),
- * server-side authorization (vat-rates.viewAny via VatRatePolicy), Service
- * call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see VatRateService::forSelect
  */
 class VatRateForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly VatRateService $service) {}
 
     public function __invoke(VatRateForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', VatRate::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

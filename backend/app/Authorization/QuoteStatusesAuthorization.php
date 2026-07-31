@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * the actor may write (create/update), else visible+readonly. `sort_order`
  * is server-managed, no longer writable via the API (the table column
  * itself is unaffected, see QuoteStatusColumnCatalog). `group`
- * (App\Enums\StatusGroup) is the fixed 3-value classification.
+ * (App\Enums\QuoteStatusGroup) is the fixed classification
+ * (open/pending/closed_won/closed_lost).
  */
 class QuoteStatusesAuthorization extends AbstractResourceAuthorization
 {

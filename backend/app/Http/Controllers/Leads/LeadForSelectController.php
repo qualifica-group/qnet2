@@ -7,7 +7,6 @@ use App\Http\Requests\Leads\LeadForSelectRequest;
 use App\Http\Resources\LeadForSelectResource;
 use App\Models\Lead;
 use App\Services\LeadService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -16,23 +15,20 @@ use Throwable;
  * feeding entity-backed selects (amendment rev.1 A-1, ADR 0011). Feeds the
  * Opportunity create form's "Lead" select (spec 0040).
  *
- * Thin invokable controller: validation (LeadForSelectRequest), server-side
- * authorization (leads.viewAny via LeadPolicy), Service call, paginated
- * response.
+ * Thin invokable controller: validation (LeadForSelectRequest), Service
+ * call, paginated response. No permission gate beyond `auth:sanctum`
+ * (ADR 0011, amended 2026-07-31): option lists feed forms whose actor
+ * may legitimately lack browse rights on the source module.
  *
  * @see LeadService::forSelect
  */
 class LeadForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly LeadService $service) {}
 
     public function __invoke(LeadForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Lead::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/campaigns/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without campaigns.viewAny (403)', function () {
+it('allows actors without campaigns.viewAny (200 — ADR 0011 amended)', function () {
     $actor = campaignUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/campaigns/for-select')->assertForbidden();
+    $this->getJson('/api/campaigns/for-select')->assertOk();
 });
 
 it('200: envelope {items, export_link, pagination} with {id, label, subtitle} items, filtered by search (AC-050)', function () {

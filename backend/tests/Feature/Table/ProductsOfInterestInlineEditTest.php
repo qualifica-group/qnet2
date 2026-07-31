@@ -98,10 +98,12 @@ it('advertises a multiselect editor over products, scoped by the row categories'
         ->and($column['relation']['scope'])->toBe(['category_ids' => 'product_category_ids']);
 })->with(['opportunities', 'request-management']);
 
-it('stays read-only without products.viewAny', function (string $domain) {
+// ADR 0011 amended (2026-07-31): the picker no longer needs `products.viewAny`,
+// so neither does the cell — the actor's own `{domain}.update` is the gate.
+it('stays editable without products.viewAny', function (string $domain) {
     Sanctum::actingAs(productsColumnActor(["{$domain}.viewAny", "{$domain}.update"], canViewProducts: false));
 
-    expect(productsColumnConfig($domain)['products_of_interest']['editable'])->toBeFalse();
+    expect(productsColumnConfig($domain)['products_of_interest']['editable'])->toBeTrue();
 })->with(['opportunities', 'request-management']);
 
 // ---------------------------------------------------------------------------
@@ -197,9 +199,9 @@ it('PATCH with an unknown product id -> 422, nothing written', function (string 
     expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
 })->with(['opportunities', 'request-management']);
 
-// 403, not 422: without `products.viewAny` the value-scope guard never runs —
-// the field-permission/relation gate rejects the write first.
-it('PATCH without products.viewAny -> 422/403, nothing written', function (string $domain) {
+// The write follows the config: `products.viewAny` gates neither the picker nor
+// the value-scope guard any more (ADR 0011 amended 2026-07-31).
+it('PATCH without products.viewAny -> 200, the collection is written', function (string $domain) {
     $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll'], canViewProducts: false);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
@@ -209,9 +211,9 @@ it('PATCH without products.viewAny -> 422/403, nothing written', function (strin
     $this->patchJson("/api/tables/{$domain}/rows/{$opportunity->id}", [
         'column' => 'products_of_interest',
         'value' => [$product->id],
-    ])->assertStatus(422);
+    ])->assertOk();
 
-    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
+    expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$product->id]);
 })->with(['opportunities', 'request-management']);
 
 // ---------------------------------------------------------------------------

@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/sources/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without sources.viewAny (403)', function () {
+it('allows actors without sources.viewAny (200 — ADR 0011 amended)', function () {
     $actor = sourceUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/sources/for-select')->assertForbidden();
+    $this->getJson('/api/sources/for-select')->assertOk();
 });
 
 it('allows actors with sources.viewAny (200) and returns the paginated envelope', function () {

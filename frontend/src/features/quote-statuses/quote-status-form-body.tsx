@@ -14,7 +14,7 @@ import {
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
-import { STATUS_GROUPS, type StatusGroupValue } from '@/features/status-reorder/types'
+import { QUOTE_STATUS_GROUPS, type QuoteStatusGroupValue } from '@/features/status-reorder/types'
 import { useQuoteStatusForm } from '@/features/quote-statuses/use-quote-status-form'
 import type {
   QuoteStatusDetail,
@@ -28,10 +28,11 @@ interface QuoteStatusFormBodyProps {
 }
 
 /** i18n key per fixed group value, kept out of the JSX so the option list stays a plain map. */
-const GROUP_LABEL_KEYS: Record<StatusGroupValue, string> = {
+const GROUP_LABEL_KEYS: Record<QuoteStatusGroupValue, string> = {
   open: 'quoteStatuses.form.group.open',
   pending: 'quoteStatuses.form.group.pending',
-  closed: 'quoteStatuses.form.group.closed',
+  closed_won: 'quoteStatuses.form.group.closed_won',
+  closed_lost: 'quoteStatuses.form.group.closed_lost',
 }
 
 /**
@@ -110,7 +111,7 @@ export function QuoteStatusFormBody({ mode, onSuccess, onCancel }: QuoteStatusFo
                 {({ field, disabled }) => (
                   <Select
                     value={field.value}
-                    onValueChange={(next) => field.onChange(next as StatusGroupValue)}
+                    onValueChange={(next) => field.onChange(next as QuoteStatusGroupValue)}
                     disabled={disabled || isSystemRow}
                   >
                     <FormControl>
@@ -119,7 +120,7 @@ export function QuoteStatusFormBody({ mode, onSuccess, onCancel }: QuoteStatusFo
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {STATUS_GROUPS.map((group) => (
+                      {QUOTE_STATUS_GROUPS.map((group) => (
                         <SelectItem key={group} value={group}>
                           {t(GROUP_LABEL_KEYS[group])}
                         </SelectItem>

@@ -72,11 +72,11 @@ it('DELETE destroy: 403 without payment-methods.delete, record still exists (AC-
     $this->assertDatabaseHas('payment_methods', ['id' => $target->id]);
 });
 
-it('GET for-select: 403 without payment-methods.viewAny (AC-030)', function () {
+it('GET for-select: 200 without payment-methods.viewAny (AC-030, ADR 0011 amended)', function () {
     $actor = paymentMethodUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/payment-methods/for-select')->assertForbidden();
+    $this->getJson('/api/payment-methods/for-select')->assertOk();
 });
 
 it('POST reorder: 403 without payment-methods.update (AC-030)', function () {

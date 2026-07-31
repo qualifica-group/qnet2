@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/pipeline-statuses/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without pipeline-statuses.viewAny (403)', function () {
+it('allows actors without pipeline-statuses.viewAny (200 — ADR 0011 amended)', function () {
     $actor = pipelineStatusUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/pipeline-statuses/for-select')->assertForbidden();
+    $this->getJson('/api/pipeline-statuses/for-select')->assertOk();
 });
 
 it('allows actors with pipeline-statuses.viewAny (200) and returns the paginated envelope', function () {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Table;
 
-use App\Models\User;
 use App\Support\InputFormat;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -60,17 +59,17 @@ final class CellValueValidator
      *
      * @throws ValidationException
      */
-    public function validate(array $column, mixed $value, User $actor): mixed
+    public function validate(array $column, mixed $value): mixed
     {
         // Checked BEFORE the relation branch: a multiselect column declares
         // `relation` too (it is what names the resource whose ids it holds),
         // but its value is a LIST, which the single-id branch would reject.
         if (($column['editor'] ?? null) === self::MULTISELECT_EDITOR) {
-            return $this->validateIdListValue($column, $value, $actor);
+            return $this->validateIdListValue($column, $value);
         }
 
         if (isset($column['relation'])) {
-            return $this->validateRelationValue($column, $value, $actor);
+            return $this->validateRelationValue($column, $value);
         }
 
         if (($column['editor'] ?? null) === self::SELECT_EDITOR) {
@@ -124,7 +123,7 @@ final class CellValueValidator
 
     /**
      * D-2: the value must be an integer (or null, when the column declares
-     * `nullable`) that the actor could actually pick from the declared
+     * `nullable`) that the picker could actually offer from the declared
      * relation resource's own `/for-select` query — an id that merely
      * `exists` elsewhere is not enough (see RelationValueScopeChecker).
      *
@@ -132,7 +131,7 @@ final class CellValueValidator
      *
      * @throws ValidationException
      */
-    private function validateRelationValue(array $column, mixed $value, User $actor): mixed
+    private function validateRelationValue(array $column, mixed $value): mixed
     {
         $nullable = ($column['nullable'] ?? false) === true;
 
@@ -147,7 +146,7 @@ final class CellValueValidator
 
         $resource = $column['relation']['resource'] ?? null;
 
-        if (! is_string($resource) || ! $this->relationScope->inScope($resource, (int) $value, $actor)) {
+        if (! is_string($resource) || ! $this->relationScope->inScope($resource, (int) $value)) {
             throw ValidationException::withMessages([
                 'value' => ['The selected value does not exist or is not available.'],
             ]);
@@ -185,7 +184,7 @@ final class CellValueValidator
     /**
      * A MULTISELECT column's value is the whole related-id collection (a
      * full-replace sync, user directive 2026-07-23): every id must be one the
-     * actor could pick from the declared resource's own `/for-select` query,
+     * picker could offer from the declared resource's own `/for-select` query,
      * the same guard validateRelationValue() applies to a single id. An empty
      * list is structurally valid here — whether it is ACCEPTED is the
      * mandatory-field rule (TableCellUpdateService step 4.5), never this
@@ -196,7 +195,7 @@ final class CellValueValidator
      *
      * @throws ValidationException
      */
-    private function validateIdListValue(array $column, mixed $value, User $actor): array
+    private function validateIdListValue(array $column, mixed $value): array
     {
         Validator::make(
             ['value' => $value],
@@ -214,7 +213,7 @@ final class CellValueValidator
         }
 
         foreach ($ids as $id) {
-            if (! $this->relationScope->inScope($resource, $id, $actor)) {
+            if (! $this->relationScope->inScope($resource, $id)) {
                 throw ValidationException::withMessages([
                     'value' => ['The selected value does not exist or is not available.'],
                 ]);

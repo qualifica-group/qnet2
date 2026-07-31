@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/business-functions/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without business-functions.viewAny (403)', function () {
+it('allows actors without business-functions.viewAny (200 — ADR 0011 amended)', function () {
     $actor = businessFunctionUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/business-functions/for-select')->assertForbidden();
+    $this->getJson('/api/business-functions/for-select')->assertOk();
 });
 
 it('allows actors with business-functions.viewAny (200) and returns the paginated envelope', function () {

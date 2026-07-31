@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/vat-rates/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without vat-rates.viewAny (403)', function () {
+it('allows actors without vat-rates.viewAny (200 — ADR 0011 amended)', function () {
     $actor = vatRateUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/vat-rates/for-select')->assertForbidden();
+    $this->getJson('/api/vat-rates/for-select')->assertOk();
 });
 
 it('allows actors with vat-rates.viewAny (200) and returns the paginated envelope', function () {

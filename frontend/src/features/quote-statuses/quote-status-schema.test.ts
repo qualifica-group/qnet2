@@ -34,7 +34,7 @@ describe('buildCreateQuoteStatusSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it.each(['open', 'pending', 'closed'] as const)('accepts the group value "%s"', (group) => {
+  it.each(['open', 'pending', 'closed_won', 'closed_lost'] as const)('accepts the group value "%s"', (group) => {
     const schema = buildCreateQuoteStatusSchema(i18n.t)
     const result = schema.safeParse({ name: 'Bozza', color: '', group })
     expect(result.success).toBe(true)
@@ -56,7 +56,7 @@ describe('buildCreateQuoteStatusSchema', () => {
 describe('buildUpdateQuoteStatusSchema', () => {
   it('has the same shape as the create schema', () => {
     const schema = buildUpdateQuoteStatusSchema(i18n.t)
-    const result = schema.safeParse({ name: 'Rifiutata', color: 'red', group: 'closed' })
+    const result = schema.safeParse({ name: 'Rifiutata', color: 'red', group: 'closed_lost' })
     expect(result.success).toBe(true)
   })
 })

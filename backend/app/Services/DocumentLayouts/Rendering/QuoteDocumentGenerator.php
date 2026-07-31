@@ -12,6 +12,7 @@ use App\Services\DocumentLayouts\Rendering\Exceptions\InvalidDocumentLayoutConfi
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\Settings;
 
 /**
  * The spec 0070 entry point: `.docx` generation for a Quote against an
@@ -99,6 +100,15 @@ final class QuoteDocumentGenerator
 
     private function toBinary(PhpWord $phpWord): string
     {
+        // PhpWord ships with output escaping OFF (Settings::$outputEscapingEnabled
+        // = false) and the writer then emits every run through writeRaw(): a
+        // single `&`, `<` or `>` — in the layout's own text or in resolved data
+        // such as a client named "Rossi & Figli" — produces a document.xml that
+        // is not well-formed, and Word refuses the whole file ("Errore durante
+        // l'apertura del file"). No renderer here ever passes markup, so every
+        // run is literal text that must be escaped.
+        Settings::setOutputEscapingEnabled(true);
+
         $path = sys_get_temp_dir().'/'.Str::uuid()->toString().'.docx';
 
         IOFactory::createWriter($phpWord, 'Word2007')->save($path);

@@ -13,7 +13,7 @@ namespace App\DataObjects\QuoteStatuses;
  * "submitted as null" — `colorSubmitted`/`groupSubmitted` carry that
  * distinction explicitly. `sort_order` is GONE from this DTO —
  * server-managed, never accepted from the client (see
- * App\Services\Statuses\StatusOrderManager). `group` (App\Enums\StatusGroup)
+ * App\Services\Statuses\StatusOrderManager). `group` (App\Enums\QuoteStatusGroup)
  * — App\Services\Statuses\SystemStatusGuard rejects it outright when the
  * target row is a system status.
  */

@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Route;
 // Minimal searchable/paginated referent list for entity-backed selects
 // (for-select standard, ADR 0011, spec 0020 — first producer: the
 // Registries form). Declared ABOVE referents/{referent} so the literal
-// `for-select` segment wins over the bound wildcard. Gated by
-// referents.viewAny server-side in ReferentForSelectController.
+// `for-select` segment wins over the bound wildcard. The only gate is
+// auth:sanctum (ADR 0011, amended 2026-07-31).
 Route::get('referents/for-select', ReferentForSelectController::class);
 
 // Live, non-blocking duplicate check for the referent create form (spec

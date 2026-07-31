@@ -40,11 +40,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/projects/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without projects.viewAny (403)', function () {
+it('allows actors without projects.viewAny (200 — ADR 0011 amended)', function () {
     $actor = projectUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/projects/for-select')->assertForbidden();
+    $this->getJson('/api/projects/for-select')->assertOk();
 });
 
 // ---------------------------------------------------------------------------

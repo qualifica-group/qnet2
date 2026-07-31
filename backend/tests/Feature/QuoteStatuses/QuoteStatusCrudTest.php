@@ -73,12 +73,31 @@ it('create: 422 when group is missing', function () {
         ->assertStatus(422)->assertJsonValidationErrors('group');
 });
 
-it('create: 422 when group is not one of open/pending/closed', function () {
+it('create: 422 when group is not one of open/pending/closed_won/closed_lost', function () {
     $actor = quoteStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/quote-statuses', ['name' => 'Attesa', 'group' => 'bogus'])
         ->assertStatus(422)->assertJsonValidationErrors('group');
+});
+
+it('create: 422 on the retired flat "closed" group', function () {
+    $actor = quoteStatusUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/quote-statuses', ['name' => 'Chiusa', 'group' => 'closed'])
+        ->assertStatus(422)->assertJsonValidationErrors('group');
+});
+
+it('create: accepts both split closed outcomes', function () {
+    $actor = quoteStatusUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/quote-statuses', ['name' => 'Vinta', 'group' => 'closed_won'])
+        ->assertCreated()->assertJsonPath('data.group', 'closed_won');
+
+    $this->postJson('/api/quote-statuses', ['name' => 'Persa', 'group' => 'closed_lost'])
+        ->assertCreated()->assertJsonPath('data.group', 'closed_lost');
 });
 
 it('create: 422 when name duplicates an existing status, no row created', function () {

@@ -96,7 +96,7 @@ class TableCellUpdateService
 
         // Step 5: value validation derived from the column's type (D-6), or
         // — for a relation column (spec 0054, D-2) — existence + scope.
-        $validated = $this->valueValidator->validate($column, $value, $actor);
+        $validated = $this->valueValidator->validate($column, $value);
 
         // Step 6: persist (D-7). Audit is automatic via LogsModelActivity
         // unless the definition overrides updateCell() to bypass Eloquent

@@ -3,7 +3,8 @@
  * the engineering size limits (see `.claude/rules/engineering.md` §6).
  * Clone of `opportunity-statuses` (D-2), with the delete-guard message
  * adjusted to Quotes. System statuses are "Bozza"/"Accettata"/"Rifiutata"
- * and a fixed 3-value `group` enum (open/pending/closed), plus a drag & drop
+ * and a fixed `group` enum whose closed phase carries its outcome
+ * (open/pending/closed_won/closed_lost), plus a drag & drop
  * reorder sheet for the custom rows.
  */
 
@@ -44,7 +45,8 @@ export const quoteStatuses = {
       label: 'Group',
       open: 'Open',
       pending: 'Pending',
-      closed: 'Closed',
+      closed_won: 'Closed (positive)',
+      closed_lost: 'Closed (negative)',
     },
     save: 'Save',
     saving: 'Saving…',

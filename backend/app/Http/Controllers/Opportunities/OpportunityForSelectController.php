@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Opportunities;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Opportunities\OpportunityForSelectRequest;
 use App\Http\Resources\OpportunityForSelectResource;
-use App\Models\Opportunity;
 use App\Services\OpportunityService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -17,22 +15,20 @@ use Throwable;
  * `rewarded-referents` "opportunity" advanced filter (spec 0059).
  *
  * Thin invokable controller: validation (OpportunityForSelectRequest),
- * server-side authorization (opportunities.viewAny via OpportunityPolicy),
- * Service call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see OpportunityService::forSelect
  */
 class OpportunityForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly OpportunityService $service) {}
 
     public function __invoke(OpportunityForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Opportunity::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

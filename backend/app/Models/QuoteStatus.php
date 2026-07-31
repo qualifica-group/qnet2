@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Enums\StatusSystemKey;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -20,7 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * and App\Services\Statuses\SystemStatusGuard/StatusOrderManager.
  * `sort_order` stays fillable: server-managed (StatusOrderManager
  * places/reorders it), not user-fillable at the FormRequest layer. `group` is
- * the fixed 3-value classification (App\Enums\StatusGroup). D-2 explicitly
+ * the fixed classification (App\Enums\QuoteStatusGroup — module-specific: the
+ * terminal phase is split into closed_won/closed_lost). D-2 explicitly
  * excludes any workflow configurator equivalent to `opportunity_workflows`.
  */
 #[Fillable(['name', 'color', 'sort_order', 'group'])]
@@ -51,7 +52,7 @@ class QuoteStatus extends BaseModel
     {
         return [
             'sort_order' => 'int',
-            'group' => StatusGroup::class,
+            'group' => QuoteStatusGroup::class,
         ];
     }
 

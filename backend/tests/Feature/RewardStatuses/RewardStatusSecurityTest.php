@@ -72,11 +72,11 @@ it('DELETE destroy: 403 without reward-statuses.delete, record still exists (AC-
     $this->assertDatabaseHas('reward_statuses', ['id' => $target->id]);
 });
 
-it('GET for-select: 403 without reward-statuses.viewAny (AC-007)', function () {
+it('GET for-select: 200 without reward-statuses.viewAny (AC-007, ADR 0011 amended)', function () {
     $actor = rewardStatusUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/reward-statuses/for-select')->assertForbidden();
+    $this->getJson('/api/reward-statuses/for-select')->assertOk();
 });
 
 it('GET tables columns: 403 without reward-statuses.viewAny (AC-007)', function () {

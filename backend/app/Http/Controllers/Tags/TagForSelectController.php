@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Tags;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Tags\TagForSelectRequest;
 use App\Http\Resources\TagForSelectResource;
-use App\Models\Tag;
 use App\Services\TagService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -16,23 +14,20 @@ use Throwable;
  * feeding entity-backed selects (spec 0019, ADR 0011 the for-select
  * standard), mirroring SourceForSelectController.
  *
- * Thin invokable controller: validation (TagForSelectRequest),
- * server-side authorization (tags.viewAny via TagPolicy), Service
- * call, paginated response.
+ * Thin invokable controller: validation (TagForSelectRequest), Service
+ * call, paginated response. No permission gate beyond `auth:sanctum`
+ * (ADR 0011, amended 2026-07-31): option lists feed forms whose actor
+ * may legitimately lack browse rights on the source module.
  *
  * @see TagService::forSelect
  */
 class TagForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly TagService $service) {}
 
     public function __invoke(TagForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', Tag::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

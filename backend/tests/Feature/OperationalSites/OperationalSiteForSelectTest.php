@@ -39,11 +39,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/operational-sites/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without operational-sites.viewAny (403)', function () {
+it('allows actors without operational-sites.viewAny (200 — ADR 0011 amended)', function () {
     $actor = userWithSiteAbilities([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/operational-sites/for-select')->assertForbidden();
+    $this->getJson('/api/operational-sites/for-select')->assertOk();
 });
 
 it('allows actors with operational-sites.viewAny (200) and returns the paginated envelope', function () {

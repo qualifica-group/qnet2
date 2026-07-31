@@ -36,11 +36,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/payment-methods/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without payment-methods.viewAny (403)', function () {
+it('allows actors without payment-methods.viewAny (200 — ADR 0011 amended)', function () {
     $actor = paymentMethodUserWith([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/payment-methods/for-select')->assertForbidden();
+    $this->getJson('/api/payment-methods/for-select')->assertOk();
 });
 
 // ---------------------------------------------------------------------------

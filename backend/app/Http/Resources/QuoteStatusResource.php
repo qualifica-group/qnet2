@@ -22,7 +22,7 @@ class QuoteStatusResource extends JsonResource
             'color' => $this->color,
             'sort_order' => $this->sort_order,
             // spec 0065: the mandatory system rows (D-2) and the fixed
-            // 3-value classification (`group`, App\Enums\StatusGroup).
+            // classification (`group`, App\Enums\QuoteStatusGroup).
             'system_key' => $this->system_key,
             'group' => $this->group->value,
             'created_at' => $this->created_at,

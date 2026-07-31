@@ -5,9 +5,7 @@ namespace App\Http\Controllers\ReferentTypes;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\ReferentTypes\ReferentTypeForSelectRequest;
 use App\Http\Resources\ReferentTypeForSelectResource;
-use App\Models\ReferentType;
 use App\Services\ReferentTypeService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -18,22 +16,20 @@ use Throwable;
  * BusinessFunctionForSelectController.
  *
  * Thin invokable controller: validation (ReferentTypeForSelectRequest),
- * server-side authorization (referent-types.viewAny via ReferentTypePolicy),
- * Service call, paginated response.
+ * Service call, paginated response. No permission gate beyond
+ * `auth:sanctum` (ADR 0011, amended 2026-07-31): option lists feed
+ * forms whose actor may legitimately lack browse rights on the source
+ * module.
  *
  * @see ReferentTypeService::forSelect
  */
 class ReferentTypeForSelectController extends BaseApiController
 {
-    use AuthorizesRequests;
-
     public function __construct(private readonly ReferentTypeService $service) {}
 
     public function __invoke(ReferentTypeForSelectRequest $request): JsonResponse
     {
         try {
-            $this->authorize('viewAny', ReferentType::class);
-
             $result = $this->service->forSelect($request->toData());
 
             return $this->paginatedResponse(

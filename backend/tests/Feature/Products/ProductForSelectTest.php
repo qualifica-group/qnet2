@@ -96,10 +96,10 @@ it('an unknown category_id -> 422', function () {
         ->assertJsonValidationErrors('category_ids.0');
 });
 
-it('without products.viewAny -> 403', function () {
+it('without products.viewAny -> 200 (ADR 0011 amended)', function () {
     Sanctum::actingAs(productForSelectActor(withPermission: false));
 
-    $this->getJson('/api/products/for-select')->assertForbidden();
+    $this->getJson('/api/products/for-select')->assertOk();
 });
 
 // ---------------------------------------------------------------------------

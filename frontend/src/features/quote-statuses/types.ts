@@ -8,7 +8,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { StatusGroupValue, SystemStatusKey } from '@/features/status-reorder/types'
+import type { QuoteStatusGroupValue, SystemStatusKey } from '@/features/status-reorder/types'
 
 /**
  * Single quote status detail returned by GET/POST/PATCH /quote-statuses
@@ -24,7 +24,7 @@ export interface QuoteStatusDetail {
   color: string | null
   sort_order: number
   system_key: SystemStatusKey
-  group: StatusGroupValue
+  group: QuoteStatusGroupValue
   created_at: string
 }
 
@@ -45,7 +45,7 @@ export interface QuoteStatusDetailWithPermissions extends QuoteStatusDetail {
 export interface CreateQuoteStatusPayload {
   name: string
   color?: string | null
-  group: StatusGroupValue
+  group: QuoteStatusGroupValue
 }
 
 /**

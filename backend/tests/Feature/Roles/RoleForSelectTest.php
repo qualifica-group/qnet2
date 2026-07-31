@@ -38,11 +38,11 @@ it('requires authentication (401)', function () {
     $this->getJson('/api/roles/for-select')->assertUnauthorized();
 });
 
-it('forbids actors without roles.viewAny (403)', function () {
+it('allows actors without roles.viewAny (200 — ADR 0011 amended)', function () {
     $actor = userWithRoleAbilities([]);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/roles/for-select')->assertForbidden();
+    $this->getJson('/api/roles/for-select')->assertOk();
 });
 
 it('allows actors with roles.viewAny (200) and returns the paginated envelope', function () {

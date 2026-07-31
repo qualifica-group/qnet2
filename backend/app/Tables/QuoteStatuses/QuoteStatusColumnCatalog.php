@@ -2,7 +2,7 @@
 
 namespace App\Tables\QuoteStatuses;
 
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 
 /**
  * Declarative column/filter/action catalogue for the `quote-statuses`
@@ -11,7 +11,7 @@ use App\Enums\StatusGroup;
  * of OpportunityStatusColumnCatalog. Every column (name/color/sort_order/
  * group/created_at) is a real DB column handled entirely by the generic
  * engine. `color` is deliberately not sortable/filterable (a swatch value,
- * not a meaningful ordering/filter axis). `group` (App\Enums\StatusGroup) is
+ * not a meaningful ordering/filter axis). `group` (App\Enums\QuoteStatusGroup) is
  * a `set` filter with a static options catalogue.
  */
 final class QuoteStatusColumnCatalog
@@ -58,7 +58,7 @@ final class QuoteStatusColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
-                'options' => StatusGroup::values(),
+                'options' => QuoteStatusGroup::values(),
             ],
             [
                 'id' => 'created_at',
@@ -80,7 +80,7 @@ final class QuoteStatusColumnCatalog
         return [
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'sort_order', 'type' => 'number'],
-            ['columnId' => 'group', 'type' => 'set', 'options' => StatusGroup::values()],
+            ['columnId' => 'group', 'type' => 'set', 'options' => QuoteStatusGroup::values()],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }
