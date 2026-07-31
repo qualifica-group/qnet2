@@ -11,9 +11,11 @@ use Spatie\Permission\Models\Permission;
  * Security-focused coverage for App\Tables\Shared\OperationalSiteColumn (spec
  * 0056; backend.md §8: dynamic filters are a SQLi sink unless every value
  * stays a bound parameter). Both `opportunities` and `request-management`
- * delegate their `operational_site` advanced (text) filter AND its
- * distinctValues() search to this ONE class, so proving the escaping here
- * once covers both domains' write path.
+ * delegate their `operational_site` distinctValues() search to this ONE class,
+ * so proving the escaping here once covers both domains' write path. The
+ * advanced-filter LIKE is exercised through `opportunities` only: since the
+ * user directive of 2026-07-31, request-management's own advanced filter is an
+ * id-based picker with no free text to escape.
  *
  * OpportunityTableTest/RequestManagementTableTest's own AC-009/010/012 tests
  * only exercise CLEAN needles ("Milano", "Via Roma 1") — that proves the
@@ -113,17 +115,6 @@ it('opportunities: a literal % in the advanced filter needle stays literal, not 
     expect(advancedFilterIds('/api/tables/opportunities/rows', '100%'))->toBe([$matching->id]);
 });
 
-it('request-management: a literal % in the advanced filter needle stays literal, not a wildcard (AC-012)', function () {
-    $actor = operationalSiteEscapingRequestManagementActor();
-    $target = siteWithLine1('Via 100% Sconto');
-    $decoy = siteWithLine1('Via 1008 Sconto');
-    $matching = Opportunity::factory()->create(['operational_site_id' => $target->id]);
-    Opportunity::factory()->create(['operational_site_id' => $decoy->id]);
-    Sanctum::actingAs($actor);
-
-    expect(advancedFilterIds('/api/tables/request-management/rows', '100%'))->toBe([$matching->id]);
-});
-
 // ---------------------------------------------------------------------------
 // `_` — a literal underscore must NOT become a single-char wildcard
 // ---------------------------------------------------------------------------
@@ -141,17 +132,6 @@ it('opportunities: a literal _ in the advanced filter needle stays literal, not 
     expect(advancedFilterIds('/api/tables/opportunities/rows', 'A_1'))->toBe([$matching->id]);
 });
 
-it('request-management: a literal _ in the advanced filter needle stays literal, not a single-char wildcard (AC-012)', function () {
-    $actor = operationalSiteEscapingRequestManagementActor();
-    $target = siteWithLine1('Via A_1 Building');
-    $decoy = siteWithLine1('Via AX1 Building');
-    $matching = Opportunity::factory()->create(['operational_site_id' => $target->id]);
-    Opportunity::factory()->create(['operational_site_id' => $decoy->id]);
-    Sanctum::actingAs($actor);
-
-    expect(advancedFilterIds('/api/tables/request-management/rows', 'A_1'))->toBe([$matching->id]);
-});
-
 // ---------------------------------------------------------------------------
 // apostrophe — proves the value is a BOUND parameter, never concatenated
 // ---------------------------------------------------------------------------
@@ -164,16 +144,6 @@ it('opportunities: an apostrophe in the advanced filter needle never breaks the 
     Sanctum::actingAs($actor);
 
     expect(advancedFilterIds('/api/tables/opportunities/rows', "dell'Orso"))->toBe([$matching->id]);
-});
-
-it('request-management: an apostrophe in the advanced filter needle never breaks the query (bound parameter) (AC-012)', function () {
-    $actor = operationalSiteEscapingRequestManagementActor();
-    $site = siteWithLine1("Via dell'Orso 5");
-    $matching = Opportunity::factory()->create(['operational_site_id' => $site->id]);
-    Opportunity::factory()->create();
-    Sanctum::actingAs($actor);
-
-    expect(advancedFilterIds('/api/tables/request-management/rows', "dell'Orso"))->toBe([$matching->id]);
 });
 
 // ---------------------------------------------------------------------------

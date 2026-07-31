@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -10,22 +10,33 @@ import type { Attachment } from '@/features/attachments/types'
 /**
  * Documents section (shared, self-fetching Attachment API consumer): list
  * render (image thumbnail vs. non-image icon), empty/error states, upload,
- * delete-through-confirm, and that preview/download anchors carry the
- * backend-provided `view_url`/`download_url` untouched.
+ * delete-through-confirm, and that thumbnail/preview/download stream the
+ * binary through the authenticated client instead of pointing the DOM at the
+ * `view_url`/`download_url` endpoints (which answer 401 without the Bearer
+ * token the browser never sends on a DOM-issued request).
  */
 
 const DROPZONE_LABEL = 'Drop one or more files here or click to browse'
+const OBJECT_URL = 'blob:mock-object-url'
 
 const listAttachmentsMock = vi.fn()
 const uploadAttachmentMock = vi.fn()
 const deleteAttachmentMock = vi.fn()
+const fetchAttachmentBinaryMock = vi.fn()
+const saveBlobMock = vi.fn()
 
 vi.mock('@/features/attachments/api', () => ({
   attachmentsQueryKey: (resource: string, id: number, collection: string) =>
     ['attachments', resource, id, collection] as const,
+  attachmentBinaryQueryKey: (id: number) => ['attachment-binary', id] as const,
   listAttachments: (...args: unknown[]) => listAttachmentsMock(...args),
   uploadAttachment: (...args: unknown[]) => uploadAttachmentMock(...args),
   deleteAttachment: (...args: unknown[]) => deleteAttachmentMock(...args),
+  fetchAttachmentBinary: (...args: unknown[]) => fetchAttachmentBinaryMock(...args),
+}))
+
+vi.mock('@/lib/download', () => ({
+  saveBlob: (...args: unknown[]) => saveBlobMock(...args),
 }))
 
 function attachment(overrides: Partial<Attachment> = {}): Attachment {
@@ -57,12 +68,22 @@ function renderSection(ui: ReactElement) {
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
+  // jsdom implements neither: the blob URL is the whole point of these paths.
+  URL.createObjectURL = vi.fn(() => OBJECT_URL)
+  URL.revokeObjectURL = vi.fn()
 })
 
 beforeEach(() => {
   listAttachmentsMock.mockReset()
   uploadAttachmentMock.mockReset()
   deleteAttachmentMock.mockReset()
+  saveBlobMock.mockReset()
+  fetchAttachmentBinaryMock.mockReset()
+  fetchAttachmentBinaryMock.mockResolvedValue(new Blob(['binary']))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('DocumentsSection', () => {
@@ -79,9 +100,12 @@ describe('DocumentsSection', () => {
     await waitFor(() => expect(screen.getByText('photo.png')).toBeInTheDocument())
     expect(screen.getByText('contract.pdf')).toBeInTheDocument()
 
-    const images = screen.getAllByRole('img')
+    const images = await screen.findAllByRole('img')
     expect(images).toHaveLength(1)
-    expect(images[0]).toHaveAttribute('src', 'https://api.test/api/attachments/1/view')
+    // The thumbnail comes from the authenticated fetch, never from `view_url`.
+    expect(images[0]).toHaveAttribute('src', OBJECT_URL)
+    expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'view')
+    expect(fetchAttachmentBinaryMock).not.toHaveBeenCalledWith(2, 'view')
     expect(listAttachmentsMock).toHaveBeenCalledWith('opportunity', 42, 'documents')
   })
 
@@ -108,20 +132,53 @@ describe('DocumentsSection', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
-  it('renders preview/download anchors carrying the resource view_url/download_url, preview opening safely in a new tab', async () => {
+  it('previews in a new tab through the authenticated binary fetch', async () => {
+    listAttachmentsMock.mockResolvedValue([attachment()])
+    const tab = { location: { href: '' }, close: vi.fn() }
+    const openSpy = vi.fn(() => tab)
+    vi.stubGlobal('open', openSpy)
+
+    renderSection(
+      <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview' }))
+
+    // The tab is opened synchronously on the click (after the await the user
+    // gesture is gone and the popup blocker swallows it), then navigated.
+    expect(openSpy).toHaveBeenCalledWith('', '_blank')
+    await waitFor(() => expect(tab.location.href).toBe(OBJECT_URL))
+    expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'view')
+    expect(tab.close).not.toHaveBeenCalled()
+  })
+
+  it('closes the opened tab and warns when the preview fetch fails', async () => {
+    listAttachmentsMock.mockResolvedValue([attachment()])
+    fetchAttachmentBinaryMock.mockRejectedValue(new Error('forbidden'))
+    const tab = { location: { href: '' }, close: vi.fn() }
+    vi.stubGlobal('open', vi.fn(() => tab))
+
+    renderSection(
+      <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview' }))
+
+    await waitFor(() => expect(tab.close).toHaveBeenCalled())
+    expect(tab.location.href).toBe('')
+  })
+
+  it('downloads through the authenticated binary fetch, keeping the original name', async () => {
     listAttachmentsMock.mockResolvedValue([attachment()])
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
     )
 
-    const preview = await screen.findByRole('link', { name: 'Preview' })
-    expect(preview).toHaveAttribute('href', 'https://api.test/api/attachments/1/view')
-    expect(preview).toHaveAttribute('target', '_blank')
-    expect(preview).toHaveAttribute('rel', 'noopener noreferrer')
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }))
 
-    const download = screen.getByRole('link', { name: 'Download' })
-    expect(download).toHaveAttribute('href', 'https://api.test/api/attachments/1/download')
+    await waitFor(() => expect(fetchAttachmentBinaryMock).toHaveBeenCalledWith(1, 'download'))
+    expect(saveBlobMock).toHaveBeenCalledWith(expect.any(Blob), 'contract.pdf')
   })
 
   it('uploads the dropped/selected file and refreshes the list', async () => {

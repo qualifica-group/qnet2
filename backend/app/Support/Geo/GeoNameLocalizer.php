@@ -147,6 +147,36 @@ final class GeoNameLocalizer
     }
 
     /**
+     * The reference ENGLISH names whose Italian display STARTS WITH $needle
+     * (case-insensitive) — the prefix-search counterpart of
+     * englishNamesMatching(), for the geo cascade city lookup, which is a
+     * `name LIKE 'needle%'` prefix match rather than a quick-search "contains".
+     * Keeping the two in step matters: a contains-match here would let `poli`
+     * surface `Napoli` in a select whose every other hit is a prefix.
+     *
+     * @return array<int, string>
+     */
+    public static function englishNamesStartingWith(string $needle): array
+    {
+        $trimmed = trim($needle);
+
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $lowered = Str::lower($trimmed);
+        $matches = [];
+
+        foreach (self::TO_ITALIAN as $english => $italian) {
+            if (str_starts_with(Str::lower($italian), $lowered)) {
+                $matches[] = $english;
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
      * @return array<string, string>
      */
     private static function reverse(): array

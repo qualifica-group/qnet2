@@ -22,5 +22,8 @@ export const attachments = {
     uploadSome_one: 'Unable to upload 1 file: {{names}}. The others were uploaded.',
     uploadSome_other: 'Unable to upload {{count}} files: {{names}}. The others were uploaded.',
     delete: 'Unable to delete the document. Please try again.',
+    preview: 'Unable to open the document. Please try again.',
+    previewBlocked: 'Your browser blocked the preview window. Allow pop-ups for this site.',
+    download: 'Unable to download the document. Please try again.',
   },
 }

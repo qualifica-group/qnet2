@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\CustomFieldDefinition;
+use App\Models\Lead;
 use App\Models\MassMigrationRun;
+use App\Models\OperationalSite;
+use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Source;
@@ -49,14 +53,56 @@ it('seeds the testers before the legacy import, so an actor always exists', func
         ->toBeTrue();
 });
 
+it('gives the testers an operational site, so they are selectable as operators', function (): void {
+    // The sites are imported by the legacy step, which is a no-op here: stand
+    // one in first, exactly as the import would have left it.
+    $site = OperationalSite::factory()->create();
+
+    test()->seed(QualificaProductionDataSeeder::class);
+
+    // Spec 0048: the Operatore select filters users on this very column, so an
+    // account without an employment profile never appears in the list.
+    expect(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail()->employment->operational_site_id)
+        ->toBe($site->getKey());
+});
+
+it('leaves the sample pipeline unseeded when the catalogue derives no business function', function (): void {
+    // The functions come from the legacy import, a no-op here: with none, no
+    // category derives a product line and a converted lead is impossible
+    // (spec 0044, AC-012) — steps 7/8 skip instead of half-seeding.
+    test()->seed(QualificaProductionDataSeeder::class);
+
+    expect(Lead::query()->count())->toBe(0)
+        ->and(Opportunity::query()->count())->toBe(0);
+});
+
+it('seeds the sample pipeline on top of the catalogue', function (): void {
+    // Stand in the business function the import would have brought, so step 5
+    // can assign it to the "Formazione" root the whole GOL branch inherits.
+    BusinessFunction::factory()->create(['name' => 'Formazione']);
+
+    test()->seed(QualificaProductionDataSeeder::class);
+
+    // Steps 7/8 (user directive 2026-07-31): the leads hang from the
+    // catalogue's own product tree, and both creation paths of an
+    // opportunity are represented — converted from a lead, and standalone.
+    expect(Lead::query()->count())->toBe(40)
+        ->and(Lead::query()->has('opportunity')->count())->toBe(12)
+        ->and(Opportunity::query()->whereNull('lead_id')->count())->toBe(10);
+});
+
 it('is idempotent: a second run duplicates nothing', function (): void {
+    BusinessFunction::factory()->create(['name' => 'Formazione']);
+
     test()->seed(QualificaProductionDataSeeder::class);
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(262)
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
-        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
+        ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1)
+        ->and(Lead::query()->count())->toBe(40)
+        ->and(Opportunity::query()->count())->toBe(22);
 });
 
 it('runs the q-crm import once, without the catalogue step asking again', function (): void {

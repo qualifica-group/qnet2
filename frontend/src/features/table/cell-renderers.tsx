@@ -96,8 +96,10 @@ export function EmptyCell({ align = 'center' }: { align?: 'center' | 'left' } = 
  * stay in the domain's own renderer map.
  */
 
-/** Formats an ISO datetime using the active UI locale, blank when missing. */
-export function formatDateTime(value: unknown): string {
+/** An instant whose optional time was never set lands on the wire at midnight. */
+const MIDNIGHT_INSTANT = /T00:00(:00)?$/
+
+function formatInstant(value: unknown, options: Intl.DateTimeFormatOptions): string {
   if (typeof value !== 'string' || value === '') {
     return ''
   }
@@ -105,10 +107,23 @@ export function formatDateTime(value: unknown): string {
   if (Number.isNaN(date.getTime())) {
     return ''
   }
-  return new Intl.DateTimeFormat(i18n.language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
+  return new Intl.DateTimeFormat(i18n.language, options).format(date)
+}
+
+/** Formats an ISO datetime using the active UI locale, blank when missing. */
+export function formatDateTime(value: unknown): string {
+  return formatInstant(value, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+/**
+ * Same, for a value whose TIME is optional (user directive 2026-07-31): one
+ * saved without an hour carries `T00:00`, and printing "00:00" would read as a
+ * real midnight appointment — so it renders as a plain date.
+ */
+export function formatDateTimeOptionalTime(value: unknown): string {
+  const timeless = typeof value === 'string' && MIDNIGHT_INSTANT.test(value)
+
+  return formatInstant(value, timeless ? { dateStyle: 'medium' } : { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 /**
@@ -249,9 +264,14 @@ export function CountCell({ value }: ICellRendererParams) {
   )
 }
 
+interface DateTimeCellProps extends ICellRendererParams {
+  /** For a column whose time is optional: an instant saved without one shows as a plain date. */
+  optionalTime?: boolean
+}
+
 /** Renders a formatted datetime cell, em dash when empty/invalid. */
-export function DateTimeCell({ value }: ICellRendererParams) {
-  const formatted = formatDateTime(value)
+export function DateTimeCell({ value, optionalTime }: DateTimeCellProps) {
+  const formatted = optionalTime ? formatDateTimeOptionalTime(value) : formatDateTime(value)
   return formatted ? (
     <span className="tabular-nums">{formatted}</span>
   ) : (

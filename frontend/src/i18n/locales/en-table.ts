@@ -106,8 +106,12 @@ export const table = {
     list: 'Pick a value',
     empty: 'No value available for this row.',
   },
+  // The editor is a group of two inputs since the time became optional (user
+  // directive 2026-07-31): `label` names the group, the other two the inputs.
   dateTimeEditor: {
     label: 'Date and time',
+    dateLabel: 'Date',
+    timeLabel: 'Time (optional)',
     clear: 'Clear',
   },
   // Spec 0064: the date-only twin of `dateTimeEditor`, used by a Product

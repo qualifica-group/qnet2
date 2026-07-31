@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\Auth;
  *    (authorizeViewAny runs first; a null id simply matches no rows via
  *    `whereHas`, never fail-open).
  *
- * `workflow_status`/`product_categories` are delegated to
+ * `workflow_status`/`source`/`product_categories` are delegated to
  * RequestRelationColumns (file-size split, engineering.md §6). Spec 0056:
  * `operational_site` (the Sede operativa) has no relation-by-name equivalent
  * (the site has no own name) — delegated instead to the shared
@@ -118,10 +118,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `Gate::allows('update', $row)` → OpportunityPolicy → `opportunities.update`,
      * the WRONG permission for this domain. `baseQuery()`'s own D-3 scoping
      * already keeps an out-of-scope row a 404 before this is ever reached.
-     * Six columns are editable here today (spec 0054: `workflow_status` and
+     * The editable columns here today (spec 0054: `workflow_status` and
      * `next_callback_at`; spec 0055: `operator_ga2` plus the four client
-     * anagraphic fields), each gated per FIELD on top of this by the
-     * role_field_permissions matrix.
+     * anagraphic fields; user directives 2026-07-23/2026-07-31:
+     * `products_of_interest`, `operational_site` and `source`) are each gated
+     * per FIELD on top of this by the role_field_permissions matrix.
      */
     public function authorizeUpdate(User $actor, Model $row): bool
     {
@@ -161,6 +162,9 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // User directive 2026-07-23: the "Prodotti di interesse" column's
             // own `{id, name}` refs (cell + multiselect editor selection).
             'productsOfInterest',
+            // User directive 2026-07-31: the "Fonte" column's own `{id, name}`
+            // ref (cell + relation editor selection).
+            'source',
             // `managers.avatar` so the "Operatore" (GA2) column can project the
             // inline avatar for the shared UserCell without a per-row query.
             'managers.avatar',
@@ -335,11 +339,13 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `workflow_status`'s advanced filter (RequestAdvancedFilterCatalog) is a
      * SET filter matched by the related row's `name` (see the constant's
      * docblock) — the generic default (a plain `whereHas`-by-id for `type:
-     * relation`/`async_search`) cannot express it. `operational_site` (spec
-     * 0056) has no relation-by-id equivalent either (the site has no own
-     * name) — delegated to the shared OperationalSiteColumn. Every other
-     * advanced filter declared in the catalog is a standard relation-by-id or
-     * real column, handled by the generic default.
+     * relation`/`async_search`) cannot express it. `operational_site` needs no
+     * override: since it became an id-based picker (user directive
+     * 2026-07-31) it IS a standard relation-by-id, like every other advanced
+     * filter declared in the catalog — all handled by the generic default.
+     * The COLUMN filter (`filterModel`, set-by-`line1`) is a different
+     * surface and still goes through the shared OperationalSiteColumn, see
+     * applyDerivedFilter().
      *
      * @param  Builder<Opportunity>  $query
      * @param  array<string, mixed>  $descriptor
@@ -354,14 +360,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
             if ($values !== []) {
                 $this->relationColumns->applyNameWhereHas($query, 'workflowStatus', $values);
-            }
-
-            return true;
-        }
-
-        if ($name === self::OPERATIONAL_SITE_COLUMN) {
-            if (is_string($value) && $value !== '') {
-                $this->operationalSiteColumn->applyAdvancedFilter($query, self::OPERATIONAL_SITE_RELATION, $value);
             }
 
             return true;

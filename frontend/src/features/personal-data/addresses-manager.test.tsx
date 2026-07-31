@@ -82,14 +82,26 @@ vi.mock('@/features/geo/geo-select', () => ({
       city_id: number | null
     }) => void
   }) => (
-    <button
-      type="button"
-      data-testid="geo-select"
-      data-city={value.city_id ?? ''}
-      onClick={() => onChange({ country_id: 5, state_id: 6, province_id: 8, city_id: 7 })}
-    >
-      geo
-    </button>
+    <>
+      <button
+        type="button"
+        data-testid="geo-select"
+        data-city={value.city_id ?? ''}
+        onClick={() => onChange({ country_id: 5, state_id: 6, province_id: 8, city_id: 7 })}
+      >
+        geo
+      </button>
+      {/* The national-default seed: the real cascade emits it from an effect on
+          a pristine value, here it is driven explicitly. */}
+      <button
+        type="button"
+        data-testid="geo-default-country"
+        data-country={value.country_id ?? ''}
+        onClick={() => onChange({ country_id: 5, state_id: null, province_id: null, city_id: null })}
+      >
+        default country
+      </button>
+    </>
   ),
 }))
 
@@ -331,6 +343,25 @@ describe('AddressesManager (createMode)', () => {
     fireEvent.click(screen.getByTestId('geo-select'))
 
     expect(screen.getByText('The address is required.')).toBeInTheDocument()
+  })
+
+  it('does not start the address when only the default country is preselected', () => {
+    const onChange = vi.fn()
+    renderWithConfirm(<AddressesManager value={[]} onChange={onChange} createMode />)
+
+    fireEvent.click(screen.getByTestId('geo-default-country'))
+
+    expect(onChange).toHaveBeenCalledWith([])
+    expect(screen.queryByText('The address is required.')).not.toBeInTheDocument()
+    expect(screen.queryByText('The city is required.')).not.toBeInTheDocument()
+  })
+
+  it('keeps the preselected country visible while the buffer stays empty', () => {
+    renderWithConfirm(<ControlledAddresses />)
+
+    fireEvent.click(screen.getByTestId('geo-default-country'))
+
+    expect(screen.getByTestId('geo-default-country')).toHaveAttribute('data-country', '5')
   })
 
   it('is valid once line1 and the city are both set', () => {

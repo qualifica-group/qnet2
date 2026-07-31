@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TFunction } from 'i18next'
 import {
   areCreateContactsValid,
+  hasPhoneContact,
   isCreateAddressValid,
 } from '@/features/personal-data/create-validation'
 import type { AddressDraft, ContactDraft } from '@/features/personal-data/types'
@@ -76,5 +77,29 @@ describe('areCreateContactsValid', () => {
     expect(
       areCreateContactsValid([contact({ type: 'email', value: 'not-an-email' })], t),
     ).toBe(false)
+  })
+})
+
+describe('hasPhoneContact', () => {
+  it('is false on an empty buffer', () => {
+    expect(hasPhoneContact([])).toBe(false)
+  })
+
+  it('is false when no contact is a telephone number', () => {
+    expect(hasPhoneContact([contact({ type: 'email' }), contact({ _key: 'draft-2', type: 'fax', value: '021234567' })])).toBe(
+      false,
+    )
+  })
+
+  it('is true on a landline', () => {
+    expect(hasPhoneContact([contact({ type: 'phone', value: '+39 02 1234567' })])).toBe(true)
+  })
+
+  it('is true on a mobile', () => {
+    expect(hasPhoneContact([contact({ type: 'mobile', value: '+39 333 1234567' })])).toBe(true)
+  })
+
+  it('is false when the phone row was emptied but still buffered', () => {
+    expect(hasPhoneContact([contact({ type: 'phone', value: '   ' })])).toBe(false)
   })
 })

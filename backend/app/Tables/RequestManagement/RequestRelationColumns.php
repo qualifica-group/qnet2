@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * The GENERIC relation-derived column machinery for the `request-management`
  * domain (spec 0049), extracted out of RequestManagementTableDefinition
- * (file-size split, engineering.md §6): `workflow_status` (own-FK simple
- * relation) and `product_categories` (AGGREGATED to-many via `productLines`)
+ * (file-size split, engineering.md §6): `workflow_status`/`source` (own-FK
+ * simple relations) and `product_categories` (AGGREGATED to-many via
+ * `productLines`)
  * — a `whereHas` set filter on the related row's name (allow-listed columns
  * only, never orderByRaw/whereRaw on raw input — backend.md §8), a
  * correlated subquery sort for the simple relation, and Excel-like distinct
@@ -36,6 +37,7 @@ final class RequestRelationColumns
      */
     private const array DERIVED_RELATIONS = [
         'workflow_status' => ['relation' => 'workflowStatus', 'table' => 'opportunity_workflow_statuses', 'fk' => 'opportunity_workflow_status_id'],
+        'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
     ];
 
     /**
@@ -68,7 +70,7 @@ final class RequestRelationColumns
 
     /**
      * ORDER BY the related row's name via a correlated subquery for
-     * `workflow_status`. `product_categories` (the AGGREGATED to-many column)
+     * `workflow_status`/`source`. `product_categories` (the AGGREGATED to-many column)
      * is NOT sortable (returns false — no single related row to order by).
      *
      * @param  Builder<Model>  $query
@@ -92,8 +94,8 @@ final class RequestRelationColumns
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005): `workflow_status`'s
-     * related row name, plus `product_categories` via a join through
+     * Excel-like distinct values (spec 0004/0005): `workflow_status`'s and
+     * `source`'s related row name, plus `product_categories` via a join through
      * `opportunity_product_lines` — scoped to the rows matching $query.
      *
      * @param  Builder<Model>  $query

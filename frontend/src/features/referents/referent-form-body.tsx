@@ -20,7 +20,15 @@ import { DetailsTabContent } from '@/features/referents/referent-form-details-ta
 import { ReferentDuplicateWarning } from '@/features/referents/referent-duplicate-warning'
 import { useReferentDuplicateCheck } from '@/features/referents/use-referent-duplicate-check'
 import { useReferentForm } from '@/features/referents/use-referent-form'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { ReferentDetail, ReferentFormMode } from '@/features/referents/types'
+
+/**
+ * A referent must be reachable by phone at creation (user directive
+ * 2026-07-31): the quick field carries the asterisk, `useReferentForm` blocks
+ * the save, and StoreReferentRequest enforces it server-side.
+ */
+const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
 interface ReferentFormBodyProps {
   mode: ReferentFormMode
@@ -152,6 +160,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
                       showHeader={false}
                       persistence={persistence}
                       createMode={mode.type === 'create'}
+                      requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
                     />
                   </FormSection>
                 )}

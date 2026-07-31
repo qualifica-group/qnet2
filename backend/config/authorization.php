@@ -96,4 +96,36 @@ return [
         'vat-rates' => VatRatesAuthorization::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Permission-only resources
+    |--------------------------------------------------------------------------
+    |
+    | Resources that own a real permission but NO form of their own, so they
+    | have no ResourceAuthorization above (no fields, no metadata endpoint) —
+    | yet their permission must stay assignable from the Role form.
+    |
+    | `notes` (spec 0052 D-6) and `attachments` are the two cases this exists
+    | for: both are agnostic cross-module components mounted by other modules,
+    | so neither owns a form of its own, yet both gate their endpoints on real
+    | permissions (`notes.create`; `attachments.viewAny/view/create/delete`).
+    | Without this list those permissions exist in the catalogue while being
+    | un-grantable from the UI — reachable only by a seeder or the super-admin
+    | bypass. Note that the host module's own gate (e.g.
+    | `request-management.viewDocuments`) only opens the surface: it does not
+    | authorize the component's endpoints.
+    |
+    | This is NOT the place for the indirect sub-entity permissions
+    | (addresses.*, contacts.*, personal_data.*): those are governed by the
+    | field-permission matrix of their parent form and must stay out of the
+    | Role form checkboxes.
+    |
+    | See App\Authorization\AssignablePermissionCatalogue
+    */
+
+    'permission_only_resources' => [
+        'notes',
+        'attachments',
+    ],
+
 ];

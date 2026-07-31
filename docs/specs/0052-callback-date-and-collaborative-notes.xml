@@ -165,7 +165,15 @@
       Data E ORA (non solo data): un promemoria senza orario non e' azionabile ("richiamare martedi'
       alle 15"). Insieme nasce `opportunities.next_callback_reminded_at` DATETIME NULLABLE, NON
       esposta da nessuna API e NON scritta da nessun codice in questa fase: e' la predisposizione
-      che rendera' idempotente il futuro job di promemoria senza una seconda migrazione.</decision>
+      che rendera' idempotente il futuro job di promemoria senza una seconda migrazione.
+
+      RETTIFICA UTENTE 2026-07-31 — L'ORARIO NON E' OBBLIGATORIO. La colonna, il cast e il
+      formato di wire (`Y-m-d\TH:i`) restano IDENTICI: cambia solo il controllo, che e' una data
+      obbligatoria piu' un'ora facoltativa. Un richiamo pianificato senza ora viaggia a
+      mezzanotte (`T00:00`), e mezzanotte E' la rappresentazione di "ora non impostata": si
+      rilegge come campo ora vuoto e si mostra come sola data (mai "00:00", che si leggerebbe
+      come un appuntamento reale). Regole in `lib/formatting/wire-instant.ts` (split/join) e
+      `formatDateTimeOptionalTime` (`features/table/cell-renderers.tsx`).</decision>
 
     <decision id="D-2">Entrambe le colonne restano FUORI da `#[Fillable]` di Opportunity (stesso
       trattamento di `attribute_values`, 0049 D-4): non sono mass-assignable e il CRUD Opportunita'

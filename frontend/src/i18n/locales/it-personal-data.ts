@@ -32,6 +32,7 @@ export const personalData = {
     incomplete: 'Completa i campi obbligatori dei dati anagrafici.',
     addressIncomplete: "Inserisci l'indirizzo e la città per completare l'indirizzo.",
     contactsInvalid: 'Correggi i contatti non validi prima di salvare.',
+    phoneRequired: 'Inserisci almeno un numero di telefono.',
   },
   form: {
     type: personalDataFieldLabels.type,

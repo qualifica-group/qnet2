@@ -203,6 +203,83 @@ it('cities: search filters by a name LIKE prefix', function () {
         ->assertJsonPath('data.1.name', 'Verona');
 });
 
+it('cities: a search typed in Italian reaches the rows stored anglicized', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    City::factory()->forState($state)->create(['name' => 'Naples']);
+    City::factory()->forState($state)->create(['name' => 'Milan']);
+
+    // The user types the Italian name they see in the select; the row is stored
+    // as "Naples" by the reference dataset.
+    $this->getJson("/api/cities?state_id={$state->id}&search=napoli")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Napoli');
+});
+
+it('cities: an Italian search still matches rows already stored in Italian', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    // Most Italian comuni are already native in the dataset: the English-alias
+    // branch must widen the search, never replace the plain prefix match.
+    City::factory()->forState($state)->create(['name' => 'Napoli']);
+    City::factory()->forState($state)->create(['name' => 'Naples']);
+    City::factory()->forState($state)->create(['name' => 'Aversa']);
+
+    $this->getJson("/api/cities?state_id={$state->id}&search=napoli")
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.name', 'Napoli')
+        ->assertJsonPath('data.1.name', 'Napoli');
+});
+
+it('cities: the Italian alias stays a PREFIX match, not a contains match', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    City::factory()->forState($state)->create(['name' => 'Naples']);
+
+    // "poli" is a substring of "Napoli" but not a prefix: the select is a
+    // prefix lookup, so the alias branch must not smuggle in a contains match.
+    $this->getJson("/api/cities?state_id={$state->id}&search=poli")
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});
+
+it('cities: the aliased row ranks first, ahead of same-prefix Italian names', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    // Sorted on the ENGLISH column "Rome" falls behind every "Romagn...", so
+    // without the ranking it is pushed past the 50-row cap and "roma" never
+    // surfaces Roma on the first page.
+    City::factory()->forState($state)->create(['name' => 'Rome']);
+    foreach (range(0, 59) as $index) {
+        City::factory()->forState($state)->create([
+            'name' => sprintf('Romagnano-%03d', $index),
+        ]);
+    }
+
+    $this->getJson("/api/cities?state_id={$state->id}&search=roma")
+        ->assertOk()
+        ->assertJsonCount(50, 'data')
+        ->assertJsonPath('data.0.name', 'Roma');
+});
+
+it('cities: the English name keeps working as a search term', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $state = State::factory()->create();
+    City::factory()->forState($state)->create(['name' => 'Naples']);
+
+    $this->getJson("/api/cities?state_id={$state->id}&search=naples")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Napoli');
+});
+
 it('cities: caps the result set at 50', function () {
     Sanctum::actingAs(User::factory()->create());
 

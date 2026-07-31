@@ -6,20 +6,21 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { opportunityDetailQueryKey } from '@/features/opportunities/api'
 import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
-import { buildRequestWorkPayload } from '@/features/request-management/request-work-payload'
+import {
+  buildRequestWorkPayload,
+  seedAttributeValues,
+} from '@/features/request-management/request-work-payload'
 import {
   buildRequestWorkSchema,
   type RequestWorkFormValues,
 } from '@/features/request-management/request-work-schema'
 import type {
-  ApplicableAttribute,
   RequestClientIdentity,
   RequestContact,
   RequestWorkPanelWithPermissions,
@@ -66,18 +67,6 @@ function toContactDraft(contact: RequestContact): ContactDraft {
   }
 }
 
-/** Seeds the dynamic `attribute_values` RHF slice: every applicable code, `null` when unset. */
-function seedAttributeValues(
-  attributes: ApplicableAttribute[],
-  values: Record<string, unknown>,
-): Record<string, CustomFieldValue> {
-  const seeded: Record<string, CustomFieldValue> = {}
-  for (const attribute of attributes) {
-    seeded[attribute.code] = (values[attribute.code] as CustomFieldValue | undefined) ?? null
-  }
-  return seeded
-}
-
 function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWorkFormValues {
   return {
     opportunity_workflow_status_id: panel.workflow_status?.id ?? null,
@@ -119,7 +108,10 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
         panel.workflow_statuses,
         {
           workflow_status_id: panel.workflow_status?.id ?? null,
-          attribute_values: panel.attribute_values,
+          // Same normalization the defaults and the payload baseline use, or
+          // the schema's "is this map travelling?" gate would disagree with
+          // `buildRequestWorkPayload`'s.
+          attribute_values: seedAttributeValues(panel.applicable_attributes, panel.attribute_values),
           products_of_interest: panel.products_of_interest.map((product) => product.id),
           client_identity: panel.client_identity,
           client_contacts: panel.client_contacts.items,

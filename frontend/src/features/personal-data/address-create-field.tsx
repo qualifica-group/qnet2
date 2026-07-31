@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
 import {
@@ -29,11 +30,23 @@ const BLANK_ADDRESS: AddressDraft = {
   site_type: DEFAULT_SITE_TYPE,
 }
 
-/** True once any field carries user input — drives the required-once-started rule. */
+/** The geo cascade of a not-yet-started address, before anything is buffered. */
+const BLANK_GEO: GeoValue = {
+  country_id: null,
+  state_id: null,
+  province_id: null,
+  city_id: null,
+}
+
+/**
+ * True once any field carries user input — drives the required-once-started rule.
+ * The country/state/province levels are deliberately NOT part of the signal:
+ * `GeoSelect` preselects the configured national default country on a pristine
+ * cascade (`DEFAULT_COUNTRY_ISO2`), so counting them would mark an address
+ * nobody touched as started and raise "address required" on sight.
+ */
 function isStarted(draft: AddressDraft): boolean {
-  return Boolean(
-    draft.line1 || draft.line2 || draft.postal_code || draft.city_id || draft.country_id,
-  )
+  return Boolean(draft.line1 || draft.line2 || draft.postal_code || draft.city_id)
 }
 
 interface AddressCreateFieldProps {
@@ -71,10 +84,23 @@ export function AddressCreateField({
   cityRequired = true,
 }: AddressCreateFieldProps) {
   const { t } = useTranslation()
-  const fields = value[0] ?? BLANK_ADDRESS
+
+  // Geo levels chosen (or defaulted by `GeoSelect`) while the address is still
+  // unstarted: they live here and NOT in the parent buffer, which must stay
+  // empty so an untouched address is neither validated nor submitted. Keeping
+  // them is also what stops the national-default effect from re-firing: the
+  // cascade it reads is no longer pristine after the first seed.
+  const [pendingGeo, setPendingGeo] = useState<GeoValue>(BLANK_GEO)
+  const fields = value[0] ?? { ...BLANK_ADDRESS, ...pendingGeo }
 
   const commit = (next: AddressDraft) => {
     if (!isStarted(next)) {
+      setPendingGeo({
+        country_id: next.country_id,
+        state_id: next.state_id,
+        province_id: next.province_id,
+        city_id: next.city_id,
+      })
       onChange([])
       return
     }

@@ -14,7 +14,7 @@ import { ContactForm } from '@/features/personal-data/contact-form'
 import { ContactsCreateFields } from '@/features/personal-data/contacts-create-fields'
 import { createContact, deleteContact, updateContact } from '@/features/personal-data/api'
 import { contactToDraft, nextDraftKey } from '@/features/personal-data/drafts'
-import { quickOwnedKeys } from '@/features/personal-data/quick-contacts'
+import { quickOwnedKeys, type QuickContactType } from '@/features/personal-data/quick-contacts'
 import { useImmediatePersist } from '@/features/personal-data/use-immediate-persist'
 import { useEnumOptions } from '@/features/config/use-config'
 import type {
@@ -57,6 +57,12 @@ interface ContactsManagerProps {
    * today's exact CRUD-only behaviour; only meaningful in create mode.
    */
   createMode?: boolean
+  /**
+   * Quick fields the owner's create rule makes mandatory (asterisk only — the
+   * blocking check belongs to the owner's submit gate). Forwarded verbatim to
+   * `ContactsCreateFields`; ignored outside `createMode`.
+   */
+  requiredCreateTypes?: QuickContactType[]
 }
 
 /** `new` = the add form is open; a string = that contact `_key` is being edited. */
@@ -79,6 +85,7 @@ export function ContactsManager({
   showHeader = true,
   persistence,
   createMode = false,
+  requiredCreateTypes,
 }: ContactsManagerProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -213,7 +220,13 @@ export function ContactsManager({
         </div>
       )}
 
-      {createMode && <ContactsCreateFields value={value} onChange={onChange} />}
+      {createMode && (
+        <ContactsCreateFields
+          value={value}
+          onChange={onChange}
+          requiredTypes={requiredCreateTypes}
+        />
+      )}
 
       {visibleContacts.length === 0 && (
         <p className="text-sm text-muted-foreground">

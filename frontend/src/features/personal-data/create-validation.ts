@@ -13,6 +13,23 @@ export function isCreateAddressValid(addresses: AddressDraft[]): boolean {
   return addresses.every((address) => Boolean(address.line1) && address.city_id != null)
 }
 
+/**
+ * Contact types that count as a telephone number. Mirrors
+ * `StoreReferentRequest::PHONE_CONTACT_TYPES` — keep the two in step.
+ */
+const PHONE_CONTACT_TYPES: string[] = ['phone', 'mobile']
+
+/**
+ * Whether the buffer carries at least one telephone number. Client twin of the
+ * create-time rule the referents endpoint enforces (user directive
+ * 2026-07-31), so the form reports it before the round-trip.
+ */
+export function hasPhoneContact(contacts: ContactDraft[]): boolean {
+  return contacts.some(
+    (contact) => PHONE_CONTACT_TYPES.includes(contact.type) && contact.value.trim() !== '',
+  )
+}
+
 /** Every buffered contact must validate against the same per-type rules as the dialog form. */
 export function areCreateContactsValid(contacts: ContactDraft[], t: TFunction): boolean {
   const schema = buildContactSchema(t)

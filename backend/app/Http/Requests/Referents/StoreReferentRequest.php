@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Referents;
 
 use App\DataObjects\Referents\CreateReferentData;
+use App\Enums\ContactTypeEnum;
 use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,11 +23,26 @@ use Illuminate\Validation\Rule;
  * mirroring StoreUserRequest/ADR 0012). EnforcesFieldPermissions (spec 0004)
  * additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null).
+ *
+ * On top of those, one domain rule of its own: the nested card must carry at
+ * least one phone number (see validatePhoneContact).
  */
 class StoreReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesUserProfile;
+
+    /**
+     * Contact types that satisfy the create-time phone requirement (user
+     * directive 2026-07-31). Mobile counts: it is a telephone number, and a
+     * referent reachable only on a mobile is no less reachable.
+     *
+     * @var list<string>
+     */
+    private const array PHONE_CONTACT_TYPES = [
+        ContactTypeEnum::Phone->value,
+        ContactTypeEnum::Mobile->value,
+    ];
 
     public function authorize(): bool
     {
@@ -66,15 +83,55 @@ class StoreReferentRequest extends FormRequest
     }
 
     /**
-     * Apply the per-type contact `value` rules for the nested profile and
-     * the field-level authorization gate (spec 0004).
+     * Apply the per-type contact `value` rules for the nested profile, the
+     * create-time phone requirement and the field-level authorization gate
+     * (spec 0004).
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validatePhoneContact($validator);
             $this->enforceFieldPermissions($validator);
         });
+    }
+
+    /**
+     * A referent must carry at least one phone number at creation (user
+     * directive 2026-07-31): the module exists to make people reachable, and
+     * one created without a number is dead weight in the commercial flow.
+     *
+     * Create-only, by design: this is a gate on how a referent enters the
+     * system, not an invariant the update path re-asserts.
+     */
+    private function validatePhoneContact(Validator $validator): void
+    {
+        /** @var User $actor */
+        $actor = $this->user();
+
+        if (! $actor->can('referents.create')) {
+            // Same reason EnforcesFieldPermissions steps aside here: for an
+            // actor who may not create at all, the relevant failure is the
+            // Policy's 403, and a 422 raised first would mask it.
+            return;
+        }
+
+        if ($validator->errors()->isNotEmpty()) {
+            // The payload is already malformed; this would only add noise on
+            // top of it (same guard validateProfile applies).
+            return;
+        }
+
+        /** @var array<int, mixed> $contacts */
+        $contacts = (array) $this->input('personal_data.contacts', []);
+
+        foreach ($contacts as $row) {
+            if (is_array($row) && in_array($row['type'] ?? null, self::PHONE_CONTACT_TYPES, true)) {
+                return;
+            }
+        }
+
+        $validator->errors()->add('personal_data.contacts', 'At least one phone number is required.');
     }
 
     protected function authorizationResource(): string

@@ -86,6 +86,29 @@ class TestUsersSeeder extends Seeder
     private const string COMMERCIAL_MODULE = 'request-management';
 
     /**
+     * The abilities of COMMERCIAL_MODULE the Commercial role must NOT hold:
+     *  - `delete` (user directive 2026-07-31): deleting a request is not
+     *    theirs. Dropping the permission removes both affordances at once,
+     *    server-side — the `delete` row action and the "elimina selezionati"
+     *    bulk flow are emitted by RequestManagementTableDefinition only for an
+     *    actor holding `request-management.delete`, and authorizeDelete()
+     *    refuses the endpoint.
+     *  - `viewAll` (user directive 2026-07-31): a Commercial sees ONLY the
+     *    requests where they are the GA2 "Operatore". Granting it silently
+     *    lifted the whole D-3 scoping — RequestManagementTableDefinition::
+     *    baseQuery(), RequestCategoryTabsResolver, RequestManagementScope and
+     *    RequestAssignmentService all widen to every request for an actor who
+     *    holds it. It is a supervisor-level ability, which is why the
+     *    Supervisor role (whose matrix is deny-list based) keeps it.
+     *
+     * @var array<int, string>
+     */
+    private const array COMMERCIAL_DENIED_MODULE_ABILITIES = [
+        'delete',
+        'viewAll',
+    ];
+
+    /**
      * Resources feeding the request-management work panel and create form
      * (Cliente / Fonte / Segnalatore / Sede / Operatore). Same `viewAny`-only
      * treatment as the Supervisor list above: without them those selects
@@ -99,6 +122,42 @@ class TestUsersSeeder extends Seeder
         'referents',
         'operational-sites',
         'users',
+    ];
+
+    /**
+     * Grants on OTHER modules that go beyond their `viewAny`, because a
+     * control of the request-management work panel or create form needs them
+     * (user directive 2026-07-31):
+     *
+     * - `referents.create`: the "Segnalatore" relation carries the shared
+     *   quick-create "+" (spec 0028), and `QuickCreateButton` renders it only
+     *   for an actor holding the linked module's `{domain}.create` — the same
+     *   permission POST /api/referents and the duplicate-check endpoint
+     *   enforce. Nothing else on `referents` comes along: the module stays out
+     *   of the menu (gated on `referents.view`) and unwritable beyond creation.
+     * - `notes.create`: writing a collaborative note is gated by this single
+     *   agnostic permission (spec 0052, D-6) IN AND with read access to the
+     *   host record — which the role already has via `request-management.view`.
+     *   Without it the notes composer of the work panel answers 403 on POST
+     *   /api/notes. Reading notes needs no permission, so omitting it left the
+     *   section visible but unusable.
+     * - `attachments.*`: the module's OWN `request-management.viewDocuments`
+     *   (already granted, it belongs to COMMERCIAL_MODULE) only opens the
+     *   Documents tab; every attachment endpoint behind it is gated by the
+     *   polymorphic subsystem's own permissions — list (`viewAny`), download
+     *   and preview (`view`), upload (`create`), removal (`delete`, user
+     *   directive 2026-07-31: unlike a request, a document of theirs they may
+     *   remove). Without them the tab opened onto a 403.
+     *
+     * @var array<int, string>
+     */
+    private const array COMMERCIAL_EXTRA_PERMISSIONS = [
+        'referents.create',
+        'notes.create',
+        'attachments.viewAny',
+        'attachments.view',
+        'attachments.create',
+        'attachments.delete',
     ];
 
     /**
@@ -138,9 +197,13 @@ class TestUsersSeeder extends Seeder
     ];
 
     /**
+     * Public because QualificaOperatorSiteLinkSeeder assigns these accounts
+     * their operational site after the legacy import, and reads the roster
+     * from here rather than restating it.
+     *
      * @var array<int, array{name: string, email: string, role: string}>
      */
-    private const array TEST_USERS = [
+    public const array TEST_USERS = [
         [
             'name' => 'Rosa Falzarano',
             'email' => 'rosa.falzarano@qualificagroup.com',
@@ -216,8 +279,9 @@ class TestUsersSeeder extends Seeder
     }
 
     /**
-     * The request-management module in full, plus the `viewAny` of the
-     * resources its own selects read from. Nothing else.
+     * The request-management module minus its denied abilities, plus the
+     * `viewAny` of the resources its own selects read from and the handful of
+     * extra grants its create form needs. Nothing else.
      *
      * @param  Collection<int, string>  $catalogue
      * @return Collection<int, string>
@@ -226,6 +290,10 @@ class TestUsersSeeder extends Seeder
     {
         return $catalogue->filter(function (string $permission): bool {
             if ($this->resourceOf($permission) === self::COMMERCIAL_MODULE) {
+                return ! in_array($this->abilityOf($permission), self::COMMERCIAL_DENIED_MODULE_ABILITIES, true);
+            }
+
+            if (in_array($permission, self::COMMERCIAL_EXTRA_PERMISSIONS, true)) {
                 return true;
             }
 

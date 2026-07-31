@@ -17,11 +17,20 @@ const QUICK_LABEL_KEYS: Record<QuickContactType, string> = {
   fax: 'personalData.contacts.quickFax',
 }
 
+/** Hoisted so the default prop keeps a stable identity across renders. */
+const NO_REQUIRED_TYPES: QuickContactType[] = []
+
 interface ContactsCreateFieldsProps {
   /** The full buffered contacts (quick-owned + any added through the dialog). */
   value: ContactDraft[]
   /** Emits the next buffer after a quick field is typed into or cleared. */
   onChange: (next: ContactDraft[]) => void
+  /**
+   * Quick fields the owner's create rule makes mandatory: marked with an
+   * asterisk here, while the blocking check stays in the owner's own submit
+   * gate. Defaults to none, so every other owner is unaffected.
+   */
+  requiredTypes?: QuickContactType[]
 }
 
 /**
@@ -32,7 +41,11 @@ interface ContactsCreateFieldsProps {
  * reusing the same schema as the dialog `ContactForm`. Extracted from
  * `ContactsManager` to keep it within the file size limits.
  */
-export function ContactsCreateFields({ value, onChange }: ContactsCreateFieldsProps) {
+export function ContactsCreateFields({
+  value,
+  onChange,
+  requiredTypes = NO_REQUIRED_TYPES,
+}: ContactsCreateFieldsProps) {
   const { t } = useTranslation()
   const schema = buildContactSchema(t)
 
@@ -86,10 +99,16 @@ export function ContactsCreateFields({ value, onChange }: ContactsCreateFieldsPr
         const error = errorOf(draft)
         const inputId = `contact-quick-${type}`
         const errorId = `${inputId}-error`
+        const required = requiredTypes.includes(type)
         return (
           <div key={type} className="flex flex-col gap-1.5">
             <label htmlFor={inputId} className="text-sm font-medium">
               {t(QUICK_LABEL_KEYS[type])}
+              {required && (
+                <span className="ml-1 text-destructive" aria-hidden="true">
+                  *
+                </span>
+              )}
             </label>
             <Input
               id={inputId}
@@ -97,6 +116,7 @@ export function ContactsCreateFields({ value, onChange }: ContactsCreateFieldsPr
               value={draft?.value ?? ''}
               onChange={(event) => handleChange(type, event.target.value)}
               onBlur={(event) => handleChange(type, formatContactValue(type, event.target.value))}
+              aria-required={required}
               aria-invalid={error !== null}
               aria-describedby={error ? errorId : undefined}
             />

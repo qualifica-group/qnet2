@@ -14,8 +14,10 @@ export const requestManagement = {
     all: 'Tutte',
   },
   columns: {
+    source: 'Fonte',
     productCategory: 'Categoria prodotto',
     productsOfInterest: 'Prodotti di interesse',
+    generalNotes: 'Note generali',
     operator: 'Operatore (GA2)',
     operationalSite: 'Sede operativa',
     workflowStatus: 'Stato di lavorazione',
@@ -144,8 +146,8 @@ export const requestManagement = {
     callback: {
       title: 'Prossimo richiamo',
       description: 'Pianifica la prossima chiamata di follow-up con il cliente.',
-      label: 'Data e ora del richiamo',
-      placeholder: 'Seleziona data e ora',
+      label: 'Data del richiamo',
+      timeLabel: 'Ora del richiamo (facoltativa)',
     },
     attribution: {
       title: 'Attribuzione',

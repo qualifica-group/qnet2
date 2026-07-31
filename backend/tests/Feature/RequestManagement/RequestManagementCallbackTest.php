@@ -64,6 +64,22 @@ it('PATCH next_callback_at persists it and GET returns it in the exact "Y-m-d\TH
         ->assertJsonPath('data.next_callback_at', '2026-08-03T15:30');
 });
 
+// User directive 2026-07-31: the hour is OPTIONAL. The frontend composes
+// midnight itself, so the wire shape never changes — but the endpoint must
+// accept a bare date too, or "no hour" would depend on the client formatting
+// it right.
+it('PATCH next_callback_at accepts a date with no time and stores it at midnight', function () {
+    $actor = requestManagementUserWith(['view', 'update']);
+    $opportunity = managedOpportunity($actor);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$opportunity->id}", [
+        'next_callback_at' => '2026-08-03',
+    ])->assertOk()->assertJsonPath('data.next_callback_at', '2026-08-03T00:00');
+
+    expect($opportunity->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T00:00');
+});
+
 it('PATCH next_callback_at: null clears a previously stored value (AC-002)', function () {
     $actor = requestManagementUserWith(['view', 'update']);
     $opportunity = managedOpportunity($actor, ['next_callback_at' => '2026-08-03 15:30:00']);

@@ -23,6 +23,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'super-admin' => EnsureSuperAdmin::class,
         ]);
 
+        // API-only app: there is no `login` route to redirect a guest to. The
+        // framework default (`fn () => route('login')`) is evaluated by
+        // Authenticate for every request that does NOT send
+        // `Accept: application/json` — i.e. a plain browser navigation to a
+        // protected endpoint such as /api/attachments/{id}/view — and blows up
+        // with RouteNotFoundException (500) instead of the intended 401.
+        // Returning null keeps the AuthenticationException redirect-less, so
+        // the handler (shouldRenderJsonWhen below) renders the JSON 401.
+        $middleware->redirectGuestsTo(fn () => null);
+
         // spec 0021 — INNESTO WRITE: captures the request-wide `custom_fields`
         // payload into the request-scoped CustomFieldRequestBag for every
         // api/* request. Pure capture (no auth logic), appended so it never

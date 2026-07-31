@@ -11,6 +11,13 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  * Declarative column/filter/action catalogue for the `request-management`
  * domain (spec 0049): an OPERATIVE view over the same `opportunities` rows
  * (D-1, no new entity). The visible columns are the operator's worklist:
+ *  - `source` ("Fonte", user directive 2026-07-31) — the own-FK relation
+ *    column opening the worklist, sortable + set-filterable like every other
+ *    relation-by-name column here, and inline-editable over
+ *    `sources/for-select`.
+ *  - `general_notes` ("Note generali", user directive 2026-07-31) — a real
+ *    `opportunities` text column, sortable + text-filterable via the generic
+ *    engine, display-only (this module never writes it).
  *  - `product_categories` ("Categoria prodotto") — AGGREGATED
  *    to-many via `productLines.productCategory`, filterable (set) but never
  *    sortable (no single related row to order by).
@@ -48,6 +55,21 @@ final class RequestColumnCatalog
     public static function columns(): array
     {
         return [
+            // "Fonte" (user directive 2026-07-31): declared FIRST — the
+            // request's provenance is what the operator reads before anything
+            // else. Inline-editable through the SAME `sources/for-select`
+            // picker LeadColumnCatalog's own `source` column already uses, and
+            // writing the real FK (`source_id`), a field this module's
+            // authorization already owns. NOT nullable on purpose: `source_id`
+            // is mandatory there (required: true), and it is a criterion the
+            // workflow resolution reads (spec 0047) — clearing it in-cell 422s
+            // instead of silently un-setting it.
+            [
+                ...self::derivedColumn('source', 'requestManagement.columns.source'),
+                'editable' => true,
+                'editableField' => 'source_id',
+                'relation' => ['resource' => 'sources'],
+            ],
             // Deliberately NOT editable (spec 0055, user decision): writing it
             // would mean creating/deleting `opportunity_product_lines` rows,
             // which is a work-panel concern, not a cell one.
@@ -58,6 +80,23 @@ final class RequestColumnCatalog
             // collection is a first-class operative field here, written through
             // updateWork() like every other cell of this domain.
             ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest'),
+            // "Note generali" (user directive 2026-07-31): the opportunity's
+            // own `general_notes` free text, right beside the products the
+            // operator reads it against. A REAL DB column, so sorting and the
+            // `text` filter both resolve through the generic engine with no
+            // derived-column hook. Display-only, mirroring
+            // RequestGeneralNotesCallout in the work panel: this module never
+            // writes the field (the opportunities form owns it), so it is
+            // deliberately absent from RequestManagementAuthorization::fields().
+            [
+                'id' => 'general_notes',
+                'label' => 'requestManagement.columns.generalNotes',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+            ],
             // Inline-editable (user directive 2026-07-23): the site is picked
             // in-cell so the operator column right after it can be narrowed to
             // that site's own operators without leaving the grid. Same shape

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildRequestWorkPayload } from '@/features/request-management/request-work-payload'
+import {
+  buildRequestWorkPayload,
+  seedAttributeValues,
+} from '@/features/request-management/request-work-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
@@ -358,5 +361,63 @@ describe('buildRequestWorkPayload — note on a requires_note status change (spe
       requiresNotePanel,
     )
     expect(payload).toEqual({})
+  })
+})
+
+/**
+ * User directive 2026-07-31: a `boolean` attribute has no "unanswered" state.
+ * Before this, an unset flag was seeded `null`, `z.boolean()` refused it and
+ * the panel showed PSP / DID / Documenti Identificativi as required.
+ */
+describe('seedAttributeValues — boolean flags default to false', () => {
+  const flagPanel = panel({
+    applicable_attributes: [
+      ...panel().applicable_attributes,
+      {
+        id: 3,
+        code: 'psp',
+        name: 'PSP',
+        type: 'boolean',
+        description: null,
+        help_text: null,
+        placeholder: null,
+        icon: null,
+        config: null,
+        relation_target: null,
+        is_required: false,
+        sort_order: 3,
+        options: [],
+      },
+    ],
+  })
+
+  it('fills an unset boolean with false and every other unset type with null', () => {
+    const seeded = seedAttributeValues(flagPanel.applicable_attributes, {})
+
+    expect(seeded).toEqual({ notes: null, budget: null, psp: false })
+  })
+
+  it('keeps a stored false, which `??` on a nullish default would preserve but a falsy one would not', () => {
+    const seeded = seedAttributeValues(flagPanel.applicable_attributes, { psp: false })
+
+    expect(seeded.psp).toBe(false)
+  })
+
+  it('does not report a request whose flag was never filled as modified', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ attribute_values: { notes: 'existing note', budget: 1000, psp: false } }),
+      flagPanel,
+    )
+
+    expect(payload).toEqual({})
+  })
+
+  it('sends the whole map once the flag is ticked', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ attribute_values: { notes: 'existing note', budget: 1000, psp: true } }),
+      flagPanel,
+    )
+
+    expect(payload).toEqual({ attribute_values: { notes: 'existing note', budget: 1000, psp: true } })
   })
 })

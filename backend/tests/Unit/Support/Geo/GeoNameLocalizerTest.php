@@ -42,3 +42,18 @@ it('finds English names whose Italian display matches a quick-search needle', fu
         ->and(GeoNameLocalizer::englishNamesMatching('zzz'))->toBe([])
         ->and(GeoNameLocalizer::englishNamesMatching('  '))->toBe([]);
 });
+
+it('finds English names whose Italian display STARTS WITH a prefix needle', function () {
+    expect(GeoNameLocalizer::englishNamesStartingWith('napoli'))->toBe(['Naples'])
+        ->and(GeoNameLocalizer::englishNamesStartingWith('NAPO'))->toBe(['Naples'])
+        ->and(GeoNameLocalizer::englishNamesStartingWith(' roma '))->toBe(['Rome'])
+        ->and(GeoNameLocalizer::englishNamesStartingWith('zzz'))->toBe([])
+        ->and(GeoNameLocalizer::englishNamesStartingWith('  '))->toBe([]);
+});
+
+it('does not treat a mid-word substring as a prefix, unlike the contains variant', function () {
+    // "poli" sits inside "Napoli" but is not a prefix: the cascade select is a
+    // prefix lookup, so only englishNamesMatching() may return it.
+    expect(GeoNameLocalizer::englishNamesStartingWith('poli'))->toBe([])
+        ->and(GeoNameLocalizer::englishNamesMatching('poli'))->toBe(['Naples']);
+});

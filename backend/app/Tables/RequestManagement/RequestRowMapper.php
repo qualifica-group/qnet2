@@ -43,6 +43,12 @@ final class RequestRowMapper
         return [
             'id' => $row->id,
             'name' => $row->name,
+            // "Fonte" (user directive 2026-07-31): the `{id, name}` ref both
+            // the relation cell and its inline picker read.
+            'source' => $this->summarize($row->source),
+            // "Note generali" (user directive 2026-07-31): the opportunity's
+            // own free text, projected raw — display-only in this module.
+            'general_notes' => $row->general_notes,
             // The only related-row column, always projected WITH its color
             // token for the working-state badge.
             'workflow_status' => $this->summarizeWithColor($row->workflowStatus),
@@ -134,6 +140,21 @@ final class RequestRowMapper
             && in_array($contact->type, [ContactTypeEnum::Phone, ContactTypeEnum::Mobile], true));
 
         return $phone?->value;
+    }
+
+    /**
+     * A related row projected as the plain `{id, name}` ref the shared
+     * RelationCell renders and the inline relation editor pre-selects.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarize(?Model $related): ?array
+    {
+        if ($related === null) {
+            return null;
+        }
+
+        return ['id' => $related->id, 'name' => $related->name];
     }
 
     /**

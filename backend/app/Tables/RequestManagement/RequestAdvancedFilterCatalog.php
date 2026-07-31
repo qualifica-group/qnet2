@@ -27,11 +27,13 @@ use App\Models\OpportunityWorkflowStatus;
  * is overridden in RequestManagementTableDefinition::applyAdvancedFilter() to
  * `whereHas('workflowStatus', whereIn('name', ...))`, never id-based.
  *
- * `operational_site` (spec 0056, AC-012: "ordinabile/filtrabile allo stesso
- * modo" as the opportunities grid) mirrors OpportunityAdvancedFilterCatalog's
- * own entry: no relation-by-id equivalent (the site has no own name), a
- * `text` search delegated to the shared OperationalSiteColumn via
- * RequestManagementTableDefinition::applyAdvancedFilter().
+ * `operational_site` is a PICKER, not free text (user directive 2026-07-31):
+ * an id-based `relation` filter over the `operational-sites/for-select` route
+ * — the same source the column's inline editor already uses — applied by the
+ * generic whereHas-by-id default. The site having no own `name` column only
+ * rules out a name-based whereIn, not an id-based one: the for-select route
+ * composes the label ("{line1} - {city}"), so the operator picks a real site
+ * instead of typing a substring of its address.
  */
 final class RequestAdvancedFilterCatalog
 {
@@ -92,16 +94,14 @@ final class RequestAdvancedFilterCatalog
             [
                 'name' => 'operational_site',
                 'label' => 'requestManagement.advancedFilters.operationalSite',
-                'type' => AdvancedFilterType::Text,
+                'type' => AdvancedFilterType::Relation,
                 'order' => 5,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
-                'multiple' => false,
-                // Internal only: no real column/relation-by-id (the site has
-                // no own name) — the domain override searches the site's
-                // primary address line1.
-                'target' => 'operational_site',
+                'multiple' => true,
+                'source' => ['resource' => 'operational-sites'],
+                'target' => 'operationalSite',
             ],
             [
                 'name' => 'expected_close_range',

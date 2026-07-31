@@ -7,13 +7,20 @@ import { RequestWorkPanelScreen } from '@/features/request-management/request-wo
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
- * Spec 0052 AC-008 — the "next callback" `datetime-local` control: shows the
- * panel's current value (or blank), saves a SPARSE diff (`next_callback_at`
- * alone), sends an explicit `null` on clear, and is disabled for a read-only
- * actor. Mounted through the real panel (mirrors `request-work-panel.test.tsx`)
- * because the sparse-diff behaviour lives in `useRequestWorkForm` +
+ * Spec 0052 AC-008 — the "next callback" control: shows the panel's current
+ * value (or blank), saves a SPARSE diff (`next_callback_at` alone), sends an
+ * explicit `null` on clear, and is disabled for a read-only actor. Mounted
+ * through the real panel (mirrors `request-work-panel.test.tsx`) because the
+ * sparse-diff behaviour lives in `useRequestWorkForm` +
  * `buildRequestWorkPayload`, not in the section component itself.
+ *
+ * User directive 2026-07-31: the control is a date plus an OPTIONAL time, and
+ * a date saved without one travels as midnight — the wire contract is
+ * unchanged.
  */
+
+const DATE_FIELD = 'Callback date'
+const TIME_FIELD = 'Callback time (optional)'
 
 const fetchRequestWorkPanelMock = vi.fn()
 const updateRequestWorkMock = vi.fn()
@@ -114,20 +121,31 @@ beforeEach(() => {
 })
 
 describe('RequestCallbackSection — current value (AC-008)', () => {
-  it('shows the panel value in the exact "Y-m-d\\TH:i" shape the input expects', async () => {
+  it('splits the panel value across the date and the time input', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T15:30' }))
 
     renderPanel()
 
-    expect(await screen.findByLabelText('Callback date and time')).toHaveValue('2026-08-03T15:30')
+    expect(await screen.findByLabelText(DATE_FIELD)).toHaveValue('2026-08-03')
+    expect(screen.getByLabelText(TIME_FIELD)).toHaveValue('15:30')
   })
 
-  it('shows a blank field when the panel has no callback scheduled', async () => {
+  it('shows a blank time for a callback planned without one', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T00:00' }))
+
+    renderPanel()
+
+    expect(await screen.findByLabelText(DATE_FIELD)).toHaveValue('2026-08-03')
+    expect(screen.getByLabelText(TIME_FIELD)).toHaveValue('')
+  })
+
+  it('shows both fields blank when the panel has no callback scheduled', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: null }))
 
     renderPanel()
 
-    expect(await screen.findByLabelText('Callback date and time')).toHaveValue('')
+    expect(await screen.findByLabelText(DATE_FIELD)).toHaveValue('')
+    expect(screen.getByLabelText(TIME_FIELD)).toHaveValue('')
   })
 })
 
@@ -137,8 +155,8 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     updateRequestWorkMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T15:30' }))
 
     renderPanel()
-    const field = await screen.findByLabelText('Callback date and time')
-    fireEvent.change(field, { target: { value: '2026-08-03T15:30' } })
+    fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '2026-08-03' } })
+    fireEvent.change(screen.getByLabelText(TIME_FIELD), { target: { value: '15:30' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
@@ -147,13 +165,25 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     expect(payload).toEqual({ next_callback_at: '2026-08-03T15:30' })
   })
 
-  it('clearing an existing value sends an explicit null, not an empty string or an absent key', async () => {
+  it('a date saved without a time travels as midnight — the hour is not mandatory', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: null }))
+    updateRequestWorkMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T00:00' }))
+
+    renderPanel()
+    fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '2026-08-03' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateRequestWorkMock.mock.calls[0]
+    expect(payload).toEqual({ next_callback_at: '2026-08-03T00:00' })
+  })
+
+  it('clearing the date sends an explicit null, not an empty string or an absent key', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T15:30' }))
     updateRequestWorkMock.mockResolvedValue(panel({ next_callback_at: null }))
 
     renderPanel()
-    const field = await screen.findByLabelText('Callback date and time')
-    fireEvent.change(field, { target: { value: '' } })
+    fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
@@ -169,7 +199,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     )
 
     renderPanel()
-    await screen.findByLabelText('Callback date and time')
+    await screen.findByLabelText(DATE_FIELD)
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
     fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
@@ -189,10 +219,11 @@ describe('RequestCallbackSection — read-only actor (AC-008)', () => {
     )
 
     renderPanel()
-    const field = await screen.findByLabelText('Callback date and time')
+    const date = await screen.findByLabelText(DATE_FIELD)
 
-    expect(field).toBeDisabled()
-    expect(field).toHaveValue('2026-08-03T15:30')
+    expect(date).toBeDisabled()
+    expect(date).toHaveValue('2026-08-03')
+    expect(screen.getByLabelText(TIME_FIELD)).toBeDisabled()
     // No update permission at the resource level either: no Save button to submit through.
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })

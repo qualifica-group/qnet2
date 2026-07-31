@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CalendarClock, Loader2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
 import { WorkflowStatusSwatch } from '@/features/request-management/request-workflow-status-field'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
@@ -15,15 +16,6 @@ interface RequestWorkHeaderProps {
   isDirty: boolean
   /** Why the last submit did not go through (validation summary or server error); `null` when there is none. */
   submitError: string | null
-}
-
-/** Formats the `Y-m-d\TH:i` callback for display, `null` when missing/unparsable. */
-function formatDateTime(value: string | null): string | null {
-  if (!value) {
-    return null
-  }
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleString()
 }
 
 /** A compact status pill: micro-label + swatch + name, so state never reads from color alone. */
@@ -58,7 +50,9 @@ export function RequestWorkHeader({
   submitError,
 }: RequestWorkHeaderProps) {
   const { t } = useTranslation()
-  const nextCallback = formatDateTime(panel.next_callback_at)
+  // The callback hour is optional (user directive 2026-07-31): one planned
+  // without it reads as a plain date here too, never as "00:00".
+  const nextCallback = formatDateTimeOptionalTime(panel.next_callback_at)
 
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">

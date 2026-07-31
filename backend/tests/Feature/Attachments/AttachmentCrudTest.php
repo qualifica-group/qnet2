@@ -179,6 +179,18 @@ it('download: 403 without attachments.view', function () {
     $this->get("/api/attachments/{$attachment->id}/download")->assertForbidden();
 });
 
+// A guest hitting a protected endpoint straight from the browser address bar
+// sends `Accept: text/html`, so Authenticate takes the redirect branch. With
+// the framework default (`route('login')`) that branch throws
+// RouteNotFoundException (500) in this API-only app instead of answering 401
+// — see the redirectGuestsTo override in bootstrap/app.php.
+it('view: 401 for an unauthenticated browser navigation, never a login redirect', function () {
+    $attachment = Attachment::factory()->create();
+
+    $this->get("/api/attachments/{$attachment->id}/view", ['Accept' => 'text/html'])
+        ->assertUnauthorized();
+});
+
 // ---------------------------------------------------------------------------
 // destroy — DELETE /api/attachments/{attachment}
 // ---------------------------------------------------------------------------

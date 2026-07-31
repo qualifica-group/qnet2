@@ -136,6 +136,8 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     fireEvent.change(screen.getByLabelText('Email'), {
       target: { value: 'duplicate@example.com' },
     })
+    // Creating a referent requires a phone number (user directive 2026-07-31).
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
 
     const status = await screen.findByRole('status')
     expect(status).toHaveTextContent('Existing Referent might be a duplicate (email).')

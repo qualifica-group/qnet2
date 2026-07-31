@@ -15,6 +15,10 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatBytes } from '@/features/attachments/format-bytes'
+import {
+  useAttachmentBinaryActions,
+  useAttachmentThumbnail,
+} from '@/features/attachments/use-attachment-binary'
 import type { Attachment } from '@/features/attachments/types'
 
 type FileKind = 'image' | 'pdf' | 'spreadsheet' | 'word' | 'presentation' | 'archive' | 'text' | 'generic'
@@ -95,10 +99,15 @@ export interface AttachmentTileProps {
 }
 
 /**
- * One document row: a type-tinted leading avatar (image thumbnail via
- * `view_url`, otherwise a coloured kind icon), the file name, a metadata strip
- * (format · size · date) and preview/download/delete affordances. Presentational
- * only — the parent owns the confirm + mutation flow behind `onDelete`.
+ * One document row: a type-tinted leading avatar (image thumbnail, otherwise a
+ * coloured kind icon), the file name, a metadata strip (format · size · date)
+ * and preview/download/delete affordances. Presentational only — the parent
+ * owns the confirm + mutation flow behind `onDelete`.
+ *
+ * Thumbnail and preview/download are NOT plain anchors on the resource's
+ * `view_url`/`download_url`: those endpoints sit behind `auth:sanctum` and the
+ * browser never sends the Bearer token on a DOM-issued request, so the binary
+ * is streamed through the axios client (`use-attachment-binary`).
  */
 export function AttachmentTile({ attachment, canDelete, onDelete }: AttachmentTileProps) {
   const { t } = useTranslation()
@@ -107,17 +116,19 @@ export function AttachmentTile({ attachment, canDelete, onDelete }: AttachmentTi
   const Icon = KIND_META[kind].icon
   const uploadedOn = formatDate(attachment.created_at)
   const format = attachment.extension?.toUpperCase() ?? null
+  const thumbnailUrl = useAttachmentThumbnail(attachment.id, isImage)
+  const { openPreview, download } = useAttachmentBinaryActions(attachment)
 
   return (
     <li className="group relative flex items-center gap-3 rounded-lg border bg-card p-2.5 shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-primary/40 hover:shadow-md">
       <div
         className={cn(
           'flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md',
-          isImage ? 'border bg-muted' : KIND_META[kind].accent,
+          thumbnailUrl ? 'border bg-muted' : KIND_META[kind].accent,
         )}
       >
-        {isImage ? (
-          <img src={attachment.view_url} alt={attachment.original_name} className="size-full object-cover" />
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt={attachment.original_name} className="size-full object-cover" />
         ) : (
           <Icon className="size-5" aria-hidden="true" />
         )}
@@ -152,26 +163,24 @@ export function AttachmentTile({ attachment, canDelete, onDelete }: AttachmentTi
 
       <div className="flex items-center gap-0.5 opacity-80 transition-opacity group-hover:opacity-100">
         <Button
-          asChild
+          type="button"
           variant="ghost"
           size="icon-xs"
           className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
           aria-label={t('attachments.preview')}
+          onClick={openPreview}
         >
-          <a href={attachment.view_url} target="_blank" rel="noopener noreferrer">
-            <Eye aria-hidden="true" />
-          </a>
+          <Eye aria-hidden="true" />
         </Button>
         <Button
-          asChild
+          type="button"
           variant="ghost"
           size="icon-xs"
           className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
           aria-label={t('attachments.download')}
+          onClick={download}
         >
-          <a href={attachment.download_url}>
-            <Download aria-hidden="true" />
-          </a>
+          <Download aria-hidden="true" />
         </Button>
         {canDelete ? (
           <Button

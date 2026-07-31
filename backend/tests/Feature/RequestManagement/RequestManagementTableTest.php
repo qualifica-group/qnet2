@@ -304,7 +304,10 @@ it('rows: a set filter on operational_site matches the site\'s primary address l
     expect(collect($response->json('items'))->pluck('id')->all())->toBe([$matching->id]);
 });
 
-it('rows: the operational_site advanced (text) filter matches a substring of the primary address line1 (AC-012)', function () {
+// The requirement changed (user directive 2026-07-31): the advanced filter is
+// a PICKER over `operational-sites/for-select`, not a free-text address
+// search, so it matches by site id.
+it('rows: the operational_site advanced filter matches the picked site ids', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $site = OperationalSite::factory()->create();
     $site->addresses()->create(['line1' => 'Corso Milano 10', 'is_primary' => true]);
@@ -315,10 +318,20 @@ it('rows: the operational_site advanced (text) filter matches a substring of the
     $response = $this->postJson('/api/tables/request-management/rows', [
         'startRow' => 0,
         'endRow' => 25,
-        'advancedFilters' => ['operational_site' => 'Milano'],
+        'advancedFilters' => ['operational_site' => [$site->id]],
     ])->assertOk();
 
     expect(collect($response->json('items'))->pluck('id')->all())->toBe([$matching->id]);
+});
+
+it('rows: the operational_site advanced filter rejects free text -> 422', function () {
+    Sanctum::actingAs(requestManagementUserWith(['viewAny', 'viewAll']));
+
+    $this->postJson('/api/tables/request-management/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'advancedFilters' => ['operational_site' => 'Milano'],
+    ])->assertStatus(422);
 });
 
 it('rows: operational_site is the composed "{line1} - {city}" label (AC-015), no "[object Object]"', function () {

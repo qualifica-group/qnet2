@@ -1,0 +1,168 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\DataObjects\Opportunities\CreateOpportunityData;
+use App\Models\OperationalSite;
+use App\Models\Opportunity;
+use App\Models\OpportunityStatus;
+use App\Models\Registry;
+use App\Models\Source;
+use App\Models\User;
+use App\Services\OpportunityService;
+use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\PicksDemoOffers;
+use Faker\Factory as FakerFactory;
+use Faker\Generator;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
+
+/**
+ * The STANDALONE half of the sample commercial pipeline (user directive
+ * 2026-07-31): opportunities with no lead behind them — the "trattativa
+ * diretta" creation path — as opposed to the converted ones
+ * QualificaSampleLeadSeeder produces through spec 0044.
+ *
+ * Like its sibling this is fabricated data, not client reference data; it is
+ * the LAST step of QualificaProductionDataSeeder because it reuses the
+ * Anagrafiche that step seeds, rather than creating a second set of its own.
+ *
+ * Every row satisfies the opportunity form's two mandatory collections
+ * (`product_lines` and `products_of_interest`, both min:1 in
+ * StoreOpportunityRequest): PicksDemoOffers draws them together, so a line's
+ * category always owns the products picked with it and the seeded rows are
+ * re-submittable from the edit form. The trait is shared with
+ * DemoOpportunitySeeder on purpose — the draw is the same one, and a second
+ * copy would drift.
+ *
+ * Idempotent by presence: a database that already holds a lead-less
+ * opportunity short-circuits the run, so re-seeding neither duplicates the
+ * batch nor deletes deals created on top of it.
+ */
+class QualificaSampleOpportunitySeeder extends Seeder
+{
+    use PicksDemoOffers;
+
+    private const int OPPORTUNITIES = 10;
+
+    private const int FAKER_SEED = 20260731;
+
+    public function __construct(
+        private readonly OpportunityService $opportunities,
+        private readonly CategoryHierarchy $hierarchy,
+    ) {}
+
+    public function run(): void
+    {
+        // Step 1: nothing to add once a standalone deal exists.
+        if (Opportunity::query()->whereNull('lead_id')->exists()) {
+            $this->command?->info('Sample opportunities already seeded: nothing to add.');
+
+            return;
+        }
+
+        $registries = Registry::query()->orderBy('id')->get();
+        $this->loadOffers($this->hierarchy);
+
+        // Step 2: without the mandatory Anagrafica (spec 0040, D-4) or an
+        // offer to fill the two mandatory collections with, a seeded row
+        // would be one the form itself refuses to submit.
+        if ($registries->isEmpty() || ! $this->hasOffers()) {
+            $this->command?->warn('Sample opportunities skipped: no registry, or no product category pairing a business function with a product.');
+
+            return;
+        }
+
+        $faker = FakerFactory::create('it_IT');
+        $faker->seed(self::FAKER_SEED);
+
+        $lookups = [
+            'sources' => Source::query()->orderBy('id')->get(),
+            'sites' => OperationalSite::query()->orderBy('id')->get(),
+            'managers' => User::query()->orderBy('id')->get(),
+        ];
+        $statusIds = OpportunityStatus::query()->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
+
+        // Step 3: the batch itself.
+        for ($index = 0; $index < self::OPPORTUNITIES; $index++) {
+            $this->seedOpportunity($faker, $index, $registries, $lookups, $statusIds);
+        }
+
+        $this->command?->info(sprintf('%d sample opportunities seeded with no lead behind them.', self::OPPORTUNITIES));
+    }
+
+    /**
+     * @param  Collection<int, Registry>  $registries
+     * @param  array{sources: Collection<int, Source>, sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
+     * @param  array<int, int>  $statusIds
+     */
+    private function seedOpportunity(
+        Generator $faker,
+        int $index,
+        Collection $registries,
+        array $lookups,
+        array $statusIds,
+    ): void {
+        $offer = $this->pickOffer($faker, $index);
+        $startDate = $faker->dateTimeBetween('-6 months', 'now');
+
+        $this->opportunities->create(new CreateOpportunityData(
+            registryId: $registries[$index % $registries->count()]->id,
+            referentId: null,
+            commercialId: null,
+            reporterId: null,
+            supervisorId: $this->pick($lookups['managers'], $index)?->id,
+            sourceId: $this->pick($lookups['sources'], $index)?->id,
+            // The whole point of this batch: no lead behind the deal, so
+            // nothing is BR-1-derived and nothing is locked.
+            leadId: null,
+            opportunityStatusId: $this->rotateStatusId($statusIds, $index),
+            managerSlots: $this->managerSlots($lookups['managers'], $index),
+            productLines: $offer['product_lines'],
+            startDate: $startDate->format('Y-m-d'),
+            estimatedValue: $faker->randomFloat(2, 1500, 90000),
+            expectedCloseDate: (clone $startDate)->modify('+'.$faker->numberBetween(1, 6).' months')->format('Y-m-d'),
+            successProbability: $faker->numberBetween(10, 90),
+            productsOfInterest: $offer['products_of_interest'],
+            operationalSiteId: $this->pick($lookups['sites'], $index)?->id,
+            generalNotes: $faker->boolean(60) ? $faker->sentence(12) : null,
+        ));
+    }
+
+    /**
+     * The status is MANDATORY (spec 0043, D-3): rotated over the catalogue so
+     * the grid shows more than a column of "Nuova". Null only when the lookup
+     * is empty — OpportunityService then falls back to the system 'new' row.
+     *
+     * @param  array<int, int>  $statusIds
+     */
+    private function rotateStatusId(array $statusIds, int $index): ?int
+    {
+        return $statusIds === [] ? null : $statusIds[$index % count($statusIds)];
+    }
+
+    /**
+     * A single "G.A. 1" slot: array order IS the pivot `position`, so one
+     * entry means one manager in the first slot.
+     *
+     * @param  Collection<int, User>  $managers
+     * @return array<int, int>|null
+     */
+    private function managerSlots(Collection $managers, int $index): ?array
+    {
+        $manager = $this->pick($managers, $index + 1);
+
+        return $manager === null ? null : [$manager->id];
+    }
+
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Collection<int, TModel>  $items
+     * @return TModel|null
+     */
+    private function pick(Collection $items, int $index): mixed
+    {
+        return $items->isNotEmpty() ? $items[$index % $items->count()] : null;
+    }
+}

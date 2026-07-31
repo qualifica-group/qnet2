@@ -163,6 +163,10 @@ describe('ReferentForm — custom fields (spec 0021)', () => {
     fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
+    // Creating a referent requires a phone number (user directive 2026-07-31).
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Contact info/ }))
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
+
     fireEvent.mouseDown(screen.getByRole('tab', { name: /^Account/ }))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Sponsor level' }), {
       target: { value: 'Gold' },

@@ -420,6 +420,7 @@ export const it: TranslationResources = {
       attachments: 'Allegati',
       contacts: 'Contatti',
       personal_data: 'Dati anagrafici',
+      notes: 'Note',
     },
   },
   enums,

@@ -94,6 +94,12 @@ function switchTab(name: string) {
   fireEvent.mouseDown(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
 }
 
+/** Creating a referent requires a phone number (user directive 2026-07-31). */
+function fillRequiredPhone() {
+  switchTab('Contact info')
+  fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
+}
+
 function wrapper(client: QueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
@@ -199,6 +205,8 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 
+    fillRequiredPhone()
+
     switchTab('Account')
     fireEvent.click(screen.getByText('select-referent-type-3'))
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'VIP sponsor' } })
@@ -227,6 +235,37 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
       expect(screen.getByText('Complete the required personal data fields.')).toBeInTheDocument(),
     )
     expect(createReferentMock).not.toHaveBeenCalled()
+  })
+
+  it('blocks the save when no phone number was entered (user directive 2026-07-31)', async () => {
+    render(
+      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
+    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    switchTab('Contact info')
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('Enter at least one phone number.')).toBeInTheDocument(),
+    )
+    expect(createReferentMock).not.toHaveBeenCalled()
+  })
+
+  it('marks the phone quick field as required in create mode', () => {
+    render(
+      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    switchTab('Contact info')
+
+    expect(screen.getByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
   })
 
   it('seeds referent fields and the anagraphic card from the loaded detail in edit mode', async () => {
@@ -285,6 +324,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
 
     fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
     fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    fillRequiredPhone()
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createReferentMock).toHaveBeenCalledTimes(1))

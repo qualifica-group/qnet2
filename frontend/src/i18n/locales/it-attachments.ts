@@ -20,5 +20,8 @@ export const attachments = {
     uploadSome_one: 'Impossibile caricare 1 file: {{names}}. Gli altri sono stati caricati.',
     uploadSome_other: 'Impossibile caricare {{count}} file: {{names}}. Gli altri sono stati caricati.',
     delete: 'Impossibile eliminare il documento. Riprova.',
+    preview: 'Impossibile aprire il documento. Riprova.',
+    previewBlocked: 'Il browser ha bloccato la finestra di anteprima. Consenti i pop-up per questo sito.',
+    download: 'Impossibile scaricare il documento. Riprova.',
   },
 }

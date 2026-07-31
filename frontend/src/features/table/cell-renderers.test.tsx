@@ -2,7 +2,7 @@ import { fireEvent, render, waitFor, within } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { BadgeCell, ContactsCell, CountCell, TagsCountCell } from '@/features/table/cell-renderers'
+import { BadgeCell, ContactsCell, CountCell, DateTimeCell, TagsCountCell } from '@/features/table/cell-renderers'
 import type { EnumBadge, PrimaryContact } from '@/features/table/types'
 
 beforeAll(async () => {
@@ -201,5 +201,37 @@ describe('ContactsCell', () => {
 
   it('renders an em dash when the value is missing', () => {
     expect(renderContacts(undefined).getByText('—')).toBeInTheDocument()
+  })
+})
+
+/**
+ * `optionalTime` (user directive 2026-07-31): for a column whose hour is
+ * optional — the callback plan — an instant saved without one carries `T00:00`
+ * on the wire, and printing "00:00" would read as a real midnight appointment.
+ */
+function renderDateTime(value: unknown, optionalTime = false) {
+  const params = { value } as unknown as ICellRendererParams
+  return render(<DateTimeCell {...params} optionalTime={optionalTime} />)
+}
+
+describe('DateTimeCell', () => {
+  it('renders date and time by default, midnight included', () => {
+    expect(renderDateTime('2026-08-03T00:00').getByText('Aug 3, 2026, 12:00 AM')).toBeInTheDocument()
+  })
+
+  it('drops the time of a midnight instant in optionalTime mode', () => {
+    expect(renderDateTime('2026-08-03T00:00', true).getByText('Aug 3, 2026')).toBeInTheDocument()
+  })
+
+  it('keeps a real time in optionalTime mode', () => {
+    expect(renderDateTime('2026-08-03T15:30', true).getByText('Aug 3, 2026, 3:30 PM')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the value is missing', () => {
+    expect(renderDateTime(null, true).getByText('—')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the value is unparsable', () => {
+    expect(renderDateTime('not-a-date', true).getByText('—')).toBeInTheDocument()
   })
 })

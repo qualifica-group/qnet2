@@ -13,8 +13,10 @@ export const requestManagement = {
     all: 'All',
   },
   columns: {
+    source: 'Source',
     productCategory: 'Product category',
     productsOfInterest: 'Products of interest',
+    generalNotes: 'General notes',
     operator: 'Operator (GA2)',
     operationalSite: 'Operational site',
     workflowStatus: 'Working status',
@@ -144,8 +146,8 @@ export const requestManagement = {
     callback: {
       title: 'Next callback',
       description: 'Plan the next follow-up call with the client.',
-      label: 'Callback date and time',
-      placeholder: 'Select date and time',
+      label: 'Callback date',
+      timeLabel: 'Callback time (optional)',
     },
     attribution: {
       title: 'Attribution',

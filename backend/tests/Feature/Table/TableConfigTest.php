@@ -173,7 +173,7 @@ it('exposes hasFilterValues=true for the roles users_count AGGREGATE column', fu
 
 it('offers only assignable form-module permissions in the roles permissions catalogue', function () {
     Permission::findOrCreate('roles.viewAny');
-    foreach (['companies.view', 'operational-sites.create', 'addresses.view', 'contacts.update'] as $name) {
+    foreach (['companies.view', 'operational-sites.create', 'notes.create', 'attachments.create', 'addresses.view', 'contacts.update'] as $name) {
         Permission::findOrCreate($name);
     }
     $user = User::factory()->create();
@@ -183,9 +183,12 @@ it('offers only assignable form-module permissions in the roles permissions cata
     $data = $this->getJson('/api/tables/roles/columns')->json('data');
     $permissionsColumn = collect($data['columns'])->firstWhere('id', 'permissions');
 
-    // Form-module permissions are offered; indirect sub-entity ones are not
-    // (they are governed via the field-permission matrix on the parent form).
-    expect($permissionsColumn['options'])->toContain('companies.view', 'operational-sites.create')
+    // Form-module permissions are offered, plus the permission-only resources
+    // that own no form of their own (the agnostic `notes` and `attachments`
+    // components); indirect sub-entity ones are not (they are governed via the
+    // field-permission matrix on the parent form).
+    expect($permissionsColumn['options'])
+        ->toContain('companies.view', 'operational-sites.create', 'notes.create', 'attachments.create')
         ->and($permissionsColumn['options'])->not->toContain('addresses.view', 'contacts.update');
 });
 

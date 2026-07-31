@@ -3,6 +3,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
+  ApplicableAttribute,
   RequestClientAddressPayload,
   RequestClientContactPayload,
   RequestClientIdentity,
@@ -11,6 +12,33 @@ import type {
   RequestWorkPanel,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
+
+/**
+ * Every applicable code with the request's stored value, or the type's "unset"
+ * default when it has none: `false` for a `boolean` (user directive
+ * 2026-07-31), `null` for every other type. A checkbox has no third state, so
+ * an unfilled flag means "no", never "not answered" — without this a stored
+ * `null` reached `z.boolean()` and the panel reported the field as required,
+ * which is exactly what the flags PSP / DID / Documenti Identificativi did.
+ *
+ * Applied to BOTH the form defaults and the baseline they are diffed against
+ * (`attributeValuesChanged`), or a freshly loaded request with no boolean
+ * value stored would report itself as already modified and rewrite the whole
+ * map on any unrelated save.
+ */
+export function seedAttributeValues(
+  attributes: ApplicableAttribute[],
+  values: Record<string, unknown>,
+): Record<string, CustomFieldValue> {
+  const seeded: Record<string, CustomFieldValue> = {}
+
+  for (const attribute of attributes) {
+    const stored = values[attribute.code] as CustomFieldValue | undefined
+    seeded[attribute.code] = stored ?? (attribute.type === 'boolean' ? false : null)
+  }
+
+  return seeded
+}
 
 /**
  * True when at least one applicable attribute's current value differs from
@@ -184,7 +212,8 @@ export function buildRequestWorkPayload(
   }
 
   const codes = panel.applicable_attributes.map((attribute) => attribute.code)
-  if (attributeValuesChanged(values.attribute_values, panel.attribute_values, codes)) {
+  const originalAttributeValues = seedAttributeValues(panel.applicable_attributes, panel.attribute_values)
+  if (attributeValuesChanged(values.attribute_values, originalAttributeValues, codes)) {
     payload.attribute_values = values.attribute_values
   }
 

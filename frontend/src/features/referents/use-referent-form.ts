@@ -11,6 +11,7 @@ import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import {
   areCreateContactsValid,
+  hasPhoneContact,
   isCreateAddressValid,
 } from '@/features/personal-data/create-validation'
 import { cardToDraft, emptyPersonalDataDraft } from '@/features/personal-data/drafts'
@@ -203,6 +204,12 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
       }
       if (!areCreateContactsValid(profileDraft.contacts, t)) {
         setServerError(t('personalData.section.contactsInvalid'))
+        return
+      }
+      // A referent must be reachable by phone (user directive 2026-07-31);
+      // the server twin lives in StoreReferentRequest.
+      if (!hasPhoneContact(profileDraft.contacts)) {
+        setServerError(t('personalData.section.phoneRequired'))
         return
       }
     }

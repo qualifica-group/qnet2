@@ -3,6 +3,548 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ALLEGATI: ANTEPRIMA/THUMBNAIL/DOWNLOAD NON FUNZIONAVANO (2026-07-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato**: aprendo `http://qnet-2-backend.test/api/attachments/2/view` il browser non
+mostra il file ma restituisce `RouteNotFoundException: Route [login] not defined` (500).
+
+**Root cause (due difetti distinti, non uno)**:
+1. L'app e' API-only e non ha una rotta `login`, ma `withMiddleware()` di Laravel imposta di
+   default `redirectGuestsTo(fn () => route('login'))`. Quel ramo viene valutato da `Authenticate`
+   per ogni richiesta che NON manda `Accept: application/json` — cioe' una navigazione del browser
+   su un endpoint protetto — e esplode con 500 invece di rispondere 401.
+2. Il difetto vero, piu' ampio del sintomo: `AttachmentResource` espone `view_url`/`download_url`
+   e il frontend li dava **al DOM come URL nudi** (`<img src>`, `<a href target=_blank>`,
+   `<a href>` in `attachment-tile.tsx`). L'auth di questo progetto e' **Bearer token in
+   localStorage** (`api/token-storage.ts`, interceptor in `api/client.ts`): il browser non lo
+   allega mai a una richiesta emessa dal DOM. Quindi **miniature, anteprima e download degli
+   allegati erano rotti anche dentro l'app**, non solo incollando l'URL.
+
+**Fix**:
+- `bootstrap/app.php` — `$middleware->redirectGuestsTo(fn () => null)`: senza redirect,
+  l'`AuthenticationException` viene resa dal handler come **401 JSON** (grazie a
+  `shouldRenderJsonWhen(api/*)` gia' presente). Test reproduce-first: senza il fix il nuovo test
+  in `AttachmentCrudTest` fallisce con esattamente il 500 riportato dall'utente.
+- FE `features/attachments/api.ts` — `fetchAttachmentBinary(id, 'view'|'download')` via
+  `apiClient` con `responseType: 'blob'` (percorso relativo, NON `view_url` assoluto: in dev
+  passerebbe cross-origin rispetto al proxy Vite).
+- FE `features/attachments/use-attachment-binary.ts` (nuovo) — `useAttachmentThumbnail`
+  (objectURL con `useMemo` + revoke nell'effect keyed sull'URL: `setState` dentro l'effect e'
+  **bloccato dalla regola eslint `react-hooks/set-state-in-effect`**) e `useAttachmentBinaryActions`
+  (anteprima/download).
+- FE `attachment-tile.tsx` — i due anchor diventano `Button` con `onClick`; la miniatura usa
+  l'objectURL (finche' non e' pronta resta l'icona di tipo). i18n it/en: 3 chiavi errore nuove.
+
+**Due dettagli da NON "correggere" senza capirli**:
+- La tab dell'anteprima si apre **sincronicamente sul click** (`window.open('','_blank')`) e solo
+  dopo le si assegna `location.href` col blob: aprirla dopo l'`await` perde il gesto utente e la
+  fa mangiare dal popup blocker. Se `window.open` torna null → toast `previewBlocked`.
+- L'objectURL dell'anteprima si revoca **su timer** (`PREVIEW_URL_LIFETIME_MS`), non subito:
+  revocarlo dopo `window.open` aborta il caricamento della tab stessa.
+- Servire un `blob:` in tab lo esegue sotto l'origine della SPA: sarebbe un vettore XSS per
+  contenuto attivo, ma `config/attachments.php` non ammette **ne' SVG ne' HTML**. Se un giorno si
+  aggiunge `image/svg+xml` all'allow-list, questo percorso va rivisto.
+- `view_url`/`download_url` restano nella Resource (contratto, coperti da test backend) ma il FE
+  non li usa piu' come href.
+
+**Verifica**: backend `pest` intera suite **4880 test, 4878 passed, 1 skipped** e
+`tests/Feature/Attachments` 31 passed; `pint --dirty` pulito. FE `vitest run` **3230 passed
+(458 file)**, `tsc -b --force` EXIT=0, `eslint` pulito.
+
+**ROSSO PREESISTENTE, NON MIO (da sistemare a parte)**:
+`tests/Feature/Authorization/AssignablePermissionCatalogueTest` — "marks form-module permissions
+assignable and indirect ones not" fallisce perche' le modifiche gia' presenti (non committate) a
+`AssignablePermissionCatalogue.php` + `config/authorization.php` hanno reso `attachments.*`
+assegnabile via `permission_only_resources`, ma il test asserisce ancora
+`isAssignable('attachments.delete') === false`. Va aggiornato il test (il requisito e' cambiato),
+non il codice.
+
+## IL COMMERCIALE VEDEVA TUTTE LE GESTIONI RICHIESTE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato**: `lazio@commerciale.com` entrando in Gestione Richieste vedeva tutte le
+richieste, non solo quelle dove e' lui il GA2 "Operatore".
+
+**Root cause: NON e' un bug di codice, e' il seeder.** Lo scoping D-3 esiste ed e' corretto in
+tutti e quattro i punti (`RequestManagementTableDefinition::baseQuery()` sul pivot
+`opportunity_user.position = Opportunity::OPERATOR_MANAGER_POSITION`, `RequestManagementScope`
+sul work panel, `RequestCategoryTabsResolver` sulle tab, `RequestAssignmentService` sul bulk),
+ma tutti si aprono per chi ha `request-management.viewAll` — e il ruolo `commercial` **lo
+aveva**. Il motivo: `TestUsersSeeder::commercialPermissions()` e' costruito come **deny-list**
+sul modulo (prende tutte le abilities di `request-management` meno quelle vietate) e l'unica
+vietata era `delete`. Ogni ability aggiunta al modulo finisce quindi automaticamente al
+commerciale: da tenere presente quando si aggiungera' la prossima.
+
+**Fix (1 riga di sostanza)**: `'viewAll'` aggiunto a
+`TestUsersSeeder::COMMERCIAL_DENIED_MODULE_ABILITIES`. Il ruolo `supervisor` (matrice a
+deny-list per risorsa, non per ability) **mantiene** `viewAll`: e' un'ability da supervisore.
+
+**DB di sviluppo gia' allineato** (`revokePermissionTo` chirurgico sul ruolo `commercial` +
+`forgetCachedPermissions`, per non resettare le password che `seedAccount()` riscrive):
+verificato che `lazio@commerciale.com` passa da 22 richieste visibili a 2 (quelle dove e' GA2).
+Su un DB nuovo basta il seeder.
+
+**Conseguenza da ricordare**: senza `viewAll` un commerciale che crea una richiesta e **non**
+valorizza l'Operatore, oppure che riassegna il GA2 a un collega, perde la richiesta di vista al
+read successivo (comportamento gia' documentato in `request-attribution-section.tsx`). Non e'
+una regressione introdotta qui, ma prima era mascherato dal permesso.
+
+**Test**: `TestUsersSeederTest` 20 passed — nuovo `scopes the commercial request list to the
+requests they hold as GA2 operator` (lista = solo la propria, panel altrui 403) + assert
+`viewAll` false. Due fixture dello stesso file passavano solo grazie a `viewAll` e ora legano
+l'attore alla richiesta come GA2 (helper `asOperatorOf()`): il test del delete e quello della
+nota collaborativa. Suite adiacenti `RequestManagement`/`Table`/`Notes`/`Seeding`/`Rewards`/
+`Quotes` **793 passed**, nessuna regressione. `pint --dirty` pulito. Nessuna modifica frontend.
+
+## CERCARE "NAPOLI" NEL SELECT CITTA' NON TROVAVA NULLA (2026-07-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato**: nei select comune (di nascita / di residenza) digitando `napoli` zero
+risultati, digitando `naples` la riga usciva.
+
+**Root cause**: NON e' un dato sbagliato. Il dataset di riferimento (`dev/DatabaseWorld/world.sql`,
+derivato da dr5hn) memorizza gli esonimi INGLESI e per decisione 2026-07-17 la colonna `name`
+resta inglese: la traduzione avviene **in lettura** via `GeoNameLocalizer::toItalian()` +
+trait `LocalizesGeoName`, usato da tutte e 4 le Resource geo. Regioni e province quindi si
+**vedevano gia' in italiano**. Il buco era solo nella RICERCA: `GeoController::cities()` faceva
+un `where('name','like',$search.'%')` sulla colonna inglese senza passare per il localizer —
+mentre il pattern corretto esisteva gia' ed era usato in `OperationalSiteGeoColumns::applySearchGeo()`
+(`GeoNameLocalizer::englishNamesMatching()`). Solo le citta' sono cercate lato server
+(`geo-select.tsx` passa `filter={false}`): gli altri livelli filtrano client-side su etichette
+gia' italiane, per questo erano gia' a posto.
+
+**Perche' NON abbiamo rinominato i dati** (valutato e scartato): rinominare le 30 righe italiane
+anglicizzate avrebbe contraddetto l'architettura e rotto `ItalianGeoLocalizer` (alias IT→EN degli
+import), `filterMatchNames`/`toEnglish` dei set-filter, `MigrationGeoResolver`, e i nomi inglesi
+canonici gia' persistiti in `import_run_rows.mapped_values`. Delta misurato per memoria: 9 regioni,
+14 province, 7 citta' (gli altri ~9.845 comuni sono gia' nativi in italiano).
+
+**Fix (2 file)**:
+- `GeoNameLocalizer::englishNamesStartingWith()` — variante **prefix** di `englishNamesMatching()`
+  (che e' "contains"). Serve perche' il select citta' e' un prefix lookup: con un contains,
+  digitare `poli` avrebbe fatto comparire Napoli in mezzo a soli match per prefisso.
+- `GeoController::applyCityNameSearch()` — estratto da `cities()`: allarga il LIKE con
+  `orWhereIn` sugli alias inglesi **e li ordina per primi**. Il ranking non e' cosmetico: sulla
+  colonna inglese `Rome` finisce dopo tutti i `Romagn...` in **posizione 57**, oltre il cap di 50
+  → senza ranking cercare `roma` continuava a non mostrare Roma in prima pagina (verificato su
+  MySQL reale). Il ranking sta in SQL (`orderByRaw` con **placeholder da conteggio array +
+  binding**, valori dalla mappa costante chiusa del localizer, niente input interpolato) e non in
+  un merge PHP, cosi' il paging per `offset` resta coerente fra le pagine.
+
+**Nota nota e accettata**: nella ricerca citta' *senza parent* (city-first) la collation
+`utf8mb4_unicode_ci` e' accent-insensitive, quindi l'`orWhereIn('name',['Milan'])` cattura anche
+`Milán` (Colombia). Quella ricerca e' globale per design (nessun filtro paese), quindi non e' un
+bug: non "correggerlo" scopandola all'Italia senza richiesta esplicita.
+
+**Verifica**: `tests/Unit/Support/Geo` + `tests/Feature/Geo` 46 passed (5 nuovi: ricerca in
+italiano, riga gia' italiana non regredita, prefix-non-contains, ranking sopra il cap, inglese
+ancora funzionante); suite geo-adiacenti `Imports`/`Migration`/`OperationalSites`/`PersonalData`/
+`CompanySites`/`Unit` 1456 passed e `Table`/`Companies`/`Projects`/`Campaigns`/`Registries`/
+`Referents`/`Users` 715 passed, nessuna regressione; `pint --dirty` pulito. Nessuna modifica
+frontend.
+
+## COLONNE "FONTE" E "NOTE GENERALI" IN GESTIONE RICHIESTE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: aggiungere in griglia la colonna **Note generali** di fianco a "Prodotti
+di interesse", e la colonna **Fonte** fra le prime, quest'ultima **modificabile inline**.
+
+**Nessun nuovo endpoint, nessuna migrazione, nessun tocco al service**: entrambe le colonne
+esistevano gia' come dato.
+- `source` — `source_id` e' gia' in `Opportunity::$fillable`, e' gia' un `FieldDefinition`
+  di `RequestManagementAuthorization` (**`mandatory: true`**, direttiva 2026-07-29) ed e' gia'
+  gestito da `RequestManagementService::updateWork()` step 0 (`applyAttribution()`). La rotta
+  `sources/for-select` esiste e `'sources'` e' gia' mappato in `RelationValueScopeChecker`.
+  Il write inline percorre quindi lo stesso choke point del pannello, senza aggiungere un
+  ramo: l'engine passa `editableField` (`source_id`) come `columnId` a `updateCell()`.
+- `general_notes` — colonna DB reale su `opportunities`, quindi sort + filtro `text` passano
+  dall'engine generico senza hook derivati. **Display-only di proposito**, come
+  `RequestGeneralNotesCallout` nel pannello: questo modulo non scrive il campo (lo possiede il
+  form opportunita'), per questo NON e' in `RequestManagementAuthorization::fields()`.
+
+**Due conseguenze da ricordare**:
+1. `source_id` essendo `required` nella matrice, l'engine (`TableCellUpdateService` step 4.5)
+   rifiuta il null: la cella **si cambia ma non si svuota** (422, non 403). La colonna quindi
+   NON dichiara `nullable` — dichiararlo sarebbe stato contraddittorio, non permissivo.
+2. Un PATCH su `general_notes` risponde **422 "Column not editable"**, non 403: la colonna e'
+   fuori dall'allow-list editabili, rifiuto strutturale prima di ogni check field-permission.
+
+**File toccati**: `RequestColumnCatalog` (le due dichiarazioni), `RequestRelationColumns`
+(`source` in `DERIVED_RELATIONS` → filtro set/sort/distinct gratis), `RequestRowMapper`
+(`summarize()` + i due valori), `RequestManagementTableDefinition` (eager-load `source`),
+FE `column-renderers.tsx` (`RelationCell` icona `Radio` come nella griglia lead; `TextCell`
+per le note) + i18n it/en.
+
+**Verifica**: `pest tests/Feature/RequestManagement + tests/Feature/Table` **510 passed**
+(10 nuovi in `RequestManagementSourceAndNotesColumnsTest`); `pint --dirty` pulito;
+`tsc -b --force` EXIT=0; `eslint` pulito; vitest `features/request-management` + `i18n`
+19 file / 136 test passati.
+
+## DOCUMENTI SU GESTIONE RICHIESTE — SUPERVISOR E COMMERCIALE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Riportato**: supervisor e commerciale non riescono a inserire documenti sulla lavorazione
+richieste. **Il probe ha smentito meta' del sintomo**: nel seeder il **supervisor aveva gia'
+tutte e quattro le `attachments.*`** (il suo filtro e' a sottrazione e `attachments` non e' fra
+le risorse negate) — se in ambiente non funziona e' perche' il ruolo in DB e' anteriore, non
+perche' manchi nel codice. **Il commerciale non ne aveva nessuna.**
+
+**Il punto da non dimenticare**: `request-management.viewDocuments` **apre solo la tab**, non
+autorizza nulla. Ogni endpoint dietro la tab appartiene al sottosistema polimorfico degli
+allegati e passa da `attachments.viewAny` (lista), `view` (download/anteprima), `create`
+(upload), `delete` (rimozione). Il commerciale aveva `viewDocuments` (fa parte di
+`COMMERCIAL_MODULE`), quindi vedeva la tab aprirsi su un 403. Stessa dinamica delle note.
+
+**Deciso dall'utente**: al commerciale vanno tutte e quattro, `delete` compresa (a differenza di
+`request-management.delete`, che resta negata: cancellare un proprio documento si', cancellare la
+richiesta no). Aggiunte a `COMMERCIAL_EXTRA_PERMISSIONS`.
+
+**`attachments` era orfano quanto `notes`**: il docblock di `AssignablePermissionCatalogue` lo
+elencava fra i "permessi indiretti di sotto-entita' governati dalla matrice field-permission"
+insieme ad `addresses`/`contacts`/`personal_data` — **ma per gli allegati quella matrice non
+esiste**: `AttachmentPolicy` e' una `BasePolicy` piena su endpoint propri. Risultato: permessi
+reali, non assegnabili da nessuna UI. Aggiunto `attachments` a `permission_only_resources`
+(la chiave introdotta per `notes`) e corretti i due docblock che dicevano il falso.
+
+**ATTENZIONE alla sicurezza (non introdotta qui, ereditata)**: `attachments.*` e' un gate
+**globale, senza confine per-record** — nessuno scoping lega l'allegato al record ospite (a
+differenza delle note, che sono in AND con la lettura dell'ospite, spec 0052 D-6). Chi ha
+`attachments.view` puo' scaricare per id l'allegato di QUALSIASI entita' (utenti, sedi, layout
+documento, contratti). Se un domani serve restringere, il posto e' `AttachmentPolicy`, non i
+ruoli.
+
+**Verifica**: 120 passed (`Users/TestUsersSeederTest` + `Table/TableConfigTest` +
+`Feature/Attachments` + `Feature/Roles`); il test nuovo fa fare a ENTRAMBI i ruoli il giro
+completo upload → lista → download → delete su una richiesta reale. `pint --dirty` pulito.
+
+## IL RUOLO COMMERCIALE NON PUO' SCRIVERE NOTE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato**: con un utente del ruolo `commercial` (seed di produzione Qualifica →
+`TestUsersSeeder`) il composer delle note collaborative del pannello di lavorazione richieste
+risponde 403; e dal form Ruoli il permesso non era assegnabile a mano.
+
+**Due bug distinti, non uno**:
+
+1. **Seed** — `TestUsersSeeder::commercialPermissions()` concede `request-management.*` (meno
+   `delete`), i `viewAny` dei select e `referents.create`. `notes.create` non c'era. Le note si
+   LEGGONO senza permesso (il gate e' la lettura del record ospite, spec 0052 D-6): per questo
+   la sezione si vedeva ma ogni POST /api/notes cadeva. Aggiunto `notes.create` a
+   `COMMERCIAL_EXTRA_PERMISSIONS`. Il ruolo `supervisor` lo aveva gia' (filtro a sottrazione),
+   `marketing` no e resta cosi': `notes.notable_types` contiene solo `request-management`.
+
+2. **Ruoli** — `notes.create` non era **assegnabile dal form Ruoli**, quindi non era rimediabile
+   a mano. `AssignablePermissionCatalogue` offriva solo i prefissi presenti in
+   `config/authorization.php` `definitions`, e `notes` non e' li' dentro: e' un componente
+   agnostico senza form proprio, quindi senza `ResourceAuthorization`. Il permesso esisteva in
+   catalogo (`permissions:sync` lo deriva da `NotePolicy::abilities() = ['create']`) ma era
+   raggiungibile solo via seeder o via bypass super-admin.
+
+**Fix del punto 2**: nuova chiave `permission_only_resources` in `config/authorization.php`
+(`['notes']`), letta da `AssignablePermissionCatalogue::isAssignable()` in OR con
+`resourceKeys()`. NON e' il posto per i permessi indiretti di sotto-entita' (`addresses.*`,
+`contacts.*`, `personal_data.*`, `attachments.*`): quelli restano governati dalla matrice
+field-permission del form padre e fuori dalle checkbox — l'asserzione negativa e' nei test.
+`FieldCatalogueController` legge `definitions` direttamente, quindi `notes` non compare nella
+sezione field-permission: nessun effetto collaterale. Etichetta i18n `permissions.resources.notes`
+aggiunta (it "Note" / en "Notes"), altrimenti il gruppo cadeva sul fallback humanizzato.
+
+**Conseguenza da ricordare**: ora che `notes.create` e' assignable, `RoleService::syncPermissions()`
+lo GESTISCE (prima lo preservava come permesso non gestito). Un salvataggio del form Ruoli con la
+casella spenta lo toglie — corretto, ma e' un cambio di comportamento per i ruoli che lo avevano.
+
+**Verifica**: `tests/Feature/Roles` + `Table/TableConfigTest` + `Feature/Notes` 109 passed;
+`Feature/Users` + `Feature/Seeding` verdi (nuovi: il commerciale POSTa davvero una nota su una
+richiesta, e `notes.create` e' offerto dal catalogo assegnabile); `pint --dirty` pulito;
+`tsc -b --force` EXIT=0; vitest `features/roles` 46 passed.
+
+## "L'INDIRIZZO E' OBBLIGATORIO" SU OGNI FORM DI CREAZIONE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato**: ovunque compaia il blocco indirizzo (referenti, anagrafiche, utenti,
+sedi aziendali, creazione/lavorazione richiesta) l'errore "L'indirizzo e' obbligatorio" era
+gia' a schermo senza toccare nulla, e il salvataggio veniva rifiutato con "indirizzo
+incompleto".
+
+**Root cause**: `GeoSelect` preseleziona il paese nazionale (`DEFAULT_COUNTRY_ISO2=IT`,
+`useDefaultCountryId`) su una cascata pristina, via effect. In `AddressCreateField` quel seed
+passava da `commit()` e `isStarted()` contava `country_id` fra i segnali di input utente →
+l'indirizzo risultava "iniziato" → errori inline su `line1`/citta' **e** buffer non vuoto, che
+faceva fallire `isCreateAddressValid()` in tutti e cinque i gate di submit (e la refine
+`client_address` del work panel). Nessuno di quei file era sbagliato: il segnale a monte lo era.
+
+**Fix (un solo file, `address-create-field.tsx`)**:
+- `isStarted()` ora guarda solo `line1`/`line2`/`postal_code`/`city_id`. Country/state/province
+  NON sono segnale: sono preselezionabili dal default nazionale.
+- il paese preselezionato non puo' pero' essere buttato via, altrimenti la cascata torna
+  pristina e l'effect di `GeoSelect` ri-emette a ogni render (loop). Vive quindi in uno stato
+  locale `pendingGeo` finche' l'indirizzo non e' davvero iniziato: **il buffer del parent resta
+  `[]`** — niente validazione, niente payload — ma la tendina mostra l'Italia.
+
+**Da non reintrodurre**: rimettere `country_id` in `isStarted()`, oppure "risolvere" emettendo
+`[]` dal `commit` senza conservare il geo in locale (render loop). I gate
+(`isCreateAddressValid`, `addClientAddressIssues`) sono rimasti invariati di proposito.
+
+**Verifica**: `vitest` su personal-data/request-management/referents/registries/users/
+company-sites 61 file, 400 test passed (2 nuovi in `addresses-manager.test.tsx`, con lo stub
+`GeoSelect` esteso a simulare il seed del paese); `tsc -b --force` e `eslint` puliti.
+
+## PIPELINE DI ESEMPIO NEL SEED DI PRODUZIONE QUALIFICA (2026-07-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: nel seeder di produzione Qualifica servono anche lead "importati",
+lead convertiti e opportunita' senza lead. Scelte confermate via AskUserQuestion: lead creati
+dal percorso normale (**non** un `ImportRun` del wizard — il modulo "Importazioni lead" resta
+vuoto), **un** progetto + **una** campagna di appoggio, volumi medi (**40 lead, 12 convertiti,
+10 opportunita' senza lead**).
+
+**Il vincolo che ha dettato il disegno**: la catena `QualificaProductionDataSeeder` non
+produceva **ne' Anagrafiche ne' Progetti ne' Campagne**, che sono relazioni OBBLIGATORIE di un
+Lead (`registry_id`/`campaign_id`, spec 0024 BR-1). Quindi i due nuovi step provvedono anche a
+quelle: 1 progetto, 1 campagna collegata, 1 Anagrafica per lead (card personal-data + contatti +
+indirizzo).
+
+**La coppia classificazione sta sul PROGETTO, non sulla campagna.** Una campagna collegata ha i
+4 campi di classificazione forzati a null (spec 0023, BR-2) e li rilegge dal progetto — che e'
+esattamente il percorso che `LeadOpportunityDefaultsResolver` cammina per derivare la product
+line dell'opportunita'. Senza quella coppia la conversione viene rifiutata (spec 0044, AC-012):
+per questo `QualificaSampleLeadSeeder` **si salta da solo** se nessuna categoria deriva una
+business function, invece di seminare lead non convertibili.
+
+**Conseguenza operativa da NON dimenticare**: le business function arrivano dall'import legacy
+(`QualificaLegacyImportSeeder`, step 4) e la loro assegnazione alla radice "Formazione" avviene
+allo step 5. Quindi **senza `EXTERNAL_MIGRATION_BASE_URL` configurato i due step nuovi non
+seminano nulla** (warning, mai fatale). Nei test si mette in piedi a mano una
+`BusinessFunction::factory()->create(['name' => 'Formazione'])`, esattamente come fa gia'
+`QualificaProductionDataSeederTest` con la `OperationalSite` per il link operatore/sede.
+
+**File nuovi** (step 7 e 8 di `QualificaProductionDataSeeder`):
+- `QualificaSampleLeadSeeder` — progetto/campagna/anagrafiche/40 lead. Converte ogni terzo lead
+  fino al tetto di 12, tramite il flag di richiesta `convertToOpportunity` di
+  `CreateLeadData` (spec 0044): la conversione passa da `ConvertLeadToOpportunity` dentro la
+  transazione di `LeadService::create`, mai un insert a mano.
+- `QualificaSampleOpportunitySeeder` — 10 trattative diritte (`lead_id` null). Riusa il trait
+  `Concerns\PicksDemoOffers` (condiviso con `DemoOpportunitySeeder`) perche' il pescaggio di
+  `product_lines` + `products_of_interest` deve restare uno solo: entrambe le collezioni sono
+  `min:1` in `StoreOpportunityRequest`, e una riga senza non sarebbe risottomettibile dal form.
+
+**Idempotenza per PRESENZA, non per delete** (a differenza dei `Demo*` che fanno
+`Model::query()->delete()`): lo step 7 esce subito se la campagna di esempio ha gia' lead, lo
+step 8 se esiste gia' un'opportunita' con `lead_id` null. Un re-run non duplica il batch e
+soprattutto non butta via le trattative costruite sopra. Il docblock
+dell'orchestratore diceva "Nothing here is fake data": **e' stato emendato** — gli step 7/8 sono
+l'unica eccezione dichiarata.
+
+**Verifica**: `tests/Feature/Seeding` 42/42 passed (`QualificaSampleLeadSeederTest` 4,
+`QualificaSampleOpportunitySeederTest` 4, `QualificaProductionDataSeederTest` 7); `pint` pulito.
+
+## TELEFONO OBBLIGATORIO ALLA CREAZIONE DI UN REFERENT (2026-07-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: creando un "segnalatore", nome/cognome/telefono devono essere
+obbligatori. Ricognizione fatta prima di scrivere codice, con due esiti che vincolano il
+disegno e non vanno ri-dedotti:
+
+1. **Nome e cognome erano gia' obbligatori** — `ValidatesUserProfile::profileRules()`
+   li rende `requiredIf(type === individual)`, e `personal-data-schema.ts` fa lo stesso lato
+   client. Nessuna modifica fatta li'. Non sono nemmeno configurabili dalla matrice ruoli:
+   sono `mandatory: true` in `ReferentsAuthorization::fields()`, quindi
+   `AbstractResourceAuthorization::fieldPermissions()` ignora del tutto la riga
+   `role_field_permissions` e la UI del ruolo li mostra bloccati.
+2. **"Segnalatore" NON e' un `referent_type`** — i tipi seminati sono Commercial/Technical/
+   Administrative/Legal/Other e il catalogo di produzione non ne semina; l'unico "Segnalatore"
+   in `QualificaCatalogSeeder` e' una **fonte**. E' il nome della relazione `reporter_id`
+   (form Gestione Richieste + opportunita'), il cui "+" crea un Referent qualsiasi. **Non
+   esiste un discriminante "e' un segnalatore"**: la regola vale per la creazione di un
+   referent, punto. Scelta utente esplicita: vale **per tutti i ruoli**, non solo Commerciale.
+
+**Il flag `required` della matrice ruoli e' solo metadata di presentazione** (asterisco su
+`FormLabel`): `EnforcesFieldPermissions` valida esclusivamente `editable`. Chi in futuro
+volesse "campo X obbligatorio per il ruolo Y" da UI deve prima renderlo vincolante — non e'
+oggi una configurazione funzionante.
+
+**Implementazione**: `StoreReferentRequest::validatePhoneContact()` — almeno una riga
+`personal_data.contacts` di tipo `phone` **o `mobile`** (entrambi sono numeri di telefono).
+Gemello client in `create-validation.ts::hasPhoneContact()` + gate in `use-referent-form.ts`;
+asterisco sul campo rapido Telefono via la nuova prop opzionale `requiredCreateTypes`
+(`ContactsManager` → `ContactsCreateFields`), che di default e' vuota: **gli altri owner
+(registries, company-sites, users) restano invariati.**
+
+**Trappola trovata e gia' risolta — non reintrodurla:** la validazione gira PRIMA
+dell'autorizzazione, quindi la regola faceva rispondere **422 invece di 403** a chi non ha
+`referents.create`. `validatePhoneContact()` si tira indietro se l'attore non puo' creare,
+esattamente come fa gia' `EnforcesFieldPermissions` per lo stesso motivo. C'e' un test
+dedicato che lo presidia.
+
+**Limiti dichiarati (scelte, non dimenticanze):**
+- **Create-only**: l'update non richiede il telefono, e nulla impedisce di cancellarlo dopo.
+- **Solo l'endpoint HTTP**: `ReferentService::create()` usato da `Migrations\Sources\ReferentsSource`
+  (spec 0046) e dai path di import NON passa dal FormRequest, quindi non e' soggetto alla
+  regola — voluto, altrimenti l'import di dati legacy senza numero si spaccherebbe.
+- Un ruolo con `personal_data.contacts` non editabile non puo' piu' creare referent (non puo'
+  fornire il telefono). E' una configurazione da evitare, non un caso gestito.
+
+**Verifica**: backend `4848 test, 4847 passed, 1 skipped, 0 failed`, `pint --test` passed;
+frontend `458 file, 3226 test` tutti passati, `tsc -b --force` EXIT=0, ESLint pulito sui file
+toccati. Test esistenti di create (3 backend, 3 frontend) adeguati al requisito cambiato:
+ora il payload/form porta un telefono. Nessun test e' stato piegato per farlo passare.
+
+## RUOLO COMMERCIALE + FLAG BOOLEANI DEL PANNELLO RICHIESTE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Tre direttive utente, due file di prod toccati.**
+
+1. **`referents.create` al ruolo `commercial`** (`TestUsersSeeder::COMMERCIAL_EXTRA_PERMISSIONS`).
+   Era l'unico permesso mancante perche' il "+" quick-create (spec 0028) comparisse sul
+   Segnalatore del form di creazione richiesta: `QuickCreateButton` monta dentro
+   `<Can permission={entry.permission}>` e la entry `referents` dichiara `referents.create`,
+   lo stesso permesso che gia' proteggevano `POST /api/referents` e `/referents/duplicate-check`.
+   Nient'altro serviva: `GET /meta/referents` gira su `referents.viewAny` (gia' concesso), la
+   select "Tipo segnalatore" passa da `referent-types/for-select` che dopo l'emendamento di
+   ADR 0011 (2026-07-31) non chiede piu' alcun permesso, e senza righe in
+   `role_field_permissions` i campi sono pieni per default (`FieldPermissionRepository`:
+   assenza = illimitato). **Il modulo referenti resta comunque fuori dal menu** (gated su
+   `referents.view`) e non scrivibile oltre la creazione.
+2. **Tolto `request-management.delete` al `commercial`**
+   (`TestUsersSeeder::COMMERCIAL_DENIED_MODULE_ABILITIES`): chiude in un colpo la row action
+   `delete` e la bulk "elimina selezionati", entrambe emesse da
+   `RequestManagementTableDefinition::actionsFor()` solo con quel permesso, piu' `authorizeDelete()`
+   sull'endpoint. Il filtro del ruolo non e' piu' "tutto il modulo" ma "il modulo meno le abilita'
+   negate": chi aggiunge una negazione futura la mette in quella costante.
+3. **I flag booleani del pannello di lavoro nascono `false`, non `null`.** Root cause vera —
+   NON era `is_required`: in DB `attribute_category.is_required` e' gia' 0 per `psp`, `did`,
+   `identity_documents`, e il seeder li assegna con `false`. Il difetto era in
+   `request-work-schema.ts`, dove `case 'boolean'` e' l'UNICO tipo non `.nullable()`: il
+   `seedAttributeValues` del form riempiva ogni codice non valorizzato con `null`, `z.boolean()`
+   lo rifiutava e il campo si presentava come obbligatorio. Ora `seedAttributeValues` vive in
+   `request-work-payload.ts`, e' esportata e restituisce `false` per i booleani. **Va applicata
+   a TUTTI E TRE i punti** (defaults RHF, snapshot `original` dello schema, baseline del diff in
+   `buildRequestWorkPayload`): normalizzarne solo uno farebbe risultare "gia' modificata" ogni
+   richiesta appena aperta, riscrivendo l'intera mappa a ogni salvataggio. Quattro test in
+   `request-work-payload.test.ts` bloccano entrambe le meta'.
+
+**Stesso difetto latente, NON toccato (fuori scope, da decidere)**: `buildCustomFieldsSchema`
+(`custom-fields/build-custom-fields-schema.ts`) ha lo stesso `case 'boolean': return z.boolean()`
+non nullable, e `useCustomFieldsForm` semina `{}` in creazione — quindi un custom field booleano
+(spec 0021) su QUALSIASI modulo si comporta da obbligatorio. Non corretto qui perche' cambiare i
+default toccherebbe anche `buildCustomFieldsUpdate`, che diffa contro l'originale grezzo.
+
+**Verifica**: backend `tests/Feature/Seeding` + `TestUsersSeederTest` 49/49 passed;
+`pint` passed; frontend `request-work-payload.test.ts` 29/29, `src/features/request-management` +
+`custom-fields` 190/191 (l'unico rosso e' un timeout a 5s di
+`request-attribution-rewards.test.tsx` sotto carico parallelo: da solo passa, flaky preesistente);
+`eslint src/features/request-management --max-warnings=0` pulito. `tsc -b --force` segnala UN
+errore, `use-referent-form.ts(14,3) TS6133 'hasPhoneContact' declared but never read` — **non e'
+di questo lavoro**: quel file e' modificato in parallelo nel working tree insieme a
+`personal-data/create-validation.ts` e `StoreReferentRequest.php`.
+
+## "PROSSIMO RICHIAMO" — ORARIO FACOLTATIVO (2026-07-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: la data di richiamo non deve avere l'orario obbligatorio. Scelta
+esplicita fra le due letture (AskUserQuestion 2026-07-31): **ora FACOLTATIVA**, non "solo
+data". Nessun dato esistente perde l'orario.
+
+**Il punto da non violare: il contratto di wire NON e' cambiato.** `opportunities.
+next_callback_at` resta DATETIME, il formato resta `Y-m-d\TH:i`, `null` continua a svuotare.
+Il backend di produzione non e' stato toccato per niente: `UpdateRequestRequest` accettava
+gia' `['sometimes','nullable','date']`, quindi anche una data nuda. E' stato aggiunto solo il
+test che lo blinda (`RequestManagementCallbackTest`, "accepts a date with no time").
+
+**La convenzione che tiene insieme le tre superfici: mezzanotte E' "ora non impostata".**
+Un richiamo salvato senza ora viaggia come `T00:00`; da li' in poi `T00:00` si rilegge come
+campo ora VUOTO e si mostra come sola data. Mai stampare "00:00": si leggerebbe come un
+appuntamento reale a mezzanotte. Le due meta' della regola:
+- `frontend/src/lib/formatting/wire-instant.ts` — `splitInstant`/`joinInstant` (nuovo modulo:
+  le funzioni pure NON possono stare nel file del componente, `react-refresh/
+  only-export-components` e' un errore bloccante in questo repo).
+- `formatDateTimeOptionalTime` in `features/table/cell-renderers.tsx`, accanto a
+  `formatDateTime` che resta INVARIATO — `created_at`/`updated_at` di ogni altro modulo
+  continuano a mostrare l'ora sempre.
+
+**Controllo condiviso nuovo**: `frontend/src/components/date-time-field.tsx` (`DateTimeField`)
+— input data + input ora facoltativa. Due dettagli non ovvi:
+1. Le prop extra (`id`, `aria-describedby`, `aria-invalid` iniettate da `<FormControl>` via
+   Slot, piu' `name`/`ref`/`onBlur`) finiscono sull'input DATA: cosi' l'`htmlFor` della
+   `<FormLabel>` esterna nomina il controllo che l'operatore raggiunge per primo, e l'input
+   ora porta il proprio `aria-label`. Chi sposta lo spread rompe l'associazione label.
+2. L'input ora e' **disabilitato finche' non c'e' una data**: senza data il valore di wire
+   resta `null` e un'ora digitata sparirebbe in silenzio.
+
+**Editor inline della griglia (`DateTimeCellEditor`)**: ora e' un gruppo di due input per il
+kind generico `datetime`, quindi `stopEditing()` scatta solo quando il focus lascia TUTTO il
+gruppo (`event.currentTarget.contains(event.relatedTarget)`) — passare da data a ora non e'
+piu' un commit-and-close. Il draft e' in stato locale, non riletto da `props.value`. Il ramo
+`dateOnly` (spec 0064, attributi di categoria prodotto di tipo `date`, wire `Y-m-d`) e'
+rimasto un singolo input, intatto.
+
+**Effetto collaterale dichiarato**: essendo il kind `datetime` generico, anche gli attributi
+custom di tipo `datetime` in Gestione Richieste ora accettano l'ora facoltativa (salvano
+`T00:00`). Le loro CELLE, pero', usano il `DateTimeCell` di default e mostrano ancora "00:00":
+l'opt-in `optionalTime` e' acceso solo su `next_callback_at`. Se un domani serve anche li',
+si accende sulla mappa renderer di quel dominio.
+
+**i18n**: `requestManagement.workPanel.callback.label` e' diventata "Data del richiamo" (era
+"Data e ora del richiamo"), e' nata `callback.timeLabel`, ed e' stata RIMOSSA
+`callback.placeholder` (un input date/time ignora il placeholder). Su `table.dateTimeEditor`
+sono nate `dateLabel`/`timeLabel`; `label` sopravvive come nome accessibile del gruppo.
+
+**Verifica**: frontend `458 file, 3215 test, tutti PASS`; `tsc -b --force` EXIT=0; ESLint
+`--max-warnings=0` pulito sui file toccati; backend `RequestManagementCallbackTest` 16/16,
+`pint --test` passed. La suite backend completa riporta 5 rossi in `tests/Feature/Referents`
+("At least one phone number is required") che appartengono al lavoro in corso su
+`StoreReferentRequest`/`personal-data`, NON a questa modifica: nessun file backend di
+produzione e' stato toccato qui, e quel file passa 19/19 in isolamento.
+
+## FILTRO AVANZATO "SEDE OPERATIVA" SU GESTIONE RICHIESTE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: nel pannello filtri avanzati di `request-management` la Sede operativa
+deve essere un **elenco**, non un campo libero. Era `AdvancedFilterType::Text` (LIKE sul
+`line1` dell'indirizzo primario): ora e' `Relation` `multiple: true`, `source.resource:
+'operational-sites'`, `target: 'operationalSite'` — stessa rotta `/for-select` che l'editor
+inline della colonna usa gia'. Il frontend non e' stato toccato: il pannello e'
+descriptor-driven (`RelationAdvancedFilterField` -> `AsyncPaginatedMultiSelect`).
+
+**Conseguenza**: `RequestManagementTableDefinition::applyAdvancedFilter()` non ha piu' il ramo
+`operational_site` — e' diventato un `whereHas`-by-id standard, gestito dal default generico.
+L'argomento "la sede non ha un nome proprio" esclude solo un match by-name, non un match by-id.
+
+**Da non confondere — sono due superfici diverse:** il filtro di COLONNA (`filterModel`, widget
+`set` sui `line1` distinti) resta invariato e passa ancora da `App\Tables\Shared\
+OperationalSiteColumn` (`applyDerivedFilter`/`applySort`/`distinctValues`). Solo il filtro
+AVANZATO e' cambiato. `OperationalSiteColumn::applyAdvancedFilter()` resta viva: la usano
+ancora `opportunities` e `leads`, dove il filtro avanzato e' TUTTORA testuale — se serve la
+stessa modifica li', e' un intervento gemello, non ancora fatto (fuori scope, non richiesto).
+
+**Stato persistito ripulito da una migration dati** (`2026_08_01_110000_drop_stale_request_
+management_site_advanced_filter`): `TableFilterStateService` fa allow-list per NOME, non per
+forma del valore, quindi una stringa salvata sotto il vecchio contratto verrebbe rigiocata al
+prossimo `POST /rows` e darebbe 422 al proprietario finche' non svuota il filtro a mano. La
+migration toglie la chiave da `user_table_filters` e `table_filter_views` per il solo dominio
+`request-management`; irreversibile per costruzione (`down()` no-op documentato).
+
+**Test**: aggiornato quello che asseriva la LIKE testuale (il requisito e' cambiato, non il
+test per farlo passare) + nuovo caso "free text -> 422"; rimossi i 3 casi request-management di
+`OperationalSiteColumnEscapingTest` sulla LIKE avanzata (non c'e' piu' testo da escapare in
+quel dominio — i gemelli `opportunities` e i casi `distinctValues` di entrambi restano e
+coprono la classe condivisa). Suite backend: **4843 test, 4842 passed, 1 skipped**; `pint
+--test` passed. Frontend non toccato.
+
+## SEED — OPERATORI SU SEDE OPERATIVA (2026-07-31) — VERDE, NON COMMITTATO
+
+Gli account di `TestUsersSeeder` nascevano **senza `employment_profile`**, quindi con
+`operational_site_id` NULL: `UserService::forSelect()` filtra gli operatori proprio su quella
+colonna (spec 0048), percio' nessuno di loro compariva nel select "Operatore" con una Sede
+selezionata. Nuovo `QualificaOperatorSiteLinkSeeder` (step 6 di `QualificaProductionDataSeeder`).
+
+**Perche' un seeder separato e non dentro `TestUsersSeeder`**: gli account devono precedere
+l'import legacy (l'import gira per conto di uno di loro), ma le sedi operative *arrivano* da
+quell'import — servono entrambi i lati, esattamente come `QualificaBusinessFunctionLinkSeeder`,
+di cui ricalca la forma (mai fatale, mai distruttivo).
+
+**Decisione utente 2026-07-31 — nessun alias hard-coded**: la sede e' scelta per id piu' basso
+(`OperationalSite::orderBy('id')->first()`), NON per alias. Gli alias ("Napoli",
+"FRATTAMAGGIORE 1 (HQ)", ...) appartengono al catalogo legacy, che il seed non possiede.
+Non introdurre una mappa email->alias senza una nuova richiesta esplicita.
+
+`TestUsersSeeder::TEST_USERS` e' passata da `private` a `public` const: e' l'unico elenco degli
+account e il link seeder lo legge da li' invece di ripeterlo. Uno slot gia' occupato non viene
+mai rubato (assegnazione manuale sopravvive al re-run) e il resto del profilo non viene toccato.
+
+**Verifica**: `tests/Feature/Seeding` 32/32; i tre file toccati (nuovo test del link seeder,
+composizione, `TestUsersSeederTest`) 25/25 dopo la modifica concorrente a `TestUsersSeeder`;
+`pint --test` passed. Il seeder NON e' ancora stato eseguito sul DB di sviluppo.
+
 ## MODULO CONTRATTI (spec 0072) — VERDE, NON COMMITTATO (2026-07-31)
 
 **Il principio da non violare: un contratto NON e' una copia del preventivo.** E' lo stesso

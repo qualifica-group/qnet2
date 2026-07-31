@@ -110,7 +110,9 @@ it('create: 201 persists card and derives name from the card', function () {
 
     $response = $this->postJson('/api/referents', [
         'contact_scope' => 'internal',
-        'personal_data' => minimalReferentProfilePayload(),
+        'personal_data' => minimalReferentProfilePayload([
+            'contacts' => [['type' => 'phone', 'value' => '+39 333 1234567', 'is_primary' => true]],
+        ]),
     ])->assertCreated()
         ->assertJsonPath('data.name', 'Ada Lovelace')
         ->assertJsonPath('data.contact_scope', 'internal')
@@ -136,7 +138,10 @@ it('create: with a referent type + contacts/addresses persists the whole tree', 
         'contact_scope' => 'external',
         'notes' => 'Some notes',
         'personal_data' => minimalReferentProfilePayload([
-            'contacts' => [['type' => 'email', 'value' => 'ada@example.com', 'is_primary' => true]],
+            'contacts' => [
+                ['type' => 'email', 'value' => 'ada@example.com', 'is_primary' => true],
+                ['type' => 'phone', 'value' => '+39 333 1234567', 'is_primary' => true],
+            ],
             'addresses' => [['line1' => '10 Analytical St', 'city_id' => $city->id, 'is_primary' => true]],
         ]),
     ])->assertCreated()
@@ -156,6 +161,7 @@ it('create: nested personal_data.addresses.*.site_type persists on the address (
         'referent_type_id' => $type->id,
         'contact_scope' => 'external',
         'personal_data' => minimalReferentProfilePayload([
+            'contacts' => [['type' => 'phone', 'value' => '+39 333 1234567', 'is_primary' => true]],
             'addresses' => [['line1' => '10 Analytical St', 'city_id' => $city->id, 'is_primary' => true, 'site_type' => 'legal_seat']],
         ]),
     ])->assertCreated()
@@ -242,4 +248,75 @@ it('create: 403 without referents.create', function () {
     ])->assertForbidden();
 
     expect(Referent::count())->toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// create — at least one phone number (user directive 2026-07-31)
+// ---------------------------------------------------------------------------
+
+it('create: 422 without any contact at all', function () {
+    $actor = referentUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/referents', [
+        'contact_scope' => 'internal',
+        'personal_data' => minimalReferentProfilePayload(),
+    ])->assertStatus(422)->assertJsonValidationErrors('personal_data.contacts');
+
+    expect(Referent::count())->toBe(0);
+});
+
+it('create: 422 when the only contact is not a phone number', function () {
+    $actor = referentUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/referents', [
+        'contact_scope' => 'internal',
+        'personal_data' => minimalReferentProfilePayload([
+            'contacts' => [['type' => 'email', 'value' => 'ada@example.com', 'is_primary' => true]],
+        ]),
+    ])->assertStatus(422)->assertJsonValidationErrors('personal_data.contacts');
+
+    expect(Referent::count())->toBe(0);
+});
+
+it('create: 201 when the only number is a mobile (mobile counts as a phone number)', function () {
+    $actor = referentUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/referents', [
+        'contact_scope' => 'internal',
+        'personal_data' => minimalReferentProfilePayload([
+            'contacts' => [['type' => 'mobile', 'value' => '+39 333 1234567', 'is_primary' => true]],
+        ]),
+    ])->assertCreated();
+
+    expect(Referent::count())->toBe(1);
+});
+
+it('create: the missing-phone 422 never masks the 403 of an actor who may not create', function () {
+    $actor = referentUserWith([]);
+    Sanctum::actingAs($actor);
+
+    // No phone in the payload: the phone rule must stand aside so the Policy's
+    // 403 stays the reported failure, never a 422 that leaks payload feedback
+    // to someone who may not create at all.
+    $this->postJson('/api/referents', [
+        'contact_scope' => 'internal',
+        'personal_data' => minimalReferentProfilePayload(),
+    ])->assertForbidden();
+
+    expect(Referent::count())->toBe(0);
+});
+
+it('update: does not require a phone number (the rule gates creation only)', function () {
+    $actor = referentUserWith(['update']);
+    $target = Referent::factory()->create(['contact_scope' => 'internal']);
+    PersonalData::factory()->for($target, 'personable')->create(['first_name' => 'Ada', 'last_name' => 'Lovelace']);
+    Sanctum::actingAs($actor);
+
+    $this->putJson("/api/referents/{$target->id}", [
+        'contact_scope' => 'external',
+        'personal_data' => minimalReferentProfilePayload(),
+    ])->assertOk();
 });

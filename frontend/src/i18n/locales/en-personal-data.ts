@@ -32,6 +32,7 @@ export const personalData = {
     incomplete: 'Complete the required personal data fields.',
     addressIncomplete: 'Enter the street and city to complete the address.',
     contactsInvalid: 'Fix the invalid contacts before saving.',
+    phoneRequired: 'Enter at least one phone number.',
   },
   form: {
     type: personalDataFieldLabels.type,

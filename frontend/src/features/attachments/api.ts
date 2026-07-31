@@ -55,6 +55,37 @@ export async function uploadAttachment({
   return data.data
 }
 
+/** The two binary endpoints of an attachment: inline preview vs. forced save-as. */
+export type AttachmentBinaryMode = 'view' | 'download'
+
+/** TanStack Query key for one attachment's inline binary (thumbnail/preview). */
+export function attachmentBinaryQueryKey(id: number) {
+  return ['attachment-binary', id] as const
+}
+
+/**
+ * Streams an attachment's binary through the authenticated axios client.
+ *
+ * The API authenticates with a Bearer token (localStorage), and the browser
+ * never attaches it to a plain `<img src>` / `<a href>` / address-bar
+ * navigation: the `view_url`/`download_url` of the resource cannot be handed
+ * to the DOM as-is (they answer 401). The bytes are fetched here and reach the
+ * DOM as a `blob:` URL instead.
+ *
+ * Serving a `blob:` URL in a tab runs it under the SPA origin, which would be
+ * an XSS vector for active content — harmless here because the server-side
+ * allowlist (`config/attachments.php`) accepts no SVG and no HTML.
+ */
+export async function fetchAttachmentBinary(
+  id: number,
+  mode: AttachmentBinaryMode,
+): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/attachments/${id}/${mode}`, {
+    responseType: 'blob',
+  })
+  return data
+}
+
 /** Deletes an attachment (metadata + binary) by id. */
 export async function deleteAttachment(id: number): Promise<void> {
   await apiClient.delete(`/attachments/${id}`)

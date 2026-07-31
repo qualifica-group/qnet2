@@ -435,6 +435,7 @@ export const en = {
       attachments: 'Attachments',
       contacts: 'Contacts',
       personal_data: 'Personal data',
+      notes: 'Notes',
     },
   },
   // Localized labels for backend domain enums (extracted to `en-enums.ts`).

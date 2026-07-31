@@ -106,8 +106,12 @@ export const table = {
     list: 'Scegli un valore',
     empty: 'Nessun valore disponibile per questa riga.',
   },
+  // L'editor e' un gruppo di due campi da quando l'ora e' facoltativa
+  // (direttiva utente 2026-07-31): `label` nomina il gruppo, gli altri due i campi.
   dateTimeEditor: {
     label: 'Data e ora',
+    dateLabel: 'Data',
+    timeLabel: 'Ora (facoltativa)',
     clear: 'Svuota',
   },
   // Spec 0064: il gemello sola-data di `dateTimeEditor`, usato dall'attributo

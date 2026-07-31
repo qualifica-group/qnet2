@@ -10,12 +10,14 @@ use Spatie\Permission\Models\Permission;
  * The subset of the permission catalogue that is directly assignable from the
  * Role form: permissions whose resource prefix is a registered "form-module"
  * resource (config/authorization.php — users, roles, business-functions,
- * companies, operational-sites).
+ * companies, operational-sites) or one of the permission-only resources of
+ * the same config (an agnostic component with real permissions but no form of
+ * its own: `notes`, `attachments`).
  *
- * Indirect sub-entity permissions (addresses.*, contacts.*, personal_data.*,
- * attachments.*) are governed via the field-permission matrix on their parent
- * form, so they are never offered here — and RoleService never drops the ones a
- * role already holds when it saves the form.
+ * Indirect sub-entity permissions (addresses.*, contacts.*, personal_data.*)
+ * are governed via the field-permission matrix on their parent form, so they
+ * are never offered here — and RoleService never drops the ones a role already
+ * holds when it saves the form.
  *
  * Single source of truth shared by RolesTableDefinition (the offered catalogue,
  * for the form and the `permissions` set filter) and RoleService (preserving
@@ -26,12 +28,26 @@ final class AssignablePermissionCatalogue
     public function __construct(private readonly AuthorizationRegistry $registry) {}
 
     /**
-     * Whether a permission name belongs to a form-module resource and may be
-     * assigned/managed from the Role form.
+     * Whether a permission name belongs to a form-module resource (or to a
+     * permission-only one) and may be assigned/managed from the Role form.
      */
     public function isAssignable(string $permission): bool
     {
-        return in_array($this->resourceOf($permission), $this->registry->resourceKeys(), true);
+        $resource = $this->resourceOf($permission);
+
+        return in_array($resource, $this->registry->resourceKeys(), true)
+            || in_array($resource, $this->permissionOnlyResources(), true);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function permissionOnlyResources(): array
+    {
+        /** @var array<int, string> $resources */
+        $resources = config('authorization.permission_only_resources', []);
+
+        return $resources;
     }
 
     /**

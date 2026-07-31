@@ -14,6 +14,8 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\Province;
 use App\Models\State;
+use App\Support\Geo\GeoNameLocalizer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -114,13 +116,7 @@ class GeoController extends BaseApiController
                 ->select(['id', 'name', 'country_id', 'state_id', 'province_id'])
                 ->when($provinceId !== null, fn ($query) => $query->where('province_id', $provinceId))
                 ->when($provinceId === null && $stateId !== null, fn ($query) => $query->where('state_id', $stateId))
-                ->when(
-                    $search !== null,
-                    // Escape the LIKE metacharacters (\ % _) so a search term
-                    // containing them matches literally instead of acting as a
-                    // wildcard; the trailing % stays the intended prefix match.
-                    fn ($query) => $query->where('name', 'like', addcslashes($search, '\\%_').'%')
-                )
+                ->when($search !== null, fn ($query) => $this->applyCityNameSearch($query, (string) $search))
                 ->orderBy('name')
                 ->orderBy('id')
                 ->offset($request->offset())
@@ -131,5 +127,48 @@ class GeoController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
+    }
+
+    /**
+     * Narrows the city lookup to $search, in the two spellings a row can carry.
+     *
+     * The `name` column stores the reference dataset's ENGLISH name while the
+     * Resource serves the Italian display name, so a term typed in Italian must
+     * also reach the rows it localizes ("napoli" -> the row stored as "Naples").
+     *
+     * Those aliased rows are also ranked FIRST: sorted on the English column,
+     * "Rome" falls behind every "Romagn..." and lands past CITY_RESULT_LIMIT —
+     * i.e. searching "roma" would still not surface Roma on the first page. The
+     * ranking is part of the SQL (not a PHP merge) so `offset` paging stays
+     * consistent across pages.
+     *
+     * @param  Builder<City>  $query
+     * @return Builder<City>
+     */
+    private function applyCityNameSearch(Builder $query, string $search): Builder
+    {
+        $englishMatches = GeoNameLocalizer::englishNamesStartingWith($search);
+
+        // Escape the LIKE metacharacters (\ % _) so a search term containing
+        // them matches literally instead of acting as a wildcard; the trailing
+        // % stays the intended prefix match.
+        $query->where(function (Builder $nameQuery) use ($search, $englishMatches): void {
+            $nameQuery->where('name', 'like', addcslashes($search, '\\%_').'%')
+                ->when(
+                    $englishMatches !== [],
+                    fn (Builder $inner) => $inner->orWhereIn('name', $englishMatches)
+                );
+        });
+
+        if ($englishMatches === []) {
+            return $query;
+        }
+
+        // Placeholders are derived from the ARRAY SIZE and the values are bound,
+        // so nothing from the request is interpolated into the SQL string; the
+        // values themselves come from GeoNameLocalizer's closed constant map.
+        $placeholders = implode(',', array_fill(0, count($englishMatches), '?'));
+
+        return $query->orderByRaw("CASE WHEN name IN ({$placeholders}) THEN 0 ELSE 1 END", $englishMatches);
     }
 }
