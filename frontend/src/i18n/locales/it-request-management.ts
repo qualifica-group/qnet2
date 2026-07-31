@@ -91,6 +91,9 @@ export const requestManagement = {
         reporterSearch: 'Cerca un segnalatore',
         operator: 'Operatore (GA2)',
         operatorSearch: 'Cerca un operatore',
+        operatorFilteredBySite: 'Solo gli operatori della sede selezionata.',
+        operationalSite: 'Sede operativa',
+        operationalSiteSearch: 'Cerca una sede',
         selectPlaceholder: 'Seleziona',
         selectEmpty: 'Nessun risultato',
         selectError: 'Impossibile caricare le opzioni.',
@@ -121,6 +124,10 @@ export const requestManagement = {
         contactsInvalid: 'Uno dei contatti inseriti non è valido.',
       },
     },
+  },
+  productsOfInterest: {
+    unlockDescription:
+      'Sbloccando il catalogo puoi scegliere prodotti di altre categorie, ma il salvataggio viene rifiutato finch\u00e9 quella categoria prodotto non \u00e8 tra le linee di prodotto della richiesta: aggiungila prima.',
   },
   workPanel: {
     loadError: 'Impossibile caricare il record.',

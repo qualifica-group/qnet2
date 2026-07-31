@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Referent;
@@ -348,6 +349,56 @@ it('creates without any GA2 slot when operator_id is absent', function () {
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
     expect($opportunity->operatorManager())->toBeNull();
     $this->assertDatabaseMissing('opportunity_user', ['opportunity_id' => $opportunity->id]);
+});
+
+// ---------------------------------------------------------------------------
+// Sede operativa at creation (user directive 2026-07-31): the same field the
+// work panel edits, and what scopes the operator list the form offers.
+// ---------------------------------------------------------------------------
+
+it('creates with operational_site_id -> 201, the site is persisted on the request', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    $site = OperationalSite::factory()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'operational_site_id' => $site->id,
+    ])->assertCreated();
+
+    expect(Opportunity::findOrFail($response->json('data.id'))->operational_site_id)->toBe($site->id);
+});
+
+it('rejects an operational_site_id that does not exist -> 422', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'operational_site_id' => 999999,
+    ])->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
+
+    expect(Opportunity::count())->toBe(0);
+});
+
+it('creates without a site when operational_site_id is absent', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+    ])->assertCreated();
+
+    expect(Opportunity::findOrFail($response->json('data.id'))->operational_site_id)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

@@ -100,6 +100,7 @@ final class RequestManagementService
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly RequestOperatorWriter $operatorWriter,
+        private readonly RequestProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
@@ -164,7 +165,15 @@ final class RequestManagementService
             // (the ordering ValidatesWorkflowStatus already applies
             // request-side).
             $productLinesChanged = array_key_exists('product_lines', $data)
-                && $this->productLineWriter->apply($opportunity, (array) $data['product_lines'], $data, $changed, $old);
+                && $this->productLineWriter->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+
+            // Step 2-bis: the coherence rule (user directive 2026-07-31) —
+            // every product of interest THIS write leaves persisted must
+            // belong to a category the request carries. Run once the lines
+            // are final and BEFORE Step 7 writes the products, so the
+            // coverage step shared with the opportunities module (which would
+            // otherwise silently add the missing line) finds nothing to add.
+            $this->assertProductCategoryCoherence($opportunity, $data);
 
             // Step 3: working-state advance — set-membership (AC-011) and the
             // mandatory-note rule (spec 0054, D-5) both enforced by the
@@ -202,9 +211,10 @@ final class RequestManagementService
 
             // Step 7: "prodotti di interesse" (user directive 2026-07-22) —
             // a to-many reference, written after the model save like every
-            // other collection. Adding a product outside the opportunity's
-            // categories also adds its product line (the writer owns that
-            // rule for both write channels).
+            // other collection. Its cross-category branch (the writer adds
+            // the missing product line) is unreachable from here: Step 2-bis
+            // has already refused an incoherent set (user directive
+            // 2026-07-31).
             if (array_key_exists('products_of_interest', $data)) {
                 $this->applyProductsOfInterest($opportunity, (array) $data['products_of_interest'], $changed, $old);
             }
@@ -230,6 +240,41 @@ final class RequestManagementService
 
             return $this->loadWorkPanel($opportunity);
         });
+    }
+
+    /**
+     * The coherence rule (user directive 2026-07-31), on the sets THIS write
+     * leaves persisted: the submitted collection when the key travelled, the
+     * stored one otherwise.
+     *
+     * Gated on either key being submitted, like every other rule of this
+     * sparse endpoint: a legacy record whose products predate the rule must
+     * stay savable for any unrelated edit — the actor who did not touch
+     * either collection is not the one to fix it.
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
+     */
+    private function assertProductCategoryCoherence(Opportunity $opportunity, array $data): void
+    {
+        $productsSubmitted = array_key_exists('products_of_interest', $data);
+
+        if (! $productsSubmitted && ! array_key_exists('product_lines', $data)) {
+            return;
+        }
+
+        $productIds = $productsSubmitted
+            ? array_map(intval(...), (array) $data['products_of_interest'])
+            : $opportunity->productsOfInterest()->pluck('products.id')->map(intval(...))->all();
+
+        $this->coherence->assert(
+            $productIds,
+            $opportunity->productLines()->pluck('product_category_id')->map(intval(...))->all(),
+            // The 422 lands on the key the actor actually edited, so the
+            // panel highlights the field they were working in.
+            $productsSubmitted ? 'products_of_interest' : 'product_lines',
+        );
     }
 
     /**
@@ -279,8 +324,9 @@ final class RequestManagementService
      * "Prodotti di interesse" (user directive 2026-07-22): an authoritative
      * replace of the whole collection. Like every other operative field here
      * it is NOT mass-assignable (it is a relation), so the change is logged
-     * explicitly — including the product lines the writer had to add for a
-     * cross-category pick, which would otherwise be an invisible side effect.
+     * explicitly. `product_lines_added` stays in the log shape for the rows
+     * the shared writer may still report, though the coherence rule (user
+     * directive 2026-07-31) leaves it empty on this channel.
      *
      * @param  array<int, int>  $submitted
      * @param  array<string, mixed>  $changed

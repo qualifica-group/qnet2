@@ -9,6 +9,7 @@ use App\DataObjects\Users\ProfileData;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
+use App\Services\RequestManagement\RequestProductCategoryCoherence;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -83,6 +84,19 @@ class StoreRequestRequest extends FormRequest
                 // `request-management.assignOperator`, enforced by the
                 // controller (this class holds no authorization, see above).
                 'operator_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+                // "Prodotti di interesse" (user directive 2026-07-31): the
+                // same picker the work panel carries, available already at
+                // creation. OPTIONAL here — the operator often records them
+                // only after the first call — but whatever is picked must be
+                // coherent with `product_lines` (withValidator below).
+                'products_of_interest' => ['sometimes', 'array'],
+                'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
+                // Sede operativa (spec 0056, user directive 2026-07-31): the
+                // field that scopes the operator list, so the create form
+                // carries it exactly like the work panel. Plain optional FK —
+                // no extra ability on top (the per-field matrix governs the
+                // LATER edit through PATCH, see the class doc).
+                'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             ],
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
@@ -111,7 +125,47 @@ class StoreRequestRequest extends FormRequest
             // the D-3 guard can fire here (the "cannot clear a reporter that
             // still has rewards" half needs an existing record).
             $this->validateRewards($validator, null);
+            $this->validateProductCategoryCoherence($validator);
         });
+    }
+
+    /**
+     * The coherence rule (user directive 2026-07-31): a product of interest
+     * picked at creation must belong to one of the submitted product-line
+     * categories. Both collections travel in THIS payload — nothing is
+     * persisted yet — so the check belongs here, unlike on the PATCH, where
+     * the same rule (RequestProductCategoryCoherence, shared) needs the
+     * record's stored sets.
+     *
+     * Skipped when `product_lines` is malformed: its own rules already report
+     * that, and a partial category set would produce a second, misleading
+     * error on the picker.
+     */
+    private function validateProductCategoryCoherence(Validator $validator): void
+    {
+        $products = $this->input('products_of_interest');
+        $lines = $this->input('product_lines');
+
+        // A malformed `product_lines` is already reported by its own rules; a
+        // partial category set would add a second, misleading error here.
+        $linesRejected = collect($validator->errors()->keys())
+            ->contains(static fn (string $key): bool => str_starts_with($key, 'product_lines'));
+
+        if (! is_array($products) || $products === [] || $linesRejected) {
+            return;
+        }
+
+        $categoryIds = collect(is_array($lines) ? $lines : [])
+            ->filter(static fn (mixed $line): bool => is_array($line) && isset($line['product_category_id']))
+            ->map(static fn (array $line): int => (int) $line['product_category_id'])
+            ->all();
+
+        $coherence = app(RequestProductCategoryCoherence::class);
+        $offending = $coherence->offendingProducts(array_map(intval(...), $products), $categoryIds);
+
+        if ($offending !== []) {
+            $validator->errors()->add('products_of_interest', $coherence->message($offending));
+        }
     }
 
     /**
@@ -129,8 +183,12 @@ class StoreRequestRequest extends FormRequest
             productLines: self::normalizeProductLines((array) $validated['product_lines']),
             sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
+            productsOfInterest: array_key_exists('products_of_interest', $validated)
+                ? array_values(array_unique(array_map(intval(...), (array) $validated['products_of_interest'])))
+                : null,
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
             operatorId: isset($validated['operator_id']) ? (int) $validated['operator_id'] : null,
+            operationalSiteId: isset($validated['operational_site_id']) ? (int) $validated['operational_site_id'] : null,
         );
     }
 

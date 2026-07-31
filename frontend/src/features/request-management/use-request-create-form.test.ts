@@ -128,6 +128,36 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock.mock.calls[1][0]).toMatchObject({ operator_id: 55 })
   })
 
+  /**
+   * Sede operativa (user directive 2026-07-31): the same field the work panel
+   * edits. Like `operator_id` it travels only when picked — on create there is
+   * no persisted value a null could clear.
+   */
+  it('sends operational_site_id when set, and omits the key entirely when it is not', async () => {
+    createRequestMock.mockResolvedValue({ id: 46 })
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('operational_site_id')
+
+    act(() => {
+      result.current.form.setValue('operational_site_id', 12)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ operational_site_id: 12 })
+  })
+
   it('blocks submit when product_lines is empty (D-3)', async () => {
     const onSuccess = vi.fn()
     const { result } = renderHook(() => useRequestCreateForm({ onSuccess }))
@@ -195,6 +225,67 @@ describe('useRequestCreateForm', () => {
       rewards: [{ reward_type_id: 5 }],
     })
     expect(onSuccess).toHaveBeenCalledWith(44)
+  })
+
+  /**
+   * "Prodotti di interesse" at creation (user directive 2026-07-31): optional,
+   * so the key travels ONLY when at least one is picked — an empty array is a
+   * no-op the endpoint need not process.
+   */
+  it('sends the products of interest only once at least one is picked', async () => {
+    createRequestMock.mockResolvedValue({ id: 45 })
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('products_of_interest')
+
+    act(() => {
+      result.current.form.setValue('products_of_interest', [700, 701])
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ products_of_interest: [700, 701] })
+  })
+
+  /** The coherence 422 lands on the picker itself, not on the generic banner. */
+  it('maps the product-category coherence 422 onto the products_of_interest field', async () => {
+    createRequestMock.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 422,
+        data: {
+          errors: {
+            products_of_interest: ['These products of interest belong to a product category the request does not carry: "Fibra" (Connettivita).'],
+          },
+        },
+      },
+    })
+    const { result } = renderHook(() => useRequestCreateForm({ onSuccess: vi.fn() }))
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+      result.current.form.setValue('products_of_interest', [700])
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(result.current.form.formState.errors.products_of_interest?.message).toContain(
+      'does not carry',
+    )
+    expect(result.current.serverError).toBeNull()
   })
 
   it('collects a rewards D-3 422 (reward without a reporter) into the rewards banner', async () => {

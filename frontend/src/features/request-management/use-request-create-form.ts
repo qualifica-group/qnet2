@@ -29,6 +29,10 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   'source_id',
   'reporter_id',
   'operator_id',
+  'operational_site_id',
+  // The coherence 422 (user directive 2026-07-31) lands here, on the picker
+  // the actor was working in.
+  'products_of_interest',
 ]
 
 /** 422 error groups whose sections live OUTSIDE this form's RHF tree (see below). */
@@ -92,6 +96,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       source_id: null,
       reporter_id: null,
       operator_id: null,
+      operational_site_id: null,
+      products_of_interest: [],
       rewards: [],
     },
   })
@@ -147,6 +153,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       sourceId: values.source_id,
       reporterId: values.reporter_id,
       operatorId: values.operator_id,
+      operationalSiteId: values.operational_site_id,
+      productsOfInterest: values.products_of_interest,
       rewards: values.rewards,
     })
 

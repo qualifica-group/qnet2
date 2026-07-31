@@ -5,6 +5,8 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -16,15 +18,19 @@ use Spatie\Permission\Models\Permission;
  * (user directive 2026-07-31): the `product_lines` collection the create form
  * already writes is now editable on an existing request too — PATCH
  * /api/request-management/{opportunity} replaces it under the SAME rules as
- * the opportunities form (ValidatesProductLines), and refuses to drop a
- * category whose products of interest would be left uncovered.
+ * the opportunities form (ValidatesProductLines).
+ *
+ * Plus THE COHERENCE RULE, on both write channels: a product of interest must
+ * belong to one of the request's product categories, so neither dropping the
+ * category nor picking an outside product is accepted silently
+ * (RequestProductCategoryCoherence).
  */
 uses(RefreshDatabase::class);
 
 if (! function_exists('productLineActor')) {
     function productLineActor(): User
     {
-        foreach (['viewAny', 'view', 'update'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -192,6 +198,77 @@ it('logs the product-lines change explicitly (the collection is a relation, neve
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]]);
+});
+
+// ---------------------------------------------------------------------------
+// Creation channel (user directive 2026-07-31): the picker is available at
+// creation too, and the SAME coherence rule applies — both collections travel
+// in the payload, so StoreRequestRequest checks them against each other.
+// ---------------------------------------------------------------------------
+
+it('POST accepts products of interest belonging to the submitted product categories', function () {
+    $actor = productLineActor();
+    $actor->givePermissionTo('request-management.create');
+    $category = productLineCategory();
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'source_id' => Source::factory()->create()->id,
+        'product_lines' => [[
+            'business_function_id' => $category->business_function_id,
+            'product_category_id' => $category->id,
+        ]],
+        'products_of_interest' => [$product->id],
+    ])->assertCreated();
+
+    $response->assertJsonPath('data.products_of_interest.0.id', $product->id);
+    $this->assertDatabaseHas('opportunity_product', [
+        'opportunity_id' => $response->json('data.id'),
+        'product_id' => $product->id,
+    ]);
+});
+
+it('POST refuses a product of interest outside the submitted product categories, creating nothing', function () {
+    $actor = productLineActor();
+    $actor->givePermissionTo('request-management.create');
+    $category = productLineCategory();
+    $outsideProduct = Product::factory()->create(['category_id' => productLineCategory()->id]);
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'source_id' => Source::factory()->create()->id,
+        'product_lines' => [[
+            'business_function_id' => $category->business_function_id,
+            'product_category_id' => $category->id,
+        ]],
+        'products_of_interest' => [$outsideProduct->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
+
+    $this->assertDatabaseCount('opportunities', 0);
+});
+
+it('POST stays valid without products of interest: the check only runs when there are any', function () {
+    $actor = productLineActor();
+    $actor->givePermissionTo('request-management.create');
+    $category = productLineCategory();
+    $registry = Registry::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'source_id' => Source::factory()->create()->id,
+        'product_lines' => [[
+            'business_function_id' => $category->business_function_id,
+            'product_category_id' => $category->id,
+        ]],
+    ])->assertCreated();
+
+    expect($response->json('data.products_of_interest'))->toBe([]);
 });
 
 it('exposes product_lines as an editable field in the panel permissions', function () {

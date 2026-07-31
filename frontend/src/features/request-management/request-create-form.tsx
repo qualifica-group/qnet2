@@ -6,6 +6,7 @@ import { FormSection } from '@/components/form-section'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
+import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
 interface RequestCreateFormProps {
@@ -15,11 +16,16 @@ interface RequestCreateFormProps {
 
 /**
  * Create-only form for the request-management module (spec 0057, D-7): the
- * anagrafica (existing registry OR a brand-new client card, D-2) and the
- * mandatory product lines (D-3, the shared `ProductLinesField` also used by
- * the opportunity form) — nothing else (D-4). Mounted as this module's
- * `FormScreen` for `mode.type === 'create'` only; edit/duplicate keep the
- * "not applicable" notice (`request-management-screens.tsx`).
+ * attribution, the mandatory product lines (D-3, the shared
+ * `ProductLinesField` also used by the opportunity form) and the anagrafica
+ * (existing registry OR a brand-new client card, D-2) — nothing else (D-4).
+ * Mounted as this module's `FormScreen` for `mode.type === 'create'` only;
+ * edit/duplicate keep the "not applicable" notice
+ * (`request-management-screens.tsx`).
+ *
+ * Section order mirrors the work panel's (user directive 2026-07-31):
+ * attribution, then product lines, then anagrafica — the same sequence an
+ * operator reads on the record they will later work.
  */
 export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProps) {
   const { t } = useTranslation()
@@ -44,17 +50,11 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     <div className="flex flex-1 flex-col overflow-y-auto">
       <Form {...form}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4 p-4" noValidate>
-          <RequestCreateClientSection
-            control={form.control}
-            identity={identityDraft}
-            onIdentityChange={setIdentityDraft}
-            contacts={contactsDraft}
-            onContactsChange={setContactsDraft}
-            address={addressDraft}
-            onAddressChange={setAddressDraft}
-            usingExistingRegistry={usingExistingRegistry}
-            errorMessage={clientBlockError}
-          />
+          {/* Right after the product lines, which scope its options (user
+              directive 2026-07-31). */}
+          <RequestCreateProductsOfInterest control={form.control} />
+
+          <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
 
           <FormSection
             icon={Boxes}
@@ -82,7 +82,17 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
             )}
           </FormSection>
 
-          <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
+          <RequestCreateClientSection
+            control={form.control}
+            identity={identityDraft}
+            onIdentityChange={setIdentityDraft}
+            contacts={contactsDraft}
+            onContactsChange={setContactsDraft}
+            address={addressDraft}
+            onAddressChange={setAddressDraft}
+            usingExistingRegistry={usingExistingRegistry}
+            errorMessage={clientBlockError}
+          />
 
           {serverError && (
             <div

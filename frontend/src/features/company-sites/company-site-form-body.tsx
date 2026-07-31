@@ -1,14 +1,11 @@
+import { useState } from 'react'
 import { Building2, Landmark, Settings, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  FORM_TAB_LIST_CLASS,
-  FORM_TAB_TRIGGER_CLASS,
-  TabErrorDot,
-} from '@/components/form-tab-strip'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
+import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ProfileTabContent } from '@/features/company-sites/company-site-profile-tab'
 import { SettingsTabContent } from '@/features/company-sites/company-site-settings-tab'
@@ -25,6 +22,9 @@ interface CompanySiteFormBodyProps {
 }
 
 /** One entry in the tab strip: its value, label, icon, and gating flags. */
+/** Tab selected when the form opens. */
+const DEFAULT_TAB = 'profile'
+
 interface CompanySiteFormTab {
   value: string
   label: string
@@ -51,6 +51,9 @@ export function CompanySiteFormBody({
   onSiteChange,
 }: CompanySiteFormBodyProps) {
   const { t } = useTranslation()
+  // Controlled, so the tab strip can hand the selection over to its select
+  // fallback when the tabs no longer fit.
+  const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const { field: fieldPermission } = useResourcePermissions()
   const {
     form,
@@ -104,8 +107,8 @@ export function CompanySiteFormBody({
           className="flex flex-1 flex-col gap-4 p-4"
           noValidate
         >
-          <Tabs defaultValue="profile" className="flex flex-1 flex-col gap-4">
-            <TabsList className={FORM_TAB_LIST_CLASS}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
+            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
               {tabItems
                 .filter((tab) => tab.visible)
                 .map(({ value, label, Icon, hasError }) => (
@@ -115,7 +118,7 @@ export function CompanySiteFormBody({
                     {hasError && <TabErrorDot label={tabHasErrorsLabel} />}
                   </TabsTrigger>
                 ))}
-            </TabsList>
+            </FormTabStrip>
 
             <TabsContent value="profile" className="flex flex-col gap-4">
               <ProfileTabContent

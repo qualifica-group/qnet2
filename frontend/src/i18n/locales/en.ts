@@ -76,6 +76,8 @@ export const en = {
     edit: 'Edit',
     new: 'New',
     viewProfile: "View {{name}}'s profile",
+    /** Label of the select a tab strip collapses into when the tabs no longer fit. */
+    tabsSelectLabel: 'Section',
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
     copySuffix: ' (copy)',
   },

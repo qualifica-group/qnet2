@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
@@ -6,10 +7,12 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { FormSection } from '@/components/form-section'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { useAbilities } from '@/features/auth/use-abilities'
+import type { ForSelectItem } from '@/features/for-select/types'
 import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
+import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
-import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 
 /** Supervisory ability gating the Operatore field (mirrors RequestManagementPolicy::assignOperator). */
@@ -40,8 +43,15 @@ interface RequestCreateAttributionSectionProps {
  * The Operatore is the one field NOT covered by `request-management.create`:
  * deciding who works a request is supervisory, so it is rendered only for an
  * actor holding `request-management.assignOperator` — the same ability the
- * endpoint enforces server-side. Unlike the work panel's own operator picker
- * this list is unscoped: the create form has no Sede field to scope it by.
+ * endpoint enforces server-side.
+ *
+ * Sede <-> Operatore are reciprocally linked exactly as in the work panel
+ * (`request-attribution-section.tsx`) and in the Lead form (spec 0048
+ * AC-060..062), user directive 2026-07-31: the operator list is scoped to the
+ * chosen Sede, picking an operator first hydrates its own Sede from `meta`,
+ * and a real Sede change clears a now out-of-scope operator. Field order
+ * matches the work panel's for the same reason — the Sede comes first because
+ * it is what scopes the list below it.
  *
  * The reward control (spec 0059 D-3) sits under the Segnalatore because the
  * beneficiary is always that reporter: it disables itself with an accessible
@@ -57,6 +67,42 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
   const sourceQuickCreate = useQuickCreateAction(SOURCES_FOR_SELECT_RESOURCE)
   const reporterQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
   const operatorQuickCreate = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
+  const siteQuickCreate = useQuickCreateAction(OPERATIONAL_SITES_FOR_SELECT_RESOURCE)
+
+  // Baseline the clear-on-change below reasons against: it starts empty (a new
+  // request has no Sede yet) and only ever moves inside an event handler, so a
+  // REAL Sede pick is told apart from the programmatic auto-fill (which never
+  // goes through the Sede field's own `onItemChange`).
+  const previousSiteIdRef = useRef<number | null>(null)
+  const siteId = useWatch({ control, name: 'operational_site_id' })
+  const [autoFilledSite, setAutoFilledSite] = useState<ForSelectItem | null>(null)
+
+  // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
+  // (no extra fetch). An operator with no Sede leaves the current value alone.
+  const handleOperatorItemChange = (item: ForSelectItem | null) => {
+    const site = (item as UserForSelectItem | null)?.meta
+    if (site?.operational_site_id == null) return
+    form.setValue('operational_site_id', site.operational_site_id, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+    setAutoFilledSite({
+      id: site.operational_site_id,
+      label: site.operational_site_label ?? `#${site.operational_site_id}`,
+    })
+    previousSiteIdRef.current = site.operational_site_id
+  }
+
+  // Sede -> Operatore: a real pick/clear re-scopes the operator list, so an
+  // operator from another Sede can no longer be assumed valid and is cleared
+  // — only on an ACTUAL change, never on the programmatic auto-fill above.
+  const handleSiteItemChange = (item: ForSelectItem | null) => {
+    const nextSiteId = item?.id ?? null
+    if (nextSiteId !== previousSiteIdRef.current) {
+      form.setValue('operator_id', null, { shouldDirty: true })
+    }
+    previousSiteIdRef.current = nextSiteId
+  }
 
   const selectLabels = {
     placeholder: t('requestManagement.form.create.attribution.selectPlaceholder'),
@@ -142,6 +188,33 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
           />
         </div>
 
+        <FormField
+          control={control}
+          name="operational_site_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('requestManagement.form.create.attribution.operationalSite')}</FormLabel>
+              <FormControl>
+                <AsyncPaginatedSelect
+                  resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onItemChange={handleSiteItemChange}
+                  selectedItem={siteQuickCreate.selectedItemFor(field.value) ?? autoFilledSite}
+                  action={siteQuickCreate.renderAction((ref) => field.onChange(ref.id))}
+                  labels={{
+                    ...selectLabels,
+                    searchPlaceholder: t('requestManagement.form.create.attribution.operationalSiteSearch'),
+                    triggerLabel: t('requestManagement.form.create.attribution.operationalSite'),
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* After the Sede on purpose: the Sede is what scopes this list. */}
         {can(ASSIGN_OPERATOR_PERMISSION) && (
           <FormField
             control={control}
@@ -154,8 +227,10 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
                     resource={USERS_FOR_SELECT_RESOURCE}
                     value={field.value}
                     onChange={field.onChange}
+                    onItemChange={handleOperatorItemChange}
                     selectedItem={operatorQuickCreate.selectedItemFor(field.value)}
                     action={operatorQuickCreate.renderAction((ref) => field.onChange(ref.id))}
+                    params={siteId != null ? { operational_site_id: siteId } : undefined}
                     showAvatar
                     labels={{
                       ...selectLabels,
@@ -164,6 +239,11 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
                     }}
                   />
                 </FormControl>
+                {siteId != null && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('requestManagement.form.create.attribution.operatorFilteredBySite')}
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}

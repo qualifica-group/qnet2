@@ -15,8 +15,10 @@ use Spatie\Permission\Models\Permission;
 // interesse" as a grid column with the SAME behaviour as the form picker (user
 // directive 2026-07-23): the option list is scoped to the row's own
 // product-line categories, the whole catalogue can still be picked from (and a
-// cross-category pick adds its product line, exactly like the form), and the
-// collection is MANDATORY, so it can never be cleared in-grid.
+// cross-category pick is resolved per domain: `opportunities` adds the missing
+// product line like its form, `request-management` refuses it — user directive
+// 2026-07-31), and the collection is MANDATORY, so it can never be cleared
+// in-grid.
 //
 // Both domains that expose the column are covered here, since they share one
 // declaration (App\Tables\Shared\ProductsOfInterestColumn) and must never drift.
@@ -148,15 +150,21 @@ it('PATCH replaces the whole collection and returns the re-mapped row', function
         ->and($row['products_of_interest'])->toHaveCount(1);
 })->with(['opportunities', 'request-management']);
 
-it('PATCH with a product outside the row categories adds its product line (same rule as the form)', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+// The two domains DIVERGE here since the user directive 2026-07-31, so the
+// dataset splits: `opportunities` keeps the auto-add rule
+// (OpportunityProductLineCoverage), `request-management` refuses the pick
+// (RequestProductCategoryCoherence) now that its own commercials edit the
+// funzione/categoria rows themselves. Everything else on this column is still
+// shared, hence still covered by one declaration.
+it('PATCH with a product outside the row categories adds its product line (opportunities: same rule as the form)', function () {
+    $actor = productsColumnActor(['opportunities.viewAny', 'opportunities.update']);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $otherCategory = productsColumnCategory();
     $outsider = Product::factory()->create(['category_id' => $otherCategory->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/{$domain}/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/opportunities/rows/{$opportunity->id}", [
         'column' => 'products_of_interest',
         'value' => [$outsider->id],
     ])->assertOk();
@@ -167,7 +175,24 @@ it('PATCH with a product outside the row categories adds its product line (same 
         'product_category_id' => $otherCategory->id,
     ]);
     expect($opportunity->fresh()->productLines)->toHaveCount(2);
-})->with(['opportunities', 'request-management']);
+});
+
+it('PATCH with a product outside the row categories is refused (request-management: coherence rule)', function () {
+    $actor = productsColumnActor(['request-management.viewAny', 'request-management.update', 'request-management.viewAll']);
+    $category = productsColumnCategory();
+    $opportunity = productsColumnOpportunity($actor, $category);
+    $otherCategory = productsColumnCategory();
+    $outsider = Product::factory()->create(['category_id' => $otherCategory->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+        'column' => 'products_of_interest',
+        'value' => [$outsider->id],
+    ])->assertStatus(422);
+
+    expect($opportunity->fresh()->productLines)->toHaveCount(1)
+        ->and($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
+});
 
 it('PATCH with an empty collection -> 422, the collection is kept (mandatory field)', function (string $domain) {
     $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);

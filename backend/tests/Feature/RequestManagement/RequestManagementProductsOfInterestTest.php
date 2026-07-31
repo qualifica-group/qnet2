@@ -119,7 +119,16 @@ it('PATCH without products_of_interest leaves the collection untouched (sparse p
     expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$product->id]);
 });
 
-it('a product OUTSIDE the opportunity categories adds its business function + category product line (user directive 2026-07-22)', function () {
+/**
+ * REQUIREMENT CHANGED (user directive 2026-07-31). This channel used to ACCEPT
+ * a product outside the request's categories and silently add the matching
+ * funzione + categoria row (directive 2026-07-22). Now that the commercials
+ * edit those rows themselves, the mismatch is REFUSED: the operator adds the
+ * product category to the request, or drops the product. The opportunities
+ * CRUD keeps the auto-add rule (OpportunityProductLineCoverage) — see its own
+ * suite.
+ */
+it('a product OUTSIDE the request categories is refused, and no product line is added', function () {
     $actor = productInterestActor();
     $opportunity = productInterestOpportunity($actor);
     $ownCategory = productInterestCategory();
@@ -134,14 +143,36 @@ it('a product OUTSIDE the opportunity categories adds its business function + ca
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
         'products_of_interest' => [$outsideProduct->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
+
+    expect($opportunity->fresh()->productLines)->toHaveCount(1);
+    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
+});
+
+/** ...and the same PATCH is accepted once it also brings the missing product category. */
+it('accepts the outside product when the same PATCH adds its product category', function () {
+    $actor = productInterestActor();
+    $opportunity = productInterestOpportunity($actor);
+    $ownCategory = productInterestCategory();
+    OpportunityProductLine::factory()->create([
+        'opportunity_id' => $opportunity->id,
+        'business_function_id' => $ownCategory->business_function_id,
+        'product_category_id' => $ownCategory->id,
+    ]);
+    $otherCategory = productInterestCategory();
+    $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$opportunity->id}", [
+        'products_of_interest' => [$outsideProduct->id],
+        'product_lines' => [
+            ['business_function_id' => $ownCategory->business_function_id, 'product_category_id' => $ownCategory->id],
+            ['business_function_id' => $otherCategory->business_function_id, 'product_category_id' => $otherCategory->id],
+        ],
     ])->assertOk();
 
-    $this->assertDatabaseHas('opportunity_product_lines', [
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $otherCategory->business_function_id,
-        'product_category_id' => $otherCategory->id,
-    ]);
     expect($opportunity->fresh()->productLines)->toHaveCount(2);
+    expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$outsideProduct->id]);
 });
 
 it('a product whose category has no business function -> 422, nothing written', function () {

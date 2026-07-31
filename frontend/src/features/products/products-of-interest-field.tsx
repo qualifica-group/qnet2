@@ -19,6 +19,13 @@ interface ProductsOfInterestFieldProps {
   categoryIds: number[]
   /** `{id, label}` of the already-selected products, so a badge never falls back to `#id`. */
   selectedItems?: ForSelectItem[]
+  /**
+   * Overrides the unlock dialog's consequence line. The default states the
+   * opportunities rule (the missing product line is added server-side); the
+   * request-management module, which REFUSES an incoherent pick instead (user
+   * directive 2026-07-31), passes its own.
+   */
+  unlockDescription?: string
   disabled?: boolean
   /** Forwarded by `FormControl` for the accessible-error triad (frontend.md §10). */
   id?: string
@@ -39,13 +46,16 @@ const EMPTY_ITEMS: ForSelectItem[] = []
  * only through an explicit confirmation: picking a product from another
  * business function / product category ADDS that pair to the opportunity's
  * product lines (server-side, OpportunityProductInterestWriter), and the
- * dialog is where that consequence is stated before it happens.
+ * dialog is where that consequence is stated before it happens — which is why
+ * the consequence line is overridable (`unlockDescription`): in
+ * request-management the same pick is REFUSED instead of auto-covered.
  */
 export function ProductsOfInterestField({
   value,
   onChange,
   categoryIds,
   selectedItems = EMPTY_ITEMS,
+  unlockDescription,
   disabled = false,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -69,7 +79,7 @@ export function ProductsOfInterestField({
     const confirmed = await confirm({
       tone: 'warning',
       title: t('products.ofInterest.unlockDialog.title'),
-      description: t('products.ofInterest.unlockDialog.description'),
+      description: unlockDescription ?? t('products.ofInterest.unlockDialog.description'),
       confirmLabel: t('products.ofInterest.unlockDialog.confirm'),
       cancelLabel: t('common.cancel'),
     })

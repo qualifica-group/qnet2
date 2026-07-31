@@ -91,6 +91,9 @@ export const requestManagement = {
         reporterSearch: 'Search a reporter',
         operator: 'Operator (GA2)',
         operatorSearch: 'Search an operator',
+        operatorFilteredBySite: 'Only the operators of the selected site.',
+        operationalSite: 'Operational site',
+        operationalSiteSearch: 'Search a site',
         selectPlaceholder: 'Select',
         selectEmpty: 'No results',
         selectError: 'Could not load the options.',
@@ -121,6 +124,10 @@ export const requestManagement = {
         contactsInvalid: 'One of the entered contacts is not valid.',
       },
     },
+  },
+  productsOfInterest: {
+    unlockDescription:
+      "Unlocking the catalogue lets you pick products from other categories, but the save is refused until that product category is among the request's product lines: add it first.",
   },
   workPanel: {
     loadError: 'Could not load the record.',

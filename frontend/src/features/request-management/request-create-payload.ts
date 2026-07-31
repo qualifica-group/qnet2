@@ -64,10 +64,14 @@ export interface BuildRequestCreatePayloadArgs {
   contacts: ContactDraft[]
   address: AddressDraft | null
   productLines: ProductLineRow[]
+  /** "Prodotti di interesse" (user directive 2026-07-31): optional at creation, sent only when at least one is picked. */
+  productsOfInterest: number[]
   sourceId: number | null
   reporterId: number | null
   /** GA2 "Operatore": `null` whenever the actor may not assign one (the field is not rendered). */
   operatorId: number | null
+  /** Sede operativa (spec 0056): the field scoping the operator list, `null` when none was picked. */
+  operationalSiteId: number | null
   rewards: RequestRewardInput[]
 }
 
@@ -84,9 +88,11 @@ export function buildRequestCreatePayload({
   contacts,
   address,
   productLines,
+  productsOfInterest,
   sourceId,
   reporterId,
   operatorId,
+  operationalSiteId,
   rewards,
 }: BuildRequestCreatePayloadArgs): CreateRequestPayload {
   const product_lines = toProductLinesPayload(productLines)
@@ -97,23 +103,34 @@ export function buildRequestCreatePayload({
   // empty array would be a no-op the server need not process. `operator_id`
   // travels ONLY when set: an actor without `request-management.assignOperator`
   // never renders the field, and sending an explicit null would be a key they
-  // are not entitled to submit at all.
+  // are not entitled to submit at all. `operational_site_id` follows the same
+  // "only when set" rule for a simpler reason: on create there is no persisted
+  // value a null could clear, so the key would carry no information.
   const attribution = {
     source_id: sourceId,
     reporter_id: reporterId,
     ...(operatorId !== null ? { operator_id: operatorId } : {}),
+    ...(operationalSiteId !== null ? { operational_site_id: operationalSiteId } : {}),
     ...(rewards.length > 0 ? { rewards } : {}),
   }
 
+  // "Prodotti di interesse" (user directive 2026-07-31): same "only when
+  // picked" rule as `rewards` — the collection is optional at creation, and an
+  // empty array is a no-op the server need not process.
+  const classification = {
+    product_lines,
+    ...(productsOfInterest.length > 0 ? { products_of_interest: productsOfInterest } : {}),
+  }
+
   if (registryId !== null) {
-    return { registry_id: registryId, product_lines, ...attribution }
+    return { registry_id: registryId, ...classification, ...attribution }
   }
 
   return {
     client_identity: toClientIdentityPayload(identity),
     client_contacts: contacts.map(toClientContactPayload),
     ...(address ? { client_address: toClientAddressPayload(address) } : {}),
-    product_lines,
+    ...classification,
     ...attribution,
   }
 }

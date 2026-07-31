@@ -61,6 +61,17 @@ export function buildRequestCreateSchema(t: TFunction) {
     // actor holding `request-management.assignOperator` — the field is not
     // even rendered otherwise, and the endpoint rejects it server-side.
     operator_id: z.number().nullable(),
+    // Sede operativa (spec 0056, user directive 2026-07-31): optional, and
+    // what scopes the operator list — the same reciprocal link the work panel
+    // and the Lead form already carry.
+    operational_site_id: z.number().nullable(),
+    // "Prodotti di interesse" (user directive 2026-07-31): available already
+    // at creation, and OPTIONAL — the operator often records them only after
+    // the first call. Their coherence with `product_lines` (every product must
+    // belong to a chosen categoria prodotto) is a server-side rule: the
+    // picker's own scope is what prevents it here, since a product's category
+    // is not part of what the for-select options carry.
+    products_of_interest: z.array(z.number()),
     // Spec 0059 D-3: reward assignments for the reporter. Only the type id
     // travels (beneficiary/date are server-derived); duplicates are prevented
     // by the add control, which excludes already-picked types.

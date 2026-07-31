@@ -1,13 +1,10 @@
+import { useState } from 'react'
 import { Briefcase, IdCard, Phone, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  FORM_TAB_LIST_CLASS,
-  FORM_TAB_TRIGGER_CLASS,
-  TabErrorDot,
-} from '@/components/form-tab-strip'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
+import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import {
@@ -29,6 +26,9 @@ interface UserFormBodyProps {
   onCancel: () => void
   onAvatarChange?: () => void
 }
+
+/** Tab selected when the form opens. */
+const DEFAULT_TAB = 'account'
 
 /** One entry in the tab strip: its value, label, icon, and gating flags. */
 interface UserFormTab {
@@ -56,6 +56,9 @@ interface UserFormTab {
  */
 export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: UserFormBodyProps) {
   const { t } = useTranslation()
+  // Controlled, so the tab strip can hand the selection over to its select
+  // fallback when the tabs no longer fit.
+  const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const { field: fieldPermission } = useResourcePermissions()
   const {
     form,
@@ -171,8 +174,8 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
           className="flex flex-1 flex-col gap-4 p-4"
           noValidate
         >
-          <Tabs defaultValue="account" className="flex flex-1 flex-col gap-4">
-            <TabsList className={FORM_TAB_LIST_CLASS}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col gap-4">
+            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
               {tabItems
                 .filter((tab) => tab.visible)
                 .map(({ value, label, Icon, hasError }) => (
@@ -182,7 +185,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
                     {hasError && <TabErrorDot label={tabHasErrorsLabel} />}
                   </TabsTrigger>
                 ))}
-            </TabsList>
+            </FormTabStrip>
 
             <TabsContent value="account" className="flex flex-col gap-4">
               <IdentityTabContent

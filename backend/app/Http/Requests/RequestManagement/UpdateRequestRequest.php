@@ -83,10 +83,11 @@ class UpdateRequestRequest extends FormRequest
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // same rule as the opportunities form — sparse like every other key
             // here (absent means untouched), but never clearable to `[]`. A
-            // product outside the opportunity's product-line categories is
-            // ACCEPTED on purpose — OpportunityProductInterestWriter adds the
-            // matching product line, which is exactly what the panel warns
-            // about before unlocking the picker.
+            // product outside the request's product-line categories is REFUSED
+            // (user directive 2026-07-31, RequestProductCategoryCoherence):
+            // this module no longer auto-adds the missing line, unlike the
+            // opportunities CRUD. The check needs the persisted collections it
+            // is diffed against, so it runs in the service, not here.
             'products_of_interest' => ['sometimes', 'array', 'min:1'],
             'products_of_interest.*' => ['integer', 'exists:products,id'],
             // Attribution (user directive 2026-07-22): "Fonte",

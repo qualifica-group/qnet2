@@ -350,11 +350,20 @@ export interface CreateRequestPayload {
   client_contacts?: RequestClientContactPayload[]
   client_address?: RequestClientAddressPayload
   product_lines: RequestProductLinePayload[]
+  /**
+   * "Prodotti di interesse" (user directive 2026-07-31): optional at creation,
+   * sent only when at least one is picked. Every product must belong to one of
+   * `product_lines`' categories — the server refuses the mismatch instead of
+   * covering it with an extra product line.
+   */
+  products_of_interest?: number[]
   /** Initial attribution (Fonte/Segnalatore), independent of the anagrafica XOR; `null` leaves the slot empty. */
   source_id?: number | null
   reporter_id?: number | null
   /** GA2 "Operatore", sent only by an actor holding `request-management.assignOperator`. */
   operator_id?: number
+  /** Sede operativa (spec 0056), sent only when picked: on create there is no persisted value a null could clear. */
+  operational_site_id?: number
   /** Spec 0059: reward assignments for the reporter, sent only when at least one is picked. */
   rewards?: RequestRewardInput[]
 }

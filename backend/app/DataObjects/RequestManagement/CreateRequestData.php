@@ -22,11 +22,15 @@ use App\DataObjects\Users\ProfileData;
  * `operatorId` is the GA2 "Operatore" (user directive 2026-07-29), submitted
  * only by an actor holding `request-management.assignOperator` — the
  * controller rejects it otherwise, so it is already authorized here.
+ * `operationalSiteId` is the Sede operativa (spec 0056, user directive
+ * 2026-07-31): the same field the work panel edits, available at creation
+ * because it is what scopes the operator list the form offers.
  */
 final readonly class CreateRequestData
 {
     /**
      * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
+     * @param  array<int, int>|null  $productsOfInterest  product ids, `null` when the key was absent (nothing to record yet); already checked against `productLines` by StoreRequestRequest (user directive 2026-07-31)
      * @param  array<int, int>|null  $rewards  reward-type ids synced by RewardAssignmentWriter (beneficiary = the created Opportunity's reporter)
      */
     public function __construct(
@@ -35,7 +39,9 @@ final readonly class CreateRequestData
         public array $productLines,
         public ?int $sourceId = null,
         public ?int $reporterId = null,
+        public ?array $productsOfInterest = null,
         public ?array $rewards = null,
         public ?int $operatorId = null,
+        public ?int $operationalSiteId = null,
     ) {}
 }

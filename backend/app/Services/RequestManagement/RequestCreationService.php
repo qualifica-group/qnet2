@@ -56,9 +56,9 @@ final class RequestCreationService
                 : $this->registryService->create($actor, $this->newClientRegistryData(), $data->clientProfile);
 
             // Step 2: the Opportunity itself, through the shared service. The
-            // initial attribution (source/reporter) and reward assignments
-            // travel with it; every other relation stays unset (out of scope,
-            // D-4). `reporterId` is part of the insert, so RewardAssignmentWriter
+            // initial attribution (source/reporter/Sede operativa) and reward
+            // assignments travel with it; every other relation stays unset
+            // (out of scope, D-4). `reporterId` is part of the insert, so RewardAssignmentWriter
             // (invoked by OpportunityService::create) already targets the right
             // beneficiary — no retarget step needed.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
@@ -71,7 +71,13 @@ final class RequestCreationService
                 leadId: null,
                 opportunityStatusId: null,
                 managerSlots: $this->operatorManagerSlots($data->operatorId),
+                operationalSiteId: $data->operationalSiteId,
                 productLines: $data->productLines,
+                // "Prodotti di interesse" (user directive 2026-07-31): already
+                // checked against the product lines above by
+                // StoreRequestRequest, so the shared writer's cross-category
+                // branch (which would add a line) is unreachable from here.
+                productsOfInterest: $data->productsOfInterest,
                 startDate: null,
                 estimatedValue: null,
                 expectedCloseDate: null,

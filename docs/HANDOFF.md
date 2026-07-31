@@ -3,6 +3,83 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TAB DEI MODULI: CHIP BIANCO + COLLASSO IN SELECT (2026-07-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente**: i tab dei moduli devono essere "bianchi, non grigio su grigio"; quando i tab
+superano la larghezza disponibile devono diventare un select.
+
+**Root cause del grigio su grigio**: `FORM_TAB_TRIGGER_CLASS` dava al tab attivo
+`data-[state=active]:bg-background` — cioe' **il colore del body** (light L81, un grigio), sopra
+una strip `bg-muted/40`. In dark, la base `ui/tabs.tsx` aveva anche
+`dark:data-[state=active]:bg-border` che, avendo prefisso di variante diverso, **vinceva su
+tailwind-merge** e rendeva imprevedibile il chip attivo.
+
+**Fix (design system, non patch locali)**:
+- `components/ui/tabs.tsx` — strip su rung 2 (`bg-surface` + `border-border/60`), chip attivo
+  `bg-card` in **entrambi** i temi (rimosso `dark:...bg-border`). Ora la scala e'
+  body/card → strip `surface` → chip `card` (bianco in light).
+- `components/form-tab-strip.tsx` — `FORM_TAB_LIST_CLASS` non ridefinisce piu' la superficie
+  (solo `rounded-lg p-1 shadow-sm`); il trigger usa `hover:bg-card/60` e
+  `data-[state=active]:bg-card`.
+
+**Nuovo componente `FormTabStrip`** (stesso file): misura `list.scrollWidth` contro
+`container.clientWidth` con un `ResizeObserver` e, quando i tab non entrano, mostra al loro posto
+un `Select` a tutta larghezza costruito dai `TabsTrigger` figli (`value` + `children`).
+
+**Tre dettagli da NON "correggere" senza capirli**:
+- La `TabsList` **resta montata** anche in modalita' select, ma `invisible absolute w-max`: serve a
+  restare misurabile (cosi' la strip torna quando c'e' di nuovo spazio) e `visibility:hidden` la
+  toglie dall'albero di accessibilita' e dal focus.
+- Si misura sempre `scrollWidth` (larghezza del contenuto) contro il container: vale in entrambe
+  le modalita', quindi i due stati non possono oscillare.
+- Il componente **richiede `<Tabs value onValueChange>` controllato**: il select non puo' pilotare
+  una root Radix non controllata. Per questo `user`/`company-site`/`registry`/`referent` form body,
+  `quote` form+detail e `contract` detail sono passati da `defaultValue` a `useState`.
+
+**Chiave i18n nuova**: `common.tabsSelectLabel` (it "Sezione" / en "Section"), aria-label del select.
+
+**Verifica**: `vitest run` **3251 passed (460 file)** — incluso il nuovo
+`src/components/form-tab-strip.test.tsx` (3 casi: strip che entra, collasso in select, cambio tab
+dal select e ritorno alla strip); `tsc -b --force` EXIT=0; `eslint` pulito sui file toccati.
+Nessuna verifica visiva a schermo: il repo non ha Playwright/puppeteer.
+
+## CREATE RICHIESTA: ORDINE CAMPI = WORK PANEL + SEDE OPERATIVA (2026-07-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente**: la create di Gestione Richieste deve avere lo stesso ordinamento dei campi
+dell'update, e deve portare la sede operativa, che filtra la scelta dell'operatore (comportamento
+gia' esistente nel work panel e nel form Lead).
+
+**Ordine sezioni create** ora = work panel: **Attribuzione → Linee di prodotto → Anagrafica**
+(prima era Anagrafica → Linee → Attribuzione). Dentro l'attribuzione: Fonte, Segnalatore (+buoni),
+**Sede operativa**, Operatore — la Sede PRIMA dell'operatore perche' e' cio' che ne filtra la lista.
+
+**Contratto**: `POST /api/request-management` accetta ora `operational_site_id`
+(`sometimes|nullable|exists:operational_sites,id`). Il FE lo invia **solo se valorizzato**: in
+create non esiste un valore persistito che un null possa svuotare (stessa regola di `operator_id`).
+Nessuna ability extra sopra `request-management.create`: il for-select delle sedi e' aperto a ogni
+utente autenticato (ADR 0011 emendato 2026-07-31), e la matrice per-ruolo governa l'edit SUCCESSIVO
+via PATCH, non la creazione.
+
+**Backend**: `StoreRequestRequest` (regola + `toData()`), `CreateRequestData::$operationalSiteId`,
+`RequestCreationService` lo passa a `CreateOpportunityData` (che gia' lo supportava, spec 0056).
+
+**Frontend**: `request-create-attribution-section.tsx` porta il picker Sede
+(`AsyncPaginatedSelect` + quick-create, come gli altri campi della create) e il **link reciproco
+copiato dal work panel**: operatore scelto → Sede idratata dal suo `meta` (nessun fetch extra);
+cambio REALE di Sede → operatore azzerato; lista operatori con `params={{operational_site_id}}` +
+hint "Solo gli operatori della sede selezionata.". Il `previousSiteIdRef` parte da `null` (una
+richiesta nuova non ha Sede) e si muove solo dentro gli handler: e' cosi' che l'auto-fill
+programmatico non viene scambiato per una scelta manuale.
+
+**Verifica**: BE `pest` create suite **19/19**; suite completa **4889 test, 4887 passed, 1 skipped,
+1 failed** = `AssignablePermissionCatalogueTest` (rosso PREESISTENTE gia' tracciato sotto, roba
+`attachments.*`, non toccato da qui). `pint --dirty` pulito. FE `vitest` **3246 passed (459 file)**,
+`tsc -b --force` EXIT=0, `eslint` pulito.
+
+**Nota per chi lavora sui "prodotti di interesse in create"** (lavoro parallelo, gia' presente in
+`StoreRequestRequest`/`CreateRequestData`/`RequestCreationService`): quando arrivera' la sezione FE,
+va messa **dopo le linee di prodotto**, come nel work panel.
+
 ## FUNZIONE AZIENDALE + CATEGORIA PRODOTTO EDITABILI DAL WORK PANEL (2026-07-31) — VERDE, NON COMMITTATO
 
 **Richiesta utente**: dare ai commerciali la possibilita' di cambiare funzione aziendale e
@@ -52,8 +129,53 @@ riusato verbatim (no coppie duplicate, categoria appartenente alla funzione EFFE
 - **Rimosso** il badge read-only "Linee di prodotto" da `RequestWorkSummary`: mostrava le coppie
   persistite accanto al campo che le edita, contraddicendolo fino al salvataggio.
 
-**Verifica**: backend `pest` **4886 test, 4884 passed, 1 skipped**; `pint --dirty` pulito. FE
-`vitest run` **3237 passed (458 file)**, `tsc -b --force` EXIT=0, `eslint` pulito.
+## COERENZA CATEGORIA PRODOTTO <-> PRODOTTI DI INTERESSE (2026-07-31) — VERDE, NON COMMITTATO
+
+**Decisione utente** (risposta a domanda esplicita): il controllo vale **sia in creazione che in
+update**, e un prodotto di interesse fuori dalle categorie scelte si **RIFIUTA con 422** — non si
+copre piu' con l'auto-aggiunta della riga. Vale **solo per gestione richieste**: il modulo
+Opportunita' mantiene l'auto-aggiunta (`OpportunityProductLineCoverage`).
+
+**Regola unica**: `RequestProductCategoryCoherence` (`Services/RequestManagement/`) — dato l'insieme
+di prodotti che la scrittura lascia persistiti e le categorie coperte dalle linee, elenca i prodotti
+fuori scope. Due entry point perche' i due canali riportano diversamente: `offendingProducts()` +
+`message()` per il FormRequest di create (che raccoglie nel validator), `assert()` per il service di
+update (che lancia). Gira **PRIMA** di `OpportunityProductInterestWriter`, quindi il ramo coverage
+condiviso col modulo opportunita' non trova mai nulla da aggiungere.
+
+**Create**: `POST /api/request-management` accetta ora `products_of_interest` (opzionale — "se c'e'"),
+validato in `StoreRequestRequest::withValidator()` contro le `product_lines` dello stesso payload;
+`CreateRequestData::$productsOfInterest` -> `CreateOpportunityData`. FE: nuova sezione
+`request-create-products-of-interest.tsx` (picker condiviso, scope dalle righe in editing via
+`useWatch`), chiave inviata solo se non vuota, 422 mappato sul campo.
+
+**Update**: `RequestManagementService` Step 2-bis `assertProductCategoryCoherence()` sui set FINALI
+(submitted se la chiave viaggia, altrimenti persistiti), **gated** sulla presenza di almeno una
+delle due chiavi — un record legacy incoerente resta salvabile per edit non correlati. Il 422 va
+sulla chiave che l'attore ha davvero toccato (`products_of_interest`, altrimenti `product_lines`).
+La vecchia guardia parziale `assertDroppedCategoriesUnused` in `RequestProductLineWriter` e' stata
+**rimossa**: la regola nuova la comprende (categoria rimossa con prodotti ancora selezionati =
+stato finale incoerente).
+
+**Canale inline-edit della griglia**: passa da `updateWork`, quindi eredita la regola — il test
+condiviso `ProductsOfInterestInlineEditTest` ora **splitta il dataset** (opportunities auto-add /
+request-management 422).
+
+**REQUISITI CAMBIATI, test aggiornati (non "aggiustati")**: 
+- `RequestManagementProductsOfInterestTest` — "a product OUTSIDE ... adds its product line"
+  (direttiva 2026-07-22) diventa "is refused", piu' un nuovo caso: la stessa PATCH passa se porta
+  anche la categoria mancante in `product_lines`.
+- `ProductsOfInterestInlineEditTest` — dataset splittato come sopra.
+
+**FE**: `ProductsOfInterestField` ha ora la prop opzionale `unlockDescription`: il dialog di sblocco
+catalogo diceva "verra' aggiunta la riga categoria", vero solo per opportunita'. I due punti di
+gestione richieste passano il testo nuovo (`requestManagement.productsOfInterest.unlockDescription`):
+si puo' sbloccare, ma finche' la categoria non e' tra le linee il salvataggio viene rifiutato.
+Nessun mirror client-side della coerenza: il `for-select` dei prodotti non espone la categoria, e
+inventarla sarebbe stato peggio dello scope del picker + 422 server.
+
+**Verifica**: backend `pest` **4893 test, 4891 passed, 1 skipped**; `pint --dirty` pulito. FE
+`vitest run` **3248 passed (459 file)**, `tsc -b --force` EXIT=0, `eslint` pulito.
 
 **ROSSO PREESISTENTE, NON MIO** (gia' segnalato sotto): `AssignablePermissionCatalogueTest` —
 "marks form-module permissions assignable and indirect ones not" (roba `attachments.*`).

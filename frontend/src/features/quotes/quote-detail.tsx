@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditCard, Download, FileText, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
+import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import {
   DetailEmpty,
   DetailField,
@@ -37,6 +38,9 @@ interface QuoteDetailViewProps {
  */
 export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
   const { t } = useTranslation()
+  // Controlled, so the tab strip can hand the selection over to its select
+  // fallback when the tabs no longer fit.
+  const [activeTab, setActiveTab] = useState(OFFER_TAB)
   const createdAt = formatDateTime(quote.created_at)
   const totals = totalsFromPersistedSummary(quote.summary)
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
@@ -94,8 +98,8 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
       </DetailSection>
 
       <DetailSection>
-        <Tabs defaultValue={OFFER_TAB} className="flex flex-col gap-3">
-          <TabsList className={FORM_TAB_LIST_CLASS}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-3">
+          <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
             <TabsTrigger value={OFFER_TAB} className={FORM_TAB_TRIGGER_CLASS}>
               <TrendingUp aria-hidden="true" />
               {t('quotes.form.tabs.offer')}
@@ -108,7 +112,7 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
               <NotebookText aria-hidden="true" />
               {t('quotes.form.tabs.notes')}
             </TabsTrigger>
-          </TabsList>
+          </FormTabStrip>
 
           <TabsContent value={OFFER_TAB}>
             <QuoteLinesReadOnlyList

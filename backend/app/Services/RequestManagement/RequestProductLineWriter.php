@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement;
 
 use App\Models\Opportunity;
-use App\Models\Product;
 use App\Services\Opportunities\OpportunityProductLineWriter;
-use Illuminate\Validation\ValidationException;
 
 /**
  * "Funzione aziendale" + "categoria prodotto" as edited from the work panel
@@ -17,17 +15,13 @@ use Illuminate\Validation\ValidationException;
  *
  * The replace itself is delegated to the shared OpportunityProductLineWriter,
  * so this channel and the opportunities CRUD sync the collection identically.
- * What lives HERE is what only this channel needs: the diff (nothing is
- * rewritten, nor logged, when the pairs are unchanged) and the guard below.
+ * What lives HERE is what only this channel needs: the diff — nothing is
+ * rewritten, nor logged, when the pairs are unchanged.
  *
- * THE GUARD: an opportunity's "prodotti di interesse" must stay covered by
- * its product lines — the invariant OpportunityProductLineCoverage maintains
- * from the other direction (a product outside the covered categories ADDS its
- * line). Dropping a line whose category still has selected products would
- * break it silently, so it is rejected 422 naming the products to remove
- * first. Only DROPPED categories are guarded: a product whose category was
- * never covered stays legal, and its line is added by the coverage rule as
- * before.
+ * The coherence of the resulting classification with the request's products
+ * of interest is NOT checked here: it depends on the whole payload (the
+ * products may be replaced in the same PATCH), so it belongs to the caller,
+ * which owns both — see RequestProductCategoryCoherence.
  */
 final class RequestProductLineWriter
 {
@@ -35,15 +29,12 @@ final class RequestProductLineWriter
 
     /**
      * @param  array<int, array<string, mixed>>  $submitted  the validated `product_lines` rows
-     * @param  array<string, mixed>  $data  the whole PATCH payload, read for the products of interest travelling with it
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      * @return bool whether the collection actually changed — a workflow
      *              resolution criterion the caller re-runs on (spec 0047)
-     *
-     * @throws ValidationException a dropped category still has products of interest
      */
-    public function apply(Opportunity $opportunity, array $submitted, array $data, array &$changed, array &$old): bool
+    public function apply(Opportunity $opportunity, array $submitted, array &$changed, array &$old): bool
     {
         // Step 1: both sides in the same shape, compared as an unordered SET
         // of pairs (a line's position carries no meaning).
@@ -54,10 +45,7 @@ final class RequestProductLineWriter
             return false;
         }
 
-        // Step 2: the invariant above, before anything is written.
-        $this->assertDroppedCategoriesUnused($opportunity, $current, $next, $data);
-
-        // Step 3: replace, and report the change for the caller's audit entry
+        // Step 2: replace, and report the change for the caller's audit entry
         // (the collection is a relation, so it never reaches the automatic
         // fillable-diff log).
         $this->productLineWriter->sync($opportunity, $next);
@@ -66,52 +54,6 @@ final class RequestProductLineWriter
         $changed['product_lines'] = $next;
 
         return true;
-    }
-
-    /**
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $current
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $next
-     * @param  array<string, mixed>  $data
-     *
-     * @throws ValidationException
-     */
-    private function assertDroppedCategoriesUnused(Opportunity $opportunity, array $current, array $next, array $data): void
-    {
-        $droppedCategoryIds = array_values(array_diff(
-            array_column($current, 'product_category_id'),
-            array_column($next, 'product_category_id'),
-        ));
-
-        if ($droppedCategoryIds === []) {
-            return;
-        }
-
-        // The set THIS request leaves persisted: the submitted one when the
-        // picker travelled too (removing a line together with its products is
-        // the normal flow), else whatever is already stored.
-        $productIds = array_key_exists('products_of_interest', $data)
-            ? array_map(intval(...), (array) $data['products_of_interest'])
-            : $opportunity->productsOfInterest()->pluck('products.id')->map(intval(...))->all();
-
-        if ($productIds === []) {
-            return;
-        }
-
-        $blocking = Product::query()
-            ->whereIn('id', $productIds)
-            ->whereIn('category_id', $droppedCategoryIds)
-            ->orderBy('name')
-            ->pluck('name');
-
-        if ($blocking->isEmpty()) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'product_lines' => [
-                'These products of interest belong to a product category you are removing, remove them first: '.$blocking->implode(', ').'.',
-            ],
-        ]);
     }
 
     /**

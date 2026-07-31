@@ -4,8 +4,8 @@ import { ClipboardList, Loader2, NotebookText, TrendingDown, TrendingUp } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl } from '@/components/ui/form'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
+import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
 import { FormSection } from '@/components/form-section'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -55,6 +55,9 @@ const NO_ROW_ERRORS: undefined = undefined
  */
 export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteFormBodyProps) {
   const { t } = useTranslation()
+  // Controlled, so the tab strip can hand the selection over to its select
+  // fallback when the tabs no longer fit.
+  const [activeTab, setActiveTab] = useState(OFFER_TAB)
   const { form, serverError, onSubmit, vatRatePercentFor, rememberVatRatePercent } = useQuoteForm({
     mode,
     onSuccess,
@@ -261,8 +264,8 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
             labels={relationLabels}
           />
 
-          <Tabs defaultValue={OFFER_TAB} className="flex flex-col gap-4">
-            <TabsList className={FORM_TAB_LIST_CLASS}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-4">
+            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
               <TabsTrigger value={OFFER_TAB} className={FORM_TAB_TRIGGER_CLASS}>
                 <TrendingUp aria-hidden="true" />
                 {t('quotes.form.tabs.offer')}
@@ -278,7 +281,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 {t('quotes.form.tabs.notes')}
                 {notesHasError && <TabErrorDot label={tabHasErrorsLabel} />}
               </TabsTrigger>
-            </TabsList>
+            </FormTabStrip>
 
             <TabsContent value={OFFER_TAB} className="flex flex-col gap-4">
               <QuoteOfferTab

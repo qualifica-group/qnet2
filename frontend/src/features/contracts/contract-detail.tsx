@@ -9,8 +9,8 @@ import {
   DetailPanel,
   DetailSection,
 } from '@/components/detail/detail-panel'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
+import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -56,6 +56,9 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
   const { t } = useTranslation()
   const { can } = useAbilities()
   const [contract, setContract] = useState(initialContract)
+  // Controlled, so the tab strip can hand the selection over to its select
+  // fallback when the tabs no longer fit.
+  const [activeTab, setActiveTab] = useState(PRODUCTS_TAB)
 
   const createdAt = formatDateTime(contract.created_at)
   const canViewActivity = contract.permissions.actions.view_activity
@@ -92,8 +95,8 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
         </DetailSection>
 
         <DetailSection>
-          <Tabs defaultValue={PRODUCTS_TAB} className="flex flex-col gap-3">
-            <TabsList className={FORM_TAB_LIST_CLASS}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-3">
+            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
               <TabsTrigger value={PRODUCTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
                 <Package aria-hidden="true" />
                 {t('contracts.detail.tabs.products')}
@@ -112,7 +115,7 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
                   {t('activityLog.title')}
                 </TabsTrigger>
               ) : null}
-            </TabsList>
+            </FormTabStrip>
 
             <TabsContent value={PRODUCTS_TAB}>
               <QuoteLinesReadOnlyList lines={contract.offer_lines} />

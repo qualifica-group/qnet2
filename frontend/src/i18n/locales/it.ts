@@ -69,6 +69,8 @@ export const it: TranslationResources = {
     edit: 'Modifica',
     new: 'Nuovo',
     viewProfile: 'Vedi il profilo di {{name}}',
+    /** Label of the select a tab strip collapses into when the tabs no longer fit. */
+    tabsSelectLabel: 'Sezione',
     /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
     copySuffix: ' (copia)',
   },
