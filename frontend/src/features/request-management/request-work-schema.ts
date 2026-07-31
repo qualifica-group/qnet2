@@ -5,11 +5,13 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
+import type { ProductLineRow } from '@/features/product-lines/types'
 import {
   attributeValuesChanged,
   clientAddressChanged,
   clientContactsChanged,
   clientIdentityChanged,
+  productLinesChanged,
   productsOfInterestChanged,
 } from '@/features/request-management/request-work-payload'
 import type {
@@ -163,6 +165,34 @@ function addClientIdentityIssues(identity: PersonalDataDraft | null, ctx: z.Refi
 }
 
 /**
+ * The edited funzione/categoria rows (user directive 2026-07-31). MIRRORS the
+ * create form's own rule (`buildRequestCreateSchema`) and the server's
+ * `min:1` + per-row `required` ids: the collection may be replaced but never
+ * emptied, and a half-filled row is not a line.
+ */
+function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: TFunction): void {
+  if (rows.length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['product_lines'],
+      message: t('requestManagement.workPanel.validation.productLinesRequired'),
+    })
+
+    return
+  }
+
+  rows.forEach((row, index) => {
+    if (row.business_function_id === null || row.product_category_id === null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['product_lines', index],
+        message: t('requestManagement.workPanel.validation.productLineIncomplete'),
+      })
+    }
+  })
+}
+
+/**
  * The panel's loaded state, against which the sparse rules below are decided.
  * `UpdateRequestRequest` marks every key `sometimes` and
  * `AttributeValueValidator` checks `is_required` only on SUBMITTED codes: an
@@ -176,6 +206,8 @@ export interface RequestWorkOriginalState {
   workflow_status_id: number | null
   attribute_values: Record<string, unknown>
   products_of_interest: number[]
+  /** The persisted funzione/categoria pairs, in the form's own row shape. */
+  product_lines: ProductLineRow[]
   /** The client blocks as the panel loaded them (`ValidatesRequestClientProfile` only sees what travels). */
   client_identity: RequestClientIdentity | null
   client_contacts: RequestContact[]
@@ -214,6 +246,13 @@ export function buildRequestWorkSchema(
       // actually edited (see the refinement below). The other membership
       // rules (existence, category coverage) stay server-side only.
       products_of_interest: z.array(z.number()),
+      // "Funzione aziendale" + "categoria prodotto" (user directive
+      // 2026-07-31): the same rows the create form edits, with the same two
+      // rules (at least one row, every row complete) — but gated on the
+      // collection actually being edited, like the two neighbours above: the
+      // key does not travel otherwise, and a legacy request with no line
+      // would become unsavable for any unrelated edit.
+      product_lines: z.array(z.custom<ProductLineRow>()),
       // Spec 0059 D-3: reward assignments for the reporter (chips under the
       // field). Only the type id travels — beneficiary/date are
       // server-derived. Duplicates are prevented client-side (the add
@@ -265,6 +304,10 @@ export function buildRequestWorkSchema(
         values.products_of_interest.length === 0
       ) {
         ctx.addIssue({ code: 'custom', path: ['products_of_interest'], message: t('products.ofInterest.required') })
+      }
+
+      if (productLinesChanged(values.product_lines, original.product_lines)) {
+        addProductLinesIssues(values.product_lines, ctx, t)
       }
 
       // Fonte is MANDATORY (user directive 2026-07-29) — and unlike the two

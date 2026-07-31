@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
@@ -25,10 +26,15 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * `opportunity_workflow_status_id` reuses ValidatesWorkflowStatus verbatim
  * (spec 0047): membership is checked against the set resolved for the
- * route's PERSISTED opportunity — this module never submits
- * source_id/state_id/product_lines, so the trait's "submitted overrides,
- * else fall back to $current" behaviour always falls back to the opportunity
- * as-is.
+ * SUBMITTED source_id/product_lines when they travel (both are editable from
+ * the panel), falling back to the route's persisted opportunity for whichever
+ * of the trait's three criteria this payload left untouched.
+ *
+ * `product_lines` (user directive 2026-07-31: funzione aziendale + categoria
+ * prodotto editable by the commercials from the panel, not only at creation)
+ * reuses ValidatesProductLines VERBATIM, the same rules the create form and
+ * the opportunities form already share — `sometimes` (absent = untouched)
+ * with `min:1`, so the collection can be replaced but never cleared.
  *
  * `attribute_values` deep validation (per-code applicability/type/required,
  * spec 0049 D-4) is intentionally NOT duplicated here: it runs inside
@@ -52,7 +58,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesRequestClientProfile, ValidatesRewards, ValidatesWorkflowStatus;
+    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesRequestClientProfile, ValidatesRewards, ValidatesWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -97,6 +103,10 @@ class UpdateRequestRequest extends FormRequest
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
             ...$this->rewardsRules(),
             ...$this->clientProfileRules(),
+            // Funzione aziendale + categoria prodotto (user directive
+            // 2026-07-31): `required: false` = sparse, but `min:1` still bars
+            // a clear-to-empty, exactly like the opportunities PATCH.
+            ...$this->productLinesRules(required: false),
         ];
     }
 
@@ -117,6 +127,7 @@ class UpdateRequestRequest extends FormRequest
             $opportunity = $this->route('opportunity');
 
             $this->validateWorkflowStatus($validator, $opportunity);
+            $this->validateProductLines($validator);
             $this->validateRewards($validator, $opportunity);
             $this->validateClientProfile($validator);
             // Write-path counterpart of the `permissions` block (spec 0004/

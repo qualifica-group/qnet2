@@ -105,6 +105,29 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
   })
 
   /**
+   * Funzione aziendale + categoria prodotto are editable since the user
+   * directive 2026-07-31, under the same "never empty" rule the server
+   * enforces (`min:1`): emptying the collection is refused before the request
+   * goes out, and the summary names the block.
+   */
+  it('refuses a save that would leave the request without a product line', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+
+    renderPanel()
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Business function 1' })).toHaveTextContent('Sales'),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove product line' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    const alert = await within(screen.getByRole('banner')).findByRole('alert')
+    expect(alert).toHaveTextContent('Product lines')
+    expect(updateRequestWorkMock).not.toHaveBeenCalled()
+  })
+
+  /**
    * The counterpart, and the reason those two rules are gated at all: a record
    * that legitimately has no product of interest (or an empty required
    * Attribute) must stay savable for any UNRELATED edit — the endpoint is

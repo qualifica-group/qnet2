@@ -31,6 +31,7 @@ function original(workflowStatusId: number): RequestWorkOriginalState {
     workflow_status_id: workflowStatusId,
     attribute_values: {},
     products_of_interest: [700],
+    product_lines: [{ business_function_id: 40, product_category_id: 500 }],
     client_identity: null,
     client_contacts: [],
     client_address: null,
@@ -49,6 +50,7 @@ function Harness({ onSubmit }: { onSubmit: () => void }) {
       client_contacts: [],
       client_address: [],
       products_of_interest: [700],
+      product_lines: [{ business_function_id: 40, product_category_id: 500 }],
       rewards: [],
       // Mandatory since the user directive 2026-07-29: a submit-able form
       // always carries a Fonte (this suite is about the status field).

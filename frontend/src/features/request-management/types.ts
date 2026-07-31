@@ -290,6 +290,14 @@ export interface UpdateRequestWorkPayload {
    */
   products_of_interest?: number[]
   /**
+   * "Funzione aziendale" + "categoria prodotto" (user directive 2026-07-31),
+   * AUTHORITATIVE when sent: the collection is fully replaced, and it may
+   * never be cleared (`min:1` server-side). Dropping a category whose
+   * products of interest are still selected is rejected 422 — send the new
+   * `products_of_interest` in the same PATCH.
+   */
+  product_lines?: RequestProductLinePayload[]
+  /**
    * Attribution (user directive 2026-07-22). `operator_id` addresses the GA2
    * pivot slot only: the other manager positions are left untouched, and
    * `null` empties the slot.
@@ -306,8 +314,12 @@ export interface UpdateRequestWorkPayload {
   rewards?: RequestRewardInput[]
 }
 
-/** One `product_lines` row of the create payload: both ids are mandatory on the wire (D-3), unlike the form's in-progress rows. */
-export interface CreateRequestProductLinePayload {
+/**
+ * One `product_lines` row on the wire, shared by the create payload (D-3) and
+ * the work panel's own update (user directive 2026-07-31): both ids are
+ * mandatory there, unlike the form's in-progress rows.
+ */
+export interface RequestProductLinePayload {
   business_function_id: number
   product_category_id: number
 }
@@ -337,7 +349,7 @@ export interface CreateRequestPayload {
   client_identity?: RequestClientIdentityPayload
   client_contacts?: RequestClientContactPayload[]
   client_address?: RequestClientAddressPayload
-  product_lines: CreateRequestProductLinePayload[]
+  product_lines: RequestProductLinePayload[]
   /** Initial attribution (Fonte/Segnalatore), independent of the anagrafica XOR; `null` leaves the slot empty. */
   source_id?: number | null
   reporter_id?: number | null

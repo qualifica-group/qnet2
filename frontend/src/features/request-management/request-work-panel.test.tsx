@@ -97,7 +97,12 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     // Read-only context, now a compact header strip.
     expect(screen.getByText('Acme S.p.A.')).toBeInTheDocument()
     expect(screen.getByText('New')).toBeInTheDocument()
-    expect(screen.getByText('Sales — Consulting')).toBeInTheDocument()
+
+    // Funzione aziendale + categoria prodotto: an EDITOR since the user
+    // directive 2026-07-31 (it used to be a read-only badge in the summary),
+    // prefilled with the persisted pair.
+    expect(screen.getByRole('combobox', { name: 'Business function 1' })).toHaveTextContent('Sales')
+    expect(screen.getByRole('combobox', { name: 'Product category 1' })).toHaveTextContent('Consulting')
 
     // Anagrafica: the client's channels are ACTIVE, prefilled inputs — not a
     // read-only list behind an "edit" dialog.

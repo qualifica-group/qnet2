@@ -15,6 +15,7 @@ import { describeInvalidFields } from '@/features/request-management/request-wor
 import {
   buildRequestWorkPayload,
   seedAttributeValues,
+  toProductLineRows,
 } from '@/features/request-management/request-work-payload'
 import {
   buildRequestWorkSchema,
@@ -81,6 +82,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     client_address: panel.client_address ? [addressToDraft(panel.client_address)] : [],
     attribute_values: seedAttributeValues(panel.applicable_attributes, panel.attribute_values),
     products_of_interest: panel.products_of_interest.map((product) => product.id),
+    product_lines: toProductLineRows(panel.product_lines),
     rewards: (panel.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     source_id: panel.source_id,
     reporter_id: panel.reporter_id,
@@ -113,6 +115,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
           // `buildRequestWorkPayload`'s.
           attribute_values: seedAttributeValues(panel.applicable_attributes, panel.attribute_values),
           products_of_interest: panel.products_of_interest.map((product) => product.id),
+          product_lines: toProductLineRows(panel.product_lines),
           client_identity: panel.client_identity,
           client_contacts: panel.client_contacts.items,
           client_address: panel.client_address,
@@ -125,6 +128,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
       panel.workflow_status,
       panel.attribute_values,
       panel.products_of_interest,
+      panel.product_lines,
       panel.client_identity,
       panel.client_contacts,
       panel.client_address,
@@ -146,6 +150,10 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     'client_contacts' as Path<RequestWorkFormValues>,
     'client_address' as Path<RequestWorkFormValues>,
     'products_of_interest' as Path<RequestWorkFormValues>,
+    // The collection is submitted as a whole: a per-row 422
+    // (`product_lines.0.business_function_id`) has no control of its own here,
+    // so the block root carries the message.
+    'product_lines' as Path<RequestWorkFormValues>,
     'rewards' as Path<RequestWorkFormValues>,
     'source_id' as Path<RequestWorkFormValues>,
     'reporter_id' as Path<RequestWorkFormValues>,

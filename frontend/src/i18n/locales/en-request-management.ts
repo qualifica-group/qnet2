@@ -198,7 +198,12 @@ export const requestManagement = {
       expectedCloseDate: 'Expected close date',
       estimatedValue: 'Estimated value',
       successProbability: 'Success probability',
-      productLines: 'Product lines',
+    },
+    productLines: {
+      title: 'Product lines',
+      description: "The request's business function and product category.",
+      fieldLabel: 'Product lines',
+      hint: 'The categories chosen here scope the products of interest and, once saved, the request-specific fields.',
     },
     collaboration: {
       notesTab: 'Notes',
@@ -210,6 +215,8 @@ export const requestManagement = {
       required: 'This field is required.',
       noteRequired: 'A note is required to move to this status.',
       sourceRequired: 'Select a source.',
+      productLinesRequired: 'Add at least one product line.',
+      productLineIncomplete: 'Select a business function and a product category for every row.',
       summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },

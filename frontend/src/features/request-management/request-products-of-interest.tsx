@@ -1,18 +1,16 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PackageSearch } from 'lucide-react'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { ProductsOfInterestField } from '@/features/products/products-of-interest-field'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
-import type { RequestProductLine, RequestProductOfInterest } from '@/features/request-management/types'
+import type { RequestProductOfInterest } from '@/features/request-management/types'
 
 interface RequestProductsOfInterestProps {
   control: Control<RequestWorkFormValues>
-  /** The opportunity's function+category rows: their categories scope the picker. */
-  productLines: RequestProductLine[]
   /** The currently persisted products, for badge-label hydration. */
   products: RequestProductOfInterest[]
 }
@@ -24,11 +22,22 @@ interface RequestProductsOfInterestProps {
  * opportunity form, wrapped in `MetaField` like every other field here so its
  * gating comes from the same server-derived permissions.
  */
-export function RequestProductsOfInterest({ control, productLines, products }: RequestProductsOfInterestProps) {
+export function RequestProductsOfInterest({ control, products }: RequestProductsOfInterestProps) {
   const { t } = useTranslation()
+  // The scope follows the rows being EDITED, not the persisted ones (user
+  // directive 2026-07-31): adding a categoria prodotto opens its products
+  // straight away, without a save-and-reload round trip.
+  const productLines = useWatch({ control, name: 'product_lines' })
 
   const categoryIds = useMemo(
-    () => [...new Set(productLines.map((line) => line.product_category.id))],
+    () =>
+      [
+        ...new Set(
+          productLines
+            .map((line) => line.product_category_id)
+            .filter((id): id is number => id !== null),
+        ),
+      ],
     [productLines],
   )
 

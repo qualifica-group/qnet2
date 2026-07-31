@@ -30,6 +30,7 @@ function buildFieldLabels(t: TFunction): Record<string, string> {
     client_contacts: t('requestManagement.workPanel.client.contactsGroup'),
     client_address: t('requestManagement.workPanel.client.addressGroup'),
     products_of_interest: t('products.ofInterest.fieldLabel'),
+    product_lines: t('requestManagement.workPanel.productLines.fieldLabel'),
     rewards: t('requestManagement.workPanel.attribution.rewards.fieldLabel'),
     source_id: t('requestManagement.workPanel.attribution.source'),
     reporter_id: t('requestManagement.workPanel.attribution.reporter'),

@@ -15,9 +15,9 @@ use Illuminate\Database\Eloquent\Model;
  * Eloquent class, so this mirrors the smallest existing authorizations
  * (VatRatesAuthorization) with the operative fields the work panel writes
  * (D-4/D-5, `next_callback_at` added by spec 0054 D-4) — visible+editable
- * when the actor may write, else read-only. Only `products_of_interest` and
- * `source_id` are mandatory-restrictive (user directives 2026-07-23 /
- * 2026-07-29); every other field blocks on nothing here, its dedicated 422
+ * when the actor may write, else read-only. Only `products_of_interest`,
+ * `source_id` and `product_lines` are mandatory-restrictive (user directives
+ * 2026-07-23 / 2026-07-29 / 2026-07-31); every other field blocks on nothing here, its dedicated 422
  * rules living in AttributeValueValidator/ValidatesWorkflowStatus.
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
@@ -52,6 +52,13 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // 2026-07-23) exactly like in OpportunitiesAuthorization — the two
             // channels write the same collection, so the rule cannot differ.
             new FieldDefinition('products_of_interest', 'multiselect', mandatory: true),
+            // "Funzione aziendale" + "categoria prodotto" (user directive
+            // 2026-07-31): the same `product_lines` collection the create form
+            // writes, made editable from the panel too. MANDATORY for the same
+            // reason as products_of_interest — an opportunity must always
+            // carry at least one row (ValidatesProductLines' `min:1` on both
+            // write channels), so no role matrix may narrow it away.
+            new FieldDefinition('product_lines', 'custom', mandatory: true),
             // Attribution block (user directive 2026-07-22): "Fonte",
             // "Segnalatore" and the GA2 "Operatore" — the same three
             // dimensions the opportunities form owns, made editable from the
@@ -103,6 +110,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'next_callback_at' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operator_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

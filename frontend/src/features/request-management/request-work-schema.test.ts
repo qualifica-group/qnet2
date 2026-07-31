@@ -30,6 +30,7 @@ function original(
     workflow_status_id: workflowStatusId,
     attribute_values: {},
     products_of_interest: [7],
+    product_lines: [{ business_function_id: 40, product_category_id: 500 }],
     client_identity: null,
     client_contacts: [],
     client_address: null,
@@ -47,6 +48,9 @@ function values(overrides: Record<string, unknown> = {}) {
     client_address: [],
     // Mandatory since the user directive 2026-07-23 (>=1 product).
     products_of_interest: [7],
+    // Editable since the user directive 2026-07-31; unchanged here, so the
+    // collection's own rules stay dormant (see the dedicated suite below).
+    product_lines: [{ business_function_id: 40, product_category_id: 500 }],
     rewards: [],
     // Mandatory since the user directive 2026-07-29 (see the dedicated suite below).
     source_id: 30,
@@ -88,6 +92,47 @@ describe('buildRequestWorkSchema — products of interest', () => {
     const schema = buildRequestWorkSchema([], STATUSES, original(100, { products_of_interest: [] }), i18n.t)
 
     expect(schema.safeParse(values({ products_of_interest: [] })).success).toBe(true)
+  })
+})
+
+// User directive 2026-07-31: funzione aziendale + categoria prodotto are
+// edited from the panel too, under the create form's own two rules — but only
+// once the collection is actually touched (same sparse gate as above).
+describe('buildRequestWorkSchema — product lines', () => {
+  const EDITED = [{ business_function_id: 41, product_category_id: 501 }]
+
+  it('rejects clearing the collection', () => {
+    const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
+    const result = schema.safeParse(values({ product_lines: [] }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
+    }
+  })
+
+  it('rejects a row missing its product category', () => {
+    const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
+    const result = schema.safeParse(
+      values({ product_lines: [{ business_function_id: 41, product_category_id: null }] }),
+    )
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines.0')).toBe(true)
+    }
+  })
+
+  it('accepts a complete replacement', () => {
+    const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
+
+    expect(schema.safeParse(values({ product_lines: EDITED })).success).toBe(true)
+  })
+
+  it('leaves an untouched collection alone, even when the request has no line', () => {
+    const schema = buildRequestWorkSchema([], STATUSES, original(100, { product_lines: [] }), i18n.t)
+
+    expect(schema.safeParse(values({ product_lines: [] })).success).toBe(true)
   })
 })
 

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
-import { Badge } from '@/components/ui/badge'
 import { formatDecimal } from '@/features/products/column-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
@@ -31,6 +30,10 @@ function SummaryRow({ label, children }: { label: string; children: ReactNode })
  * Read-only commercial context of the record (spec 0049), rendered as the side
  * column of the work panel. Never renders an edit control: the sales
  * dimensions stay the CRUD opportunities form's job (D-5).
+ *
+ * The funzione/categoria rows left this summary when they became editable
+ * (user directive 2026-07-31): showing the persisted pairs next to the field
+ * that edits them would contradict it until the next save.
  */
 export function RequestWorkSummary({ panel }: { panel: RequestWorkPanel }) {
   const { t } = useTranslation()
@@ -76,27 +79,6 @@ export function RequestWorkSummary({ panel }: { panel: RequestWorkPanel }) {
         >
           {successProbability === null ? EMPTY_VALUE : `${successProbability}%`}
         </SummaryRow>
-
-        <div className="flex min-w-0 flex-col gap-1.5 py-2">
-          <dt className="text-xs text-muted-foreground">
-            {t('requestManagement.workPanel.summary.productLines', { defaultValue: 'Product lines' })}
-          </dt>
-          <dd className="flex min-w-0 flex-wrap gap-1">
-            {panel.product_lines.length === 0 ? (
-              <span className="text-sm font-medium text-foreground">
-                {t('common.none', { defaultValue: 'None' })}
-              </span>
-            ) : (
-              panel.product_lines.map((line) => (
-                <Badge key={line.id} variant="outline" className="h-5 min-h-5 max-w-full text-xs">
-                  <span className="truncate">
-                    {`${line.business_function.name} — ${line.product_category.name}`}
-                  </span>
-                </Badge>
-              ))
-            )}
-          </dd>
-        </div>
       </dl>
     </FormSection>
   )

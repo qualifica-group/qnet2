@@ -12,6 +12,7 @@ import { RequestCallbackSection } from '@/features/request-management/request-ca
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestDynamicFields } from '@/features/request-management/request-dynamic-fields'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
+import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
@@ -179,12 +180,15 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 layout={panel.attribute_layout}
               />
 
+              {/* Funzione aziendale + categoria prodotto (user directive
+                  2026-07-31), right before the picker they scope. */}
+              <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
+
               {/* Right after the preliminary information: the products of
                   interest are collected in the same phone call (user directive
                   2026-07-22). */}
               <RequestProductsOfInterest
                 control={form.control}
-                productLines={panel.product_lines}
                 products={panel.products_of_interest}
               />
 

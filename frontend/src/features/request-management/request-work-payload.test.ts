@@ -83,6 +83,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     client_contacts: [],
     client_address: [],
     products_of_interest: [],
+    product_lines: [],
     rewards: [],
     source_id: null,
     reporter_id: null,
@@ -166,6 +167,42 @@ describe('buildRequestWorkPayload — products of interest (user directive 2026-
     )
 
     expect(payload).not.toHaveProperty('products_of_interest')
+  })
+})
+
+describe('buildRequestWorkPayload — product lines (user directive 2026-07-31)', () => {
+  const LINE = {
+    id: 1,
+    business_function: { id: 40, name: 'Sales' },
+    product_category: { id: 500, name: 'Consulting' },
+  }
+
+  it('sends the whole collection when a pair changed', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ product_lines: [{ business_function_id: 41, product_category_id: 501 }] }),
+      panel({ product_lines: [LINE] }),
+    )
+
+    expect(payload.product_lines).toEqual([{ business_function_id: 41, product_category_id: 501 }])
+  })
+
+  it('omits the key when the SET is unchanged, whatever the order', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({
+        product_lines: [
+          { business_function_id: 41, product_category_id: 501 },
+          { business_function_id: 40, product_category_id: 500 },
+        ],
+      }),
+      panel({
+        product_lines: [
+          LINE,
+          { id: 2, business_function: { id: 41, name: 'Ops' }, product_category: { id: 501, name: 'Hardware' } },
+        ],
+      }),
+    )
+
+    expect(payload).not.toHaveProperty('product_lines')
   })
 })
 

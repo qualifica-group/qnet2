@@ -133,6 +133,10 @@ class RequestManagementController extends BaseApiController
                         // Spec 0059, AC-023: same sparse rule — absent means
                         // untouched, `[]` clears every reward assignment.
                         'rewards',
+                        // Funzione aziendale + categoria prodotto (user
+                        // directive 2026-07-31): a full-replace collection,
+                        // sparse like every other key here.
+                        'product_lines',
                     ]),
                     // Typed DTOs (ContactInput/AddressInput), not raw arrays:
                     // the client anagraphic block never reaches the service as

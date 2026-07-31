@@ -13,6 +13,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
+use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Statuses\SystemStatusGuard;
@@ -74,6 +75,7 @@ class OpportunityService
         private readonly SystemStatusGuard $systemStatusGuard,
         private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
+        private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
     ) {}
 
@@ -206,7 +208,7 @@ class OpportunityService
             }
 
             if ($data->hasProductLines()) {
-                $this->syncProductLines($opportunity, $data->productLines);
+                $this->productLineWriter->sync($opportunity, $data->productLines);
             }
 
             // "Prodotti di interesse" (user directive 2026-07-22): synced
@@ -266,7 +268,7 @@ class OpportunityService
             }
 
             if ($data->hasProductLines()) {
-                $this->syncProductLines($opportunity, $data->productLines);
+                $this->productLineWriter->sync($opportunity, $data->productLines);
             }
 
             // See create(): same ordering, same writer, same rule.
@@ -369,23 +371,5 @@ class OpportunityService
         }
 
         return $map;
-    }
-
-    /**
-     * Full-replace sync of $opportunity's product lines (spec 0040 amendment
-     * rev.3): delete-all + insert, idempotent within the surrounding
-     * transaction — StoreOpportunityRequest/UpdateOpportunityRequest already
-     * rejected duplicate pairs and a mismatched business-function/category
-     * pairing (withValidator), so every row here is already valid.
-     *
-     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $lines
-     */
-    private function syncProductLines(Opportunity $opportunity, array $lines): void
-    {
-        $opportunity->productLines()->delete();
-
-        foreach ($lines as $line) {
-            $opportunity->productLines()->create($line);
-        }
     }
 }

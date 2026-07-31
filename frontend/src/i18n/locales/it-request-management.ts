@@ -198,7 +198,12 @@ export const requestManagement = {
       expectedCloseDate: 'Chiusura prevista',
       estimatedValue: 'Valore stimato',
       successProbability: 'Probabilità di successo',
-      productLines: 'Linee di prodotto',
+    },
+    productLines: {
+      title: 'Linee di prodotto',
+      description: 'Funzione aziendale e categoria prodotto della richiesta.',
+      fieldLabel: 'Linee di prodotto',
+      hint: 'Le categorie scelte qui filtrano i prodotti di interesse e determinano i campi specifici della richiesta al salvataggio.',
     },
     collaboration: {
       notesTab: 'Note',
@@ -210,6 +215,8 @@ export const requestManagement = {
       required: 'Questo campo è obbligatorio.',
       noteRequired: 'È obbligatoria una nota per passare a questo stato.',
       sourceRequired: 'Seleziona una fonte.',
+      productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
+      productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
       summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },

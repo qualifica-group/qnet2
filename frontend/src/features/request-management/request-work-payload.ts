@@ -1,6 +1,8 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
+import type { ProductLineRow } from '@/features/product-lines/types'
+import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
   ApplicableAttribute,
@@ -9,6 +11,7 @@ import type {
   RequestClientIdentity,
   RequestClientIdentityPayload,
   RequestContact,
+  RequestProductLine,
   RequestWorkPanel,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
@@ -66,6 +69,32 @@ export function productsOfInterestChanged(current: number[], original: number[])
   const sort = (ids: number[]) => [...ids].sort((a, b) => a - b)
 
   return clientBlockChanged(sort(current), sort(original))
+}
+
+/**
+ * The panel's loaded funzione/categoria pairs in the row shape the field
+ * editor (and the diff above) works with — the form defaults, the schema's
+ * baseline and the payload's own comparison all go through this one mapper.
+ */
+export function toProductLineRows(lines: RequestProductLine[]): ProductLineRow[] {
+  return lines.map((line) => ({
+    business_function_id: line.business_function.id,
+    product_category_id: line.product_category.id,
+  }))
+}
+
+/**
+ * True when the funzione/categoria rows differ from the panel's loaded ones
+ * (user directive 2026-07-31). Compared as an unordered SET of pairs: a row's
+ * position carries no meaning, server-side either (the pair is what is
+ * unique). Exported for the same reason as the two above — the schema
+ * validates the collection only when it is going to be sent.
+ */
+export function productLinesChanged(current: ProductLineRow[], original: ProductLineRow[]): boolean {
+  const keys = (rows: ProductLineRow[]) =>
+    rows.map((row) => `${row.business_function_id}:${row.product_category_id}`).sort()
+
+  return clientBlockChanged(keys(current), keys(original))
 }
 
 /**
@@ -233,6 +262,13 @@ export function buildRequestWorkPayload(
   const originalProducts = panel.products_of_interest.map((product) => product.id)
   if (productsOfInterestChanged(values.products_of_interest, originalProducts)) {
     payload.products_of_interest = values.products_of_interest
+  }
+
+  // "Funzione aziendale" + "categoria prodotto" (user directive 2026-07-31):
+  // same authoritative-replace idiom, sent only when the pairs changed. Every
+  // row is complete by then — the schema refuses the submit otherwise.
+  if (productLinesChanged(values.product_lines, toProductLineRows(panel.product_lines))) {
+    payload.product_lines = toProductLinesPayload(values.product_lines)
   }
 
   // Spec 0059 D-3: same authoritative-replace idiom as products of interest,

@@ -3,6 +3,61 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FUNZIONE AZIENDALE + CATEGORIA PRODOTTO EDITABILI DAL WORK PANEL (2026-07-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente**: dare ai commerciali la possibilita' di cambiare funzione aziendale e
+categoria prodotto anche in update, prendendo l'editor dalla creazione richiesta.
+
+**Contratto**: `PATCH /api/request-management/{opportunity}` accetta ora `product_lines`
+(`[{business_function_id, product_category_id}]`), sparse come ogni altra chiave: assente =
+intoccata, `min:1` (mai svuotabile). Regole IDENTICHE a create/opportunita' — `ValidatesProductLines`
+riusato verbatim (no coppie duplicate, categoria appartenente alla funzione EFFETTIVA).
+
+**Backend**:
+- `OpportunityProductLineWriter` (nuovo, `Services/Opportunities/`) — il delete-all+insert era
+  privato in `OpportunityService`: ora e' il writer condiviso dai due canali (+`unsetRelation`,
+  serve perche' le linee sono criterio di workflow e di attributi applicabili).
+- `RequestProductLineWriter` (nuovo, `Services/RequestManagement/`) — diff (niente scrittura ne'
+  log se le coppie non cambiano) + **la guardia**: droppare una categoria i cui prodotti di
+  interesse restano selezionati e' 422 su `product_lines` con i nomi dei prodotti. Guardati SOLO
+  i category id **rimossi**: un prodotto di categoria mai coperta resta legale (lo copre
+  `OpportunityProductLineCoverage`, che aggiunge la riga). Se nella stessa PATCH viaggia anche
+  `products_of_interest`, la guardia guarda quel set (rimuovere riga + prodotti insieme = flusso
+  normale, deve passare).
+- `RequestManagementService::updateWork()` **riordinato** (step rinumerati): attribuzione →
+  `attribute_values` → `product_lines` → stato di lavorazione → callback. Le due ragioni, non
+  invertirle: gli attribute values si validano contro il set applicabile **pre-cambio** (quello da
+  cui il pannello ha renderizzato i campi), lo stato si valida contro le linee **nuove** (come gia'
+  fa `ValidatesWorkflowStatus` request-side, che sa leggere `product_lines` submitted). La
+  ri-risoluzione del workflow ora scatta anche su `$productLinesChanged`, non solo su fonte.
+- `RequestWorkflowStatusWriter` (nuovo) — estratto da `RequestManagementService` **perche' il file
+  era a 500 righe** (hard limit dell'hook `code-guard`): resta l'unico choke point dell'avanzamento
+  di stato + nota obbligatoria, ora e' solo in un file suo. Il service e' 435 righe.
+- `RequestManagementAuthorization`: `product_lines` = `FieldDefinition('custom', mandatory: true)` +
+  ceiling `visibleEditable(required: true)` (stessa scelta di `products_of_interest`: la matrice per
+  ruolo non puo' toglierlo, la collection e' strutturalmente obbligatoria).
+
+**Frontend**:
+- `request-product-lines-section.tsx` (nuovo) — `ProductLinesField` (LO STESSO del form di
+  creazione e del form opportunita') dentro `MetaField`, con `knownLines={panel.product_lines}` per
+  le label senza fetch.
+- `RequestProductsOfInterest` non riceve piu' `productLines`: le categorie che scopano il picker
+  arrivano da `useWatch('product_lines')`, cioe' dalle righe **in editing** — aggiungere una
+  categoria apre subito i suoi prodotti, senza salva-e-ricarica.
+- Schema/payload: `productLinesChanged` (SET di coppie, ordine irrilevante) + `toProductLineRows`;
+  regole (>=1 riga, righe complete) **gated sul cambiamento**, come `products_of_interest` — su una
+  richiesta legacy senza linee un edit non correlato deve restare salvabile.
+- `CreateRequestProductLinePayload` rinominato `RequestProductLinePayload` (lo condividono create e
+  update); `toProductLinesPayload` esportato da `request-create-payload.ts`.
+- **Rimosso** il badge read-only "Linee di prodotto" da `RequestWorkSummary`: mostrava le coppie
+  persistite accanto al campo che le edita, contraddicendolo fino al salvataggio.
+
+**Verifica**: backend `pest` **4886 test, 4884 passed, 1 skipped**; `pint --dirty` pulito. FE
+`vitest run` **3237 passed (458 file)**, `tsc -b --force` EXIT=0, `eslint` pulito.
+
+**ROSSO PREESISTENTE, NON MIO** (gia' segnalato sotto): `AssignablePermissionCatalogueTest` —
+"marks form-module permissions assignable and indirect ones not" (roba `attachments.*`).
+
 ## ALLEGATI: ANTEPRIMA/THUMBNAIL/DOWNLOAD NON FUNZIONAVANO (2026-07-31) — VERDE, NON COMMITTATO
 
 **Sintomo riportato**: aprendo `http://qnet-2-backend.test/api/attachments/2/view` il browser non
