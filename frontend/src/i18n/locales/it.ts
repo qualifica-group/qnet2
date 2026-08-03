@@ -44,6 +44,7 @@ import { leadImports } from './it-lead-imports'
 import { businessFunctions } from './it-business-functions'
 import { moduleStats, statsPanel } from './it-stats'
 import { impersonation } from './it-impersonation'
+import { permissions, permissionExplorer } from './it-permissions'
 import {
   usersColumnsEmployment,
   usersDetailEmployment,
@@ -294,6 +295,8 @@ export const it: TranslationResources = {
       loadError: 'Impossibile caricare il catalogo dei campi. Riprova.',
       mandatory: 'Obbligatorio per creare il record — non restringibile da un ruolo.',
     },
+    // Esploratore permessi a due pannelli (spec 0076): albero area/modulo + dettaglio modulo.
+    permissionExplorer,
   },
   companies: { ...companies, stats: moduleStats.companies },
   companySites: { ...companySites, stats: moduleStats.companySites },
@@ -345,27 +348,7 @@ export const it: TranslationResources = {
     fieldNotEditable: 'Questo campo non può essere modificato.',
     moreInfo: 'Maggiori informazioni',
   },
-  permissions: {
-    abilities: {
-      viewAny: 'Visualizza elenco',
-      view: 'Visualizza',
-      create: 'Crea',
-      update: 'Modifica',
-      delete: 'Elimina',
-      // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
-      // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).
-      assignOperator: 'Assegna operatore',
-    },
-    resources: {
-      users: 'Utenti',
-      roles: 'Ruoli',
-      addresses: 'Indirizzi',
-      attachments: 'Allegati',
-      contacts: 'Contatti',
-      personal_data: 'Dati anagrafici',
-      notes: 'Note',
-    },
-  },
+  permissions,
   enums,
   businessFunctions,
   operationalSites: { ...operationalSites, stats: moduleStats.operationalSites },

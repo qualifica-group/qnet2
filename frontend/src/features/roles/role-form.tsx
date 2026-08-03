@@ -12,8 +12,6 @@ export type RoleFormMode =
 
 interface RoleFormProps {
   mode: RoleFormMode
-  /** Full permission catalogue, sourced from the table config. */
-  permissionOptions: string[]
   /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (role: RoleDetail) => void
   /** Called when the user cancels the form. */

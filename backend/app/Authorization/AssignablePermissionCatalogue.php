@@ -40,14 +40,36 @@ final class AssignablePermissionCatalogue
     }
 
     /**
+     * The permission-only resources (`notes`, `attachments`): assignable but
+     * with no form-module resource of their own (see config/authorization.php).
+     * Public — PermissionCatalogueBuilder uses it to build the "shared" area.
+     *
      * @return array<int, string>
      */
-    private function permissionOnlyResources(): array
+    public function permissionOnlyResources(): array
     {
         /** @var array<int, string> $resources */
         $resources = config('authorization.permission_only_resources', []);
 
         return $resources;
+    }
+
+    /**
+     * The assignable names() grouped by resource prefix — the single place
+     * that pairs the catalogue with the resource-split logic, so consumers
+     * (PermissionCatalogueBuilder) never re-derive it themselves.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function namesByResource(): array
+    {
+        $grouped = [];
+
+        foreach ($this->names() as $name) {
+            $grouped[$this->resourceOf($name)][] = $name;
+        }
+
+        return $grouped;
     }
 
     /**

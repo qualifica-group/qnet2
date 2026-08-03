@@ -40,11 +40,12 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
 }))
 
-// This suite is not about the spec 0006 field-permission matrix (covered by
-// `role-form-field-permissions.test.tsx`): an empty catalogue keeps the new
-// section out of the way of the users-integration assertions below.
-vi.mock('@/features/roles/field-catalogue-api', () => ({
-  fetchFieldCatalogue: () => Promise.resolve({ resources: [] }),
+// This suite is not about the spec 0076 permission explorer (covered by
+// `permission-explorer/permission-explorer.test.tsx`): an empty catalogue
+// keeps the new section out of the way of the users-integration assertions
+// below.
+vi.mock('@/features/roles/permission-catalogue-api', () => ({
+  fetchPermissionCatalogue: () => Promise.resolve({ areas: [] }),
 }))
 
 // Replace the async users multi-select with a lightweight controllable stub so
@@ -70,7 +71,6 @@ vi.mock('@/components/ui/async-paginated-multi-select', () => ({
   ),
 }))
 
-const PERMISSIONS = ['users.viewAny', 'users.create']
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -112,7 +112,6 @@ describe('RoleForm — users integration', () => {
     render(
       <RoleForm
         mode={{ type: 'create' }}
-        permissionOptions={PERMISSIONS}
         onSuccess={onSuccess}
         onCancel={vi.fn()}
       />,
@@ -136,7 +135,6 @@ describe('RoleForm — users integration', () => {
     render(
       <RoleForm
         mode={{ type: 'edit', role: editRole({ users: [11, 22] }) }}
-        permissionOptions={PERMISSIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -151,7 +149,6 @@ describe('RoleForm — users integration', () => {
     render(
       <RoleForm
         mode={{ type: 'edit', role: editRole({ users: [11] }) }}
-        permissionOptions={PERMISSIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -176,7 +173,6 @@ describe('RoleForm — users integration', () => {
     render(
       <RoleForm
         mode={{ type: 'edit', role: editRole({ users: [11] }) }}
-        permissionOptions={PERMISSIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,

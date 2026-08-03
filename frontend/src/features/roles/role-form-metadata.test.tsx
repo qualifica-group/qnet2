@@ -33,11 +33,11 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// This suite is not about the spec 0006 field-permission matrix (covered by
-// `role-form-field-permissions.test.tsx`): an empty catalogue keeps the new
-// section out of the way of the 0004 assertions below.
-vi.mock('@/features/roles/field-catalogue-api', () => ({
-  fetchFieldCatalogue: () => Promise.resolve({ resources: [] }),
+// This suite is not about the spec 0076 permission explorer (covered by
+// `permission-explorer/permission-explorer.test.tsx`): an empty catalogue
+// keeps the new section out of the way of the 0004 assertions below.
+vi.mock('@/features/roles/permission-catalogue-api', () => ({
+  fetchPermissionCatalogue: () => Promise.resolve({ areas: [] }),
 }))
 
 // Replace the async users multi-select with a lightweight stub so this suite
@@ -48,8 +48,6 @@ vi.mock('@/components/ui/async-paginated-multi-select', () => ({
     <div data-testid="users-value">{value.join(',')}</div>
   ),
 }))
-
-const PERMISSION_OPTIONS = ['users.viewAny', 'users.create']
 
 /** The `<label>` element whose text starts with `text` (exact-match helper). */
 function labelFor(text: string): HTMLElement {
@@ -115,7 +113,6 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
     render(
       <RoleForm
         mode={{ type: 'create' }}
-        permissionOptions={PERMISSION_OPTIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -152,7 +149,6 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
             },
           }),
         }}
-        permissionOptions={PERMISSION_OPTIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -182,7 +178,6 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
     render(
       <RoleForm
         mode={{ type: 'create' }}
-        permissionOptions={PERMISSION_OPTIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -212,7 +207,6 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
     render(
       <RoleForm
         mode={{ type: 'edit', role: role() }}
-        permissionOptions={PERMISSION_OPTIONS}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,

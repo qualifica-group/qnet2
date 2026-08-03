@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0076-roles-permission-explorer" status="approved" owner="nicola" date="2026-08-03">
+
+  <goal>
+    Riprogettare il form di gestione dei Ruoli. La selezione dei permessi passa da una lista
+    piatta di ~300 checkbox tutte montate insieme a un esploratore a due pannelli: a sinistra
+    l'albero Area > Modulo con contatori e ricerca in tempo reale, a destra il modulo
+    selezionato con le sue azioni e i suoi campi (nativi e personalizzati) nello stesso posto.
+    L'obiettivo e' reggere un numero crescente di moduli e permessi senza cambiare forma.
+  </goal>
+
+  <context>
+    Fatti verificati sul repo (non ipotizzati), che vincolano il design:
+
+    - Il catalogo permessi assegnabili e' `AssignablePermissionCatalogue::names()`
+      (`backend/app/Authorization/AssignablePermissionCatalogue.php:60`): 296 nomi su 37 prefissi.
+      Oggi raggiunge il frontend come `string[]` piatto dentro la config tabella
+      (`GET /api/tables/roles/columns` -> `columns[permissions].options`), canale improprio.
+    - Il DB contiene 320 permessi su 40 prefissi. I 24 esclusi sono `addresses.*`, `contacts.*`,
+      `personal_data.*`: sub-entita' governate dalla matrice campi, volutamente NON assegnabili
+      (`backend/config/authorization.php:120-124`). `RoleService::syncPermissions` li preserva.
+    - Nessun raggruppamento per area esiste server-side. L'unica tassonomia reale e'
+      `backend/config/navigation.php`: 7 gruppi che coprono 35 dei 40 prefissi. Restano fuori
+      `notes` e `attachments` (assegnabili, nessuna voce di menu) e i 3 non assegnabili.
+    - `GET /api/authorization/fields` GIA' include i campi custom: `AuthorizationRegistry::resolve()`
+      decora con `CustomFieldAwareAuthorization` (`backend/app/Authorization/AuthorizationRegistry.php:44`),
+      che appende una `FieldDefinition` per ogni `CustomFieldDefinition` attiva. La chiave stabile
+      e' `custom.<key>` (`CustomFieldProvider::KEY_PREFIX`, riga 38).
+    - `ValidatesFieldPermissionsMatrix` accetta gia' `custom.<key>` in `role_field_permissions`,
+      perche' il cross-check gira su `resolve()->fields()` decorato
+      (`backend/app/Http/Requests/Concerns/ValidatesFieldPermissionsMatrix.php:78`).
+      Test esistenti: `tests/Feature/CustomFields/CustomFieldAwareAuthorizationTest.php:188,214`.
+    - `frontend/src/i18n/locales/it-navigation.ts` contiene gia' le label di tutti i moduli e dei
+      gruppi (`marketingLeads`, `configuration`, `administration`, ...). Il catalogo espone
+      `label_key` verso `navigation.*` e il form eredita quelle label: nessun nome duplicato.
+    - Il form vive in uno Sheet ridimensionabile con larghezza persistita
+      (`useModuleOpener`, `storageKey` `sheet-width:roles`). Non esistono rotte `/roles/:id`.
+    - `Checkbox` e' Radix (`frontend/src/components/ui/checkbox.tsx`): accetta gia'
+      `checked="indeterminate"`, ma l'indicatore disegna solo la spunta.
+
+    Decisioni prese dal committente in questa sessione:
+    1. La tassonomia area/modulo viene dal BACKEND, non da una mappa locale nel frontend.
+    2. Layout a due pannelli (albero a sinistra, dettaglio modulo a destra).
+    3. I campi custom del modulo stanno nella scheda del modulo, non in una sezione separata.
+    4. Il form resta nello Sheet, con layout adattivo. Nessuna rotta nuova.
+    5. Catalogo i18n completo IT+EN per moduli e azioni.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo endpoint `GET /api/authorization/permission-catalogue`: albero aree > moduli, con permessi assegnabili e campi (nativi + custom) per modulo.</item>
+      <item>Nuovo esploratore permessi a due pannelli con ricerca in tempo reale, contatori e selezione tri-state.</item>
+      <item>Unificazione: azioni del modulo e matrice campi del modulo nella stessa scheda. La sezione separata "Permessi campi" sparisce.</item>
+      <item>Riscrittura di `role-form-body.tsx` (oggi 360 righe, 4 responsabilita') in componenti sotto i limiti di `engineering.md` §6.</item>
+      <item>Il dettaglio ruolo in sola lettura (`role-detail.tsx`) usa la stessa tassonomia ad aree.</item>
+      <item>Catalogo i18n IT+EN: tutti i 37 moduli assegnabili, tutte le ~18 azioni, le aree, le stringhe dell'esploratore. File dedicati `it-permissions.ts` / `en-permissions.ts` con test di parita'.</item>
+      <item>Supporto indeterminate visivo in `components/ui/checkbox.tsx`.</item>
+    </in>
+    <out>
+      <item>Modifiche al modello dei permessi: nessun permesso nuovo, rinominato o rimosso. `SyncPermissions` non si tocca.</item>
+      <item>Modifiche alla semantica di merge delle field permission (invariante congelata spec 0006: la matrice RESTRINGE entro il ceiling del codice, mai escala).</item>
+      <item>Rotte dedicate `/roles/:id` o `/roles/new` e cambio di open mode del registry.</item>
+      <item>Rimozione dell'endpoint `GET /api/authorization/fields`: resta in piedi con i suoi test. Dopo questa spec non ha piu' consumatori nel frontend: segnalato come candidato alla rimozione, NON rimosso qui.</item>
+      <item>Il campo `description` del ruolo, oggi non validato quindi non scrivibile via API: e' un difetto preesistente, segnalato e non corretto qui.</item>
+      <item>Nuove dipendenze npm/composer.</item>
+      <item>Virtualizzazione della lista: con 37 moduli e un solo modulo espanso alla volta non serve. Se il numero crescesse di un ordine di grandezza si rivaluta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/authorization/permission-catalogue">
+      <request>
+        Nessun parametro. Autenticazione Sanctum obbligatoria.
+      </request>
+      <response status="200">
+        {
+          "success": true,
+          "message": "OK",
+          "data": {
+            "areas": [
+              {
+                "key": "marketing-leads",
+                "label_key": "navigation.marketingLeads",
+                "resources": [
+                  {
+                    "resource": "leads",
+                    "label_key": "navigation.leads",
+                    "permissions": [
+                      { "name": "leads.viewAny", "ability": "viewAny" },
+                      { "name": "leads.view",    "ability": "view" }
+                    ],
+                    "fields": [
+                      { "key": "registry_id",   "type": "relation", "group": null,    "mandatory": false, "custom": false, "label": null },
+                      { "key": "custom.budget", "type": "number",   "group": "Extra", "mandatory": false, "custom": true,  "label": "Budget stimato" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+
+        Regole di costruzione, vincolanti:
+        - `areas` segue l'ordine di `config/navigation.php`. I moduli senza voce di menu ma
+          assegnabili (`notes`, `attachments`) confluiscono in un'area finale
+          `key: "shared"`, `label_key: "permissions.areas.shared"`.
+        - `resources` contiene SOLO prefissi per cui `AssignablePermissionCatalogue::isAssignable()`
+          e' vero. Un modulo presente in navigation ma senza permessi assegnabili non compare.
+        - `label_key` del modulo e' la `label` della voce di navigazione corrispondente
+          (es. `navigation.leads`). Per i moduli dell'area `shared` e' `permissions.resources.<resource>`.
+        - `permissions` e' ordinato per ordine canonico delle azioni
+          (`viewAny, view, create, update, delete, export, import, viewActivity`); le azioni fuori
+          da questo elenco seguono, ordinate alfabeticamente.
+        - `fields` proviene da `AuthorizationRegistry::resolve($resource)->fields()`, quindi include
+          i campi custom attivi. `custom` e' true quando la chiave inizia con
+          `CustomFieldProvider::KEY_PREFIX`. Assente (`[]`) per i moduli senza classe Authorization
+          (`notes`, `attachments`).
+        - `label` e' l'etichetta amministrativa del campo custom (`custom_field_definitions.label`),
+          presente SOLO per i campi custom; `null` per i campi nativi. Motivo: le label dei campi
+          nativi sono i18n lato client (`<resource>.form.<field>`), mentre quella di un campo custom
+          e' testo libero definito a runtime dall'amministratore e non esiste in nessun bundle.
+          Senza questo campo l'esploratore mostrerebbe "Custom.budget" al posto di "Budget stimato".
+        - L'unione dei `permissions.name` su tutte le aree DEVE coincidere esattamente con
+          `AssignablePermissionCatalogue::names()`: nessun permesso perso, nessuno inventato.
+      </response>
+      <errors>
+        401 senza autenticazione.
+        403 se l'attore non ha almeno uno tra `roles.viewAny`, `roles.create`, `roles.update`.
+      </errors>
+    </endpoint>
+
+    <note>
+      Endpoint invariati e ancora usati: `GET /api/roles/{role}`, `POST /api/roles`,
+      `PUT|PATCH /api/roles/{role}`. Il payload del ruolo non cambia: `name`, `permissions: string[]`,
+      `users: int[]`, `field_permissions: [{resource, field, visible, editable, required}]`,
+      `custom_fields`. Questa spec NON tocca il contratto di scrittura.
+    </note>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Backend -->
+    <criterion id="AC-001">Dato un utente non autenticato, quando chiama GET /api/authorization/permission-catalogue, allora riceve 401.</criterion>
+    <criterion id="AC-002">Dato un utente autenticato senza alcuno tra `roles.viewAny`/`roles.create`/`roles.update`, quando chiama l'endpoint, allora riceve 403.</criterion>
+    <criterion id="AC-003">Dato un utente con `roles.viewAny`, quando chiama l'endpoint, allora riceve 200 con envelope `{success, message, data.areas}`.</criterion>
+    <criterion id="AC-004">L'unione di tutti i `permissions[].name` restituiti e' esattamente uguale (come insieme) a `AssignablePermissionCatalogue::names()`. Nessun duplicato tra aree diverse.</criterion>
+    <criterion id="AC-005">Nessuna area contiene un modulo con prefisso `addresses`, `contacts` o `personal_data`.</criterion>
+    <criterion id="AC-006">L'area `shared` esiste e contiene esattamente i moduli `notes` e `attachments`, con `fields: []`.</criterion>
+    <criterion id="AC-007">Per il modulo `leads`, `permissions` e' ordinato `viewAny, view, create, update, delete, export, import, viewActivity`; per `contracts` le azioni extra (`validate`, `terminate`, ...) seguono quelle canoniche in ordine alfabetico.</criterion>
+    <criterion id="AC-008">Data una `CustomFieldDefinition` attiva con `entity_type = 'leads'` e `key = 'budget'`, quando si chiama l'endpoint, allora il modulo `leads` espone un campo `{key: 'custom.budget', custom: true, label: '<label della definizione>'}`. I campi nativi hanno `label: null`. Se la definizione viene disattivata, il campo non compare piu'.</criterion>
+    <criterion id="AC-009">Ogni `area.label_key` e ogni `resource.label_key` restituito esiste come chiave nei bundle i18n IT ed EN (test di parita' lato frontend, AC-020).</criterion>
+
+    <!-- Frontend: struttura e usabilita' -->
+    <criterion id="AC-010">Aprendo il form ruolo, l'esploratore mostra l'albero delle aree con il contatore `selezionati/totali` per area e per modulo, e un contatore globale.</criterion>
+    <criterion id="AC-011">Selezionando un modulo nell'albero, il pannello destro mostra le sue azioni e i suoi campi. I campi custom sono visivamente separati dai nativi e restano nella stessa scheda del modulo: nessuna sezione "Permessi campi" separata esiste piu' nel form.</criterion>
+    <criterion id="AC-012">Digitando nel campo di ricerca, l'albero si filtra in tempo reale sui moduli e sui permessi il cui nome o etichetta tradotta contiene il testo; le aree senza risultati spariscono; le aree con risultati si espandono automaticamente.</criterion>
+    <criterion id="AC-013">La ricerca trova anche per nome tecnico del permesso (es. `leads.export`) e per etichetta di campo, incluso un campo custom.</criterion>
+    <criterion id="AC-014">Con nessun risultato, la ricerca mostra uno stato vuoto esplicito e non un albero vuoto senza spiegazione.</criterion>
+    <criterion id="AC-015">La checkbox di un modulo con selezione parziale e' in stato `indeterminate`; con tutte le azioni selezionate e' `checked`; con nessuna e' unchecked. Lo stesso vale per la checkbox di area.</criterion>
+    <criterion id="AC-016">Spuntando la checkbox di un'area si selezionano tutti i permessi di tutti i suoi moduli; togliendola si deselezionano tutti e soli quelli, senza toccare le altre aree.</criterion>
+    <criterion id="AC-017">Quando l'attore non puo' scrivere il ruolo (`MetaField` restituisce disabled), tutte le checkbox dell'esploratore sono disabilitate e la ricerca resta utilizzabile.</criterion>
+    <criterion id="AC-018">Un campo `mandatory` (spec 0008) resta forzato a visibile/modificabile/obbligatorio e disabilitato dentro il nuovo pannello, come oggi.</criterion>
+    <criterion id="AC-019">Salvando, il payload inviato e' identico a quello prodotto oggi a parita' di selezione: `permissions` e `field_permissions` non cambiano forma (i test esistenti di `role-form-payload` restano verdi).</criterion>
+
+    <!-- i18n -->
+    <criterion id="AC-020">I bundle IT ed EN espongono `permissions.resources.<resource>` per tutti i 37 moduli assegnabili e `permissions.abilities.<ability>` per tutte le azioni presenti in `AssignablePermissionCatalogue::names()`. Un test di parita' fallisce se una chiave esiste in un bundle e non nell'altro.</criterion>
+    <criterion id="AC-021">Nessuna etichetta dell'esploratore cade sul fallback `humanizeToken` per un modulo o un'azione del catalogo reale.</criterion>
+
+    <!-- Responsive e a11y -->
+    <criterion id="AC-022">A larghezza Sheet piena (>=900px) i due pannelli sono affiancati; sotto tale soglia e a 375px il layout collassa a colonna singola navigabile, senza scrollbar orizzontale.</criterion>
+    <criterion id="AC-023">Ogni checkbox ha un nome accessibile che identifica modulo e azione (o campo e flag); il modulo selezionato e' esposto con `aria-current`; il campo di ricerca ha una label accessibile.</criterion>
+    <criterion id="AC-024">L'esploratore e' navigabile da tastiera: focus visibile su albero, ricerca e checkbox.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna dipendenza nuova. Radix e' gia' presente come pacchetto unificato `radix-ui`.
+    - Authz server-side obbligatoria sul nuovo endpoint (Policy/`can`), come ogni altro endpoint.
+    - Nessun `whereRaw`/interpolazione: il catalogo si costruisce da config e registry, non da input.
+    - L'endpoint e' di sola lettura e non espone permessi non assegnabili.
+    - File entro 300 righe soft / 500 hard. `role-form-body.tsx` deve scendere sotto le 300.
+    - Il frontend NON deriva la tassonomia: disegna l'albero che riceve. Nessuna mappa
+      `resource -> area` hardcoded lato client.
+    - `PRIMARY_ABILITIES`, oggi hardcoded dentro il componente, si sposta in un modulo di
+      costanti dedicato: e' una scelta di presentazione, non un dato di dominio.
+    - Server state solo via TanStack Query, con query key dedicata. Vietato `useEffect` + fetch.
+    - Test eseguiti davvero: Pest per il backend, Vitest per il frontend, `tsc -b --force` pulito.
+  </constraints>
+
+</spec>

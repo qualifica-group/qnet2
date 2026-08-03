@@ -1,35 +1,33 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
 import { RoleFieldPermissions } from '@/features/roles/role-field-permissions'
-import type { FieldCatalogueResource } from '@/features/roles/field-catalogue-api'
+import type { PermissionCatalogueField } from '@/features/roles/permission-catalogue-api'
 
 /**
- * Spec 0008 AC-010: the `users` resource catalogue now carries the
- * `personal_data.*` keys (contract, `GET /api/authorization/fields`) — the
- * matrix must render one row per key, each with a readable label and three
- * toggles, alongside the pre-existing account fields. `mandatory` (spec 0008
- * follow-up) locks a row's three checkboxes to checked+disabled; values below
- * mirror the coordinator's realistic contract (email/type/first_name/
- * last_name/company_name mandatory, the rest not).
+ * Spec 0008 AC-010: the `users` module's catalogue carries the
+ * `personal_data.*` keys (`GET /api/authorization/permission-catalogue`,
+ * spec 0076) — the matrix must render one row per key, each with a readable
+ * label and three toggles, alongside the pre-existing account field.
+ * `mandatory` (spec 0008 follow-up) locks a row's three checkboxes to
+ * checked+disabled; values below mirror the coordinator's realistic
+ * contract (email/type/first_name/last_name/company_name mandatory, the
+ * rest not).
  */
 
-const USERS_CATALOGUE: FieldCatalogueResource = {
-  resource: 'users',
-  fields: [
-    { key: 'email', type: 'email', group: null, mandatory: true },
-    { key: 'personal_data.type', type: 'select', group: 'personal_data', mandatory: true },
-    { key: 'personal_data.first_name', type: 'text', group: 'personal_data', mandatory: true },
-    { key: 'personal_data.last_name', type: 'text', group: 'personal_data', mandatory: true },
-    { key: 'personal_data.company_name', type: 'text', group: 'personal_data', mandatory: true },
-    { key: 'personal_data.tax_code', type: 'text', group: 'personal_data', mandatory: false },
-    { key: 'personal_data.vat_number', type: 'text', group: 'personal_data', mandatory: false },
-    { key: 'personal_data.sdi_code', type: 'text', group: 'personal_data', mandatory: false },
-    { key: 'personal_data.birth_date', type: 'date', group: 'personal_data', mandatory: false },
-    { key: 'personal_data.contacts', type: 'collection', group: 'personal_data', mandatory: false },
-    { key: 'personal_data.addresses', type: 'collection', group: 'personal_data', mandatory: false },
-  ],
-}
+const USERS_FIELDS: PermissionCatalogueField[] = [
+  { key: 'email', type: 'email', group: null, mandatory: true, custom: false, label: null },
+  { key: 'personal_data.type', type: 'select', group: 'personal_data', mandatory: true, custom: false, label: null },
+  { key: 'personal_data.first_name', type: 'text', group: 'personal_data', mandatory: true, custom: false, label: null },
+  { key: 'personal_data.last_name', type: 'text', group: 'personal_data', mandatory: true, custom: false, label: null },
+  { key: 'personal_data.company_name', type: 'text', group: 'personal_data', mandatory: true, custom: false, label: null },
+  { key: 'personal_data.tax_code', type: 'text', group: 'personal_data', mandatory: false, custom: false, label: null },
+  { key: 'personal_data.vat_number', type: 'text', group: 'personal_data', mandatory: false, custom: false, label: null },
+  { key: 'personal_data.sdi_code', type: 'text', group: 'personal_data', mandatory: false, custom: false, label: null },
+  { key: 'personal_data.birth_date', type: 'date', group: 'personal_data', mandatory: false, custom: false, label: null },
+  { key: 'personal_data.contacts', type: 'collection', group: 'personal_data', mandatory: false, custom: false, label: null },
+  { key: 'personal_data.addresses', type: 'collection', group: 'personal_data', mandatory: false, custom: false, label: null },
+]
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -38,17 +36,8 @@ beforeAll(async () => {
 describe('RoleFieldPermissions — personal_data.* rows (spec 0008 AC-010)', () => {
   it('renders one row with three toggles for every personal_data.* key, with a readable label', () => {
     render(
-      <RoleFieldPermissions
-        resources={[USERS_CATALOGUE]}
-        value={[]}
-        onToggle={() => {}}
-        disabled={false}
-      />,
+      <RoleFieldPermissions resource="users" fields={USERS_FIELDS} value={[]} onToggle={() => {}} disabled={false} />,
     )
-
-    // Each resource collapses into its own disclosure (collapsed by
-    // default); expand it before asserting on the field matrix.
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }))
 
     // Readable labels, not raw dot-path tokens.
     expect(screen.getByText('First name')).toBeInTheDocument()
@@ -63,21 +52,15 @@ describe('RoleFieldPermissions — personal_data.* rows (spec 0008 AC-010)', () 
     expect(screen.getByRole('checkbox', { name: 'Tax code — Required' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Tax code — Required' })).toBeEnabled()
 
-    // Every catalogue field renders (existing account field + the 11 new ones).
-    expect(screen.getAllByRole('checkbox')).toHaveLength(USERS_CATALOGUE.fields.length * 3)
+    // Every catalogue field renders (all native — no custom group heading).
+    expect(screen.getAllByRole('checkbox')).toHaveLength(USERS_FIELDS.length * 3)
+    expect(screen.queryByText('Custom')).not.toBeInTheDocument()
   })
 
   it('locks a mandatory row: all three checkboxes checked and disabled', () => {
     render(
-      <RoleFieldPermissions
-        resources={[USERS_CATALOGUE]}
-        value={[]}
-        onToggle={() => {}}
-        disabled={false}
-      />,
+      <RoleFieldPermissions resource="users" fields={USERS_FIELDS} value={[]} onToggle={() => {}} disabled={false} />,
     )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }))
 
     expect(screen.getByRole('checkbox', { name: 'First name — Visible' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'First name — Visible' })).toBeDisabled()

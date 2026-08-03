@@ -51,6 +51,7 @@ import { leadImports } from './en-lead-imports'
 import { businessFunctions } from './en-business-functions'
 import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
+import { permissions, permissionExplorer } from './en-permissions'
 import {
   usersColumnsEmployment,
   usersDetailEmployment,
@@ -305,6 +306,8 @@ export const en = {
       loadError: 'Unable to load the field catalogue. Please try again.',
       mandatory: 'Required to create the record — cannot be restricted by a role.',
     },
+    // Two-panel permission explorer (spec 0076): area/module tree + module detail.
+    permissionExplorer,
   },
   companies: { ...companies, stats: moduleStats.companies },
   companySites: { ...companySites, stats: moduleStats.companySites },
@@ -358,30 +361,7 @@ export const en = {
     fieldNotEditable: 'This field cannot be edited.',
     moreInfo: 'More information',
   },
-  permissions: {
-    // Standard CRUD abilities exposed by every resource policy (BasePolicy).
-    abilities: {
-      viewAny: 'View list',
-      view: 'View',
-      create: 'Create',
-      update: 'Edit',
-      delete: 'Delete',
-      // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
-      // Operator at creation (user directive 2026-07-29).
-      assignOperator: 'Assign operator',
-    },
-    // Resource prefixes shown as permission group titles. New resources fall
-    // back to a humanized version of their key, so this list need not be exhaustive.
-    resources: {
-      users: 'Users',
-      roles: 'Roles',
-      addresses: 'Addresses',
-      attachments: 'Attachments',
-      contacts: 'Contacts',
-      personal_data: 'Personal data',
-      notes: 'Notes',
-    },
-  },
+  permissions,
   // Localized labels for backend domain enums (extracted to `en-enums.ts`).
   enums,
   businessFunctions,

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { History, KeyRound, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   DetailEmpty,
   DetailError,
@@ -15,7 +16,9 @@ import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchRole } from '@/features/roles/api'
-import { groupPermissions, permissionAbility } from '@/features/roles/permission-groups'
+import { usePermissionCatalogue } from '@/features/roles/use-permission-catalogue'
+import { abilityLabel } from '@/features/roles/permission-labels'
+import type { PermissionCatalogueArea } from '@/features/roles/permission-catalogue-api'
 
 interface RoleDetailProps {
   roleId: number
@@ -23,17 +26,19 @@ interface RoleDetailProps {
 
 /**
  * Read-only detail of a single role, fetched fresh from the (re-authorized)
- * detail endpoint. Permissions are grouped by resource for readability, laid
- * out with the shared detail kit; rendered inside a Sheet.
+ * detail endpoint. Permissions are grouped by the same Area > Module
+ * taxonomy as the form's permission explorer (spec 0076), laid out with the
+ * shared detail kit; rendered inside a Sheet.
  */
 export function RoleDetailView({ roleId }: RoleDetailProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const {
     data: role,
     isLoading,
     isError,
     refetch,
   } = useEntityDetail(['roles', 'detail', roleId], () => fetchRole(roleId))
+  const catalogueQuery = usePermissionCatalogue()
 
   if (isError) {
     return (
@@ -50,7 +55,7 @@ export function RoleDetailView({ roleId }: RoleDetailProps) {
   }
 
   const createdAt = formatDateTime(role.created_at)
-  const groups = groupPermissions(role.permissions)
+  const grantedAreas = catalogueQuery.data ? groupGrantedByArea(catalogueQuery.data.areas, role.permissions) : []
 
   return (
     <DetailPanel>
@@ -62,29 +67,39 @@ export function RoleDetailView({ roleId }: RoleDetailProps) {
       <DetailSection
         title={t('roles.form.permissions')}
         icon={<KeyRound />}
-        action={
-          groups.length > 0 ? (
-            <Badge variant="secondary">{role.permissions.length}</Badge>
-          ) : null
-        }
+        action={role.permissions.length > 0 ? <Badge variant="secondary">{role.permissions.length}</Badge> : null}
       >
-        {groups.length > 0 ? (
+        {role.permissions.length === 0 ? (
+          <DetailEmpty />
+        ) : catalogueQuery.isPending ? (
+          <div className="flex flex-col gap-2" aria-hidden="true">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        ) : catalogueQuery.isError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {t('authorization.loadError')}
+          </p>
+        ) : (
           <div className="flex flex-col gap-4">
-            {groups.map((group) => (
-              <div key={group.resource} className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">{group.resource}</span>
-                <div className="flex flex-wrap gap-1">
-                  {group.permissions.map((permission) => (
-                    <Badge key={permission} variant="secondary">
-                      {permissionAbility(permission)}
-                    </Badge>
-                  ))}
-                </div>
+            {grantedAreas.map(({ area, resources }) => (
+              <div key={area.key} className="flex flex-col gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">{t(area.label_key)}</span>
+                {resources.map(({ resource, granted }) => (
+                  <div key={resource.resource} className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">{t(resource.label_key)}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {granted.map((permission) => (
+                        <Badge key={permission.name} variant="secondary">
+                          {abilityLabel(permission.name, i18n)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ) : (
-          <DetailEmpty />
         )}
       </DetailSection>
 
@@ -99,4 +114,35 @@ export function RoleDetailView({ roleId }: RoleDetailProps) {
       ) : null}
     </DetailPanel>
   )
+}
+
+interface GrantedResourceGroup {
+  resource: PermissionCatalogueArea['resources'][number]
+  granted: PermissionCatalogueArea['resources'][number]['permissions']
+}
+
+interface GrantedAreaGroup {
+  area: PermissionCatalogueArea
+  resources: GrantedResourceGroup[]
+}
+
+/**
+ * Narrows the full Area > Module catalogue down to only the modules (and,
+ * within each, only the abilities) actually granted by this role — the same
+ * taxonomy the permission explorer uses, applied read-only here.
+ */
+function groupGrantedByArea(areas: PermissionCatalogueArea[], grantedNames: string[]): GrantedAreaGroup[] {
+  const granted = new Set(grantedNames)
+
+  return areas
+    .map((area) => ({
+      area,
+      resources: area.resources
+        .map((resource) => ({
+          resource,
+          granted: resource.permissions.filter((permission) => granted.has(permission.name)),
+        }))
+        .filter((entry) => entry.granted.length > 0),
+    }))
+    .filter((entry) => entry.resources.length > 0)
 }

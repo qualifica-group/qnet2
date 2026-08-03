@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
  * `name` (`referent_has_no_first_last_name`): the real first/last name lives
  * on the `personalData` card, so a search for "Bianchi" must ALSO match
  * `personalData.last_name` even when `referents.name` does not contain it
- * (AC-009). Mirrors RequestClientSearch's `orWhereHas` precedent.
+ * (AC-009). Mirrors RequestClientColumns' `orWhereHas` precedent.
  *
  * SECURITY: `$pattern` is the engine's already LIKE-escaped, `%…%`-wrapped
  * bound parameter — never interpolated.

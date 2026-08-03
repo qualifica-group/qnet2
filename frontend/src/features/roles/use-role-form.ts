@@ -7,14 +7,12 @@ import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { createRole, updateRole } from '@/features/roles/api'
-import { useFieldCatalogue } from '@/features/roles/use-field-catalogue'
 import {
   buildCreateRoleSchema,
   buildUpdateRoleSchema,
   type CreateRoleFormValues,
   type UpdateRoleFormValues,
 } from '@/features/roles/role-schema'
-import { groupPermissions } from '@/features/roles/permission-groups'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/roles/role-form-payload'
 import type { RoleDetail } from '@/features/roles/types'
 import type { RoleFormMode } from '@/features/roles/role-form'
@@ -27,19 +25,19 @@ export type RoleFormValues = CreateRoleFormValues & UpdateRoleFormValues
 
 interface UseRoleFormArgs {
   mode: RoleFormMode
-  /** Full permission catalogue, sourced from the table config. */
-  permissionOptions: string[]
   onSuccess: (role: RoleDetail) => void
 }
 
 /**
- * Owns every non-render concern of `RoleForm`: RHF/Zod wiring, the grouped
- * permission-matrix toggles, the field-permission matrix catalogue/gating
- * (spec 0006) and server 422 mapping. The component stays UI-only; this hook
- * is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of `RoleForm`: RHF/Zod wiring, the
+ * field-permission matrix gating (spec 0006) and server 422 mapping. The
+ * permission explorer's own tree/search/selection state lives in
+ * `permission-explorer/` (spec 0076) — this hook only exposes the flat
+ * `permissions`/`field_permissions` RHF fields it reads/writes. The
+ * component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
-export function useRoleForm({ mode, permissionOptions, onSuccess }: UseRoleFormArgs) {
-  const { t, i18n } = useTranslation()
+export function useRoleForm({ mode, onSuccess }: UseRoleFormArgs) {
+  const { t } = useTranslation()
   const { canResource } = useResourcePermissions()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -62,11 +60,6 @@ export function useRoleForm({ mode, permissionOptions, onSuccess }: UseRoleFormA
     [isEdit, t, customFields.schema],
   )
 
-  const groups = useMemo(
-    () => groupPermissions(permissionOptions),
-    [permissionOptions],
-  )
-
   // Field-permission matrix (spec 0006): there is no dedicated backend
   // field/action key for this section (the 0004 `permissions` envelope is
   // unchanged by this feature), so it reuses the resource-level write
@@ -74,7 +67,6 @@ export function useRoleForm({ mode, permissionOptions, onSuccess }: UseRoleFormA
   // rule that locks `name`/`permissions`/`users` when the actor cannot write
   // the role at all. Hidden entirely when the actor cannot manage it (AC15).
   const canManageFieldPermissions = isEdit ? canResource('update') : canResource('create')
-  const fieldCatalogueQuery = useFieldCatalogue(canManageFieldPermissions)
 
   const defaultValues = useMemo<RoleFormValues>(() => {
     if (mode.type === 'edit') {
@@ -102,29 +94,6 @@ export function useRoleForm({ mode, permissionOptions, onSuccess }: UseRoleFormA
     defaultValues,
   })
 
-  const togglePermission = (
-    permission: string,
-    checked: boolean,
-    current: string[],
-  ) =>
-    checked
-      ? [...current, permission]
-      : current.filter((value) => value !== permission)
-
-  const toggleGroup = (
-    groupPermissionNames: string[],
-    checked: boolean,
-    current: string[],
-  ) => {
-    if (checked) {
-      const set = new Set(current)
-      groupPermissionNames.forEach((permission) => set.add(permission))
-      return Array.from(set)
-    }
-    const removed = new Set(groupPermissionNames)
-    return current.filter((permission) => !removed.has(permission))
-  }
-
   const onSubmit = async (values: RoleFormValues) => {
     setServerError(null)
     const errorFields: Path<RoleFormValues>[] = [
@@ -150,15 +119,10 @@ export function useRoleForm({ mode, permissionOptions, onSuccess }: UseRoleFormA
 
   return {
     t,
-    i18n,
     form,
     isEdit,
     serverError,
-    groups,
     onSubmit,
-    togglePermission,
-    toggleGroup,
     canManageFieldPermissions,
-    fieldCatalogueQuery,
   }
 }

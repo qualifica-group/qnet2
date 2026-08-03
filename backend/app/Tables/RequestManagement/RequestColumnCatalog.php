@@ -28,7 +28,9 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  *    row's name + color token for the badge, sortable + set-filterable.
  *  - `first_name`/`last_name`/`tax_code`/`phone` — the CLIENT's anagraphic
  *    fields, read from the Registry's PersonalData card (phone = its primary
- *    phone/mobile contact); display-only.
+ *    phone/mobile contact), inline-editable, and — user directive 2026-08-03
+ *    — sortable + text-filterable + searchable like every other column here,
+ *    all three resolved against that card by RequestClientColumns.
  *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5) — a real
  *    `opportunities` column, sortable + date-filterable via the generic
  *    engine, mirroring `OpportunityColumnCatalog`'s `created_at`.
@@ -277,37 +279,21 @@ final class RequestColumnCatalog
     }
 
     /**
-     * A display-only text column sourced from a related entity (the client's
-     * anagraphic fields — nome/cognome/codice fiscale/telefono — and the GA2
-     * operator name): neither sortable nor filterable. The value is computed
-     * from the eager-loaded relations by RequestManagementTableDefinition::mapRow().
-     *
-     * `searchable` (spec 0009) opts the column into the global quick-search:
-     * since it is DERIVED, the term is applied by RequestClientSearch through
-     * `applyDerivedSearch()`, never as a plain LIKE on a non-existent
-     * `opportunities` column.
-     *
-     * @return array<string, mixed>
-     */
-    private static function textColumn(string $id, string $label, bool $searchable = false): array
-    {
-        return [
-            'id' => $id,
-            'label' => $label,
-            'type' => 'text',
-            'visible' => true,
-            'sortable' => false,
-            'filterable' => false,
-            'searchable' => $searchable,
-        ];
-    }
-
-    /**
      * A CLIENT anagraphic column (spec 0055, D-7/D-8): displayed from the
      * Registry's PersonalData card by RequestRowMapper, written back through
      * RequestManagementService::updateWork() under its OWN field-permission
      * key (`client_*`) — four separate keys, so the role_field_permissions
      * matrix can open the phone without opening the tax code (user decision).
+     *
+     * Sortable + filterable + searchable (user directive 2026-08-03): these
+     * four were the last columns of the grid an operator could not narrow from
+     * the header. Since NONE of them is a real `opportunities` column, all
+     * three hooks are DERIVED — RequestClientColumns translates them onto the
+     * card relation (`whereHas`/correlated subquery), never a plain LIKE or
+     * ORDER BY on a non-existent column. `filterType: text` therefore mounts
+     * the same Excel-like widget every other text column here has (Set
+     * checklist + typed conditions), backed by the same collaborator's
+     * distinct values.
      *
      * `nullable` is true for all four on purpose: whether a value is MANDATORY
      * is not a property of the column but of the resolved field
@@ -324,7 +310,14 @@ final class RequestColumnCatalog
     private static function clientColumn(string $id, string $label, string $editableField, array $rules = [], ?string $format = null): array
     {
         return [
-            ...self::textColumn($id, $label, searchable: true),
+            'id' => $id,
+            'label' => $label,
+            'type' => 'text',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => true,
+            'filterType' => 'text',
+            'searchable' => true,
             'editable' => true,
             'editableField' => $editableField,
             'nullable' => true,

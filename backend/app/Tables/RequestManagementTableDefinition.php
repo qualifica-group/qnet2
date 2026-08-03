@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
-use App\Tables\RequestManagement\RequestClientSearch;
+use App\Tables\RequestManagement\RequestClientColumns;
 use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
 use App\Tables\RequestManagement\RequestRowMapper;
@@ -71,7 +71,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly RequestRowMapper $rowMapper,
         private readonly RequestManagementService $service,
-        private readonly RequestClientSearch $clientSearch,
+        private readonly RequestClientColumns $clientColumns,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly RequestRelationColumns $relationColumns,
     ) {}
@@ -79,14 +79,14 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     /**
      * Global quick-search (spec 0009) over the client's anagraphic columns:
      * all DERIVED (no real `opportunities` column), hence delegated to
-     * RequestClientSearch. Any other searchable column would fall through to
+     * RequestClientColumns. Any other searchable column would fall through to
      * the generic engine (none today).
      *
      * @param  Builder<Opportunity>  $query
      */
     public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
     {
-        return $this->clientSearch->apply($query, $columnId, $pattern);
+        return $this->clientColumns->applySearch($query, $columnId, $pattern);
     }
 
     public function domain(): string
@@ -315,8 +315,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
     /**
      * `operational_site` (spec 0056) is delegated to the shared
-     * OperationalSiteColumn (bound `line1` match); every other derived
-     * column falls through to RequestRelationColumns' name-based `whereHas`.
+     * OperationalSiteColumn (bound `line1` match); the four client anagraphic
+     * columns (user directive 2026-08-03) to RequestClientColumns, which
+     * re-points the generic FilterApplier at the PersonalData card inside a
+     * `whereHas`; every other derived column falls through to
+     * RequestRelationColumns' name-based `whereHas`.
      *
      * @param  Builder<Opportunity>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -333,6 +336,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
             ProductsOfInterestColumn::applyFilter($query, $this->filterValues($filter));
 
+            return true;
+        }
+
+        if ($this->clientColumns->applyFilter($query, $columnId, $columnConfig, $filter)) {
             return true;
         }
 
@@ -388,7 +395,9 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
     /**
      * `operational_site` (spec 0056) is delegated to the shared
-     * OperationalSiteColumn; `workflow_status` falls through to
+     * OperationalSiteColumn; the four client anagraphic columns (user
+     * directive 2026-08-03) to RequestClientColumns' own correlated subquery
+     * over the PersonalData card; `workflow_status` falls through to
      * RequestRelationColumns' correlated subquery sort. `product_categories`
      * (AGGREGATED to-many) is NOT sortable (no single related row to order
      * by).
@@ -403,13 +412,19 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($this->clientColumns->applySort($query, $columnId, $direction)) {
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
     /**
      * Excel-like distinct values (spec 0004/0005). `operational_site` (spec
-     * 0056) is delegated to the shared OperationalSiteColumn; every other
-     * derived column falls through to RequestRelationColumns.
+     * 0056) is delegated to the shared OperationalSiteColumn, the four client
+     * anagraphic columns to RequestClientColumns (the card values of the rows
+     * matching every OTHER active filter); every other derived column falls
+     * through to RequestRelationColumns.
      *
      * @param  Builder<Opportunity>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -425,6 +440,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             return ProductsOfInterestColumn::distinctValues($query, $search, $limit);
         }
 
-        return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
+        return $this->clientColumns->distinctValues($columnId, $query, $search, $limit)
+            ?? $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
     }
 }

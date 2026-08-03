@@ -24,11 +24,11 @@ vi.mock('@/features/roles/api', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-// Not about the spec 0006 field-permission matrix (covered by
-// `role-form-field-permissions.test.tsx`): an empty catalogue keeps the
-// section out of the way of the custom-fields assertions below.
-vi.mock('@/features/roles/field-catalogue-api', () => ({
-  fetchFieldCatalogue: () => Promise.resolve({ resources: [] }),
+// Not about the spec 0076 permission explorer (covered by
+// `permission-explorer/permission-explorer.test.tsx`): an empty catalogue
+// keeps the section out of the way of the custom-fields assertions below.
+vi.mock('@/features/roles/permission-catalogue-api', () => ({
+  fetchPermissionCatalogue: () => Promise.resolve({ areas: [] }),
 }))
 
 // Replace the async users multi-select with a lightweight stub so this suite
@@ -112,7 +112,7 @@ beforeEach(() => {
 describe('RoleForm — custom fields (spec 0021)', () => {
   it('renders the resource custom field control in create mode', async () => {
     render(
-      <RoleForm mode={{ type: 'create' }} permissionOptions={[]} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RoleForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -126,7 +126,6 @@ describe('RoleForm — custom fields (spec 0021)', () => {
     render(
       <RoleForm
         mode={{ type: 'create' }}
-        permissionOptions={[]}
         onSuccess={onSuccess}
         onCancel={vi.fn()}
       />,
@@ -148,7 +147,6 @@ describe('RoleForm — custom fields (spec 0021)', () => {
     render(
       <RoleForm
         mode={{ type: 'edit', role: role({ custom_fields: { notes: 'Existing note' } }) }}
-        permissionOptions={[]}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,

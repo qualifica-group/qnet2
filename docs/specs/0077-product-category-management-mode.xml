@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0077 — Modalità di gestione delle Categorie Prodotto.
+  Contract-first. Le decisioni marcate [D-n] sono state prese dall'utente in fase di
+  pianificazione: non vanno reinterpretate in implementazione.
+-->
+<spec id="0077-product-category-management-mode" status="draft" owner="utente" date="2026-08-03">
+
+  <goal>
+    Una Categoria Prodotto radice dichiara come vanno gestite le Categorie Prodotto sulle schede
+    che la usano: "singola" (una sola combinazione Categoria + Categoria Prodotto per scheda) o
+    "multipla" (più Categorie Prodotto sulla stessa scheda, ciascuna con i propri prodotti).
+    Il vincolo vale identico in Gestione Richieste e in Opportunità. In parallelo, il nome
+    dell'opportunità smette di essere `OPP_{id}` e diventa la concatenazione dei prodotti presenti
+    nelle righe ricavo delle sue offerte.
+  </goal>
+
+  <context>
+    <!-- Terminologia: mappatura fra il linguaggio del committente e le entità reali del repo. -->
+    <item>"Categoria" nel linguaggio del committente = `business_functions` (UI: "Funzione aziendale"),
+          il PRIMO select della riga in `frontend/src/features/product-lines/product-lines-field.tsx:88`.
+          [D-1] Nessuna sostituzione: il select resta la Funzione aziendale.</item>
+    <item>"Categoria Prodotto" = `product_categories`, il SECONDO select (`product-lines-field.tsx:107`),
+          filtrato per `business_function_id` e disabilitato finché la funzione non è scelta (:115-116).</item>
+    <item>"Modulo Tipologie di Categoria" NON esiste nel repo: verificato zero occorrenze di
+          `category_type`/`CategoryType` in backend, frontend e i18n. [D-2] La configurazione vive su
+          `product_categories`, posseduta dalla RADICE ed ereditata dai discendenti; la sua UI va nel
+          modulo Categorie Prodotto (`frontend/src/features/product-categories/product-category-form-body.tsx`),
+          accanto a `requires_quote` e `is_selectable`. Non si crea un modulo nuovo.</item>
+    <item>Gli esempi del committente sono radici reali del catalogo cliente:
+          `Formazione` (`backend/database/seeders/QualificaCatalogSeeder.php:124`) e
+          `Consulenza` (:142), entrambe container (`is_selectable = false`); i soli nodi selezionabili
+          sono i figli di terzo livello `GOL - <Regione>` (:126-135).</item>
+
+    <!-- Modello dati esistente da rispettare. -->
+    <item>La "scheda anagrafica" del committente è una `Opportunity`: Gestione Richieste e Opportunità
+          scrivono la STESSA tabella `opportunities` (spec 0049 D-1). Nessun model `Request` esiste.</item>
+    <item>La coppia Categoria/Categoria Prodotto sta in `opportunity_product_lines`
+          (`opportunity_id`, `business_function_id`, `product_category_id`, unique sulla terna —
+          migrazione `2026_07_17_150000_create_opportunity_product_lines_table.php:26-35`).
+          Su `opportunities` NON esistono colonne `business_function_id`/`product_category_id`.</item>
+    <item>I "Prodotti di interesse" stanno nella pivot `opportunity_product` (nessun payload).</item>
+    <item>La validazione delle righe è centralizzata in
+          `backend/app/Services/ProductLines/ProductLineSetValidator.php` (per-riga `rules()` :56,
+          cross-row `crossRowErrors()` :75, canale senza FormRequest `assert()` :116), agganciata alle
+          FormRequest dal trait `backend/app/Http/Requests/Concerns/ValidatesProductLines.php`.
+          È il punto unico dove aggiungere i nuovi vincoli.</item>
+    <item>Il pattern di ereditarietà da replicare esiste già:
+          `backend/app/Services/ProductCategories/RequiresQuoteInheritance.php`
+          (`inheritedValueFor` :42, `sourceCategoryFor` :56, `syncSubtree` :69, `rootOf` privato :90),
+          applicato in `ProductCategoryService` create :36-51 e update :77-106. Lato frontend il gemello è
+          `frontend/src/features/product-categories/requires-quote-inheritance.ts` +
+          `product-category-requires-quote-field.tsx`, con payload inviato solo se `parent_id === null`
+          (`product-category-form-payload.ts:35, :79-80`).</item>
+    <item>`CategoryHierarchy` NON espone oggi alcun metodo pubblico per la radice: l'unico root-walk è
+          `RequiresQuoteInheritance::rootOf()`, privato. Serve un accesso pubblico condiviso.</item>
+    <item>Il nome opportunità oggi è `OPP_{id}`, scritto in un solo punto
+          (`backend/app/Services/OpportunityService.php:202-206`), assente da entrambe le FormRequest,
+          `'editable' => false` in `OpportunityColumnCatalog.php:52-63`. Resta NON editabile dal client.</item>
+    <item>Le righe di offerta sono `quote_lines`, discriminate da `line_type` (REVENUE|COST), e
+          referenziano il prodotto SOLO con `product_id` (nessuna denormalizzazione, D-7 spec 0065).
+          `Quote::offerLines()` :208 filtra le righe ricavo. `quotes.opportunity_id` è NOT NULL e
+          immutabile dopo la creazione.</item>
+    <item>Nel repo NON esistono observer né model event (`app/Observers/` assente): i ricalcoli di
+          `QuoteService` sono imperativi dentro la transazione (`persistAggregates()` :309-320,
+          chiamato da `create()` :142 e `update()` :186). Il ricalcolo del nome segue la stessa forma.</item>
+    <item>`OpportunityProductLineCoverage::ensure()` oggi AGGIUNGE d'ufficio la riga categoria mancante
+          quando un'offerta usa un prodotto di una categoria non coperta
+          (`backend/app/Services/Opportunities/OpportunityProductLineCoverage.php:49-84`,
+          unica chiamata da `QuoteService.php:299`).</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">"Categoria" = Funzione aziendale. Il primo select non cambia, non si aggiunge
+      un select "Categoria radice" nella scheda.</decision>
+    <decision id="D-2">Il flag sta su `product_categories`, sulla RADICE, ereditato ai discendenti.
+      La modalità di una scheda si risolve risalendo l'albero dalla Categoria Prodotto scelta.</decision>
+    <decision id="D-3">Il nome derivato dai prodotti delle offerte vale in ENTRAMBE le modalità e
+      sostituisce `OPP_{id}` come schema di denominazione. `OPP_{id}` resta come fallback finché non
+      esistono righe ricavo.</decision>
+    <decision id="D-4">I prodotti del nome si prendono dalle righe REVENUE di TUTTE le offerte
+      dell'opportunità, deduplicati per prodotto. Le righe COST non entrano mai.</decision>
+    <decision id="D-5">Grandfathering: i nuovi vincoli sulle righe scattano SOLO quando la collezione
+      `product_lines` viene effettivamente inviata/modificata. Un record storico non conforme resta
+      leggibile e salvabile sugli altri campi. È il pattern già in uso nello sparse gate di
+      `frontend/src/features/request-management/request-work-schema.ts:221-260`.</decision>
+    <decision id="D-6">In modalità singola l'auto-aggiunta di `OpportunityProductLineCoverage` si
+      disattiva: l'offerta con un prodotto fuori categoria viene respinta 422.</decision>
+    <decision id="D-7">L'azione "Duplica richiesta/opportunità" è FUORI SCOPE: spec successiva.</decision>
+    <decision id="D-8">Default per le radici non configurate: `multiple`. Preserva il comportamento
+      attuale e non rompe alcun record esistente.</decision>
+  </decisions>
+
+  <invariants>
+    <!-- Valgono su Gestione Richieste e Opportunità in modo identico, e solo quando la
+         collezione product_lines è sottoposta a scrittura (D-5). -->
+    <invariant id="INV-1">Tutte le righe di una scheda risolvono alla STESSA Categoria Prodotto radice.
+      Senza questo la modalità della scheda sarebbe indeterminata. Vale in entrambe le modalità.</invariant>
+    <invariant id="INV-2">Tutte le righe di una scheda condividono la STESSA Funzione aziendale
+      ("una sola Categoria", lettera del brief, in entrambe le modalità).</invariant>
+    <invariant id="INV-3">Modalità `single`: la scheda ha ESATTAMENTE una riga.</invariant>
+    <invariant id="INV-4">Modalità `multiple`: N righe con Categorie Prodotto distinte (la duplicazione
+      è già respinta da `ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE`).</invariant>
+    <invariant id="INV-5">`management_mode` è scrivibile solo su una categoria radice
+      (`parent_id === null`); sui discendenti è rispecchiato e in sola lettura.</invariant>
+  </invariants>
+
+  <scope>
+    <in>
+      <item>Colonna `management_mode` su `product_categories` (default `multiple`), enum PHP
+        `App\Enums\CategoryManagementMode` (`single`|`multiple`).</item>
+      <item>Servizio di ereditarietà `CategoryManagementModeInheritance` modellato su
+        `RequiresQuoteInheritance` (valore ereditato, categoria sorgente, sync sottoalbero).</item>
+      <item>Metodo pubblico di risoluzione radice/modalità su `CategoryHierarchy`, riusato da tutti
+        i consumatori (validazione righe, copertura offerte, tree, for-select).</item>
+      <item>CRUD Categorie Prodotto: FormRequest store/update, DTO, service, Resource, blocco `show`,
+        `ProductCategoriesAuthorization`, colonna in griglia, albero, for-select.</item>
+      <item>UI della configurazione nel form Categorie Prodotto, con ereditarietà visibile e campo
+        disabilitato sui non-radice (gemello di `ProductCategoryRequiresQuoteField`).</item>
+      <item>Applicazione di INV-1..INV-4 in `ProductLineSetValidator`, quindi su tutti i canali che già
+        lo usano: form Opportunità, form creazione Richiesta, pannello di lavorazione, editor inline
+        di cella `product_lines`.</item>
+      <item>Enforcement lato UI: in modalità `single` niente aggiunta di una seconda riga; in
+        `multiple` la Funzione aziendale delle righe successive è vincolata alla prima.</item>
+      <item>Rifiuto 422 in `OpportunityProductLineCoverage` quando la modalità risolta è `single`.</item>
+      <item>Nome opportunità derivato dai prodotti delle righe ricavo, ricalcolato su create/update/delete
+        di un'offerta, con fallback `OPP_{id}`.</item>
+    </in>
+    <out>
+      <item>Azione "Duplica richiesta/opportunità" (D-7).</item>
+      <item>Creazione di un modulo/tabella `category_types` (D-2).</item>
+      <item>Sostituzione del select Funzione aziendale con un select Categoria radice (D-1).</item>
+      <item>Nome opportunità editabile a mano o override manuale: `name` resta non scrivibile dal client.</item>
+      <item>Ricalcolo del nome quando cambia il NOME di un prodotto già usato in un'offerta: il nome
+        dell'opportunità resta quello calcolato all'ultima scrittura dell'offerta.</item>
+      <item>Migrazione dati che normalizza i record storici non conformi (D-5 esclude la normalizzazione).</item>
+      <item>Filtro del selettore prodotti dentro il modulo Preventivi (scartato: resta il rifiuto 422).</item>
+      <item>Modifica della gerarchia del catalogo cliente o dei seeder Qualifica.</item>
+      <item>Ereditarietà di `management_mode` diversa da quella di `requires_quote`: nessun nuovo pattern.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST" path="/api/product-categories">
+      <request>
+        management_mode: string|null, valori ammessi "single"|"multiple".
+        Accettato SOLO se parent_id === null; su una categoria figlia il valore è ignorato dal client
+        e rifiutato dal server (il valore effettivo è quello ereditato dalla radice).
+      </request>
+      <response status="201">
+        data: { ...ProductCategoryResource, management_mode: "single"|"multiple" }
+      </response>
+      <errors>
+        422 { errors: { management_mode: [...] } } — valore fuori enum, oppure valore diverso da quello
+        ereditato inviato su una categoria non radice (stesso comportamento di
+        `assertRequiresQuoteNotOverridden`, ProductCategoryService.php:337-345).
+        403 senza permesso `product-categories.create` o senza permesso sul campo `management_mode`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/product-categories/{productCategory}">
+      <request>
+        management_mode: string, "single"|"multiple", `sometimes`.
+        Se inviato o se cambia `parent_id`, il sottoalbero viene risincronizzato.
+      </request>
+      <response status="200">
+        data: { ...ProductCategoryResource, management_mode: "single"|"multiple" }
+      </response>
+      <errors>422 come sopra. 403 senza permesso.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}">
+      <response status="200">
+        data: { ...ProductCategoryResource, management_mode: "single"|"multiple" },
+        meta: {
+          ...blocco esistente,
+          management_mode_source_category: { id: number, name: string } | null
+        }
+        La chiave `management_mode_source_category` segue esattamente la forma già usata da
+        `requires_quote_source_category` (ProductCategoryController.php:227): null sulla radice,
+        valorizzata sui discendenti con la categoria che possiede il valore.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <response status="200">
+        Ogni nodo acquisisce `management_mode: "single"|"multiple"`, accanto ai già presenti
+        `business_function_id`, `requires_quote`, `is_selectable`
+        (CategoryHierarchy.php:416-434). Serve al frontend per risolvere l'ereditarietà nel form
+        senza richieste aggiuntive, con la stessa cache del parent picker.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/for-select">
+      <request>
+        root_category_id: integer|null — NUOVO filtro opzionale, si aggiunge a
+        `ProductCategoryForSelectRequest` accanto a `business_function_id`. Se valorizzato, restituisce
+        solo le categorie selezionabili appartenenti al sottoalbero di quella radice. Serve a INV-1:
+        dopo la prima riga il form deve poter offrire SOLO categorie della stessa radice, e il filtro
+        va fatto lato server perché il select è paginato. Implementarlo riusando
+        `CategoryHierarchy::descendantIds()` (:174, una sola query), non con un walk per riga.
+      </request>
+      <response status="200">
+        data[]: {
+          id: number,
+          label: string,
+          meta: {
+            business_function: { id: number, name: string } | null,   // già esistente
+            root_category_id: number,                                  // NUOVO
+            management_mode: "single"|"multiple"                       // NUOVO, valore effettivo ereditato
+          }
+        }
+        È il canale con cui il form conosce la modalità subito dopo la scelta della Categoria Prodotto,
+        senza chiamate extra: `AsyncPaginatedSelect` espone già l'item intero via `onItemChange`
+        (async-paginated-select.tsx:55). Nessuna nuova rotta.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/opportunities  ·  /api/request-management">
+      <request>
+        product_lines: [{ business_function_id: number, product_category_id: number }, ...]
+        Shape INVARIATA. Cambiano solo le regole di accettazione.
+      </request>
+      <response status="200|201">
+        Shape INVARIATA. `name` è ora il nome derivato (o `OPP_{id}` se non ci sono righe ricavo).
+      </response>
+      <errors>
+        422 { errors: { product_lines: [msg] } } con i nuovi messaggi:
+          - INV-3 violato: più di una riga su una categoria in modalità singola
+          - INV-2 violato: righe con Funzioni aziendali diverse
+          - INV-1 violato: righe che risolvono a radici diverse
+        I messaggi sono stringhe i18n lato frontend e testo inglese lato backend, coerenti con
+        `ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE` / `BUSINESS_FUNCTION_MISMATCH_MESSAGE`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes">
+      <request>Shape INVARIATA.</request>
+      <response status="200|201">Shape INVARIATA.</response>
+      <errors>
+        422 { errors: { lines: [msg] } } — modalità `single` e la riga ricavo usa un prodotto la cui
+        categoria non è quella della scheda. Il campo di errore resta quello già in uso
+        (`QuoteService::COVERAGE_ERROR_FIELD`, :50-52); cambia solo il messaggio, che deve nominare i
+        prodotti offendenti come fa già `RequestProductCategoryCoherence::message()`.
+      </errors>
+    </endpoint>
+
+    <derivazione_nome>
+      Sorgente: righe `quote_lines` con `line_type = REVENUE` di TUTTE le `quotes` dell'opportunità.
+      Deduplica: per `product_id`, prima occorrenza vince.
+      Ordinamento deterministico: `quotes.created_at`, `quotes.id`, `quote_lines.sort_order`, `quote_lines.id`.
+      Separatore: " + " (spazio, più, spazio) → "ISO 9001 + SOA + Attestati HACCP".
+      Fallback: nessuna riga ricavo → `OPP_{id}` (comportamento attuale invariato).
+      Lunghezza: `opportunities.name` è string(191). Si concatenano nomi interi finché il risultato
+      resta entro 191 caratteri; se almeno un nome viene escluso si appende " …" restando entro 191.
+      Punti di ricalcolo: `QuoteService::create()`, `::update()`, `::delete()`, dentro la stessa
+      transazione degli aggregati. Nessun observer (il repo non ne ha).
+    </derivazione_nome>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Configurazione e ereditarietà -->
+    <criterion id="AC-001">Dato un utente con permesso `product-categories.create`, quando crea una
+      categoria RADICE con `management_mode: "single"`, allora la risposta 201 espone
+      `management_mode: "single"` e la riga persiste con quel valore.</criterion>
+    <criterion id="AC-002">Dato una radice con `management_mode: "single"`, quando si crea un figlio
+      senza inviare `management_mode`, allora il figlio persiste con `"single"` (ereditato) e
+      `management_mode_source_category` nel suo `show` punta alla radice.</criterion>
+    <criterion id="AC-003">Dato una radice con `management_mode: "single"`, quando si invia
+      `management_mode: "multiple"` su un suo discendente, allora la risposta è 422 sul campo
+      `management_mode` e nessuna riga viene modificata.</criterion>
+    <criterion id="AC-004">Dato una radice con discendenti a più livelli, quando si aggiorna la radice a
+      `"multiple"`, allora TUTTI i discendenti risultano `"multiple"` in una sola operazione.</criterion>
+    <criterion id="AC-005">Dato una categoria che viene riparentata sotto una radice con modalità
+      diversa, quando si salva il nuovo `parent_id`, allora il suo sottoalbero assume la modalità della
+      nuova radice.</criterion>
+    <criterion id="AC-006">Dato una radice esistente creata prima di questa feature, quando si legge la
+      sua risorsa, allora `management_mode` vale `"multiple"` (D-8) e nessun record esistente cambia
+      comportamento.</criterion>
+    <criterion id="AC-007">Dato un utente senza permesso sul campo `management_mode`, quando invia il
+      campo, allora la risposta è 403 e il valore non viene scritto.</criterion>
+
+    <!-- Vincoli sulle righe: identici sui due moduli -->
+    <criterion id="AC-010">Dato una Categoria Prodotto la cui radice è `"single"`, quando si crea
+      un'opportunità con DUE righe, allora la risposta è 422 su `product_lines` e nessuna opportunità
+      viene creata.</criterion>
+    <criterion id="AC-011">Come AC-010 ma via `POST /api/request-management`: stesso 422, stesso campo,
+      stesso messaggio.</criterion>
+    <criterion id="AC-012">Dato una Categoria Prodotto la cui radice è `"single"`, quando si crea
+      un'opportunità con UNA riga e tre prodotti di interesse di quella categoria, allora la creazione
+      riesce e i tre prodotti sono associati.</criterion>
+    <criterion id="AC-013">Dato una Categoria Prodotto la cui radice è `"multiple"`, quando si crea
+      un'opportunità con tre righe che condividono la Funzione aziendale e la stessa radice, allora la
+      creazione riesce con tre righe.</criterion>
+    <criterion id="AC-014">Dato modalità `"multiple"`, quando si inviano due righe con Funzioni
+      aziendali DIVERSE, allora la risposta è 422 su `product_lines` (INV-2).</criterion>
+    <criterion id="AC-015">Dato modalità `"multiple"`, quando si inviano due righe che risolvono a due
+      RADICI diverse, allora la risposta è 422 su `product_lines` (INV-1).</criterion>
+    <criterion id="AC-016">Dato un'opportunità storica con due righe su una categoria oggi `"single"`,
+      quando si aggiorna un campo NON di righe (es. `general_notes`) senza inviare `product_lines`,
+      allora il salvataggio riesce e le righe restano intatte (D-5).</criterion>
+    <criterion id="AC-017">Dato lo stesso record di AC-016, quando si invia `product_lines`, allora la
+      risposta è 422 finché la collezione non è conforme.</criterion>
+    <criterion id="AC-018">Dato l'editor inline di cella `product_lines` in griglia, quando si salva una
+      seconda riga su una categoria `"single"`, allora la scrittura è respinta con lo stesso messaggio
+      del canale form (il validatore è condiviso, `ProductLineSetValidator::assert()`).</criterion>
+
+    <!-- Offerte -->
+    <criterion id="AC-020">Dato un'opportunità in modalità `"single"` con la sua unica Categoria
+      Prodotto, quando si crea un'offerta con una riga ricavo su un prodotto di ALTRA categoria, allora
+      la risposta è 422, il messaggio nomina il prodotto offendente e NESSUNA riga viene aggiunta a
+      `opportunity_product_lines` (D-6).</criterion>
+    <criterion id="AC-021">Dato un'opportunità in modalità `"multiple"`, quando si crea la stessa
+      offerta, allora il comportamento attuale è preservato: la riga categoria mancante viene aggiunta
+      automaticamente e la richiesta riesce.</criterion>
+
+    <!-- Nome derivato -->
+    <criterion id="AC-030">Dato un'opportunità senza offerte, quando la si crea, allora `name` vale
+      `OPP_{id}`.</criterion>
+    <criterion id="AC-031">Dato un'opportunità, quando si crea un'offerta con righe ricavo sui prodotti
+      "ISO 9001", "SOA", "Attestati HACCP" in quest'ordine, allora `opportunities.name` diventa
+      esattamente `ISO 9001 + SOA + Attestati HACCP`.</criterion>
+    <criterion id="AC-032">Dato due offerte sulla stessa opportunità che contengono entrambe "ISO 9001",
+      quando si leggono i dati, allora il nome contiene "ISO 9001" UNA sola volta (D-4).</criterion>
+    <criterion id="AC-033">Dato un'offerta con righe COST, quando si ricalcola il nome, allora i prodotti
+      delle righe COST non compaiono (D-4).</criterion>
+    <criterion id="AC-034">Dato un'opportunità il cui nome è derivato, quando si elimina l'unica offerta,
+      allora il nome torna a `OPP_{id}`.</criterion>
+    <criterion id="AC-035">Dato prodotti i cui nomi concatenati superano 191 caratteri, quando si
+      ricalcola il nome, allora il valore persistito è lungo al massimo 191 caratteri, non tronca un
+      nome a metà e termina con " …".</criterion>
+    <criterion id="AC-036">Dato una richiesta creata da Gestione Richieste, quando si aggiunge un'offerta,
+      allora il nome si deriva con la stessa regola (è la stessa tabella `opportunities`).</criterion>
+    <criterion id="AC-037">Dato un client che invia `name` in `POST /api/opportunities`, quando la
+      richiesta arriva, allora `name` continua a essere ignorato/rifiutato come oggi: la derivazione
+      resta l'unica sorgente.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-040">Dato il form Categorie Prodotto su una categoria RADICE, quando si apre la
+      scheda, allora il controllo `management_mode` è abilitato; su un discendente è disabilitato e
+      mostra la categoria da cui eredita.</criterion>
+    <criterion id="AC-041">Dato il form Opportunità con una Categoria Prodotto in modalità `"single"`
+      già scelta, quando si guarda la sezione righe, allora il pulsante di aggiunta riga non è
+      disponibile.</criterion>
+    <criterion id="AC-042">Dato il form in modalità `"multiple"` con la prima riga compilata, quando si
+      aggiunge una seconda riga, allora la Funzione aziendale è vincolata a quella della prima riga e le
+      Categorie Prodotto selezionabili sono limitate allo stesso sottoalbero radice.</criterion>
+    <criterion id="AC-043">Dato il form di creazione Richiesta, quando si applicano AC-041 e AC-042,
+      allora il comportamento osservabile è identico a quello del form Opportunità.</criterion>
+    <criterion id="AC-044">Dato un record storico non conforme aperto nel pannello di lavorazione, quando
+      si modifica solo un campo fuori dalle righe e si salva, allora il salvataggio riesce senza errori
+      di validazione sulle righe (specularmente ad AC-016).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo ciò che è già in `composer.json` / `package.json`.</item>
+    <item>Authz server-side su ogni endpoint toccato; `management_mode` passa da
+      `ProductCategoriesAuthorization` come gli altri campi.</item>
+    <item>Il nuovo flag NON introduce un pattern di ereditarietà nuovo: replica `RequiresQuoteInheritance`
+      (backend) e `requires-quote-inheritance.ts` (frontend), incluso l'invio del campo solo per le radici.</item>
+    <item>I vincoli sulle righe si aggiungono in `ProductLineSetValidator`, punto unico già condiviso da
+      form Opportunità, form Richiesta, pannello di lavorazione ed editor inline. Non duplicare la logica
+      nelle singole FormRequest.</item>
+    <item>La risoluzione radice/modalità deve essere batch-friendly: la validazione di N righe non deve
+      produrre N walk ricorsivi con query per livello. Riusare/estendere le forme batch già presenti in
+      `CategoryHierarchy` (`descendantIds` :174, `effectiveBusinessFunctionSummaries` :225).</item>
+    <item>Il ricalcolo del nome avviene dentro la transazione di `QuoteService`, in modo imperativo,
+      coerente con `persistAggregates()`. Non introdurre observer o event listener.</item>
+    <item>Migrazione reversibile (`down`), colonna con default `multiple` così che nessun record esistente
+      cambi comportamento all'atto del deploy.</item>
+    <item>Frontend: nessun `useEffect` per il data fetching; la modalità arriva dal `meta` del for-select
+      e dall'albero già in cache. Stringhe via i18next, mai hardcoded.</item>
+    <item>File entro 300 righe (soft) / 500 (hard). Zero dead code, zero import orfani.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint pulito, `cd frontend &amp;&amp; npx tsc -b --force`
+      pulito (mai `tsc --noEmit`).</item>
+  </constraints>
+
+</spec>

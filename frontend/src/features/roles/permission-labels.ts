@@ -1,14 +1,20 @@
 import type { i18n as I18nInstance } from 'i18next'
-import { permissionAbility } from '@/features/roles/permission-groups'
+import type { PermissionCatalogueField } from '@/features/roles/permission-catalogue-api'
 
 /**
  * Translation helpers for permission names (e.g. `users.viewAny`). Shared by the
- * role form's checkbox matrix and the roles table's permissions column so both
- * render the same human-readable, localized labels. Each helper takes an i18n
- * instance (the hook's `i18n` in components, the singleton in AG Grid cell
+ * role form's permission explorer and the roles table's permissions column so
+ * both render the same human-readable, localized labels. Each helper takes an
+ * i18n instance (the hook's `i18n` in components, the singleton in AG Grid cell
  * renderers) and falls back to a humanized token when no translation exists, so
  * a newly added resource never shows a broken key.
  */
+
+/** The ability suffix of a permission name, e.g. `users.view` → `view`. */
+export function permissionAbility(permission: string): string {
+  const dot = permission.indexOf('.')
+  return dot === -1 ? permission : permission.slice(dot + 1)
+}
 
 /** `viewAny` → "View any", `audit_logs` → "Audit logs". */
 function humanizeToken(token: string): string {
@@ -58,4 +64,26 @@ export function fieldPermissionLabel(
 ): string {
   const key = `${resource}.form.${field}`
   return i18n.exists(key) ? i18n.t(key) : humanizeToken(field)
+}
+
+/**
+ * Localized label for one entry of the permission catalogue's `fields[]`
+ * (spec 0076): a custom field's label is the administrator's own free text
+ * (`label`), a native field's label is the existing i18n form label
+ * (`fieldPermissionLabel`). The contract guarantees `label` is set for every
+ * custom entry (`PermissionCatalogueBuilder::customFieldLabels()`, AC-008,
+ * covered by `PermissionCatalogueEndpointTest`), but `null` is still an
+ * admitted value by that same contract (`$customLabels[...] ?? null`) — the
+ * humanized-key fallback keeps the row readable (e.g. "Budget") instead of a
+ * blank label, which a non-null assertion would silently render as empty.
+ */
+export function catalogueFieldLabel(
+  resource: string,
+  field: PermissionCatalogueField,
+  i18n: I18nInstance,
+): string {
+  if (field.custom) {
+    return field.label ?? humanizeToken(field.key)
+  }
+  return fieldPermissionLabel(resource, field.key, i18n)
 }

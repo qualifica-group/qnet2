@@ -6,7 +6,6 @@ use App\Http\Controllers\Attachments\AttachmentController;
 use App\Http\Controllers\Attributes\AttributeController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ImpersonationController;
-use App\Http\Controllers\Authorization\FieldCatalogueController;
 use App\Http\Controllers\BusinessFunctions\BusinessFunctionController;
 use App\Http\Controllers\BusinessFunctions\BusinessFunctionForSelectController;
 use App\Http\Controllers\Companies\CompanyController;
@@ -205,11 +204,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // `{domain}.viewAny`) is enforced server-side in StatsController.
     Route::get('stats/{domain}', StatsController::class);
 
-    // Field catalogue for the Role form's field-permission matrix section
-    // (spec 0006): the static fields() of every registered resource.
-    // Authorization (roles.create OR roles.update) is enforced server-side in
-    // FieldCatalogueController.
-    Route::get('authorization/fields', [FieldCatalogueController::class, 'index']);
+    // Role form authorization catalogues (specs 0006, 0076): fields() matrix
+    // + the Area > Module permission-explorer tree.
+    require __DIR__.'/api/authorization.php';
 
     // Generic, resource-driven aggregated Activity Log (spec 0034): one route
     // serves every resource registered in config/activity-log.php (v1:

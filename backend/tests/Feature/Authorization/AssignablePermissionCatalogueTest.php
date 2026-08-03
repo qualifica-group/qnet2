@@ -8,8 +8,9 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // A representative slice of the catalogue: form-module resources registered
-    // in config/authorization.php plus indirect sub-entity resources that are
-    // NOT registered (governed via field-permissions).
+    // in config/authorization.php, a permission-only resource (`attachments`,
+    // assignable with no form module of its own), plus indirect sub-entity
+    // resources that are NOT registered (governed via field-permissions).
     foreach ([
         'users.view', 'roles.update', 'business-functions.create',
         'companies.export', 'operational-sites.delete',
@@ -30,14 +31,17 @@ it('marks form-module permissions assignable and indirect ones not', function ()
         ->and($this->catalogue->isAssignable('addresses.view'))->toBeFalse()
         ->and($this->catalogue->isAssignable('contacts.create'))->toBeFalse()
         ->and($this->catalogue->isAssignable('personal_data.update'))->toBeFalse()
-        ->and($this->catalogue->isAssignable('attachments.delete'))->toBeFalse();
+        // `attachments` is a permission-only resource (config/authorization.php):
+        // no form module, but assignable from the role form — spec 0076 files it
+        // under the "shared" area.
+        ->and($this->catalogue->isAssignable('attachments.delete'))->toBeTrue();
 });
 
 it('names() returns only the assignable catalogue, ordered, indirect excluded', function () {
     $names = $this->catalogue->names();
 
-    expect($names)->toContain('users.view', 'companies.export', 'operational-sites.delete')
-        ->and($names)->not->toContain('addresses.view', 'contacts.create', 'personal_data.update', 'attachments.delete')
+    expect($names)->toContain('users.view', 'companies.export', 'operational-sites.delete', 'attachments.delete')
+        ->and($names)->not->toContain('addresses.view', 'contacts.create', 'personal_data.update')
         ->and($names)->toEqual(collect($names)->sort()->values()->all());
 });
 

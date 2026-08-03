@@ -3,6 +3,132 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DEBITO CHIUSO: TEST STALE SU `attachments` ASSEGNABILE (2026-08-03) — VERDE, NON COMMITTATO
+
+Chiude la voce aperta piu' in basso in questo file ("Va aggiornato il test, il requisito e'
+cambiato"). `tests/Feature/Authorization/AssignablePermissionCatalogueTest.php` asseriva
+`isAssignable('attachments.delete') === false`, ma `attachments` sta in
+`config/authorization.php -> permission_only_resources` da quando gli allegati hanno un gate
+permessi proprio: e' assegnabile, semplicemente senza modulo/form suo. Il test contraddiceva la
+config, non il contrario — infatti la spec 0076 lo classifica nell'area `shared` (AC-006).
+
+Aggiornate le due asserzioni gemelle (`isAssignable` e `names()`) al requisito reale, con commento
+che spiega la categoria "permission-only". Nessun codice di produzione toccato. Su decisione utente
+2026-08-03 (il test era rosso da prima di questa sessione, non causato dal lavoro sulla 0076).
+
+**Verifica**: `pest tests/Feature/Authorization` **89/89, 1091 asserzioni** (era 88/89);
+`pint --dirty --test` pulito.
+
+## ESPLORATORE PERMESSI A DUE PANNELLI — FRONTEND (2026-08-03) — VERDE, NON COMMITTATO
+
+**Spec**: `docs/specs/0076-roles-permission-explorer.xml` (AC-010..AC-019, AC-021..AC-024, scope
+frontend). Il selettore permessi del form Ruoli era una lista piatta di ~300 checkbox montate
+insieme; ora e' un esploratore a due pannelli: albero Area > Modulo con ricerca a sinistra, azioni
++ campi (nativi e custom, stessa scheda) del modulo selezionato a destra.
+
+**Il catalogo NON e' piu' derivato lato client.** Nuovo `GET /api/authorization/permission-catalogue`
+(backend gia' implementato in parallelo da un altro teammate) sostituisce il canale improprio
+`GET /api/tables/roles/columns -> columns[permissions].options`: `permission-catalogue-api.ts` +
+`use-permission-catalogue.ts` (query key `['authorization','permission-catalogue']`, staleTime 5
+min, sempre `enabled` — a differenza del vecchio field-catalogue, alimenta anche l'albero azioni,
+non solo una sezione condizionale). La catena `roles-screens.tsx -> RoleForm -> RoleFormBody ->
+useRoleForm` che portava `permissionOptions: string[]` da `useTableConfig('roles')` e' stata
+ELIMINATA — il form carica il catalogo da solo.
+
+**Architettura nuova**, tutta sotto `frontend/src/features/roles/`:
+- `permission-explorer/permission-search.ts` + `permission-selection.ts` — logica pura (filtro
+  testuale su etichetta/nome tecnico/etichetta azione/etichetta campo; conteggi e tri-state
+  modulo/area; toggle modulo/area/singolo permesso sull'array piatto `permissions: string[]`, forma
+  invariata — AC-019).
+- `permission-explorer/{checkbox-controls,area-tree,module-actions-panel,module-detail-panel,
+  permission-explorer,permissions-section}.tsx` — UI. `permissions-section.tsx` e' il punto di
+  innesto RHF/MetaField: **due `MetaField` annidati** (`permissions` esterno, `field_permissions`
+  interno solo se `canManageFieldPermissions`) — stessa combinazione a due cancelli che il vecchio
+  form usava per la sezione "Permessi campi" separata, ora incanalata in un unico
+  `<PermissionExplorer>`. Quando `canManageFieldPermissions` e' `false` la sotto-sezione Campi
+  sparisce interamente dal pannello del modulo (non solo disabled) — comportamento preesistente
+  preservato, non re-inventato.
+- `role-field-permissions.tsx` (file esistente, riscritto): da matrice multi-risorsa con un
+  Collapsible per resource a matrice di **un solo modulo alla volta** (quello selezionato
+  nell'albero), con due intestazioni native/custom (`fieldsHeading`/`nativeFieldsLabel`/
+  `customFieldsLabel`, gia' pronte in i18n). Regola `mandatory` (spec 0008) invariata.
+- `permission-labels.ts` — `permissionAbility` spostato qui da `permission-groups.ts` (cancellato);
+  nuovo `catalogueFieldLabel(resource, field, i18n)` (nativo -> `fieldPermissionLabel` esistente,
+  custom -> `field.label ?? humanizeToken(field.key)`: il contratto valorizza `label` per ogni campo
+  custom attivo (`PermissionCatalogueBuilder::customFieldLabels()`, AC-008, coperto da
+  `PermissionCatalogueEndpointTest`), ma `null` resta un valore ammesso dallo stesso contratto
+  (`$customLabels[...] ?? null`) — il fallback tiene la riga leggibile invece di un'etichetta vuota;
+  niente `!` non-null, mascherarebbe il caso invece di gestirlo).
+- `PRIMARY_ABILITIES` spostato in `permission-explorer/primary-abilities.ts` (era hardcoded nel
+  componente, ora e' presentazione pura come richiesto dai constraint della spec).
+
+**Cancellati** (superati dal catalogo unificato): `field-catalogue-api.ts`, `use-field-catalogue.ts`
+(l'endpoint `GET /authorization/fields` backend resta in piedi, senza piu' consumatori FE —
+segnalato come candidato a rimozione futura, non toccato qui), `permission-groups.ts` + test
+(`groupPermissions` era la tassonomia locale che la spec vieta esplicitamente: "il frontend NON
+deriva la tassonomia").
+
+**`role-detail.tsx`** (sola lettura) ora raggruppa con la stessa tassonomia Area > Modulo del
+form, via lo stesso `usePermissionCatalogue()` — non piu' `groupPermissions` per prefisso.
+
+**Fix collaterale fuori ownership dichiarata, necessario**: `frontend/src/features/quick-create/
+quick-create-entries/advanced-entries.tsx` consumava `<RoleForm permissionOptions={...}>` con un
+proprio `resolveRolePermissionOptions` duplicato — rimosso (nessuna logica persa, era dead code
+dopo il rewire). Segnalato al team lead prima di toccarlo.
+
+**Test**: nuovi `permission-explorer/{permission-search,permission-selection}.test.ts` (puri) e
+`permission-explorer/permission-explorer.test.tsx` (montato: AC-010/011/012/013/014/015/016/017/
+018/023). Adeguati (dichiarato, requisito cambiato — sorgente catalogo + struttura UI):
+`role-form.test.tsx`, `role-form-metadata.test.tsx`, `role-form-custom-fields.test.tsx` (mock
+`field-catalogue-api` -> `permission-catalogue-api`, rimossa prop `permissionOptions`),
+`role-form-field-permissions.test.tsx` (riscritto: niente piu' click su Collapsible per-resource,
+il modulo unico del fixture e' selezionato di default), `role-field-permissions-personal-data.test.tsx`
+(props del componente cambiate, stesso comportamento verificato). `column-renderers.test.tsx`
+invariato (non toccava nulla di questo).
+
+**Verifica eseguita**: `npx vitest run src/features/roles` 11 file / 73 test verdi; `npx vitest run`
+COMPLETA 475 file / 3409 test verdi; `npx tsc -b --force --pretty false` EXIT=0; `npx eslint
+src/features/roles src/features/quick-create/quick-create-entries/advanced-entries.tsx` pulito.
+File piu' grande del gruppo: `role-field-permissions.tsx` (190 righe) e
+`permission-explorer/permission-explorer.test.tsx` (190 righe) — entrambi ben sotto il soft limit;
+`role-form-body.tsx` sceso da 360 a 100 righe.
+
+## GESTIONE RICHIESTE: NOME/COGNOME/CF/TELEFONO FILTRABILI E SORTABILI (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: erano le ULTIME quattro colonne della worklist che l'operatore non poteva
+ordinare ne' filtrare dall'header. Ora sono `sortable: true` + `filterable: true` +
+`filterType: 'text'` come ogni altra colonna testuale del modulo (widget Excel-like: checklist
+Set + condizioni tipizzate), e restano searchable + inline-editabili come prima.
+
+**Nessuna delle quattro e' una colonna reale di `opportunities`**: vivono sulla PersonalData card
+della Registry cliente (`registry.personalData`, `phone` = primo contatto primario phone/mobile).
+Quindi filtro/sort/valori sono tutti DERIVATI e passano da un unico collaboratore:
+`app/Tables/RequestManagement/RequestClientColumns.php` — che e' il vecchio `RequestClientSearch`
+(cancellato) allargato ai quattro hook: la relation path e l'allow-list di colonne erano le stesse,
+tenerle in due file le avrebbe fatte divergere.
+
+Il punto non ovvio del diff: **le SHAPE dei filtri non sono reimplementate**. Il payload intero
+(condizioni text, Set, envelope `multi`, `{operator, conditions}`) viene passato al generico
+`App\Services\Table\FilterApplier` PUNTATO sulla colonna vera dentro la closure di `whereHas` —
+stesso trucco che `CustomFieldAwareTableDefinition` usa per le colonne JSON. Conseguenza da
+conoscere: essendo un EXISTS, una richiesta senza registry/card non matcha mai, negazioni
+(`notContains`/`notEqual`) incluse. Sort = subquery correlata su `opportunities.registry_id`
+(mai JOIN: i contacts sono to-many e moltiplicherebbero le righe); il telefono ordina per
+`min(contacts.value)` fra i primari phone/mobile, come `PrimaryContactColumn`.
+
+Nessuna modifica frontend: il grid legge `sortable`/`filterable`/`filterType` dal contratto
+`GET /columns` (`column-def-builder.ts` + `column-filters.ts`), i cell renderer restano quelli.
+Nessuna nuova superficie di autorizzazione: i quattro valori erano gia' proiettati in riga da
+`RequestRowMapper` per chiunque abbia `request-management.viewAny`.
+
+**Verifica**: nuovo `tests/Feature/RequestManagement/RequestManagementClientColumnsFilterSortTest.php`
+21/21 (contratto colonne, sort asc/desc sulle 4, filtro text sulle 4, Set su phone, envelope
+`multi`, wildcard `%` escapata, il filtro non allarga lo scope GA2, `/values` distinti e ristretti
+dai filtri delle ALTRE colonne); `tests/Feature/RequestManagement` 334/334, suite completa 5003/5005
+— l'unico rosso e' `AssignablePermissionCatalogueTest`, PREESISTENTE e appartenente all'altro
+lavoro in corso nel working tree (permission explorer, spec 0076), verificato fallire anche con le
+mie modifiche stashate. `pint --dirty` pulito.
+
 ## SEED FAKE SOLO SU CATEGORIE SELEZIONABILI (2026-08-03) — VERDE, NON COMMITTATO
 
 Direttiva utente: i dati fabbricati della catena Qualifica (e dei Demo) devono classificarsi

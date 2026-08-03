@@ -33,7 +33,7 @@ if (! function_exists('requestManagementUserWith')) {
 /**
  * An Opportunity whose client card carries the given anagraphic values plus a
  * primary phone contact — the exact relation path RequestRowMapper reads and
- * RequestClientSearch searches.
+ * RequestClientColumns searches, filters and sorts.
  */
 function requestWithClient(string $firstName, string $lastName, string $taxCode, string $phone): Opportunity
 {

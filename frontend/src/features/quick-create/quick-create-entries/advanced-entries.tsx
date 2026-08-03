@@ -1,11 +1,8 @@
-import { lazy, useMemo } from 'react'
+import { lazy } from 'react'
 import type { QuickCreateEntry, QuickCreateFormProps } from '@/features/quick-create/types'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { PROJECTS_FOR_SELECT_RESOURCE } from '@/features/projects/for-select-api'
 import { ROLES_FOR_SELECT_RESOURCE } from '@/features/roles/for-select-api'
-import { useTableConfig } from '@/features/table/use-table-config'
-import { scalarColumnOptions } from '@/features/table/column-options'
-import type { TableConfig } from '@/features/table/types'
 
 /**
  * Quick-create entries whose ref label isn't a single detail field, or whose
@@ -58,19 +55,6 @@ const projects: QuickCreateEntry = {
   }),
 }
 
-/**
- * Resolves the full permission catalogue from the `roles` table config —
- * mirrors the private `resolvePermissionOptions` in `roles-table.tsx`
- * (not exported, so duplicated here rather than reaching into that module).
- */
-function resolveRolePermissionOptions(config: TableConfig): string[] {
-  const filter = config.filters.find((entry) => entry.columnId === 'permissions')
-  if (filter?.options && filter.options.length > 0) {
-    return filter.options
-  }
-  return scalarColumnOptions(config.columns.find((entry) => entry.id === 'permissions'))
-}
-
 const roles: QuickCreateEntry = {
   titleKey: 'roles.form.createTitle',
   descriptionKey: 'roles.form.createSubtitle',
@@ -78,21 +62,13 @@ const roles: QuickCreateEntry = {
   form: lazy(async () => {
     const { RoleForm } = await import('@/features/roles/role-form')
     return {
-      default: function RoleQuickCreateForm({ onSuccess, onCancel }: QuickCreateFormProps) {
-        const { data: config } = useTableConfig(ROLES_FOR_SELECT_RESOURCE)
-        const permissionOptions = useMemo(
-          () => (config ? resolveRolePermissionOptions(config) : []),
-          [config],
-        )
-        return (
-          <RoleForm
-            mode={{ type: 'create' }}
-            permissionOptions={permissionOptions}
-            onSuccess={(role) => onSuccess({ id: role.id, name: role.name })}
-            onCancel={onCancel}
-          />
-        )
-      },
+      default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
+        <RoleForm
+          mode={{ type: 'create' }}
+          onSuccess={(role) => onSuccess({ id: role.id, name: role.name })}
+          onCancel={onCancel}
+        />
+      ),
     }
   }),
 }
