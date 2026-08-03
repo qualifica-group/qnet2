@@ -47,6 +47,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('business_function_id', 'select'),
             new FieldDefinition('requires_quote', 'boolean'),
+            new FieldDefinition('is_selectable', 'boolean'),
             new FieldDefinition('attributes', 'custom'),
         ];
     }
@@ -74,6 +75,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'requires_quote' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_selectable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }

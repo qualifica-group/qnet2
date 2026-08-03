@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\RewardStatuses;
 
+use App\Enums\RewardStatusGroup;
+
 /**
  * Validated payload for a partial (PATCH) reward status update (PUT/PATCH
  * /api/reward-statuses/{rewardStatus}, spec 0060).
@@ -15,7 +17,9 @@ namespace App\DataObjects\RewardStatuses;
  * `UpdateOpportunityStatusData`'s `colorSubmitted`/`groupSubmitted`. `color`
  * carries NO submitted flag (like `UpdateRewardTypeData`): it can never be
  * resubmitted as null/empty (BR-2, `sometimes|required` at the FormRequest
- * layer). `sort_order`/`system_key` are GONE — server-managed (see
+ * layer); `group` (spec 0073) carries none either, for the same reason —
+ * `sometimes|required`, never resubmittable as null. `sort_order`/
+ * `system_key` are GONE — server-managed (see
  * App\Services\Statuses\StatusOrderManager).
  */
 final readonly class UpdateRewardStatusData
@@ -25,6 +29,7 @@ final readonly class UpdateRewardStatusData
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
         public ?string $color = null,
+        public ?RewardStatusGroup $group = null,
         public ?bool $isActive = null,
         public bool $isActiveSubmitted = false,
     ) {}
@@ -41,6 +46,7 @@ final readonly class UpdateRewardStatusData
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
             color: array_key_exists('color', $data) ? (string) $data['color'] : null,
+            group: array_key_exists('group', $data) ? RewardStatusGroup::from((string) $data['group']) : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             isActiveSubmitted: array_key_exists('is_active', $data),
         );
@@ -66,6 +72,10 @@ final readonly class UpdateRewardStatusData
 
         if ($this->color !== null) {
             $attributes['color'] = $this->color;
+        }
+
+        if ($this->group !== null) {
+            $attributes['group'] = $this->group;
         }
 
         if ($this->isActiveSubmitted) {

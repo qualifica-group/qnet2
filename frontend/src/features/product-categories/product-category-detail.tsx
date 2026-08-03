@@ -88,6 +88,14 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         </DetailGrid>
       </DetailSection>
 
+      <DetailSection title={t('productCategories.form.isSelectable')}>
+        <DetailGrid>
+          <DetailField label={t('productCategories.form.isSelectable')}>
+            <span>{category.is_selectable ? t('common.yes') : t('common.no')}</span>
+          </DetailField>
+        </DetailGrid>
+      </DetailSection>
+
       <CategoryAttributesContextSection
         title={t('productCategories.form.sections.productAttributes.title')}
         description={t('productCategories.form.sections.productAttributes.description')}

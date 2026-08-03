@@ -8,8 +8,14 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Models\CommissionConfiguration;
+use App\Rules\SelectableProductCategory;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @phpstan-require-extends FormRequest
+ */
 trait CommissionConfigurationRules
 {
     /** @return array<string, array<int, mixed>> */
@@ -22,7 +28,10 @@ trait CommissionConfigurationRules
             'recipient_role' => [...$required, Rule::enum(CommissionRecipientRole::class)],
             'application_scope' => [...$required, Rule::enum(CommissionApplicationScope::class)],
             'product_category_id' => [
-                'nullable', 'integer', Rule::exists('product_categories', 'id'),
+                // Spec 0074: only a selectable category can carry a commission
+                // rule — the resolver matches it EXACTLY (no subtree walk), so
+                // a rule on a container category could never fire anyway.
+                'nullable', 'integer', new SelectableProductCategory($this->exemptProductCategoryIds()),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::ProductCategory->value),
                 Rule::prohibitedIf(fn () => $this->input('application_scope') === CommissionApplicationScope::Product->value),
             ],
@@ -39,5 +48,20 @@ trait CommissionConfigurationRules
             'status' => [...$required, Rule::enum(CommissionConfigurationStatus::class)],
             'internal_note' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    /**
+     * The category already persisted on the configuration being updated,
+     * exempt from the selectable check (spec 0074 D-3b). Empty on create.
+     *
+     * @return array<int, int>
+     */
+    protected function exemptProductCategoryIds(): array
+    {
+        $configuration = $this->route('commissionConfiguration');
+
+        return $configuration instanceof CommissionConfiguration && $configuration->product_category_id !== null
+            ? [(int) $configuration->product_category_id]
+            : [];
     }
 }

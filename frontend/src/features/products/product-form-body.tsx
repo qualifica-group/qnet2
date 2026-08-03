@@ -28,6 +28,9 @@ import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select
 import { STATES_FOR_SELECT_RESOURCE } from '@/features/geo/state-for-select-api'
 import type { ProductDetail, ProductFormMode, ProductType } from '@/features/products/types'
 
+/** Hoisted so the create-mode memo keeps a stable reference across renders. */
+const EMPTY_CATEGORY_IDS: readonly number[] = []
+
 /** Filters the supplier picker's `registries` for-select to `is_supplier` records only. */
 const SUPPLIER_PARAMS: Record<string, string | number> = { is_supplier: 1 }
 
@@ -73,9 +76,21 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
   const attributesEditable = canResource(mode.type === 'edit' ? 'update' : 'create')
   const productTypeOptions = useEnumOptions('product_type')
 
+  // Spec 0074: this picker is a DESTINATION served by the structural tree
+  // cache, so it filters client-side. The product's saved category is kept
+  // even when unselectable (D-3b) — the server accepts it unchanged, and the
+  // select must not blank out on an untouched edit.
+  const savedCategoryIds = useMemo(
+    () => (mode.type === 'edit' ? [mode.product.category_id] : EMPTY_CATEGORY_IDS),
+    [mode],
+  )
   const categoryOptions = useMemo(
-    () => flattenCategoryTree(treeQuery.data ?? []),
-    [treeQuery.data],
+    () =>
+      flattenCategoryTree(treeQuery.data ?? [], {
+        selectableOnly: true,
+        keepIds: savedCategoryIds,
+      }),
+    [treeQuery.data, savedCategoryIds],
   )
 
   // Edit-mode hydration for the relation pickers below: the loaded product's

@@ -50,6 +50,7 @@ class ProductCategoryService
                 // A child never authors the flag: it takes its root's value,
                 // whatever was (or was not) submitted.
                 'requires_quote' => $this->requiresQuote->inheritedValueFor($data->parentId) ?? ($data->requiresQuote ?? false),
+                'is_selectable' => $data->isSelectable,
             ]);
 
             if ($data->hasAttributes()) {
@@ -142,7 +143,12 @@ class ProductCategoryService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = ProductCategory::query()->select(['id', 'name']);
+        // Spec 0074 D-4: this endpoint feeds DESTINATION pickers only (the
+        // structural ones read /tree), so the selectable filter is
+        // unconditional — no opt-in param a future consumer could forget.
+        // `ids[]` hydration runs its own query below and stays exempt (D-3a),
+        // so an already-associated category keeps resolving in edit mode.
+        $base = ProductCategory::query()->select(['id', 'name'])->where('is_selectable', true);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -213,7 +219,9 @@ class ProductCategoryService
 
     /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
-     * not already on the page, deduplicated. They bypass search and the same
+     * not already on the page, deduplicated. They bypass search AND the
+     * selectable filter (spec 0074 D-3a — an edit form must still resolve the
+     * label of a category that has since been made unselectable) and the same
      * id/name projection applies. Total is unaffected.
      *
      * @param  Collection<int, ProductCategory>  $page

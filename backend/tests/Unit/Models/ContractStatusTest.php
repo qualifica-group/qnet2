@@ -69,8 +69,8 @@ it('isSystem() distinguishes system rows from custom rows', function () {
         ->and($custom->isSystem())->toBeFalse();
 });
 
-it('SYSTEM_HEAD_KEY is New and SYSTEM_TAIL_KEYS is [Suspended, Cancelled, Terminated] in order', function () {
-    expect(ContractStatus::SYSTEM_HEAD_KEY)->toBe(StatusSystemKey::New)
+it('SYSTEM_HEAD_KEYS is [New] and SYSTEM_TAIL_KEYS is [Suspended, Cancelled, Terminated] in order', function () {
+    expect(ContractStatus::SYSTEM_HEAD_KEYS)->toBe([StatusSystemKey::New])
         ->and(ContractStatus::SYSTEM_TAIL_KEYS)->toBe([
             StatusSystemKey::Suspended,
             StatusSystemKey::Cancelled,

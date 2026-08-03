@@ -14,6 +14,7 @@ import type { RichCellEditorValuesCallbackParams } from 'ag-grid-community'
 import { enumLabelOf } from '@/features/config/enum-label'
 import { DateTimeCellEditor } from '@/components/data-table/datetime-cell-editor'
 import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell-editor'
+import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
 import { scalarColumnOptions, selectColumnOptions } from '@/features/table/column-options'
@@ -21,7 +22,7 @@ import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ColumnType, TableColumn, TableRow } from '@/features/table/types'
 
 /** The lookup key: a column's declared `editor` when present, else its `type` (spec 0054 D-1, 0055 D-1). */
-export type CellEditorKind = ColumnType | 'relation' | 'select' | 'multiselect' | 'date'
+export type CellEditorKind = ColumnType | 'relation' | 'select' | 'multiselect' | 'date' | 'product_lines'
 
 /** cellEditor (a built-in name, or a custom React component) + optional per-column params, resolved once per colDef. */
 export interface CellEditorSpec {
@@ -115,7 +116,16 @@ export const CELL_EDITOR_REGISTRY: Record<CellEditorKind, CellEditorSpec> = {
     cellEditorParams: (column) => ({
       resource: column.relation?.resource ?? '',
       scope: column.relation?.scope,
+      lockScope: column.relation?.lockScope ?? false,
     }),
+    cellEditorPopup: true,
+  },
+  // Spec 0075: the {funzione aziendale, categoria prodotto} collection, edited
+  // in the same two-step flow as the form. It needs no `cellEditorParams`: its
+  // two `/for-select` resources ARE what the editor is, and the pairs it edits
+  // are the cell's own value.
+  product_lines: {
+    cellEditor: ProductLinesCellEditor as ComponentType<CustomCellEditorProps>,
     cellEditorPopup: true,
   },
   relation: {

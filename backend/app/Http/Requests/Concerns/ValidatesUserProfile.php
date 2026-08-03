@@ -13,8 +13,10 @@ use App\Enums\GenderEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Rules\TaxCode;
+use App\Rules\UniquePersonalDataIdentifier;
 use App\Rules\VatNumber;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -77,6 +79,31 @@ trait ValidatesUserProfile
     }
 
     /**
+     * The entity class whose personal-data cards the submitted fiscal
+     * identifiers must be unique among, or null when this surface enforces no
+     * uniqueness at all (user directive 2026-08-03).
+     *
+     * Null by default so the USER endpoints are untouched: an account is not an
+     * anagraphic record, and two accounts of the same person are a legitimate
+     * (if rare) configuration. The referent/registry requests override it.
+     *
+     * @return class-string<Model>|null
+     */
+    protected function identityUniquenessOwner(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * The owner being updated, whose own card must not be counted as a
+     * collision with itself. Null on create (nothing to exclude yet).
+     */
+    protected function identityUniquenessOwnerId(): ?int
+    {
+        return null;
+    }
+
+    /**
      * Validation rules for the nested `personal_data.*` object. Merged into each
      * request's own account-field rules; they never change the account rules.
      *
@@ -119,8 +146,8 @@ trait ValidatesUserProfile
                 'max:255',
             ],
 
-            'personal_data.tax_code' => ['nullable', 'string', 'max:32', new TaxCode('personal_data.')],
-            'personal_data.vat_number' => ['nullable', 'string', 'max:32', new VatNumber],
+            'personal_data.tax_code' => ['nullable', 'string', 'max:32', new TaxCode('personal_data.'), ...$this->identityUniquenessRules('tax_code')],
+            'personal_data.vat_number' => ['nullable', 'string', 'max:32', new VatNumber, ...$this->identityUniquenessRules('vat_number')],
             'personal_data.sdi_code' => ['nullable', 'string', 'max:32'],
             'personal_data.birth_date' => ['nullable', 'date', 'before:today'],
             'personal_data.birth_city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
@@ -156,6 +183,21 @@ trait ValidatesUserProfile
             'personal_data.addresses.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'personal_data.addresses.*.is_primary' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * The uniqueness rule for one identifier column, or nothing when the
+     * surface declares no owner (see identityUniquenessOwner).
+     *
+     * @return array<int, UniquePersonalDataIdentifier>
+     */
+    private function identityUniquenessRules(string $column): array
+    {
+        $owner = $this->identityUniquenessOwner();
+
+        return $owner === null
+            ? []
+            : [new UniquePersonalDataIdentifier($column, $owner, $this->identityUniquenessOwnerId())];
     }
 
     /**

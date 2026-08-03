@@ -149,6 +149,7 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             'description' => $row->description,
             'business_function' => $this->businessFunctionColumn->nameFor($row->id),
             'requires_quote' => (bool) $row->requires_quote,
+            'is_selectable' => (bool) $row->is_selectable,
             'attributes_count' => (int) $row->attributes_count,
             'products_count' => (int) $row->products_count,
             // The category's OWN assigned attributes — the exact set counted

@@ -42,4 +42,36 @@ enum LocaleEnum: string
     {
         return array_map(static fn (self $case): string => $case->value, self::cases());
     }
+
+    /**
+     * The supported locale an `Accept-Language` header asks for, or the app
+     * default when it asks for none this app ships.
+     *
+     * The ONE parser of that header: the public bootstrap endpoint
+     * (ConfigService) and the per-request middleware (SetLocale) both read it
+     * from here, so the language the frontend receives its enum labels in and
+     * the language the API answers its errors in can never disagree.
+     */
+    public static function fromAcceptLanguage(?string $header): string
+    {
+        $fallback = (string) config('app.locale', 'en');
+
+        if ($header === null || $header === '') {
+            return $fallback;
+        }
+
+        $supported = self::values();
+
+        foreach (explode(',', $header) as $part) {
+            // Drop the q-weight ("it;q=0.8" → "it") and region ("en-US" → "en").
+            $primary = strtolower(trim(explode(';', $part)[0]));
+            $primary = explode('-', $primary)[0];
+
+            if (in_array($primary, $supported, true)) {
+                return $primary;
+            }
+        }
+
+        return $fallback;
+    }
 }

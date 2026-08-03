@@ -5,6 +5,7 @@ import {
   type CellEditorKind,
 } from '@/components/data-table/cell-editor-registry'
 import { DateTimeCellEditor } from '@/components/data-table/datetime-cell-editor'
+import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
@@ -249,7 +250,31 @@ describe('resolveCellEditorSpec', () => {
       expect(spec?.cellEditorParams?.(column)).toEqual({
         resource: 'products',
         scope: { category_ids: 'product_category_ids' },
+        // Spec 0075, D-4: absent on the column ⇒ the unlock stays available,
+        // which is the opportunities behaviour.
+        lockScope: false,
       })
+    })
+
+    // Spec 0075, D-4: request-management declares it, and the editor drops its
+    // whole-catalogue escape — the module refuses what falls outside the scope.
+    it('forwards `lockScope` when the column declares it', () => {
+      const column = stubColumn({
+        id: 'products_of_interest',
+        type: 'text',
+        relation: { resource: 'products', scope: { category_ids: 'product_category_ids' }, lockScope: true },
+      })
+
+      expect(resolveCellEditorSpec('multiselect')?.cellEditorParams?.(column)).toMatchObject({ lockScope: true })
+    })
+
+    // Spec 0075: the {funzione aziendale, categoria prodotto} collection.
+    it('resolves a `product_lines` column to the popup pair editor', () => {
+      const spec = resolveCellEditorSpec('product_lines')
+
+      expect(spec?.cellEditor).toBe(ProductLinesCellEditor)
+      expect(spec?.cellEditorPopup).toBe(true)
+      expect(spec?.cellEditorParams).toBeUndefined()
     })
 
     // Forwarded UNRESOLVED on purpose: it names the column to read, and only

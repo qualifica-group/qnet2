@@ -216,15 +216,15 @@ function renderDateTime(value: unknown, optionalTime = false) {
 
 describe('DateTimeCell', () => {
   it('renders date and time by default, midnight included', () => {
-    expect(renderDateTime('2026-08-03T00:00').getByText('Aug 3, 2026, 12:00 AM')).toBeInTheDocument()
+    expect(renderDateTime('2026-08-03T00:00').getByText('03/08/2026 00:00')).toBeInTheDocument()
   })
 
   it('drops the time of a midnight instant in optionalTime mode', () => {
-    expect(renderDateTime('2026-08-03T00:00', true).getByText('Aug 3, 2026')).toBeInTheDocument()
+    expect(renderDateTime('2026-08-03T00:00', true).getByText('03/08/2026')).toBeInTheDocument()
   })
 
   it('keeps a real time in optionalTime mode', () => {
-    expect(renderDateTime('2026-08-03T15:30', true).getByText('Aug 3, 2026, 3:30 PM')).toBeInTheDocument()
+    expect(renderDateTime('2026-08-03T15:30', true).getByText('03/08/2026 15:30')).toBeInTheDocument()
   })
 
   it('renders an em dash when the value is missing', () => {

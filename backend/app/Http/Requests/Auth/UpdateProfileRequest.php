@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\DateFormatEnum;
 use App\Enums\LocaleEnum;
+use App\Enums\TimeFormatEnum;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -46,6 +48,12 @@ class UpdateProfileRequest extends FormRequest
             // Per-user UI scale slider (0..100). A plain display preference,
             // clamped server-side to the 0..100 range the client exposes.
             'ui_scale' => ['sometimes', 'integer', 'between:0,100'],
+
+            // Per-user date/time display preferences. Plain display fields like
+            // `locale`: the accepted set is owned by the enums, the rendering by
+            // the client formatter.
+            'date_format' => ['sometimes', 'required', Rule::in(DateFormatEnum::values())],
+            'time_format' => ['sometimes', 'required', Rule::in(TimeFormatEnum::values())],
 
             // Spec 0042 — per-user module open mode preference. `mode` is
             // required only when the object itself is submitted; override
@@ -128,6 +136,8 @@ class UpdateProfileRequest extends FormRequest
             [
                 'locale' => $validated['locale'] ?? null,
                 'ui_scale' => $validated['ui_scale'] ?? null,
+                'date_format' => $validated['date_format'] ?? null,
+                'time_format' => $validated['time_format'] ?? null,
             ],
             static fn ($value): bool => $value !== null,
         );

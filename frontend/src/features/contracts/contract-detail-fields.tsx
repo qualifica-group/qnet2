@@ -2,18 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Building, Building2, CreditCard, Handshake, MapPin, UserRound } from 'lucide-react'
 import { DetailEmpty, DetailField, DetailGrid, DetailSection } from '@/components/detail/detail-panel'
 import type { ContractDetail } from '@/features/contracts/types'
-
-/** Formats a `date` (no time part) field the same way the grid's `DateCell` does, off the active UI locale. */
-function formatDate(value: string | null, language: string): string | null {
-  if (!value) {
-    return null
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return null
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(date)
-}
+import { formatDate } from '@/lib/formatting/date-display'
 
 /** Identity/relations section: the same relations the quote projects, never duplicated on `contracts` (AC-040). */
 export function ContractIdentitySection({ contract }: { contract: ContractDetail }) {
@@ -56,21 +45,21 @@ export function ContractIdentitySection({ contract }: { contract: ContractDetail
 
 /** Lifecycle dates section: quote date through termination, plus who validated/terminated it. */
 export function ContractLifecycleSection({ contract }: { contract: ContractDetail }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
 
   return (
     <DetailSection title={t('contracts.detail.sections.lifecycle')}>
       <DetailGrid>
         <DetailField label={t('contracts.detail.quoteDate')}>
-          {formatDate(contract.quote.created_at, i18n.language) ?? <DetailEmpty />}
+          {formatDate(contract.quote.created_at) || <DetailEmpty />}
         </DetailField>
         <DetailField label={t('contracts.detail.acceptedAt')}>
-          {formatDate(contract.accepted_at, i18n.language) ?? <DetailEmpty />}
+          {formatDate(contract.accepted_at) || <DetailEmpty />}
         </DetailField>
         <DetailField label={t('contracts.detail.validatedAt')}>
           {contract.validated_at ? (
             <>
-              {formatDate(contract.validated_at, i18n.language)}
+              {formatDate(contract.validated_at)}
               {contract.validated_by ? (
                 <span className="text-muted-foreground"> — {contract.validated_by.name}</span>
               ) : null}
@@ -80,15 +69,15 @@ export function ContractLifecycleSection({ contract }: { contract: ContractDetai
           )}
         </DetailField>
         <DetailField label={t('contracts.detail.renewalDate')}>
-          {formatDate(contract.renewal_date, i18n.language) ?? <DetailEmpty />}
+          {formatDate(contract.renewal_date) || <DetailEmpty />}
         </DetailField>
         <DetailField label={t('contracts.detail.expiryDate')}>
-          {formatDate(contract.expiry_date, i18n.language) ?? <DetailEmpty />}
+          {formatDate(contract.expiry_date) || <DetailEmpty />}
         </DetailField>
         <DetailField label={t('contracts.detail.terminatedAt')}>
           {contract.terminated_at ? (
             <>
-              {formatDate(contract.terminated_at, i18n.language)}
+              {formatDate(contract.terminated_at)}
               {contract.terminated_by ? (
                 <span className="text-muted-foreground"> — {contract.terminated_by.name}</span>
               ) : null}

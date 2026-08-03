@@ -43,6 +43,16 @@ final class CellValueValidator
     /** The `editor` kind whose submitted value is a LIST of related row ids (user directive 2026-07-23). */
     private const string MULTISELECT_EDITOR = 'multiselect';
 
+    /**
+     * The `editor` kind whose submitted value is a LIST of {business function,
+     * product category} PAIRS (spec 0075): the `product_lines` collection, as
+     * edited in-cell on the request-management grid. Structural check only —
+     * the set's own rules (existence, selectability, the category/function
+     * match, no repeated pair) are enforced by the ONE writer both write
+     * channels reach, exactly like the `select` editor's membership rule.
+     */
+    private const string PRODUCT_LINES_EDITOR = 'product_lines';
+
     /** The `format` names a column may declare, each mapping to an InputFormat canonicalizer. */
     private const string FORMAT_PERSON_NAME = 'person_name';
 
@@ -66,6 +76,10 @@ final class CellValueValidator
         // but its value is a LIST, which the single-id branch would reject.
         if (($column['editor'] ?? null) === self::MULTISELECT_EDITOR) {
             return $this->validateIdListValue($column, $value);
+        }
+
+        if (($column['editor'] ?? null) === self::PRODUCT_LINES_EDITOR) {
+            return $this->validatePairListValue($value);
         }
 
         if (isset($column['relation'])) {
@@ -148,7 +162,7 @@ final class CellValueValidator
 
         if (! is_string($resource) || ! $this->relationScope->inScope($resource, (int) $value)) {
             throw ValidationException::withMessages([
-                'value' => ['The selected value does not exist or is not available.'],
+                'value' => [__('The selected value does not exist or is not available.')],
             ]);
         }
 
@@ -208,19 +222,48 @@ final class CellValueValidator
 
         if (! is_string($resource)) {
             throw ValidationException::withMessages([
-                'value' => ['The selected value does not exist or is not available.'],
+                'value' => [__('The selected value does not exist or is not available.')],
             ]);
         }
 
         foreach ($ids as $id) {
             if (! $this->relationScope->inScope($resource, $id)) {
                 throw ValidationException::withMessages([
-                    'value' => ['The selected value does not exist or is not available.'],
+                    'value' => [__('The selected value does not exist or is not available.')],
                 ]);
             }
         }
 
         return $ids;
+    }
+
+    /**
+     * A `product_lines` column's value is the whole collection of pairs (spec
+     * 0075): each row must carry both integer ids and nothing else travels on.
+     * Whether an EMPTY collection is accepted is the mandatory-field rule
+     * (TableCellUpdateService step 4.5), not this column's declaration —
+     * `product_lines` is mandatory, so the empty case is refused there.
+     *
+     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     *
+     * @throws ValidationException
+     */
+    private function validatePairListValue(mixed $value): array
+    {
+        Validator::make(
+            ['value' => $value],
+            [
+                'value' => ['present', 'array'],
+                'value.*.business_function_id' => ['required', 'integer'],
+                'value.*.product_category_id' => ['required', 'integer'],
+            ],
+        )->validate();
+
+        /** @var array<int, array<string, mixed>> $value */
+        return array_map(static fn (array $pair): array => [
+            'business_function_id' => (int) $pair['business_function_id'],
+            'product_category_id' => (int) $pair['product_category_id'],
+        ], array_values($value));
     }
 
     /**

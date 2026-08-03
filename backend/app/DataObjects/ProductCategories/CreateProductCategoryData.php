@@ -24,6 +24,8 @@ final readonly class CreateProductCategoryData
         public ?int $businessFunctionId = null,
         /** Null = not submitted: the flag is then resolved server-side (root's value, or false at root). */
         public ?bool $requiresQuote = null,
+        /** Spec 0074: a plain per-node flag, defaulting to selectable when omitted. */
+        public bool $isSelectable = true,
     ) {}
 
     /**
@@ -42,6 +44,7 @@ final readonly class CreateProductCategoryData
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
+            isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
         );
     }
 

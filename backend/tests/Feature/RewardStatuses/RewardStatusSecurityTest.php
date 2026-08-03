@@ -47,7 +47,7 @@ it('POST store: 403 without reward-statuses.create — a basic-rule-VALID payloa
 
     $countBefore = RewardStatus::count();
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue'])->assertForbidden();
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue', 'group' => 'open'])->assertForbidden();
 
     expect(RewardStatus::count())->toBe($countBefore);
 });

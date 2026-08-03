@@ -1,6 +1,7 @@
 import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
+import type { DateFormat, TimeFormat } from '@/lib/formatting/date-display'
 
 export interface User {
   id: number
@@ -26,6 +27,10 @@ export interface User {
   module_open_preferences: ModuleOpenPreferences
   /** Per-user UI scale slider (0..100). Never null on the wire (defaults to 40). */
   ui_scale: number
+  /** Date pattern every screen renders with. Never null on the wire (defaults to 'dmy'). */
+  date_format: DateFormat
+  /** Clock convention for the time next to a date. Never null on the wire (defaults to '24h'). */
+  time_format: TimeFormat
 }
 
 export interface LoginPayload {
@@ -42,6 +47,10 @@ export interface UpdateProfilePayload {
   module_open_preferences?: ModuleOpenPreferences
   /** Optional: updates the per-user UI scale slider (0..100). */
   ui_scale?: number
+  /** Optional: updates the date pattern every screen renders with. */
+  date_format?: DateFormat
+  /** Optional: updates the clock convention for times. */
+  time_format?: TimeFormat
 }
 
 export interface ChangePasswordPayload {

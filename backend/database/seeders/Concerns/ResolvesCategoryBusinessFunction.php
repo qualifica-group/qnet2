@@ -15,6 +15,13 @@ use Illuminate\Support\Collection;
  * category with a mismatched function — the same invariant the FormRequests now
  * reject. Categories with no effective business function are dropped (they
  * cannot form a valid required pair on a standalone Project/Campaign).
+ *
+ * Unselectable categories are dropped too (spec 0074, user directive
+ * 2026-08-03): a container is not a classification target, App\Rules\
+ * SelectableProductCategory rejects it on Project/Campaign, and the pair is
+ * what LeadOpportunityDefaultsResolver turns into the converted opportunity's
+ * product line — so a container here would surface as an unselectable line on
+ * a seeded deal.
  */
 trait ResolvesCategoryBusinessFunction
 {
@@ -27,6 +34,7 @@ trait ResolvesCategoryBusinessFunction
         $summaries = app(CategoryHierarchy::class)->effectiveBusinessFunctionSummaries();
 
         return $categories
+            ->filter(static fn (ProductCategory $category): bool => (bool) $category->is_selectable)
             ->map(static fn (ProductCategory $category): array => [
                 'product_category_id' => $category->id,
                 'business_function_id' => $summaries[$category->id]['id'] ?? null,

@@ -19,6 +19,14 @@ use Faker\Generator;
  * the products drawn alongside a line never force
  * OpportunityProductInterestWriter to add a category the seeder did not choose.
  *
+ * On top of that an offer is always SELECTABLE (spec 0074, user directive
+ * 2026-08-03): a category flagged `is_selectable = false` is a container, and
+ * the App\Rules\SelectableProductCategory rule rejects it on every write path
+ * the form uses. Seeding a line on one would produce a deal the edit form
+ * itself refuses to resubmit. The filter applies TWICE — to the category the
+ * line points at, and to the category the drawn products are filed on, because
+ * OpportunityProductLineCoverage adds a line for each product's OWN category.
+ *
  * Everything is loaded in one batch (no query per opportunity): the effective
  * business functions come from a single CategoryHierarchy call, the products
  * from a single projection.
@@ -36,7 +44,8 @@ trait PicksDemoOffers
 
     protected function loadOffers(CategoryHierarchy $hierarchy): void
     {
-        $productIdsByCategory = $this->productIdsByCategory($hierarchy);
+        $selectableIds = $this->selectableCategoryIds();
+        $productIdsByCategory = $this->productIdsByCategory($hierarchy, $selectableIds);
         $offers = [];
 
         foreach ($hierarchy->effectiveBusinessFunctionSummaries() as $categoryId => $summary) {
@@ -94,15 +103,33 @@ trait PicksDemoOffers
     }
 
     /**
-     * category id => the products of that category AND of every descendant —
-     * so a line pointing at a branch root still draws a real product, the one
-     * filed under one of its leaves.
+     * The classification TARGETS, in id order: an unselectable category is a
+     * container the form refuses, so it is neither offered as a line nor used
+     * to draw a product.
      *
+     * @return array<int, true>
+     */
+    private function selectableCategoryIds(): array
+    {
+        return array_fill_keys(
+            ProductCategory::query()->where('is_selectable', true)->orderBy('id')->pluck('id')->all(),
+            true,
+        );
+    }
+
+    /**
+     * selectable category id => the SELECTABLE-filed products of that category
+     * AND of every descendant — so a line pointing at a branch root still draws
+     * a real product, the one filed under one of its leaves, without the
+     * coverage rule pushing a container onto the deal.
+     *
+     * @param  array<int, true>  $selectableIds
      * @return array<int, list<int>>
      */
-    private function productIdsByCategory(CategoryHierarchy $hierarchy): array
+    private function productIdsByCategory(CategoryHierarchy $hierarchy, array $selectableIds): array
     {
         $directIds = Product::query()
+            ->whereIn('category_id', array_keys($selectableIds))
             ->orderBy('id')
             ->get(['id', 'category_id'])
             ->groupBy('category_id')
@@ -111,7 +138,7 @@ trait PicksDemoOffers
 
         $byCategory = [];
 
-        foreach (ProductCategory::query()->orderBy('id')->pluck('id') as $categoryId) {
+        foreach (array_keys($selectableIds) as $categoryId) {
             $ids = $directIds[$categoryId] ?? [];
 
             foreach ($hierarchy->descendantIds($categoryId) as $descendantId) {

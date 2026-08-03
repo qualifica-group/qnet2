@@ -11,6 +11,7 @@ use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\OpportunityWorkflows\WorkflowStatusWriter;
+use App\Services\Rewards\RewardLifecycleManager;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,7 @@ class OpportunityWorkflowService
     public function __construct(
         private readonly WorkflowStatusWriter $statusWriter,
         private readonly OpportunityWorkflowResolver $resolver,
+        private readonly RewardLifecycleManager $rewardLifecycleManager,
     ) {}
 
     public function loadDetail(OpportunityWorkflow $workflow): OpportunityWorkflow
@@ -131,7 +133,13 @@ class OpportunityWorkflowService
                 ->whereIn('id', $impactedOpportunityIds)
                 ->with(['productLines', 'customFieldValueRow'])
                 ->get()
-                ->each(fn (Opportunity $opportunity) => $this->resolver->resolveAndAssign($opportunity));
+                ->each(function (Opportunity $opportunity): void {
+                    $this->resolver->resolveAndAssign($opportunity);
+
+                    // Spec 0073: the re-resolution can move a request out of
+                    // (or into) a closed-negative status, so its buoni follow.
+                    $this->rewardLifecycleManager->reconcile($opportunity);
+                });
         });
     }
 

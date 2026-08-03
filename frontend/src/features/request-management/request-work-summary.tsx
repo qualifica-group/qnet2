@@ -4,20 +4,12 @@ import { Info } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { formatDecimal } from '@/features/products/column-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
+import { formatDate } from '@/lib/formatting/date-display'
 
 export const EMPTY_VALUE = '—'
 
 /** The summary list's own chrome, exported so the create form's live recap renders the identical rows. */
 export const SUMMARY_LIST_CLASS = 'min-w-0 divide-y divide-border/60'
-
-/** Formats a `Y-m-d` date for display, `null` when missing/unparsable. */
-function formatDate(value: string | null): string | null {
-  if (!value) {
-    return null
-  }
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString()
-}
 
 /** One `label / value` row of the summary list. Exported: the create form's live recap uses the same row. */
 export function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
@@ -68,7 +60,7 @@ export function RequestWorkSummary({ panel }: { panel: RequestWorkPanel }) {
             defaultValue: 'Expected close date',
           })}
         >
-          {expectedCloseDate ?? EMPTY_VALUE}
+          {expectedCloseDate || EMPTY_VALUE}
         </SummaryRow>
         <SummaryRow
           label={t('requestManagement.workPanel.summary.estimatedValue', { defaultValue: 'Estimated value' })}

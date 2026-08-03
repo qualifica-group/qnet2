@@ -55,6 +55,7 @@ function category(
     business_function: null,
     effective_business_function: null,
     requires_quote_source_category: null,
+    is_selectable: true,
     permissions: PERMISSIONS,
     ...overrides,
   }

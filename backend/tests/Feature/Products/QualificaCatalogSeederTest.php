@@ -85,6 +85,53 @@ it('provisions the regional GOL declinations as children of the GOL subcategory'
     expect(ProductCategory::query()->where('parent_id', $gol->id)->count())->toBe(count($regions));
 });
 
+it('seeds the first two catalogue levels as containers, third level only selectable (spec 0074)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // Roots AND every subcategory under them, whether or not they already have
+    // children: the catalogue classifies on its third level (user directive
+    // 2026-08-03).
+    $containers = [
+        'Formazione', 'Consulenza',
+        'GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL',
+        'Trattative in Corso', 'Presa Appuntamenti',
+    ];
+    foreach ($containers as $name) {
+        expect(ProductCategory::query()->where('name', $name)->value('is_selectable'))
+            ->toBeFalsy(sprintf('"%s" is a catalogue container: it must not be selectable.', $name));
+    }
+
+    // The only classification targets the catalogue seeds today.
+    $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
+    expect($selectable)->toBe([
+        'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
+        'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
+        'GOL - Sicilia', 'GOL - Umbria',
+    ]);
+});
+
+it('realigns a container category seeded as selectable before the flag existed', function (): void {
+    // The state of an installation seeded by the previous version: the tree is
+    // already there, every node selectable.
+    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'is_selectable' => true]);
+    ProductCategory::factory()->create(['name' => 'Autofinanziato', 'parent_id' => $formazione->id, 'is_selectable' => true]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->value('is_selectable'))->toBeFalsy()
+        ->and(ProductCategory::query()->where('name', 'Autofinanziato')->value('is_selectable'))->toBeFalsy();
+});
+
+it('never re-selects a third-level node an operator has deliberately turned into a container', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    ProductCategory::query()->where('name', 'GOL - Molise')->update(['is_selectable' => false]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'GOL - Molise')->value('is_selectable'))->toBeFalsy();
+});
+
 it('assigns the "Ore complessive" product attribute to the whole Formazione branch', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute nor pivot row.

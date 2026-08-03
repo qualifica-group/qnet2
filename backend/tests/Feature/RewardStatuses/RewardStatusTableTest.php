@@ -34,7 +34,7 @@ if (! function_exists('rewardStatusUserWith')) {
 // AC-011 — columns config, frozen order + flags
 // ---------------------------------------------------------------------------
 
-it('GET /api/tables/reward-statuses/columns: 403 without viewAny, 200 with the 8 frozen columns (AC-011)', function () {
+it('GET /api/tables/reward-statuses/columns: 403 without viewAny, 200 with the 9 frozen columns (AC-011, spec 0073)', function () {
     $actor = rewardStatusUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/reward-statuses/columns')->assertForbidden();
@@ -52,7 +52,7 @@ it('GET /api/tables/reward-statuses/columns: 403 without viewAny, 200 with the 8
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'description', 'color', 'sort_order', 'is_active', 'created_at', 'updated_at']);
+    expect($ids)->toBe(['id', 'name', 'description', 'color', 'group', 'sort_order', 'is_active', 'created_at', 'updated_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['sortable'])->toBeTrue()
@@ -121,8 +121,8 @@ it('rows: pagination reports the correct total and defaults to a limit of 25 (AC
 
     $response = $this->postJson('/api/tables/reward-statuses/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
 
-    // +1 for the migration-seeded 'pending' system row.
-    expect($response->json('pagination.total'))->toBe(31)
+    // +4 for the migration-seeded system rows (spec 0073, D-6).
+    expect($response->json('pagination.total'))->toBe(34)
         ->and($response->json('items'))->toHaveCount(25);
 });
 

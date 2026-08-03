@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
 use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
 use App\Models\Project;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -89,7 +90,7 @@ class StoreCampaignRequest extends FormRequest
             'city_id' => $this->geoLevelRules($linked, $project, 'city_id', 'cities'),
             'product_category_id' => $linked
                 ? ['prohibited']
-                : ['required', 'integer', Rule::exists('product_categories', 'id')],
+                : ['required', 'integer', new SelectableProductCategory],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'total_budget' => ['nullable', 'numeric', 'min:0'],

@@ -8,6 +8,7 @@ use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Models\Registry;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -54,6 +55,18 @@ class StoreRegistryRequest extends FormRequest
     protected function addressCityRequired(): bool
     {
         return true;
+    }
+
+    /**
+     * Codice fiscale and partita IVA are unique among ANAGRAFICHE (user
+     * directive 2026-08-03) — not globally: the same person may also exist as
+     * a referent, which is a different role, not a duplicate.
+     *
+     * @return class-string<Registry>
+     */
+    protected function identityUniquenessOwner(): ?string
+    {
+        return Registry::class;
     }
 
     /**

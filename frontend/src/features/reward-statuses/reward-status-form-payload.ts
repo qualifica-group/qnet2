@@ -7,13 +7,15 @@ import type { RewardStatusFormValues } from '@/features/reward-statuses/use-rewa
 
 /**
  * Builds the create payload: `name`, `description`, `color` (never blanked,
- * D-4) and `is_active` (`sort_order`/`system_key` are server-managed, D-3/D-2).
+ * D-4), `group` (spec 0073, mandatory) and `is_active` (`sort_order`/
+ * `system_key` are server-managed, D-3/D-2).
  */
 export function buildCreatePayload(values: RewardStatusFormValues): CreateRewardStatusPayload {
   return {
     name: values.name,
     description: values.description,
     color: values.color,
+    group: values.group,
     is_active: values.is_active,
   }
 }
@@ -36,6 +38,9 @@ export function buildUpdatePayload(
   }
   if (values.color !== original.color) {
     payload.color = values.color
+  }
+  if (values.group !== original.group) {
+    payload.group = values.group
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active

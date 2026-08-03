@@ -19,16 +19,17 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * field left store/update. Generic on the sibling status models via a
  * class-string (no speculative interface — engineering.md §1.3): all five
  * share the exact same name/system_key/sort_order shape, differing only in
- * which system row pins to the HEAD (`$modelClass::SYSTEM_HEAD_KEY`) and
+ * which system rows pin to the HEAD (`$modelClass::SYSTEM_HEAD_KEYS` — one
+ * row for four of them, `[New, Pending]` for RewardStatus, spec 0073 D-6) and
  * which pin to the TAIL (`$modelClass::SYSTEM_TAIL_KEYS` — PipelineStatus:
- * `[Closed]`; OpportunityStatus/QuoteStatus: `[Won, Lost]`; RewardStatus:
- * `[]`, no tail — spec 0060 D-3, "pending" is a head-only system row;
+ * `[Closed]`; OpportunityStatus/QuoteStatus/RewardStatus: `[Won, Lost]`;
  * ContractStatus: `[Suspended, Cancelled, Terminated]`, spec 0072 D-2).
  *
- * Sequence invariant, maintained by every method here: SYSTEM_HEAD_KEY=0,
- * custom=10,20,..., then each SYSTEM_TAIL_KEYS row in declared order,
- * +STEP apart (e.g. lead: Chiuso con successo=max(custom)+10,
- * Scartato=max(custom)+20 — always last).
+ * Sequence invariant, maintained by every method here: each SYSTEM_HEAD_KEYS
+ * row in declared order starting at 0 (+STEP apart), then custom, then each
+ * SYSTEM_TAIL_KEYS row in declared order, +STEP apart (e.g. lead: Nuovo=0,
+ * custom=10,20,..., Chiuso con successo=max(custom)+10, Scartato=max(custom)
+ * +20 — always last).
  */
 class StatusOrderManager
 {
@@ -36,8 +37,8 @@ class StatusOrderManager
 
     /**
      * The `sort_order` a brand-new custom row should be created with: the
-     * last custom's order + STEP (or STEP, i.e. the tail's current first
-     * slot, when there is no custom yet). The tail rows are bumped past it
+     * last custom's order + STEP (or the first slot right after the head
+     * rows, when there is no custom yet). The tail rows are bumped past it
      * in the same transaction so they always stay last, in their declared
      * order.
      *
@@ -47,7 +48,7 @@ class StatusOrderManager
     {
         return DB::transaction(function () use ($modelClass): int {
             $lastCustomOrder = $modelClass::query()->whereNull('system_key')->max('sort_order');
-            $newOrder = $lastCustomOrder !== null ? $lastCustomOrder + self::STEP : self::STEP;
+            $newOrder = ($lastCustomOrder ?? $this->headSequenceEnd($modelClass)) + self::STEP;
 
             $this->bumpTail($modelClass, $newOrder);
 
@@ -74,24 +75,56 @@ class StatusOrderManager
         return DB::transaction(function () use ($modelClass, $orderedIds): Collection {
             $this->assertValidReorderSet($modelClass, $orderedIds);
 
-            $sortOrder = self::STEP;
+            $sortOrder = $this->placeHead($modelClass);
 
             foreach ($orderedIds as $id) {
-                $modelClass::query()->where('id', $id)->update(['sort_order' => $sortOrder]);
                 $sortOrder += self::STEP;
+
+                $modelClass::query()->where('id', $id)->update(['sort_order' => $sortOrder]);
             }
 
-            $modelClass::query()->where('system_key', $modelClass::SYSTEM_HEAD_KEY->value)->update(['sort_order' => 0]);
-            $this->bumpTail($modelClass, $sortOrder - self::STEP);
+            $this->bumpTail($modelClass, $sortOrder);
 
             return $modelClass::query()->orderBy('sort_order')->orderBy('name')->orderBy('id')->get();
         });
     }
 
     /**
+     * Places every `$modelClass::SYSTEM_HEAD_KEYS` row, in declared order,
+     * STEP apart from 0, and returns the last one's sort_order — i.e. the
+     * slot the first custom row sits STEP after.
+     *
+     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     */
+    private function placeHead(string $modelClass): int
+    {
+        $sortOrder = 0;
+
+        foreach ($modelClass::SYSTEM_HEAD_KEYS as $headKey) {
+            $modelClass::query()->where('system_key', $headKey->value)->update(['sort_order' => $sortOrder]);
+
+            $sortOrder += self::STEP;
+        }
+
+        return $sortOrder - self::STEP;
+    }
+
+    /**
+     * The sort_order the head sequence ends on, derived from its declared
+     * length alone (placeHead() guarantees the rows sit exactly there) — read
+     * by placeNew() when the table carries no custom row yet.
+     *
+     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     */
+    private function headSequenceEnd(string $modelClass): int
+    {
+        return (count($modelClass::SYSTEM_HEAD_KEYS) - 1) * self::STEP;
+    }
+
+    /**
      * Places every `$modelClass::SYSTEM_TAIL_KEYS` row, in declared order,
      * STEP apart, starting right after $lastCustomOrder (the last custom
-     * row's sort_order, or 0 when there is none).
+     * row's sort_order, or the head sequence's end when there is none).
      *
      * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
      */

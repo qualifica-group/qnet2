@@ -7,8 +7,10 @@ namespace App\Enums;
  * Pipeline statuses close on "Chiuso" (`Closed`). Opportunity statuses close
  * on "Chiuso con successo" (`Won`) plus the opportunity-only terminal row
  * "Persa" (`Lost`, ALWAYS last — App\Models\OpportunityStatus::SYSTEM_TAIL_KEYS).
- * Reward statuses (spec 0060) carry a single HEAD row instead, "In attesa"
- * (`Pending`, App\Models\RewardStatus::SYSTEM_HEAD_KEY — no tail). Contract
+ * Reward statuses (spec 0060, extended by spec 0073 D-6) carry TWO head rows,
+ * "Aperto" (`New`) and "In attesa" (`Pending`,
+ * App\Models\RewardStatus::SYSTEM_HEAD_KEYS), plus the same `Won`/`Lost`
+ * tail as the opportunity configurator. Contract
  * statuses (spec 0072, D-2) carry a HEAD row, "Da validare" (`New`), plus a
  * three-row TAIL — "Sospeso" (`Suspended`), "Annullato" (`Cancelled`),
  * "Disdetto" (`Terminated`) — App\Models\ContractStatus::SYSTEM_TAIL_KEYS, in

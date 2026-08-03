@@ -52,6 +52,17 @@ export const CONTRACT_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_
 /** One of the four fixed contract status group values. */
 export type ContractStatusGroupValue = (typeof CONTRACT_STATUS_GROUPS)[number]
 
+/**
+ * Reward statuses classify on their OWN enum (backend `App\Enums\
+ * RewardStatusGroup`, spec 0073 D-5), same anti-coupling rule as the two
+ * above. `closed_lost` is the phase the lifecycle automation moves a buono to
+ * when its originating request is closed negatively.
+ */
+export const REWARD_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
+
+/** One of the four fixed reward status group values. */
+export type RewardStatusGroupValue = (typeof REWARD_STATUS_GROUPS)[number]
+
 /** One row as reordered in the sheet: id, display name and its pin state. */
 export interface StatusReorderItem {
   id: number

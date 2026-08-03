@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { REWARD_STATUS_GROUPS } from '@/features/status-reorder/types'
 
 /**
  * Zod schema for the reward status create/edit form, built as a factory so
@@ -37,6 +38,9 @@ function baseFields(t: TFunction) {
       .string()
       .min(1, t('rewardStatuses.form.colorRequired'))
       .max(COLOR_MAX_LENGTH, t('rewardStatuses.form.colorMax')),
+    // spec 0073: the four-value phase, mirroring the backend enum 1:1. The
+    // control is disabled on a system row, whose group is fixed in migration.
+    group: z.enum(REWARD_STATUS_GROUPS, { message: t('rewardStatuses.form.groupRequired') }),
     is_active: z.boolean(),
   }
 }

@@ -80,6 +80,7 @@ export const productCategories = {
     products_count: 'Prodotti',
     business_function: 'Funzione aziendale',
     requires_quote: 'Prevede preventivo',
+    is_selectable: 'Selezionabile',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
     productsMore: '+{{count}} altri',
@@ -156,6 +157,9 @@ export const productCategories = {
       'Se attivo, questa categoria e tutte le sue sottocategorie prevedono il preventivo.',
     requiresQuoteInheritedHint:
       'Ereditato dalla categoria radice "{{category}}". Per modificarlo, agisci su quella categoria.',
+    isSelectable: 'Selezionabile',
+    isSelectableHint:
+      'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -204,6 +208,11 @@ export const products = {
     empty: 'Nessun prodotto trovato.',
     remove: 'Rimuovi prodotto',
     hintScoped: 'Solo i prodotti delle categorie di questa opportunità.',
+    // Spec 0075, D-4/D-5: la variante Gestione Richieste, dove un prodotto
+    // fuori dalle categorie della richiesta viene rifiutato, non coperto.
+    hintLocked: 'Solo i prodotti delle categorie prodotto di questa richiesta.',
+    prunedNotice:
+      'Rimossi dalla selezione, la loro categoria prodotto non è più sul record: {{names}}.',
     hintUnlocked:
       "Catalogo completo: un prodotto di un'altra categoria aggiungerà la relativa riga funzione/categoria.",
     hintNoCategories:

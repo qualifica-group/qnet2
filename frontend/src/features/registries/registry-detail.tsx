@@ -22,6 +22,7 @@ import { cardToDraft } from '@/features/personal-data/drafts'
 import type { PersonalDataFieldPermissionResolver } from '@/features/personal-data/types'
 import type { PrimaryContact } from '@/features/table/types'
 import type { ManagerRef, ReferenceRef, RegistryDetailWithPermissions } from '@/features/registries/types'
+import { formatDate } from '@/lib/formatting/date-display'
 
 /**
  * Renders the (owner-agnostic, reused unchanged) contacts/addresses managers
@@ -106,17 +107,6 @@ function personField(ref: ReferenceRef | null) {
       ))}
     </div>
   )
-}
-
-/** Formats an ISO date to a date-only, locale-aware string; blank when missing. */
-function formatDate(value: string | null): string {
-  if (!value) {
-    return ''
-  }
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? ''
-    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }
 
 interface RegistryDetailViewProps {

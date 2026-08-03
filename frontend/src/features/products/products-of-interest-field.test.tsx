@@ -114,3 +114,30 @@ describe('ProductsOfInterestField (user directive 2026-07-22)', () => {
     ).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Spec 0075, D-4 — the locked variant (request-management)
+// ---------------------------------------------------------------------------
+
+describe('ProductsOfInterestField with lockScope (spec 0075, AC-016)', () => {
+  it('offers no unlock at all: the module refuses what falls outside the scope', async () => {
+    renderField({ lockScope: true, categoryIds: [7] })
+
+    await openPicker()
+
+    expect(screen.queryByRole('button', { name: 'Show all products' })).not.toBeInTheDocument()
+    expect(
+      screen.getByText("Only products of this request's product categories."),
+    ).toBeInTheDocument()
+    expect(fetchForSelectMock).toHaveBeenCalledWith(
+      'products',
+      expect.objectContaining({ params: { category_ids: [7] } }),
+    )
+  })
+
+  it('keeps offering the unlock without it (the opportunities form)', () => {
+    renderField({ categoryIds: [7] })
+
+    expect(screen.getByRole('button', { name: 'Show all products' })).toBeInTheDocument()
+  })
+})

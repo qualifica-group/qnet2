@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CaptureCustomFields;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\SetLocale;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -38,6 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // api/* request. Pure capture (no auth logic), appended so it never
         // reorders the existing pipeline.
         $middleware->api(append: [CaptureCustomFields::class]);
+
+        // User directive 2026-08-03: the API answers in the language the
+        // client is using. PREPENDED so the locale is already set when
+        // anything downstream renders a message — a FormRequest rejecting the
+        // payload throws from the route middleware stack, before any
+        // controller runs.
+        $middleware->api(prepend: [SetLocale::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -64,7 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Generic message: never leak the internal model/definition class.
             return response()->json([
                 'success' => false,
-                'message' => 'Resource not found.',
+                'message' => __('Resource not found.'),
             ], Response::HTTP_NOT_FOUND);
         });
     })->create();

@@ -58,8 +58,13 @@ final class RequestRowMapper
             // — the 422 in TableCellUpdateService/RequestManagementService
             // stays the security net, this is the UX improvement on top of it.
             'workflow_status_options' => $this->allowedWorkflowStatusIds($row),
-            // "Categoria prodotto": aggregated product categories.
-            'product_categories' => $this->summarizeNames($row->productLines->pluck('productCategory')),
+            // "Categoria prodotto": the request's own product lines (spec
+            // 0075). Projected as the {funzione aziendale, categoria} PAIRS —
+            // ids for the inline editor to commit, names for the cell to
+            // render — and no longer as a pre-joined string: the cell is
+            // edited through the same collection the form edits, so its value
+            // must BE that collection.
+            'product_categories' => $this->productLinePairs($row),
             // "Prodotti di interesse" (user directive 2026-07-23): the same
             // projection the opportunities grid emits — the selected `{id,
             // name}` refs plus the category ids the inline editor scopes to.
@@ -73,8 +78,8 @@ final class RequestRowMapper
             // "Prossimo richiamo" (spec 0052 D-1/D-5), same wire format as
             // RequestManagementResource so FE date parsing stays identical.
             'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
-            // Hidden column, drives the default "recently worked first" sort only.
-            'updated_at' => $row->updated_at,
+            // Hidden column, drives the default "most recently loaded first" sort only.
+            'created_at' => $row->created_at,
         ];
     }
 
@@ -181,16 +186,25 @@ final class RequestRowMapper
     }
 
     /**
-     * Display value for the AGGREGATED to-many `product_categories` column:
-     * the distinct related names, comma-joined — null when there is none
-     * (mirrors OpportunitiesTableDefinition::summarizeNames).
+     * The `product_categories` column's value (spec 0075): one entry per
+     * persisted product line, carrying BOTH ids (what the inline editor
+     * commits, and what PATCH /rows expects) and both names (what the cell
+     * renders, and what the editor labels its chips with). A line whose
+     * relation is missing is skipped rather than projected half-empty.
      *
-     * @param  Collection<int, Model|null>  $related
+     * @return array<int, array{business_function_id: int, business_function_name: string, product_category_id: int, product_category_name: string}>
      */
-    private function summarizeNames(Collection $related): ?string
+    private function productLinePairs(Opportunity $row): array
     {
-        $names = $related->filter()->pluck('name')->unique()->values();
-
-        return $names->isEmpty() ? null : $names->implode(', ');
+        return $row->productLines
+            ->filter(static fn ($line): bool => $line->businessFunction !== null && $line->productCategory !== null)
+            ->map(static fn ($line): array => [
+                'business_function_id' => (int) $line->business_function_id,
+                'business_function_name' => (string) $line->businessFunction->name,
+                'product_category_id' => (int) $line->product_category_id,
+                'product_category_name' => (string) $line->productCategory->name,
+            ])
+            ->values()
+            ->all();
     }
 }

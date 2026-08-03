@@ -3,6 +3,7 @@
 namespace App\Http\Requests\RewardStatuses;
 
 use App\DataObjects\RewardStatuses\CreateRewardStatusData;
+use App\Enums\RewardStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,9 @@ use Illuminate\Validation\Rule;
  * via authorize('create', RewardStatus::class)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null). `name` is unique (BR-1). `color` is
- * REQUIRED (D-4, BR-2). `sort_order`/`system_key` are not accepted here
+ * REQUIRED (D-4, BR-2); `group` is REQUIRED too (spec 0073, D-5): a custom
+ * status must declare its phase, there is no safe default to infer.
+ * `sort_order`/`system_key` are not accepted here
  * (absent from rules() -> validated() silently drops them, "unknown field
  * ignorato") — server-managed, see App\Services\Statuses\StatusOrderManager.
  */
@@ -39,6 +42,7 @@ class StoreRewardStatusRequest extends FormRequest
             'name' => ['required', 'string', 'max:191', Rule::unique('reward_statuses', 'name')],
             'description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'color' => ['required', 'string', 'max:32'],
+            'group' => ['required', Rule::enum(RewardStatusGroup::class)],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

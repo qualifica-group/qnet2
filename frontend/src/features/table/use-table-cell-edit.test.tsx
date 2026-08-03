@@ -232,6 +232,57 @@ describe('useTableCellEdit', () => {
     )
   })
 
+  // Spec 0075 AC-015: a `product_lines` cell value is a collection of PAIRS —
+  // only its `*_id` keys travel, and two equal collections never PATCH even
+  // though the editor rebuilds the array on every pick.
+  it('sends a product_lines cell as its id pairs, dropping the labels', async () => {
+    const pair = (categoryId: number, categoryName: string) => ({
+      business_function_id: 3,
+      business_function_name: 'Energia',
+      product_category_id: categoryId,
+      product_category_name: categoryName,
+    })
+    updateTableCellMock.mockResolvedValue(row({ product_categories: [pair(9, 'Gas')] }))
+
+    const { result } = renderHook(() => useTableCellEdit('request-management', []), { wrapper: wrapper() })
+    const event = cellValueChangedEvent({
+      colId: 'product_categories',
+      data: row({ product_categories: [pair(7, 'Luce')] }),
+      oldValue: [pair(7, 'Luce')],
+      newValue: [pair(9, 'Gas')],
+    })
+
+    act(() => result.current.handleCellValueChanged(event))
+
+    await waitFor(() =>
+      expect(updateTableCellMock).toHaveBeenCalledWith('request-management', 7, {
+        column: 'product_categories',
+        value: [{ business_function_id: 3, product_category_id: 9 }],
+      }),
+    )
+  })
+
+  it('does nothing for a product_lines collection that comes back identical', () => {
+    const pair = {
+      business_function_id: 3,
+      business_function_name: 'Energia',
+      product_category_id: 7,
+      product_category_name: 'Luce',
+    }
+
+    const { result } = renderHook(() => useTableCellEdit('request-management', []), { wrapper: wrapper() })
+    const event = cellValueChangedEvent({
+      colId: 'product_categories',
+      data: row({ product_categories: [pair] }),
+      oldValue: [pair],
+      newValue: [{ ...pair }],
+    })
+
+    act(() => result.current.handleCellValueChanged(event))
+
+    expect(updateTableCellMock).not.toHaveBeenCalled()
+  })
+
   describe('requires_note dialog (spec 0054 D-5)', () => {
     it('holds back the PATCH and opens the note dialog for a value that requires one', () => {
       const { result } = renderHook(

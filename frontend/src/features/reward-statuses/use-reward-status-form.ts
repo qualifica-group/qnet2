@@ -23,7 +23,7 @@ import type {
 } from '@/features/reward-statuses/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */
-const SERVER_ERROR_FIELDS = ['name', 'description', 'color', 'is_active'] as const
+const SERVER_ERROR_FIELDS = ['name', 'description', 'color', 'group', 'is_active'] as const
 
 export type RewardStatusFormValues = CreateRewardStatusFormValues & UpdateRewardStatusFormValues
 
@@ -56,10 +56,13 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
         name: mode.rewardStatus.name,
         description: mode.rewardStatus.description,
         color: mode.rewardStatus.color,
+        group: mode.rewardStatus.group,
         is_active: mode.rewardStatus.is_active,
       }
     }
-    return { name: '', description: null, color: '', is_active: true }
+    // A brand-new buono status starts on the open phase, the same default the
+    // backend column carries (spec 0073).
+    return { name: '', description: null, color: '', group: 'open', is_active: true }
   }, [mode])
 
   const form = useForm<RewardStatusFormValues>({

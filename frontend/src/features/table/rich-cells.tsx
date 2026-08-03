@@ -3,6 +3,7 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { Check, X, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
+import { formatDate } from '@/lib/formatting/date-display'
 import { Badge } from '@/components/ui/badge'
 import {
   BADGE_BASE,
@@ -144,20 +145,15 @@ export function CodeBadgeCell({ value }: ICellRendererParams) {
   )
 }
 
-/** A `Y-m-d` date (no time part), localized, digit-aligned. Left-aligned as before. */
+/** A `Y-m-d` date (no time part) in the user's pattern, digit-aligned. Left-aligned as before. */
 export function DateCell({ value }: ICellRendererParams) {
-  if (typeof value !== 'string' || value === '') {
+  const formatted = formatDate(value)
+
+  if (formatted === '') {
     return <EmptyCell align="left" />
   }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return <EmptyCell align="left" />
-  }
-  return (
-    <span className="tabular-nums text-foreground">
-      {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(date)}
-    </span>
-  )
+
+  return <span className="tabular-nums text-foreground">{formatted}</span>
 }
 
 /** A decimal money value, digit-aligned with a touch more weight for hierarchy. */

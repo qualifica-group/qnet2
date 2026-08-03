@@ -155,6 +155,15 @@ trait ResolvesColumnConfig
             if (isset($column['relation']['scope'])) {
                 $resolved['relation']['scope'] = $column['relation']['scope'];
             }
+
+            // Spec 0075, D-4: the scope above is a DEFAULT the editor may let
+            // the operator lift; `lockScope` says this domain refuses what is
+            // outside it, so the escape must not be offered at all. Emitted
+            // only when declared, so every other relation column stays
+            // byte-identical.
+            if (($column['relation']['lockScope'] ?? false) === true) {
+                $resolved['relation']['lockScope'] = true;
+            }
         }
 
         return $resolved;

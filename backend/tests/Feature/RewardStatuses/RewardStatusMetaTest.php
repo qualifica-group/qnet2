@@ -43,7 +43,7 @@ it('200: field catalogue is [name, description, color, is_active], in this froze
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['name', 'description', 'color', 'is_active']);
+    expect($keys)->toBe(['name', 'description', 'color', 'group', 'is_active']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['name']['mandatory'])->toBeTrue()
@@ -52,6 +52,8 @@ it('200: field catalogue is [name, description, color, is_active], in this froze
         ->and($fields['description']['type'])->toBe('textarea')
         ->and($fields['color']['mandatory'])->toBeTrue()
         ->and($fields['color']['type'])->toBe('color')
+        ->and($fields['group']['mandatory'])->toBeTrue()
+        ->and($fields['group']['type'])->toBe('select')
         ->and($fields['is_active']['mandatory'])->toBeFalse()
         ->and($fields['is_active']['type'])->toBe('boolean');
 

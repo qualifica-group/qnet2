@@ -83,6 +83,7 @@ function category(
     business_function: null,
     effective_business_function: null,
     requires_quote_source_category: null,
+    is_selectable: true,
     permissions: permissivePermissions(),
     ...overrides,
   }
@@ -179,5 +180,43 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
     // Scoped by accessible name: the identity section carries its own,
     // unrelated switch (the quote flag), which a bare role query would count.
     expect(screen.queryAllByRole('switch', { name: 'Inherit from parent' })).toHaveLength(0)
+  })
+})
+
+describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
+  it('create mode: the switch is on by default and can be turned off (AC-014)', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
+    expect(selectableSwitch).toBeChecked()
+
+    fireEvent.click(selectableSwitch)
+
+    await waitFor(() => expect(selectableSwitch).not.toBeChecked())
+  })
+
+  it('edit mode: the switch mirrors the saved value, with no parent-driven read-only state', async () => {
+    render(
+      <ProductCategoryForm
+        mode={{
+          type: 'edit',
+          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_selectable: false }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
+    expect(selectableSwitch).not.toBeChecked()
+    // Unlike the quote flag, this one is never inherited: a child still edits it.
+    expect(selectableSwitch).toBeEnabled()
   })
 })

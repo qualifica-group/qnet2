@@ -33,6 +33,11 @@ class ProductForSelectResource extends ForSelectResource
             'label' => $this->name,
             'subtitle' => $this->category?->name,
             'meta' => [
+                // Spec 0075, D-5: the picker's own consumers need the category
+                // as an ID, not only as the human `subtitle` — the
+                // request-management forms drop a selected product as soon as
+                // its category leaves the request's product lines.
+                'category_id' => $this->category_id,
                 'code' => $this->code,
                 'price' => $this->price,
                 'cost' => $this->cost,

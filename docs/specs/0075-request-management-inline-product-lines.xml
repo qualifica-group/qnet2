@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0075-request-management-inline-product-lines" status="approved" owner="nicola" date="2026-08-03">
+
+  <goal>
+    Due cose, una sola feature (direttiva utente 2026-08-03).
+
+    (1) La colonna "Categoria prodotto" della griglia Gestione Richieste diventa EDITABILE INLINE,
+    con lo STESSO FLUSSO del form: non si scrive una stringa di categorie, si edita la collezione
+    `product_lines` — coppie {funzione aziendale, categoria prodotto} — esattamente come fa
+    `ProductLinesField` nel pannello di lavoro e nel form di creazione, passando per le stesse
+    identiche regole server.
+
+    (2) Il legame funzione aziendale -> categoria prodotto -> prodotto di interesse non deve MAI
+    poter restare scollegato, ne' sul form ne' sulla tabella: ogni canale di scrittura applica
+    tutti i check, e le UI non offrono piu' scelte che il server rifiuterebbe.
+  </goal>
+
+  <context>
+    <!-- Nomi VERIFICATI sul codice reale (ricognizione 2026-08-03), non ipotizzati. -->
+
+    <stato_attuale>
+      Colonna `product_categories` (`RequestColumnCatalog::columns()`): AGGREGATED to-many via
+      `productLines.productCategory`, filtrabile (set), mai ordinabile, e DICHIARATA NON EDITABILE
+      (spec 0055: "writing it would mean creating/deleting `opportunity_product_lines` rows, which
+      is a work-panel concern, not a cell one"). `RequestRowMapper::map()` la proietta come stringa
+      di nomi separati da virgola (`summarizeNames`).
+
+      Le regole delle linee di prodotto vivono OGGI solo nel layer FormRequest
+      (`Http/Requests/Concerns/ValidatesProductLines`): per-riga `exists` sulla funzione aziendale +
+      `App\Rules\SelectableProductCategory` sulla categoria (spec 0074, con esenzione per le
+      categorie gia' persistite), cross-riga coppia non duplicata e categoria appartenente ESATTAMENTE
+      alla funzione aziendale della riga (`CategoryHierarchy::effectiveBusinessFunction`). Il canale
+      inline (`TableCellUpdateService` -> `RequestManagementTableDefinition::updateCell()` ->
+      `RequestManagementService::updateWork()`) non passa da nessuna FormRequest: oggi non
+      raggiungerebbe nessuna di quelle regole.
+
+      LA REGOLA DI COERENZA prodotti/categorie (`RequestProductCategoryCoherence`, direttiva
+      2026-07-31) e' invece gia' condivisa dai due canali: `updateWork()` step 2-bis la esegue su
+      quello che la scrittura LASCIA persistito, quindi vale anche per l'inline edit dei prodotti.
+
+      Lato UI la coerenza e' oggi solo "suggerita": `ProductsOfInterestField` (form) e
+      `MultiSelectCellEditor` (griglia) filtrano le opzioni sulle categorie della richiesta, ma
+      offrono entrambi lo SBLOCCO dell'intero catalogo — che in questo modulo porta a una scelta che
+      il server RIFIUTA (in Opportunita' no: li' la linea mancante viene aggiunta). E togliendo una
+      categoria dal form, i prodotti gia' selezionati che le appartenevano restano selezionati fino
+      al 422.
+    </stato_attuale>
+
+    <invariante>
+      Una coppia {funzione aziendale, categoria} e' valida se e solo se
+      `effectiveBusinessFunction(categoria)` e' esattamente quella funzione. La funzione aziendale
+      e' quindi ridondante rispetto alla categoria: resta esplicita perche' e' il flusso del form
+      (si sceglie la funzione, poi la categoria filtrata da quella) e perche' e' il contratto gia'
+      congelato di `product_lines`. Nessun canale la deriva di nascosto.
+    </invariante>
+  </context>
+
+  <decisions>
+    <d id="D-1" title="Una sola definizione delle regole delle linee di prodotto">
+      Le regole per-riga e cross-riga escono dal trait FormRequest e diventano
+      `App\Services\ProductLines\ProductLineSetValidator`, con due superfici:
+      `rules()`/`crossRowErrors()` per chi ha una FormRequest (invariati messaggi e chiavi
+      `product_lines.<i>.<campo>`), `assert()` per chi non ce l'ha. `ValidatesProductLines` delega,
+      non duplica. Motivo: il canale inline non ha FormRequest, e due copie della stessa regola
+      divergono al primo cambiamento.
+    </d>
+
+    <d id="D-2" title="Il punto di applicazione condiviso e' il writer, non la richiesta">
+      `RequestProductLineWriter::apply()` chiama `assert()` PRIMA di sincronizzare, e solo quando
+      l'insieme e' effettivamente CAMBIATO (una PATCH che rimanda le stesse coppie non puo' fallire,
+      stessa semantica dell'esenzione 0074 D-3b). Cosi' i due canali (pannello e cella) passano dallo
+      stesso identico controllo, come gia' fa `RequestWorkflowStatusWriter` per lo stato di
+      lavorazione. Le categorie esenti sono quelle gia' persistite sulla richiesta.
+    </d>
+
+    <d id="D-3" title="La cella e' un editor di COPPIE, non di categorie">
+      Colonna `product_categories`: `editable: true`, `editor: 'product_lines'`,
+      `editableField: 'product_lines'` (chiave gia' presente in `RequestManagementAuthorization`,
+      `mandatory: true` -> lo step 4.5 di `TableCellUpdateService` rifiuta gia' `[]`). Il valore
+      della cella diventa la lista di coppie con le rispettive etichette; `CellValueValidator`
+      esegue il solo controllo STRUTTURALE (stesso precedente documentato di `editor: 'select'`: la
+      regola di dominio sta nell'override `updateCell()`, qui in D-2).
+      NON si e' scelta la scorciatoia "multiselect di categorie con funzione aziendale derivata":
+      la direttiva dice "stesso flusso del form", e derivare in silenzio un campo del contratto
+      congelato e' esattamente il tipo di divergenza che questa spec chiude.
+    </d>
+
+    <d id="D-4" title="Niente sblocco del catalogo dove il server rifiuta">
+      In Gestione Richieste (form E griglia) il picker "Prodotti di interesse" perde il pulsante di
+      sblocco: offrirlo significa proporre una scelta che `RequestProductCategoryCoherence`
+      rifiuta. Resta invariato in Opportunita', dove lo sblocco ha una semantica reale (la linea
+      mancante viene aggiunta). Il flag viaggia dichiarativamente: `relation.lockScope` sulla
+      colonna condivisa, prop `lockScope` sul campo condiviso.
+    </d>
+
+    <d id="D-5" title="Togliere una categoria dal form pota i prodotti che restavano scollegati">
+      Sul form (pannello e creazione), quando l'insieme delle categorie cambia, i prodotti di
+      interesse gia' scelti che non appartengono piu' a nessuna categoria vengono RIMOSSI dalla
+      selezione, con avviso in chiaro dei nomi rimossi. Stesso precedente gia' in casa:
+      `useProductLinesField::setRowBusinessFunction` azzera la categoria quando cambia la funzione.
+      Serve conoscere la categoria di ogni prodotto selezionato: `ProductForSelectResource` espone
+      `meta.category_id` (additivo, nessuna chiave esistente cambia).
+    </d>
+
+    <d id="D-6" title="L'editor di cella avvisa prima del 422, non lo sostituisce">
+      Togliendo in cella una categoria che copre prodotti di interesse gia' collegati, l'editor
+      mostra l'avviso con i prodotti coinvolti (la riga proietta la categoria di ciascun prodotto).
+      Il rifiuto autorevole resta il 422 del server: l'avviso e' anticipatorio.
+    </d>
+  </decisions>
+
+  <data_contract>
+    <![CDATA[
+    GET /api/tables/request-management/columns
+      product_categories: { editable: true, editor: 'product_lines', editableField: 'product_lines',
+                            sortable: false, filterable: true, filterType: 'set' }
+      products_of_interest: { ..., relation: { resource: 'products', scope: {...}, lockScope: true } }
+
+    POST /api/tables/request-management/rows -> row
+      product_categories: [ { business_function_id, business_function_name,
+                              product_category_id, product_category_name } ]   // ERA: stringa
+      products_of_interest: [ { id, name, category_id } ]                      // category_id additivo
+
+    PATCH /api/tables/request-management/rows/{row}
+      { column: 'product_categories',
+        value: [ { business_function_id: int, product_category_id: int } ] }   // >= 1 riga
+
+    GET /api/products/for-select
+      items[].meta.category_id: int|null                                       // additivo
+    ]]>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">GET /columns: `product_categories` e' `editable` con `editor: 'product_lines'` e `editableField: 'product_lines'`; resta non ordinabile e filtrabile set.</ac>
+    <ac id="AC-002">PATCH della cella con una coppia valida sostituisce le linee di prodotto della richiesta e la riga restituita riporta le nuove coppie.</ac>
+    <ac id="AC-003">PATCH con una categoria che non appartiene alla funzione aziendale della riga -> 422, nessuna scrittura.</ac>
+    <ac id="AC-004">PATCH con una categoria non selezionabile (spec 0074) -> 422; una categoria non selezionabile GIA' persistita sulla richiesta resta accettata se rimandata invariata.</ac>
+    <ac id="AC-005">PATCH con la stessa coppia ripetuta -> 422.</ac>
+    <ac id="AC-006">PATCH con `[]` -> 422 (campo obbligatorio), la richiesta resta classificata.</ac>
+    <ac id="AC-007">PATCH che lascerebbe scoperto un prodotto di interesse gia' collegato -> 422 con il messaggio di `RequestProductCategoryCoherence`, nessuna scrittura.</ac>
+    <ac id="AC-008">Senza `request-management.update` la colonna e' read-only e la PATCH e' 403.</ac>
+    <ac id="AC-009">Il pannello di lavoro (PATCH /api/request-management/{id}) continua a rifiutare esattamente gli stessi casi con le stesse chiavi di errore `product_lines.<i>.<campo>`.</ac>
+    <ac id="AC-010">Un cambio di linee che cambia il workflow risolto continua a riassegnare lo stato (step 6 di `updateWork`), anche dal canale inline.</ac>
+    <ac id="AC-011">`products_of_interest` della riga porta `category_id` per prodotto; la colonna dichiara `relation.lockScope`.</ac>
+    <ac id="AC-012">`GET /products/for-select` porta `meta.category_id`.</ac>
+    <ac id="AC-013">(FE) L'editor di cella elenca le coppie correnti, ne rimuove una, e ne aggiunge una scegliendo prima la funzione aziendale e poi la categoria filtrata da quella.</ac>
+    <ac id="AC-014">(FE) L'editor avvisa quando la rimozione di una categoria lascerebbe scollegato un prodotto di interesse.</ac>
+    <ac id="AC-015">(FE) Il valore committato viaggia come lista di sole coppie di id; una selezione identica non emette PATCH.</ac>
+    <ac id="AC-016">(FE) In Gestione Richieste il picker dei prodotti non offre lo sblocco del catalogo (form e cella); in Opportunita' lo offre come prima.</ac>
+    <ac id="AC-017">(FE) Rimuovendo una categoria dal form, i prodotti che le appartenevano escono dalla selezione con avviso dei nomi rimossi.</ac>
+  </acceptance_criteria>
+
+  <out_of_scope>
+    La griglia Opportunita' non diventa editabile sulle linee di prodotto (nessuna richiesta): la
+    colonna condivisa cambia solo per il flag `lockScope`, che li' resta assente.
+  </out_of_scope>
+
+</spec>

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import i18n from '@/i18n'
+import { formatDate } from '@/lib/formatting/date-display'
 import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
 import { ContractDetailView } from '@/features/contracts/contract-detail'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
@@ -161,7 +162,7 @@ beforeEach(() => {
  * test runner's timezone (a date-only ISO string parses as UTC midnight).
  */
 function formatExpectedDate(value: string): string {
-  return new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value))
+  return formatDate(value)
 }
 
 describe('ContractDetailView — fields (AC-043)', () => {

@@ -20,7 +20,8 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  *    engine, display-only (this module never writes it).
  *  - `product_categories` ("Categoria prodotto") — AGGREGATED
  *    to-many via `productLines.productCategory`, filterable (set) but never
- *    sortable (no single related row to order by).
+ *    sortable (no single related row to order by), and inline-editable
+ *    (spec 0075) through the `product_lines` collection it projects.
  *  - `operator_ga2` ("Operatore") — the Account Manager at pivot position 2
  *    (GA2), display-only.
  *  - `workflow_status` ("Stato di lavorazione") — the related working-state
@@ -38,7 +39,7 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  *    column right after it.
  * All derived/anagraphic values are resolved by
  * RequestManagementTableDefinition::mapRow() from eager-loaded relations. A
- * hidden `updated_at` column exists solely to back the default sort.
+ * hidden `created_at` column exists solely to back the default sort.
  */
 final class RequestColumnCatalog
 {
@@ -70,16 +71,33 @@ final class RequestColumnCatalog
                 'editableField' => 'source_id',
                 'relation' => ['resource' => 'sources'],
             ],
-            // Deliberately NOT editable (spec 0055, user decision): writing it
-            // would mean creating/deleting `opportunity_product_lines` rows,
-            // which is a work-panel concern, not a cell one.
-            self::aggregatedColumn('product_categories', 'requestManagement.columns.productCategory'),
+            // Inline-editable (user directive 2026-08-03, spec 0075 D-3 —
+            // REVERSING spec 0055's "work-panel concern" call): the cell edits
+            // the `product_lines` collection itself, in the SAME flow as the
+            // form (a business function, then a category scoped by it), never
+            // a free string of category names. `editableField` remaps both the
+            // permission key and the written field onto `product_lines`, the
+            // key RequestManagementAuthorization already owns as mandatory —
+            // so clearing the classification in-cell is refused by the generic
+            // engine's own required-field step, and every OTHER rule of the
+            // set is enforced by RequestProductLineWriter, the one writer both
+            // channels reach.
+            [
+                ...self::aggregatedColumn('product_categories', 'requestManagement.columns.productCategory'),
+                'editable' => true,
+                'editor' => 'product_lines',
+                'editableField' => 'product_lines',
+            ],
             // User directive 2026-07-23: the SAME "Prodotti di interesse"
             // column the opportunities grid declares (shared declaration), and
             // — unlike `product_categories` above — inline-editable: the
             // collection is a first-class operative field here, written through
             // updateWork() like every other cell of this domain.
-            ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest'),
+            // `lockScope` (spec 0075, D-4): this module refuses a product
+            // outside the request's own categories instead of covering it with
+            // a new product line, so the in-cell picker never offers the
+            // whole-catalogue escape the opportunities grid keeps.
+            ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest', lockScope: true),
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own `general_notes` free text, right beside the products the
             // operator reads it against. A REAL DB column, so sorting and the
@@ -204,11 +222,12 @@ final class RequestColumnCatalog
             ],
             [
                 // Hidden: not shown, but a real sortable DB column so the
-                // default "recently worked first" ordering (defaultSort)
+                // default "most recently loaded first" ordering (defaultSort,
+                // user directive 2026-08-03: intake order, NOT last-touched)
                 // resolves against a valid catalogue column — the generic
                 // engine 422s an unknown sort colId.
-                'id' => 'updated_at',
-                'label' => 'requestManagement.columns.updatedAt',
+                'id' => 'created_at',
+                'label' => 'requestManagement.columns.createdAt',
                 'type' => 'datetime',
                 'visible' => false,
                 'sortable' => true,

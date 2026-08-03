@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -35,6 +35,10 @@ class ProductCategory extends BaseModel
             // RequiresQuoteInheritance — a child's own column is never
             // authored directly, it only ever reflects its root's.
             'requires_quote' => 'boolean',
+            // Spec 0074 — owned by THIS node and never inherited (unlike
+            // requires_quote): a container category can be unselectable while
+            // its children stay selectable, which is the whole point.
+            'is_selectable' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for a
             // migrated category, guarded (not in #[Fillable]) so it is only ever
             // set by property assignment post-create. Also the remap key for the

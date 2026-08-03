@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { formatDateTime } from '@/lib/formatting/date-display'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/lib/utils'
@@ -30,7 +31,7 @@ export interface NoteItemProps {
  * mounted at the app root in `App.tsx`).
  */
 export function NoteItem({ note, entityType, entityId, isRoot, isReplying, onToggleReply }: NoteItemProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const confirm = useConfirm()
   const deleteNote = useDeleteNote(entityType, entityId)
   const [isEditing, setIsEditing] = useState(false)
@@ -85,7 +86,7 @@ export function NoteItem({ note, entityType, entityId, isRoot, isReplying, onTog
           <div className="mb-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-sm font-semibold text-foreground">{note.author.name}</span>
             <span className="text-[11px] text-muted-foreground">
-              {formatDateTime(note.created_at, i18n.language)}
+              {formatDateTime(note.created_at)}
             </span>
             {note.edited_at ? (
               <span className="rounded-sm bg-muted px-1 py-px text-[10px] text-muted-foreground">
@@ -132,13 +133,4 @@ export function NoteItem({ note, entityType, entityId, isRoot, isReplying, onTog
       </div>
     </div>
   )
-}
-
-/** Locale-aware date + time, mirroring `ActivityLogSection`'s formatter — no date library (constraint). */
-function formatDateTime(value: string, language: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }

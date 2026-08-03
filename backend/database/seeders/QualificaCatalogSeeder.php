@@ -25,7 +25,12 @@ use Illuminate\Database\Seeder;
  *   - the reward type catalogue (spec 0058): the voucher/reward types in use;
  *   - the reference category catalogue (spec 0017): a two-root category tree
  *     (Formazione / Consulenza) with its subcategories and the regional
- *     declinations under GOL. The "Formazione" branch also carries its
+ *     declinations under GOL. The first TWO levels — the two roots and every
+ *     subcategory under them — are seeded as CONTAINERS (`is_selectable =
+ *     false`, spec 0074): they group the tree and hand their attributes down,
+ *     while products, opportunity lines, projects, campaigns and commission
+ *     rules are only ever classified on the third level, today the
+ *     `GOL - <Regione>` rows alone. The "Formazione" branch also carries its
  *     product-context attributes (spec 0061) — "Ore complessive" and the
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
@@ -102,10 +107,16 @@ class QualificaCatalogSeeder extends Seeder
 
     /**
      * The client's reference category catalogue (spec 0017): root category =>
-     * (subcategory => list of leaf children, empty when the subcategory is
-     * itself a leaf). The tree has no depth limit. Names are user-facing
-     * domain values, kept in their original language, and are the natural
-     * keys used for idempotent `firstOrCreate` on re-run.
+     * (subcategory => list of leaf children, empty when nothing is classified
+     * under that subcategory yet). The tree has no depth limit. Names are
+     * user-facing domain values, kept in their original language, and are the
+     * natural keys used for idempotent `firstOrCreate` on re-run.
+     *
+     * The first two levels are CONTAINERS (spec 0074, user directive
+     * 2026-08-03): only the third level is a classification target, so today
+     * the sole selectable nodes are the `GOL - <Regione>` rows. An empty child
+     * list therefore means "no target seeded under this subcategory yet" — the
+     * children added there tomorrow become the selectable ones.
      *
      * @var array<string, array<string, list<string>>>
      */
@@ -275,10 +286,16 @@ class QualificaCatalogSeeder extends Seeder
     private function seedCatalog(): void
     {
         foreach (self::CATALOG as $rootName => $subcategories) {
-            $root = ProductCategory::firstOrCreate(['name' => $rootName], ['parent_id' => null]);
+            // A root always parents subcategories, so it is a container by
+            // construction (spec 0074): never a classification target.
+            $root = $this->seedCatalogCategory($rootName, null, isContainer: true);
 
             foreach ($subcategories as $subName => $childNames) {
-                $subcategory = ProductCategory::firstOrCreate(['name' => $subName], ['parent_id' => $root->id]);
+                // A subcategory is a container TOO, whether or not it already
+                // has children (user directive 2026-08-03): the catalogue
+                // classifies on its third level, so an empty child list means
+                // "no target seeded here yet", not "this node is the target".
+                $subcategory = $this->seedCatalogCategory($subName, $root->id, isContainer: true);
                 $this->seedCatalogChildren($subcategory, $childNames);
             }
         }
@@ -297,8 +314,36 @@ class QualificaCatalogSeeder extends Seeder
     private function seedCatalogChildren(ProductCategory $parent, array $childNames): void
     {
         foreach ($childNames as $childName) {
-            ProductCategory::firstOrCreate(['name' => $childName], ['parent_id' => $parent->id]);
+            $this->seedCatalogCategory($childName, $parent->id, isContainer: false);
         }
+    }
+
+    /**
+     * One catalogue node, idempotent on `name` (the catalogue's natural key).
+     *
+     * A CONTAINER node (spec 0074: a category that only groups subcategories)
+     * has its `is_selectable` REALIGNED on every run, not just written at
+     * creation: an installation seeded before the flag existed must actually
+     * see its mother categories stop being classification targets, which a
+     * plain `firstOrCreate` would silently skip.
+     *
+     * A leaf is only ever given the default on creation and never realigned —
+     * the catalogue declares which nodes are containers, it does not claim
+     * authority over an operator's decision to retire a leaf.
+     */
+    private function seedCatalogCategory(string $name, ?int $parentId, bool $isContainer): ProductCategory
+    {
+        /** @var ProductCategory $category */
+        $category = ProductCategory::firstOrCreate(
+            ['name' => $name],
+            ['parent_id' => $parentId, 'is_selectable' => ! $isContainer],
+        );
+
+        if ($isContainer && $category->is_selectable) {
+            $category->update(['is_selectable' => false]);
+        }
+
+        return $category;
     }
 
     /**

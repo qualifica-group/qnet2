@@ -3,6 +3,407 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED FAKE SOLO SU CATEGORIE SELEZIONABILI (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: i dati fabbricati della catena Qualifica (e dei Demo) devono classificarsi
+SOLO su categorie `is_selectable = true` (spec 0074). Prima non era vero: il catalogo cliente
+seeda i primi due livelli come CONTAINER (`Formazione`, `GOL`, `Autofinanziato`...), quindi le
+opportunita' di esempio finivano su righe che `App\Rules\SelectableProductCategory` rifiuta —
+deal non ri-sottomettibili dal loro stesso form.
+
+Due soli file toccati, entrambi trait condivisi (nessun seeder modificato uno per uno):
+- `database/seeders/Concerns/PicksDemoOffers.php` — un'"offerta" ora richiede anche la
+  selezionabilita', e il filtro vale DUE volte: sulla categoria della riga E sulla categoria su
+  cui e' schedato il prodotto estratto. Il secondo filtro non e' cosmetico:
+  `OpportunityProductLineCoverage` aggiunge una riga per la categoria PROPRIA di ogni prodotto di
+  interesse, quindi pescare un prodotto filed su `Autofinanziato` rimetterebbe il container sul
+  deal dalla porta di servizio. Copre QualificaSampleOpportunitySeeder, DemoOpportunitySeeder,
+  DemoQuoteSeeder.
+- `database/seeders/Concerns/ResolvesCategoryBusinessFunction.php` — le coppie coerenti scartano
+  i container. Copre QualificaSampleLeadSeeder (il progetto porta la coppia da cui
+  `LeadOpportunityDefaultsResolver` deriva la product line del lead convertito), DemoProjectSeeder,
+  DemoCampaignSeeder.
+
+Conseguenza da conoscere: se in un'installazione le uniche categorie con prodotto sono container,
+i seeder di esempio si auto-skippano con warn invece di produrre dati invalidi. Sul catalogo
+Qualifica restano offerte solo i `GOL - <Regione>` (terzo livello), e i corsi autofinanziati
+schedati su `Autofinanziato` non entrano piu' nelle opportunita' fake finche' quella categoria
+resta un container.
+
+**Verifica**: pest — `tests/Feature/Seeding` + i 3 test dei seeder Demo (opportunity/quote/
+lifecycle) 62/62, `ClassificationCoherencePairingTest` + `QualificaSampleOpportunitySeederTest`
+8/8, `DemoRegistrySeederTest` 4/4; `pint --dirty` pulito. Test nuovi: 1 sul trait delle coppie
+(container scartato, figlio selezionabile tenuto), 2 su QualificaSampleOpportunitySeeder (skip se
+l'unica categoria con prodotto e' un container; nessuna riga su categoria non selezionabile).
+
+## FORMATO DATA/ORA PER UTENTE (2026-08-03) — VERDE, NON COMMITTATO
+
+Preferenza per-utente in Impostazioni -> Impostazioni sistema: `date_format` (`dmy` default /
+`mdy` / `ymd`) e `time_format` (`24h` default / `12h`). Due colonne string nullable su `users`,
+lette/scritte dal GIA' esistente GET/PATCH `/api/auth/me` — nessun endpoint nuovo, stessa
+disciplina di `locale`/`ui_scale`, default serializzati da `UserResource` (mai null sul filo).
+
+**Il punto che fa capire tutto il diff: il formatter e' UNO SOLO ed e' `frontend/src/lib/formatting/date-display.ts`.**
+Prima esistevano 16 copie private di `formatDate`/`formatDateTime`, ognuna con la sua
+`Intl.DateTimeFormat`, e 4 di queste formattavano sul locale del BROWSER invece che su quello
+dell'app (`registry-detail`, `opportunity-detail-header`, `request-work-summary`,
+`attachment-tile`). Ora tutte importano dal modulo unico. `features/table/cell-renderers.tsx`
+RI-ESPORTA `formatDateTime`/`formatDateTimeOptionalTime` dal lib: i ~30 detail panel che le
+importavano da li' non sono stati toccati. Se aggiungi un punto che mostra una data, importa dal
+lib — non riscrivere un `Intl.DateTimeFormat`.
+
+**I pattern si compongono a mano, NON con `Intl.DateTimeFormat`** (che sceglierebbe il formato in
+base alla lingua UI, scavalcando la scelta esplicita dell'utente). Il progetto non ha librerie
+date (`date-fns`/`dayjs` NON esistono): vincolo confermato, non introdurle.
+
+**Due trappole risolte dentro `toDate()`/il provider, da non reintrodurre:**
+1. una `Y-m-d` nuda passata a `new Date()` viene letta come mezzanotte UTC e a ovest di Greenwich
+   rende il GIORNO PRIMA. Il lib la forza a mezzanotte locale. Prima solo
+   `commission-configuration-detail` lo faceva giusto.
+2. `DateDisplayProvider` (in `App.tsx`, dentro `AuthProvider`) scrive la preferenza in fase di
+   RENDER, non in un effect: i formatter sono funzioni piane lette dai cell renderer di AG Grid
+   mentre i figli dipingono, e un effect arriverebbe un frame tardi. Inoltre il sottoalbero e'
+   keyed su `${dateFormat}-${timeFormat}`, cosi' cambiare preferenza rimonta le date gia' a
+   schermo — i formatter non sono hook, non c'e' altro a cui React possa iscriversi.
+
+**Limite noto (nativo del browser, non aggirabile):** gli `<input type="date">` (form, editor
+inline `datetime-cell-editor`, filtri avanzati) e il date picker di `agDateColumnFilter` rendono
+nel formato del SISTEMA OPERATIVO. La preferenza vale sulla VISUALIZZAZIONE, non sui widget di
+input. Non provare a "sistemarli" senza cambiare tipo di controllo.
+
+**Fuori scope, lasciato apposta:** `features/stats/format-trend-label.ts` formatta un'etichetta
+`YYYY-MM` ("ago 2026") per l'asse dei grafici — non ha il giorno, nessuno dei 3 pattern si applica.
+
+**Test aggiornati perche' il REQUISITO e' cambiato** (dichiarato): 4 file asserivano il vecchio
+rendering "Aug 3, 2026" (`contracts/contract-detail.test.tsx` — l'helper ora usa il formatter
+condiviso, `projects/column-renderers.test.tsx`, `rewards/reward-card.test.tsx`,
+`table/cell-renderers.test.tsx`). 7 fixture `User` nei test hanno i due campi nuovi.
+
+**File nuovi**: `lib/formatting/date-display.ts` (+test), `features/appearance/date-display-provider.tsx`
+(+test), `features/appearance/date-format-form.tsx` (+test), `app/Enums/DateFormatEnum.php`,
+`app/Enums/TimeFormatEnum.php`, migrazione `2026_08_03_140000_add_date_time_format_to_users_table.php`,
+`tests/Feature/Auth/DateFormatPreferenceTest.php`, `i18n/locales/{en,it}-settings.ts`.
+**Nota**: il blocco `settings` e' stato ESTRATTO da `en.ts`/`it.ts` in moduli sibling perche'
+`en.ts` aveva superato il hard limit di 500 righe (hook `code-guard.js`).
+
+**Verifica**: vitest 3317/3317, `tsc -b --force` pulito, pest 4974/4976 + `pint --dirty` pulito.
+L'unico rosso backend, `AssignablePermissionCatalogueTest`, e' PRE-ESISTENTE (verificato
+stashando le mie modifiche: fallisce comunque) e non c'entra con le date.
+
+## CATEGORIA PRODOTTO INLINE SULLA GRIGLIA RICHIESTE + COERENZA BF/CATEGORIA/PRODOTTO (2026-08-03)
+
+**Spec**: `docs/specs/0075-request-management-inline-product-lines.xml` (17 AC). Direttiva utente:
+"Categoria prodotto editabile inline sulla tabella gestione richieste, stesso flusso del form" +
+"tutti i tipi di check tra funzione aziendale / categoria prodotto / prodotto di interesse, non deve
+mai non essere collegato, sia sul form che sulla tabella".
+
+**La cosa da capire prima di toccare qualsiasi cosa: le regole delle linee di prodotto NON stanno
+piu' nel trait FormRequest.** Stanno in `App\Services\ProductLines\ProductLineSetValidator`
+(`rules()`/`crossRowErrors()` per chi ha una FormRequest, `assert()` per chi non ce l'ha) e vengono
+applicate da `RequestProductLineWriter::apply()`, il writer che ENTRAMBI i canali attraversano —
+pannello di lavoro e cella inline. `ValidatesProductLines` ora delega e basta: chiavi
+(`product_lines.<i>.<campo>`) e messaggi sono identici a prima, i test del pannello non sono
+cambiati. `apply()` valida solo quando l'insieme CAMBIA davvero, sulle righe SUBMITTED (non
+normalizzate) e con le categorie gia' persistite come esenti — cosi' rimandare le stesse coppie non
+puo' mai fallire (esenzione 0074 D-3b) e un id mancante e' "required", non "non esiste".
+
+**La colonna `product_categories` NON e' piu' una stringa.** Il row mapper proietta le COPPIE
+`{business_function_id, business_function_name, product_category_id, product_category_name}`: e' il
+valore che l'editor committa, quindi deve essere il valore della cella. Chi legge quella colonna in
+FE usa `ProductCategoriesCell` (unisce i nomi categoria, tooltip con le coppie). `baseQuery` ha
+ora anche `productLines.businessFunction`. Il filtro/set-values resta invariato (lato query).
+
+**Editor di cella `product_lines`** (`frontend/src/features/product-lines/product-lines-cell-editor.tsx`,
+registrato in `cell-editor-registry.ts`): due passi come il form — funzione aziendale, poi categoria
+con `business_function_id` come param. Niente Radix Popover dentro il popup (stessa lezione di
+`RelationCellEditor`). `CellValueValidator` fa solo il check STRUTTURALE del pair-list; il dominio
+sta nel writer (stesso precedente documentato di `editor: 'select'`).
+Al confine del wire, `use-table-cell-edit` manda **solo le chiavi `*_id`** (`resolvePairEntry`) e
+confronta il no-op sulla forma serializzata — le etichette non viaggiano.
+
+**"Non deve mai non essere collegato" = due mosse, non un messaggio d'errore:**
+1. `lockScope` (colonna condivisa `ProductsOfInterestColumn::declaration(label, lockScope: true)` e
+   prop di `ProductsOfInterestField`): in Gestione Richieste lo sblocco del catalogo prodotti
+   SPARISCE — proporlo significava proporre una scelta che il server rifiuta. In Opportunita' resta
+   (li' il pick cross-categoria aggiunge davvero la linea). L'i18n
+   `requestManagement.productsOfInterest.unlockDescription` e' stato cancellato: non serve piu'.
+2. `useProductsOfInterestCoherence` (hook di modulo): togliere/ripuntare una linea di prodotto
+   TOGLIE dalla selezione i prodotti che copriva, con toast dei nomi. E' una funzione di pruning
+   chiamata dall'handler di `ProductLinesField` in entrambi i form (pannello + creazione), **non un
+   `useEffect`** — `react-hooks/set-state-in-effect` blocca il setState in effect, e comunque il
+   cambio categorie e' un evento utente. Serve `meta.category_id` su
+   `GET /products/for-select` (additivo, `ProductForSelectResource`), letto da `productCategoryIdOf`.
+
+**Test cambiati per requisito cambiato** (dichiarato): `RequestManagementInlineEditorsTest` AC-002
+(spec 0055 diceva read-only, 0075 la rende editabile), `ProductsOfInterestInlineEditTest` (la
+proiezione porta `category_id`).
+
+**Verifica**: BE `pest` COMPLETA (nessun filtro) 4964 test, 4962 passed + 1 skipped, 1 failed;
+`pint --dirty` pulito. FE `tsc -b --force` EXIT=0, `eslint` pulito sui file toccati, `vitest run`
+COMPLETA 468 file / 3308 test passed.
+**Note oneste, entrambe PREESISTENTI e non causate da questo lavoro** (verificate):
+- `AssignablePermissionCatalogueTest` fallisce anche in isolamento: `attachments` sta in
+  `config/authorization.php -> permission_only_resources` (file, classe e test tutti identici a
+  HEAD), quindi `attachments.delete` risulta assegnabile mentre il test lo vuole falso;
+- `npx eslint src` segnala 2 errori (`referent-form-metadata.test.tsx`,
+  `registry-form-metadata.test.tsx`: `_omit` non usato) su file NON toccati da questo lavoro.
+Visto una volta anche `QualificaCatalogSeederTest` rosso in una run filtrata, verde da solo e verde
+nella run completa: dipendenza d'ordine tra test, non regressione di questa feature.
+
+## MIGRAZIONE `product-categories`: FLAG `requires_quote` + `is_selectable` (2026-08-03) — VERDE, NON COMMITTATO
+
+`ProductCategoriesSource` (modulo `/migrations`) ora trasporta i due flag della categoria prodotto.
+Il JSON di esempio della pagina Migrazioni NON e' hard-coded: `AbstractMigrationSource::sampleResponse()`
+lo deriva da `columns()`, quindi aggiungere la colonna al `nativeColumns()` aggiorna da solo template e
+preview. Non cercare un file `.json` da editare: non esiste.
+
+**Asimmetria da rispettare**: `is_selectable` e' per-nodo, passa dritto (default `true` se assente
+dall'esterno). `requires_quote` e' posseduto dalla RADICE (`RequiresQuoteInheritance`) e il Service ha
+un no-override guard che fa 422 se un figlio ne dichiara uno diverso -> `mapRequiresQuote()` lo passa
+**solo quando la riga nasce senza parent** (`$parentId === null`), altrimenti null e l'eredita' decide.
+Conseguenza sul secondo passo: un figlio creato DETACHED (forward reference) ha autorato il proprio
+flag, e `afterImport()` scrive `parent_id` direttamente sul model — fuori da `ProductCategoryService::update()`,
+quindi senza sync — percio' dopo il relink chiama `$this->requiresQuote->syncSubtree($category)`.
+Toglierlo lascia figlio e radice divergenti sul preventivo.
+
+**File toccati**: `app/Migrations/Sources/ProductCategoriesSource.php` (+ dipendenza `RequiresQuoteInheritance`
+nel costruttore, autowired: il registry lo risolve dal container via `config/migrations.php`),
+`tests/Feature/Migration/ProductCategoriesSourceImportTest.php`.
+**Verifica**: `pest --filter=Migration` 246/246, `--filter=ProductCategor` 184/184, `pint --dirty` pulito.
+
+## CATEGORIA PRODOTTO SELEZIONABILE / SOLO MADRE (2026-08-03) — VERDE, NON COMMITTATO
+
+**Spec**: `docs/specs/0074-selectable-product-categories.xml` (17 AC). Colonna
+`product_categories.is_selectable` BOOLEAN DEFAULT true: una categoria non selezionabile esiste
+solo come contenitore di sottocategorie.
+
+**Tre decisioni dell'utente, non reinterpretarle**:
+1. il blocco vale OVUNQUE la categoria sia una destinazione (Prodotto, linee di prodotto di
+   Opportunita'/Richieste, Progetti, Campagne, Config. provvigioni), NON dove e' un parent;
+2. flag MANUALE, default `true` — non derivato da "ha figli";
+3. le associazioni GIA' esistenti restano valide: il flag blocca solo le nuove.
+
+**Il punto che fa capire tutto il diff: i canali di scelta sono DUE.**
+`GET /product-categories/for-select` e' il canale delle DESTINAZIONI (tutti e 6 i consumatori FE lo
+sono) -> filtra `is_selectable = true` **incondizionatamente**, senza parametro opt-in (D-4: un
+parametro e' solo un modo per dimenticarselo al prossimo consumatore). `GET /product-categories/tree`
+e' il canale della STRUTTURA (tree view, picker `parent_id`, bulk-move, campo `requires_quote`) ->
+resta COMPLETO e porta `is_selectable` su ogni nodo. Il picker categoria del form Prodotto e'
+l'eccezione: e' una destinazione servita dall'albero, quindi filtra client-side via
+`flattenCategoryTree(nodes, { selectableOnly, keepIds })`. **Se in futuro si aggiunge un picker
+categoria: se e' una destinazione usa il for-select e non devi fare nulla; se usa l'albero devi
+passare `selectableOnly`.**
+
+**`is_selectable` NON e' `requires_quote`.** Quello e' posseduto dalla radice e rispecchiato sul
+sottoalbero da `RequiresQuoteInheritance`; questo e' PER NODO e non si eredita mai (e' letteralmente
+il caso d'uso: madre non selezionabile, figlie selezionabili). Niente inheritance class, niente
+`syncSubtree`, niente guard sul parent — nel form lo switch resta editabile anche su una figlia, e
+in `buildUpdatePayload` il diff e' secco, senza il guard `parent_id === null` che circonda quello
+del preventivo.
+
+**L'esenzione D-3b e' la parte facile da rompere.** `App\Rules\SelectableProductCategory` SOSTITUISCE
+`exists:product_categories,id` sulle destinazioni (non si affianca: due messaggi sullo stesso campo) e
+riceve dal costruttore gli id gia' persistiti sul record aggiornato. Da qui: `UpdateProductRequest`
+passa `[$product->category_id]`, `UpdateProjectRequest`/`UpdateCampaignRequest` il proprio, il trait
+`ValidatesProductLines::exemptProductCategoryIds()` risolve `$this->route('opportunity')` (vale sia
+per Opportunita' sia per Gestione Richieste, stesso route model) e `CommissionConfigurationRules` il
+proprio. Simmetricamente, l'idratazione `ids[]` del for-select gira su una query separata e resta
+esente. Togliere una di queste esenzioni significa 422 su una PATCH che non ha toccato la categoria.
+`UpdateCampaignRequest::derivedFieldRules()` ora prende la REGOLA e non piu' il nome tabella (i 3
+campi BR-2 non condividono piu' lo stesso tipo di check).
+
+**File nuovi**: migrazione `2026_08_03_120000_add_is_selectable_to_product_categories_table.php`,
+`app/Rules/SelectableProductCategory.php`, `tests/Feature/ProductCategories/ProductCategorySelectableTest.php`,
+`frontend/src/features/product-categories/flatten-tree.test.ts`,
+`frontend/src/features/products/product-form-category-picker.test.tsx`.
+**Toccati (BE)**: Model, `ProductCategoryService` (create + `forSelect`), `CategoryHierarchy::buildNodes`,
+`ProductCategoryResource`, Create/UpdateProductCategoryData + Request, `ProductCategoriesAuthorization`,
+`ProductCategoryColumnCatalog` (colonna `is_selectable` boolean, sortable/filterable — colonna DB reale,
+nessun handling derivato), Store/Update di Products/Projects/Campaigns, `ValidatesProductLines`,
+`CommissionConfigurationRules`. **(FE)**: `types.ts`, schema, payload, `use-product-category-form`,
+`product-category-form-body` (switch), `product-category-detail` (sezione propria — dentro quella del
+preventivo il test trovava due "Yes"), `flatten-tree`, `products/product-form-body`, i18n `en/it-products`.
+
+**Test modificati per requisito cambiato** (dichiarato, non "aggiustato"): `ProductCategoryTableTest`
+passa da 8 a 9 colonne; le fixture FE che costruiscono `ProductCategoryTreeNode`/`ProductCategoryDetail`
+hanno il campo nuovo.
+
+**Verifica**: BE `pest --filter="ProductCategor|Product|Project|Campaign|Commission|Opportunit|RequestManagement|Table"`
+1983 test, 1982 passed + 1 skipped, 0 failed; `pint --dirty` pulito. FE `tsc -b --force` EXIT=0,
+`eslint` pulito, `vitest run` COMPLETA 464 file / 3275 test passed.
+
+### Seguito — CATALOGO QUALIFICA: LE CATEGORIE MADRI SONO CONTENITORI (2026-08-03)
+
+**Attenzione al nome**: le categorie NON stanno in `QualificaTemplateSeeder` (che provvede solo la
+struttura dei custom field + il layout documento, e lo dichiara nel suo docblock) ma in
+`QualificaCatalogSeeder::CATALOG`. La modifica e' li'.
+
+`seedCatalog()` ora passa da `firstOrCreate` diretto al nuovo helper
+`seedCatalogCategory($name, $parentId, isContainer:)`. **La regola e' di LIVELLO, non di "ha figli"**
+(direttiva utente 2026-08-03, esplicita dopo una prima passata sbagliata): i PRIMI DUE livelli del
+`CATALOG` sono contenitori — le due radici e OGNI sottocategoria sotto di esse, abbiano figli o no —
+e solo il TERZO livello e' un bersaglio di classificazione. Quindi oggi gli unici nodi selezionabili
+del catalogo sono le 10 `GOL - <Regione>`; non selezionabili `Formazione`, `Consulenza`, `GOL`,
+`Autoimpiego`, `Yisu`, `Autofinanziato`, `DIL`, `Trattative in Corso`, `Presa Appuntamenti`.
+Una lista di figli vuota nel `CATALOG` significa "sotto questa sottocategoria non e' ancora seedato
+nessun bersaglio", NON "questa sottocategoria e' il bersaglio": i figli che ci verranno aggiunti
+(p.es. sotto `Autofinanziato`) nascono selezionabili da soli.
+
+**Conseguenza operativa nota e accettata dall'utente**: `Autofinanziato` ospita PRODOTTI direttamente
+(i corsi autofinanziati di `SelfFundedCourseCatalogue`), e le due foglie di `Consulenza` reggono i
+workflow. Quei prodotti restano e restano modificabili (esenzione D-3b), ma dall'interfaccia non si
+puo' piu' classificare un NUOVO prodotto/opportunita' su quelle categorie finche' non gli si creano
+sottocategorie sotto. Il seeder scrive via model, quindi non e' toccato dalla regola 422.
+
+**Asimmetria deliberata, non dimenticarla**: su un nodo contenitore il flag viene RIALLINEATO a ogni
+run (un'installazione seedata prima che la colonna esistesse deve davvero vedere le madri diventare
+contenitori — `firstOrCreate` da solo non toccherebbe nulla); su un nodo di terzo livello il valore si
+scrive solo alla creazione e non si riallinea mai, perche' il catalogo dichiara quali nodi sono
+contenitori, non ha autorita' sulla scelta di un operatore di ritirare un bersaglio. C'e' un test per
+entrambe le direzioni.
+
+**Non toccati (decidere se serve)**: le categorie importate dal legacy
+(`QualificaLegacyImportSeeder`, annidate sotto `Consulenza`) restano selezionabili anche quando hanno
+figli — sono dati esterni, non il catalogo template; e `DemoProductCategorySeeder` (dati fake).
+
+**Verifica**: `pest --filter="Qualifica|Seeder|ProductCategor|Product|Project|Campaign|Commission|Opportunit|RequestManagement|Table"`
+verde; `pint --dirty` pulito. Nota d'ambiente: `pest` SENZA filtro segfaulta (exit 139, zero output)
+su questa macchina — problema preesistente di Xdebug, non della feature; per questo la verifica gira
+a filtro largo.
+
+## CICLO DI VITA BUONI ↔ RICHIESTA + GROUP SUGLI STATI BUONO (2026-08-03) — VERDE, NON COMMITTATO
+
+**Spec**: `docs/specs/0073-reward-status-groups-and-lifecycle.xml` (approvata dall'utente, 19 AC).
+Due parti, una sola feature.
+
+**(1) `reward_statuses` prende il `group`** a quattro fasi (`App\Enums\RewardStatusGroup`:
+open/pending/closed_won/closed_lost — enum DEDICATO, non un riuso di `QuoteStatusGroup`, stessa
+regola anti-accoppiamento di 0072 D-5) e passa da UNA a QUATTRO righe di sistema: "Aperto" (`new`),
+"In attesa" (`pending`), "Chiuso positivo" (`won`), "Chiuso negativo" (`lost`).
+Migrazione `2026_08_03_100000_add_group_to_reward_statuses_table.php`: colonna con default `open`
+(le righe custom preesistenti NON ereditano una fase inventata), seed delle tre righe nuove,
+rinormalizzazione dei `sort_order`.
+
+**Conseguenza non ovvia, da capire prima di toccarla**: `StatusOrderManager` sapeva pinnare UNA sola
+testa (`SYSTEM_HEAD_KEY`). Con due righe non terminali la costante e' diventata **`SYSTEM_HEAD_KEYS`
+(array)** su TUTTI e cinque i modelli di stato (`Pipeline`/`Opportunity`/`Quote`/`Contract` = array
+di un elemento, comportamento invariato; `RewardStatus` = `[New, Pending]`). Una riga di sistema che
+non sia ne' testa ne' coda NON verrebbe mai riposizionata dal reorder e colliderebbe con le custom:
+per questo l'ordine e' Aperto=0, In attesa=10, custom=20.., Chiuso positivo/negativo in coda.
+
+**(2) Automazione ciclo di vita**: `App\Services\Rewards\RewardLifecycleManager::reconcile(Opportunity)`.
+Trigger = stato di **LAVORAZIONE** (`opportunity_workflow_status_id`, `WorkflowStatusGroup`), decisione
+utente D-1 — NON lo stato commerciale. Entrando in `closed_lost` ogni buono dell'opportunita' va su
+"Chiuso negativo" salvando il precedente in `rewards.status_before_closure_id` (nuova colonna,
+`nullOnDelete`, modellata su `contracts.status_before_suspension_id`); uscendone, ogni buono torna
+al valore salvato e la colonna si azzera. Chiusura POSITIVA: nessun effetto (D-3). Nascita del buono:
+resta "In attesa" (D-4, invariato).
+
+**Perche' RICONCILIAZIONE e non diff prima/dopo come `ContractLifecycleManager`** (D-7): i punti di
+scrittura dello stato sono tre (`RequestWorkflowStatusWriter:77`, `OpportunityWorkflowResolver:174`,
+`OpportunityService::resolveWorkflowStatus`) e un buono puo' NASCERE nella stessa transazione che
+chiude la richiesta (`updateWork()` scrive lo stato allo Step 3 e sincronizza i buoni allo Step 8) —
+un diff lo mancherebbe. Essendo idempotente, `reconcile()` e' chiamato 4 volte senza danno:
+`RequestManagementService::updateWork()` (Step 8-bis), `RequestCreationService::applyOperativeFields()`,
+`OpportunityService::resolveWorkflowStatus()`, `OpportunityWorkflowService::delete()`.
+`status_before_closure_id` NON e' solo memoria: e' il MARCATORE "chiuso dall'automazione" — non-null
+significa che lo stato corrente lo ha imposto il sistema. E' quello a rendere idempotenti entrambi i
+rami (una seconda chiusura non sovrascrive l'originale, una riapertura non tocca i buoni di un umano).
+
+**Da NON "correggere" senza leggere la spec**: il buono chiuso automaticamente resta modificabile a
+mano dalla card (nessun lock UI, D-10) — ma alla riapertura il ripristino sovrascrive comunque: e' la
+conseguenza accettata di "ripristina il precedente". Nessun backfill retroattivo: i buoni di richieste
+GIA' chiuse negative prima della migrazione restano dove sono (scope/out).
+
+**Frontend**: `features/reward-statuses/` prende il `group` clonando `features/quote-statuses/`
+(`REWARD_STATUS_GROUPS` in `features/status-reorder/types.ts`, `GroupCell` con
+`labelPrefix="rewardStatuses.form.group"`, select disabilitato sulle righe di sistema). i18n it/en
+riusano le etichette gia' in uso dagli stati offerta ("Aperto"/"In pending"/"Chiuso positivo"/
+"Chiuso negativo").
+
+**Test aggiornati perche' il REQUISITO e' cambiato** (non tampering, dichiarato): payload di create
+con `group` obbligatorio, catalogo campi a 5 voci, colonne griglia a 9, righe di sistema da 1 a 4,
+sequenza del reorder, `SYSTEM_HEAD_KEY` -> `SYSTEM_HEAD_KEYS` nei due test unit di modello.
+Nuovi: `tests/Feature/Rewards/RewardLifecycleTest.php` (11 test, AC-007..AC-015 + i 4 canali).
+
+**Verifica eseguita**: BE `XDEBUG_MODE=off pest` **4935 test, 4933 passed, 1 skipped, 1 failed** =
+`AssignablePermissionCatalogueTest` (rosso PREESISTENTE, gia' noto). `pint --dirty` pulito.
+FE `vitest` **3267 passed (462 file)**, EXIT=0; `eslint` pulito sui file toccati.
+`tsc -b --force`: gli UNICI errori sono in `src/features/product-categories/*.test.tsx`, dal lavoro
+CONCORRENTE su `is_selectable` presente nel working tree (altra sessione) — nessun errore nei file di
+questa feature. NOTA: `pest` senza `XDEBUG_MODE=off` va in segfault (exit 139) sulla suite completa.
+
+## UNIVOCITA' ANAGRAFICA / REFERENTE (2026-08-03) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: univocita' BLOCCANTE (422) su codice fiscale e partita IVA per le anagrafiche,
+e su telefono/cellulare per i referenti. Quattro decisioni prese con l'utente e da NON reinterpretare:
+
+1. **Bloccante**, non avviso: e' un vincolo di scrittura, distinto dal pannello duplicati
+   non-bloccante dei referenti (spec 0037, `ReferentDuplicateFinder`), che resta com'e'.
+2. **Ambito per modulo**: CF/P.IVA unici fra le anagrafiche e (separatamente) fra i referenti; il
+   telefono e' unico fra i referenti. `personal_data`/`contacts` sono morph CONDIVISE con users,
+   registries e company sites: lo stesso soggetto puo' legittimamente essere sia referente sia
+   cliente, quindi il vincolo non e' mai globale. Gli endpoint UTENTI restano non vincolati.
+3. **CF e P.IVA per campo**, se valorizzati: nessun obbligo di presenza, nessun controllo incrociato
+   fra i due campi.
+4. **Telefono e cellulare sono canali SEPARATI**: lo stesso numero puo' stare come `phone` su un
+   referente e come `mobile` su un altro. Non "correggerlo" unificandoli.
+
+**Implementazione** — tutto al confine FormRequest, nessuna migrazione: un unique index DB non e'
+esprimibile su una tabella morph condivisa, e il DB attuale non ha duplicati (verificato: 0 collisioni
+su 40 anagrafiche / 70 contatti telefonici).
+
+- `app/Rules/UniquePersonalDataIdentifier.php` (nuovo) — `tax_code`/`vat_number` scoped al morph
+  dell'owner, con `ignoreOwnerId` per l'update. Colonna **allow-listata** (finisce interpolata in
+  `whereRaw`, il valore invece e' bindato — backend.md §8).
+- `app/Http/Requests/Concerns/ValidatesReferentContactUniqueness.php` (nuovo) — after-hook per
+  `personal_data.contacts.*`: per-canale, confronto normalizzato via `ContactValueNormalizer` (le
+  stesse semantiche del duplicate finder — non forkarle), piu' il caso "stesso numero ripetuto due
+  volte nella stessa scheda".
+- `ValidatesUserProfile` — due hook nuovi, `identityUniquenessOwner()`/`identityUniquenessOwnerId()`,
+  **null di default**: le 4 request di referenti/anagrafiche li sovrascrivono, le altre 4 che
+  compongono il trait (utenti ecc.) restano invariate.
+- `lang/it.json` — 4 messaggi tradotti. Il FE NON e' stato toccato: `use-registry-form.ts` e
+  `use-referent-form.ts` gia' raccolgono ogni chiave `personal_data.*` di un 422 nel banner del form.
+
+**Confronto NORMALIZZATO, non uguaglianza esatta**: `InputFormat` canonicalizza solo cio' che passa
+da una FormRequest — le righe da factory/migrazione no (in DB tutti i 70 telefoni sono in forma non
+canonica, `+39 333 1234567`). Un match esatto le lascerebbe passare tutte.
+
+**Superfici NON coperte** (stessa invariante, altri canali di scrittura sulla card di un'anagrafica —
+da chiudere se l'utente lo conferma): `StoreRequestRequest`/`UpdateRequestRequest` (blocco
+`client_identity` di Gestione Richieste, che crea/aggiorna Registry) e l'editor di cella inline della
+colonna `tax_code` (`RequestColumnCatalog::clientColumn`).
+
+**Verifica**: `pest tests/Feature/Referents tests/Feature/Registries` 170/170; i 15 test nuovi
+(`RegistryIdentityUniquenessTest`, `ReferentUniquenessTest`) verdi; `pint --dirty` pulito. Suite
+completa 4935 test, 4933 passed + 1 skipped + **1 fallimento pre-esistente e non correlato**
+(`AssignablePermissionCatalogueTest`, che dipende dal WIP concorrente su
+`ProductCategoriesAuthorization`/`RewardStatusesAuthorization`, non da questa modifica).
+Nota operativa: la suite completa va lanciata con `php -d xdebug.mode=off vendor/bin/pest`, altrimenti
+segfaulta (exit 139) su run lunghi.
+
+## ORDINE DI DEFAULT GESTIONE RICHIESTE = CARICAMENTO (2026-08-03) — VERDE, NON COMMITTATO
+
+**Direttiva utente**: la griglia Gestione Richieste ordina per **data di caricamento**, non di
+aggiornamento — gli ultimi caricati in cima. La colonna nascosta che esisteva solo per reggere il
+`defaultSort` e' passata da `updated_at` a `created_at` (stesso pattern di
+`OpportunityColumnCatalog`, e stesso `defaultSort` di quasi tutti gli altri moduli).
+
+File toccati: `RequestManagementTableDefinition::defaultSort()` (`created_at` desc),
+`RequestColumnCatalog` (colonna nascosta + docblock), `RequestRowMapper` (proiezione della riga),
+`it/en-request-management.ts` (`columns.updatedAt` -> `columns.createdAt`, "Caricato il").
+
+**Nota**: la vecchia chiave e la vecchia colonna sono state RIMOSSE, non affiancate — `updated_at`
+non era mai visibile ne' filtrabile, quindi non compare in nessuna preferenza colonna utente ne'
+in un `sortModel` inviato dal client (il FE non rimanda mai `defaultSort`, lo applica il server
+quando `sortModel` e' assente). Se in futuro serve mostrare "aggiornato il", si aggiunge una
+colonna nuova: non si torna a riusare quella del sort.
+
+**Verifica**: BE `pest --filter="RequestManagement"` 329/329, `--filter="Table|Opportunit|Export|View"`
+1637 test, 1636 passed + 1 skipped; `pint --dirty` pulito. FE `tsc -b --force` EXIT=0,
+`vitest run src/features/request-management src/i18n` 166/166 (22 file).
+
 ## CREATE RICHIESTA = GEMELLA DEL PANNELLO DI LAVORAZIONE (2026-07-31) — VERDE, NON COMMITTATO
 
 **Richiesta utente**: "la scheda di gestione richieste e il form di creazione il piu' simile

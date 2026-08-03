@@ -5,6 +5,7 @@ namespace App\Http\Requests\Products;
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -50,7 +51,7 @@ class StoreProductRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'cost' => ['required', 'numeric'],
             'price' => ['required', 'numeric'],
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+            'category_id' => ['required', 'integer', new SelectableProductCategory],
             'product_type' => ['required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['nullable', 'integer', 'exists:registries,id'],

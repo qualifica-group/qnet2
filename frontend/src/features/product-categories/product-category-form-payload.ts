@@ -33,6 +33,7 @@ export function buildCreatePayload(
     // Only a ROOT category authors the quote flag; under a parent it is
     // inherited and the server resolves it (a divergent value is a 422).
     ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
+    is_selectable: values.is_selectable,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -77,6 +78,12 @@ export function buildUpdatePayload(
   // server re-aligns the moved subtree on its new root.
   if (values.parent_id === null && values.requires_quote !== original.requires_quote) {
     payload.requires_quote = values.requires_quote
+  }
+
+  // Per-node and never inherited (spec 0074 D-2): a plain diff, with no
+  // parent-dependent guard around it.
+  if (values.is_selectable !== original.is_selectable) {
+    payload.is_selectable = values.is_selectable
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

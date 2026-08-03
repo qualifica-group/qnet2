@@ -2,12 +2,15 @@
 
 namespace App\Tables\RewardStatuses;
 
+use App\Enums\RewardStatusGroup;
+
 /**
  * Declarative column/filter/action catalogue for the `reward-statuses`
- * domain (spec 0060). Extracted out of RewardStatusesTableDefinition
- * (file-size split, engineering.md §6): pure data (no logic). Every column
- * (name/description/color/sort_order/is_active/created_at/updated_at) is a
- * real DB column handled entirely by the generic engine. `color` is
+ * domain (spec 0060, extended by spec 0073 with `group`). Extracted out of
+ * RewardStatusesTableDefinition (file-size split, engineering.md §6): pure
+ * data (no logic). Every column (name/description/color/group/sort_order/
+ * is_active/created_at/updated_at) is a real DB column handled entirely by
+ * the generic engine. `color` is
  * deliberately not sortable/filterable (a swatch value, not a meaningful
  * ordering/filter axis), `description` is filterable but not sortable (free
  * text, not a meaningful ordering axis).
@@ -47,6 +50,16 @@ final class RewardStatusColumnCatalog
                 'visible' => true,
                 'sortable' => false,
                 'filterable' => false,
+            ],
+            [
+                'id' => 'group',
+                'label' => 'rewardStatuses.columns.group',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => RewardStatusGroup::values(),
             ],
             [
                 'id' => 'sort_order',
@@ -95,6 +108,7 @@ final class RewardStatusColumnCatalog
         return [
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'description', 'type' => 'text'],
+            ['columnId' => 'group', 'type' => 'set', 'options' => RewardStatusGroup::values()],
             ['columnId' => 'sort_order', 'type' => 'number'],
             ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'created_at', 'type' => 'date'],

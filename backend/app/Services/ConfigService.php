@@ -91,29 +91,12 @@ class ConfigService
 
     /**
      * Resolve the request locale from the Accept-Language header, restricted to
-     * the supported locales. The header is parsed leniently (only the primary
-     * subtag of each entry is considered) and validated against the allowlist;
-     * anything unsupported or malformed falls back to config('app.locale').
+     * the supported locales — the shared parser on LocaleEnum, so this public
+     * endpoint and the per-request SetLocale middleware can never disagree on
+     * what the same header means.
      */
     private function resolveLocale(?string $acceptLanguage): string
     {
-        $fallback = (string) config('app.locale', 'en');
-        $supported = LocaleEnum::values();
-
-        if ($acceptLanguage === null || $acceptLanguage === '') {
-            return $fallback;
-        }
-
-        foreach (explode(',', $acceptLanguage) as $part) {
-            // Drop the q-weight ("it;q=0.8" → "it") and region ("en-US" → "en").
-            $primary = strtolower(trim(explode(';', $part)[0]));
-            $primary = explode('-', $primary)[0];
-
-            if (in_array($primary, $supported, true)) {
-                return $primary;
-            }
-        }
-
-        return $fallback;
+        return LocaleEnum::fromAcceptLanguage($acceptLanguage);
     }
 }

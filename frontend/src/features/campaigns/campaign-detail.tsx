@@ -12,6 +12,7 @@ import {
   DetailSection,
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { formatDate } from '@/lib/formatting/date-display'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
@@ -20,18 +21,6 @@ import type { CampaignDetailWithPermissions as CampaignDetailData } from '@/feat
 
 interface CampaignDetailViewProps {
   campaign: CampaignDetailData
-}
-
-/** Formats a `Y-m-d` date-only value, blank when missing/invalid. */
-function formatDate(value: string | null, language: string): string {
-  if (!value) {
-    return ''
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(date)
 }
 
 /**
@@ -45,7 +34,7 @@ function formatDate(value: string | null, language: string): string {
  * `derived_from_project`/`geo_locked_levels` beyond the inherited-levels hint.
  */
 export function CampaignDetailView({ campaign }: CampaignDetailViewProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const createdAt = formatDateTime(campaign.created_at)
   const geoPlace = campaign.geo_scope ? geoScopePlaceName(campaign.geo_scope, campaign) : null
 
@@ -122,10 +111,10 @@ export function CampaignDetailView({ campaign }: CampaignDetailViewProps) {
       <DetailSection title={t('campaigns.form.sections.planning.title')} icon={<CalendarRange />}>
         <DetailGrid>
           <DetailField label={t('campaigns.form.startDate')}>
-            {formatDate(campaign.start_date, i18n.language) || <DetailEmpty />}
+            {formatDate(campaign.start_date) || <DetailEmpty />}
           </DetailField>
           <DetailField label={t('campaigns.form.endDate')}>
-            {formatDate(campaign.end_date, i18n.language) || <DetailEmpty />}
+            {formatDate(campaign.end_date) || <DetailEmpty />}
           </DetailField>
           <DetailField label={t('campaigns.form.targetLead')}>
             {campaign.target_lead ?? <DetailEmpty />}

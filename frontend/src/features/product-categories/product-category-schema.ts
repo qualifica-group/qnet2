@@ -28,6 +28,7 @@ function baseFields(t: TFunction) {
     description: z.string().nullable(),
     business_function_id: z.number().nullable(),
     requires_quote: z.boolean(),
+    is_selectable: z.boolean(),
     attributes: z.array(
       z.object({
         attribute_id: z.number(),

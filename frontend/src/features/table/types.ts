@@ -124,11 +124,12 @@ export interface TableColumn {
    * 0055 D-1): `relation` is a `/for-select`-fed picker, `select` a dropdown
    * over the column's own backend-resolved `options`, `datetime` a date+time
    * picker, `multiselect` (user directive 2026-07-23) the to-many `/for-select`
-   * picker whose value is the whole id collection. Declared per column by the
-   * backend; a column without it keeps resolving its editor from `type`,
-   * unchanged.
+   * picker whose value is the whole id collection, `product_lines` (spec 0075)
+   * the {funzione aziendale, categoria prodotto} pair collection edited in the
+   * same flow as the form. Declared per column by the backend; a column
+   * without it keeps resolving its editor from `type`, unchanged.
    */
-  editor?: 'relation' | 'select' | 'datetime' | 'multiselect'
+  editor?: 'relation' | 'select' | 'datetime' | 'multiselect' | 'product_lines'
   /**
    * The `/for-select` resource backing a `relation` editor (spec 0054 D-1),
    * plus the OPTIONAL row-scoped narrowing of its option list (user directive
@@ -137,8 +138,12 @@ export interface TableColumn {
    * operational_site_id: 'operational_site' }` makes the operator picker offer
    * only the users of that row's own site. Absent (or a row whose scope column
    * is empty) ⇒ the unfiltered list, unchanged.
+   *
+   * `lockScope` (spec 0075 D-4): the scope is not a default the operator may
+   * lift — the domain REFUSES what falls outside it, so the editor must not
+   * offer the "show the whole catalogue" escape at all.
    */
-  relation?: { resource: string; scope?: Record<string, string> }
+  relation?: { resource: string; scope?: Record<string, string>; lockScope?: boolean }
   /**
    * Whether the column supports a Set Filter value list (POST /values). `false`
    * for computed/derived columns without a queryable value list (e.g. a

@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
+import { useWatch } from 'react-hook-form'
 import { Boxes } from 'lucide-react'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
+import type { ProductLineRow } from '@/features/product-lines/types'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
@@ -17,6 +19,7 @@ import {
   PANEL_GRID_CLASS,
   SIDE_COLUMN_CLASS,
 } from '@/features/request-management/request-work-panel'
+import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
 /**
@@ -84,6 +87,20 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     rewardsError,
   } = useRequestCreateForm({ onSuccess })
 
+  // Spec 0075, D-5: the same rule the work panel applies — a product line
+  // removed (or re-pointed) drops the products of interest it was covering,
+  // so the form can never submit a classification the server would refuse.
+  const productsOfInterest = useWatch({ control: form.control, name: 'products_of_interest' })
+  const keepCoveredProducts = useProductsOfInterestCoherence(productsOfInterest)
+
+  const pruneProductsOfInterest = (rows: ProductLineRow[]) => {
+    const kept = keepCoveredProducts(rows)
+
+    if (kept.length !== productsOfInterest.length) {
+      form.setValue('products_of_interest', kept, { shouldDirty: true })
+    }
+  }
+
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <RequestCreateHeader
@@ -143,7 +160,13 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                       <FormLabel required>
                         {t('requestManagement.workPanel.productLines.fieldLabel')}
                       </FormLabel>
-                      <ProductLinesField value={field.value} onChange={field.onChange} />
+                      <ProductLinesField
+                        value={field.value}
+                        onChange={(rows) => {
+                          field.onChange(rows)
+                          pruneProductsOfInterest(rows)
+                        }}
+                      />
                       <p className="text-xs text-muted-foreground">
                         {t('requestManagement.workPanel.productLines.hint')}
                       </p>

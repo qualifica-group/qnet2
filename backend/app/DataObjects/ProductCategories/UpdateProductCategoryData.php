@@ -38,6 +38,8 @@ final readonly class UpdateProductCategoryData
         public bool $businessFunctionIdSubmitted = false,
         public ?bool $requiresQuote = null,
         public bool $requiresQuoteSubmitted = false,
+        public ?bool $isSelectable = null,
+        public bool $isSelectableSubmitted = false,
     ) {}
 
     /**
@@ -62,6 +64,8 @@ final readonly class UpdateProductCategoryData
             businessFunctionIdSubmitted: array_key_exists('business_function_id', $data),
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             requiresQuoteSubmitted: array_key_exists('requires_quote', $data),
+            isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : null,
+            isSelectableSubmitted: array_key_exists('is_selectable', $data),
         );
     }
 
@@ -119,6 +123,12 @@ final readonly class UpdateProductCategoryData
         // RequiresQuoteInheritance::syncSubtree (ProductCategoryService).
         if ($this->requiresQuoteSubmitted) {
             $attributes['requires_quote'] = $this->requiresQuote;
+        }
+
+        // Spec 0074: per-node flag, written verbatim — nothing to reconcile
+        // across the subtree, since it is never inherited.
+        if ($this->isSelectableSubmitted) {
+            $attributes['is_selectable'] = $this->isSelectable;
         }
 
         return $attributes;

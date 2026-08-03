@@ -49,6 +49,9 @@ class UpdateProductCategoryRequest extends FormRequest
             // Only meaningful on a ROOT category: under a parent the value is
             // inherited, and ProductCategoryService refuses a divergent one.
             'requires_quote' => ['sometimes', 'boolean'],
+            // Spec 0074: whether the category may be picked as a
+            // classification target. Never inherited, so no guard here.
+            'is_selectable' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

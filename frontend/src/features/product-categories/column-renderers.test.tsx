@@ -31,6 +31,22 @@ describe('productCategoryColumnRenderers.parent', () => {
   })
 })
 
+describe('productCategoryColumnRenderers boolean columns', () => {
+  it.each(['requires_quote', 'is_selectable'])('renders %s as a yes/no badge', (columnId) => {
+    const { unmount } = renderCell(columnId, true, {})
+    expect(screen.getByText('Yes')).toBeInTheDocument()
+    unmount()
+
+    renderCell(columnId, false, {})
+    expect(screen.getByText('No')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the flag is missing', () => {
+    renderCell('is_selectable', null, {})
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
 describe('productCategoryColumnRenderers.attributes_count', () => {
   it('renders an em dash and no count badge when the count is zero', () => {
     renderCell('attributes_count', 0, { attributes: [] })

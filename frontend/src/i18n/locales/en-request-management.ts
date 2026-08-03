@@ -24,7 +24,7 @@ export const requestManagement = {
     lastName: 'Last name',
     taxCode: 'Tax code',
     phone: 'Phone',
-    updatedAt: 'Updated at',
+    createdAt: 'Created at',
     nextCallbackAt: 'Next callback',
   },
   advancedFilters: {
@@ -130,10 +130,6 @@ export const requestManagement = {
         contactsInvalid: 'One of the entered contacts is not valid.',
       },
     },
-  },
-  productsOfInterest: {
-    unlockDescription:
-      "Unlocking the catalogue lets you pick products from other categories, but the save is refused until that product category is among the request's product lines: add it first.",
   },
   workPanel: {
     loadError: 'Could not load the record.',

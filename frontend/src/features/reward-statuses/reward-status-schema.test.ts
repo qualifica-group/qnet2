@@ -16,9 +16,28 @@ describe('buildCreateRewardStatusSchema', () => {
       name: 'Approvato',
       description: null,
       color: 'green',
+      group: 'pending',
       is_active: true,
     })
     expect(result.success).toBe(true)
+  })
+
+  it('rejects a missing or unknown group (spec 0073)', () => {
+    const schema = buildCreateRewardStatusSchema(i18n.t)
+
+    expect(
+      schema.safeParse({ name: 'Approvato', description: null, color: 'green', is_active: true })
+        .success,
+    ).toBe(false)
+    expect(
+      schema.safeParse({
+        name: 'Approvato',
+        description: null,
+        color: 'green',
+        group: 'closed',
+        is_active: true,
+      }).success,
+    ).toBe(false)
   })
 
   it('rejects an empty name (AC-024)', () => {
@@ -66,6 +85,7 @@ describe('buildCreateRewardStatusSchema', () => {
       name: 'Approvato',
       description: null,
       color: 'green',
+      group: 'open',
       is_active: true,
     })
     expect(result.success).toBe(true)
@@ -96,6 +116,7 @@ describe('buildUpdateRewardStatusSchema', () => {
       name: 'Rifiutato',
       description: 'Buono rifiutato',
       color: 'red',
+      group: 'closed_lost',
       is_active: false,
     })
     expect(result.success).toBe(true)

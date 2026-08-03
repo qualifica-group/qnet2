@@ -10,6 +10,7 @@ const formValues: RewardStatusFormValues = {
   name: 'Approvato',
   description: 'Buono approvato',
   color: 'green',
+  group: 'pending',
   is_active: true,
 }
 
@@ -21,6 +22,7 @@ function original(
     name: 'Approvato',
     description: 'Buono approvato',
     color: 'green',
+    group: 'pending',
     sort_order: 10,
     is_active: true,
     system_key: null,
@@ -41,6 +43,7 @@ describe('buildCreatePayload', () => {
       name: 'Approvato',
       description: 'Buono approvato',
       color: 'green',
+      group: 'pending',
       is_active: true,
     })
   })
@@ -71,6 +74,12 @@ describe('buildUpdatePayload', () => {
   it('includes only the changed color', () => {
     expect(buildUpdatePayload({ ...formValues, color: 'red' }, original())).toEqual({
       color: 'red',
+    })
+  })
+
+  it('includes only the changed group (spec 0073)', () => {
+    expect(buildUpdatePayload({ ...formValues, group: 'closed_lost' }, original())).toEqual({
+      group: 'closed_lost',
     })
   })
 

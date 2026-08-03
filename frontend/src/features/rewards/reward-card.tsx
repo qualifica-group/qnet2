@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
-import i18n from '@/i18n'
+import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -147,15 +147,6 @@ function RewardStatusField({
   )
 }
 
-/** Localized, date-only (no time) formatting for `assigned_at`. */
-function formatAssignedAt(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(date)
-}
-
 /**
  * One reward's card, rendered inside the `rewarded-referents` master/detail
  * expanded row: type, origin, live commercial context (D-1: exactly two
@@ -186,7 +177,7 @@ export function RewardCard({
           <RewardChip rewardType={reward.reward_type} />
           <span className="text-xs tabular-nums text-muted-foreground">
             <span className="sr-only">{labels.assignedAt}: </span>
-            {formatAssignedAt(reward.assigned_at)}
+            {formatDate(reward.assigned_at)}
           </span>
         </div>
 

@@ -4,6 +4,7 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { Check, Copy } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
+import { formatDateTime, formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -96,35 +97,12 @@ export function EmptyCell({ align = 'center' }: { align?: 'center' | 'left' } = 
  * stay in the domain's own renderer map.
  */
 
-/** An instant whose optional time was never set lands on the wire at midnight. */
-const MIDNIGHT_INSTANT = /T00:00(:00)?$/
-
-function formatInstant(value: unknown, options: Intl.DateTimeFormatOptions): string {
-  if (typeof value !== 'string' || value === '') {
-    return ''
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(i18n.language, options).format(date)
-}
-
-/** Formats an ISO datetime using the active UI locale, blank when missing. */
-export function formatDateTime(value: unknown): string {
-  return formatInstant(value, { dateStyle: 'medium', timeStyle: 'short' })
-}
-
 /**
- * Same, for a value whose TIME is optional (user directive 2026-07-31): one
- * saved without an hour carries `T00:00`, and printing "00:00" would read as a
- * real midnight appointment — so it renders as a plain date.
+ * Re-exported so the ~30 detail panels that already import these from here keep
+ * working; the implementation is the app-wide formatter, which honours the
+ * user's date/time preference (Settings → System).
  */
-export function formatDateTimeOptionalTime(value: unknown): string {
-  const timeless = typeof value === 'string' && MIDNIGHT_INSTANT.test(value)
-
-  return formatInstant(value, timeless ? { dateStyle: 'medium' } : { dateStyle: 'medium', timeStyle: 'short' })
-}
+export { formatDateTime, formatDateTimeOptionalTime }
 
 /**
  * Renders a `tags` column (a string array such as roles) as a single compact

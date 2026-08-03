@@ -38,6 +38,10 @@ class ProductCategoryResource extends JsonResource
             // comes from — is attached by the controller alongside
             // `effective_business_function`.
             'requires_quote' => (bool) $this->requires_quote,
+            // Spec 0074: whether this node may be picked as a classification
+            // target. Per-node, never inherited — a false one still parents
+            // selectable children.
+            'is_selectable' => (bool) $this->is_selectable,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

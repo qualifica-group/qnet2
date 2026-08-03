@@ -85,7 +85,7 @@ class AuthService
      * writes above — rather than mass assignment. A null value here leaves the
      * stored preference untouched (client omitted the key).
      *
-     * @param  array<string, string>  $attributes  whitelisted account fields (locale)
+     * @param  array<string, mixed>  $attributes  whitelisted account fields (locale, ui_scale, date_format, time_format)
      * @param  array{mode: string, overrides: array<string, string>}|null  $moduleOpenPreferences
      */
     public function updateProfile(User $user, array $attributes, ?ProfileData $profile = null, ?array $moduleOpenPreferences = null): User

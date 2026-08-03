@@ -27,6 +27,8 @@ export interface ProductCategoryTreeNode {
   business_function_id: number | null
   /** The EFFECTIVE quote flag: authored by the branch root, mirrored on every descendant server-side. */
   requires_quote: boolean
+  /** Whether the node may be picked as a classification target (spec 0074). Per-node: a false one still parents selectable children. */
+  is_selectable: boolean
 }
 
 /**
@@ -103,6 +105,8 @@ export interface ProductCategoryDetail {
   requires_quote: boolean
   /** The root `requires_quote` is inherited from; null when this category IS the root and owns the flag. */
   requires_quote_source_category: { id: number; name: string } | null
+  /** Whether the category may be picked as a classification target (spec 0074). */
+  is_selectable: boolean
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
 }
@@ -180,6 +184,8 @@ export interface CreateProductCategoryPayload {
   business_function_id?: number | null
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the flag and the server refuses a divergent value. */
   requires_quote?: boolean
+  /** Whether the category may be picked as a classification target (spec 0074); omitted on create means selectable. */
+  is_selectable?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

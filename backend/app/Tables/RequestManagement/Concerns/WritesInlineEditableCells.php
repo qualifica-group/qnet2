@@ -48,6 +48,11 @@ trait WritesInlineEditableCells
      * same precedent as baseQuery()'s `Auth::user()` call; `note` is read
      * from the ambient request the same way, since every caller of the
      * inline-edit engine runs within one authenticated HTTP request.
+     *
+     * Spec 0075: `product_lines` (the "Categoria prodotto" cell) joins that
+     * list without a line of code here — the field key IS the payload key
+     * updateWork() already understands, and every rule of the set lives in
+     * RequestProductLineWriter, behind that same call.
      */
     public function updateCell(Model $row, string $columnId, mixed $value): Model
     {

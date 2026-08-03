@@ -6,7 +6,9 @@ use App\DataObjects\Referents\CreateReferentData;
 use App\Enums\ContactTypeEnum;
 use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesReferentContactUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -24,12 +26,14 @@ use Illuminate\Validation\Rule;
  * additionally rejects any submitted field the actor cannot edit
  * (create-context, model = null).
  *
- * On top of those, one domain rule of its own: the nested card must carry at
- * least one phone number (see validatePhoneContact).
+ * On top of those, two domain rules of its own: the nested card must carry at
+ * least one phone number (see validatePhoneContact), and that number must not
+ * already belong to another referent (ValidatesReferentContactUniqueness).
  */
 class StoreReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesReferentContactUniqueness;
     use ValidatesUserProfile;
 
     /**
@@ -71,6 +75,18 @@ class StoreReferentRequest extends FormRequest
     }
 
     /**
+     * Codice fiscale and partita IVA are unique among REFERENTI (user directive
+     * 2026-08-03) — not globally: the same person may also exist as an
+     * anagraphic record, which is a different role, not a duplicate.
+     *
+     * @return class-string<Referent>
+     */
+    protected function identityUniquenessOwner(): ?string
+    {
+        return Referent::class;
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -92,6 +108,7 @@ class StoreReferentRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
             $this->validatePhoneContact($validator);
+            $this->validateContactUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

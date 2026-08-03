@@ -16,6 +16,18 @@ export const PRODUCTS_FOR_SELECT_RESOURCE = 'products'
  * how the "prodotti di interesse" picker stays aligned with the
  * opportunity's product lines.
  */
+/**
+ * The category a for-select product hangs from, read from its own `meta`
+ * (spec 0075 AC-012). A reader rather than a competing item type: the
+ * envelope is `ForSelectItem` for every consumer, and only the ones enforcing
+ * the category coherence need this one key.
+ */
+export function productCategoryIdOf(item: ForSelectItem): number | null {
+  const meta = (item as { meta?: { category_id?: unknown } }).meta
+
+  return typeof meta?.category_id === 'number' ? meta.category_id : null
+}
+
 export function fetchProductsForSelect(
   params: ForSelectParams = {},
 ): Promise<PaginatedResponse<ForSelectItem>> {

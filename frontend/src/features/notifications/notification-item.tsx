@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Notification } from '@/features/notifications/types'
+import { formatDateTime } from '@/lib/formatting/date-display'
 
 interface NotificationItemProps {
   notification: Notification
@@ -10,18 +11,6 @@ interface NotificationItemProps {
   onMarkAsRead: (id: string) => void
   /** Disables the per-item action while a mutation is in flight. */
   isMarking?: boolean
-}
-
-/** Formats an ISO timestamp using the active locale, or '' when invalid. */
-function formatTimestamp(value: string, language: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
 }
 
 /**
@@ -34,12 +23,12 @@ export function NotificationItem({
   onMarkAsRead,
   isMarking = false,
 }: NotificationItemProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const isUnread = notification.read_at === null
 
   const title = notification.data.title ?? t('notifications.untitled')
   const message = notification.data.message
-  const timestamp = formatTimestamp(notification.created_at, i18n.language)
+  const timestamp = formatDateTime(notification.created_at)
 
   return (
     <div className="flex items-start gap-2 px-3 py-2">

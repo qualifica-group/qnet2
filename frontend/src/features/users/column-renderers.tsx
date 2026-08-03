@@ -9,20 +9,9 @@ import {
   DateTimeCell,
   TagsCountCell,
 } from '@/features/table/cell-renderers'
+import { DateCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-
-/** Renders an employment `Y-m-d` date column, no time part (spec 0015). */
-function DateCell({ value }: ICellRendererParams) {
-  if (typeof value !== 'string' || value === '') {
-    return <span className="text-muted-foreground">—</span>
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return <span className="text-muted-foreground">—</span>
-  }
-  return <span>{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(date)}</span>
-}
 
 /** Renders the `is_manager` boolean column as a localized yes/no label. */
 function BooleanCell({ value }: ICellRendererParams) {

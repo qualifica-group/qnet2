@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
 use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
 use App\Models\Project;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -52,7 +53,8 @@ class UpdateProjectRequest extends FormRequest
             'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],
             'province_id' => ['sometimes', 'nullable', 'integer', Rule::exists('provinces', 'id')],
             'city_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cities', 'id')],
-            'product_category_id' => ['sometimes', 'required', 'integer', Rule::exists('product_categories', 'id')],
+            // Spec 0074 D-3b: the project's CURRENT category stays acceptable.
+            'product_category_id' => ['sometimes', 'required', 'integer', new SelectableProductCategory([(int) $this->currentProject()->product_category_id])],
             'partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'start_date' => ['sometimes', 'required', 'date'],

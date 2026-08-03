@@ -87,6 +87,19 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                // Whether the category may be picked as a classification
+                // target (spec 0074). A real per-row column, never inherited:
+                // the generic engine sorts and filters it with no derived
+                // handling.
+                'id' => 'is_selectable',
+                'label' => 'productCategories.columns.is_selectable',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Number of attributes directly assigned to this category
                 // (own assignments only — NOT the effective/inherited count),
                 // via withCount('attributes'). AGGREGATE (no real DB column).
@@ -132,6 +145,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'business_function', 'type' => 'set'],
             ['columnId' => 'requires_quote', 'type' => 'boolean'],
+            ['columnId' => 'is_selectable', 'type' => 'boolean'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

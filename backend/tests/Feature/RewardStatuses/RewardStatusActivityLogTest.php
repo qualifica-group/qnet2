@@ -40,7 +40,7 @@ it('create + update produce created/updated activity-log events with the changed
     $actor = rewardStatusUserWith(['create', 'update', 'view', 'viewActivity']);
     Sanctum::actingAs($actor);
 
-    $created = $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green'])
+    $created = $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green', 'group' => 'open'])
         ->assertCreated();
     $id = $created->json('data.id');
 

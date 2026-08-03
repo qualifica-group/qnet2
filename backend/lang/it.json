@@ -30,5 +30,21 @@
     "The tax code does not match the first name.": "Il codice fiscale non corrisponde al nome.",
     "The tax code does not match the birth date.": "Il codice fiscale non corrisponde alla data di nascita.",
     "The tax code does not match the gender.": "Il codice fiscale non corrisponde al sesso.",
-    "The VAT number is not valid.": "La partita IVA non è valida."
+    "The VAT number is not valid.": "La partita IVA non è valida.",
+    "The tax code is already assigned to another record.": "Il codice fiscale è già associato a un'altra scheda.",
+    "The VAT number is already assigned to another record.": "La partita IVA è già associata a un'altra scheda.",
+    "The phone number is already assigned to another referent.": "Il numero di telefono è già associato a un altro referente.",
+    "The phone number is repeated on this card.": "Il numero di telefono è ripetuto nella stessa scheda.",
+    "These products of interest belong to a product category the request does not carry: :products. Add that product category to the request, or remove the product.": "Questi prodotti di interesse appartengono a una categoria prodotto che la richiesta non ha: :products. Aggiungi quella categoria prodotto alla richiesta, oppure rimuovi il prodotto.",
+    "This business function / product category pair is already present.": "Questa coppia funzione aziendale / categoria prodotto è già presente.",
+    "This product category does not belong to the selected business function.": "Questa categoria prodotto non appartiene alla funzione aziendale selezionata.",
+    "This field is required.": "Questo campo è obbligatorio.",
+    "A note is not accepted on this column.": "Questa colonna non accetta una nota.",
+    "Column [:column] is not editable.": "La colonna [:column] non è modificabile.",
+    "The selected value does not exist or is not available.": "Il valore selezionato non esiste o non è disponibile.",
+    "The selected product category is invalid.": "La categoria prodotto selezionata non è valida.",
+    "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
+    "An unexpected error occurred.": "Si è verificato un errore imprevisto.",
+    "Resource not found.": "Risorsa non trovata.",
+    "This action is unauthorized.": "Non hai i permessi per questa azione."
 }

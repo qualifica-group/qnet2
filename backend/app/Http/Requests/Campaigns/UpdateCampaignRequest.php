@@ -8,6 +8,7 @@ use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
 use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
 use App\Models\Campaign;
 use App\Models\Project;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -80,13 +81,16 @@ class UpdateCampaignRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
-            'pipeline_status_id' => $this->derivedFieldRules('pipeline_statuses'),
-            'business_function_id' => $this->derivedFieldRules('business_functions'),
+            'pipeline_status_id' => $this->derivedFieldRules(Rule::exists('pipeline_statuses', 'id')),
+            'business_function_id' => $this->derivedFieldRules(Rule::exists('business_functions', 'id')),
             'country_id' => $this->countryIdRules(),
             'state_id' => $this->geoLevelRules('state_id', 'states'),
             'province_id' => $this->geoLevelRules('province_id', 'provinces'),
             'city_id' => $this->geoLevelRules('city_id', 'cities'),
-            'product_category_id' => $this->derivedFieldRules('product_categories'),
+            // Spec 0074 D-3b: the campaign's CURRENT category stays acceptable.
+            'product_category_id' => $this->derivedFieldRules(
+                new SelectableProductCategory($this->currentCategoryIds()),
+            ),
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:start_date'],
             'total_budget' => ['sometimes', 'nullable', 'numeric', 'min:0'],
@@ -96,16 +100,19 @@ class UpdateCampaignRequest extends FormRequest
 
     /**
      * The validation rule set for one of the 3 BR-2 classification fields,
-     * shared here since only the target `exists` table differs between them.
+     * shared here since only the rule proving the referenced row is a valid
+     * target differs between them (a plain `exists` for two of them, the
+     * selectable-category rule of spec 0074 for the third).
      *
+     * @param  mixed  $existenceRule  rule proving the referenced row is a valid target
      * @return array<int, mixed>
      */
-    private function derivedFieldRules(string $existsTable): array
+    private function derivedFieldRules(mixed $existenceRule): array
     {
         return match (true) {
             $this->isLinkedAfterUpdate() => ['prohibited'],
-            $this->isUnlinkingFromProject() => ['required', 'integer', Rule::exists($existsTable, 'id')],
-            default => ['sometimes', 'required', 'integer', Rule::exists($existsTable, 'id')],
+            $this->isUnlinkingFromProject() => ['required', 'integer', $existenceRule],
+            default => ['sometimes', 'required', 'integer', $existenceRule],
         };
     }
 
@@ -194,6 +201,19 @@ class UpdateCampaignRequest extends FormRequest
         $this->effectiveProjectResolved = true;
 
         return $this->effectiveProjectCache;
+    }
+
+    /**
+     * The category already persisted on the campaign being updated, exempt
+     * from the selectable check (spec 0074 D-3b).
+     *
+     * @return array<int, int>
+     */
+    private function currentCategoryIds(): array
+    {
+        $categoryId = $this->currentCampaign()->product_category_id;
+
+        return $categoryId !== null ? [(int) $categoryId] : [];
     }
 
     private function currentCampaign(): Campaign

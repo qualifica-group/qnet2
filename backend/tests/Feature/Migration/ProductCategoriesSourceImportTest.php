@@ -64,8 +64,8 @@ it('creates root and child categories, remapping parent_id via old_id', function
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 1, 'name' => 'Electronics', 'parent_id' => null, 'description' => 'Top level'],
-                ['id' => 2, 'name' => 'Laptops', 'parent_id' => 1, 'inherits_attributes' => false],
+                ['id' => 1, 'name' => 'Electronics', 'parent_id' => null, 'description' => 'Top level', 'requires_quote' => true],
+                ['id' => 2, 'name' => 'Laptops', 'parent_id' => 1, 'inherits_attributes' => false, 'is_selectable' => false],
             ],
             'pagination' => ['total' => 2],
         ]),
@@ -86,10 +86,18 @@ it('creates root and child categories, remapping parent_id via old_id', function
         // per-context barriers identically.
         ->and($root->inherits_product_attributes)->toBeTrue()
         ->and($root->inherits_opportunity_attributes)->toBeTrue()
+        // A root authors its own quote flag; `is_selectable` defaults to true
+        // when the external record omits it.
+        ->and($root->requires_quote)->toBeTrue()
+        ->and($root->is_selectable)->toBeTrue()
         ->and($child->name)->toBe('Laptops')
         ->and($child->parent_id)->toBe($root->id)
         ->and($child->inherits_product_attributes)->toBeFalse()
-        ->and($child->inherits_opportunity_attributes)->toBeFalse();
+        ->and($child->inherits_opportunity_attributes)->toBeFalse()
+        // `is_selectable` is per-node (no inheritance), `requires_quote` is
+        // taken from the branch root.
+        ->and($child->is_selectable)->toBeFalse()
+        ->and($child->requires_quote)->toBeTrue();
 
     $fresh = $run->fresh();
     expect($fresh->status)->toBe(MigrationStatus::Completed)
@@ -103,8 +111,9 @@ it('relinks a child listed before its parent (forward reference) via afterImport
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
                 // Child first: its parent is not migrated yet at processRow time.
-                ['id' => 2, 'name' => 'Laptops', 'parent_id' => 1],
-                ['id' => 1, 'name' => 'Electronics', 'parent_id' => null],
+                // It is created detached and authors requires_quote=false.
+                ['id' => 2, 'name' => 'Laptops', 'parent_id' => 1, 'requires_quote' => false],
+                ['id' => 1, 'name' => 'Electronics', 'parent_id' => null, 'requires_quote' => true],
             ],
             'pagination' => ['total' => 2],
         ]),
@@ -118,8 +127,10 @@ it('relinks a child listed before its parent (forward reference) via afterImport
     $root = ProductCategory::query()->where('old_id', 1)->first();
     $child = ProductCategory::query()->where('old_id', 2)->first();
 
-    // afterImport resolved the forward reference once the parent existed.
-    expect($child->parent_id)->toBe($root->id);
+    // afterImport resolved the forward reference once the parent existed, and
+    // realigned the quote flag the detached child had authored on its own.
+    expect($child->parent_id)->toBe($root->id)
+        ->and($child->requires_quote)->toBeTrue();
 
     // The detached-then-relinked child still surfaced a non-fatal warning.
     $fresh = $run->fresh();

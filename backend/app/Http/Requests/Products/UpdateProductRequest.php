@@ -6,6 +6,7 @@ use App\DataObjects\Products\UpdateProductData;
 use App\Enums\ProductType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Product;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -50,7 +51,10 @@ class UpdateProductRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'cost' => ['sometimes', 'required', 'numeric'],
             'price' => ['sometimes', 'required', 'numeric'],
-            'category_id' => ['sometimes', 'required', 'integer', 'exists:product_categories,id'],
+            // Spec 0074 D-3b: the product's CURRENT category is exempt, so a
+            // partial update that resubmits it unchanged still passes once
+            // that category has been made unselectable.
+            'category_id' => ['sometimes', 'required', 'integer', new SelectableProductCategory($this->currentCategoryIds())],
             'product_type' => ['sometimes', 'required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['sometimes', 'nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:registries,id'],
@@ -69,6 +73,21 @@ class UpdateProductRequest extends FormRequest
     protected function authorizationResource(): string
     {
         return 'products';
+    }
+
+    /**
+     * The category already persisted on the product being updated, exempt
+     * from the selectable check (spec 0074 D-3b).
+     *
+     * @return array<int, int>
+     */
+    private function currentCategoryIds(): array
+    {
+        $product = $this->route('product');
+
+        return $product instanceof Product && $product->category_id !== null
+            ? [(int) $product->category_id]
+            : [];
     }
 
     protected function authorizationModel(): ?Model

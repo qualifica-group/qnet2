@@ -3,6 +3,7 @@
 namespace App\Http\Requests\RewardStatuses;
 
 use App\DataObjects\RewardStatuses\UpdateRewardStatusData;
+use App\Enums\RewardStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\RewardStatus;
 use Illuminate\Contracts\Validation\Validator;
@@ -19,9 +20,10 @@ use Illuminate\Validation\Rule;
  * 0004) additionally rejects any submitted field the actor cannot edit on
  * this specific model. `name` is unique ignoring self (BR-1). `color`, when
  * submitted, cannot be null/empty (D-4, BR-2): `sometimes|required`.
- * `sort_order`/`system_key` are not accepted here (see
+ * `group`, when submitted, must be a valid App\Enums\RewardStatusGroup value
+ * (spec 0073). `sort_order`/`system_key` are not accepted here (see
  * App\Services\Statuses\StatusOrderManager); on a system row,
- * `description`/`is_active` are rejected at the Service layer
+ * `group`/`description`/`is_active` are rejected at the Service layer
  * (App\Services\Statuses\SystemStatusGuard, BR-3).
  */
 class UpdateRewardStatusRequest extends FormRequest
@@ -46,6 +48,7 @@ class UpdateRewardStatusRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:191', Rule::unique('reward_statuses', 'name')->ignore($rewardStatus->id)],
             'description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'color' => ['sometimes', 'required', 'string', 'max:32'],
+            'group' => ['sometimes', 'required', Rule::enum(RewardStatusGroup::class)],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

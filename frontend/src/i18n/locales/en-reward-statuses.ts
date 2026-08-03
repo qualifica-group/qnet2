@@ -2,9 +2,10 @@
  * Reward statuses domain (spec 0060). Sibling file so `en.ts` stays within
  * the engineering size limits (see `.claude/rules/engineering.md` §6).
  * Reference table describing the STATES applicable to linked rewards
- * (`rewards`), cloned from `opportunity-statuses` with no `group`, plus
- * `description` and `is_active`, and a single system row `pending`
- * ("In attesa").
+ * (`rewards`), cloned from `opportunity-statuses` plus `description` and
+ * `is_active`. Spec 0073 adds the four-phase `group` (as on quote statuses)
+ * and brings the system rows to four ("Aperto", "In attesa", "Chiuso
+ * positivo", "Chiuso negativo").
  */
 
 export const rewardStatuses = {
@@ -15,6 +16,7 @@ export const rewardStatuses = {
     name: 'Name',
     description: 'Description',
     color: 'Color',
+    group: 'Group',
     sort_order: 'Order',
     is_active: 'Active',
     created_at: 'Created at',
@@ -33,6 +35,7 @@ export const rewardStatuses = {
     loadError: 'Unable to load the reward status. Please try again.',
     description: 'Description',
     color: 'Color',
+    group: 'Group',
     sort_order: 'Order',
     is_active: 'Active',
     created_at: 'Created at',
@@ -47,6 +50,13 @@ export const rewardStatuses = {
     name: 'Name',
     description: 'Description',
     color: 'Color',
+    group: {
+      label: 'Group',
+      open: 'Open',
+      pending: 'Pending',
+      closed_won: 'Closed (positive)',
+      closed_lost: 'Closed (negative)',
+    },
     isActive: 'Active',
     save: 'Save',
     saving: 'Saving…',
@@ -58,6 +68,7 @@ export const rewardStatuses = {
     nameMax: 'Name must be at most 191 characters.',
     descriptionMax: 'Description must be at most 500 characters.',
     colorRequired: 'Color is required.',
+    groupRequired: 'Group is required.',
     colorMax: 'Color must be at most 32 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the reward status. Please try again.',

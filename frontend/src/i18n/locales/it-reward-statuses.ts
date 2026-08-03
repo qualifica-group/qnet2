@@ -2,9 +2,10 @@
  * Dominio Stati Buoni Collegati (spec 0060). Estratto in un file affiancato
  * per mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6). Anagrafica degli STATI applicabili ai
- * buoni collegati (`rewards`), clone di `opportunity-statuses` senza
- * `group`, con `description` e `is_active` in più e un'unica riga di sistema
- * `pending` ("In attesa").
+ * buoni collegati (`rewards`), clone di `opportunity-statuses` con
+ * `description` e `is_active` in più. Spec 0073: aggiunge il `group` a
+ * quattro fasi (come gli stati offerta) e porta le righe di sistema a quattro
+ * ("Aperto", "In attesa", "Chiuso positivo", "Chiuso negativo").
  */
 
 export const rewardStatuses = {
@@ -15,6 +16,7 @@ export const rewardStatuses = {
     name: 'Nome',
     description: 'Descrizione',
     color: 'Colore',
+    group: 'Gruppo',
     sort_order: 'Ordine',
     is_active: 'Attivo',
     created_at: 'Creato il',
@@ -33,6 +35,7 @@ export const rewardStatuses = {
     loadError: 'Impossibile caricare lo stato del buono. Riprova.',
     description: 'Descrizione',
     color: 'Colore',
+    group: 'Gruppo',
     sort_order: 'Ordine',
     is_active: 'Attivo',
     created_at: 'Creato il',
@@ -47,6 +50,13 @@ export const rewardStatuses = {
     name: 'Nome',
     description: 'Descrizione',
     color: 'Colore',
+    group: {
+      label: 'Gruppo',
+      open: 'Aperto',
+      pending: 'In pending',
+      closed_won: 'Chiuso positivo',
+      closed_lost: 'Chiuso negativo',
+    },
     isActive: 'Attivo',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -58,6 +68,7 @@ export const rewardStatuses = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
     colorRequired: 'Il colore è obbligatorio.',
+    groupRequired: 'Il gruppo è obbligatorio.',
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato buono. Riprova.',

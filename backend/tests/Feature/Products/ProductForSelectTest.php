@@ -121,6 +121,10 @@ it('every item exposes meta.code/price/cost/vat_rate_* without changing id/label
         ->assertJsonPath('items.0.id', $product->id)
         ->assertJsonPath('items.0.label', 'Fibra 1Gb')
         ->assertJsonPath('items.0.subtitle', 'Fibra')
+        // Spec 0075 AC-012: the category as an ID, next to its human
+        // `subtitle` — the request-management forms drop a selected product as
+        // soon as its category leaves the request's product lines.
+        ->assertJsonPath('items.0.meta.category_id', $category->id)
         ->assertJsonPath('items.0.meta.code', 'PRD-0042')
         ->assertJsonPath('items.0.meta.price', '99.90')
         ->assertJsonPath('items.0.meta.cost', '40.00')

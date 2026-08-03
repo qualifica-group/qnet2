@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\RewardStatusGroup;
 use App\Models\RewardStatus;
 use App\Models\User;
 use Database\Seeders\DemoRewardStatusSeeder;
@@ -44,15 +45,19 @@ if (! function_exists('rewardStatusSystemUserWith')) {
 // AC-017 — clean seed has ONLY the "pending" system row
 // ---------------------------------------------------------------------------
 
-it('migrate:fresh creates the SOLE system row "In attesa"/pending, no other status (AC-017)', function () {
-    expect(RewardStatus::count())->toBe(1);
+it('migrate:fresh creates the FOUR system rows in their pinned order, no other status (spec 0073, AC-001)', function () {
+    expect(RewardStatus::count())->toBe(4);
 
-    $pending = RewardStatus::first();
-    expect($pending->name)->toBe('In attesa')
-        ->and($pending->color)->toBe('amber')
-        ->and($pending->system_key)->toBe('pending')
-        ->and($pending->sort_order)->toBe(0)
-        ->and($pending->is_active)->toBeTrue();
+    $rows = RewardStatus::query()->orderBy('sort_order')->get();
+
+    expect($rows->pluck('name')->all())->toBe(['Aperto', 'In attesa', 'Chiuso positivo', 'Chiuso negativo'])
+        ->and($rows->pluck('system_key')->all())->toBe(['new', 'pending', 'won', 'lost'])
+        ->and($rows->pluck('group')->map->value->all())->toBe(['open', 'pending', 'closed_won', 'closed_lost'])
+        ->and($rows->pluck('sort_order')->all())->toBe([0, 10, 20, 30])
+        ->and($rows->every(fn (RewardStatus $row): bool => $row->is_active))->toBeTrue();
+
+    $pending = $rows->firstWhere('system_key', 'pending');
+    expect($pending->color)->toBe('amber');
 });
 
 it('running DemoRewardStatusSeeder twice does not duplicate rows (AC-017)', function () {
@@ -126,6 +131,31 @@ it('update: 200 when the system row changes ONLY name/color (BR-3, AC-005)', fun
         ->assertJsonPath('data.system_key', 'pending');
 
     $this->assertDatabaseHas('reward_statuses', ['id' => $pending->id, 'name' => 'In attesa (revisionata)', 'color' => 'teal']);
+});
+
+it('update: 422 when the system row payload includes group, the phase never moves (spec 0073, AC-004)', function () {
+    $actor = rewardStatusSystemUserWith(['update']);
+    $pending = RewardStatus::where('system_key', 'pending')->firstOrFail();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/reward-statuses/{$pending->id}", ['group' => 'closed_won'])
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'System statuses accept only name and color changes.');
+
+    expect($pending->fresh()->group)->toBe(RewardStatusGroup::Pending);
+});
+
+it('a row inserted without an explicit group falls back to open (spec 0073, AC-002)', function () {
+    $id = DB::table('reward_statuses')->insertGetId([
+        'name' => 'Riga preesistente',
+        'color' => 'slate',
+        'sort_order' => 50,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    expect(RewardStatus::findOrFail($id)->group)->toBe(RewardStatusGroup::Open);
 });
 
 it('update: 422 when the system row payload includes description, nothing persists (BR-3, AC-005)', function () {

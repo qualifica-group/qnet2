@@ -1,5 +1,6 @@
 import type { TranslationResources } from '@/i18n/locales/en'
 import { navigation } from './it-navigation'
+import { settings } from './it-settings'
 import { personalData, personalDataFieldLabels } from './it-personal-data'
 import { enums } from './it-enums'
 import { companies } from './it-companies'
@@ -296,67 +297,7 @@ export const it: TranslationResources = {
   },
   companies: { ...companies, stats: moduleStats.companies },
   companySites: { ...companySites, stats: moduleStats.companySites },
-  settings: {
-    title: 'Impostazioni',
-    subtitle: 'Gestisci le preferenze del tuo account.',
-    sectionNavLabel: 'Sezioni impostazioni',
-    avatarTitle: 'Avatar',
-    avatarSubtitle: "Carica un'immagine del profilo mostrata in tutta l'app.",
-    avatarUpdated: 'Avatar aggiornato con successo.',
-    avatarRemoved: 'Avatar rimosso con successo.',
-    profileTitle: 'Profilo',
-    profileSubtitle: 'Aggiorna le tue informazioni personali e la lingua preferita.',
-    name: 'Nome',
-    email: 'Email',
-    language: 'Lingua',
-    localeEnglish: 'Inglese',
-    localeItalian: 'Italiano',
-    saveProfile: 'Salva modifiche',
-    savingProfile: 'Salvataggio…',
-    profileUpdated: 'Profilo aggiornato con successo.',
-    systemSettings: {
-      title: 'Impostazioni sistema',
-      subtitle: 'Preferenze di sistema del gestionale.',
-    },
-    uiScale: {
-      title: 'Risoluzione interfaccia',
-      subtitle:
-        "Trascina per rimpicciolire o ingrandire testi, layout e tabelle dell'intera app. 100% è la dimensione normale.",
-      saved: 'Risoluzione aggiornata con successo.',
-      reset: 'Ripristina default',
-    },
-    moduleOpenMode: {
-      title: 'Modalità apertura moduli',
-      subtitle:
-        'Scegli come si aprono le schermate di creazione, modifica e visualizzazione dei moduli.',
-      modeLabel: 'Modalità',
-      modeModal: 'Solo modale',
-      modePage: 'Solo pagina singola',
-      modeCustom: 'Personalizzata',
-      customHint: 'Imposta la modalità di apertura per ciascun modulo.',
-      valueModal: 'Modale',
-      valuePage: 'Pagina singola',
-      perModuleAria: 'Modalità di apertura per {{module}}',
-      saved: 'Modalità di apertura aggiornata con successo.',
-      reset: 'Ripristina default',
-    },
-    passwordTitle: 'Password',
-    passwordSubtitle: 'Modifica la password usata per accedere.',
-    currentPassword: 'La password attuale',
-    newPassword: 'Nuova password',
-    confirmPassword: 'Ripeti la nuova password',
-    changePassword: 'Cambia la password',
-    changingPassword: 'In corso…',
-    passwordChanged: 'Password aggiornata con successo.',
-    nameRequired: 'Il nome è obbligatorio.',
-    emailRequired: "L'email è obbligatoria.",
-    emailInvalid: 'Inserisci un indirizzo email valido.',
-    currentPasswordRequired: 'La password attuale è obbligatoria.',
-    passwordMinLength: 'La password deve avere almeno 8 caratteri.',
-    confirmPasswordRequired: 'Conferma la nuova password.',
-    passwordsDontMatch: 'Le password non coincidono.',
-    genericError: 'Si è verificato un errore. Riprova.',
-  },
+  settings,
   notifications,
   avatar: {
     chooseImage: 'Scegli immagine',

@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0073-reward-status-groups-and-lifecycle" status="draft" owner="nicola" date="2026-08-03">
+
+  <goal>
+    Dare agli stati dei buoni collegati (`reward_statuses`, spec 0060) la stessa semantica a fasi
+    degli stati offerta — `group` a quattro valori (aperto / in pending / chiuso positivo / chiuso
+    negativo) con le quattro righe di SISTEMA corrispondenti — e collegare il ciclo di vita del
+    buono a quello della richiesta: quando l'Opportunita' entra in uno stato di LAVORAZIONE chiuso
+    negativo, i buoni nati da quella Opportunita' si chiudono negativi in automatico; quando la
+    richiesta si riapre, ogni buono torna esattamente allo stato che aveva prima della chiusura.
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono VERIFICATI sul codice reale (ricognizione 2026-08-03), non
+         ipotizzati. Riferimenti file:riga dove utile. -->
+
+    <stato_attuale_reward_statuses>
+      `reward_statuses` (migrazione `2026_07_23_115000_create_reward_statuses_table.php`):
+      `name` (unique), `description`, `color`, `sort_order`, `is_active`, `system_key` (unique,
+      nullable). NIENTE `group` (spec 0060 lo escludeva esplicitamente: "non esiste una semantica
+      open/pending/closed"). UNA sola riga di sistema seedata dalla migrazione: "In attesa"
+      (`system_key='pending'`, `color='amber'`, `sort_order=0`).
+      `App\Models\RewardStatus`: `SYSTEM_HEAD_KEY = StatusSystemKey::Pending`, `SYSTEM_TAIL_KEYS = []`,
+      `#[Fillable(['name','description','color','sort_order','is_active'])]`.
+      Righe demo esistenti (`DemoRewardStatusSeeder`): "Approvato" (10), "Consegnato" (20),
+      "Scaduto" (30, `is_active=false`).
+    </stato_attuale_reward_statuses>
+
+    <precedente_group_e_gia_in_produzione>
+      Due moduli hanno gia' il `group` a quattro valori con lo split dell'esito:
+      `App\Enums\QuoteStatusGroup` (spec 0065) e `App\Enums\ContractStatusGroup` (spec 0072), entrambi
+      `open|pending|closed_won|closed_lost`. `ContractStatusGroup` documenta la regola di stile da
+      seguire qui (D-5 di 0072): OGNI configuratore ha il PROPRIO enum, non riusa quello di un altro
+      modulo, per non accoppiarli. Precedente di migrazione additiva sul `group`:
+      `2026_07_31_090000_split_quote_status_closed_group.php`.
+      `App\Enums\StatusSystemKey` (enum CONDIVISO fra le tabelle di stato — `system_key` e' unique
+      per tabella, non globalmente) espone gia' i casi `New`, `Pending`, `Won`, `Lost`: le quattro
+      righe di sistema dei buoni li riusano, nessun caso nuovo da aggiungere.
+    </precedente_group_e_gia_in_produzione>
+
+    <ordinamento_righe_di_sistema>
+      `App\Services\Statuses\StatusOrderManager` e' generico su class-string ed e' condiviso da
+      CINQUE modelli (`PipelineStatus`, `OpportunityStatus`, `RewardStatus`, `QuoteStatus`,
+      `ContractStatus`). Invariante attuale: UNA testa (`SYSTEM_HEAD_KEY`) a `sort_order = 0`, poi le
+      custom 10,20,..., poi le code (`SYSTEM_TAIL_KEYS`) nell'ordine dichiarato. `reorder()`
+      (StatusOrderManager.php:84) rinormalizza SOLO la testa singola e le code: una riga di sistema
+      che non sia ne' testa ne' coda NON verrebbe mai riposizionata e collide con le custom.
+      Consequenza diretta (D-6): con DUE righe non terminali ("Aperto" e "In attesa") la costante
+      `SYSTEM_HEAD_KEY` va generalizzata a `SYSTEM_HEAD_KEYS` (array, speculare a `SYSTEM_TAIL_KEYS`)
+      su tutti e cinque i modelli. Per gli altri quattro moduli e' un array di UN elemento: stesso
+      comportamento di oggi, verificato dai loro test di reorder gia' esistenti.
+      `App\Services\Statuses\SystemStatusGuard::MUTABLE_SYSTEM_FIELDS = ['name','color']`: un `group`
+      inviato su una riga di sistema e' gia' respinto 422 senza toccare il guard.
+      `SystemStatusGuard::resolveNewStatusId()` interroga `system_key = 'new'` e NON e' usato dai
+      buoni (i buoni nascono `pending` via RewardAssignmentWriter): resta invariato.
+    </ordinamento_righe_di_sistema>
+
+    <precedente_automazione_ciclo_di_vita>
+      `App\Services\Contracts\ContractLifecycleManager` (spec 0072, BR-1) e' il precedente ESATTO da
+      clonare come forma: sta in un service dedicato, gira DENTRO la transazione del service
+      chiamante, confronta il group PRIMA/DOPO la scrittura dello stato, e alla "riapertura" salva/
+      ripristina lo stato precedente tramite la colonna `contracts.status_before_suspension_id`
+      (`nullable`, `nullOnDelete`, `2026_08_01_100100_create_contracts_table.php:54`), loggando
+      eventi espliciti (`contract.created`, `contract.suspended`).
+      Divergenza deliberata qui (D-7): il manager dei buoni NON confronta prima/dopo ma RICONCILIA
+      (idempotente) — vedi D-7, motivata dal fatto che i punti di scrittura sono quattro e che una
+      riga `rewards` puo' nascere nella stessa transazione che chiude la richiesta.
+    </precedente_automazione_ciclo_di_vita>
+
+    <punti_di_scrittura_dello_stato_di_lavorazione>
+      `opportunities.opportunity_workflow_status_id` (spec 0047) e' assegnato in TRE soli punti
+      (grep verificata, 2026-08-03):
+      - `App\Services\RequestManagement\RequestWorkflowStatusWriter::apply()` (:77) — pannello
+        "Lavora", inline-edit di Gestione Richieste e creazione richiesta;
+      - `App\Services\Opportunities\OpportunityWorkflowResolver::resolveAndAssign()` (:174) —
+        ri-risoluzione per cambio criteri e lane di riassegnazione di
+        `OpportunityWorkflowService::delete()`;
+      - `App\Services\OpportunityService::resolveWorkflowStatus()` (:327) — id esplicito dal form
+        Opportunita'.
+      Gli orchestratori che avvolgono questi punti in transazione sono:
+      `RequestManagementService::updateWork()`, `RequestCreationService::create()`,
+      `OpportunityService::create()/update()`, `OpportunityWorkflowService::delete()`.
+      `App\Enums\WorkflowStatusGroup` = `open|pending|validated|closed_won|closed_lost`; la riga di
+      sistema `closed_lost` e' "Chiusa negativa"
+      (`WorkflowStatusWriter.php:146`, `2026_07_16_131200_create_opportunity_workflow_statuses_table.php`).
+    </punti_di_scrittura_dello_stato_di_lavorazione>
+
+    <stato_attuale_rewards>
+      `App\Models\Reward` (tabella `rewards`, spec 0059/0060): `referent_id`, `reward_type_id`,
+      `reward_status_id` (NOT NULL, `restrictOnDelete`), `source_type`/`source_id` (morph, oggi
+      sempre alias `opportunity`), `assigned_at`, `notes`. Relazione inversa
+      `Opportunity::rewards()` (morphMany). Scrittori esistenti dello stato:
+      `App\Services\Opportunities\RewardAssignmentWriter::createAdded()` (nascita: risolve la riga di
+      sistema `pending` per `system_key`, mai id hardcoded) e `App\Services\RewardService::updateStatus()`
+      (PATCH inline dalla card, `RewardController`). `Reward` usa `LogsModelActivity`.
+      La card FE `features/rewards/reward-card.tsx` mostra `reward_status` (persistito) piu' i badge
+      DERIVATI `context.opportunity_status` / `context.workflow_status` (mai persistiti).
+    </stato_attuale_rewards>
+
+    <superficie_frontend_da_clonare>
+      Il modulo FE `features/reward-statuses/` e' il gemello di `features/quote-statuses/`, che il
+      `group` ce l'ha gia': `quote-status-form-body.tsx` (mappa `GROUP_LABEL_KEYS` + `<SelectItem>`,
+      picker disabilitato sulla riga di sistema), `quote-status-schema.ts` (`z.enum(QUOTE_STATUS_GROUPS)`),
+      `types.ts` (`QuoteStatusGroupValue`), `column-renderers.tsx` (`GroupCell` da
+      `features/table/rich-cells`, `labelPrefix="quoteStatuses.form.group"`), i18n
+      `i18n/locales/{it,en}-quote-statuses.ts` (`form.group.{label,open,pending,closed_won,closed_lost}`).
+      Le etichette italiane gia' in uso e da riusare verbatim: "Aperto", "In pending",
+      "Chiuso positivo", "Chiuso negativo".
+    </superficie_frontend_da_clonare>
+
+    <decisioni_utente>
+      <decision id="D-1">Il trigger e' lo stato di LAVORAZIONE dell'Opportunita'
+        (`opportunity_workflow_status_id`, `WorkflowStatusGroup`), NON lo stato commerciale
+        (`opportunity_status_id`): e' l'unico che porta la semantica "chiuso negativo". Chiusura =
+        ingresso in `group = closed_lost`; riapertura = uscita da `closed_lost` verso QUALSIASI
+        altro group (open/pending/validated/closed_won).</decision>
+      <decision id="D-2">Alla riapertura il buono torna allo stato che aveva PRIMA della chiusura
+        automatica, non a un valore fisso. Serve una colonna `rewards.status_before_closure_id`
+        (nullable, FK `reward_statuses`, `nullOnDelete`) modellata su
+        `contracts.status_before_suspension_id`. La colonna e' anche il MARCATORE di "chiuso
+        dall'automazione": valorizzata = chiusura automatica in corso, `null` = stato deciso
+        dall'utente.</decision>
+      <decision id="D-3">La chiusura POSITIVA della richiesta non muove il buono: resta dov'e' (di
+        norma "In attesa" di erogazione) e viene portato a "Chiuso positivo" a mano dalla card.
+        Nessun automatismo simmetrico.</decision>
+      <decision id="D-4">Il buono continua a nascere sulla riga di sistema "In attesa" (`pending`),
+        invariato rispetto a spec 0060 BR-6, anche quando l'Opportunita' e' gia' chiusa negativa: e'
+        la riconciliazione (D-7), non la nascita, a chiuderlo subito dopo nella stessa
+        transazione.</decision>
+      <decision id="D-5">Nuovo enum DEDICATO `App\Enums\RewardStatusGroup`
+        (`open|pending|closed_won|closed_lost`), non un riuso di `QuoteStatusGroup`: stessa regola
+        anti-accoppiamento di 0072 D-5.</decision>
+      <decision id="D-6">Quattro righe di sistema: "Aperto" (`new`, group `open`), "In attesa"
+        (`pending`, group `pending`), "Chiuso positivo" (`won`, group `closed_won`), "Chiuso
+        negativo" (`lost`, group `closed_lost`). Le prime due sono TESTA (nell'ordine), le ultime
+        due CODA. Consegue la generalizzazione `SYSTEM_HEAD_KEY` -> `SYSTEM_HEAD_KEYS` in
+        `StatusOrderManager` e nei cinque modelli. Sequenza risultante per i buoni: Aperto=0,
+        In attesa=10, custom=20,30,..., Chiuso positivo, Chiuso negativo.</decision>
+      <decision id="D-7">L'automazione e' un servizio unico
+        `App\Services\Rewards\RewardLifecycleManager::reconcile(Opportunity $opportunity)`,
+        IDEMPOTENTE (non un diff prima/dopo): legge il group dello stato di lavorazione CORRENTE e
+        allinea le righe `rewards` dell'Opportunita'. Motivo della divergenza dal precedente
+        contratti: i punti di scrittura dello stato sono tre e una riga `rewards` puo' NASCERE nella
+        stessa transazione che chiude la richiesta (`RequestManagementService::updateWork()` Step 8
+        gira DOPO lo Step 3 dello stato) — un diff prima/dopo mancherebbe quel buono, la
+        riconciliazione no. Essendo idempotente, una doppia chiamata nella stessa transazione e'
+        innocua.</decision>
+      <decision id="D-8">L'automazione agisce SOLO sui buoni la cui origine e' quell'Opportunita'
+        (`$opportunity->rewards()`, cioe' `source_type='opportunity'`). Nessun altro buono viene
+        toccato, e nessun buono viene mai creato o cancellato dall'automazione.</decision>
+      <decision id="D-9">Tracciabilita': la chiusura/riapertura automatica logga gli eventi
+        `reward.auto_closed` / `reward.auto_reopened` (activity log, come
+        `ContractLifecycleManager` logga `contract.suspended`), cosi' nello storico si distingue una
+        chiusura automatica da una scelta manuale.</decision>
+      <decision id="D-10">La card resta liberamente modificabile a mano anche su un buono chiuso
+        dall'automazione (nessun lock UI): una modifica manuale mentre la richiesta e' chiusa
+        negativa verra' comunque sovrascritta dal ripristino alla riapertura — e' la conseguenza
+        accettata di D-2.</decision>
+    </decisioni_utente>
+  </context>
+
+  <scope>
+    <in>
+      <item>Enum `App\Enums\RewardStatusGroup` (open|pending|closed_won|closed_lost) + metodo
+        `values()`, come i due enum gemelli.</item>
+      <item>Migrazione additiva su `reward_statuses`: colonna `group` (string 16, default `open`,
+        NOT NULL), backfill delle righe esistenti (la riga di sistema `pending` -> `pending`; ogni
+        riga custom -> `open`), seed delle TRE nuove righe di sistema (`new`/"Aperto",
+        `won`/"Chiuso positivo", `lost`/"Chiuso negativo") e rinormalizzazione dei `sort_order`
+        secondo la sequenza di D-6. Reversibile (`down()` rimuove colonna e righe nuove).</item>
+      <item>Migrazione additiva su `rewards`: colonna `status_before_closure_id` (nullable, FK
+        `reward_statuses`, `nullOnDelete`).</item>
+      <item>`RewardStatus`: `group` nel `#[Fillable]` e nei `casts`, `SYSTEM_HEAD_KEYS = [New, Pending]`,
+        `SYSTEM_TAIL_KEYS = [Won, Lost]`.</item>
+      <item>`StatusOrderManager`: generalizzazione testa singola -> teste multiple, e allineamento
+        di `PipelineStatus`/`OpportunityStatus`/`QuoteStatus`/`ContractStatus` a `SYSTEM_HEAD_KEYS`
+        (array di un elemento, comportamento invariato).</item>
+      <item>Write surface degli stati buono: `group` obbligatorio in POST, opzionale in PATCH
+        (`Store/UpdateRewardStatusRequest`, `Create/UpdateRewardStatusData`), esposto in
+        `RewardStatusResource`, colonna + filtro `set` nel `RewardStatusColumnCatalog`, campo in
+        `RewardStatusesAuthorization::fields()`.</item>
+      <item>`App\Services\Rewards\RewardLifecycleManager` (riconciliazione D-7) e le sue quattro
+        chiamate: `RequestManagementService::updateWork()`, `RequestCreationService::create()`,
+        `OpportunityService::create()/update()`, `OpportunityWorkflowService::delete()`.</item>
+      <item>FE `features/reward-statuses/`: `group` in types/schema/form-body/form-payload/
+        column-renderers + i18n it/en, clonando `features/quote-statuses/`.</item>
+      <item>`DemoRewardStatusSeeder`: `group` sulle tre righe demo.</item>
+      <item>Test Pest per ogni AC + aggiornamento dei test esistenti impattati
+        (`tests/Feature/RewardStatuses/*`, `tests/Feature/Rewards/*`,
+        `tests/Unit/Models/*StatusTest.php`, `FieldCatalogueEndpointTest`), test Vitest FE.</item>
+    </in>
+    <out>
+      <item>Qualsiasi automazione legata allo stato COMMERCIALE dell'Opportunita'
+        (`opportunity_status_id`) — D-1.</item>
+      <item>Automatismo sulla chiusura POSITIVA della richiesta — D-3.</item>
+      <item>Cambio dello stato di nascita del buono — D-4.</item>
+      <item>Creazione/cancellazione automatica di buoni: l'automazione muove solo lo stato — D-8.</item>
+      <item>Lock/disabilitazione della modifica manuale sulla card di un buono chiuso in automatico
+        — D-10.</item>
+      <item>Nuove colonne/filtri sul `group` del buono nella griglia aggregata
+        `rewarded-referents` (resta il filtro per stato gia' esistente).</item>
+      <item>Notifiche, email o job asincroni sulla chiusura/riapertura.</item>
+      <item>Estensione dell'automazione a origini diverse da `opportunity` (la morph map e'
+        stretta e oggi ha un solo alias).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- NESSUN endpoint nuovo. Cambiano le shape di due risorse esistenti. -->
+
+    <endpoint method="POST" path="/api/reward-statuses">
+      <request>
+        name: string (required, max 191, unique)
+        description: string|null (sometimes, max 500)
+        color: string (required, max 32)
+        group: string (required, in: open|pending|closed_won|closed_lost)   <!-- NUOVO -->
+        is_active: boolean (sometimes)
+      </request>
+      <response status="201">
+        { success: true, message: string, data: {
+            id, name, description, color, group, sort_order, is_active, system_key,
+            created_at, updated_at } }
+      </response>
+      <errors>
+        403 senza `reward-statuses.create` o su campo non editabile (field-permissions);
+        422 `group` mancante o fuori enum, `name` duplicato, `color` mancante.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/reward-statuses/{rewardStatus}">
+      <request>
+        Ogni campo opzionale (PATCH sparso). `group`: in: open|pending|closed_won|closed_lost.
+      </request>
+      <response status="200">
+        { success: true, message: string, data: { ...stessa shape del POST... } }
+      </response>
+      <errors>
+        422 "System statuses accept only name and color changes." se `group` (o
+        description/is_active/sort_order) e' inviato su una riga di sistema (SystemStatusGuard,
+        invariato); 403 field-permissions; 422 enum/unicita'.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/reward-statuses/columns">
+      <response status="200">
+        Colonna aggiuntiva `group`: { id: 'group', label: 'rewardStatuses.columns.group',
+        type: 'text', visible: true, sortable: true, filterable: true, filterType: 'set' },
+        con `filterOptions` = RewardStatusGroup::values() (stesso schema di
+        QuoteStatusColumnCatalog).
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/referents/{referent}/rewards">
+      <response status="200">
+        Shape INVARIATA (`RewardResource`): `reward_status` continua a esporre { id, name, color }.
+        Nessuna esposizione di `status_before_closure_id` (dettaglio interno dell'automazione, D-2).
+        Dopo una chiusura automatica il campo `reward_status` riporta semplicemente la riga di
+        sistema "Chiuso negativo".
+      </response>
+    </endpoint>
+
+    <internal_contract name="RewardLifecycleManager">
+      App\Services\Rewards\RewardLifecycleManager::reconcile(Opportunity $opportunity): void
+      - group corrente = `opportunity_workflow_status_id` -> OpportunityWorkflowStatus.group;
+      - se group === closed_lost: per OGNI reward di quell'Opportunita' con
+        `status_before_closure_id === null` e `reward_status_id !== id(riga sistema lost)`:
+        `status_before_closure_id = reward_status_id`, `reward_status_id = id(lost)`,
+        activity `reward.auto_closed`;
+      - altrimenti: per OGNI reward con `status_before_closure_id !== null`:
+        `reward_status_id = status_before_closure_id`, `status_before_closure_id = null`,
+        activity `reward.auto_reopened`;
+      - stato di lavorazione `null` = non chiuso: ricade nel ramo di ripristino;
+      - id delle righe di sistema risolti per `system_key`, MAI hardcoded (come
+        RewardAssignmentWriter::resolvePendingStatusId());
+      - salvataggio per-model (`$reward->save()`), mai bulk update: `LogsModelActivity` aggancia gli
+        eventi Eloquent (stessa motivazione di RewardAssignmentWriter::retarget()).
+    </internal_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione, `reward_statuses` contiene esattamente quattro righe
+      con `system_key` non nullo — `new`/"Aperto"/group `open`/sort_order 0, `pending`/"In attesa"/
+      group `pending`/sort_order 10, `won`/"Chiuso positivo"/group `closed_won`, `lost`/"Chiuso
+      negativo"/group `closed_lost` — con le due code dopo l'ultima custom. Verifica: Pest.</criterion>
+    <criterion id="AC-002">Una riga custom preesistente alla migrazione ha `group = 'open'` e
+      conserva il proprio ordine relativo, spostata dopo le due teste. Verifica: Pest (migrazione
+      applicata su dati preesistenti).</criterion>
+    <criterion id="AC-003">POST /api/reward-statuses senza `group` risponde 422 con errore sul campo
+      `group`; con `group` fuori enum, 422. Con `group` valido, 201 e la risposta espone `group`.
+      Verifica: Pest.</criterion>
+    <criterion id="AC-004">PATCH su una riga di SISTEMA che invia `group` risponde 422 ("System
+      statuses accept only name and color changes"); lo stesso PATCH che invia solo `name`/`color`
+      risponde 200. Verifica: Pest.</criterion>
+    <criterion id="AC-005">`POST /api/reward-statuses/reorder` con l'insieme esatto delle righe
+      custom lascia Aperto=0, In attesa=10, le custom da 20 in poi nell'ordine inviato, e Chiuso
+      positivo/Chiuso negativo in coda in quest'ordine. Verifica: Pest.</criterion>
+    <criterion id="AC-006">Il reorder di `pipeline-statuses`, `opportunity-statuses`,
+      `quote-statuses` e `contract-statuses` produce lo stesso risultato di prima della
+      generalizzazione `SYSTEM_HEAD_KEYS` (nessuna regressione). Verifica: Pest, suite esistente dei
+      quattro moduli, invariata.</criterion>
+    <criterion id="AC-007">Data un'Opportunita' con due buoni ("In attesa" e "Approvato"), una PATCH
+      di Gestione Richieste che porta lo stato di lavorazione a una riga `group = closed_lost` lascia
+      entrambi i buoni sulla riga di sistema "Chiuso negativo", con
+      `status_before_closure_id` = rispettivamente l'id di "In attesa" e di "Approvato". Verifica:
+      Pest.</criterion>
+    <criterion id="AC-008">Sulla stessa Opportunita' del caso precedente, una PATCH che riporta lo
+      stato di lavorazione su una riga `group = open` (o pending/validated/closed_won) rimette i due
+      buoni su "In attesa" e "Approvato" e azzera `status_before_closure_id`. Verifica:
+      Pest.</criterion>
+    <criterion id="AC-009">Una PATCH che porta lo stato di lavorazione a `closed_won` NON modifica
+      lo stato dei buoni ne' `status_before_closure_id` (D-3). Verifica: Pest.</criterion>
+    <criterion id="AC-010">Una seconda PATCH verso un ALTRO stato `closed_lost` (o la ripetizione
+      della stessa) non sovrascrive `status_before_closure_id` gia' valorizzato: lo stato da
+      ripristinare resta quello originario (idempotenza, D-7). Verifica: Pest.</criterion>
+    <criterion id="AC-011">Un buono AGGIUNTO nella stessa PATCH che chiude negativamente la richiesta
+      (payload con `opportunity_workflow_status_id` closed_lost + `rewards`) risulta anch'esso su
+      "Chiuso negativo" con `status_before_closure_id` = id di "In attesa" (D-4/D-7). Verifica:
+      Pest.</criterion>
+    <criterion id="AC-012">La stessa automazione scatta dagli altri tre canali di scrittura dello
+      stato di lavorazione: PATCH inline di Gestione Richieste, update dell'Opportunita' con id di
+      stato esplicito, e ri-risoluzione automatica del workflow
+      (`OpportunityWorkflowResolver::resolveAndAssign()`, incluso il caso
+      `OpportunityWorkflowService::delete()`). Verifica: Pest, un test per canale.</criterion>
+    <criterion id="AC-013">I buoni di un'ALTRA Opportunita' (e quelli con origine diversa) non
+      vengono toccati da nessuno dei due rami (D-8); nessuna riga `rewards` viene creata o cancellata
+      dall'automazione. Verifica: Pest.</criterion>
+    <criterion id="AC-014">Una chiusura automatica scrive nell'activity log del buono l'evento
+      `reward.auto_closed`, una riapertura `reward.auto_reopened` (D-9). Verifica: Pest.</criterion>
+    <criterion id="AC-015">La modifica manuale dello stato dalla card (PATCH /api/rewards/{reward})
+      continua a funzionare senza toccare `status_before_closure_id`. Verifica: Pest (test esistente
+      esteso).</criterion>
+    <criterion id="AC-016">Il form FE stati buono mostra il select "Gruppo" con le quattro opzioni
+      localizzate ("Aperto", "In pending", "Chiuso positivo", "Chiuso negativo"), obbligatorio in
+      creazione, e lo rende DISABILITATO sulla riga di sistema. Verifica: Vitest
+      (`reward-status-form.test.tsx`).</criterion>
+    <criterion id="AC-017">Lo schema Zod rifiuta un `group` assente/non valido con il messaggio
+      localizzato, e il payload builder invia `group` in POST e solo se cambiato in PATCH. Verifica:
+      Vitest (`reward-status-schema.test.ts`, `reward-status-form-payload.test.ts`).</criterion>
+    <criterion id="AC-018">La griglia `reward-statuses` mostra la colonna "Gruppo" con la label
+      localizzata del valore e il filtro `set` sui quattro valori. Verifica: Vitest
+      (`reward-statuses-table.test.tsx`) + Pest (`RewardStatusTableTest`).</criterion>
+    <criterion id="AC-019">`php artisan migrate:fresh --seed` e la successiva
+      `db:seed --class=DemoDataSeeder` restano verdi, con le righe demo dotate di `group`. Verifica:
+      Pest (seeder test) / esecuzione reale.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm): tutto con lo stack gia' presente.</item>
+    <item>Nessuna modifica alle migrazioni gia' committate: solo migrazioni NUOVE e additive, con
+      `down()` reversibile (CLAUDE.md / backend.md §3).</item>
+    <item>Identificatori in INGLESE (colonne, classi, metodi, chiavi enum). Italiano solo nei valori
+      esposti a UI (nomi delle righe di sistema, i18n).</item>
+    <item>Authz invariata e server-side: `reward-statuses` resta gated da `RewardStatusPolicy` +
+      field-permissions; l'automazione non introduce endpoint e quindi nessuna nuova superficie di
+      autorizzazione.</item>
+    <item>`reconcile()` gira SEMPRE dentro la transazione del service chiamante: un fallimento a
+      valle deve annullare anche il movimento dei buoni.</item>
+    <item>Nessun id di riga di sistema hardcoded: risoluzione per `system_key` (precedente
+      RewardAssignmentWriter).</item>
+    <item>Salvataggi per-model (mai `update()` sul query builder) dove serve l'activity log.</item>
+    <item>File entro 300 righe (soft) / 500 (hard); nessun commento con emoticon; niente dead
+      code.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, `pint --dirty` pulito,
+      `cd frontend &amp;&amp; npx tsc -b --force` EXIT=0, ESLint pulito.</item>
+  </constraints>
+
+</spec>

@@ -20,6 +20,7 @@ import {
   useAttachmentThumbnail,
 } from '@/features/attachments/use-attachment-binary'
 import type { Attachment } from '@/features/attachments/types'
+import { formatDate } from '@/lib/formatting/date-display'
 
 type FileKind = 'image' | 'pdf' | 'spreadsheet' | 'word' | 'presentation' | 'archive' | 'text' | 'generic'
 
@@ -84,12 +85,6 @@ function fileKind(mimeType: string): FileKind {
     return 'text'
   }
   return 'generic'
-}
-
-/** Localized file date, blank when missing/invalid — display only. */
-function formatDate(value: string): string | null {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString()
 }
 
 export interface AttachmentTileProps {

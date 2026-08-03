@@ -17,6 +17,7 @@ import { PasswordForm } from '@/features/auth/password-form'
 import { AvatarForm } from '@/features/auth/avatar-form'
 import { ModuleOpenModeForm } from '@/features/modules/module-open-mode-form'
 import { UiScaleForm } from '@/features/appearance/ui-scale-form'
+import { DateFormatForm } from '@/features/appearance/date-format-form'
 
 interface SubSectionMeta {
   id: string
@@ -56,6 +57,7 @@ const SECTIONS: readonly SectionMeta[] = [
     children: [
       { id: 'module-open', titleKey: 'settings.moduleOpenMode.title' },
       { id: 'ui-scale', titleKey: 'settings.uiScale.title' },
+      { id: 'date-format', titleKey: 'settings.dateFormat.title' },
     ],
   },
 ]
@@ -194,6 +196,8 @@ function renderSubSection(id: string): ReactNode {
       return <ModuleOpenModeForm />
     case 'ui-scale':
       return <UiScaleForm />
+    case 'date-format':
+      return <DateFormatForm />
     default:
       return null
   }

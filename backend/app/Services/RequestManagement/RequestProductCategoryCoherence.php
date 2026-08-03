@@ -60,9 +60,10 @@ final class RequestProductCategoryCoherence
      */
     public function message(array $offendingProducts): string
     {
-        return 'These products of interest belong to a product category the request does not carry: '
-            .implode(', ', $offendingProducts)
-            .'. Add that product category to the request, or remove the product.';
+        return __(
+            'These products of interest belong to a product category the request does not carry: :products. Add that product category to the request, or remove the product.',
+            ['products' => implode(', ', $offendingProducts)],
+        );
     }
 
     /**

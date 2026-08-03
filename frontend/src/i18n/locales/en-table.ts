@@ -95,12 +95,33 @@ export const table = {
     loadMore: 'Load more',
     noScope: 'This row has no scope yet: unlock the whole catalogue to pick.',
     hintScoped: "Only the options within this row's scope.",
+    // Spec 0075, D-4: the scope cannot be lifted here — this domain refuses
+    // what falls outside it, so there is no unlock to explain.
+    hintLocked: "Only the options within this row's scope: this module refuses the others.",
     hintUnlocked: "Whole catalogue: a pick outside the scope will extend this row's scope.",
     unlock: 'Show all',
     relock: "Limit to the row's scope",
     unlockTitle: 'Show the whole catalogue?',
     unlockDescription:
       "Picking an item outside this row's scope will automatically extend that scope to include it.",
+  },
+  // Spec 0075: the in-cell {business function, product category} editor — the
+  // same two-step flow as the form's own ProductLinesField.
+  productLinesEditor: {
+    selected: 'Product categories on this record',
+    none: 'No product category yet.',
+    remove: 'Remove {{name}}',
+    back: 'Back to the business functions',
+    businessFunctionStep: 'Step 1: pick the business function.',
+    categoryStep: 'Step 2: pick a product category of {{name}}.',
+    businessFunctionSearch: 'Search business functions…',
+    categorySearch: 'Search product categories…',
+    empty: 'No results.',
+    error: 'Could not load the options.',
+    retry: 'Retry',
+    loadMore: 'Load more',
+    uncoveredProducts:
+      'These products of interest would no longer be covered by any product category: {{names}}. The save will be refused.',
   },
   selectEditor: {
     list: 'Pick a value',

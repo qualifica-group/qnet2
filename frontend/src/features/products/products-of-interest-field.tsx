@@ -20,12 +20,18 @@ interface ProductsOfInterestFieldProps {
   /** `{id, label}` of the already-selected products, so a badge never falls back to `#id`. */
   selectedItems?: ForSelectItem[]
   /**
-   * Overrides the unlock dialog's consequence line. The default states the
-   * opportunities rule (the missing product line is added server-side); the
-   * request-management module, which REFUSES an incoherent pick instead (user
-   * directive 2026-07-31), passes its own.
+   * Spec 0075, D-4: the scope is not a default the operator may lift.
+   * Request-management REFUSES a product outside the request's own categories
+   * (`RequestProductCategoryCoherence`), so there the whole-catalogue escape
+   * is not offered at all — the picker only ever shows what the server would
+   * accept. The opportunities form leaves it false: there the cross-category
+   * pick legitimately adds the missing product line.
+   *
+   * The other half of that guarantee — dropping a selection orphaned by a
+   * category removal — belongs to the caller that owns both fields
+   * (`useProductsOfInterestCoherence`), not to this picker.
    */
-  unlockDescription?: string
+  lockScope?: boolean
   disabled?: boolean
   /** Forwarded by `FormControl` for the accessible-error triad (frontend.md §10). */
   id?: string
@@ -42,20 +48,19 @@ const EMPTY_ITEMS: ForSelectItem[] = []
  * the two never drift.
  *
  * By default the options are scoped to the products of the opportunity's own
- * product-line categories. The operator may unlock the whole catalogue, but
- * only through an explicit confirmation: picking a product from another
- * business function / product category ADDS that pair to the opportunity's
- * product lines (server-side, OpportunityProductInterestWriter), and the
- * dialog is where that consequence is stated before it happens — which is why
- * the consequence line is overridable (`unlockDescription`): in
- * request-management the same pick is REFUSED instead of auto-covered.
+ * product-line categories. Where the cross-category pick is MEANINGFUL — the
+ * opportunities form, whose server adds the missing product line — the
+ * operator may unlock the whole catalogue through an explicit confirmation
+ * stating that consequence. Where it is REFUSED instead (request-management,
+ * `lockScope`), no unlock is offered at all: the picker only ever shows what
+ * the server would accept (spec 0075, D-4).
  */
 export function ProductsOfInterestField({
   value,
   onChange,
   categoryIds,
   selectedItems = EMPTY_ITEMS,
-  unlockDescription,
+  lockScope = false,
   disabled = false,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -79,7 +84,7 @@ export function ProductsOfInterestField({
     const confirmed = await confirm({
       tone: 'warning',
       title: t('products.ofInterest.unlockDialog.title'),
-      description: unlockDescription ?? t('products.ofInterest.unlockDialog.description'),
+      description: t('products.ofInterest.unlockDialog.description'),
       confirmLabel: t('products.ofInterest.unlockDialog.confirm'),
       cancelLabel: t('common.cancel'),
     })
@@ -118,28 +123,32 @@ export function ProductsOfInterestField({
             ? t('products.ofInterest.hintUnlocked')
             : lockedWithoutScope
               ? t('products.ofInterest.hintNoCategories')
-              : t('products.ofInterest.hintScoped')}
+              : lockScope
+                ? t('products.ofInterest.hintLocked')
+                : t('products.ofInterest.hintScoped')}
         </p>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={unlocked ? () => setUnlocked(false) : requestUnlock}
-        >
-          {unlocked ? (
-            <>
-              <Lock aria-hidden="true" className="size-3.5" />
-              {t('products.ofInterest.relock')}
-            </>
-          ) : (
-            <>
-              <LockOpen aria-hidden="true" className="size-3.5" />
-              {t('products.ofInterest.unlock')}
-            </>
-          )}
-        </Button>
+        {lockScope ? null : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={unlocked ? () => setUnlocked(false) : requestUnlock}
+          >
+            {unlocked ? (
+              <>
+                <Lock aria-hidden="true" className="size-3.5" />
+                {t('products.ofInterest.relock')}
+              </>
+            ) : (
+              <>
+                <LockOpen aria-hidden="true" className="size-3.5" />
+                {t('products.ofInterest.unlock')}
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Referents;
 use App\DataObjects\Referents\UpdateReferentData;
 use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesReferentContactUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Referent;
 use Illuminate\Contracts\Validation\Validator;
@@ -26,12 +27,35 @@ use Illuminate\Validation\Rule;
 class UpdateReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesReferentContactUniqueness;
     use ValidatesUserProfile;
 
     public function authorize(): bool
     {
         // Authorization handled in the controller via the ReferentPolicy.
         return true;
+    }
+
+    /**
+     * Codice fiscale, partita IVA (among referenti) and phone/mobile numbers
+     * are unique (user directive 2026-08-03), the referent under edit excluded
+     * — keeping its own values must stay a no-op, not a self-collision.
+     *
+     * @return class-string<Referent>
+     */
+    protected function identityUniquenessOwner(): ?string
+    {
+        return Referent::class;
+    }
+
+    protected function identityUniquenessOwnerId(): ?int
+    {
+        return $this->routeReferent()?->id;
+    }
+
+    protected function contactUniquenessIgnoreId(): ?int
+    {
+        return $this->routeReferent()?->id;
     }
 
     /**
@@ -54,6 +78,7 @@ class UpdateReferentRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validateContactUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }
@@ -65,7 +90,13 @@ class UpdateReferentRequest extends FormRequest
 
     protected function authorizationModel(): ?Model
     {
-        /** @var Referent $referent */
+        return $this->routeReferent();
+    }
+
+    /** The bound referent under edit, shared by the authz and uniqueness hooks. */
+    private function routeReferent(): ?Referent
+    {
+        /** @var Referent|null $referent */
         $referent = $this->route('referent');
 
         return $referent;

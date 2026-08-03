@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\DateFormatEnum;
+use App\Enums\TimeFormatEnum;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -26,6 +28,14 @@ class UserResource extends JsonResource
      * the client maps to 100% (normal size). Never null in the response.
      */
     private const int UI_SCALE_DEFAULT = 40;
+
+    /**
+     * Default date/time display preferences when the columns are null: the
+     * Italian day-first pattern on a 24-hour clock. Never null in the response.
+     */
+    private const string DATE_FORMAT_DEFAULT = DateFormatEnum::Dmy->value;
+
+    private const string TIME_FORMAT_DEFAULT = TimeFormatEnum::H24->value;
 
     /**
      * @return array<string, mixed>
@@ -69,6 +79,9 @@ class UserResource extends JsonResource
             'module_open_preferences' => $this->module_open_preferences ?? self::DEFAULT_MODULE_OPEN_PREFERENCES,
             // Per-user UI scale (0..100), defaulted to 40 (=100%) when unset.
             'ui_scale' => $this->ui_scale ?? self::UI_SCALE_DEFAULT,
+            // Per-user date/time display preferences, defaulted when unset.
+            'date_format' => $this->date_format ?? self::DATE_FORMAT_DEFAULT,
+            'time_format' => $this->time_format ?? self::TIME_FORMAT_DEFAULT,
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\DataObjects\Projects\CreateProjectData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
 use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
+use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -57,7 +58,7 @@ class StoreProjectRequest extends FormRequest
             'state_id' => ['nullable', 'integer', Rule::exists('states', 'id')],
             'province_id' => ['nullable', 'integer', Rule::exists('provinces', 'id')],
             'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
-            'product_category_id' => ['required', 'integer', Rule::exists('product_categories', 'id')],
+            'product_category_id' => ['required', 'integer', new SelectableProductCategory],
             'partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'start_date' => ['required', 'date'],

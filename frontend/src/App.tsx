@@ -7,6 +7,7 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/features/auth/auth-provider'
 import { UiScaleProvider } from '@/features/appearance/ui-scale-provider'
+import { DateDisplayProvider } from '@/features/appearance/date-display-provider'
 import { UserDetailSheetProvider } from '@/features/users/user-detail-sheet'
 import { ConfigGate } from '@/features/config/config-gate'
 import { FullScreenLoader } from '@/components/full-screen-loader'
@@ -24,7 +25,9 @@ function App() {
                 <ConfirmDialogProvider>
                   <UserDetailSheetProvider>
                     <Suspense fallback={<FullScreenLoader />}>
-                      <RouterProvider router={router} />
+                      <DateDisplayProvider>
+                        <RouterProvider router={router} />
+                      </DateDisplayProvider>
                     </Suspense>
                   </UserDetailSheetProvider>
                 </ConfirmDialogProvider>

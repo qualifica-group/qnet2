@@ -25,7 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'locale', 'is_active', 'ui_scale'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'is_active', 'ui_scale', 'date_format', 'time_format'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {

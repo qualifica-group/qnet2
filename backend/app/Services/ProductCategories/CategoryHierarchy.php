@@ -426,6 +426,11 @@ final class CategoryHierarchy
                 // reads it off a candidate parent to preview what a child
                 // would inherit, with no extra request.
                 'requires_quote' => (bool) $category->requires_quote,
+                // Spec 0074: the tree is the STRUCTURAL channel and stays
+                // complete — unselectable nodes are still parents. The flag
+                // travels with each node so the pickers built on this cache
+                // (the product form's category picker) can filter themselves.
+                'is_selectable' => (bool) $category->is_selectable,
             ];
         }
 

@@ -72,7 +72,7 @@ class TableCellUpdateService
         // it never becomes a side-channel write.
         if ($note !== null && ($column['notable'] ?? false) !== true) {
             throw ValidationException::withMessages([
-                'note' => ['A note is not accepted on this column.'],
+                'note' => [__('A note is not accepted on this column.')],
             ]);
         }
 
@@ -90,7 +90,7 @@ class TableCellUpdateService
         // column would otherwise accept null.
         if ($permission->required && $this->isBlank($value)) {
             throw ValidationException::withMessages([
-                'value' => ['This field is required.'],
+                'value' => [__('This field is required.')],
             ]);
         }
 
@@ -127,7 +127,7 @@ class TableCellUpdateService
 
         if ($column === null || ($column['editable'] ?? false) !== true) {
             throw ValidationException::withMessages([
-                'column' => ["Column [{$columnId}] is not editable."],
+                'column' => [__('Column [:column] is not editable.', ['column' => $columnId])],
             ]);
         }
 
@@ -135,7 +135,7 @@ class TableCellUpdateService
 
         if (! $this->fieldKeyRegistered($definition, $fieldKey)) {
             throw ValidationException::withMessages([
-                'column' => ["Column [{$columnId}] is not editable."],
+                'column' => [__('Column [:column] is not editable.', ['column' => $columnId])],
             ]);
         }
 

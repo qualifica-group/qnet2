@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RewardStatusGroup;
 use App\Models\RewardStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -36,6 +37,9 @@ class RewardStatusFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->optional()->sentence(),
             'color' => fake()->randomElement(self::COLOR_TOKENS),
+            // spec 0073: a custom status defaults to the open phase — the same
+            // conservative mapping the migration applies to pre-existing rows.
+            'group' => RewardStatusGroup::Open,
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
         ];

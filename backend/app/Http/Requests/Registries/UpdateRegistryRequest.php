@@ -38,6 +38,26 @@ class UpdateRegistryRequest extends FormRequest
     }
 
     /**
+     * Codice fiscale and partita IVA are unique among ANAGRAFICHE (user
+     * directive 2026-08-03), the registry under edit excluded — keeping its own
+     * code must stay a no-op, not a collision with itself.
+     *
+     * @return class-string<Registry>
+     */
+    protected function identityUniquenessOwner(): ?string
+    {
+        return Registry::class;
+    }
+
+    protected function identityUniquenessOwnerId(): ?int
+    {
+        /** @var Registry|null $registry */
+        $registry = $this->route('registry');
+
+        return $registry?->id;
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array

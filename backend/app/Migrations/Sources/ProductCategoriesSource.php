@@ -8,13 +8,17 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\ProductCategory;
+use App\Services\ProductCategories\RequiresQuoteInheritance;
 use App\Services\ProductCategoryService;
 use RuntimeException;
 
 /**
  * `product-categories` migration source (spec 0013 / 0017): a SELF-referential
- * tree (id, name, parent_id, inherits_attributes, description) created through
- * ProductCategoryService. `parent_id` is an EXTERNAL id remapped to the qnet
+ * tree (id, name, parent_id, inherits_attributes, requires_quote,
+ * is_selectable, description) created through ProductCategoryService.
+ * `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
+ * owned by the branch root and only authored on a rootless row (see
+ * mapRequiresQuote()). `parent_id` is an EXTERNAL id remapped to the qnet
  * parent via `old_id`. A child whose parent has not been migrated yet (parent
  * later in the same external listing) is created detached with a non-fatal
  * warning, then relinked in a second pass (afterImport) once every node exists.
@@ -27,6 +31,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductCategoryService $service,
+        private readonly RequiresQuoteInheritance $requiresQuote,
     ) {
         parent::__construct($client);
     }
@@ -51,6 +56,8 @@ class ProductCategoriesSource extends AbstractMigrationSource
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
             ['id' => 'parent_id', 'label' => 'Parent (external id)', 'type' => 'number'],
             ['id' => 'inherits_attributes', 'label' => 'Inherits attributes', 'type' => 'boolean'],
+            ['id' => 'requires_quote', 'label' => 'Requires quote (root only)', 'type' => 'boolean'],
+            ['id' => 'is_selectable', 'label' => 'Selectable', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
         ];
     }
@@ -76,6 +83,8 @@ class ProductCategoriesSource extends AbstractMigrationSource
             'name' => $record['name'] ?? null,
             'parent_id' => $record['parent_id'] ?? null,
             'inherits_attributes' => $record['inherits_attributes'] ?? null,
+            'requires_quote' => $record['requires_quote'] ?? null,
+            'is_selectable' => $record['is_selectable'] ?? null,
             'description' => $record['description'] ?? null,
         ];
     }
@@ -114,6 +123,10 @@ class ProductCategoriesSource extends AbstractMigrationSource
             inheritsProductAttributes: $inheritsAttributes,
             inheritsOpportunityAttributes: $inheritsAttributes,
             description: $this->mapDescription($record['description'] ?? null),
+            requiresQuote: $this->mapRequiresQuote($record, $parentId),
+            isSelectable: array_key_exists('is_selectable', $record)
+                ? (bool) $record['is_selectable']
+                : true,
         ));
 
         $category->old_id = $externalId;
@@ -146,8 +159,35 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
             if ($category !== null && $parentId !== null) {
                 $category->update(['parent_id' => $parentId]);
+
+                // The relink changed the branch root: a category authored its
+                // own `requires_quote` while detached, so realign it and its
+                // subtree on the root's value (the invariant this bypassed by
+                // writing parent_id outside ProductCategoryService::update).
+                $this->requiresQuote->syncSubtree($category);
             }
         });
+    }
+
+    /**
+     * The `requires_quote` flag is OWNED BY THE BRANCH ROOT
+     * (RequiresQuoteInheritance): a category that resolved a parent takes the
+     * root's value verbatim, and submitting a different one is refused by the
+     * Service's no-override guard — so the external flag is only authored when
+     * the category is created rootless. A child created DETACHED (forward
+     * reference) is therefore authored here and realigned by afterImport()
+     * right after the relink. Absent externally = null: the Service then
+     * resolves it (root's value, or false at root).
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function mapRequiresQuote(array $record, ?int $parentId): ?bool
+    {
+        if ($parentId !== null || ! array_key_exists('requires_quote', $record)) {
+            return null;
+        }
+
+        return (bool) $record['requires_quote'];
     }
 
     /**

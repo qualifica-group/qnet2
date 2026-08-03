@@ -37,9 +37,16 @@ final class ProductsOfInterestColumn
     public const string COLUMN_ID = 'products_of_interest';
 
     /**
+     * @param  bool  $lockScope  spec 0075 D-4: the editor drops its "show the
+     *                           whole catalogue" escape — request-management
+     *                           REFUSES a product outside the request's own
+     *                           categories, so offering the choice would only
+     *                           lead to a 422. Opportunities, where the pick
+     *                           legitimately adds the missing product line,
+     *                           leaves it false.
      * @return array<string, mixed>
      */
-    public static function declaration(string $label): array
+    public static function declaration(string $label, bool $lockScope = false): array
     {
         return [
             'id' => self::COLUMN_ID,
@@ -54,6 +61,7 @@ final class ProductsOfInterestColumn
             'relation' => [
                 'resource' => 'products',
                 'scope' => ['category_ids' => self::SCOPE_COLUMN],
+                ...($lockScope ? ['lockScope' => true] : []),
             ],
         ];
     }
@@ -130,7 +138,15 @@ final class ProductsOfInterestColumn
     {
         return [
             self::COLUMN_ID => $opportunity->productsOfInterest
-                ->map(static fn (Product $product): array => ['id' => $product->id, 'name' => $product->name])
+                ->map(static fn (Product $product): array => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    // Spec 0075, D-6: which category each product hangs from,
+                    // so the product-lines cell editor can warn BEFORE the
+                    // commit that dropping a category would leave it
+                    // uncovered. The cell renderer reads `name` only.
+                    'category_id' => $product->category_id === null ? null : (int) $product->category_id,
+                ])
                 ->all(),
             self::SCOPE_COLUMN => $opportunity->productLines
                 ->pluck('product_category_id')

@@ -254,6 +254,26 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
               <ProductCategoryBusinessFunctionField control={form.control} mode={mode} parentId={parentId} />
 
               <ProductCategoryRequiresQuoteField control={form.control} mode={mode} parentId={parentId} />
+
+              <MetaField
+                control={form.control}
+                name="is_selectable"
+                metaKey="is_selectable"
+                label={t('productCategories.form.isSelectable')}
+                description={
+                  <FormDescription>{t('productCategories.form.isSelectableHint')}</FormDescription>
+                }
+              >
+                {({ field, disabled }) => (
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={disabled}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
             </FormSection>
           )}
 

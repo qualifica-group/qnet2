@@ -37,13 +37,14 @@ it('create: 201 + persists, sort_order assigned, system_key null, is_active true
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green', 'group' => 'pending'])
         ->assertCreated()
         ->assertJsonPath('data.name', 'Approvato')
         ->assertJsonPath('data.color', 'green')
+        ->assertJsonPath('data.group', 'pending')
         ->assertJsonPath('data.system_key', null)
         ->assertJsonPath('data.is_active', true)
-        ->assertJsonStructure(['data' => ['id', 'name', 'description', 'color', 'sort_order', 'is_active', 'system_key', 'created_at', 'updated_at'], 'permissions']);
+        ->assertJsonStructure(['data' => ['id', 'name', 'description', 'color', 'group', 'sort_order', 'is_active', 'system_key', 'created_at', 'updated_at'], 'permissions']);
 
     $this->assertDatabaseHas('reward_statuses', ['name' => 'Approvato', 'color' => 'green', 'system_key' => null]);
 });
@@ -53,7 +54,7 @@ it('create: submitted sort_order/system_key are ignored (AC-001)', function () {
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/reward-statuses', [
-        'name' => 'Consegnato', 'color' => 'blue', 'sort_order' => 999, 'system_key' => 'hacked',
+        'name' => 'Consegnato', 'color' => 'blue', 'group' => 'open', 'sort_order' => 999, 'system_key' => 'hacked',
     ])->assertCreated();
 
     expect($response->json('data.sort_order'))->not->toBe(999)
@@ -69,7 +70,7 @@ it('create: 422 when name duplicates an existing status, no row created (BR-1, A
     RewardStatus::factory()->create(['name' => 'Approvato']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'blue'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'blue', 'group' => 'open'])
         ->assertStatus(422)->assertJsonValidationErrors('name');
 
     expect(RewardStatus::where('name', 'Approvato')->count())->toBe(1);
@@ -107,14 +108,36 @@ it('create: 422 when color is missing (BR-2, AC-003)', function () {
         ->assertStatus(422)->assertJsonValidationErrors('color');
 });
 
+it('create: 422 when group is missing or outside the enum (spec 0073, AC-003)', function () {
+    $actor = rewardStatusUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/reward-statuses', ['name' => 'Senza gruppo', 'color' => 'blue'])
+        ->assertStatus(422)->assertJsonValidationErrors('group');
+
+    $this->postJson('/api/reward-statuses', ['name' => 'Gruppo inventato', 'color' => 'blue', 'group' => 'closed'])
+        ->assertStatus(422)->assertJsonValidationErrors('group');
+
+    expect(RewardStatus::whereIn('name', ['Senza gruppo', 'Gruppo inventato'])->count())->toBe(0);
+});
+
+it('update: 422 when a custom row submits a group outside the enum (spec 0073, AC-003)', function () {
+    $actor = rewardStatusUserWith(['update']);
+    $target = RewardStatus::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/reward-statuses/{$target->id}", ['group' => 'nope'])
+        ->assertStatus(422)->assertJsonValidationErrors('group');
+});
+
 it('create: 422 when color is null or empty (BR-2, AC-003)', function () {
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope1', 'color' => null])
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope1', 'color' => null, 'group' => 'open'])
         ->assertStatus(422)->assertJsonValidationErrors('color');
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope2', 'color' => ''])
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope2', 'color' => '', 'group' => 'open'])
         ->assertStatus(422)->assertJsonValidationErrors('color');
 });
 
@@ -131,7 +154,7 @@ it('create: 201 when description is omitted (AC-003)', function () {
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Senza descrizione', 'color' => 'teal'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Senza descrizione', 'color' => 'teal', 'group' => 'open'])
         ->assertCreated()
         ->assertJsonPath('data.description', null);
 });
@@ -206,7 +229,7 @@ it('POST create: 403 without reward-statuses.create, no row created (AC-007)', f
 
     $countBefore = RewardStatus::count();
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue'])->assertForbidden();
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue', 'group' => 'open'])->assertForbidden();
 
     expect(RewardStatus::count())->toBe($countBefore);
 });

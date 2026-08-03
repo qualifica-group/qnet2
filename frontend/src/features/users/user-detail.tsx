@@ -28,6 +28,7 @@ import { useEnumOptions } from '@/features/config/use-config'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchUser } from '@/features/users/api'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { formatDate, formatDateTime } from '@/lib/formatting/date-display'
 
 interface UserDetailProps {
   userId: number
@@ -38,7 +39,7 @@ interface UserDetailProps {
  * detail endpoint. Composed from the shared detail kit; rendered inside a Sheet.
  */
 export function UserDetailView({ userId }: UserDetailProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const localeOptions = useEnumOptions('locale')
   const {
     data: user,
@@ -61,7 +62,7 @@ export function UserDetailView({ userId }: UserDetailProps) {
     return <DetailLoading />
   }
 
-  const createdAt = formatDateTime(user.created_at, i18n.language)
+  const createdAt = formatDateTime(user.created_at)
   const localeLabel =
     localeOptions.find((option) => option.value === user.locale)?.label ?? user.locale
   const employment = user.employment
@@ -128,10 +129,10 @@ export function UserDetailView({ userId }: UserDetailProps) {
               )}
             </DetailField>
             <DetailField label={t('users.detail.employment.hiredAt')} icon={<CalendarClock />}>
-              {formatDate(employment.hired_at, i18n.language) || <DetailEmpty />}
+              {formatDate(employment.hired_at) || <DetailEmpty />}
             </DetailField>
             <DetailField label={t('users.detail.employment.terminatedAt')} icon={<CalendarClock />}>
-              {formatDate(employment.terminated_at, i18n.language) || <DetailEmpty />}
+              {formatDate(employment.terminated_at) || <DetailEmpty />}
             </DetailField>
             <DetailField
               label={t('users.detail.employment.standardDailyMinutes')}
@@ -160,32 +161,6 @@ export function UserDetailView({ userId }: UserDetailProps) {
       ) : null}
     </DetailPanel>
   )
-}
-
-function formatDateTime(value: string | null, language: string): string {
-  if (!value) {
-    return ''
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
-}
-
-/** Formats a `Y-m-d` employment date, no time part (spec 0015). */
-function formatDate(value: string | null, language: string): string {
-  if (!value) {
-    return ''
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(date)
 }
 
 /** Formats a total-minutes duration as `H:MM`, or `null` when unset (spec 0015). */

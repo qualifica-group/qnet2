@@ -259,9 +259,23 @@ abstract class BaseApiController
     protected function resolveExceptionMessage(Throwable $exception, int $status): string
     {
         if ($status >= HttpStatusEnum::INTERNAL_SERVER_ERROR->value && ! app()->hasDebugModeEnabled()) {
-            return 'An unexpected error occurred.';
+            return __('An unexpected error occurred.');
         }
 
-        return $exception->getMessage() ?: 'An unexpected error occurred.';
+        // A missing model answers with the SAME generic 404 envelope the
+        // render callback in bootstrap/app.php produces for the pre-controller
+        // case. Its own message ("No query results for model
+        // [App\Models\Opportunity] 2") is both untranslatable and a leak of an
+        // internal class name, which backend.md §2 forbids.
+        if ($exception instanceof ModelNotFoundException) {
+            return __('Resource not found.');
+        }
+
+        // Translated through the SAME JSON catalogue as everything else (user
+        // directive 2026-08-03): a message with no entry — a domain-specific
+        // `abort()` string — comes back verbatim, so this only ever upgrades
+        // the catalogued ones (e.g. the framework's "This action is
+        // unauthorized.") from English to the request language.
+        return $exception->getMessage() === '' ? __('An unexpected error occurred.') : __($exception->getMessage());
     }
 }

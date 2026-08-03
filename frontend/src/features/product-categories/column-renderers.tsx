@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DateTimeCell } from '@/features/table/cell-renderers'
+import { BooleanBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { TableRow } from '@/features/table/types'
 
@@ -133,9 +134,17 @@ function ProductsCountCell({ value, data }: ICellRendererParams) {
  * Custom cell renderers keyed by the backend column `id`. `name`/`description`
  * fall back to the AG Grid default text cell; `created_at` reuses the shared
  * domain-agnostic renderer (mirrors `productColumnRenderers`).
+ *
+ * `requires_quote`/`is_selectable` are NATIVE boolean columns: the generic
+ * fallbacks in `column-defaults` only format `source:'custom'|'attribute'`
+ * ones, so without an explicit renderer AG Grid would stringify the raw
+ * boolean ("true"/"false"). Both reuse the shared `BooleanBadgeCell`, like
+ * every other module's `is_active`/`is_default`.
  */
 export const productCategoryColumnRenderers: TableRendererMap = {
   parent: (params) => <ParentCell {...params} />,
+  requires_quote: (params) => <BooleanBadgeCell {...params} />,
+  is_selectable: (params) => <BooleanBadgeCell {...params} />,
   attributes_count: (params) => <AttributesCountCell {...params} />,
   products_count: (params) => <ProductsCountCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,

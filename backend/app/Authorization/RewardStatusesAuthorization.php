@@ -37,6 +37,10 @@ class RewardStatusesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('color', 'color', mandatory: true),
+            // spec 0073: the phase classification (App\Enums\RewardStatusGroup),
+            // mandatory on create like `color` — a status without a phase
+            // would be invisible to the lifecycle automation.
+            new FieldDefinition('group', 'select', mandatory: true),
             new FieldDefinition('is_active', 'boolean'),
         ];
     }
@@ -60,6 +64,7 @@ class RewardStatusesAuthorization extends AbstractResourceAuthorization
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'color' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'group' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }

@@ -46,6 +46,7 @@ function rewardStatus(
     name: 'Approvato',
     description: 'Buono approvato',
     color: 'green',
+    group: 'pending',
     sort_order: 10,
     is_active: true,
     system_key: null,
@@ -77,6 +78,33 @@ describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
     expect(screen.getByRole('button', { name: /choose a color/i })).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Active' })).toBeChecked()
     expect(screen.queryByLabelText(/^Order/)).not.toBeInTheDocument()
+  })
+
+  it('renders the group picker, hydrated in edit mode and disabled on a system row (spec 0073, AC-016)', () => {
+    const { unmount } = render(
+      <RewardStatusForm
+        mode={{ type: 'edit', rewardStatus: rewardStatus({ group: 'closed_lost' }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    const picker = screen.getByRole('combobox', { name: /^Group/ })
+    expect(picker).toHaveTextContent('Closed (negative)')
+    expect(picker).not.toBeDisabled()
+    unmount()
+
+    render(
+      <RewardStatusForm
+        mode={{ type: 'edit', rewardStatus: rewardStatus({ system_key: 'pending' }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.getByRole('combobox', { name: /^Group/ })).toBeDisabled()
   })
 
   it('shows an inline error and does not call the API when name is empty and color is unchosen', async () => {
@@ -111,6 +139,8 @@ describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
       name: 'Approvato',
       description: null,
       color: 'green',
+      // spec 0073: the picker defaults to the open phase, submitted as-is.
+      group: 'open',
       is_active: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(rewardStatus()))

@@ -43,6 +43,7 @@ import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
 import { documentLayouts } from './en-document-layouts'
 import { navigation } from './en-navigation'
+import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
 import { notes } from './en-notes'
 import { notifications } from './en-notifications'
@@ -307,66 +308,7 @@ export const en = {
   },
   companies: { ...companies, stats: moduleStats.companies },
   companySites: { ...companySites, stats: moduleStats.companySites },
-  settings: {
-    title: 'Settings',
-    subtitle: 'Manage your account preferences.',
-    sectionNavLabel: 'Settings sections',
-    avatarTitle: 'Avatar',
-    avatarSubtitle: 'Upload a profile picture shown across the app.',
-    avatarUpdated: 'Avatar updated successfully.',
-    avatarRemoved: 'Avatar removed successfully.',
-    profileTitle: 'Profile',
-    profileSubtitle: 'Update your personal information and preferred language.',
-    name: 'Name',
-    email: 'Email',
-    language: 'Language',
-    localeEnglish: 'English',
-    localeItalian: 'Italian',
-    saveProfile: 'Save changes',
-    savingProfile: 'Saving…',
-    profileUpdated: 'Profile updated successfully.',
-    systemSettings: {
-      title: 'System settings',
-      subtitle: 'System-wide preferences for the application.',
-    },
-    uiScale: {
-      title: 'Interface scale',
-      subtitle:
-        'Drag to shrink or enlarge text, layout and tables across the whole app. 100% is the normal size.',
-      saved: 'Interface scale updated successfully.',
-      reset: 'Restore defaults',
-    },
-    moduleOpenMode: {
-      title: 'Module open mode',
-      subtitle: 'Choose how each module opens its create, edit and detail screens.',
-      modeLabel: 'Mode',
-      modeModal: 'Modal only',
-      modePage: 'Single page only',
-      modeCustom: 'Custom',
-      customHint: 'Set the open mode for each module.',
-      valueModal: 'Modal',
-      valuePage: 'Single page',
-      perModuleAria: 'Open mode for {{module}}',
-      saved: 'Open mode updated successfully.',
-      reset: 'Restore defaults',
-    },
-    passwordTitle: 'Password',
-    passwordSubtitle: 'Change the password used to sign in.',
-    currentPassword: 'Current password',
-    newPassword: 'New password',
-    confirmPassword: 'Confirm new password',
-    changePassword: 'Update password',
-    changingPassword: 'In progress…',
-    passwordChanged: 'Password updated successfully.',
-    nameRequired: 'Name is required.',
-    emailRequired: 'Email is required.',
-    emailInvalid: 'Enter a valid email address.',
-    currentPasswordRequired: 'Current password is required.',
-    passwordMinLength: 'Password must be at least 8 characters.',
-    confirmPasswordRequired: 'Please confirm your new password.',
-    passwordsDontMatch: 'Passwords do not match.',
-    genericError: 'Something went wrong. Please try again.',
-  },
+  settings,
   notifications,
   avatar: {
     chooseImage: 'Choose image',

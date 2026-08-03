@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Loader2, User as UserIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { formatDateTime } from '@/lib/formatting/date-display'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActivityLog } from '@/features/activity-log/use-activity-log'
@@ -30,7 +31,7 @@ const EVENT_BADGE_VARIANT: Record<ActivityLogEvent, 'default' | 'secondary' | 'd
  * decide when it is authorized to mount.
  */
 export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const {
     data,
     isLoading,
@@ -72,7 +73,7 @@ export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
     <div className="flex flex-col gap-3">
       <ol className="flex flex-col gap-2 border-l border-border pl-3">
         {entries.map((entry) => (
-          <ActivityLogItem key={entry.id} entry={entry} language={i18n.language} />
+          <ActivityLogItem key={entry.id} entry={entry} />
         ))}
       </ol>
       {hasNextPage ? (
@@ -92,11 +93,10 @@ export function ActivityLogSection({ resource, id }: ActivityLogSectionProps) {
 
 interface ActivityLogItemProps {
   entry: ActivityLogEntry
-  language: string
 }
 
 /** A single timeline row: when/who/what happened, plus its field-level diff. */
-function ActivityLogItem({ entry, language }: ActivityLogItemProps) {
+function ActivityLogItem({ entry }: ActivityLogItemProps) {
   const { t } = useTranslation()
   const causerName = entry.causer.name ?? t('activityLog.systemCauser')
 
@@ -109,7 +109,7 @@ function ActivityLogItem({ entry, language }: ActivityLogItemProps) {
             {t(`activityLog.modules.${entry.module}`, { defaultValue: entry.module })}
           </span>
         </div>
-        <span className="text-muted-foreground">{formatDateTime(entry.logged_at, language)}</span>
+        <span className="text-muted-foreground">{formatDateTime(entry.logged_at)}</span>
       </div>
       <p className="flex items-center gap-1 text-muted-foreground">
         <UserIcon className="size-3" aria-hidden="true" />
@@ -160,14 +160,6 @@ function ActivityLogChangeRow({ change, event }: ActivityLogChangeRowProps) {
       ) : null}
     </li>
   )
-}
-
-function formatDateTime(value: string, language: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
 /** Renders a before/after value: the server-resolved FK label when present, else the raw value. */

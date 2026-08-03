@@ -151,7 +151,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         $query = Opportunity::query()->with([
-            'workflowStatus', 'productLines.productCategory',
+            // Spec 0075: the `product_categories` column projects the WHOLE
+            // pair (funzione aziendale + categoria), so both relations are
+            // eager-loaded — the cell renders the categories, the inline
+            // editor reads the functions.
+            'workflowStatus', 'productLines.productCategory', 'productLines.businessFunction',
             // Spec 0047 amendment 2026-07-27: RequestRowMapper::
             // allowedWorkflowStatusIds() calls OpportunityWorkflowResolver::
             // resolve() PER ROW, whose own step 1 loadMissing()s this
@@ -239,7 +243,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function defaultSort(): array
     {
         return [
-            ['columnId' => 'updated_at', 'direction' => 'desc'],
+            ['columnId' => 'created_at', 'direction' => 'desc'],
         ];
     }
 

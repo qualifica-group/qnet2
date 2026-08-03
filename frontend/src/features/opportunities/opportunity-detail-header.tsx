@@ -12,21 +12,13 @@ import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { StatusDescriptionHint } from '@/features/opportunity-workflows/status-description-hint'
 import { probabilityToneClass } from '@/features/opportunities/column-renderers'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
+import { formatDate } from '@/lib/formatting/date-display'
 
 /**
  * Identity band and KPI strip of the opportunity record card. Kept in one
  * file: both pieces read the same handful of top-level fields (status,
  * working status, region, planning) and are always mounted together.
  */
-
-/** Formats a `Y-m-d` planning date, blank when missing/invalid — mirrors the column renderer. */
-function formatPlanningDate(value: string | null): string | null {
-  if (!value) {
-    return null
-  }
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString()
-}
 
 interface OpportunityDetailHeaderProps {
   opportunity: OpportunityDetailData
@@ -100,8 +92,8 @@ interface OpportunityDetailStatsProps {
 export function OpportunityDetailStats({ opportunity }: OpportunityDetailStatsProps) {
   const { t } = useTranslation()
   const estimatedValue = formatDecimal(opportunity.estimated_value)
-  const startDate = formatPlanningDate(opportunity.start_date)
-  const expectedCloseDate = formatPlanningDate(opportunity.expected_close_date)
+  const startDate = formatDate(opportunity.start_date)
+  const expectedCloseDate = formatDate(opportunity.expected_close_date)
   const probability = opportunity.success_probability
 
   return (
@@ -126,10 +118,10 @@ export function OpportunityDetailStats({ opportunity }: OpportunityDetailStatsPr
           )
         }
       />
-      <RecordStat label={t('opportunities.form.startDate')} value={startDate ?? <DetailEmpty />} />
+      <RecordStat label={t('opportunities.form.startDate')} value={startDate || <DetailEmpty />} />
       <RecordStat
         label={t('opportunities.form.expectedCloseDate')}
-        value={expectedCloseDate ?? <DetailEmpty />}
+        value={expectedCloseDate || <DetailEmpty />}
       />
     </RecordStatStrip>
   )

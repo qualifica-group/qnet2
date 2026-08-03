@@ -33,6 +33,7 @@ const SERVER_ERROR_FIELDS = [
   'attributes',
   'business_function_id',
   'requires_quote',
+  'is_selectable',
 ] as const
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues
@@ -89,6 +90,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         })),
         business_function_id: category.business_function_id,
         requires_quote: category.requires_quote,
+        is_selectable: category.is_selectable,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -101,6 +103,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       attributes: [],
       business_function_id: null,
       requires_quote: false,
+      // Spec 0074: a new category is a usable destination unless the
+      // operator explicitly turns it into a container.
+      is_selectable: true,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])

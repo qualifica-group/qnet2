@@ -53,3 +53,20 @@ it('derives each category\'s own or inherited business function and drops those 
     expect($byCategory[$parentB->id]['business_function_id'])->toBe($functionB->id);
     expect($byCategory[$inheritedB->id]['business_function_id'])->toBe($functionB->id);
 });
+
+it('drops unselectable containers, keeping the targets under them', function () {
+    $function = BusinessFunction::factory()->create();
+
+    $container = ProductCategory::factory()->create([
+        'business_function_id' => $function->id,
+        'is_selectable' => false,
+    ]);
+    $target = ProductCategory::factory()->childOf($container)->create(['is_selectable' => true]);
+
+    $pairs = coherencePairsResolver()->pairs(ProductCategory::all());
+
+    $byCategory = $pairs->keyBy('product_category_id');
+
+    expect($byCategory->has($container->id))->toBeFalse()
+        ->and($byCategory[$target->id]['business_function_id'])->toBe($function->id);
+});

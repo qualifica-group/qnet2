@@ -119,13 +119,22 @@ it('AC-001: workflow_status options carry requires_note and color per entry', fu
         ->and($options[0])->toHaveKeys(['value', 'label', 'color', 'requires_note']);
 });
 
-it('AC-002: product_categories stays read-only', function () {
+// Spec 0075 (AC-001) REVERSES spec 0055's AC-002 read-only decision: the
+// column is editable, through the `product_lines` collection it projects —
+// the two assertions below are updated for the changed requirement, not to
+// make anything pass. The rule set itself is covered by
+// RequestManagementProductLinesTest (the two write channels together).
+it('AC-002 (superseded by 0075 AC-001): product_categories edits the product_lines collection', function () {
     Sanctum::actingAs(inlineEditorsActor(['viewAny', 'update']));
 
-    expect(inlineEditorsColumns()['product_categories']['editable'])->toBeFalse();
+    $column = inlineEditorsColumns()['product_categories'];
+
+    expect($column['editable'])->toBeTrue()
+        ->and($column['editor'])->toBe('product_lines')
+        ->and($column['sortable'])->toBeFalse();
 });
 
-it('AC-002: PATCH product_categories -> 422, never a silent write', function () {
+it('AC-002: PATCH product_categories with a plain string -> 422, never a silent write', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $opportunity = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);

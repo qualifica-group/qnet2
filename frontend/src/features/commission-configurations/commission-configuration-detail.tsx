@@ -14,13 +14,10 @@ import {
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { CommissionConfigurationDetailWithPermissions } from './types'
+import { formatDate } from '@/lib/formatting/date-display'
 
-function formatDate(value: string | null): string {
-  if (!value) return '–'
-  return new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(
-    new Date(`${value.slice(0, 10)}T00:00:00`),
-  )
-}
+/** Placeholder for an open-ended validity bound. */
+const EMPTY_DATE = '–'
 
 export function CommissionConfigurationDetailView({
   configuration,
@@ -108,10 +105,10 @@ export function CommissionConfigurationDetailView({
       <DetailSection title={t('commissionConfigurations.detail.validity')} icon={<CalendarRange />}>
         <DetailGrid>
           {visible('valid_from') ? <DetailField label={t('commissionConfigurations.form.valid_from')}>
-            {formatDate(configuration.valid_from)}
+            {formatDate(configuration.valid_from) || EMPTY_DATE}
           </DetailField> : null}
           {visible('valid_until') ? <DetailField label={t('commissionConfigurations.form.valid_until')}>
-            {formatDate(configuration.valid_until)}
+            {formatDate(configuration.valid_until) || EMPTY_DATE}
           </DetailField> : null}
           {visible('internal_note') ? <DetailField label={t('commissionConfigurations.form.internal_note')}>
             {configuration.internal_note ?? '–'}

@@ -56,7 +56,7 @@ export function RequestCreateProductsOfInterest({ control }: RequestCreateProduc
                 value={field.value}
                 onChange={field.onChange}
                 categoryIds={categoryIds}
-                unlockDescription={t('requestManagement.productsOfInterest.unlockDescription')}
+                lockScope
               />
             </FormControl>
             <FormMessage />

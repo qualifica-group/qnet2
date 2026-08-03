@@ -2,11 +2,10 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Models\ProductCategory;
-use App\Services\ProductCategories\CategoryHierarchy;
+use App\Models\Opportunity;
+use App\Services\ProductLines\ProductLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Shared validation for the `product_lines` payload of the opportunity write
@@ -15,10 +14,13 @@ use Illuminate\Validation\Rule;
  * single scalar columns. An opportunity must ALWAYS carry at least one row
  * (user directive 2026-07-17): create REQUIRES a non-empty collection, and
  * update — a full-replace sync — may omit `product_lines` (partial PATCH,
- * untouched) but may NOT clear it to `[]`. The base per-row rules live in
- * productLinesRules(); the cross-row invariants (no duplicate pair, the
- * category's EFFECTIVE business function must match the row's own) run in
- * validateProductLines(), called from each request's own withValidator().
+ * untouched) but may NOT clear it to `[]`.
+ *
+ * The rules themselves are NOT defined here (spec 0075, D-1): they live in
+ * ProductLineSetValidator, the one definition shared with the channel that has
+ * no FormRequest at all (the inline cell editor). This trait only binds them
+ * to the request — the collection-level shape rule, the per-row rules, and the
+ * cross-row invariants each request runs from its own withValidator().
  *
  * @phpstan-require-extends FormRequest
  */
@@ -36,15 +38,35 @@ trait ValidatesProductLines
             'product_lines' => $required
                 ? ['required', 'array', 'min:1']
                 : ['sometimes', 'array', 'min:1'],
-            'product_lines.*.business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
-            'product_lines.*.product_category_id' => ['required', 'integer', Rule::exists('product_categories', 'id')],
+            ...$this->productLineSetValidator()->rules('product_lines', $this->exemptProductCategoryIds()),
         ];
+    }
+
+    /**
+     * The product-category ids already persisted on the opportunity being
+     * updated. Empty on create (no route model), which is exactly the
+     * "block only new associations" semantics of spec 0074 D-3.
+     *
+     * @return array<int, int>
+     */
+    protected function exemptProductCategoryIds(): array
+    {
+        $opportunity = $this->route('opportunity');
+
+        if (! $opportunity instanceof Opportunity) {
+            return [];
+        }
+
+        return $opportunity->productLines()
+            ->pluck('product_category_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
     }
 
     /**
      * Cross-row rules: (business_function_id, product_category_id) may not
      * repeat, and each row's category must belong to that EXACT business
-     * function once inheritance is resolved (CategoryHierarchy).
+     * function once inheritance is resolved.
      */
     protected function validateProductLines(Validator $validator): void
     {
@@ -54,53 +76,13 @@ trait ValidatesProductLines
             return;
         }
 
-        $hierarchy = app(CategoryHierarchy::class);
-        $seenPairs = [];
-
-        foreach ($lines as $index => $line) {
-            if (! $this->isWellFormedLine($line)) {
-                continue;
-            }
-
-            $businessFunctionId = (int) $line['business_function_id'];
-            $productCategoryId = (int) $line['product_category_id'];
-            $pairKey = "{$businessFunctionId}:{$productCategoryId}";
-
-            if (isset($seenPairs[$pairKey])) {
-                $validator->errors()->add("product_lines.{$index}.product_category_id", 'This business function / product category pair is already present.');
-
-                continue;
-            }
-
-            $seenPairs[$pairKey] = true;
-
-            $this->assertCategoryMatchesBusinessFunction($validator, $index, $hierarchy, $productCategoryId, $businessFunctionId);
+        foreach ($this->productLineSetValidator()->crossRowErrors($lines, 'product_lines') as $key => $message) {
+            $validator->errors()->add($key, $message);
         }
     }
 
-    private function isWellFormedLine(mixed $line): bool
+    private function productLineSetValidator(): ProductLineSetValidator
     {
-        return is_array($line) && isset($line['business_function_id'], $line['product_category_id']);
-    }
-
-    private function assertCategoryMatchesBusinessFunction(
-        Validator $validator,
-        int $index,
-        CategoryHierarchy $hierarchy,
-        int $productCategoryId,
-        int $businessFunctionId,
-    ): void {
-        $category = ProductCategory::find($productCategoryId);
-
-        if ($category === null) {
-            // The `exists` rule on product_category_id already reports this.
-            return;
-        }
-
-        $effective = $hierarchy->effectiveBusinessFunction($category);
-
-        if ($effective === null || $effective['id'] !== $businessFunctionId) {
-            $validator->errors()->add("product_lines.{$index}.business_function_id", 'This product category does not belong to the selected business function.');
-        }
+        return app(ProductLineSetValidator::class);
     }
 }

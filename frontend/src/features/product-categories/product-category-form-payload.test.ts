@@ -27,6 +27,7 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     business_function: null,
     effective_business_function: null,
     requires_quote_source_category: null,
+    is_selectable: true,
     ...overrides,
   }
 }
@@ -42,6 +43,7 @@ describe('buildCreatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -53,6 +55,7 @@ describe('buildCreatePayload', () => {
       description: null,
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
+      is_selectable: true,
     })
   })
 
@@ -66,6 +69,7 @@ describe('buildCreatePayload', () => {
       attributes: [],
       business_function_id: null,
       requires_quote: true,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -85,6 +89,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -101,6 +106,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -117,6 +123,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -136,6 +143,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: false, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -154,6 +162,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'product', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -172,6 +181,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: 5,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
 
@@ -188,6 +198,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: false,
+      is_selectable: true,
       custom_fields: {},
     }
     const inheriting = original({
@@ -207,10 +218,29 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: true,
+      is_selectable: true,
       custom_fields: {},
     }
 
     expect(buildUpdatePayload(values, original())).toEqual({})
+  })
+
+  it('sends is_selectable on its own, whatever the parent (spec 0074 D-2)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: false,
+      custom_fields: {},
+    }
+
+    // Under a parent — where requires_quote would be withheld — the flag still travels.
+    expect(buildUpdatePayload(values, original())).toEqual({ is_selectable: false })
   })
 
   it('sends requires_quote when a root category changes it, and on promotion to root', () => {
@@ -223,6 +253,7 @@ describe('buildUpdatePayload', () => {
       attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
       business_function_id: null,
       requires_quote: true,
+      is_selectable: true,
       custom_fields: {},
     }
 

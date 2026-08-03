@@ -11,8 +11,15 @@ import { CellNoteDialog } from '@/components/data-table/cell-note-dialog'
 import { updateTableCell } from '@/features/table/api'
 import type { TableColumn, TableRow } from '@/features/table/types'
 
-/** A cell PATCH's value: a scalar, or — for a `multiselect` column — the whole id collection. */
-type CellPatchValue = string | number | boolean | null | number[]
+/** One {funzione aziendale, categoria prodotto} pair as a `product_lines` cell PATCH sends it (spec 0075). */
+type CellPatchPair = Record<string, number>
+
+/**
+ * A cell PATCH's value: a scalar, or — for a `multiselect` column — the whole
+ * id collection, or — for a `product_lines` column (spec 0075) — the whole
+ * collection of id pairs.
+ */
+type CellPatchValue = string | number | boolean | null | number[] | CellPatchPair[]
 
 /** Body of a single cell PATCH, already resolved to the wire shape (spec 0053/0054). */
 interface CellPatchArgs {
@@ -31,15 +38,38 @@ function resolveCellUpdateErrorMessage(error: unknown, t: TFunction): string {
 }
 
 /**
+ * An entry of an ID-PAIR collection (spec 0075, `product_lines`): only its
+ * `*_id` keys travel — the sibling `*_name` keys are there to label the cell
+ * and the editor's chips, and have no place in the payload.
+ */
+function resolvePairEntry(entry: Record<string, unknown>): CellPatchPair {
+  const pair: CellPatchPair = {}
+
+  for (const [key, cell] of Object.entries(entry)) {
+    if (key.endsWith('_id') && typeof cell === 'number') {
+      pair[key] = cell
+    }
+  }
+
+  return pair
+}
+
+/**
  * A relation column's cell value is the related row's `{id, name}`
  * projection (backend `mapRow`), not the id the PATCH contract expects
  * (spec 0054 D-3): unwrap it here, once, so every other column's plain
  * scalar value passes through untouched. A MULTISELECT column's value (user
  * directive 2026-07-23) is the ARRAY of those projections and unwraps the same
- * way, element by element, into the id collection the endpoint replaces.
+ * way, element by element, into the id collection the endpoint replaces. An
+ * entry with no `id` of its own is an ID PAIR (spec 0075): it keeps its shape,
+ * reduced to the `*_id` keys the endpoint reads.
  */
 function resolveCellPatchValue(value: unknown): CellPatchValue {
   if (Array.isArray(value)) {
+    if (value.every((entry) => entry !== null && typeof entry === 'object' && !('id' in entry))) {
+      return value.map((entry) => resolvePairEntry(entry as Record<string, unknown>))
+    }
+
     return value.map((entry) =>
       entry !== null && typeof entry === 'object' && 'id' in entry ? (entry as { id: number }).id : Number(entry),
     )
@@ -59,10 +89,10 @@ function resolveCellPatchValue(value: unknown): CellPatchValue {
  */
 function isUnchangedCellValue(newValue: unknown, oldValue: unknown): boolean {
   if (Array.isArray(newValue) && Array.isArray(oldValue)) {
-    const newIds = resolveCellPatchValue(newValue) as number[]
-    const oldIds = resolveCellPatchValue(oldValue) as number[]
-
-    return newIds.length === oldIds.length && newIds.every((id, index) => id === oldIds[index])
+    // Compared on the WIRE shape, so an id collection and a pair collection
+    // (spec 0075) are both covered: `resolveCellPatchValue` emits their keys
+    // in a fixed order, which makes the serialization comparable.
+    return JSON.stringify(resolveCellPatchValue(newValue)) === JSON.stringify(resolveCellPatchValue(oldValue))
   }
 
   return newValue === oldValue

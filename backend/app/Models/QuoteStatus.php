@@ -31,9 +31,14 @@ class QuoteStatus extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
-     * The system row pinned to sort_order=0 (StatusOrderManager::reorder()).
+     * The system rows pinned to the head of the sort_order sequence
+     * (StatusOrderManager::reorder()): a single row here, "Bozza" at 0 — the
+     * array shape exists because App\Models\RewardStatus carries TWO head
+     * rows (spec 0073, D-6).
+     *
+     * @var array<int, StatusSystemKey>
      */
-    public const StatusSystemKey SYSTEM_HEAD_KEY = StatusSystemKey::New;
+    public const array SYSTEM_HEAD_KEYS = [StatusSystemKey::New];
 
     /**
      * The system rows that pin to the tail of the sort_order sequence

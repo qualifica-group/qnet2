@@ -80,6 +80,7 @@ export const productCategories = {
     products_count: 'Products',
     business_function: 'Business function',
     requires_quote: 'Quoted',
+    is_selectable: 'Selectable',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
     productsMore: '+{{count}} more',
@@ -154,6 +155,9 @@ export const productCategories = {
     requiresQuoteHint: 'When on, this category and every subcategory below it are quoted.',
     requiresQuoteInheritedHint:
       'Quoting is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    isSelectable: 'Selectable',
+    isSelectableHint:
+      'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -202,6 +206,11 @@ export const products = {
     empty: 'No products found.',
     remove: 'Remove product',
     hintScoped: "Only products of this opportunity's categories.",
+    // Spec 0075, D-4/D-5: the request-management variant, where a product
+    // outside the request's categories is refused instead of covered.
+    hintLocked: "Only products of this request's product categories.",
+    prunedNotice:
+      'Removed from the selection, their product category is no longer on the record: {{names}}.',
     hintUnlocked:
       'Whole catalogue: a product from another category will add its business function / category row.',
     hintNoCategories:

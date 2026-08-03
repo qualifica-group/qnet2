@@ -40,6 +40,14 @@ export interface MultiSelectCellValue {
 export interface MultiSelectCellEditorParams {
   resource: string
   /**
+   * Spec 0075, D-4: the scope is not a default the operator may lift — this
+   * domain REFUSES what falls outside it (request-management's coherence
+   * rule), so the unlock is not offered at all. Absent/false keeps the
+   * opportunities behaviour, where the cross-category pick legitimately adds
+   * the missing product line.
+   */
+  lockScope?: boolean
+  /**
    * Row-scoped narrowing, same contract as `RelationCellEditor`'s: `/for-select`
    * param name -> id of the column supplying its value on the EDITED row. Here
    * the value may also be an ARRAY of ids (e.g. `category_ids` from the row's
@@ -56,7 +64,7 @@ export function MultiSelectCellEditor(
   props: CustomCellEditorProps<TableRow, MultiSelectCellValue[] | null> & MultiSelectCellEditorParams,
 ) {
   const { t } = useTranslation()
-  const { value, onValueChange, resource, scope, data } = props
+  const { value, onValueChange, resource, scope, lockScope = false, data } = props
   const [search, setSearch] = useState('')
   const [unlocked, setUnlocked] = useState(false)
   const [confirmingUnlock, setConfirmingUnlock] = useState(false)
@@ -187,7 +195,11 @@ export function MultiSelectCellEditor(
         )}
       </div>
 
-      {confirmingUnlock ? (
+      {lockScope ? (
+        <p className="truncate border-t border-border p-1.5 text-xs text-muted-foreground">
+          {t('table.multiSelectEditor.hintLocked')}
+        </p>
+      ) : confirmingUnlock ? (
         // The form's confirmation dialog, inlined (see the module docblock):
         // same warning, same two choices, no portal to lose focus to.
         <div role="alertdialog" aria-label={t('table.multiSelectEditor.unlockTitle')} className="border-t border-border p-2">

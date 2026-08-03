@@ -51,7 +51,7 @@ describe('projectColumnRenderers.total_budget', () => {
 describe('projectColumnRenderers date columns', () => {
   it('formats start_date without a time part', () => {
     renderCell('start_date', '2026-03-15')
-    expect(screen.getByText('Mar 15, 2026')).toBeInTheDocument()
+    expect(screen.getByText('15/03/2026')).toBeInTheDocument()
   })
 
   it('renders an em dash for an empty end_date', () => {

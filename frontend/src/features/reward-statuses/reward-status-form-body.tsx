@@ -6,9 +6,17 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
+import { REWARD_STATUS_GROUPS, type RewardStatusGroupValue } from '@/features/status-reorder/types'
 import { useRewardStatusForm } from '@/features/reward-statuses/use-reward-status-form'
 import type {
   RewardStatusDetail,
@@ -21,14 +29,22 @@ interface RewardStatusFormBodyProps {
   onCancel: () => void
 }
 
+/** i18n key per fixed group value, kept out of the JSX so the option list stays a plain map. */
+const GROUP_LABEL_KEYS: Record<RewardStatusGroupValue, string> = {
+  open: 'rewardStatuses.form.group.open',
+  pending: 'rewardStatuses.form.group.pending',
+  closed_won: 'rewardStatuses.form.group.closed_won',
+  closed_lost: 'rewardStatuses.form.group.closed_lost',
+}
+
 /**
  * The reward status create/edit form UI. `name`, `description`, `color` and
  * `is_active` are each wrapped in `MetaField` (spec 0004): hidden means
  * absent, non-editable means disabled, `required` comes from the resolved
- * `ResourcePermissions` — no hardcoded permission logic lives here. The
- * system row ("In attesa", `pending`, D-2) forces `description`/`is_active`
- * disabled regardless of field permissions: only `name`/`color` are editable
- * for it. `sort_order` has no form field (D-3, server-managed). All
+ * `ResourcePermissions` — no hardcoded permission logic lives here. A system
+ * row (spec 0073 D-6: "Aperto"/"In attesa"/"Chiuso positivo"/"Chiuso
+ * negativo") forces `description`/`group`/`is_active` disabled regardless of
+ * field permissions: only `name`/`color` are editable for it. `sort_order` has no form field (D-3, server-managed). All
  * non-render logic lives in `useRewardStatusForm`.
  */
 export function RewardStatusFormBody({ mode, onSuccess, onCancel }: RewardStatusFormBodyProps) {
@@ -42,6 +58,7 @@ export function RewardStatusFormBody({ mode, onSuccess, onCancel }: RewardStatus
     fieldPermission('name').visible ||
     fieldPermission('description').visible ||
     fieldPermission('color').visible ||
+    fieldPermission('group').visible ||
     fieldPermission('is_active').visible
 
   return (
@@ -107,6 +124,35 @@ export function RewardStatusFormBody({ mode, onSuccess, onCancel }: RewardStatus
                       disabled={disabled}
                     />
                   </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="group"
+                metaKey="group"
+                label={t('rewardStatuses.form.group.label')}
+                hint={isSystemRow ? t('rewardStatuses.form.hints.systemStatusLocked') : undefined}
+              >
+                {({ field, disabled }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(next) => field.onChange(next as RewardStatusGroupValue)}
+                    disabled={disabled || isSystemRow}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {REWARD_STATUS_GROUPS.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {t(GROUP_LABEL_KEYS[group])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </MetaField>
 

@@ -107,7 +107,7 @@ describe('RewardCard', () => {
     expect(screen.getByText('Delivered')).toBeInTheDocument()
     expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
     expect(screen.getByText('Handed over at the trade fair.')).toBeInTheDocument()
-    expect(screen.getByText(/Jul 1, 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/01\/07\/2026/)).toBeInTheDocument()
   })
 
   it('renders the origin as an open-mode button (not a link) when onOpenSource is given', () => {

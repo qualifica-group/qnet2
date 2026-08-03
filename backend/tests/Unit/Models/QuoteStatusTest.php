@@ -83,8 +83,8 @@ it('isSystem() distinguishes system rows from custom rows', function () {
         ->and($custom->make()->isSystem())->toBeFalse();
 });
 
-it('SYSTEM_HEAD_KEY is New and SYSTEM_TAIL_KEYS is [Won, Lost] in order', function () {
-    expect(QuoteStatus::SYSTEM_HEAD_KEY)->toBe(StatusSystemKey::New)
+it('SYSTEM_HEAD_KEYS is [New] and SYSTEM_TAIL_KEYS is [Won, Lost] in order', function () {
+    expect(QuoteStatus::SYSTEM_HEAD_KEYS)->toBe([StatusSystemKey::New])
         ->and(QuoteStatus::SYSTEM_TAIL_KEYS)->toBe([StatusSystemKey::Won, StatusSystemKey::Lost]);
 });
 

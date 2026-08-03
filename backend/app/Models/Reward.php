@@ -26,9 +26,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  *
  * `reward_status_id` (spec 0060, D-5): NOT NULL, defaulted to the system
  * `pending` row on create by RewardAssignmentWriter::createAdded() (BR-6),
- * mutated ONLY through `PATCH /api/rewards/{reward}`
+ * mutated through `PATCH /api/rewards/{reward}`
  * (RewardController::updateStatus, D-1) — never part of the Opportunity/
- * Gestione Richiesta chip payload.
+ * Gestione Richiesta chip payload — and, since spec 0073, by
+ * App\Services\Rewards\RewardLifecycleManager when the originating request
+ * closes negatively or reopens.
  */
 #[Fillable(['referent_id', 'reward_type_id', 'reward_status_id', 'assigned_at', 'notes'])]
 class Reward extends BaseModel
@@ -59,6 +61,28 @@ class Reward extends BaseModel
     public function rewardStatus(): BelongsTo
     {
         return $this->belongsTo(RewardStatus::class);
+    }
+
+    /**
+     * The status this reward carried before the lifecycle automation closed
+     * it (spec 0073, D-2), restored when the originating request reopens.
+     * Deliberately outside #[Fillable]: only
+     * App\Services\Rewards\RewardLifecycleManager ever writes it, never a
+     * request payload.
+     */
+    public function statusBeforeClosure(): BelongsTo
+    {
+        return $this->belongsTo(RewardStatus::class, 'status_before_closure_id');
+    }
+
+    /**
+     * Whether the CURRENT status was imposed by the automation rather than
+     * chosen by a human (spec 0073, D-2): the saved status doubles as the
+     * marker, which is what keeps reconcile() idempotent.
+     */
+    public function isClosedBySource(): bool
+    {
+        return $this->status_before_closure_id !== null;
     }
 
     public function source(): MorphTo

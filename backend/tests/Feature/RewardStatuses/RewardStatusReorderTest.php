@@ -40,7 +40,7 @@ if (! function_exists('rewardStatusReorderUserWith')) {
     }
 }
 
-it('reorder: a valid permutation resequences the customs, pending stays 0, no tail (D-3, AC-010)', function () {
+it('reorder: a valid permutation resequences the customs between the two head rows and the two closing rows (spec 0073, D-6)', function () {
     $actor = rewardStatusReorderUserWith(['update']);
     $first = RewardStatus::factory()->create(['name' => 'Alpha']);
     $second = RewardStatus::factory()->create(['name' => 'Beta']);
@@ -52,16 +52,16 @@ it('reorder: a valid permutation resequences the customs, pending stays 0, no ta
     ])->assertOk();
 
     $rows = collect($response->json('data'))->keyBy('id');
-    expect($rows[$third->id]['sort_order'])->toBe(10)
-        ->and($rows[$first->id]['sort_order'])->toBe(20)
-        ->and($rows[$second->id]['sort_order'])->toBe(30);
+    expect($rows[$third->id]['sort_order'])->toBe(20)
+        ->and($rows[$first->id]['sort_order'])->toBe(30)
+        ->and($rows[$second->id]['sort_order'])->toBe(40);
 
-    $pendingRow = $rows->firstWhere('system_key', 'pending');
-    expect($pendingRow['sort_order'])->toBe(0);
-
-    // No tail row exists in this domain (D-3): every row is either the head
-    // system row or a custom row.
-    expect($rows->filter(fn (array $row): bool => $row['system_key'] !== null && $row['system_key'] !== 'pending'))->toBeEmpty();
+    // Heads first, in declared order, then the two closing rows past the last
+    // custom (RewardStatus::SYSTEM_HEAD_KEYS/SYSTEM_TAIL_KEYS).
+    expect($rows->firstWhere('system_key', 'new')['sort_order'])->toBe(0)
+        ->and($rows->firstWhere('system_key', 'pending')['sort_order'])->toBe(10)
+        ->and($rows->firstWhere('system_key', 'won')['sort_order'])->toBe(50)
+        ->and($rows->firstWhere('system_key', 'lost')['sort_order'])->toBe(60);
 });
 
 it('reorder: 422 when ordered_ids includes the system status id (D-3)', function () {
@@ -112,13 +112,15 @@ it('reorder: 403 without reward-statuses.update, order unchanged (D-3)', functio
     $this->assertDatabaseHas('reward_statuses', ['id' => $custom->id, 'sort_order' => 20]);
 });
 
-it('create: a new custom row is placed after the last custom, pending stays head (BR-6-equivalent)', function () {
+it('create: the first custom row lands right after the two head rows (spec 0073, D-6)', function () {
     $actor = rewardStatusReorderUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Primo Custom', 'color' => 'blue'])->assertCreated();
+    $this->postJson('/api/reward-statuses', ['name' => 'Primo Custom', 'color' => 'blue', 'group' => 'open'])
+        ->assertCreated()
+        ->assertJsonPath('data.sort_order', 20);
 
-    $ordered = RewardStatus::query()->orderBy('sort_order')->pluck('system_key', 'name');
+    $ordered = RewardStatus::query()->orderBy('sort_order')->pluck('name');
 
-    expect($ordered->keys()->first())->toBe('In attesa');
+    expect($ordered->all())->toBe(['Aperto', 'In attesa', 'Primo Custom', 'Chiuso positivo', 'Chiuso negativo']);
 });

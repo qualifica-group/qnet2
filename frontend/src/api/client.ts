@@ -1,4 +1,5 @@
 import axios from 'axios'
+import i18n from '@/i18n'
 import { env } from '@/config/env'
 import { tokenStorage } from '@/api/token-storage'
 
@@ -20,12 +21,19 @@ export const apiClient = axios.create({
   // could no longer parse the body).
 })
 
-// Attach the Bearer token to every outgoing request.
+// Attach the Bearer token to every outgoing request, plus the language the
+// API must answer in (user directive 2026-08-03: an Italian UI was surfacing
+// English server messages). The header carries the APP's active language, not
+// the browser's `navigator.languages` default: the interface already follows
+// the user's own `locale`, and a validation message must speak the same
+// language as the form it lands in. Read per request, so a language switch
+// applies without rebuilding the client.
 apiClient.interceptors.request.use((config) => {
   const token = tokenStorage.get()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers['Accept-Language'] = i18n.language
   return config
 })
 

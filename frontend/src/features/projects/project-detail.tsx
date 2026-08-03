@@ -13,6 +13,7 @@ import {
   DetailSection,
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { formatDate } from '@/lib/formatting/date-display'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
@@ -21,18 +22,6 @@ import type { ProjectDetailWithPermissions as ProjectDetailData } from '@/featur
 
 interface ProjectDetailViewProps {
   project: ProjectDetailData
-}
-
-/** Formats a `Y-m-d` date-only value, blank when missing/invalid. */
-function formatDate(value: string | null, language: string): string {
-  if (!value) {
-    return ''
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(date)
 }
 
 /**
@@ -65,7 +54,7 @@ function BudgetOverallocationWarning({ remainingBudget }: { remainingBudget: str
  * rendered by the dedicated detail page (spec 0023, mirrors 0022).
  */
 export function ProjectDetailView({ project }: ProjectDetailViewProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const createdAt = formatDateTime(project.created_at)
   const geoPlaceName = project.geo_scope
     ? geoScopePlaceName(project.geo_scope, {
@@ -134,10 +123,10 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
       <DetailSection title={t('projects.form.sections.planning.title')} icon={<CalendarRange />}>
         <DetailGrid>
           <DetailField label={t('projects.form.startDate')}>
-            {formatDate(project.start_date, i18n.language) || <DetailEmpty />}
+            {formatDate(project.start_date) || <DetailEmpty />}
           </DetailField>
           <DetailField label={t('projects.form.endDate')}>
-            {formatDate(project.end_date, i18n.language) || <DetailEmpty />}
+            {formatDate(project.end_date) || <DetailEmpty />}
           </DetailField>
           <DetailField label={t('projects.form.targetLead')}>
             {project.target_lead ?? <DetailEmpty />}

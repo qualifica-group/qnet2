@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\RewardStatuses;
 
+use App\Enums\RewardStatusGroup;
+
 /**
  * Validated payload for creating a reward status (POST /api/reward-statuses,
  * spec 0060). Declared DTO (no "magic flying array") so the
@@ -19,6 +21,7 @@ final readonly class CreateRewardStatusData
         public string $name,
         public ?string $description,
         public string $color,
+        public RewardStatusGroup $group,
         public bool $isActive,
     ) {}
 
@@ -33,6 +36,7 @@ final readonly class CreateRewardStatusData
             name: (string) $data['name'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
             color: (string) $data['color'],
+            group: RewardStatusGroup::from((string) $data['group']),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         );
     }
@@ -46,6 +50,7 @@ final readonly class CreateRewardStatusData
             'name' => $this->name,
             'description' => $this->description,
             'color' => $this->color,
+            'group' => $this->group,
             'is_active' => $this->isActive,
         ];
     }

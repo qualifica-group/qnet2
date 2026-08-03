@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0074-selectable-product-categories" status="approved" owner="nicola" date="2026-08-03">
+
+  <goal>
+    Rendere esplicito, per ogni nodo dell'albero `product_categories`, se la categoria e'
+    SELEZIONABILE come destinazione di classificazione (associabile a un prodotto, a una linea di
+    prodotto, a un progetto, a una campagna, a una configurazione provvigioni) oppure se esiste solo
+    come CATEGORIA MADRE, cioe' come contenitore di sottocategorie e portatrice di attributi
+    ereditabili. Una categoria non selezionabile sparisce da tutte le liste di scelta di
+    destinazione, ma resta un `parent_id` perfettamente valido nell'albero.
+  </goal>
+
+  <context>
+    <!-- Nomi e riferimenti VERIFICATI sul codice reale (ricognizione 2026-08-03), non ipotizzati. -->
+
+    <stato_attuale>
+      `product_categories` (`2026_07_07_110200_create_product_categories_table.php` +
+      `2026_07_30_140000_add_requires_quote_to_product_categories_table.php`): `old_id`, `name`,
+      `parent_id` (self-referenziale, `restrictOnDelete`), `inherits_product_attributes`,
+      `inherits_opportunity_attributes`, `business_function_id`, `requires_quote`, `description`.
+      Nessuna colonna esprime oggi la selezionabilita': ogni categoria e' indistintamente
+      associabile a qualunque cosa.
+    </stato_attuale>
+
+    <due_canali_di_scelta_distinti>
+      Il punto centrale della feature: una categoria viene scelta attraverso DUE canali diversi, e
+      solo uno dei due va filtrato.
+
+      CANALE A — for-select piatto (`GET /api/product-categories/for-select`,
+      `ProductCategoryForSelectController` -> `ProductCategoryService::forSelect`). E' il canale
+      delle DESTINAZIONI. Consumatori frontend verificati (tutti importano
+      `PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE` da `features/product-categories/for-select-api.ts`):
+      `product-lines/product-lines-field.tsx` + `use-product-lines-field.ts` (linee di prodotto di
+      Opportunita' E Gestione Richieste), `projects/project-form-body.tsx`,
+      `campaigns/campaign-form-body.tsx`,
+      `commission-configurations/commission-configuration-form-body.tsx`,
+      `quick-create/quick-create-entries/hierarchical-entries.tsx`.
+
+      CANALE B — albero (`GET /api/product-categories/tree`, `CategoryHierarchy::tree()` ->
+      `useProductCategoryTree`). E' il canale della STRUTTURA: la tree view del modulo, il picker
+      `parent_id` del form categoria, il dialog di bulk-move, il campo `requires_quote` (che legge
+      il flag di un potenziale parent dalla stessa cache). Deve continuare a mostrare TUTTO.
+
+      Eccezione dentro il canale B: il picker `category_id` del form Prodotto NON usa il for-select
+      ma riusa l'albero gia' in cache appiattendolo (`products/product-form-body.tsx` ->
+      `flattenCategoryTree`, `product-categories/flatten-tree.ts` — il docblock lo dichiara
+      esplicitamente). E' una destinazione servita dal canale della struttura: va filtrata lato
+      client, non lato endpoint.
+    </due_canali_di_scelta_distinti>
+
+    <precedente_di_flag_sull_albero>
+      `requires_quote` (spec 0070) e' il precedente di forma per migrazione/model/DTO/Resource/
+      colonna di griglia/switch nel form. NON e' pero' il precedente di SEMANTICA: quel flag e'
+      posseduto dalla radice del ramo e rispecchiato su ogni discendente da
+      `RequiresQuoteInheritance`. `is_selectable` e' l'opposto — vedi D-2.
+    </precedente_di_flag_sull_albero>
+
+    <punti_di_validazione_esistenti>
+      `category_id`: `StoreProductRequest:53`, `UpdateProductRequest:53` (`exists:product_categories,id`).
+      `product_lines.*.product_category_id`: `Http/Requests/Concerns/ValidatesProductLines::productLinesRules()`,
+      usato da Store/UpdateOpportunityRequest e da Store/UpdateRequestRequest.
+      `product_category_id`: `StoreProjectRequest:60`, `UpdateProjectRequest:55`,
+      `StoreCampaignRequest:90`, `UpdateCampaignRequest:89`,
+      `CommissionConfigurations/Concerns/CommissionConfigurationRules:24`.
+      `RequestFormContextRequest:46` valida anch'esso `product_category_id` ma e' un endpoint
+      READ-ONLY e deliberatamente LENIENT (scarta le righe incomplete invece di 422): NON va toccato.
+      `TableColumnsRequest:36` risolve gli attributi dinamici di una categoria: nemmeno quello e'
+      una destinazione.
+    </punti_di_validazione_esistenti>
+  </context>
+
+  <decisions>
+    <decision id="D-1" title="Colonna booleana esplicita, non derivata dalla presenza di figli">
+      `is_selectable` BOOLEAN NOT NULL DEFAULT true. Scelta dell'utente (2026-08-03): una madre puo'
+      restare selezionabile e una foglia puo' essere resa non selezionabile — sono due concetti
+      indipendenti. Il default `true` rende la migrazione a comportamento invariato: nessuna
+      categoria esistente cambia stato al deploy.
+    </decision>
+
+    <decision id="D-2" title="Flag PER NODO, mai ereditato">
+      A differenza di `requires_quote`, `is_selectable` non si propaga: e' esattamente il caso d'uso
+      "madre non selezionabile, figlie selezionabili". Nessuna classe di inheritance, nessun
+      `syncSubtree`, nessuna colonna denormalizzata da tenere allineata. Una categoria non
+      selezionabile continua a essere un `parent_id` valido e continua a fornire i propri attributi
+      alle discendenti (`CategoryHierarchy` non viene toccato nella risoluzione).
+    </decision>
+
+    <decision id="D-3" title="Le associazioni esistenti restano; il flag vale solo in avanti">
+      Scelta dell'utente (2026-08-03). Togliere la selezionabilita' a una categoria che ha gia'
+      prodotti/linee/progetti/campagne associati NON e' bloccato e non tocca quelle righe. Due
+      conseguenze vincolanti:
+      (a) `ids[]` del for-select (idratazione edit-mode) BYPASSA il filtro, altrimenti il form di
+          modifica di un record legato a una categoria ormai non selezionabile mostrerebbe un select
+          vuoto;
+      (b) il rifiuto 422 sulle destinazioni ESENTA il valore gia' persistito sul record che si sta
+          aggiornando: una PATCH che rimanda invariato il proprio `category_id` non deve fallire.
+          E' l'unica lettura coerente di "blocca solo le nuove".
+    </decision>
+
+    <decision id="D-4" title="Il for-select filtra per default, senza parametro">
+      Nessun flag `selectable_only` in query string. Tutti i consumatori del for-select sono
+      destinazioni (vedi context) e il canale della struttura e' un endpoint diverso: un parametro
+      opt-in sarebbe solo un modo per dimenticarselo al prossimo consumatore. Il filtro e' quindi
+      incondizionato su `ProductCategoryService::forSelect`, con la sola esenzione di `ids[]` (D-3a).
+    </decision>
+
+    <decision id="D-5" title="Una sola regola di validazione riusabile">
+      Nuova `App\Rules\SelectableProductCategory` (implements `ValidationRule`), che sostituisce
+      `exists:product_categories,id` sulle sole destinazioni. Verifica esistenza E selezionabilita',
+      con una allow-list di id esenti (D-3b) passata dal costruttore. Sostituisce, non affianca:
+      lasciare anche `exists:` produrrebbe due messaggi per lo stesso campo.
+    </decision>
+
+    <decision id="D-6" title="Il picker categoria del form Prodotto filtra client-side">
+      Deriva da <due_canali_di_scelta_distinti/>: quel campo legge l'albero, non il for-select.
+      `flattenCategoryTree` accetta opzioni `{ selectableOnly, keepIds }`: un nodo non selezionabile
+      viene omesso dalle OPZIONI ma la ricorsione prosegue sui suoi figli (una madre nascosta non
+      puo' nascondere il ramo). `keepIds` porta l'eccezione D-3b anche qui: la categoria gia'
+      salvata sul prodotto in modifica resta in lista.
+    </decision>
+  </decisions>
+
+  <contract>
+    <db>
+      `product_categories.is_selectable` BOOLEAN NOT NULL DEFAULT true, `after('requires_quote')`.
+      Nessun indice: la tabella e' piccola e il filtro e' sempre combinato con l'ordinamento per
+      `name`, coerentemente con `requires_quote` che pure non ne ha.
+    </db>
+
+    <endpoint name="GET /api/product-categories/for-select">
+      Lista base filtrata a `is_selectable = true`. `ids[]` idrata comunque (D-3a). `total` conta la
+      sola lista filtrata. Shape della risposta invariata.
+    </endpoint>
+
+    <endpoint name="GET /api/product-categories/tree">
+      Ogni nodo guadagna `"is_selectable": bool`. NESSUN filtro: l'albero resta completo.
+    </endpoint>
+
+    <endpoint name="GET /api/product-categories/{productCategory}">
+      `ProductCategoryResource` guadagna `"is_selectable": bool`.
+    </endpoint>
+
+    <endpoint name="POST | PUT/PATCH /api/product-categories">
+      Accettano `is_selectable` (`sometimes|boolean`). Create senza il campo -> `true`.
+      Registrato in `ProductCategoriesAuthorization` come `FieldDefinition('is_selectable', 'boolean')`,
+      visibile+editabile a chi puo' scrivere, visibile+readonly agli altri (nessuna regola contestuale,
+      a differenza di `requires_quote`: qui non c'e' ereditarieta' da cui dipendere).
+    </endpoint>
+
+    <endpoint name="destinazioni">
+      Rispondono 422 sul campo della categoria quando l'id punta a una categoria con
+      `is_selectable = false`, ESENTATO il valore gia' persistito sul record aggiornato (D-3b):
+      - `POST /api/products`, `PUT/PATCH /api/products/{product}` -> `category_id`
+      - `POST|PUT/PATCH /api/opportunities` e `/api/request-management` -> `product_lines.*.product_category_id`
+      - `POST|PUT/PATCH /api/projects` -> `product_category_id`
+      - `POST|PUT/PATCH /api/campaigns` -> `product_category_id`
+      - `POST|PUT/PATCH /api/commission-configurations` -> `product_category_id`
+      Messaggio: `This product category is not selectable.` (stile dei messaggi inline gia' presenti
+      in `ValidatesProductLines`).
+    </endpoint>
+
+    <griglia>
+      `ProductCategoryColumnCatalog`: colonna `is_selectable`, `type: boolean`, `visible: true`,
+      sortable, filterable (`filterType: boolean`), + voce corrispondente in `filters()`. E' una
+      colonna DB reale, quindi il motore generico la gestisce senza codice derivato.
+    </griglia>
+  </contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">POST /api/product-categories senza `is_selectable` crea una categoria con il flag a true.</ac>
+    <ac id="AC-002">POST/PATCH accettano `is_selectable: false` e lo persistono; il flag NON si propaga ai figli ne' li condiziona.</ac>
+    <ac id="AC-003">GET /api/product-categories/{id} espone `is_selectable`.</ac>
+    <ac id="AC-004">GET /api/product-categories/tree espone `is_selectable` su ogni nodo e continua a includere le categorie non selezionabili.</ac>
+    <ac id="AC-005">GET /api/product-categories/for-select omette le categorie non selezionabili e ne esclude il conteggio dal `total`.</ac>
+    <ac id="AC-006">GET /api/product-categories/for-select con `ids[]` che punta a una categoria non selezionabile la restituisce comunque (idratazione).</ac>
+    <ac id="AC-007">POST /api/products con `category_id` non selezionabile -> 422 su `category_id`.</ac>
+    <ac id="AC-008">PATCH /api/products/{id} che rimanda invariata la propria categoria (nel frattempo diventata non selezionabile) -> 200.</ac>
+    <ac id="AC-009">PATCH /api/products/{id} che SPOSTA il prodotto su un'ALTRA categoria non selezionabile -> 422.</ac>
+    <ac id="AC-010">POST /api/opportunities e POST /api/request-management con una riga `product_lines` su categoria non selezionabile -> 422 su `product_lines.0.product_category_id`.</ac>
+    <ac id="AC-011">PATCH di un'opportunita' che rimanda le proprie linee invariate -> 200 anche se una di quelle categorie non e' piu' selezionabile.</ac>
+    <ac id="AC-012">POST /api/projects, /api/campaigns e /api/commission-configurations con categoria non selezionabile -> 422.</ac>
+    <ac id="AC-013">La griglia categorie espone la colonna `is_selectable`, ordinabile e filtrabile.</ac>
+    <ac id="AC-014">(FE) Il form categoria mostra lo switch "Selezionabile", default attivo in creazione.</ac>
+    <ac id="AC-015">(FE) Il picker categoria del form Prodotto non elenca le categorie non selezionabili, ma elenca le loro figlie selezionabili.</ac>
+    <ac id="AC-016">(FE) Lo stesso picker, in modifica, continua a elencare la categoria gia' salvata sul prodotto anche se non selezionabile.</ac>
+    <ac id="AC-017">(FE) Il picker `parent_id` del form categoria e il bulk-move continuano a elencare TUTTE le categorie.</ac>
+  </acceptance_criteria>
+
+  <out_of_scope>
+    - Nessuna migrazione dati sulle associazioni esistenti (D-3).
+    - Nessun blocco alla cancellazione o alla riparentazione legato al flag: le regole restrittive
+      esistenti (`ProductCategoryService::delete`) restano invariate.
+    - `RequestFormContextRequest` e `TableColumnsRequest` non sono destinazioni e non vengono toccati.
+    - Nessuna gestione di quote/contratti: `requires_quote` e `is_selectable` sono ortogonali.
+  </out_of_scope>
+
+</spec>

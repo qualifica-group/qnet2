@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
@@ -18,7 +19,9 @@ import { RequestWorkCollaboration } from '@/features/request-management/request-
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
 import { RequestWorkflowStatusField } from '@/features/request-management/request-workflow-status-field'
+import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
+import type { ProductLineRow } from '@/features/product-lines/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
@@ -128,6 +131,20 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const canViewActivity = canAction('view_activity')
   const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
 
+  // Spec 0075, D-5: re-pointing or removing a product line drops the products
+  // of interest it was covering, right there in the handler — the operator
+  // never reaches the server's refusal of an incoherent pair.
+  const productsOfInterest = useWatch({ control: form.control, name: 'products_of_interest' })
+  const keepCoveredProducts = useProductsOfInterestCoherence(productsOfInterest)
+
+  const handleProductLinesChange = (rows: ProductLineRow[]) => {
+    const kept = keepCoveredProducts(rows)
+
+    if (kept.length !== productsOfInterest.length) {
+      form.setValue('products_of_interest', kept, { shouldDirty: true })
+    }
+  }
+
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <RequestWorkHeader
@@ -183,7 +200,11 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
 
               {/* Funzione aziendale + categoria prodotto (user directive
                   2026-07-31), right before the picker they scope. */}
-              <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
+              <RequestProductLinesSection
+                control={form.control}
+                productLines={panel.product_lines}
+                onLinesChange={handleProductLinesChange}
+              />
 
               {/* Right after the preliminary information: the products of
                   interest are collected in the same phone call (user directive

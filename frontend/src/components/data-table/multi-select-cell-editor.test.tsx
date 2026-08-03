@@ -169,3 +169,20 @@ describe('MultiSelectCellEditor', () => {
     await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalled())
   })
 })
+
+// ---------------------------------------------------------------------------
+// Spec 0075, D-4 — the locked variant (request-management's own column)
+// ---------------------------------------------------------------------------
+
+describe('MultiSelectCellEditor with lockScope (spec 0075, AC-016)', () => {
+  it('offers no unlock: the module refuses what falls outside the row scope', async () => {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 4, label: 'Fibra 1000' }]))
+
+    renderEditor({ lockScope: true } as never)
+
+    await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalled())
+
+    expect(screen.queryByRole('button', { name: i18n.t('table.multiSelectEditor.unlock') })).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('table.multiSelectEditor.hintLocked'))).toBeInTheDocument()
+  })
+})

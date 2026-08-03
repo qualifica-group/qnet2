@@ -15,6 +15,7 @@ use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\OpportunityService;
 use App\Services\RegistryService;
+use App\Services\Rewards\RewardLifecycleManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,7 @@ final class RequestCreationService
         private readonly RequestManagementService $panel,
         private readonly RequestAttributeValueWriter $attributeValueWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
+        private readonly RewardLifecycleManager $rewardLifecycleManager,
     ) {}
 
     /**
@@ -140,6 +142,12 @@ final class RequestCreationService
         if ($opportunity->isDirty()) {
             $opportunity->save();
         }
+
+        // Spec 0073: a request CREATED already on a closed-negative working
+        // status closes the buoni assigned with it. OpportunityService::create()
+        // has already reconciled against the resolver's own status; this
+        // second, idempotent pass covers the explicit status applied above.
+        $this->rewardLifecycleManager->reconcile($opportunity);
     }
 
     /**

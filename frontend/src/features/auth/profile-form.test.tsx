@@ -132,6 +132,8 @@ function user(overrides: Partial<User> = {}): User {
     created_at: null,
     module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,
     ui_scale: 40,
+    date_format: 'dmy',
+    time_format: '24h',
     ...overrides,
   }
 }

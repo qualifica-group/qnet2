@@ -124,7 +124,10 @@ it('projects the selected products and the scope category ids on every row', fun
         'startRow' => 0, 'endRow' => 25, 'sortModel' => [], 'filterModel' => [],
     ])->assertOk()->json('items'))->firstWhere('id', $opportunity->id);
 
-    expect($row['products_of_interest'])->toBe([['id' => $product->id, 'name' => 'Fibra 1000']])
+    // `category_id` is additive (spec 0075, D-6): the product-lines cell editor
+    // reads it to warn that dropping a category would leave this product
+    // uncovered. The cell renderer still reads `name` only.
+    expect($row['products_of_interest'])->toBe([['id' => $product->id, 'name' => 'Fibra 1000', 'category_id' => $category->id]])
         ->and($row['product_category_ids'])->toBe([$category->id]);
 })->with(['opportunities', 'request-management']);
 
