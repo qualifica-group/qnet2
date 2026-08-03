@@ -26,28 +26,101 @@ const TEST_PRODUCT_CATEGORY_B = 22
 const SELECT_IDS: Record<string, number[]> = {
   'Business function 1': [TEST_BUSINESS_FUNCTION_A, TEST_BUSINESS_FUNCTION_B],
   'Business function 2': [TEST_BUSINESS_FUNCTION_A, TEST_BUSINESS_FUNCTION_B],
-  'Product category 1': [TEST_PRODUCT_CATEGORY_A, TEST_PRODUCT_CATEGORY_B],
-  'Product category 2': [TEST_PRODUCT_CATEGORY_A, TEST_PRODUCT_CATEGORY_B],
 }
+
+/**
+ * The category select now reads the structural TREE (user directive
+ * 2026-08-03), so the fixture IS a tree: an unselectable root that owns the
+ * business function, its two pickable children, and a second branch under the
+ * other function. `vi.hoisted` because the `vi.mock` factory below is hoisted
+ * above this module's consts.
+ */
+const { CATEGORY_TREE } = vi.hoisted(() => {
+  const node = (overrides: Record<string, unknown>) => ({
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    management_mode: 'multiple',
+    ...overrides,
+  })
+
+  return {
+    CATEGORY_TREE: [
+      node({
+        id: 100,
+        name: 'Formazione',
+        business_function_id: 1,
+        is_selectable: false,
+        children: [
+          node({ id: 11, name: 'Consulting', parent_id: 100 }),
+          node({ id: 22, name: 'Training', parent_id: 100 }),
+        ],
+      }),
+      node({ id: 200, name: 'Marketing area', business_function_id: 2 }),
+    ],
+  }
+})
+
+vi.mock('@/features/product-categories/use-product-category-tree', () => ({
+  useProductCategoryTree: () => ({
+    data: CATEGORY_TREE,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}))
+
+/** Exposes the options it was handed (id + disabled flag), so the scoping under test is asserted on the real builder's output. */
+vi.mock('@/components/ui/searchable-select', () => ({
+  SearchableSelect: ({
+    value,
+    onChange,
+    options,
+    disabled,
+    labels,
+  }: {
+    value: number | null
+    onChange: (value: number) => void
+    options: { id: number; name: string; disabled?: boolean; depth: number }[]
+    disabled?: boolean
+    labels: { triggerLabel?: string }
+  }) => (
+    <div data-testid={`select-${labels.triggerLabel}`}>
+      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
+      <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
+      <span data-testid={`options-${labels.triggerLabel}`}>
+        {options.map((option) => `${option.id}${option.disabled ? ':disabled' : ''}`).join(',')}
+      </span>
+      {options
+        .filter((option) => !option.disabled)
+        .map((option) => (
+          <button key={option.id} type="button" onClick={() => onChange(option.id)}>
+            {`select ${labels.triggerLabel} ${option.id}`}
+          </button>
+        ))}
+    </div>
+  ),
+}))
 
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
     value,
     onChange,
     disabled,
-    params,
     labels,
   }: {
     value: number | null
     onChange: (value: number | null) => void
     disabled?: boolean
-    params?: Record<string, string | number>
     labels: { triggerLabel: string }
   }) => (
     <div data-testid={`select-${labels.triggerLabel}`}>
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
       <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
-      <span data-testid={`params-${labels.triggerLabel}`}>{JSON.stringify(params ?? null)}</span>
       {(SELECT_IDS[labels.triggerLabel] ?? [1]).map((id) => (
         <button key={id} type="button" onClick={() => onChange(id)}>
           {`select ${labels.triggerLabel} ${id}`}
@@ -144,9 +217,24 @@ describe('ProductLinesField (spec 0057, AC-106)', () => {
     screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
 
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
-    expect(screen.getByTestId('params-Product category 1')).toHaveTextContent(
-      JSON.stringify({ business_function_id: TEST_BUSINESS_FUNCTION_A }),
+    // The other function's branch is absent; the root that owns THIS function
+    // is listed but disabled (it is not `is_selectable`), which is the whole
+    // point of reading the tree: the children show WHERE they live.
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(
+      `100:disabled,${TEST_PRODUCT_CATEGORY_A},${TEST_PRODUCT_CATEGORY_B}`,
     )
+  })
+
+  it('swaps the offered branch when the row function changes (user directive 2026-08-03)', async () => {
+    renderHarness()
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }).click()
+    await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
+
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_B}` }))
+
+    await waitFor(() => expect(screen.getByTestId('options-Product category 1')).toHaveTextContent('200'))
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent('100')
   })
 
   it('resets the category when the row function changes', async () => {

@@ -225,6 +225,9 @@ class ProductCategoryController extends BaseApiController
                 // IS the root): the form/detail render it as the read-only
                 // "inherited from X" hint.
                 'requires_quote_source_category' => $this->service->requiresQuoteSourceCategory($productCategory),
+                // Spec 0077: same read-only "inherited from X" hint for the
+                // card-line management mode.
+                'management_mode_source_category' => $this->service->managementModeSourceCategory($productCategory),
             ],
         );
     }

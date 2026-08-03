@@ -4,6 +4,7 @@ namespace App\Http\Requests\ProductCategories;
 
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Models\ProductCategory;
@@ -52,6 +53,10 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0074: whether the category may be picked as a
             // classification target. Never inherited, so no guard here.
             'is_selectable' => ['sometimes', 'boolean'],
+            // Spec 0077: same root-only semantics as requires_quote — a
+            // reparent (parent_id changes) or an edit of the mode itself
+            // triggers ProductCategoryService's subtree resync.
+            'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

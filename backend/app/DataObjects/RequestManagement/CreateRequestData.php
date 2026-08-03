@@ -19,9 +19,10 @@ use App\DataObjects\Users\ProfileData;
  * Segnalatore); `rewards` are the reward-type ids assigned to that reporter
  * (spec 0059), already reduced to a deduplicated id list by
  * StoreRequestRequest — `null` means the key was absent (nothing to assign).
- * `operatorId` is the GA2 "Operatore" (user directive 2026-07-29), submitted
- * only by an actor holding `request-management.assignOperator` — the
- * controller rejects it otherwise, so it is already authorized here.
+ * `operatorId` is the GA2 "Operatore" (user directive 2026-07-29): assigning
+ * ANOTHER user needs `request-management.assignOperator` — the controller
+ * rejects it otherwise, so it is already authorized here — while an actor
+ * without that ability always gets themselves (see withOperator()).
  * `operationalSiteId` is the Sede operativa (spec 0056, user directive
  * 2026-07-31): the same field the work panel edits, available at creation
  * because it is what scopes the operator list the form offers.
@@ -59,4 +60,30 @@ final readonly class CreateRequestData
         public ?string $generalNotes = null,
         public ?array $attributeValues = null,
     ) {}
+
+    /**
+     * The same payload with the GA2 operator forced to $operatorId. Used by
+     * RequestManagementController::store() for an actor who may NOT assign
+     * somebody else: their only legal operator is themselves, and it is
+     * applied by default (user directive 2026-08-03).
+     */
+    public function withOperator(int $operatorId): self
+    {
+        return new self(
+            registryId: $this->registryId,
+            clientProfile: $this->clientProfile,
+            productLines: $this->productLines,
+            sourceId: $this->sourceId,
+            reporterId: $this->reporterId,
+            productsOfInterest: $this->productsOfInterest,
+            rewards: $this->rewards,
+            operatorId: $operatorId,
+            operationalSiteId: $this->operationalSiteId,
+            workflowStatusId: $this->workflowStatusId,
+            statusNote: $this->statusNote,
+            nextCallbackAt: $this->nextCallbackAt,
+            generalNotes: $this->generalNotes,
+            attributeValues: $this->attributeValues,
+        );
+    }
 }

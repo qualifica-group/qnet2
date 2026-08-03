@@ -80,7 +80,10 @@ it('create: multiple product_lines rows persist, same business function with dif
     $actor = productLinesOpportunityUserWith(['create']);
     $businessFunction = BusinessFunction::factory()->create();
     $categoryOne = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-    $categoryTwo = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
+    // Spec 0077 INV-1: rows must resolve to the SAME product-category root —
+    // categoryTwo is a CHILD of categoryOne (not a second, independent root)
+    // so "different categories, same business function" stays a valid case.
+    $categoryTwo = ProductCategory::factory()->childOf($categoryOne)->create(['business_function_id' => $businessFunction->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/opportunities', array_merge(productLinesMandatoryOpportunityFks(), [

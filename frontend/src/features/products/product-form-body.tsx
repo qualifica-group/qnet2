@@ -18,7 +18,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useEnumOptions } from '@/features/config/use-config'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { flattenCategoryTree } from '@/features/product-categories/flatten-tree'
+import { collectSelectableIds, flattenCategoryTree } from '@/features/product-categories/flatten-tree'
 import { useProductForm } from '@/features/products/use-product-form'
 import { ProductDynamicFields } from '@/features/products/product-dynamic-fields'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
@@ -84,10 +84,13 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
     () => (mode.type === 'edit' ? [mode.product.category_id] : EMPTY_CATEGORY_IDS),
     [mode],
   )
+  // An unselectable category is LISTED, disabled (user directive
+  // 2026-08-03): it is the branch its selectable children hang from, and
+  // dropping it left the list reading as unrelated leaves.
   const categoryOptions = useMemo(
     () =>
       flattenCategoryTree(treeQuery.data ?? [], {
-        selectableOnly: true,
+        pickableIds: collectSelectableIds(treeQuery.data ?? []),
         keepIds: savedCategoryIds,
       }),
     [treeQuery.data, savedCategoryIds],

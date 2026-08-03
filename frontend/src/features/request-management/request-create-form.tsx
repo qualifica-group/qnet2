@@ -11,6 +11,7 @@ import { RequestCreateClientSection } from '@/features/request-management/reques
 import { RequestCreateDynamicFields } from '@/features/request-management/request-create-dynamic-fields'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
+import { RequestFormActions } from '@/features/request-management/request-form-actions'
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
 import { RequestCreateWorkflowStatusField } from '@/features/request-management/request-create-workflow-status-field'
@@ -24,9 +25,9 @@ import { useRequestCreateForm } from '@/features/request-management/use-request-
 
 /**
  * DOM id bridging the sticky header's save action to the RHF `<form>` below,
- * exactly as the work panel does (`REQUEST_WORK_FORM_ID`): the primary action
- * lives in the identity bar, not in a footer, so the two screens put "save" in
- * the same place.
+ * exactly as the work panel does (`REQUEST_WORK_FORM_ID`). The same id serves
+ * the footer actions (user directive 2026-08-03), so both copies of the button
+ * submit this form without either of them nesting the other.
  */
 const REQUEST_CREATE_FORM_ID = 'request-create-form'
 
@@ -50,13 +51,15 @@ interface RequestCreateFormProps {
  *
  * Same skeleton as the panel:
  *  - `@container` + `bg-surface`, sticky identity bar with the live status /
- *    callback pills and the only save action;
+ *    callback pills and the save/cancel actions, repeated at the foot of the
+ *    form (user directive 2026-08-03) as the panel repeats its own;
  *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
  *    (narrow containers read it before the long form), reordered to the right;
  *  - side column = "Note generali" callout on top, then the summary card;
- *  - main column = the same sections in the same order: working state and next
- *    callback, attribution, dynamic fields, product lines, products of
- *    interest, anagrafica.
+ *  - main column = the same sections in the same order: product lines and
+ *    products of interest FIRST (user directive 2026-08-03 — they are the
+ *    record's headline information), then working state and next callback,
+ *    attribution, dynamic fields, anagrafica.
  *
  * The two differences are structural, not cosmetic: the panel's collaboration
  * block (note/documenti/storico) needs a record to hang off, and its summary
@@ -129,24 +132,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
             {/* `display: contents`: this native `<form>` only scopes the HTML
                 submit boundary, it must not become an extra flex box. */}
             <form id={REQUEST_CREATE_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
-              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
-                <RequestCreateWorkflowStatusField
-                  control={form.control}
-                  statuses={context.workflow_statuses}
-                />
-
-                <RequestCreateCallbackSection control={form.control} />
-              </div>
-
-              <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
-
-              <RequestCreateDynamicFields
-                control={form.control}
-                attributes={context.applicable_attributes}
-                layout={context.attribute_layout}
-                isLoading={isContextLoading}
-              />
-
               <FormSection
                 icon={Boxes}
                 title={t('requestManagement.workPanel.productLines.title')}
@@ -185,6 +170,24 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               {/* Right after the product lines, which scope its options. */}
               <RequestCreateProductsOfInterest control={form.control} />
 
+              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
+                <RequestCreateWorkflowStatusField
+                  control={form.control}
+                  statuses={context.workflow_statuses}
+                />
+
+                <RequestCreateCallbackSection control={form.control} />
+              </div>
+
+              <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
+
+              <RequestCreateDynamicFields
+                control={form.control}
+                attributes={context.applicable_attributes}
+                layout={context.attribute_layout}
+                isLoading={isContextLoading}
+              />
+
               <RequestCreateClientSection
                 control={form.control}
                 identity={identityDraft}
@@ -195,6 +198,14 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 onAddressChange={setAddressDraft}
                 usingExistingRegistry={usingExistingRegistry}
                 errorMessage={clientBlockError}
+              />
+
+              <RequestFormActions
+                formId={REQUEST_CREATE_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitLabel={t('requestManagement.form.create.save')}
+                submittingLabel={t('requestManagement.form.create.saving')}
+                cancel={{ label: t('requestManagement.form.create.cancel'), onCancel }}
               />
             </form>
           </Form>

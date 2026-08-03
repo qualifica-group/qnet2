@@ -123,7 +123,10 @@ it('AC-002: several pairs are written in one commit', function () {
     $actor = inlineLinesActor();
     $category = inlineLinesCategory();
     $opportunity = inlineLinesRequest($actor, $category);
-    $second = inlineLinesCategory();
+    // Spec 0077 INV-1/INV-2: a card's rows must share the same root and
+    // business function — $second is a CHILD of $category, not an
+    // independent root/function, so the two pairs stay a valid card.
+    $second = ProductCategory::factory()->childOf($category)->create(['business_function_id' => $category->business_function_id]);
     Sanctum::actingAs($actor);
 
     inlineLinesPatch($opportunity, [inlineLinesPair($category), inlineLinesPair($second)])
@@ -160,7 +163,9 @@ it('AC-004: an unselectable category is refused, one already persisted is not', 
     $persisted = inlineLinesCategory(selectable: false);
     $opportunity = inlineLinesRequest($actor, $persisted);
     $unselectable = inlineLinesCategory(selectable: false);
-    $selectable = inlineLinesCategory();
+    // Spec 0077 INV-1/INV-2: shares $persisted's root and business function
+    // so the two-row submission below stays a valid card.
+    $selectable = ProductCategory::factory()->childOf($persisted)->create(['business_function_id' => $persisted->business_function_id]);
     Sanctum::actingAs($actor);
 
     inlineLinesPatch($opportunity, [inlineLinesPair($unselectable)])->assertStatus(422);

@@ -11,7 +11,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * mirroring SourceForSelectRequest. `business_function_id` (spec 0040
  * amendment rev.3, optional): scopes the results to categories whose
  * EFFECTIVE business function matches — additive/retrocompatible, absent by
- * default.
+ * default. `root_category_id` (spec 0077, optional): scopes the results to
+ * the subtree of that branch root (INV-1) — same additive/retrocompatible
+ * shape.
  *
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('viewAny', ProductCategory::class)). Pagination bounds mirror
@@ -39,6 +41,7 @@ class ProductCategoryForSelectRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
+            'root_category_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
         ];
     }
 

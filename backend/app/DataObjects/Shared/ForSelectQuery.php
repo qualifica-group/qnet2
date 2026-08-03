@@ -23,6 +23,10 @@ namespace App\DataObjects\Shared;
  *   ProductService::forSelect (products/for-select scoped to the categories
  *   of an opportunity's product lines) — empty means no scoping, so every
  *   other consumer is unaffected.
+ * - `rootCategoryId` (spec 0077): ADDITIVE, consumed ONLY by
+ *   ProductCategoryService::forSelect (product-categories/for-select scoped
+ *   to a branch root's subtree, INV-1) — same retrocompatible pattern as
+ *   `businessFunctionId`.
  */
 final readonly class ForSelectQuery
 {
@@ -38,6 +42,7 @@ final readonly class ForSelectQuery
         public ?int $businessFunctionId = null,
         public ?int $operationalSiteId = null,
         public array $categoryIds = [],
+        public ?int $rootCategoryId = null,
     ) {}
 
     /**
@@ -69,6 +74,7 @@ final readonly class ForSelectQuery
             businessFunctionId: isset($data['business_function_id']) ? (int) $data['business_function_id'] : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             categoryIds: $categoryIds,
+            rootCategoryId: isset($data['root_category_id']) ? (int) $data['root_category_id'] : null,
         );
     }
 

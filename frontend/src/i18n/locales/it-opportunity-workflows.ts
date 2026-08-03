@@ -90,6 +90,7 @@ export const opportunityWorkflows = {
       descriptionPlaceholder: 'Spiega quando si applica questo stato…',
       descriptionHint: 'Mostra la descrizione dello stato',
       requiresNote: 'Richiede una nota esplicativa',
+      markValidated: 'Stato di sistema "Validato"',
       requiresNoteBadge: 'Nota richiesta',
       dragHandleLabel: 'Trascina per riordinare',
       add: 'Aggiungi stato',

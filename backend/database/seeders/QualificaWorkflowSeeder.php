@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\DataObjects\OpportunityWorkflows\CreateOpportunityWorkflowData;
 use App\Enums\WorkflowStatusGroup;
+use App\Enums\WorkflowStatusSystemKey;
 use App\Models\OpportunityWorkflow;
 use App\Models\ProductCategory;
 use App\Services\OpportunityWorkflowService;
@@ -24,14 +25,16 @@ use Illuminate\Database\Seeder;
  *
  * Every workflow is created through OpportunityWorkflowService::create() — the
  * same path POST /api/opportunity-workflows uses — so the real write path runs
- * (signature uniqueness, criteria sync, the 4 pinned system rows added by
+ * (signature uniqueness, criteria sync, the pinned system rows added by
  * WorkflowStatusWriter around the custom ones), never a raw insert.
  *
  * Those pinned rows are seeded with the sheet's OWN labels, not the writer's
  * generic "Aperta"/"Chiusa positiva"/"Chiusa negativa": each takes over the
  * first state its block classifies under the same group (user decision
- * 2026-07-28), so no label foreign to the sheet reaches the pick list. Only
- * 'validated', which the sheet has no state for, keeps its default label.
+ * 2026-07-28), so no label foreign to the sheet reaches the pick list. The
+ * optional 'validated' row is the exception — promoted by NAME, and only for
+ * the one state the sheet has for it, "OK_Da Caricare" (user directive
+ * 2026-08-03): every other workflow is seeded without it.
  *
  * Idempotent: a category whose workflow already exists (by name OR by criteria
  * signature, both unique) is skipped, so a re-run neither duplicates nor
@@ -83,8 +86,10 @@ class QualificaWorkflowSeeder extends Seeder
             criteria: $criteria,
             statuses: WorkflowStatusCatalogue::customStatusesFor($category->name),
             openStatus: $pinned[WorkflowStatusGroup::Open->value],
-            // No state of the sheet maps to 'validated': that row keeps its
-            // own default label.
+            // Null for every section but AUTOIMPIEGO/YISU, whose
+            // "OK_Da Caricare" is the only state carrying the optional
+            // 'validated' row: those sets get none.
+            validatedStatus: $pinned[WorkflowStatusSystemKey::Validated->value],
             closedWonStatus: $pinned[WorkflowStatusGroup::ClosedWon->value],
             closedLostStatus: $pinned[WorkflowStatusGroup::ClosedLost->value],
         ));

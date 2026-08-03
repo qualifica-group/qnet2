@@ -10,9 +10,11 @@ import type { ResourceMeta, ResourcePermissions } from '@/features/authorization
 
 /**
  * Spec 0074 AC-015/AC-016: the product form's category picker reads the
- * STRUCTURAL tree cache, so it filters unselectable categories client-side —
- * without hiding their selectable children, and without dropping the category
- * already saved on the product being edited.
+ * STRUCTURAL tree cache, so it resolves selectability client-side. Amended by
+ * the user directive of 2026-08-03: an unselectable category is no longer
+ * omitted but LISTED DISABLED — it is the parent its selectable children hang
+ * from. The category already saved on the product being edited stays pickable
+ * (AC-016).
  */
 
 vi.mock('@/features/products/api', () => ({
@@ -48,9 +50,9 @@ vi.mock('@/features/product-categories/use-product-category-tree', () => ({
  * of this suite (the real `SearchableSelect` renders its options only once
  * opened through a portal).
  */
-const selectOptionsMock = vi.fn<(options: { id: number; name: string }[]) => void>()
+const selectOptionsMock = vi.fn<(options: { id: number; name: string; disabled?: boolean }[]) => void>()
 vi.mock('@/components/ui/searchable-select', () => ({
-  SearchableSelect: ({ options }: { options: { id: number; name: string }[] }) => {
+  SearchableSelect: ({ options }: { options: { id: number; name: string; disabled?: boolean }[] }) => {
     selectOptionsMock(options)
     return <div data-testid="category-select-stub" />
   },
@@ -108,6 +110,7 @@ function treeNode(
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    management_mode: 'multiple',
     ...overrides,
   }
 }
@@ -144,10 +147,10 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
   }
 }
 
-/** The ids of the last option list handed to the category picker. */
-function lastOptionIds(): number[] {
+/** The ids of the last option list handed to the category picker, marking the ones offered as disabled. */
+function lastOptionIds(): string[] {
   const lastCall = selectOptionsMock.mock.calls.at(-1)
-  return (lastCall?.[0] ?? []).map((option) => option.id)
+  return (lastCall?.[0] ?? []).map((option) => `${option.id}${option.disabled ? ':disabled' : ''}`)
 }
 
 beforeAll(async () => {
@@ -163,13 +166,13 @@ beforeEach(() => {
 })
 
 describe('ProductFormBody — category picker selectability', () => {
-  it('omits an unselectable category but keeps its selectable child (AC-015)', async () => {
+  it('lists an unselectable category disabled, its selectable child pickable (AC-015)', async () => {
     render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
     await screen.findByTestId('category-select-stub')
-    await waitFor(() => expect(lastOptionIds()).toEqual([2]))
+    await waitFor(() => expect(lastOptionIds()).toEqual(['1:disabled', '2']))
   })
 
   it('keeps the category already saved on the product being edited (AC-016)', async () => {
@@ -183,6 +186,6 @@ describe('ProductFormBody — category picker selectability', () => {
     )
 
     await screen.findByTestId('category-select-stub')
-    await waitFor(() => expect(lastOptionIds()).toEqual([1, 2]))
+    await waitFor(() => expect(lastOptionIds()).toEqual(['1', '2']))
   })
 })

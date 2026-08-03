@@ -28,6 +28,8 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    management_mode: 'multiple',
+    management_mode_source_category: null,
     ...overrides,
   }
 }
@@ -44,6 +46,7 @@ describe('buildCreatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -70,11 +73,31 @@ describe('buildCreatePayload', () => {
       business_function_id: null,
       requires_quote: true,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
     expect(buildCreatePayload(values)).not.toHaveProperty('requires_quote')
     expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ requires_quote: true })
+  })
+
+  it('omits management_mode under a parent (inherited) and sends it at the root (owned)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'single',
+      custom_fields: {},
+    }
+
+    expect(buildCreatePayload(values)).not.toHaveProperty('management_mode')
+    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ management_mode: 'single' })
   })
 })
 
@@ -90,6 +113,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -107,6 +131,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -124,6 +149,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -144,6 +170,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -163,6 +190,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -182,6 +210,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: 5,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -199,6 +228,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
     const inheriting = original({
@@ -219,6 +249,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: true,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -236,6 +267,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: false,
       is_selectable: false,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -254,6 +286,7 @@ describe('buildUpdatePayload', () => {
       business_function_id: null,
       requires_quote: true,
       is_selectable: true,
+      management_mode: 'multiple',
       custom_fields: {},
     }
 
@@ -263,5 +296,46 @@ describe('buildUpdatePayload', () => {
     })
     // Promoted to root in the same save: both travel, the server accepts it.
     expect(buildUpdatePayload(values, original())).toEqual({ parent_id: null, requires_quote: true })
+  })
+
+  it('never sends management_mode while the category sits under a parent (the root owns it)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'single',
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+  })
+
+  it('sends management_mode when a root category changes it, and on promotion to root', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: null,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'single',
+      custom_fields: {},
+    }
+
+    // Already a root: only the mode changed.
+    expect(buildUpdatePayload(values, original({ parent_id: null, parent: null }))).toEqual({
+      management_mode: 'single',
+    })
+    // Promoted to root in the same save: both travel, the server accepts it.
+    expect(buildUpdatePayload(values, original())).toEqual({ parent_id: null, management_mode: 'single' })
   })
 })

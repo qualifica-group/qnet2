@@ -77,6 +77,34 @@ beforeEach(() => {
 describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
 
   /**
+   * User directive 2026-08-03: the panel is long, so the same save closes the
+   * editable form at its foot. It is a COPY of the header's, not a second
+   * behaviour — same form, same "nothing to send yet" gate — and it carries no
+   * cancel, since this screen edits a persisted record.
+   */
+  it('repeats the save at the foot of the form, on the same gate as the header', async () => {
+    const stored = panel()
+    fetchRequestWorkPanelMock.mockResolvedValue(stored)
+    updateRequestWorkMock.mockResolvedValue(stored)
+
+    renderPanel()
+
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
+
+    const [headerSave, footerSave] = screen.getAllByRole('button', { name: 'Save' })
+    expect(screen.getByRole('banner')).not.toContainElement(footerSave)
+    expect(footerSave).toHaveAttribute('form', headerSave.getAttribute('form'))
+    // Nothing edited yet: both copies are unavailable.
+    expect(footerSave).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[1])
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+  })
+
+  /**
    * A submit refused by the client schema used to be SILENT: `handleSubmit`
    * dropped it, the save button stayed as it was and the blocking fields
    * reported nothing where the operator was looking — the button read as
@@ -93,7 +121,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     // Attribute is emptied and the last product of interest dropped.
     fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Remove product Fibra 1000' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     const header = screen.getByRole('banner')
     const alert = await within(header).findByRole('alert')
@@ -120,7 +148,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove product line' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     const alert = await within(screen.getByRole('banner')).findByRole('alert')
     expect(alert).toHaveTextContent('Product lines')
@@ -145,7 +173,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
 
     fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     const [, payload] = updateRequestWorkMock.mock.calls[0]
@@ -169,7 +197,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
 
     fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('client_identity')
@@ -188,7 +216,7 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     await waitFor(() => expect(screen.getByLabelText(/Company name/)).toHaveValue('Acme S.p.A.'))
 
     fireEvent.change(screen.getByLabelText(/Company name/), { target: { value: 'Acme S.r.l.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     const alert = await within(screen.getByRole('banner')).findByRole('alert')
     expect(alert).toHaveTextContent('Identity')

@@ -17,7 +17,6 @@ use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
-use App\Services\Rewards\RewardLifecycleManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -102,7 +101,6 @@ final class RequestManagementService
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
-        private readonly RewardLifecycleManager $rewardLifecycleManager,
     ) {}
 
     /**
@@ -225,13 +223,6 @@ final class RequestManagementService
             // `rewards` was submitted. Both operate on the writer shared with
             // OpportunityService, so the two channels can never diverge.
             $this->applyRewards($opportunity, $previousReporterId, $data, $changed, $old);
-
-            // Step 8-bis: the reward lifecycle (spec 0073) — reconciled AFTER
-            // Step 8 on purpose, so a buono assigned in the very PATCH that
-            // closes the request negatively is closed too (D-7). Idempotent:
-            // a PATCH that touched neither the status nor the rewards is a
-            // no-op.
-            $this->rewardLifecycleManager->reconcile($opportunity);
 
             // Step 9: client anagraphic (spec 0049 amendment; spec 0055 D-7 for
             // the inline channel's four sparse single-field keys) — identity,

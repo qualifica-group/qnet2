@@ -12,6 +12,7 @@ import { RequestAttributionSection } from '@/features/request-management/request
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestDynamicFields } from '@/features/request-management/request-dynamic-fields'
+import { RequestFormActions } from '@/features/request-management/request-form-actions'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
@@ -29,7 +30,8 @@ import type { RequestWorkPanelWithPermissions } from '@/features/request-managem
  * F1b): `<NotesSection>` owns its own native `<form>` (composer) and cannot
  * sit inside this one — nested `<form>` elements are invalid HTML and make
  * submit/Enter-key behaviour browser-dependent. The button below stays
- * `type="submit"` via the HTML `form` attribute instead of DOM nesting.
+ * `type="submit"` via the HTML `form` attribute instead of DOM nesting, and so
+ * does its copy in the footer actions.
  */
 const REQUEST_WORK_FORM_ID = 'request-work-form'
 
@@ -126,6 +128,7 @@ interface RequestWorkPanelBodyProps {
 }
 
 function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
+  const { t } = useTranslation()
   const { canAction, canResource } = useResourcePermissions()
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
@@ -170,10 +173,29 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           <Form {...form}>
             {/* `display: contents`: this native `<form>` only scopes the HTML submit
                 boundary, it must not become an extra flex box in the stack below. */}
-            {/* Section order = the operator's working order: the working state and
-                the next callback first (the levers acted on at every touch), then
-                what the request needs (dynamic fields), then the client's data. */}
+            {/* Section order = the operator's working order (user directive
+                2026-08-03): what the request is about comes FIRST — the product
+                classification and the products of interest are the record's
+                headline information — then the working state and the next
+                callback, then what the request needs (dynamic fields), then the
+                client's data. */}
             <form id={REQUEST_WORK_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
+              {/* Funzione aziendale + categoria prodotto (user directive
+                  2026-07-31), right before the picker they scope. */}
+              <RequestProductLinesSection
+                control={form.control}
+                productLines={panel.product_lines}
+                onLinesChange={handleProductLinesChange}
+              />
+
+              {/* Right after the classification that scopes it: the products of
+                  interest are collected in the same phone call (user directive
+                  2026-07-22). */}
+              <RequestProductsOfInterest
+                control={form.control}
+                products={panel.products_of_interest}
+              />
+
               <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
                 <RequestWorkflowStatusField control={form.control} statuses={panel.workflow_statuses} />
 
@@ -198,23 +220,21 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 layout={panel.attribute_layout}
               />
 
-              {/* Funzione aziendale + categoria prodotto (user directive
-                  2026-07-31), right before the picker they scope. */}
-              <RequestProductLinesSection
-                control={form.control}
-                productLines={panel.product_lines}
-                onLinesChange={handleProductLinesChange}
-              />
-
-              {/* Right after the preliminary information: the products of
-                  interest are collected in the same phone call (user directive
-                  2026-07-22). */}
-              <RequestProductsOfInterest
-                control={form.control}
-                products={panel.products_of_interest}
-              />
-
               <RequestClientSection control={form.control} />
+
+              {/* The same save the identity bar carries, repeated where the
+                  editable form ends (user directive 2026-08-03): the panel is
+                  long, and the collaboration block below persists on its own.
+                  No cancel here — this edits a persisted record. */}
+              {canUpdate && (
+                <RequestFormActions
+                  formId={REQUEST_WORK_FORM_ID}
+                  isSubmitting={isSubmitting}
+                  submitLabel={t('requestManagement.workPanel.save')}
+                  submittingLabel={t('requestManagement.workPanel.saving')}
+                  isSubmitDisabled={!form.formState.isDirty}
+                />
+              )}
             </form>
           </Form>
 

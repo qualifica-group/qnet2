@@ -37,7 +37,7 @@ const ROWS: WorkflowStatusFormRow[] = [
   },
 ]
 
-function renderEditor(onUpdateRow = vi.fn()) {
+function renderEditor(onUpdateRow = vi.fn(), onMarkValidated = vi.fn()) {
   render(
     <WorkflowStatusesEditor
       rows={ROWS}
@@ -45,10 +45,32 @@ function renderEditor(onUpdateRow = vi.fn()) {
       onAddCustom={vi.fn()}
       onRemoveCustom={vi.fn()}
       onUpdateRow={onUpdateRow}
+      onMarkValidated={onMarkValidated}
     />,
   )
   return onUpdateRow
 }
+
+describe('WorkflowStatusesEditor — optional validated mark', () => {
+  it('offers the mark on a custom row but never on a mandatory system row', () => {
+    renderEditor()
+
+    // One switch only: the 'open' row is mandatory and cannot carry the mark.
+    expect(screen.getAllByLabelText('System status "Validated"')).toHaveLength(1)
+  })
+
+  it('reports the row the user marks, unchecked by default', () => {
+    const onMarkValidated = vi.fn()
+    renderEditor(vi.fn(), onMarkValidated)
+
+    const toggle = screen.getByLabelText('System status "Validated"')
+    expect(toggle).not.toBeChecked()
+
+    fireEvent.click(toggle)
+
+    expect(onMarkValidated).toHaveBeenCalledWith('custom-1', true)
+  })
+})
 
 describe('WorkflowStatusesEditor — description and note marker', () => {
   it('renders the persisted description of every row, system rows included', () => {

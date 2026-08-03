@@ -142,6 +142,11 @@ it('leaves the supervisor the operational modules', function () {
             ->and($supervisor->can("{$resource}.view"))->toBeTrue("{$resource}.view")
             ->and($supervisor->can("{$resource}.update"))->toBeTrue("{$resource}.update");
     }
+
+    // The counterpart of the commercial denial (user directive 2026-08-03):
+    // the supervisor keeps choosing the operator freely, so the create form
+    // still renders the "Operatore" field for them.
+    expect($supervisor->can('request-management.assignOperator'))->toBeTrue();
 });
 
 it('restricts the commercial role to request-management plus the selects it reads', function () {
@@ -158,6 +163,10 @@ it('restricts the commercial role to request-management plus the selects it read
         // Nor is seeing the requests of the other commercials: without
         // `viewAll` the module's D-3 scoping applies (see the test below).
         ->and($commercial->can('request-management.viewAll'))->toBeFalse()
+        // Nor is deciding who works a request (user directive 2026-08-03):
+        // without `assignOperator` the create form hides the "Operatore"
+        // field and the endpoint pins the creator as the operator.
+        ->and($commercial->can('request-management.assignOperator'))->toBeFalse()
         // The module's own permission set only — never opportunities.*.
         ->and($commercial->can('opportunities.viewAny'))->toBeFalse()
         ->and($commercial->can('opportunities.view'))->toBeFalse();

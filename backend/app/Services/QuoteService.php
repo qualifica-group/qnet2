@@ -18,6 +18,7 @@ use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
+use App\Services\Opportunities\OpportunityTitleBuilder;
 use App\Services\Quotes\QuoteLineWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
 use App\Services\Statuses\SystemStatusGuard;
@@ -89,6 +90,7 @@ class QuoteService
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
+        private readonly OpportunityTitleBuilder $titleBuilder,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -141,6 +143,10 @@ class QuoteService
             // Step 5: persist the recalculated aggregates (D-9).
             $this->persistAggregates($quote);
 
+            // Step 5b: re-derive the opportunity's name from its quotes'
+            // revenue lines (spec 0077, D-3/D-4).
+            $this->recalculateOpportunityName($opportunity->id);
+
             // Step 6: Contract lifecycle automation (spec 0072, BR-1) — a
             // fresh quote never had a prior status group.
             $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
@@ -185,6 +191,11 @@ class QuoteService
 
             $this->persistAggregates($quote);
 
+            // Re-derive the opportunity's name (spec 0077, D-3/D-4) — always,
+            // mirroring persistAggregates(): even a scalar-only PATCH must see
+            // the current line set (a prior write may have changed it).
+            $this->recalculateOpportunityName($quote->opportunity_id);
+
             // Contract lifecycle automation (spec 0072, BR-1).
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
         });
@@ -194,11 +205,20 @@ class QuoteService
 
     /**
      * Delete the quote. `quote_lines` cascade away via their own FK (AC-026);
-     * the linked Opportunity/Product/VatRate rows are untouched.
+     * the linked Opportunity/Product/VatRate rows are untouched. The
+     * opportunity's derived name (spec 0077) is recalculated AFTER the
+     * cascade, inside the same transaction, so a now-orphaned revenue line
+     * never counts (AC-034: falls back to `OPP_{id}` once no offer is left).
      */
     public function delete(Quote $quote): void
     {
-        $quote->delete();
+        DB::transaction(function () use ($quote): void {
+            $opportunityId = $quote->opportunity_id;
+
+            $quote->delete();
+
+            $this->recalculateOpportunityName($opportunityId);
+        });
     }
 
     /**
@@ -317,5 +337,20 @@ class QuoteService
             'cost_vat' => $totals['cost_vat'],
             'margin_net' => $totals['margin_net'],
         ])->save();
+    }
+
+    /**
+     * Re-derives and persists `opportunities.name` (spec 0077, D-3/D-4) from
+     * a fresh read of the opportunity — never the caller's own (possibly
+     * stale, possibly relation-less) instance, so this stays correct whether
+     * called from create/update/delete. `name` is never a client input
+     * (AC-037): forceFill mirrors OpportunityService::create()'s own
+     * assignment of the same column.
+     */
+    private function recalculateOpportunityName(int $opportunityId): void
+    {
+        $opportunity = Opportunity::findOrFail($opportunityId);
+
+        $opportunity->forceFill(['name' => $this->titleBuilder->build($opportunity)])->save();
     }
 }

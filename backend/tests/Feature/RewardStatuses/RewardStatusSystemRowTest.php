@@ -3,7 +3,6 @@
 use App\Enums\RewardStatusGroup;
 use App\Models\RewardStatus;
 use App\Models\User;
-use Database\Seeders\DemoRewardStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -15,10 +14,10 @@ uses(RefreshDatabase::class);
 | System-status rules for `reward-statuses` (spec 0060, D-2)
 |--------------------------------------------------------------------------
 |
-| The ONE mandatory row ("In attesa"/`pending`) is seeded unconditionally by
-| the create-table migration, so every test here reads it back rather than
-| creating it (system_key is UNIQUE — a second 'pending' row would violate
-| it).
+| The THREE mandatory rows ("In attesa"/`pending`, "Approvato"/`won`,
+| "Negato"/`lost`) are seeded unconditionally by the migrations, so every test
+| here reads them back rather than creating them (system_key is UNIQUE — a
+| second 'pending' row would violate it).
 */
 
 if (! function_exists('rewardStatusSystemUserWith')) {
@@ -45,28 +44,19 @@ if (! function_exists('rewardStatusSystemUserWith')) {
 // AC-017 — clean seed has ONLY the "pending" system row
 // ---------------------------------------------------------------------------
 
-it('migrate:fresh creates the FOUR system rows in their pinned order, no other status (spec 0073, AC-001)', function () {
-    expect(RewardStatus::count())->toBe(4);
+it('migrate:fresh creates the THREE system rows in their pinned order, no other status (spec 0073, AC-001)', function () {
+    expect(RewardStatus::count())->toBe(3);
 
     $rows = RewardStatus::query()->orderBy('sort_order')->get();
 
-    expect($rows->pluck('name')->all())->toBe(['Aperto', 'In attesa', 'Chiuso positivo', 'Chiuso negativo'])
-        ->and($rows->pluck('system_key')->all())->toBe(['new', 'pending', 'won', 'lost'])
-        ->and($rows->pluck('group')->map->value->all())->toBe(['open', 'pending', 'closed_won', 'closed_lost'])
-        ->and($rows->pluck('sort_order')->all())->toBe([0, 10, 20, 30])
+    expect($rows->pluck('name')->all())->toBe(['In attesa', 'Approvato', 'Negato'])
+        ->and($rows->pluck('system_key')->all())->toBe(['pending', 'won', 'lost'])
+        ->and($rows->pluck('group')->map->value->all())->toBe(['pending', 'closed_won', 'closed_lost'])
+        ->and($rows->pluck('sort_order')->all())->toBe([0, 10, 20])
         ->and($rows->every(fn (RewardStatus $row): bool => $row->is_active))->toBeTrue();
 
     $pending = $rows->firstWhere('system_key', 'pending');
     expect($pending->color)->toBe('amber');
-});
-
-it('running DemoRewardStatusSeeder twice does not duplicate rows (AC-017)', function () {
-    $this->seed(DemoRewardStatusSeeder::class);
-    $countAfterFirstRun = RewardStatus::count();
-
-    $this->seed(DemoRewardStatusSeeder::class);
-
-    expect(RewardStatus::count())->toBe($countAfterFirstRun);
 });
 
 // ---------------------------------------------------------------------------
@@ -145,7 +135,7 @@ it('update: 422 when the system row payload includes group, the phase never move
     expect($pending->fresh()->group)->toBe(RewardStatusGroup::Pending);
 });
 
-it('a row inserted without an explicit group falls back to open (spec 0073, AC-002)', function () {
+it('a row inserted without an explicit group falls back to pending (spec 0073, AC-002)', function () {
     $id = DB::table('reward_statuses')->insertGetId([
         'name' => 'Riga preesistente',
         'color' => 'slate',
@@ -155,7 +145,7 @@ it('a row inserted without an explicit group falls back to open (spec 0073, AC-0
         'updated_at' => now(),
     ]);
 
-    expect(RewardStatus::findOrFail($id)->group)->toBe(RewardStatusGroup::Open);
+    expect(RewardStatus::findOrFail($id)->group)->toBe(RewardStatusGroup::Pending);
 });
 
 it('update: 422 when the system row payload includes description, nothing persists (BR-3, AC-005)', function () {

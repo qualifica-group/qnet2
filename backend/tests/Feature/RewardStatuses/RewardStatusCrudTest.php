@@ -37,16 +37,16 @@ it('create: 201 + persists, sort_order assigned, system_key null, is_active true
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green', 'group' => 'pending'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Consegnato', 'color' => 'green', 'group' => 'pending'])
         ->assertCreated()
-        ->assertJsonPath('data.name', 'Approvato')
+        ->assertJsonPath('data.name', 'Consegnato')
         ->assertJsonPath('data.color', 'green')
         ->assertJsonPath('data.group', 'pending')
         ->assertJsonPath('data.system_key', null)
         ->assertJsonPath('data.is_active', true)
         ->assertJsonStructure(['data' => ['id', 'name', 'description', 'color', 'group', 'sort_order', 'is_active', 'system_key', 'created_at', 'updated_at'], 'permissions']);
 
-    $this->assertDatabaseHas('reward_statuses', ['name' => 'Approvato', 'color' => 'green', 'system_key' => null]);
+    $this->assertDatabaseHas('reward_statuses', ['name' => 'Consegnato', 'color' => 'green', 'system_key' => null]);
 });
 
 it('create: submitted sort_order/system_key are ignored (AC-001)', function () {
@@ -54,7 +54,7 @@ it('create: submitted sort_order/system_key are ignored (AC-001)', function () {
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/reward-statuses', [
-        'name' => 'Consegnato', 'color' => 'blue', 'group' => 'open', 'sort_order' => 999, 'system_key' => 'hacked',
+        'name' => 'Consegnato', 'color' => 'blue', 'group' => 'pending', 'sort_order' => 999, 'system_key' => 'hacked',
     ])->assertCreated();
 
     expect($response->json('data.sort_order'))->not->toBe(999)
@@ -67,13 +67,13 @@ it('create: submitted sort_order/system_key are ignored (AC-001)', function () {
 
 it('create: 422 when name duplicates an existing status, no row created (BR-1, AC-002)', function () {
     $actor = rewardStatusUserWith(['create']);
-    RewardStatus::factory()->create(['name' => 'Approvato']);
+    RewardStatus::factory()->create(['name' => 'Consegnato']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'blue', 'group' => 'open'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Consegnato', 'color' => 'blue', 'group' => 'pending'])
         ->assertStatus(422)->assertJsonValidationErrors('name');
 
-    expect(RewardStatus::where('name', 'Approvato')->count())->toBe(1);
+    expect(RewardStatus::where('name', 'Consegnato')->count())->toBe(1);
 });
 
 it('update: 200 when re-submitting its OWN unchanged name (unique ignores self) (AC-002)', function () {
@@ -134,10 +134,10 @@ it('create: 422 when color is null or empty (BR-2, AC-003)', function () {
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope1', 'color' => null, 'group' => 'open'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope1', 'color' => null, 'group' => 'pending'])
         ->assertStatus(422)->assertJsonValidationErrors('color');
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope2', 'color' => '', 'group' => 'open'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope2', 'color' => '', 'group' => 'pending'])
         ->assertStatus(422)->assertJsonValidationErrors('color');
 });
 
@@ -154,7 +154,7 @@ it('create: 201 when description is omitted (AC-003)', function () {
     $actor = rewardStatusUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Senza descrizione', 'color' => 'teal', 'group' => 'open'])
+    $this->postJson('/api/reward-statuses', ['name' => 'Senza descrizione', 'color' => 'teal', 'group' => 'pending'])
         ->assertCreated()
         ->assertJsonPath('data.description', null);
 });
@@ -229,7 +229,7 @@ it('POST create: 403 without reward-statuses.create, no row created (AC-007)', f
 
     $countBefore = RewardStatus::count();
 
-    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue', 'group' => 'open'])->assertForbidden();
+    $this->postJson('/api/reward-statuses', ['name' => 'Nope', 'color' => 'blue', 'group' => 'pending'])->assertForbidden();
 
     expect(RewardStatus::count())->toBe($countBefore);
 });

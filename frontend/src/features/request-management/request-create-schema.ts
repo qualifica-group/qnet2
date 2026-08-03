@@ -34,6 +34,18 @@ function buildProductLinesSchema(t: TFunction) {
         })
       }
     })
+    // Spec 0077 INV-2: every row shares the same Funzione aziendale, in both
+    // management modes — a fresh creation, so nothing to grandfather (D-5
+    // only applies to the work panel's edits of a persisted record).
+    const businessFunctionIds = new Set(
+      rows.map((row) => row.business_function_id).filter((id): id is number => id !== null),
+    )
+    if (businessFunctionIds.size > 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: t('requestManagement.form.create.validation.businessFunctionMismatch'),
+      })
+    }
   })
 }
 

@@ -26,10 +26,10 @@ import {
   MAX_MANAGERS,
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
-import { emptyProductLineRow } from '@/features/product-lines/types'
+import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
 import { OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE } from '@/features/opportunity-statuses/for-select-api'
 import { useDefaultSystemStatusId } from '@/features/status-reorder/use-default-system-status'
-import type { OpportunityDetail, OpportunityFormMode } from '@/features/opportunities/types'
+import type { OpportunityDetail, OpportunityFormMode, OpportunityProductLine } from '@/features/opportunities/types'
 
 /** Server-side field names mapped onto the form for 422 handling. `lead_id` is never an RHF field (spec 0040 MT-6 handles it separately). */
 const SERVER_ERROR_FIELDS = [
@@ -73,6 +73,14 @@ function padManagerSlots(slots: (number | null)[]): (number | null)[] {
     : [...slots, ...Array.from({ length: MAX_MANAGERS - slots.length }, () => null)]
 }
 
+/** Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape. */
+function toProductLineRows(lines: OpportunityProductLine[]): ProductLineRow[] {
+  return lines.map((line) => ({
+    business_function_id: line.business_function.id,
+    product_category_id: line.product_category.id,
+  }))
+}
+
 /**
  * The in-form "Lead" select's CURRENT contribution to the submit (spec 0040
  * amendment A-1). Computed by the caller (`OpportunityFormBody`, from
@@ -110,9 +118,15 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
   const { t } = useTranslation()
   const isEdit = mode.type === 'edit'
 
+  // D-5 grandfathering (spec 0077): the update schema's new row-set rules are
+  // gated against the loaded opportunity's own persisted rows, so an
+  // unrelated field edit on a non-conformant historic record still saves.
   const schema = useMemo(
-    () => (isEdit ? buildUpdateOpportunitySchema(t) : buildCreateOpportunitySchema(t)),
-    [isEdit, t],
+    () =>
+      mode.type === 'edit'
+        ? buildUpdateOpportunitySchema(t, toProductLineRows(mode.opportunity.product_lines))
+        : buildCreateOpportunitySchema(t),
+    [mode, t],
   )
 
   const defaultValues = useMemo<OpportunityFormValues>(() => {
@@ -129,10 +143,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
         operational_site_id: opportunity.operational_site_id ?? null,
         state_id: opportunity.state_id ?? null,
         opportunity_workflow_status_id: opportunity.opportunity_workflow_status_id ?? null,
-        product_lines: opportunity.product_lines.map((line) => ({
-          business_function_id: line.business_function.id,
-          product_category_id: line.product_category.id,
-        })),
+        product_lines: toProductLineRows(opportunity.product_lines),
         products_of_interest: (opportunity.products_of_interest ?? []).map((product) => product.id),
         rewards: (opportunity.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
         manager_slots: managerSlotsFromRefs(opportunity.managers),
@@ -189,10 +200,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       // standalone create form.
       product_lines:
         mode.fromLead.productLines.length > 0
-          ? mode.fromLead.productLines.map((line) => ({
-              business_function_id: line.business_function.id,
-              product_category_id: line.product_category.id,
-            }))
+          ? toProductLineRows(mode.fromLead.productLines)
           : [emptyProductLineRow()],
     }
   }, [mode])

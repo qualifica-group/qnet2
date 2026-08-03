@@ -105,6 +105,17 @@ export interface ModuleRegistryEntry {
    */
   detailOwnsEditAction?: boolean
   /**
+   * When `true`, the `FormScreen` renders its own visible heading (title,
+   * subtitle and the save/cancel actions on one row) and the generic hosts
+   * omit theirs: the dedicated page drops its header outright, the Sheet
+   * keeps its `SheetHeader` `sr-only` — Radix still needs a title/description
+   * for the dialog, it just must not be shown twice. Same shape as
+   * `detailOwnsEditAction`, and the same `sr-only` treatment the Sheet's
+   * `view` branch already gives a `DetailScreen` that owns its bar. Defaults
+   * to `false`.
+   */
+  formOwnsHeader?: boolean
+  /**
    * Optional extra actions rendered as a real child component in the generic
    * detail page's header, between "Back" and "Edit" (e.g. leads' "Create/Go
    * to opportunity" CTA) — mounted via JSX so its own hooks run correctly,

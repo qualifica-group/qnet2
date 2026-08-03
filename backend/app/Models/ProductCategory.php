@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ProductCategoryFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -39,6 +40,11 @@ class ProductCategory extends BaseModel
             // requires_quote): a container category can be unselectable while
             // its children stay selectable, which is the whole point.
             'is_selectable' => 'boolean',
+            // Spec 0077 — owned by the branch ROOT and mirrored on every
+            // descendant by CategoryManagementModeInheritance, same shape as
+            // requires_quote: a child's own column is never authored
+            // directly, it only ever reflects its root's.
+            'management_mode' => CategoryManagementMode::class,
             // Spec 0013 — external data migration: the source system's id for a
             // migrated category, guarded (not in #[Fillable]) so it is only ever
             // set by property assignment post-create. Also the remap key for the

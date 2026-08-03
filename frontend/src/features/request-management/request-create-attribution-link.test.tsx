@@ -31,6 +31,17 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
+/**
+ * The form defaults its Sede from the actor's employment profile (user
+ * directive 2026-08-03). This double deliberately has NONE: the link cases
+ * below are about what happens as a Sede is picked, so they need to start
+ * from an empty one — the defaulting itself is covered by
+ * `use-request-create-form.test.ts`.
+ */
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 42, employment: null } }),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** An operator carrying its own employment Sede in `meta` — drives the auto-fill. */
@@ -110,7 +121,7 @@ beforeEach(() => {
 })
 
 describe('Create form — section order matches the work panel', () => {
-  it('renders attribution, then product lines, then the client details', () => {
+  it('renders product lines, then attribution, then the client details', () => {
     renderForm()
 
     const titles = screen
@@ -118,7 +129,7 @@ describe('Create form — section order matches the work panel', () => {
       .map((heading) => heading.textContent)
       .filter((title) => title === 'Attribution' || title === 'Product lines' || title === 'Client details')
 
-    expect(titles).toEqual(['Attribution', 'Product lines', 'Client details'])
+    expect(titles).toEqual(['Product lines', 'Attribution', 'Client details'])
   })
 
   it('renders the Sede before the Operatore it scopes', () => {

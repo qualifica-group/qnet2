@@ -31,7 +31,6 @@ interface RewardStatusFormBodyProps {
 
 /** i18n key per fixed group value, kept out of the JSX so the option list stays a plain map. */
 const GROUP_LABEL_KEYS: Record<RewardStatusGroupValue, string> = {
-  open: 'rewardStatuses.form.group.open',
   pending: 'rewardStatuses.form.group.pending',
   closed_won: 'rewardStatuses.form.group.closed_won',
   closed_lost: 'rewardStatuses.form.group.closed_lost',
@@ -42,8 +41,8 @@ const GROUP_LABEL_KEYS: Record<RewardStatusGroupValue, string> = {
  * `is_active` are each wrapped in `MetaField` (spec 0004): hidden means
  * absent, non-editable means disabled, `required` comes from the resolved
  * `ResourcePermissions` — no hardcoded permission logic lives here. A system
- * row (spec 0073 D-6: "Aperto"/"In attesa"/"Chiuso positivo"/"Chiuso
- * negativo") forces `description`/`group`/`is_active` disabled regardless of
+ * row (spec 0073 D-6: "In attesa"/"Approvato"/"Negato") forces
+ * `description`/`group`/`is_active` disabled regardless of
  * field permissions: only `name`/`color` are editable for it. `sort_order` has no form field (D-3, server-managed). All
  * non-render logic lives in `useRewardStatusForm`.
  */

@@ -37,9 +37,10 @@ class RewardStatusFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->optional()->sentence(),
             'color' => fake()->randomElement(self::COLOR_TOKENS),
-            // spec 0073: a custom status defaults to the open phase — the same
-            // conservative mapping the migration applies to pre-existing rows.
-            'group' => RewardStatusGroup::Open,
+            // A custom status defaults to the pending phase — the same mapping
+            // the migration applies to pre-existing rows now that `open` is
+            // gone from App\Enums\RewardStatusGroup.
+            'group' => RewardStatusGroup::Pending,
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
         ];

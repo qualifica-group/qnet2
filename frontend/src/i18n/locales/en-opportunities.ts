@@ -110,6 +110,10 @@ export const opportunities = {
       'The internal working status, distinct from the Opportunity Status: limited to the set resolved for this opportunity.',
     productLines: {
       fieldLabel: 'Function/category rows',
+      // Spec 0077 INV-2: every row of a card shares the same Business
+      // function, in both modes (D-5: only when the collection was actually
+      // edited).
+      businessFunctionMismatch: 'All rows must share the same business function.',
     },
     rewards: {
       fieldLabel: 'Assigned rewards',

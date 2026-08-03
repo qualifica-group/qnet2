@@ -20,7 +20,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * class-string (no speculative interface — engineering.md §1.3): all five
  * share the exact same name/system_key/sort_order shape, differing only in
  * which system rows pin to the HEAD (`$modelClass::SYSTEM_HEAD_KEYS` — one
- * row for four of them, `[New, Pending]` for RewardStatus, spec 0073 D-6) and
+ * row each: `[New]` for four of them, `[Pending]` for RewardStatus) and
  * which pin to the TAIL (`$modelClass::SYSTEM_TAIL_KEYS` — PipelineStatus:
  * `[Closed]`; OpportunityStatus/QuoteStatus/RewardStatus: `[Won, Lost]`;
  * ContractStatus: `[Suspended, Cancelled, Terminated]`, spec 0072 D-2).

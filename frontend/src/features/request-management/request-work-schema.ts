@@ -141,6 +141,21 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
       })
     }
   })
+
+  // Spec 0077 INV-2: every row shares the same Funzione aziendale, in both
+  // management modes. The caller only invokes this function once
+  // `productLinesChanged` is true (D-5), so a non-conformant historic
+  // collection stays saveable for any unrelated edit (AC-044).
+  const businessFunctionIds = new Set(
+    rows.map((row) => row.business_function_id).filter((id): id is number => id !== null),
+  )
+  if (businessFunctionIds.size > 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['product_lines'],
+      message: t('requestManagement.workPanel.validation.businessFunctionMismatch'),
+    })
+  }
 }
 
 /**

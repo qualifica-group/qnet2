@@ -182,6 +182,10 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
   }
 
   const { DetailScreen, FormScreen } = entry
+  // Radix still needs a title/description on the dialog; a form that renders
+  // its own visible heading gets them hidden instead of shown twice — the
+  // same treatment the `view` branch below gives its `DetailScreen`.
+  const formHeaderClass = entry.formOwnsHeader ? 'sr-only' : undefined
 
   const sheet =
     mode === OPEN_MODE_MODAL ? (
@@ -202,7 +206,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
 
           {sheetState.kind === 'create' && (
             <>
-              <SheetHeader>
+              <SheetHeader className={formHeaderClass}>
                 <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
                 <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
               </SheetHeader>
@@ -216,7 +220,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
 
           {sheetState.kind === 'edit' && (
             <>
-              <SheetHeader>
+              <SheetHeader className={formHeaderClass}>
                 <SheetTitle>{t(`${ns}.form.editTitle`)}</SheetTitle>
                 <SheetDescription>{t(`${ns}.form.editSubtitle`)}</SheetDescription>
               </SheetHeader>
@@ -230,7 +234,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
 
           {sheetState.kind === 'duplicate' && (
             <>
-              <SheetHeader>
+              <SheetHeader className={formHeaderClass}>
                 <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
                 <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
               </SheetHeader>

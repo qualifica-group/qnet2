@@ -3,6 +3,7 @@
 namespace Database\Seeders\QualificaCatalog;
 
 use App\Enums\WorkflowStatusGroup;
+use App\Enums\WorkflowStatusSystemKey;
 use InvalidArgumentException;
 
 /**
@@ -249,8 +250,8 @@ final class WorkflowStatusCatalogue
      * the first state the sheet classifies under its own group instead — the
      * `open` one lands on "Da Richiamare" in every block.
      *
-     * `validated` is deliberately absent: the sheet has no state for it, so
-     * that row keeps WorkflowStatusWriter's own "Validato" label.
+     * `validated` is deliberately absent: it is not promoted BY GROUP (no
+     * sheet state is classified as such) but by NAME, see VALIDATED_STATUSES.
      *
      * @var list<string>
      */
@@ -261,31 +262,80 @@ final class WorkflowStatusCatalogue
     ];
 
     /**
-     * The sheet row promoted onto each pinned system row of $categoryName's
-     * set, keyed by group and shaped to the CreateOpportunityWorkflowData
+     * Section key => the ONE state that carries the optional 'validated'
+     * system row. Only "OK_Da Caricare" does — "pratica verificata e pronta
+     * per essere caricata" is exactly the working phase's last step, esito
+     * accertato ma non ancora chiuso (user directive 2026-08-03). Every other
+     * section is seeded WITHOUT a validated row: it is optional and has no
+     * default.
+     *
+     * A section listed here loses that state from its closed_won promotion:
+     * pinnedStatusesFor() removes it before picking the first ClosedWon row,
+     * so the positive outcome falls to the next one ("Associato SI _ NOI").
+     *
+     * @var array<string, string>
+     */
+    private const array VALIDATED_STATUSES = [
+        self::SELF_EMPLOYMENT => 'OK_Da Caricare',
+    ];
+
+    /**
+     * The sheet row promoted onto each system row of $categoryName's set,
+     * keyed by system key and shaped to the CreateOpportunityWorkflowData
      * system-row contract (no `group`: a pinned row's group is fixed by its
-     * system key). Null for a group the category's list never uses — the
-     * pinned row then keeps the writer's default label.
+     * system key). Null for a key the category's list never fills — the three
+     * MANDATORY rows then keep the writer's default label, while a null
+     * `validated` means the set gets no validated row at all.
      *
      * @return array<string, array{name: string, description: string, color: string, requires_note: bool}|null>
      */
     public static function pinnedStatusesFor(string $categoryName): array
     {
-        $statuses = self::statusesFor($categoryName);
-        $promoted = [];
+        $validatedName = self::validatedStatusNameFor($categoryName);
+
+        // The validated state is claimed BEFORE the group promotions, so it
+        // never doubles as the closed_won row of its own section.
+        $statuses = array_values(array_filter(
+            self::statusesFor($categoryName),
+            static fn (array $status): bool => $status['name'] !== $validatedName,
+        ));
+
+        $promoted = [WorkflowStatusSystemKey::Validated->value => self::promotable(
+            array_find(self::statusesFor($categoryName), static fn (array $status): bool => $status['name'] === $validatedName),
+        )];
 
         foreach (self::PINNED_GROUPS as $group) {
-            $first = array_find($statuses, static fn (array $status): bool => $status['group'] === $group);
-
-            $promoted[$group] = $first === null ? null : [
-                'name' => $first['name'],
-                'description' => $first['description'],
-                'color' => $first['color'],
-                'requires_note' => $first['requires_note'],
-            ];
+            $promoted[$group] = self::promotable(
+                array_find($statuses, static fn (array $status): bool => $status['group'] === $group),
+            );
         }
 
         return $promoted;
+    }
+
+    /**
+     * The state $categoryName's section marks as the validated one, or null
+     * when it declares none (VALIDATED_STATUSES).
+     */
+    private static function validatedStatusNameFor(string $categoryName): ?string
+    {
+        $workflow = self::WORKFLOWS[$categoryName] ?? throw new InvalidArgumentException("Unknown workflow category [{$categoryName}].");
+
+        return self::VALIDATED_STATUSES[$workflow['section']] ?? null;
+    }
+
+    /**
+     * @param  array{name: string, description: string, color: string, group: string, requires_note: bool}|null  $status
+     * @return array{name: string, description: string, color: string, requires_note: bool}|null
+     */
+    private static function promotable(?array $status): ?array
+    {
+        return $status === null ? null : [
+            'name' => $status['name'],
+            'description' => $status['description'],
+            'color' => $status['color'],
+            'requires_note' => $status['requires_note'],
+        ];
     }
 
     /**

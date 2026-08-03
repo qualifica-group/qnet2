@@ -159,7 +159,11 @@ it('accepts the outside product when the same PATCH adds its product category', 
         'business_function_id' => $ownCategory->business_function_id,
         'product_category_id' => $ownCategory->id,
     ]);
-    $otherCategory = productInterestCategory();
+    // Spec 0077 INV-1/INV-2: the card's rows must share the same root and
+    // business function — $otherCategory is a CHILD of $ownCategory (not an
+    // independent root/function) so the two-row product_lines below stays a
+    // valid card while still covering the outside product's own category.
+    $otherCategory = ProductCategory::factory()->childOf($ownCategory)->create(['business_function_id' => $ownCategory->business_function_id]);
     $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id]);
     Sanctum::actingAs($actor);
 

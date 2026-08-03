@@ -13,13 +13,12 @@ namespace Database\Seeders\QualificaCatalog;
  * REUSED CODES (user decision 2026-07-28): where the q-crm import already
  * carries the field, the spec repeats that row's EXISTING code, label and type
  * instead of minting a parallel one — `cpi`, `profilo_cpi`, `data_scelta_cpi`,
- * `data_app_apl`, `stato_assoc_cpi`, `id_corso`, `corso`, `degree`. The
- * catalogue keeps a natural key on `code`, so on an imported database those
- * rows are ADOPTED (one field, legacy history included) and on a clean one
- * they are created with the same identity. Two labels therefore read as the
- * legacy system named them, not as the client's list did: `data_app_apl` is
- * "OK app. APL" (list: "Data App APL") and `corso` is "Corso scelto" (list:
- * "Corso").
+ * `data_app_apl`, `stato_assoc_cpi`, `id_corso`, `degree`. The catalogue keeps
+ * a natural key on `code`, so on an imported database those rows are ADOPTED
+ * (one field, legacy history included) and on a clean one they are created
+ * with the same identity. One label therefore reads as the legacy system named
+ * it, not as the client's list did: `data_app_apl` is "OK app. APL" (list:
+ * "Data App APL").
  *
  * `degree` is the one type conflict: the import created it as `text`, the list
  * wants a pick list. The seeder promotes it to `enum` ONLY while no request
@@ -44,11 +43,37 @@ final class ContactProcessingAttributeCatalogue
     public const string SELF_FUNDED_CATEGORY = 'Autofinanziato';
 
     /**
+     * The container grouping the ten regional `GOL - <Regione>` nodes. The CPI
+     * appointment TIME is assigned here, once: the children inherit it, which
+     * is what "tutti i corsi GOL" means without repeating the row ten times
+     * (user directive 2026-08-03).
+     */
+    public const string GOL_CATEGORY = 'GOL';
+
+    /**
      * The two Consulenza leaves sharing the company-appointment set.
      *
      * @var list<string>
      */
     public const array CONSULTING_CATEGORIES = ['Trattative in Corso', 'Presa Appuntamenti'];
+
+    /**
+     * Codes the client retired from the set — "Corso di interesse", i.e. the
+     * `corso` row adopted from q-crm (user directive 2026-08-03). The
+     * ASSIGNMENT is removed from every category on re-seed, so an installation
+     * provisioned by an earlier revision converges instead of keeping a field
+     * this catalogue no longer declares.
+     *
+     * The attribute ROW itself is left alone on purpose: it is one of the q-crm
+     * rows adopted rather than created here, so deleting it would cascade the
+     * legacy history and fight the import that owns it. Unassigning is the
+     * exact inverse of what this catalogue did, and it is what makes the field
+     * disappear from every work panel — ApplicableAttributesResolver reads a
+     * request's categories, never the global attribute list.
+     *
+     * @var list<string>
+     */
+    public const array RETIRED_ATTRIBUTES = ['corso'];
 
     /**
      * Category name => its own attribute specs, in the client's order.
@@ -80,7 +105,6 @@ final class ContactProcessingAttributeCatalogue
             ['code' => 'id_corso', 'name' => 'ID Corso', 'type' => 'text'],
             ['code' => 'gol_notice', 'name' => 'Avviso GOL', 'type' => 'text'],
             ['code' => 'application_window', 'name' => 'Finestra', 'type' => 'text'],
-            ['code' => 'corso', 'name' => 'Corso scelto', 'type' => 'text'],
             ['code' => 'psp', 'name' => 'PSP', 'type' => 'boolean'],
             ['code' => 'did', 'name' => 'DID', 'type' => 'boolean'],
             ['code' => 'identity_documents', 'name' => 'Documenti Identificativi', 'type' => 'boolean'],
@@ -107,8 +131,26 @@ final class ContactProcessingAttributeCatalogue
             ]],
             ['code' => 'price', 'name' => 'Prezzo €', 'type' => 'decimal'],
         ],
+        self::GOL_CATEGORY => [
+            ['code' => 'ora_app_cpi', 'name' => 'Ora App. CPI', 'type' => 'text'],
+        ],
+        'GOL - Lombardia' => self::APL_APPOINTMENT_TIME,
+        'GOL - Lazio' => self::APL_APPOINTMENT_TIME,
+        'GOL - Sicilia' => self::APL_APPOINTMENT_TIME,
         'Trattative in Corso' => self::CONSULTING_ATTRIBUTES,
         'Presa Appuntamenti' => self::CONSULTING_ATTRIBUTES,
+    ];
+
+    /**
+     * The APL appointment TIME, assigned to the three regions whose flow books
+     * one (user directive 2026-08-03). Repeated per region rather than hung on
+     * GOL_CATEGORY, which would hand it to the other seven: they are siblings,
+     * with no common node below GOL to carry it.
+     *
+     * @var list<array{code: string, name: string, type: string}>
+     */
+    private const array APL_APPOINTMENT_TIME = [
+        ['code' => 'ora_app_apl', 'name' => 'Ora App. APL', 'type' => 'text'],
     ];
 
     /**
@@ -135,20 +177,24 @@ final class ContactProcessingAttributeCatalogue
     public const string DEGREE_ATTRIBUTE = 'degree';
 
     /**
-     * The section's rows, paired by meaning: the CPI/APL appointments, the
-     * subsidy and its site, the course references, then the paperwork flags.
-     * A row's codes are filtered against the target category's own effective
-     * set before being written, so a category that resolves only part of the
-     * catalogue still gets a coherent section.
+     * The section's rows, paired by meaning: the CPI/APL appointment dates and
+     * — column-aligned right under them — their times, the subsidy and its
+     * site, the course references, then the paperwork flags. A row's codes are
+     * filtered against the target category's own effective set before being
+     * written, so a category that resolves only part of the catalogue still
+     * gets a coherent section: outside the GOL branch the times row drops
+     * entirely, and in a region without the APL appointment it keeps the CPI
+     * time alone, still under its own date.
      *
      * @var list<list<string>>
      */
     public const array ROWS = [
         ['data_scelta_cpi', 'data_app_apl'],
+        ['ora_app_cpi', 'ora_app_apl'],
         ['stato_assoc_cpi', 'dote_remaining_hours'],
         ['cpi', 'profilo_cpi'],
         ['subsidy_type', 'training_site'],
-        ['id_corso', 'corso'],
+        ['id_corso'],
         ['gol_notice', 'application_window'],
         ['course_time_preference', 'price'],
         ['appointment_date', 'acceptance_date'],

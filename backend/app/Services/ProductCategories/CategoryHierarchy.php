@@ -3,6 +3,7 @@
 namespace App\Services\ProductCategories;
 
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
@@ -195,6 +196,29 @@ final class CategoryHierarchy
         }
 
         return $ids;
+    }
+
+    /**
+     * category id → {root_id, management_mode} of its branch root (spec 0077); shared batch resolver for row validation, offer coverage and for-select, never a query per row.
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return array<int, array{root_id: int, management_mode: CategoryManagementMode}|null>
+     */
+    public function rootManagementModesFor(array $categoryIds): array
+    {
+        $categories = ProductCategory::query()->select('id', 'parent_id', 'management_mode')->get()->keyBy('id');
+        $results = [];
+        foreach ($categoryIds as $id) {
+            $node = $categories->get($id);
+            $depth = 0;
+            while ($node !== null && $node->parent_id !== null && $depth < self::MAX_DEPTH) {
+                $node = $categories->get($node->parent_id);
+                $depth++;
+            }
+            $results[$id] = $node === null ? null : ['root_id' => $node->id, 'management_mode' => $node->management_mode];
+        }
+
+        return $results;
     }
 
     /**
@@ -431,6 +455,8 @@ final class CategoryHierarchy
                 // travels with each node so the pickers built on this cache
                 // (the product form's category picker) can filter themselves.
                 'is_selectable' => (bool) $category->is_selectable,
+                // Spec 0077: denormalised like requires_quote, no walk here.
+                'management_mode' => $category->management_mode->value,
             ];
         }
 

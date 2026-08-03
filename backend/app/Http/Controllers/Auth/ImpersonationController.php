@@ -80,7 +80,10 @@ class ImpersonationController extends BaseApiController
 
     /**
      * The `{ token, token_type, user }` shape shared by start and stop
-     * (data contract, spec 0050) — same envelope AuthController::login uses.
+     * (data contract, spec 0050) — same envelope AuthController::login uses,
+     * INCLUDING its relation set: the client caches this `user` under the same
+     * key as GET /auth/me, so a leaner variant here would silently drop the
+     * `employment` Sede the create forms default from.
      *
      * @return array{token: string, token_type: string, user: UserResource}
      */
@@ -89,7 +92,7 @@ class ImpersonationController extends BaseApiController
         return [
             'token' => $result->token,
             'token_type' => 'Bearer',
-            'user' => new UserResource($result->user),
+            'user' => new UserResource($result->user->loadMissing(AuthController::ME_RELATIONS)),
         ];
     }
 }

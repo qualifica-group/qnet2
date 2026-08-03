@@ -85,7 +85,7 @@ describe('buildCreateRewardStatusSchema', () => {
       name: 'Approvato',
       description: null,
       color: 'green',
-      group: 'open',
+      group: 'pending',
       is_active: true,
     })
     expect(result.success).toBe(true)

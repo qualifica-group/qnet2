@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Enums\ProductType;
 use App\Models\Attribute;
 use App\Models\MassMigrationRun;
@@ -10,6 +11,7 @@ use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
@@ -90,10 +92,10 @@ it('seeds the first two catalogue levels as containers, third level only selecta
 
     // Roots AND every subcategory under them, whether or not they already have
     // children: the catalogue classifies on its third level (user directive
-    // 2026-08-03).
+    // 2026-08-03). "Autofinanziato" is the declared exception below.
     $containers = [
         'Formazione', 'Consulenza',
-        'GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL',
+        'GOL', 'Autoimpiego', 'Yisu', 'DIL',
         'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
@@ -101,25 +103,49 @@ it('seeds the first two catalogue levels as containers, third level only selecta
             ->toBeFalsy(sprintf('"%s" is a catalogue container: it must not be selectable.', $name));
     }
 
-    // The only classification targets the catalogue seeds today.
+    // The classification targets the catalogue seeds today: the regional GOL
+    // leaves, plus the one subcategory hosting its own products.
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
+        'Autofinanziato',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
     ]);
 });
 
+it('seeds "Autofinanziato" as a classification target, it hosts the self-funded courses itself', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
+
+    expect($autofinanziato->is_selectable)->toBeTrue()
+        // The reason it must be one: its products are filed directly on it.
+        ->and(Product::query()->where('category_id', $autofinanziato->id)->count())
+        ->toBe(count(SelfFundedCourseCatalogue::COURSES));
+});
+
 it('realigns a container category seeded as selectable before the flag existed', function (): void {
     // The state of an installation seeded by the previous version: the tree is
     // already there, every node selectable.
     $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'is_selectable' => true]);
-    ProductCategory::factory()->create(['name' => 'Autofinanziato', 'parent_id' => $formazione->id, 'is_selectable' => true]);
+    ProductCategory::factory()->create(['name' => 'GOL', 'parent_id' => $formazione->id, 'is_selectable' => true]);
 
     test()->seed(QualificaCatalogSeeder::class);
 
     expect(ProductCategory::query()->where('name', 'Formazione')->value('is_selectable'))->toBeFalsy()
-        ->and(ProductCategory::query()->where('name', 'Autofinanziato')->value('is_selectable'))->toBeFalsy();
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('is_selectable'))->toBeFalsy();
+});
+
+it('realigns "Autofinanziato" back to selectable on an installation that seeded it as a container', function (): void {
+    // The state left by the previous version of this seeder, which classified
+    // every subcategory as a container.
+    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'is_selectable' => false]);
+    ProductCategory::factory()->create(['name' => 'Autofinanziato', 'parent_id' => $formazione->id, 'is_selectable' => false]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Autofinanziato')->value('is_selectable'))->toBeTruthy();
 });
 
 it('never re-selects a third-level node an operator has deliberately turned into a container', function (): void {
@@ -130,6 +156,63 @@ it('never re-selects a third-level node an operator has deliberately turned into
     test()->seed(QualificaCatalogSeeder::class);
 
     expect(ProductCategory::query()->where('name', 'GOL - Molise')->value('is_selectable'))->toBeFalsy();
+});
+
+it('seeds "Formazione" as single and "Consulenza" as multiple management mode, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: realigned, not duplicated.
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('management_mode'))
+        ->toBe(CategoryManagementMode::Single)
+        ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('management_mode'))
+        ->toBe(CategoryManagementMode::Multiple);
+});
+
+it('cascades "single" from the Formazione root to every descendant, including the third-level GOL regions', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $descendantIds = app(CategoryHierarchy::class)->descendantIds($formazione->id);
+
+    expect($descendantIds)->not->toBeEmpty()
+        ->and(ProductCategory::query()->whereIn('id', $descendantIds)->where('management_mode', '!=', CategoryManagementMode::Single)->count())
+        ->toBe(0);
+});
+
+it('leaves "Consulenza" and its descendants at "multiple"', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->firstOrFail();
+    $descendantIds = app(CategoryHierarchy::class)->descendantIds($consulenza->id);
+
+    expect($descendantIds)->not->toBeEmpty()
+        ->and(ProductCategory::query()->whereIn('id', $descendantIds)->where('management_mode', '!=', CategoryManagementMode::Multiple)->count())
+        ->toBe(0);
+});
+
+it('realigns a "Formazione" branch seeded as "multiple" before this directive, cascading to its descendants', function (): void {
+    // The state of an installation seeded before the "single" directive.
+    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'management_mode' => CategoryManagementMode::Multiple]);
+    $gol = ProductCategory::factory()->create(['name' => 'GOL', 'parent_id' => $formazione->id, 'management_mode' => CategoryManagementMode::Multiple]);
+    ProductCategory::factory()->create(['name' => 'GOL - Molise', 'parent_id' => $gol->id, 'management_mode' => CategoryManagementMode::Multiple]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('management_mode'))
+        ->toBe(CategoryManagementMode::Single)
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('management_mode'))->toBe(CategoryManagementMode::Single)
+        ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('management_mode'))->toBe(CategoryManagementMode::Single);
+});
+
+it('does not touch already-aligned management_mode rows on re-run', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+    $updatedAt = $molise->updated_at;
+
+    test()->seed(QualificaCatalogSeeder::class); // re-run: no spurious update.
+
+    expect($molise->fresh()->updated_at)->toEqual($updatedAt);
 });
 
 it('assigns the "Ore complessive" product attribute to the whole Formazione branch', function (): void {

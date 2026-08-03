@@ -34,7 +34,9 @@ if (! function_exists('opportunityWorkflowUserWith')) {
 // create — POST /api/opportunity-workflows (AC-004)
 // ---------------------------------------------------------------------------
 
-it('create: 201, persists, and auto-creates exactly the 4 system rows open/validated/closed_won/closed_lost (AC-004)', function () {
+// Requirement changed (user directive 2026-08-03): 'validated' is no longer
+// auto-created — a set is born with the 3 mandatory rows only.
+it('create: 201, persists, and auto-creates exactly the 3 system rows open/closed_won/closed_lost (AC-004)', function () {
     $actor = opportunityWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -55,20 +57,20 @@ it('create: 201, persists, and auto-creates exactly the 4 system rows open/valid
         ->assertJsonCount(1, 'data.criteria')
         ->assertJsonPath('data.criteria.0.field', 'source_id')
         ->assertJsonPath('data.criteria.0.value_id', $source->id)
-        ->assertJsonCount(5, 'data.statuses');
+        ->assertJsonCount(4, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'Regione Nord')->sole();
 
-    expect($workflow->statuses()->count())->toBe(5)
+    expect($workflow->statuses()->count())->toBe(4)
         ->and($workflow->statuses()->where('system_key', 'open')->sole()->sort_order)->toBe(0)
-        ->and($workflow->statuses()->where('system_key', 'validated')->sole()->sort_order)->toBeGreaterThan(0)
+        ->and($workflow->statuses()->where('system_key', 'validated')->exists())->toBeFalse()
         ->and($workflow->statuses()->where('system_key', 'closed_won')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->where('system_key', 'closed_lost')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->whereNull('system_key')->sole()->name)->toBe('In lavorazione')
         ->and($workflow->criteria_signature)->toBe("source_id:{$source->id}");
 });
 
-it('create: 201 with statuses omitted still creates the 4 system rows only', function () {
+it('create: 201 with statuses omitted still creates the 3 mandatory system rows only', function () {
     $actor = opportunityWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -76,11 +78,34 @@ it('create: 201 with statuses omitted still creates the 4 system rows only', fun
     $this->postJson('/api/opportunity-workflows', [
         'name' => 'No customs',
         'criteria' => [['field' => 'source_id', 'value_id' => $source->id]],
-    ])->assertCreated()->assertJsonCount(4, 'data.statuses');
+    ])->assertCreated()->assertJsonCount(3, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'No customs')->sole();
-    expect($workflow->statuses()->count())->toBe(4)
-        ->and($workflow->statuses()->pluck('system_key')->sort()->values()->all())->toBe(['closed_lost', 'closed_won', 'open', 'validated']);
+    expect($workflow->statuses()->count())->toBe(3)
+        ->and($workflow->statuses()->pluck('system_key')->sort()->values()->all())->toBe(['closed_lost', 'closed_won', 'open']);
+});
+
+it('create: tagging a row with system_key validated creates the optional row between the customs and the closed ones', function () {
+    $actor = opportunityWorkflowUserWith(['create']);
+    $source = Source::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/opportunity-workflows', [
+        'name' => 'With validated',
+        'criteria' => [['field' => 'source_id', 'value_id' => $source->id]],
+        'statuses' => [
+            ['name' => 'In lavorazione', 'color' => 'blue', 'group' => 'open'],
+            ['name' => 'Da caricare', 'color' => 'violet', 'group' => 'validated', 'system_key' => 'validated'],
+        ],
+    ])->assertCreated()->assertJsonCount(5, 'data.statuses');
+
+    $workflow = OpportunityWorkflow::where('name', 'With validated')->sole();
+    $validated = $workflow->statuses()->where('system_key', 'validated')->sole();
+
+    expect($validated->name)->toBe('Da caricare')
+        ->and($validated->group->value)->toBe('validated')
+        ->and($validated->sort_order)->toBeGreaterThan($workflow->statuses()->whereNull('system_key')->sole()->sort_order)
+        ->and($validated->sort_order)->toBeLessThan($workflow->statuses()->where('system_key', 'closed_won')->sole()->sort_order);
 });
 
 it('create: seeds the pinned rows with the names/colors the client tagged with system_key (AC-004)', function () {
@@ -97,7 +122,7 @@ it('create: seeds the pinned rows with the names/colors the client tagged with s
             ['name' => 'Chiuso vinto', 'color' => 'green', 'group' => 'closed_won', 'system_key' => 'closed_won'],
             ['name' => 'Chiuso perso', 'color' => 'red', 'group' => 'closed_lost', 'system_key' => 'closed_lost'],
         ],
-    ])->assertCreated()->assertJsonCount(5, 'data.statuses');
+    ])->assertCreated()->assertJsonCount(4, 'data.statuses');
 
     $workflow = OpportunityWorkflow::where('name', 'Named systems')->sole();
 
@@ -259,7 +284,7 @@ it('update: PATCH partial {name, is_active} leaves criteria/statuses untouched',
         ->assertJsonPath('data.name', 'After')
         ->assertJsonPath('data.is_active', false)
         ->assertJsonCount(1, 'data.criteria')
-        ->assertJsonCount(5, 'data.statuses');
+        ->assertJsonCount(4, 'data.statuses');
 });
 
 it('update: submitting criteria re-syncs and recomputes criteria_signature, revalidates uniqueness excluding self', function () {

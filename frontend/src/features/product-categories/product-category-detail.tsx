@@ -88,6 +88,27 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         </DetailGrid>
       </DetailSection>
 
+      <DetailSection title={t('productCategories.form.managementMode')}>
+        <DetailGrid>
+          <DetailField label={t('productCategories.form.managementMode')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                {category.management_mode === 'single'
+                  ? t('productCategories.form.managementModeSingle')
+                  : t('productCategories.form.managementModeMultiple')}
+              </span>
+              {category.management_mode_source_category && (
+                <Badge variant="outline" className="text-xs">
+                  {t('productCategories.detail.managementModeInherited', {
+                    category: category.management_mode_source_category.name,
+                  })}
+                </Badge>
+              )}
+            </div>
+          </DetailField>
+        </DetailGrid>
+      </DetailSection>
+
       <DetailSection title={t('productCategories.form.isSelectable')}>
         <DetailGrid>
           <DetailField label={t('productCategories.form.isSelectable')}>

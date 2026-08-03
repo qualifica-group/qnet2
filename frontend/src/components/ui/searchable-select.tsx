@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -6,11 +6,24 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
-/** A single, selectable option. Domain-agnostic: id + display name only. */
+/** A single option. Domain-agnostic: id + display name, optionally listed-but-not-pickable. */
 export interface SearchableSelectOption {
   id: number
   name: string
+  /**
+   * Rendered greyed out and inert: it is context, not a choice (e.g. a
+   * category that only parents the pickable ones).
+   */
+  disabled?: boolean
+  /**
+   * Nesting level of a hierarchical list, indented in the dropdown (never in
+   * the trigger, which shows the plain name). Absent/0 = a flat list.
+   */
+  depth?: number
 }
+
+/** Indent added per nesting level of a hierarchical option list, on top of the option's own padding. */
+const INDENT_REM_PER_DEPTH = 0.75
 
 export interface SearchableSelectLabels {
   /** Shown in the trigger when nothing is selected. */
@@ -25,6 +38,12 @@ export interface SearchableSelectLabels {
   error: string
   /** Retry action shown alongside the error. */
   retry: string
+  /**
+   * Accessible name of the trigger, for the call sites with no visible
+   * `<label>` of their own (a repeated row editor). Omitted where a
+   * `FormControl`/`<label>` already names the control.
+   */
+  triggerLabel?: string
 }
 
 interface SearchableSelectProps {
@@ -50,6 +69,13 @@ interface SearchableSelectProps {
   isFetchingNextPage?: boolean
   /** Infinite scroll: load the next page (fired when the sentinel appears). */
   onLoadMore?: () => void
+  /**
+   * Rendered next to the trigger, which then shrinks to make room — same slot
+   * (and same purpose: a quick-create affordance) as `AsyncPaginatedSelect`'s.
+   * Deliberately a `ReactNode`: this component has no knowledge of what the
+   * action does.
+   */
+  action?: ReactNode
   className?: string
   /**
    * Forwarded to the trigger button so `FormControl` (Radix `Slot`) can wire up
@@ -90,6 +116,7 @@ export function SearchableSelect({
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  action,
   className,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -182,39 +209,52 @@ export function SearchableSelect({
     handleOpenChange(false)
   }
 
-  return (
-    <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
-      <PopoverPrimitive.Trigger asChild>
-        <button
-          ref={setTrigger}
-          type="button"
-          id={id}
-          role="combobox"
-          disabled={disabled}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
+  const trigger = (
+    <PopoverPrimitive.Trigger asChild>
+      <button
+        ref={setTrigger}
+        type="button"
+        id={id}
+        role="combobox"
+        disabled={disabled}
+        aria-label={labels.triggerLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        className={cn(
+          'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
+          action ? 'min-w-0 flex-1' : null,
+          className,
+        )}
+      >
+        <span
           className={cn(
-            'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-field-border bg-field px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
-            className,
+            'flex-1 truncate text-left',
+            selected === null && 'text-muted-foreground',
           )}
         >
-          <span
-            className={cn(
-              'flex-1 truncate text-left',
-              selected === null && 'text-muted-foreground',
-            )}
-          >
-            {selected?.name ?? labels.placeholder}
-          </span>
-          <ChevronsUpDown
-            className="size-4 shrink-0 opacity-50"
-            aria-hidden="true"
-          />
-        </button>
-      </PopoverPrimitive.Trigger>
+          {selected?.name ?? labels.placeholder}
+        </span>
+        <ChevronsUpDown
+          className="size-4 shrink-0 opacity-50"
+          aria-hidden="true"
+        />
+      </button>
+    </PopoverPrimitive.Trigger>
+  )
+
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
+      {action ? (
+        <div className="flex items-center gap-1.5">
+          {trigger}
+          {action}
+        </div>
+      ) : (
+        trigger
+      )}
 
       <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
         <PopoverPrimitive.Content
@@ -270,20 +310,30 @@ export function SearchableSelect({
               <>
                 {visibleOptions.map((option) => {
                   const checked = option.id === value
+                  const isDisabled = option.disabled === true
                   return (
                     <div
                       key={option.id}
                       role="option"
                       aria-selected={checked}
-                      tabIndex={0}
-                      onClick={() => select(option.id)}
+                      aria-disabled={isDisabled || undefined}
+                      tabIndex={isDisabled ? -1 : 0}
+                      onClick={isDisabled ? undefined : () => select(option.id)}
                       onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
+                        if (!isDisabled && (event.key === 'Enter' || event.key === ' ')) {
                           event.preventDefault()
                           select(option.id)
                         }
                       }}
-                      className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-[2px] focus-visible:ring-ring/50"
+                      style={
+                        option.depth ? { paddingLeft: `${INDENT_REM_PER_DEPTH * option.depth}rem` } : undefined
+                      }
+                      className={cn(
+                        'flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+                        isDisabled
+                          ? 'cursor-default text-muted-foreground/70'
+                          : 'cursor-pointer hover:bg-accent focus-visible:bg-accent focus-visible:ring-[2px] focus-visible:ring-ring/50',
+                      )}
                     >
                       <Check
                         className={cn(

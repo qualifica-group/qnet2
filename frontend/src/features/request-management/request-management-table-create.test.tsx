@@ -25,6 +25,13 @@ vi.mock('@/features/auth/use-abilities', () => ({
   }),
 }))
 
+// The create form the modal case mounts defaults its Sede/Operatore from the
+// authenticated actor (user directive 2026-08-03); this suite is about the
+// affordance, so the double only has to keep that read from throwing.
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 42, employment: { operational_site_id: 9 } } }),
+}))
+
 let requestManagementOpenMode: 'page' | 'modal' = 'page'
 vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => requestManagementOpenMode,

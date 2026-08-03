@@ -134,6 +134,61 @@ describe('buildRequestWorkSchema — product lines', () => {
 
     expect(schema.safeParse(values({ product_lines: [] })).success).toBe(true)
   })
+
+  /**
+   * Spec 0077 INV-2: every row shares the same Funzione aziendale, in both
+   * management modes — gated by the SAME sparse rule as the two suites
+   * above (AC-043: identical behaviour to `request-create-schema.ts` and
+   * `opportunity-schema.ts`).
+   */
+  describe('shared business function (spec 0077 INV-2)', () => {
+    it('rejects mismatched functions once the collection is edited', () => {
+      const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
+      const result = schema.safeParse(
+        values({
+          product_lines: [
+            { business_function_id: 41, product_category_id: 501 },
+            { business_function_id: 42, product_category_id: 502 },
+          ],
+        }),
+      )
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
+      }
+    })
+
+    it('accepts several edited rows sharing the same business function', () => {
+      const schema = buildRequestWorkSchema([], STATUSES, original(100), i18n.t)
+      const result = schema.safeParse(
+        values({
+          product_lines: [
+            { business_function_id: 41, product_category_id: 501 },
+            { business_function_id: 41, product_category_id: 502 },
+          ],
+        }),
+      )
+
+      expect(result.success).toBe(true)
+    })
+
+    /** AC-044: a historic record whose rows never conformed stays saveable while `product_lines` is left untouched. */
+    it('leaves a non-conformant historic collection alone while it stays untouched (D-5, AC-044)', () => {
+      const historicRows = [
+        { business_function_id: 41, product_category_id: 501 },
+        { business_function_id: 42, product_category_id: 502 },
+      ]
+      const schema = buildRequestWorkSchema([], STATUSES, original(100, { product_lines: historicRows }), i18n.t)
+
+      // The panel resubmits the SAME historic rows unchanged, only `next_callback_at` differs.
+      const result = schema.safeParse(
+        values({ product_lines: historicRows, next_callback_at: '2026-08-10T09:00:00Z' }),
+      )
+
+      expect(result.success).toBe(true)
+    })
+  })
 })
 
 /**

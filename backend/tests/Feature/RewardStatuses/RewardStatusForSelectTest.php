@@ -102,13 +102,13 @@ it('orders by sort_order asc, not alphabetically (BR-5, AC-009)', function () {
     expect($ids)->toBe([$zLast->id, $aFirst->id]);
 });
 
-it('search="appr" returns only names containing "appr" (AC-009)', function () {
+it('search="conse" returns only names containing "conse" (AC-009)', function () {
     $actor = rewardStatusUserWith(['viewAny']);
-    $match = RewardStatus::factory()->create(['name' => 'Approvato']);
-    RewardStatus::factory()->create(['name' => 'Consegnato']);
+    $match = RewardStatus::factory()->create(['name' => 'Consegnato']);
+    RewardStatus::factory()->create(['name' => 'Scaduto']);
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson('/api/reward-statuses/for-select?search=appr')->assertOk();
+    $response = $this->getJson('/api/reward-statuses/for-select?search=conse')->assertOk();
 
     expect($response->json('pagination.total'))->toBe(1)
         ->and($response->json('items.0.id'))->toBe($match->id);

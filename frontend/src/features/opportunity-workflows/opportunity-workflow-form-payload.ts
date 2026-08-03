@@ -48,14 +48,15 @@ function buildStatusesCreatePayload(rows: WorkflowStatusFormRow[]): CreateOpport
  * Builds the UPDATE/default-statuses `statuses[]` payload: every row that
  * has a real, persisted identity — `id` present = update (system or
  * custom), absent = a new custom row — in visual order (positional
- * `sort_order` for the customs, AC-025). A placeholder pinned row (no
- * `statusId` yet) never occurs in edit mode (every row hydrates from a
+ * `sort_order` for the customs, AC-025). A placeholder MANDATORY pinned row
+ * (no `statusId` yet) never occurs in edit mode (every row hydrates from a
  * persisted `OpportunityWorkflowDetail`/default set), but is filtered out
- * defensively all the same.
+ * defensively all the same — unlike a not-yet-persisted `validated` row,
+ * which is exactly how the optional mark reaches the backend.
  */
 function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateOpportunityWorkflowStatusPayload[] {
   return rows
-    .filter((row) => row.statusId !== undefined || row.system_key === null)
+    .filter((row) => row.statusId !== undefined || row.system_key === null || row.system_key === 'validated')
     .map((row) => ({
       id: row.statusId,
       name: row.name,
@@ -63,6 +64,9 @@ function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateOpport
       color: row.color,
       group: row.group,
       requires_note: row.requires_note,
+      // Always sent, `null` included: the backend only removes the optional
+      // `validated` mark from a row that explicitly carries the key.
+      system_key: row.system_key,
     }))
 }
 

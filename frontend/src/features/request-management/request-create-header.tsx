@@ -23,9 +23,16 @@ interface RequestCreateHeaderProps {
 /**
  * Identity bar of the create form — the same bar as the work panel's
  * (`RequestWorkHeader`), down to the shared `REQUEST_HEADER_CLASS` and the
- * shared `StatusBadge`: title on the left with the live status/callback pills,
+ * shared `StatusBadge`: heading and live status/callback pills on the left,
  * the actions on the right, a refused submit reported right under the button
  * that was pressed.
+ *
+ * This bar is the form's ONE heading (user directive 2026-08-03): the module
+ * is registered `formOwnsHeader`, so the dedicated page drops its own
+ * title/subtitle block and the Sheet keeps its `SheetHeader` `sr-only`. It
+ * reuses the hosts' own `form.createTitle`/`createSubtitle` strings — same
+ * text as before, now on the same row as the save/cancel actions instead of
+ * stacked above a second copy of itself.
  *
  * Two pills of the panel are missing here for a reason, not by omission: `#id`
  * and the "Commerciale" (sales pipeline) status do not exist until the record
@@ -51,9 +58,14 @@ export function RequestCreateHeader({
   return (
     <header className={REQUEST_HEADER_CLASS}>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-        <h1 className="min-w-0 max-w-full truncate text-base font-semibold">
-          {t('requestManagement.form.create.title')}
-        </h1>
+        <div className="flex min-w-0 flex-col">
+          <h1 className="min-w-0 truncate text-base font-semibold">
+            {t('requestManagement.form.createTitle')}
+          </h1>
+          <p className="min-w-0 truncate text-sm text-muted-foreground">
+            {t('requestManagement.form.createSubtitle')}
+          </p>
+        </div>
 
         {status && (
           <StatusBadge

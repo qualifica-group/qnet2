@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\ProductCategories;
 
+use App\Enums\CategoryManagementMode;
+
 /**
  * Validated payload for creating a product category
  * (POST /api/product-categories, spec 0017). Declared DTO (no "magic flying
@@ -26,6 +28,8 @@ final readonly class CreateProductCategoryData
         public ?bool $requiresQuote = null,
         /** Spec 0074: a plain per-node flag, defaulting to selectable when omitted. */
         public bool $isSelectable = true,
+        /** Spec 0077: null = not submitted, resolved server-side (root's value, or "multiple" at a fresh root — D-8). */
+        public ?CategoryManagementMode $managementMode = null,
     ) {}
 
     /**
@@ -45,6 +49,7 @@ final readonly class CreateProductCategoryData
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
+            managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
         );
     }
 

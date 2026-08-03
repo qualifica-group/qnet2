@@ -13,12 +13,15 @@ use Illuminate\Support\Collection;
  *
  * `criteria` is REQUIRED, min:1 (AC-008): a list of {field, value_id} pairs,
  * one per allow-listed field (App\Support\OpportunityWorkflows\
- * CriterionFieldRegistry). `statuses` is OPTIONAL. The 4 system rows
- * (open/validated/closed_won/closed_lost, AC-004) are always created by the Service via
+ * CriterionFieldRegistry). `statuses` is OPTIONAL. The 3 mandatory system rows
+ * (open/closed_won/closed_lost, AC-004) are always created by the Service via
  * WorkflowStatusWriter; when the client tags a submitted row with a
  * `system_key`, its descriptive fields SEED that system row (the user can
  * fill the pinned rows up front) — otherwise the writer's defaults apply. Untagged
  * rows are the intermediate CUSTOM rows.
+ *
+ * The fourth key, 'validated', is OPTIONAL and has no default (user directive
+ * 2026-08-03): tagging a row with it is the ONLY way that row gets created.
  */
 final readonly class CreateOpportunityWorkflowData
 {
@@ -26,7 +29,7 @@ final readonly class CreateOpportunityWorkflowData
      * @param  array<int, array{field: string, value_id: int}>  $criteria
      * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statuses  custom rows only
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openStatus  descriptive seed for the pinned 'open' row (null = writer default)
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $validatedStatus  descriptive seed for the pinned 'validated' row (null = writer default)
+     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $validatedStatus  the row marked as the OPTIONAL 'validated' one (null = the set gets none)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonStatus  descriptive seed for the pinned 'closed_won' row (null = writer default)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostStatus  descriptive seed for the pinned 'closed_lost' row (null = writer default)
      */

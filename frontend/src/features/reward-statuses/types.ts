@@ -17,11 +17,11 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { RewardStatusGroupValue } from '@/features/status-reorder/types'
 
 /**
- * Marks one of the four system-managed rows — "Aperto" (`new`), "In attesa"
- * (`pending`), "Chiuso positivo" (`won`), "Chiuso negativo" (`lost`), spec
- * 0073 D-6; `null` on an ordinary custom row.
+ * Marks one of the three system-managed rows — "In attesa" (`pending`),
+ * "Approvato" (`won`), "Negato" (`lost`), spec 0073 D-6 as amended by the
+ * user directive of 2026-08-03; `null` on an ordinary custom row.
  */
-export type RewardStatusSystemKey = 'new' | 'pending' | 'won' | 'lost' | null
+export type RewardStatusSystemKey = 'pending' | 'won' | 'lost' | null
 
 /**
  * Single reward status detail returned by GET/POST/PATCH /reward-statuses

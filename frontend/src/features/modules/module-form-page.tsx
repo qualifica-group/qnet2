@@ -103,14 +103,18 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
         <PageHeader />
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          <header className="flex flex-col gap-1 border-b px-4 py-3">
-            <h2 className="text-base font-semibold">
-              {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Title`)}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Subtitle`)}
-            </p>
-          </header>
+          {/* A `formOwnsHeader` module renders this heading itself, with its
+              own actions on the same row — showing it here would duplicate it. */}
+          {!entry.formOwnsHeader && (
+            <header className="flex flex-col gap-1 border-b px-4 py-3">
+              <h2 className="text-base font-semibold">
+                {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Title`)}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t(`${ns}.form.${isEdit ? 'edit' : 'create'}Subtitle`)}
+              </p>
+            </header>
+          )}
 
           <FormScreen mode={mode} onSuccess={onSuccess} onCancel={onCancel} />
         </div>

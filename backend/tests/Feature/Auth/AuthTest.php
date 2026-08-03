@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\EmploymentProfile;
+use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -77,6 +79,22 @@ it('returns the authenticated user on /me with a UserResource', function () {
         ->assertJsonPath('data.id', $user->id)
         ->assertJsonPath('data.email', $user->email)
         ->assertJsonStructure(['success', 'message', 'data' => ['id', 'name', 'email', 'roles', 'created_at']]);
+});
+
+// User directive 2026-08-03: the request create form pre-assigns the new
+// record to the actor's own Sede, which it reads from this payload — so the
+// authenticated user always carries their employment profile.
+it('carries the authenticated user employment Sede on /me', function () {
+    $site = OperationalSite::factory()->create();
+    $user = User::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $user->id, 'operational_site_id' => $site->id]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/auth/me')
+        ->assertOk()
+        ->assertJsonPath('data.employment.operational_site_id', $site->id)
+        ->assertJsonPath('data.employment.operational_site.id', $site->id);
 });
 
 it('blocks /me without authentication', function () {

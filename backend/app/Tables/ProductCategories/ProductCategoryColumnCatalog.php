@@ -2,6 +2,8 @@
 
 namespace App\Tables\ProductCategories;
 
+use App\Enums\CategoryManagementMode;
+
 /**
  * Declarative column/filter/action catalogue for the `product-categories`
  * domain (spec 0017 REV). Extracted out of ProductCategoriesTableDefinition
@@ -18,7 +20,9 @@ namespace App\Tables\ProductCategories;
  * (a raw WHERE on the alias is not portable — MySQL cannot see a SELECT-list
  * alias from WHERE). `business_function` (spec 0023) is DERIVED and NOT
  * SORTABLE (see BusinessFunctionColumn) — the EFFECTIVE (own or inherited)
- * function name, resolved by CategoryHierarchy.
+ * function name, resolved by CategoryHierarchy. `management_mode` (spec
+ * 0077) is a real per-row column like `requires_quote`/`is_selectable`: its
+ * static `options` list every `CategoryManagementMode` case.
  */
 final class ProductCategoryColumnCatalog
 {
@@ -100,6 +104,21 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                // Card-line policy ("single"|"multiple"). Owned by the
+                // branch ROOT and mirrored onto every descendant by
+                // CategoryManagementModeInheritance (spec 0077), so this IS a
+                // real column here: sorting/filtering need no derived-column
+                // handling.
+                'id' => 'management_mode',
+                'label' => 'productCategories.columns.management_mode',
+                'type' => 'enum',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => array_map(static fn (CategoryManagementMode $case): string => $case->value, CategoryManagementMode::cases()),
+            ],
+            [
                 // Number of attributes directly assigned to this category
                 // (own assignments only — NOT the effective/inherited count),
                 // via withCount('attributes'). AGGREGATE (no real DB column).
@@ -146,6 +165,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'business_function', 'type' => 'set'],
             ['columnId' => 'requires_quote', 'type' => 'boolean'],
             ['columnId' => 'is_selectable', 'type' => 'boolean'],
+            ['columnId' => 'management_mode', 'type' => 'set'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

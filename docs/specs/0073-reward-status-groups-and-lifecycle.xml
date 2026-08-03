@@ -10,6 +10,34 @@
     richiesta si riapre, ogni buono torna esattamente allo stato che aveva prima della chiusura.
   </goal>
 
+  <emendamento data="2026-08-03" origine="direttiva utente">
+    Questa spec e' stata implementata e POI emendata dall'utente nella stessa giornata. Cio' che
+    segue nel documento descrive lo stato ORIGINALE: due punti non valgono piu'.
+
+    1. STATI: le righe di sistema sono TRE, non quattro — "In attesa" (`pending`), "Approvato"
+       (`won`), "Negato" (`lost`). La testa "Aperto" (`new`) e' eliminata ("quello stato non
+       serve") e con essa il valore `open` di `App\Enums\RewardStatusGroup`, che scende a tre casi;
+       `pending` diventa il default della colonna `reward_statuses.group` e la fase da cui parte una
+       riga custom. Le due righe di coda sono rinominate: "Chiuso positivo" -> "Approvato",
+       "Chiuso negativo" -> "Negato". Migrazione:
+       `2026_08_03_150100_reshape_reward_status_system_rows.php` (sposta i buoni fermi su "Aperto"
+       su "In attesa" prima di cancellarla, e ASSORBE una riga custom che gia' occupasse uno dei due
+       nomi nuovi — `name` e' unique). Decadono di conseguenza D-6 (limitatamente alla composizione
+       delle righe) e le AC che contano quattro righe/quattro valori di enum.
+
+    2. AUTOMAZIONE: il ciclo di vita richiesta -> buono e' ELIMINATO ("non serve"). Spariscono
+       `App\Services\Rewards\RewardLifecycleManager`, le sue quattro invocazioni
+       (`OpportunityService::resolveWorkflowStatus()`, `OpportunityWorkflowService::delete()`,
+       `RequestManagementService::updateWork()`, `RequestCreationService::create()`), la colonna
+       `rewards.status_before_closure_id` (migrazione
+       `2026_08_03_150000_drop_status_before_closure_from_rewards_table.php`) con la relazione
+       `Reward::statusBeforeClosure()` e il predicato `Reward::isClosedBySource()`, e gli eventi di
+       log `reward.auto_closed`/`reward.auto_reopened`. Lo stato di un buono si muove SOLO per mano
+       di un utente, via `PATCH /api/rewards/{reward}`. Decadono D-1, D-2, D-7, D-9 e tutte le AC
+       sul ciclo di vita. Nessuna passata retroattiva: i buoni che l'automazione aveva chiuso
+       restano dove sono, e vanno riportati a mano se serve.
+  </emendamento>
+
   <context>
     <!-- Tutti i nomi qui sotto sono VERIFICATI sul codice reale (ricognizione 2026-08-03), non
          ipotizzati. Riferimenti file:riga dove utile. -->

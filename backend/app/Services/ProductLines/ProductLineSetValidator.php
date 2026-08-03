@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\ProductLines;
 
+use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Rules\SelectableProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -17,7 +18,9 @@ use Illuminate\Validation\ValidationException;
  * SELECTABLE — spec 0074, with the already-persisted ones exempt) and
  * cross-row (no repeated {funzione aziendale, categoria} pair; each row's
  * category belongs to EXACTLY that business function once inheritance is
- * resolved).
+ * resolved; and, spec 0077 INV-1/INV-2/INV-3, all rows share the same
+ * business function AND resolve to the same product-category root, and a
+ * root whose management_mode is `single` may carry exactly one row).
  *
  * It exists as a service, and not only as the FormRequest trait it used to
  * be, because the collection is written through TWO channels: the form
@@ -44,6 +47,18 @@ final class ProductLineSetValidator
     public const string DUPLICATE_PAIR_MESSAGE = 'This business function / product category pair is already present.';
 
     public const string BUSINESS_FUNCTION_MISMATCH_MESSAGE = 'This product category does not belong to the selected business function.';
+
+    /**
+     * Card-level invariants (spec 0077). Unlike the two messages above (which
+     * blame a single row), these land on the collection attribute itself —
+     * `errors: { product_lines: [...] }`, no row index — because none of the
+     * three is about one row, it is about how the rows relate to each other.
+     */
+    public const string SAME_BUSINESS_FUNCTION_MESSAGE = 'All rows must share the same business function.';
+
+    public const string SAME_ROOT_CATEGORY_MESSAGE = 'All rows must resolve to the same product category.';
+
+    public const string SINGLE_ROW_ONLY_MESSAGE = 'This product category allows only a single row.';
 
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 
@@ -100,7 +115,7 @@ final class ProductLineSetValidator
             }
         }
 
-        return $errors;
+        return [...$errors, ...$this->collectionInvariantErrors($lines, $attribute)];
     }
 
     /**
@@ -158,5 +173,70 @@ final class ProductLineSetValidator
     private function isWellFormedLine(mixed $line): bool
     {
         return is_array($line) && isset($line['business_function_id'], $line['product_category_id']);
+    }
+
+    /**
+     * Spec 0077 INV-1/INV-2/INV-3: skipped below two well-formed rows — none
+     * of the three can be broken by a single row, and a malformed one is
+     * already reported by the per-row rules. Only ever invoked with the
+     * SUBMITTED collection (crossRowErrors()/assert() are only ever called
+     * that way), so D-5's grandfathering falls out for free: a historical
+     * record that never resubmits `product_lines` never reaches here.
+     *
+     * @param  array<int, mixed>  $lines
+     * @return array<string, string>
+     */
+    private function collectionInvariantErrors(array $lines, string $attribute): array
+    {
+        $wellFormed = array_values(array_filter(
+            $lines,
+            fn (mixed $line): bool => $this->isWellFormedLine($line),
+        ));
+
+        if (count($wellFormed) < 2) {
+            return [];
+        }
+
+        /** @var array<int, array{business_function_id: mixed, product_category_id: mixed}> $wellFormed */
+        $businessFunctionIds = array_unique(array_map(
+            static fn (array $line): int => (int) $line['business_function_id'],
+            $wellFormed,
+        ));
+
+        if (count($businessFunctionIds) > 1) {
+            return [$attribute => __(self::SAME_BUSINESS_FUNCTION_MESSAGE)];
+        }
+
+        $categoryIds = array_values(array_unique(array_map(
+            static fn (array $line): int => (int) $line['product_category_id'],
+            $wellFormed,
+        )));
+
+        // One batch call resolves every row's root+mode at once (spec 0077
+        // constraint: never a walk per row).
+        $resolutions = array_filter($this->hierarchy->rootManagementModesFor($categoryIds));
+
+        if ($resolutions === []) {
+            // Every category id is unresolvable — already reported by the
+            // per-row existence/selectability rule.
+            return [];
+        }
+
+        $rootIds = array_unique(array_map(
+            static fn (array $resolution): int => $resolution['root_id'],
+            $resolutions,
+        ));
+
+        if (count($rootIds) > 1) {
+            return [$attribute => __(self::SAME_ROOT_CATEGORY_MESSAGE)];
+        }
+
+        $mode = array_values($resolutions)[0]['management_mode'];
+
+        if ($mode === CategoryManagementMode::Single) {
+            return [$attribute => __(self::SINGLE_ROW_ONLY_MESSAGE)];
+        }
+
+        return [];
     }
 }

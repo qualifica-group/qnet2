@@ -72,16 +72,16 @@ it('GET /api/tables/reward-statuses/columns: 403 without viewAny, 200 with the 9
 
 it('rows: search on name returns only the matching row (AC-011)', function () {
     $actor = rewardStatusUserWith(['viewAny']);
-    RewardStatus::factory()->create(['name' => 'Approvato']);
     RewardStatus::factory()->create(['name' => 'Consegnato']);
+    RewardStatus::factory()->create(['name' => 'Scaduto']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/reward-statuses/rows', [
-        'startRow' => 0, 'endRow' => 25, 'search' => 'Approvato',
+        'startRow' => 0, 'endRow' => 25, 'search' => 'Consegnato',
     ])->assertOk();
 
-    expect(collect($response->json('items'))->pluck('name')->all())->toContain('Approvato')
-        ->and(collect($response->json('items'))->pluck('name')->all())->not->toContain('Consegnato');
+    expect(collect($response->json('items'))->pluck('name')->all())->toContain('Consegnato')
+        ->and(collect($response->json('items'))->pluck('name')->all())->not->toContain('Scaduto');
 });
 
 it('rows: filter on is_active returns only matching rows (AC-011)', function () {
@@ -121,8 +121,8 @@ it('rows: pagination reports the correct total and defaults to a limit of 25 (AC
 
     $response = $this->postJson('/api/tables/reward-statuses/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
 
-    // +4 for the migration-seeded system rows (spec 0073, D-6).
-    expect($response->json('pagination.total'))->toBe(34)
+    // +3 for the migration-seeded system rows (spec 0073, D-6).
+    expect($response->json('pagination.total'))->toBe(33)
         ->and($response->json('items'))->toHaveCount(25);
 });
 
@@ -133,11 +133,11 @@ it('rows: pagination reports the correct total and defaults to a limit of 25 (AC
 
 it('rows: view/edit/delete/viewActivity actions present only with the matching permission (AC-012)', function () {
     $actor = rewardStatusUserWith(['viewAny', 'view', 'update', 'delete', 'viewActivity']);
-    RewardStatus::factory()->create(['name' => 'Approvato']);
+    RewardStatus::factory()->create(['name' => 'Consegnato']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/reward-statuses/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('name', 'Approvato');
+    $row = collect($response->json('items'))->firstWhere('name', 'Consegnato');
 
     expect($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete', 'activity']);
 });

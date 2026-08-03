@@ -113,7 +113,9 @@ describe('buildCreateOpportunitySchema', () => {
     })
 
     it('rejects an empty collection on update too (never clearable)', () => {
-      const schema = buildUpdateOpportunitySchema(i18n.t)
+      const schema = buildUpdateOpportunitySchema(i18n.t, [
+        { business_function_id: 1, product_category_id: 11 },
+      ])
       const result = schema.safeParse(baseValues({ products_of_interest: [] }))
       expect(result.success).toBe(false)
     })
@@ -134,13 +136,16 @@ describe('buildCreateOpportunitySchema', () => {
       }
     })
 
+    // Spec 0077 INV-2: every row shares the same Funzione aziendale — the
+    // second row here reuses row 1's, unlike its "different roots" sibling
+    // in the dedicated `INV-2` suite below.
     it('accepts one or more complete rows', () => {
       const schema = buildCreateOpportunitySchema(i18n.t)
       const result = schema.safeParse(
         baseValues({
           product_lines: [
             { business_function_id: 1, product_category_id: 11 },
-            { business_function_id: 2, product_category_id: 22 },
+            { business_function_id: 1, product_category_id: 22 },
           ],
         }),
       )
@@ -270,8 +275,82 @@ describe('state_id / opportunity_workflow_status_id (spec 0047)', () => {
 
 describe('buildUpdateOpportunitySchema', () => {
   it('keeps supervisor_id nullable for existing opportunities', () => {
-    const schema = buildUpdateOpportunitySchema(i18n.t)
+    const schema = buildUpdateOpportunitySchema(i18n.t, [
+      { business_function_id: 1, product_category_id: 11 },
+    ])
 
     expect(schema.safeParse(baseValues({ supervisor_id: null })).success).toBe(true)
+  })
+})
+
+/**
+ * Spec 0077 INV-2: every `product_lines` row shares the same Funzione
+ * aziendale, in both management modes. D-5 grandfathering: on update the rule
+ * only fires once the collection differs from what is persisted
+ * (`originalProductLines`) — mirrors the work panel's own sparse gate
+ * (`request-work-schema.ts`), and AC-016/017 apply here too.
+ */
+describe('product_lines — shared business function (spec 0077 INV-2)', () => {
+  it('rejects two rows with different business functions on create', () => {
+    const schema = buildCreateOpportunitySchema(i18n.t)
+    const result = schema.safeParse(
+      baseValues({
+        product_lines: [
+          { business_function_id: 1, product_category_id: 11 },
+          { business_function_id: 2, product_category_id: 22 },
+        ],
+      }),
+    )
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
+    }
+  })
+
+  it('accepts several rows sharing the same business function on create', () => {
+    const schema = buildCreateOpportunitySchema(i18n.t)
+    const result = schema.safeParse(
+      baseValues({
+        product_lines: [
+          { business_function_id: 1, product_category_id: 11 },
+          { business_function_id: 1, product_category_id: 22 },
+        ],
+      }),
+    )
+
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects mismatched functions on update once the collection actually changed', () => {
+    const schema = buildUpdateOpportunitySchema(i18n.t, [
+      { business_function_id: 1, product_category_id: 11 },
+    ])
+    const result = schema.safeParse(
+      baseValues({
+        product_lines: [
+          { business_function_id: 1, product_category_id: 11 },
+          { business_function_id: 2, product_category_id: 22 },
+        ],
+      }),
+    )
+
+    expect(result.success).toBe(false)
+  })
+
+  /** AC-016 (opportunity form's own D-5 grandfathering): a legacy record whose rows never conformed stays saveable while `product_lines` is left untouched. */
+  it('leaves a non-conformant historic collection alone while it stays untouched (D-5, AC-016)', () => {
+    const historicRows = [
+      { business_function_id: 1, product_category_id: 11 },
+      { business_function_id: 2, product_category_id: 22 },
+    ]
+    const schema = buildUpdateOpportunitySchema(i18n.t, historicRows)
+
+    // Same rows submitted back unchanged, only `general_notes` differs.
+    const result = schema.safeParse(
+      baseValues({ product_lines: historicRows, general_notes: 'Updated note.' }),
+    )
+
+    expect(result.success).toBe(true)
   })
 })

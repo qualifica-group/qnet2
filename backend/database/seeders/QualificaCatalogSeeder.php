@@ -4,11 +4,13 @@ namespace Database\Seeders;
 
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
+use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductService;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
@@ -29,9 +31,11 @@ use Illuminate\Database\Seeder;
  *     subcategory under them — are seeded as CONTAINERS (`is_selectable =
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
- *     rules are only ever classified on the third level, today the
- *     `GOL - <Regione>` rows alone. The "Formazione" branch also carries its
- *     product-context attributes (spec 0061) — "Ore complessive" and the
+ *     rules are classified on the third level, today the `GOL - <Regione>`
+ *     rows — plus the one subcategory that hosts its offer directly,
+ *     "Autofinanziato" (see SELECTABLE_SUBCATEGORIES). The "Formazione"
+ *     branch also carries its product-context attributes (spec 0061) —
+ *     "Ore complessive" and the
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
  *     into form sections by QualificaClassroomLayoutSeeder (spec 0062). The
@@ -113,10 +117,10 @@ class QualificaCatalogSeeder extends Seeder
      * natural keys used for idempotent `firstOrCreate` on re-run.
      *
      * The first two levels are CONTAINERS (spec 0074, user directive
-     * 2026-08-03): only the third level is a classification target, so today
-     * the sole selectable nodes are the `GOL - <Regione>` rows. An empty child
-     * list therefore means "no target seeded under this subcategory yet" — the
-     * children added there tomorrow become the selectable ones.
+     * 2026-08-03), save the exceptions listed in SELECTABLE_SUBCATEGORIES:
+     * classification happens on the third level, so an empty child list means
+     * "no target seeded under this subcategory yet" — the children added there
+     * tomorrow become the selectable ones.
      *
      * @var array<string, array<string, list<string>>>
      */
@@ -143,6 +147,31 @@ class QualificaCatalogSeeder extends Seeder
             'Trattative in Corso' => [],
             'Presa Appuntamenti' => [],
         ],
+    ];
+
+    /**
+     * The second-level nodes that ARE classification targets, by exception to
+     * the container rule above: a subcategory that hosts its own offer instead
+     * of grouping children. "Autofinanziato" is one — seedSelfFundedCourses()
+     * files every self-funded course directly on it, so a container there would
+     * leave those products under a category nothing can be classified on (user
+     * directive 2026-08-03). Bound by identity to the catalogue that files
+     * them, so a rename breaks loudly instead of silently demoting the node.
+     *
+     * @var list<string>
+     */
+    private const array SELECTABLE_SUBCATEGORIES = [
+        SelfFundedCourseCatalogue::CATEGORY,
+    ];
+
+    /**
+     * `management_mode` (spec 0077) per catalogue root: "Formazione" is
+     * "single" (user directive 2026-08-03), "Consulenza" stays "multiple"
+     * (D-8 default) — listed explicitly so a re-run realigns both.
+     */
+    private const array CATALOG_MANAGEMENT_MODES = [
+        'Formazione' => CategoryManagementMode::Single,
+        'Consulenza' => CategoryManagementMode::Multiple,
     ];
 
     /**
@@ -288,14 +317,17 @@ class QualificaCatalogSeeder extends Seeder
         foreach (self::CATALOG as $rootName => $subcategories) {
             // A root always parents subcategories, so it is a container by
             // construction (spec 0074): never a classification target.
-            $root = $this->seedCatalogCategory($rootName, null, isContainer: true);
+            $root = $this->seedCatalogCategory($rootName, null, isSelectable: false, realign: true);
 
             foreach ($subcategories as $subName => $childNames) {
                 // A subcategory is a container TOO, whether or not it already
                 // has children (user directive 2026-08-03): the catalogue
                 // classifies on its third level, so an empty child list means
                 // "no target seeded here yet", not "this node is the target".
-                $subcategory = $this->seedCatalogCategory($subName, $root->id, isContainer: true);
+                // Unless it hosts its own offer — see SELECTABLE_SUBCATEGORIES.
+                $isSelectable = in_array($subName, self::SELECTABLE_SUBCATEGORIES, true);
+
+                $subcategory = $this->seedCatalogCategory($subName, $root->id, $isSelectable, realign: true);
                 $this->seedCatalogChildren($subcategory, $childNames);
             }
         }
@@ -306,6 +338,20 @@ class QualificaCatalogSeeder extends Seeder
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
             $this->seedCategoryAttributes($category, $specs, AttributeContext::Product);
         }
+
+        $this->seedCatalogManagementModes();
+    }
+
+    private function seedCatalogManagementModes(): void
+    {
+        $inheritance = app(CategoryManagementModeInheritance::class);
+        foreach (self::CATALOG_MANAGEMENT_MODES as $rootName => $mode) {
+            $root = ProductCategory::query()->where('name', $rootName)->whereNull('parent_id')->firstOrFail();
+            if ($root->management_mode !== $mode) {
+                $root->update(['management_mode' => $mode]);
+            }
+            $inheritance->syncSubtree($root);
+        }
     }
 
     /**
@@ -314,33 +360,35 @@ class QualificaCatalogSeeder extends Seeder
     private function seedCatalogChildren(ProductCategory $parent, array $childNames): void
     {
         foreach ($childNames as $childName) {
-            $this->seedCatalogCategory($childName, $parent->id, isContainer: false);
+            $this->seedCatalogCategory($childName, $parent->id, isSelectable: true, realign: false);
         }
     }
 
     /**
      * One catalogue node, idempotent on `name` (the catalogue's natural key).
      *
-     * A CONTAINER node (spec 0074: a category that only groups subcategories)
-     * has its `is_selectable` REALIGNED on every run, not just written at
-     * creation: an installation seeded before the flag existed must actually
-     * see its mother categories stop being classification targets, which a
-     * plain `firstOrCreate` would silently skip.
+     * The nodes the catalogue DECLARES itself — the roots and their
+     * subcategories (spec 0074) — have their `is_selectable` REALIGNED on every
+     * run, in both directions, not just written at creation: an installation
+     * seeded before the flag existed must actually see its mother categories
+     * stop being classification targets, and one seeded while "Autofinanziato"
+     * was still filed as a container must see it become a target again. A plain
+     * `firstOrCreate` would silently skip both.
      *
      * A leaf is only ever given the default on creation and never realigned —
-     * the catalogue declares which nodes are containers, it does not claim
+     * the catalogue declares the shape of its own two levels, it does not claim
      * authority over an operator's decision to retire a leaf.
      */
-    private function seedCatalogCategory(string $name, ?int $parentId, bool $isContainer): ProductCategory
+    private function seedCatalogCategory(string $name, ?int $parentId, bool $isSelectable, bool $realign): ProductCategory
     {
         /** @var ProductCategory $category */
         $category = ProductCategory::firstOrCreate(
             ['name' => $name],
-            ['parent_id' => $parentId, 'is_selectable' => ! $isContainer],
+            ['parent_id' => $parentId, 'is_selectable' => $isSelectable],
         );
 
-        if ($isContainer && $category->is_selectable) {
-            $category->update(['is_selectable' => false]);
+        if ($realign && $category->is_selectable !== $isSelectable) {
+            $category->update(['is_selectable' => $isSelectable]);
         }
 
         return $category;

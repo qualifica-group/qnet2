@@ -91,6 +91,7 @@ export const productCategories = {
     loadError: 'Unable to load the category. Please try again.',
     businessFunctionInherited: 'Inherited from {{category}}',
     requiresQuoteInherited: 'Inherited from {{category}}',
+    managementModeInherited: 'Inherited from {{category}}',
   },
   bulkMove: {
     tableButton: 'Move under…',
@@ -158,6 +159,13 @@ export const productCategories = {
     isSelectable: 'Selectable',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
+    managementMode: 'Management mode',
+    managementModeHint:
+      'How Category Product lines behave on a card: this category and every subcategory below it follow the same rule.',
+    managementModeInheritedHint:
+      'The management mode is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    managementModeSingle: 'Single (one line per card)',
+    managementModeMultiple: 'Multiple (several lines per card)',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',

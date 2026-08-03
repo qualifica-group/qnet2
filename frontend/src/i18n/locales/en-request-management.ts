@@ -78,8 +78,6 @@ export const requestManagement = {
         contactsGroup: 'Contacts',
         addressGroup: 'Address',
       },
-      /** Identity bar of the create form, the twin of `workPanel.header.title`. */
-      title: 'New request',
       generalNotes: {
         label: 'General notes',
         placeholder: 'What the client asked for, in their own words…',
@@ -121,6 +119,9 @@ export const requestManagement = {
       validation: {
         productLinesRequired: 'Add at least one product line.',
         productLineIncomplete: 'Select a business function and a product category for every row.',
+        // Spec 0077 INV-2: every row shares the same Business function
+        // (creation: no historic record to grandfather).
+        businessFunctionMismatch: 'All rows must share the same business function.',
         sourceRequired: 'Select a source.',
       },
       errors: {
@@ -226,6 +227,10 @@ export const requestManagement = {
       sourceRequired: 'Select a source.',
       productLinesRequired: 'Add at least one product line.',
       productLineIncomplete: 'Select a business function and a product category for every row.',
+      // Spec 0077 INV-2, D-5: only enforced once `product_lines` was
+      // actually edited (grandfathering a non-conformant historic record,
+      // see `request-work-schema.ts`).
+      businessFunctionMismatch: 'All rows must share the same business function.',
       summary: 'Cannot save: check these fields — {{fields}}.',
     },
   },

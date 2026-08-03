@@ -91,6 +91,7 @@ export const productCategories = {
     loadError: 'Impossibile caricare la categoria. Riprova.',
     businessFunctionInherited: 'Ereditata da {{category}}',
     requiresQuoteInherited: 'Ereditato da {{category}}',
+    managementModeInherited: 'Ereditata da {{category}}',
   },
   bulkMove: {
     tableButton: 'Sposta sotto…',
@@ -160,6 +161,13 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     isSelectableHint:
       'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',
+    managementMode: 'Modalità di gestione',
+    managementModeHint:
+      'Come si comportano le righe Categoria Prodotto su una scheda: questa categoria e tutte le sue sottocategorie seguono la stessa regola.',
+    managementModeInheritedHint:
+      'La modalità di gestione è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    managementModeSingle: 'Singola (una riga per scheda)',
+    managementModeMultiple: 'Multipla (più righe per scheda)',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',

@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
-use App\DataObjects\Shared\ForSelectQuery;
-use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\RequiresQuoteInheritance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +26,7 @@ class ProductCategoryService
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
         private readonly RequiresQuoteInheritance $requiresQuote,
+        private readonly CategoryManagementModeInheritance $managementMode,
     ) {}
 
     public function create(CreateProductCategoryData $data): ProductCategory
@@ -36,6 +37,10 @@ class ProductCategoryService
 
         if ($data->requiresQuote !== null) {
             $this->assertRequiresQuoteNotOverridden($data->parentId, $data->requiresQuote);
+        }
+
+        if ($data->managementMode !== null) {
+            $this->assertManagementModeNotOverridden($data->parentId, $data->managementMode);
         }
 
         return DB::transaction(function () use ($data): ProductCategory {
@@ -51,6 +56,9 @@ class ProductCategoryService
                 // whatever was (or was not) submitted.
                 'requires_quote' => $this->requiresQuote->inheritedValueFor($data->parentId) ?? ($data->requiresQuote ?? false),
                 'is_selectable' => $data->isSelectable,
+                // Spec 0077, D-8: same root-only semantics — a fresh root
+                // with no submitted value defaults to "multiple".
+                'management_mode' => $this->managementMode->inheritedValueFor($data->parentId) ?? ($data->managementMode ?? CategoryManagementMode::Multiple),
             ]);
 
             if ($data->hasAttributes()) {
@@ -80,6 +88,11 @@ class ProductCategoryService
             $this->assertRequiresQuoteNotOverridden($resolvedParentId, $data->requiresQuote);
         }
 
+        if ($data->managementModeSubmitted && $data->managementMode !== null) {
+            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
+            $this->assertManagementModeNotOverridden($resolvedParentId, $data->managementMode);
+        }
+
         return DB::transaction(function () use ($category, $data): ProductCategory {
             $attributes = $data->submittedAttributes();
 
@@ -106,6 +119,13 @@ class ProductCategoryService
                 $this->requiresQuote->syncSubtree($category);
             }
 
+            // Same trigger set for the management mode: only a reparent (the
+            // branch root changed) or an edit of the mode itself can break
+            // the "whole subtree mirrors its root" invariant (spec 0077).
+            if ($data->hasParentId() || $data->managementModeSubmitted) {
+                $this->managementMode->syncSubtree($category);
+            }
+
             return $category->fresh(['parent', 'attributes', 'businessFunction']);
         });
     }
@@ -127,128 +147,6 @@ class ProductCategoryService
         }
 
         $category->delete();
-    }
-
-    /**
-     * Minimal, searchable, paginated product-category list for the
-     * for-select standard (spec 0023, ADR 0011), mirroring
-     * SourceService::forSelect. Every returned item carries its EFFECTIVE
-     * business function (spec 0040 BR-4) as `meta.business_function`,
-     * resolved in ONE batched CategoryHierarchy call (never a query per row).
-     *
-     * Amendment rev.3: when `$query->businessFunctionId` is set, the base
-     * query is scoped to the ids whose EFFECTIVE business function matches
-     * (same batched CategoryHierarchy call, no query per row) — additive,
-     * identical behaviour when the param is absent.
-     */
-    public function forSelect(ForSelectQuery $query): ForSelectResult
-    {
-        // Spec 0074 D-4: this endpoint feeds DESTINATION pickers only (the
-        // structural ones read /tree), so the selectable filter is
-        // unconditional — no opt-in param a future consumer could forget.
-        // `ids[]` hydration runs its own query below and stays exempt (D-3a),
-        // so an already-associated category keeps resolving in edit mode.
-        $base = ProductCategory::query()->select(['id', 'name'])->where('is_selectable', true);
-
-        if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
-        }
-
-        if ($query->businessFunctionId !== null) {
-            $base->whereIn('id', $this->categoryIdsForBusinessFunction($query->businessFunctionId));
-        }
-
-        $total = (clone $base)->count();
-
-        /** @var Collection<int, ProductCategory> $page */
-        $page = $base->orderBy('name')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
-
-        $items = $this->appendHydratedForSelectIds($page, $query);
-
-        $this->attachEffectiveBusinessFunctionSummaries($items);
-
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
-    }
-
-    /**
-     * Every category id whose EFFECTIVE business function is
-     * $businessFunctionId (spec 0040 amendment rev.3) — a single batched
-     * CategoryHierarchy call, never a query per row.
-     *
-     * @return array<int, int>
-     */
-    private function categoryIdsForBusinessFunction(int $businessFunctionId): array
-    {
-        $summaries = $this->hierarchy->effectiveBusinessFunctionSummaries();
-
-        return array_keys(array_filter(
-            $summaries,
-            static fn (?array $summary): bool => ($summary['id'] ?? null) === $businessFunctionId,
-        ));
-    }
-
-    /**
-     * Stash each item's EFFECTIVE business function {id, name}|null as the
-     * `business_function_summary` attribute (read by
-     * ProductCategoryForSelectResource), resolved in a single batched
-     * CategoryHierarchy call — never one hierarchy walk per item.
-     *
-     * @param  Collection<int, ProductCategory>  $items
-     */
-    private function attachEffectiveBusinessFunctionSummaries(Collection $items): void
-    {
-        if ($items->isEmpty()) {
-            return;
-        }
-
-        $summaries = $this->hierarchy->effectiveBusinessFunctionSummaries();
-
-        foreach ($items as $item) {
-            $item->setAttribute('business_function_summary', $summaries[$item->id] ?? null);
-        }
-    }
-
-    /**
-     * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
-     * not already on the page, deduplicated. They bypass search AND the
-     * selectable filter (spec 0074 D-3a — an edit form must still resolve the
-     * label of a category that has since been made unselectable) and the same
-     * id/name projection applies. Total is unaffected.
-     *
-     * @param  Collection<int, ProductCategory>  $page
-     * @return Collection<int, ProductCategory>
-     */
-    private function appendHydratedForSelectIds(Collection $page, ForSelectQuery $query): Collection
-    {
-        if (! $query->hasIds()) {
-            return $page;
-        }
-
-        $presentIds = $page->pluck('id')->all();
-        $missingIds = array_values(array_diff($query->ids, $presentIds));
-
-        if ($missingIds === []) {
-            return $page;
-        }
-
-        /** @var Collection<int, ProductCategory> $hydrated */
-        $hydrated = ProductCategory::query()
-            ->select(['id', 'name'])
-            ->whereIn('id', $missingIds)
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
-
-        return $page->concat($hydrated);
     }
 
     /**
@@ -306,6 +204,19 @@ class ProductCategoryService
     }
 
     /**
+     * The ROOT category $category takes its `management_mode` from — null
+     * when $category is itself a root and therefore owns the mode (spec
+     * 0077). The value itself is a real column on $category, already
+     * carried by the Resource.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public function managementModeSourceCategory(ProductCategory $category): ?array
+    {
+        return $this->managementMode->sourceCategoryFor($category);
+    }
+
+    /**
      * $parentId may not be $category itself, nor one of its own descendants
      * (i.e. $category may not be an ancestor of the prospective new parent) —
      * either would create a cycle in the tree.
@@ -347,6 +258,21 @@ class ProductCategoryService
 
         if ($inherited !== null && $inherited !== $submitted) {
             abort(422, 'This category inherits the quote flag from its root category and cannot define its own.');
+        }
+    }
+
+    /**
+     * NO-OVERRIDE guard for the management mode (spec 0077): only a ROOT
+     * category authors it, so a category under $parentId may only submit
+     * the mode it already inherits. Submitting the inherited mode is
+     * accepted as a no-op; submitting a DIFFERENT one is refused.
+     */
+    private function assertManagementModeNotOverridden(?int $parentId, CategoryManagementMode $submitted): void
+    {
+        $inherited = $this->managementMode->inheritedValueFor($parentId);
+
+        if ($inherited !== null && $inherited !== $submitted) {
+            abort(422, 'This category inherits the management mode from its root category and cannot define its own.');
         }
     }
 

@@ -13,8 +13,11 @@ import ModuleFormPage from '@/features/modules/module-form-page'
 
 vi.mock('@/features/modules/module-registry', () => ({
   getModuleRegistryEntry: (domain: string) =>
-    domain === 'projects' || domain === 'reward-types'
+    domain === 'projects' || domain === 'reward-types' || domain === 'request-management'
       ? {
+          // The one module whose FormScreen renders its own visible heading
+          // (user directive 2026-08-03): the host must not render a second.
+          formOwnsHeader: domain === 'request-management',
           domain,
           basePath: `/${domain}`,
           defaultMode: 'page',
@@ -98,5 +101,26 @@ describe('ModuleFormPage', () => {
     expect(screen.getByRole('heading', { name: 'Create reward type' })).toBeInTheDocument()
     expect(screen.getByText('Add a new voucher, reward or incentive type.')).toBeInTheDocument()
     expect(screen.queryByText(/reward-types\.form\./)).not.toBeInTheDocument()
+  })
+
+  /**
+   * User directive 2026-08-03: the request-management create form carries its
+   * own heading WITH the save/cancel actions on the same row, so the host's
+   * title/subtitle block would be a visible duplicate of it.
+   */
+  it('omits its own heading for a formOwnsHeader module', () => {
+    render(
+      <MemoryRouter initialEntries={['/request-management/new']}>
+        <Routes>
+          <Route path="/request-management/new" element={<ModuleFormPage domain="request-management" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('form-create')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'New request' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Client details and product lines of the new request.'),
+    ).not.toBeInTheDocument()
   })
 })

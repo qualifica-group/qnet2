@@ -42,6 +42,12 @@ class ProductCategoryResource extends JsonResource
             // target. Per-node, never inherited — a false one still parents
             // selectable children.
             'is_selectable' => (bool) $this->is_selectable,
+            // Spec 0077: the EFFECTIVE card-line policy — on a child this
+            // already mirrors its root (CategoryManagementModeInheritance
+            // keeps the column in sync), so no walk is needed here.
+            // `management_mode_source_category` is attached by the
+            // controller alongside `requires_quote_source_category`.
+            'management_mode' => $this->management_mode->value,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

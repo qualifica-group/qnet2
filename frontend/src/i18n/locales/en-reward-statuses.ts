@@ -3,9 +3,8 @@
  * the engineering size limits (see `.claude/rules/engineering.md` §6).
  * Reference table describing the STATES applicable to linked rewards
  * (`rewards`), cloned from `opportunity-statuses` plus `description` and
- * `is_active`. Spec 0073 adds the four-phase `group` (as on quote statuses)
- * and brings the system rows to four ("Aperto", "In attesa", "Chiuso
- * positivo", "Chiuso negativo").
+ * `is_active`. Spec 0073 adds the three-phase `group` and brings the system
+ * rows to three ("In attesa", "Approvato", "Negato").
  */
 
 export const rewardStatuses = {
@@ -52,10 +51,9 @@ export const rewardStatuses = {
     color: 'Color',
     group: {
       label: 'Group',
-      open: 'Open',
       pending: 'Pending',
-      closed_won: 'Closed (positive)',
-      closed_lost: 'Closed (negative)',
+      closed_won: 'Approved',
+      closed_lost: 'Denied',
     },
     isActive: 'Active',
     save: 'Save',

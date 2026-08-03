@@ -23,11 +23,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * FormRequest layer.
  *
  * Spec 0073 SUPERSEDES spec 0060 D-3 on two points: `group`
- * (App\Enums\RewardStatusGroup) is added — the same four-value phase
- * classification the quote/contract configurators carry — and the single
- * "In attesa" system row becomes FOUR, two pinned to the head and two to the
- * tail. `closed_lost` is the group App\Services\Rewards\RewardLifecycleManager
- * moves a reward to when its originating request is closed negatively.
+ * (App\Enums\RewardStatusGroup) is added and the single "In attesa" system
+ * row becomes THREE, one pinned to the head and two to the tail (user
+ * directive 2026-08-03: "In attesa", "Approvato", "Negato" — the "Aperto"
+ * head row of the original spec was dropped along with the `open` phase).
  */
 #[Fillable(['name', 'description', 'color', 'group', 'sort_order', 'is_active'])]
 class RewardStatus extends BaseModel
@@ -36,18 +35,18 @@ class RewardStatus extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
-     * The system rows pinned to the head of the sort_order sequence
-     * (StatusOrderManager::reorder()), in the order they must appear:
-     * "Aperto" at 0, then "In attesa" — the row every new reward is born on
-     * (RewardAssignmentWriter, spec 0060 BR-6).
+     * The system row pinned to the head of the sort_order sequence
+     * (StatusOrderManager::reorder()): "In attesa" at 0, the row every new
+     * reward is born on (RewardAssignmentWriter, spec 0060 BR-6).
      *
      * @var array<int, StatusSystemKey>
      */
-    public const array SYSTEM_HEAD_KEYS = [StatusSystemKey::New, StatusSystemKey::Pending];
+    public const array SYSTEM_HEAD_KEYS = [StatusSystemKey::Pending];
 
     /**
      * The system rows pinned to the tail, in the order they must appear:
-     * "Chiuso positivo" then "Chiuso negativo" (spec 0073, D-6).
+     * "Approvato" then "Negato" (spec 0073 D-6, renamed by the user directive
+     * of 2026-08-03).
      *
      * @var array<int, StatusSystemKey>
      */
@@ -76,9 +75,8 @@ class RewardStatus extends BaseModel
     }
 
     /**
-     * Whether this is one of the four mandatory system rows ("Aperto"/"In
-     * attesa"/"Chiuso positivo"/"Chiuso negativo", spec 0073 D-6) rather than
-     * a custom, user-created status.
+     * Whether this is one of the three mandatory system rows ("In attesa"/
+     * "Approvato"/"Negato") rather than a custom, user-created status.
      */
     public function isSystem(): bool
     {

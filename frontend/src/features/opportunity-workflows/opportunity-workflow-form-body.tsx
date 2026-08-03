@@ -43,6 +43,7 @@ export function OpportunityWorkflowFormBody({ mode, onSuccess, onCancel }: Oppor
     addCustomStatus,
     removeCustomStatus,
     updateStatusRow,
+    markValidatedStatus,
     reorderStatusRows,
   } = useOpportunityWorkflowForm({ mode, onSuccess })
 
@@ -104,6 +105,7 @@ export function OpportunityWorkflowFormBody({ mode, onSuccess, onCancel }: Oppor
               onAddCustom={addCustomStatus}
               onRemoveCustom={removeCustomStatus}
               onUpdateRow={updateStatusRow}
+              onMarkValidated={markValidatedStatus}
               error={statusesError}
             />
           </FormSection>

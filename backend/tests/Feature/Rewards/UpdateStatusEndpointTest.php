@@ -49,7 +49,7 @@ if (! function_exists('updateStatusReward')) {
 it('200: an active status is applied and the full RewardResource is returned (AC-021)', function () {
     $actor = updateStatusActor(['update']);
     $reward = updateStatusReward();
-    $newStatus = RewardStatus::factory()->create(['name' => 'Approvato', 'color' => 'green', 'is_active' => true]);
+    $newStatus = RewardStatus::factory()->create(['name' => 'Consegnato', 'color' => 'green', 'is_active' => true]);
     Sanctum::actingAs($actor);
 
     $response = $this->patchJson("/api/rewards/{$reward->id}", ['reward_status_id' => $newStatus->id])
@@ -67,7 +67,7 @@ it('200: an active status is applied and the full RewardResource is returned (AC
 
     expect($response->json('success'))->toBeTrue()
         ->and($response->json('data.id'))->toBe($reward->id)
-        ->and($response->json('data.reward_status'))->toBe(['id' => $newStatus->id, 'name' => 'Approvato', 'color' => 'green']);
+        ->and($response->json('data.reward_status'))->toBe(['id' => $newStatus->id, 'name' => 'Consegnato', 'color' => 'green']);
 
     $this->assertDatabaseHas('rewards', ['id' => $reward->id, 'reward_status_id' => $newStatus->id]);
 });

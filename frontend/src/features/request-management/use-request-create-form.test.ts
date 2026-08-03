@@ -30,6 +30,20 @@ vi.mock('@/features/request-management/api', () => ({
   fetchRequestFormContext: () => fetchRequestFormContextMock(),
 }))
 
+/**
+ * The form opens already assigned to whoever is creating the request and to
+ * their own Sede (user directive 2026-08-03), so the hook reads the auth
+ * context. Ids kept in sync with ACTOR_ID/ACTOR_SITE_ID below.
+ */
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 42, employment: { operational_site_id: 9 } } }),
+}))
+
+/** The authenticated actor of the mock above: the default Operatore. */
+const ACTOR_ID = 42
+/** That actor's employment Sede: the default Sede operativa. */
+const ACTOR_SITE_ID = 9
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -90,12 +104,13 @@ describe('useRequestCreateForm', () => {
   })
 
   /**
-   * The GA2 "Operatore" (user directive 2026-07-29) travels only when the
-   * supervisor actually picked one: an actor without
-   * `request-management.assignOperator` never renders the field, and the
-   * endpoint rejects the key from them outright.
+   * The GA2 "Operatore" (user directive 2026-07-29) travels only when the form
+   * holds one — since the user directive 2026-08-03 that is the authenticated
+   * actor by default, so the "omitted" half is exercised by CLEARING the
+   * field, which only an actor holding `request-management.assignOperator`
+   * can do (nobody else renders it).
    */
-  it('sends operator_id when set, and omits the key entirely when it is not', async () => {
+  it('sends operator_id when set, and omits the key entirely once cleared', async () => {
     createRequestMock.mockResolvedValue({ id: 45 })
     const { result } = renderCreateForm(vi.fn())
 
@@ -103,6 +118,7 @@ describe('useRequestCreateForm', () => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
       result.current.form.setValue('source_id', TEST_SOURCE_ID)
+      result.current.form.setValue('operator_id', null)
     })
     await act(async () => {
       await result.current.onSubmit()
@@ -122,10 +138,11 @@ describe('useRequestCreateForm', () => {
 
   /**
    * Sede operativa (user directive 2026-07-31): the same field the work panel
-   * edits. Like `operator_id` it travels only when picked — on create there is
-   * no persisted value a null could clear.
+   * edits. Like `operator_id` it defaults to the actor's own and travels only
+   * when the form holds one — on create there is no persisted value a null
+   * could clear.
    */
-  it('sends operational_site_id when set, and omits the key entirely when it is not', async () => {
+  it('sends operational_site_id when set, and omits the key entirely once cleared', async () => {
     createRequestMock.mockResolvedValue({ id: 46 })
     const { result } = renderCreateForm(vi.fn())
 
@@ -133,6 +150,7 @@ describe('useRequestCreateForm', () => {
       result.current.form.setValue('registry_id', 10)
       result.current.form.setValue('product_lines', [COMPLETE_ROW])
       result.current.form.setValue('source_id', TEST_SOURCE_ID)
+      result.current.form.setValue('operational_site_id', null)
     })
     await act(async () => {
       await result.current.onSubmit()
@@ -185,9 +203,13 @@ describe('useRequestCreateForm', () => {
       product_lines: [COMPLETE_ROW],
       // Attribution slots ride along with either branch; the Fonte is
       // mandatory (user directive 2026-07-29), the Segnalatore empty by
-      // default, and `rewards`/`operator_id` omitted entirely until set.
+      // default, and `rewards` omitted entirely until set. The GA2 Operatore
+      // and the Sede are NOT empty by default any more (user directive
+      // 2026-08-03): they open on the authenticated actor and their own Sede.
       source_id: TEST_SOURCE_ID,
       reporter_id: null,
+      operator_id: ACTOR_ID,
+      operational_site_id: ACTOR_SITE_ID,
     })
     expect(onSuccess).toHaveBeenCalledWith(42)
   })
@@ -214,9 +236,24 @@ describe('useRequestCreateForm', () => {
       product_lines: [COMPLETE_ROW],
       source_id: TEST_SOURCE_ID,
       reporter_id: 3,
+      operator_id: ACTOR_ID,
+      operational_site_id: ACTOR_SITE_ID,
       rewards: [{ reward_type_id: 5 }],
     })
     expect(onSuccess).toHaveBeenCalledWith(44)
+  })
+
+  /**
+   * User directive 2026-08-03: a new request opens ALREADY assigned to the
+   * actor creating it and to their own Sede. It is a default, not a pin —
+   * whoever sees the two fields (an actor holding
+   * `request-management.assignOperator`) may still change or clear them.
+   */
+  it('defaults the Operatore to the authenticated actor and the Sede to their own', () => {
+    const { result } = renderCreateForm(vi.fn())
+
+    expect(result.current.form.getValues('operator_id')).toBe(ACTOR_ID)
+    expect(result.current.form.getValues('operational_site_id')).toBe(ACTOR_SITE_ID)
   })
 
   /**

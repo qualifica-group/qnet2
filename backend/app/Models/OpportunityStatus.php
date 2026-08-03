@@ -32,8 +32,8 @@ class OpportunityStatus extends BaseModel
     /**
      * The system rows pinned to the head of the sort_order sequence
      * (StatusOrderManager::reorder(), spec 0039 D-5): a single row here,
-     * "Nuova" at 0 — the array shape exists because App\Models\RewardStatus
-     * carries TWO head rows (spec 0073, D-6).
+     * "Nuova" at 0 — the array shape mirrors SYSTEM_TAIL_KEYS, which every
+     * status model shares (StatusOrderManager is generic over both).
      *
      * @var array<int, StatusSystemKey>
      */

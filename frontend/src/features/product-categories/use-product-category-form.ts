@@ -34,6 +34,7 @@ const SERVER_ERROR_FIELDS = [
   'business_function_id',
   'requires_quote',
   'is_selectable',
+  'management_mode',
 ] as const
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues
@@ -91,6 +92,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         business_function_id: category.business_function_id,
         requires_quote: category.requires_quote,
         is_selectable: category.is_selectable,
+        management_mode: category.management_mode,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -106,6 +108,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0074: a new category is a usable destination unless the
       // operator explicitly turns it into a container.
       is_selectable: true,
+      // Spec 0077 D-8: `multiple` is the behavior every existing root already
+      // has; a new root starts from the same default.
+      management_mode: 'multiple',
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])

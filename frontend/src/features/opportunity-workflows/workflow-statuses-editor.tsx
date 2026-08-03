@@ -18,6 +18,7 @@ import { ColorTokenPicker } from '@/features/custom-fields/components/color-toke
 import { BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { RequiresNoteBadge } from '@/features/opportunity-workflows/requires-note-badge'
 import {
+  isMandatoryWorkflowSystemKey,
   WORKFLOW_STATUS_GROUPS,
   type WorkflowStatusFormRow,
   type WorkflowStatusGroupValue,
@@ -31,6 +32,8 @@ export interface WorkflowStatusesEditorProps {
   onAddCustom: () => void
   onRemoveCustom: (id: string) => void
   onUpdateRow: (id: string, patch: WorkflowStatusRowPatch) => void
+  /** Moves the OPTIONAL `validated` system mark onto this row, or removes it. At most one row per set carries it. */
+  onMarkValidated: (id: string, marked: boolean) => void
   disabled?: boolean
   error?: string | null
 }
@@ -69,6 +72,10 @@ const GROUP_BADGE_CLASSES: Record<WorkflowStatusGroupValue, string> = {
  * auto-created rows (AC-004). Custom rows are freely reorderable, editable,
  * and removable. All non-render logic (row mutation, reorder) lives in the
  * caller's hook.
+ *
+ * The fourth system row, `validated`, is OPTIONAL and unset by default (user
+ * directive 2026-08-03): every non-mandatory row carries a switch that moves
+ * that mark onto it, and marking a second row releases the first.
  */
 export function WorkflowStatusesEditor({
   rows,
@@ -76,6 +83,7 @@ export function WorkflowStatusesEditor({
   onAddCustom,
   onRemoveCustom,
   onUpdateRow,
+  onMarkValidated,
   disabled = false,
   error,
 }: WorkflowStatusesEditorProps) {
@@ -94,6 +102,7 @@ export function WorkflowStatusesEditor({
             row={row}
             onUpdateRow={onUpdateRow}
             onRemoveCustom={onRemoveCustom}
+            onMarkValidated={onMarkValidated}
             disabled={disabled}
           />
         )}
@@ -124,13 +133,23 @@ interface WorkflowStatusRowContentProps {
   row: WorkflowStatusFormRow
   onUpdateRow: WorkflowStatusesEditorProps['onUpdateRow']
   onRemoveCustom: WorkflowStatusesEditorProps['onRemoveCustom']
+  onMarkValidated: WorkflowStatusesEditorProps['onMarkValidated']
   disabled: boolean
 }
 
-function WorkflowStatusRowContent({ row, onUpdateRow, onRemoveCustom, disabled }: WorkflowStatusRowContentProps) {
+function WorkflowStatusRowContent({
+  row,
+  onUpdateRow,
+  onRemoveCustom,
+  onMarkValidated,
+  disabled,
+}: WorkflowStatusRowContentProps) {
   const { t } = useTranslation()
   const isCustom = row.system_key === null
+  const isValidated = row.system_key === 'validated'
+  const isMandatory = isMandatoryWorkflowSystemKey(row.system_key)
   const requiresNoteId = `workflow-status-requires-note-${row.id}`
+  const validatedId = `workflow-status-validated-${row.id}`
 
   return (
     <div className="flex flex-1 flex-col gap-2">
@@ -207,6 +226,19 @@ function WorkflowStatusRowContent({ row, onUpdateRow, onRemoveCustom, disabled }
         </Label>
         {row.requires_note ? <RequiresNoteBadge className="ml-auto" /> : null}
       </div>
+      {isMandatory ? null : (
+        <div className="flex items-center gap-2">
+          <Switch
+            id={validatedId}
+            checked={isValidated}
+            disabled={disabled}
+            onCheckedChange={(checked) => onMarkValidated(row.id, checked)}
+          />
+          <Label htmlFor={validatedId} className="text-xs font-normal text-muted-foreground">
+            {t('opportunityWorkflows.form.statuses.markValidated')}
+          </Label>
+        </div>
+      )}
     </div>
   )
 }

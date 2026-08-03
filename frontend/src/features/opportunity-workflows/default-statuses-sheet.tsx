@@ -26,16 +26,28 @@ interface DefaultStatusesSheetProps {
  */
 export function DefaultStatusesSheet({ open, onOpenChange }: DefaultStatusesSheetProps) {
   const { t } = useTranslation()
-  const { rows, isLoading, isError, refetch, isSaving, error, addCustom, removeCustom, updateRow, reorder, save } =
-    useDefaultStatuses({
-      enabled: open,
-      labels: {
-        saved: t('opportunityWorkflows.defaultStatuses.saved'),
-        forbidden: t('opportunityWorkflows.defaultStatuses.forbidden'),
-        genericError: t('opportunityWorkflows.defaultStatuses.genericError'),
-        nameRequired: t('opportunityWorkflows.form.statuses.nameRequired'),
-      },
-    })
+  const {
+    rows,
+    isLoading,
+    isError,
+    refetch,
+    isSaving,
+    error,
+    addCustom,
+    removeCustom,
+    updateRow,
+    markValidated,
+    reorder,
+    save,
+  } = useDefaultStatuses({
+    enabled: open,
+    labels: {
+      saved: t('opportunityWorkflows.defaultStatuses.saved'),
+      forbidden: t('opportunityWorkflows.defaultStatuses.forbidden'),
+      genericError: t('opportunityWorkflows.defaultStatuses.genericError'),
+      nameRequired: t('opportunityWorkflows.form.statuses.nameRequired'),
+    },
+  })
 
   const handleSave = async () => {
     if (await save()) {
@@ -74,6 +86,7 @@ export function DefaultStatusesSheet({ open, onOpenChange }: DefaultStatusesShee
               onAddCustom={addCustom}
               onRemoveCustom={removeCustom}
               onUpdateRow={updateRow}
+              onMarkValidated={markValidated}
               disabled={isSaving}
               error={error}
             />

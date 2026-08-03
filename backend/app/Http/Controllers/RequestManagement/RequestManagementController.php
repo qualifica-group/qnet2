@@ -6,6 +6,7 @@ namespace App\Http\Controllers\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\AssignRequestOperatorsRequest;
@@ -83,16 +84,7 @@ class RequestManagementController extends BaseApiController
             $user = $request->user();
             abort_unless($user->can('request-management.create'), 403);
 
-            $data = $request->toData();
-            // Assigning the GA2 "Operatore" up front is a supervisory act
-            // (user directive 2026-07-29): creating a request never implies
-            // deciding who works it.
-            abort_unless(
-                $data->operatorId === null || $user->can('request-management.assignOperator'),
-                403,
-            );
-
-            $panel = $this->creationService->create($user, $data);
+            $panel = $this->creationService->create($user, $this->resolveOperator($request->toData(), $user));
             /** @var Opportunity $opportunity */
             $opportunity = $panel['opportunity'];
 
@@ -228,6 +220,33 @@ class RequestManagementController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
+    }
+
+    /**
+     * The GA2 "Operatore" a create is allowed to carry.
+     *
+     * Assigning ANOTHER user is a supervisory act, gated by
+     * `request-management.assignOperator` (user directive 2026-07-29):
+     * creating a request never implies deciding who works it. Assigning
+     * ONESELF is not supervisory, and since the user directive 2026-08-03 it
+     * is the DEFAULT for an actor without that ability — their create form
+     * does not even render the field, and a request left with no operator
+     * would fall outside its own creator's D-3 scope the moment it is saved
+     * (RequestManagementScope, for an actor without `viewAll`).
+     *
+     * An actor who DOES hold the ability keeps the previous semantics, an
+     * absent `operator_id` included: an unassigned request they will later
+     * hand out through POST /api/request-management/assign-operators.
+     */
+    private function resolveOperator(CreateRequestData $data, User $user): CreateRequestData
+    {
+        if ($user->can('request-management.assignOperator')) {
+            return $data;
+        }
+
+        abort_unless($data->operatorId === null || $data->operatorId === $user->id, 403);
+
+        return $data->withOperator($user->id);
     }
 
     /**

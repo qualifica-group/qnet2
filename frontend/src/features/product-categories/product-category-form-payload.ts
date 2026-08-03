@@ -34,6 +34,9 @@ export function buildCreatePayload(
     // inherited and the server resolves it (a divergent value is a 422).
     ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
     is_selectable: values.is_selectable,
+    // Same rule for the management mode (spec 0077 D-2/INV-5): only a ROOT
+    // authors it, a child inherits and a divergent value is a 422.
+    ...(values.parent_id === null ? { management_mode: values.management_mode } : {}),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -84,6 +87,13 @@ export function buildUpdatePayload(
   // parent-dependent guard around it.
   if (values.is_selectable !== original.is_selectable) {
     payload.is_selectable = values.is_selectable
+  }
+
+  // Same root-only guard as `requires_quote` (spec 0077 D-2): sent only while
+  // the category stays (or becomes) a ROOT; on a child the field is
+  // read-only and merely mirrors the root.
+  if (values.parent_id === null && values.management_mode !== original.management_mode) {
+    payload.management_mode = values.management_mode
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

@@ -22,7 +22,13 @@ export const WORKFLOW_STATUS_GROUPS = ['open', 'pending', 'validated', 'closed_w
 /** One of the five fixed workflow-status group values. */
 export type WorkflowStatusGroupValue = (typeof WORKFLOW_STATUS_GROUPS)[number]
 
-/** Marks a workflow-status row as one of the four per-set pinned rows (`open`/`validated`/`closed_won`/`closed_lost`), or `null` for a custom row. */
+/**
+ * Marks a workflow-status row as a per-set system row, or `null` for a custom
+ * one. `open`/`closed_won`/`closed_lost` are MANDATORY (every set is created
+ * with them, none can be deleted); `validated` is OPTIONAL and has no default
+ * (user directive 2026-08-03) — a row carries it only while the user marks it,
+ * at most one per set.
+ */
 export type WorkflowStatusSystemKey = 'open' | 'validated' | 'closed_won' | 'closed_lost' | null
 
 /**
@@ -33,6 +39,15 @@ export type WorkflowStatusSystemKey = 'open' | 'validated' | 'closed_won' | 'clo
  */
 export function isTailWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
   return key === 'validated' || key === 'closed_won' || key === 'closed_lost'
+}
+
+/**
+ * Whether a `system_key` marks one of the three MANDATORY pinned rows — the
+ * ones whose identity and `group` are immutable. The optional `validated` one
+ * is excluded: it can be moved onto another status or dropped entirely.
+ */
+export function isMandatoryWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
+  return key === 'open' || key === 'closed_won' || key === 'closed_lost'
 }
 
 /**
@@ -103,7 +118,9 @@ export interface CreateOpportunityWorkflowCriterionPayload {
  * One `statuses[]` entry accepted by POST (create): the intermediate custom
  * rows (`system_key` null/absent) plus the 3 pinned rows tagged
  * `system_key: 'open'|'closed_won'|'closed_lost'`, whose name/color seed those
- * auto-created system rows (AC-004). No `id` — nothing is persisted yet.
+ * auto-created system rows (AC-004). A row tagged `system_key: 'validated'`
+ * is what CREATES the optional validated row — nothing else does. No `id` —
+ * nothing is persisted yet.
  */
 export interface CreateOpportunityWorkflowStatusPayload {
   name: string

@@ -4,6 +4,7 @@ namespace App\Http\Requests\ProductCategories;
 
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\Enums\AttributeContext;
+use App\Enums\CategoryManagementMode;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use Illuminate\Contracts\Validation\Validator;
@@ -51,6 +52,9 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0074: whether the category may be picked as a
             // classification target. Omitted = true (selectable).
             'is_selectable' => ['sometimes', 'boolean'],
+            // Spec 0077: same root-only semantics as requires_quote — omitted
+            // = server-resolved (inherited, or "multiple" at a fresh root).
+            'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

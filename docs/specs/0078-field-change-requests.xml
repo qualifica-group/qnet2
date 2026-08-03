@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0078 — Richieste di modifica campo (generiche) + primo caso d'uso: Fonte.
+  Contract-first: il <data_contract> e' congelato PRIMA del dispatch.
+-->
+<spec id="0078-field-change-requests" status="draft" owner="utente" date="2026-08-03">
+
+  <goal>
+    Introdurre un sistema GENERICO di "richieste di modifica" con approvazione: un utente privo del
+    permesso di scrivere un campo protetto non lo modifica direttamente, ma propone una richiesta che
+    un gestore approva (il valore viene applicato) o rifiuta (il valore resta invariato). Primo e unico
+    caso d'uso cablato: il campo Fonte (`source_id`) del modulo Gestione Richieste.
+  </goal>
+
+  <context>
+    <!-- Fatti VERIFICATI nel repo (2026-08-03), non ipotesi. -->
+
+    <fact id="F-1">
+      Il record di "Gestione Richieste" E' un `App\Models\Opportunity` (tabella `opportunities`,
+      decisione D-1 di spec 0049). Non esiste un model `Request`. La Fonte e' la FK
+      `opportunities.source_id` -> `sources` (`Opportunity::source()`, Opportunity.php:117).
+    </fact>
+
+    <fact id="F-2">
+      Esiste gia' un sistema di permessi PER-CAMPO (spec 0004/0006/0008): tabella
+      `role_field_permissions` (visible/editable/required per ruolo+risorsa+campo), value object
+      `App\Authorization\FieldPermission`, catalogo campi `FieldDefinition`, e il choke point
+      `AbstractResourceAuthorization::fieldPermissions()` (FINAL, riga 67) che interseca il
+      "ceiling" della classe concreta con la matrice DB. Il ceiling puo' solo essere ristretto.
+    </fact>
+
+    <fact id="F-3">
+      BLOCCANTE, e' il motivo del disegno scelto: `source_id` e' dichiarato
+      `new FieldDefinition('source_id', 'select', mandatory: true)`
+      (RequestManagementAuthorization.php:72) e i campi `mandatory` BYPASSANO l'intersect con la
+      matrice (AbstractResourceAuthorization.php:85-87). Percio' oggi `role_field_permissions`
+      NON PUO' rendere la Fonte readonly per un ruolo. La semantica di `mandatory` (spec 0008 D5)
+      NON viene toccata da questa spec (decisione utente 2026-08-03).
+    </fact>
+
+    <fact id="F-4">
+      Esistono TRE canali di scrittura per `source_id`, tutti da coprire:
+      (a) form di creazione — `POST /api/request-management`, `StoreRequestRequest`, che
+          DELIBERATAMENTE non applica i field permission (docblock righe 29-40): l'attribuzione
+          iniziale e' autorizzata in blocco da `request-management.create`;
+      (b) pannello di lavorazione — `PATCH /api/request-management/{opportunity}`,
+          `UpdateRequestRequest` + trait `EnforcesFieldPermissions` (422 sul campo cambiato e non
+          editabile);
+      (c) editor inline in griglia — `PATCH /api/tables/{domain}/rows/{row}`,
+          `App\Services\TableCellUpdateService::update()`, che chiama `assertFieldEditable()` (403).
+      (a) resta LIBERO: coerente con il brief ("una volta assegnata").
+    </fact>
+
+    <fact id="F-5">
+      `App\Tables\TableDefinition::updateCell($row, $fieldKey, $value)` + `TableCellUpdateService`
+      sono gia' il write path GENERICO "un campo / un record / un dominio", registrato per 30+ domini
+      in `config/tables.php` via `App\Tables\TableRegistry`. L'applicazione di una richiesta approvata
+      lo riusa: nessun nuovo motore di scrittura polimorfico.
+    </fact>
+
+    <fact id="F-6">
+      Lo spazio dei nomi delle risorse COINCIDE fra `config/authorization.php` (classi Authorization),
+      `config/tables.php` (TableDefinition) e i permessi generati (`{resource}.{ability}`):
+      `request-management` esiste in tutti e tre. Il campo `role_field_permissions.field` usa la
+      stessa chiave dei `FieldDefinition` (`source_id`). Questa coincidenza e' il perno della
+      genericita': una richiesta di modifica si indirizza con la coppia (resource, field).
+    </fact>
+
+    <fact id="F-7">
+      I permessi NON sono un catalogo dichiarativo: `php artisan permissions:sync`
+      (`App\Console\Commands\SyncPermissions`) li deriva unendo `NavigationService::permissions()`
+      (da `config/navigation.php`) e `policyPermissions()` (glob su `app/Policies/*.php`, per ogni
+      sottoclasse di `BasePolicy` chiama `permissions()` = `{resource}.{ability}` su
+      `abilities()`). `BasePolicy::abilities()` = viewAny, view, create, update, delete, export,
+      import, viewActivity; le policy possono estendere/restringere l'elenco
+      (es. `RequestManagementPolicy::abilities()` aggiunge viewAll/viewDocuments/assignOperator).
+    </fact>
+
+    <fact id="F-8">
+      Esiste gia' l'infrastruttura notifiche completa: canale `database` (tabella `notifications`,
+      `App\Services\NotificationService`, `GET /api/notifications`, campanella
+      `frontend/src/features/notifications/notification-bell.tsx`) e canale `mail`. Il precedente
+      esatto da imitare (database + mail + ShouldQueue + payload `NotificationData`) e'
+      `App\Notifications\NoteMentionNotification`. Payload standard:
+      `{title, message, level, action_url}` con `App\Enums\NotificationLevelEnum`.
+      GAP NOTO: `action_url` e' prodotto dal backend ma la campanella non lo rende cliccabile
+      (`notification-item.tsx`) — questa spec lo chiude, e' cio' che rende utile "notifica nel gestionale".
+    </fact>
+
+    <fact id="F-9">
+      Ruoli e permessi di default NON stanno in `QualificaTemplateSeeder` (che e' il seeder dei
+      custom field del cliente): i ruoli `supervisor` / `commercial` / `marketing` sono creati da
+      `backend/database/seeders/TestUsersSeeder.php:250-262` (`syncRole()`), con assegnazione
+      per FILTRO sul catalogo: `SUPERVISOR_DENIED_RESOURCES` (deny-list) e, per il commerciale,
+      whitelist `request-management.*` meno `COMMERCIAL_DENIED_MODULE_ABILITIES`
+      (`['delete','viewAll','assignOperator']`) piu' `COMMERCIAL_EXTRA_PERMISSIONS`.
+    </fact>
+
+    <fact id="F-10">
+      Envelope di risposta unico: `App\Http\Controllers\Abstract\BaseApiController` —
+      successo `{success:true, message, data}` (`ok()`/`created()`), successo con permessi
+      `{success:true, message, data, permissions}` (`okWithPermissions()`), errore
+      `{success:false, message, errors?}` (`fail()`). Mai model Eloquent raw: sempre API Resource.
+    </fact>
+
+    <decision id="D-1" source="utente 2026-08-03">
+      Il permesso "Modificare la Fonte" e' un PERMESSO DEDICATO derivato da una config di campi
+      protetti (`config/field-change-requests.php`), NON una riga della matrice
+      `role_field_permissions` (impossibile per F-3) e NON una modifica alla semantica di `mandatory`.
+      Il ceiling della risorsa viene ristretto a `visibleReadonly` quando l'attore non ha il permesso.
+      Proteggere un altro campo di un altro modulo = una voce di config, zero codice.
+    </decision>
+
+    <decision id="D-2" source="utente 2026-08-03">
+      Anche l'editor inline in griglia intercetta: la cella resta apribile e, alla conferma del
+      valore, apre il dialog "Richiesta di modifica" invece di eseguire il PATCH.
+    </decision>
+
+    <decision id="D-3" source="utente 2026-08-03">
+      Il richiedente riceve notifica dell'esito (approvata/rifiutata) su entrambi i canali,
+      in-app ed email, con l'eventuale nota del gestore.
+    </decision>
+
+    <decision id="D-4" source="utente 2026-08-03">
+      Una sola richiesta `pending` per (record, campo): il secondo tentativo e' 422. In approvazione,
+      se il valore attuale non coincide piu' con lo snapshot `current_value`, la risposta e' 409 e la
+      richiesta RESTA pending (nessuna scrittura silenziosa su un dato cambiato nel frattempo).
+    </decision>
+
+    <decision id="D-5">
+      L'unicita' della pending e' garantita dal DB in modo PORTABILE (MySQL prod / SQLite dev) da una
+      colonna `pending_key` string nullable con indice UNIQUE, valorizzata
+      `"{subject_type}:{subject_id}:{field}"` finche' lo stato e' `pending` e azzerata a NULL quando la
+      richiesta viene gestita. MySQL e SQLite ammettono N valori NULL su una colonna unique; un partial
+      index `WHERE status='pending'` non e' portabile fra i due driver.
+    </decision>
+
+    <decision id="D-6">
+      Il server calcola SEMPRE `current_value`, `current_label` e `requested_label`: il client invia
+      solo `requested_value` e `reason`. Uno snapshot fornito dal client sarebbe manipolabile e
+      renderebbe il controllo di conflitto di D-4 inutile.
+    </decision>
+
+    <decision id="D-7">
+      L'applicazione del valore approvato passa da `TableCellUpdateService::update()` agendo COME
+      L'APPROVATORE (F-5): riusa allow-list strutturale, permessi per campo, validazione per tipo e
+      persistenza gia' esistenti. Conseguenza voluta: approvare richiede
+      `{resource}.update` + il permesso del campo protetto, oltre a `field-change-requests.manage`.
+    </decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabella `field_change_requests` + model `FieldChangeRequest` + enum `FieldChangeRequestStatus` + factory.</item>
+      <item>Config `config/field-change-requests.php` (registro dei campi protetti) + `App\FieldChangeRequests\ProtectedFieldRegistry` + value object `ProtectedField`.</item>
+      <item>Terza sorgente di permessi in `SyncPermissions` (i permessi dei campi protetti entrano nel catalogo).</item>
+      <item>Decorator `App\Authorization\ProtectedFieldAwareAuthorization` applicato da `AuthorizationRegistry::resolve()`, che restringe a readonly i campi protetti per chi non ha il permesso.</item>
+      <item>Esposizione `permissions.change_requestable_fields` nell'envelope `ResourcePermissionsBuilder` e flag `change_request` sulla config colonna (`ResolvesColumnConfig`).</item>
+      <item>Endpoint: create, show, for-record, approve, reject.</item>
+      <item>`FieldChangeRequestPolicy` (resource `field-change-requests`, abilities ristrette con `manage`).</item>
+      <item>TableDefinition `field-change-requests` (tabella dedicata con stati In attesa / Approvata / Rifiutata) + navigazione + activity log.</item>
+      <item>Trait `App\Models\Concerns\HasFieldChangeRequests` (MorphMany + count pending) applicato a `Opportunity`.</item>
+      <item>Colonna badge "richieste di modifica in attesa" nella tabella Gestione Richieste.</item>
+      <item>Notifiche `FieldChangeRequested` (ai titolari di `field-change-requests.viewAny`) e `FieldChangeRequestResolved` (al richiedente), canali database + mail, ShouldQueue.</item>
+      <item>Frontend: feature `field-change-requests` (dialog di proposta, tabella dedicata, dettaglio con approva/rifiuta, sezione riusabile per il pannello di un record), intercettazione nei due canali di modifica (pannello di lavorazione + cella inline), i18n en/it.</item>
+      <item>`action_url` cliccabile nella campanella delle notifiche (chiude il gap F-8, senza il quale "notifica nel gestionale" non porta da nessuna parte).</item>
+      <item>Seed: `TestUsersSeeder` — supervisor con i tre permessi, commerciale senza `request-management.updateSource` e con `field-change-requests.create`/`.view`.</item>
+      <item>Test Pest + Vitest mappati 1:1 sugli AC.</item>
+    </in>
+    <out>
+      <item>Protezione di campi diversi da `source_id` o di moduli diversi da `request-management`: il sistema li supporta per config, ma questa spec ne cabla UNO solo.</item>
+      <item>Modifica della semantica di `mandatory` (spec 0008 D5) e di `role_field_permissions`: intatte.</item>
+      <item>Intercettazione nel FORM DI CREAZIONE: l'attribuzione iniziale resta libera (F-4a, brief "una volta assegnata").</item>
+      <item>Workflow di approvazione multi-livello, deleghe, scadenze, escalation, riapertura di una richiesta gia' gestita.</item>
+      <item>Modifica in blocco (bulk) di piu' richieste di modifica.</item>
+      <item>Richieste di modifica su piu' campi contemporaneamente: una richiesta = un campo.</item>
+      <item>Real-time/broadcasting: la campanella resta a polling (nessun Reverb/Pusher, `BROADCAST_CONNECTION=log`).</item>
+      <item>Template email Blade dedicati: si usa il `MailMessage` markdown di default come `NoteMentionNotification`.</item>
+      <item>Preferenze utente di opt-out per canale di notifica.</item>
+      <item>Rework della UI della matrice `role-field-permissions.tsx`: non serve, la matrice non e' toccata.</item>
+      <item>Introduzione di `throttle` su qualunque endpoint (vietato da backend.md §2, decisione utente 2026-07-15).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ================= CONFIG (contratto interno, congelato) ================= -->
+    <config path="backend/config/field-change-requests.php">
+      <![CDATA[
+      return [
+          'resources' => [
+              'request-management' => [
+                  // Deep-link del record, usato per costruire action_url delle notifiche.
+                  'record_path' => '/request-management',
+                  // Chiave i18n del modulo, mostrata come "dominio/modulo di appartenenza".
+                  'label' => 'navigation.requestManagement',
+                  'fields' => [
+                      'source_id' => [
+                          // permesso generato: "{resource}.{ability}" = request-management.updateSource
+                          'ability' => 'updateSource',
+                          // id colonna della TableDefinition, per applicare via updateCell()
+                          'column'  => 'source',
+                          // chiave i18n del campo, mostrata come "campo oggetto della modifica"
+                          'label'   => 'requestManagement.columns.source',
+                      ],
+                  ],
+              ],
+          ],
+      ];
+      ]]>
+    </config>
+
+    <!-- ================= SCHEMA ================= -->
+    <table name="field_change_requests">
+      <column name="id" type="bigIncrements"/>
+      <column name="resource" type="string(64)">chiave di dominio (F-6), es. `request-management`</column>
+      <column name="subject_type" type="string">morphs('subject'), morph map alias (es. `opportunity`)</column>
+      <column name="subject_id" type="unsignedBigInteger"/>
+      <column name="field" type="string(64)">chiave FieldDefinition, es. `source_id`</column>
+      <column name="current_value" type="json" nullable="true">snapshot server-side (D-6)</column>
+      <column name="requested_value" type="json" nullable="true"/>
+      <column name="current_label" type="string(191)" nullable="true">etichetta leggibile del valore attuale</column>
+      <column name="requested_label" type="string(191)" nullable="true"/>
+      <column name="reason" type="text" nullable="true">"Perche' vuoi cambiare la Fonte?" (facoltativo)</column>
+      <column name="status" type="string(16)" default="pending">pending | approved | rejected</column>
+      <column name="pending_key" type="string(191)" nullable="true">D-5, UNIQUE</column>
+      <column name="requested_by_id" type="foreignId->users" onDelete="restrict"/>
+      <column name="handled_by_id" type="foreignId->users" nullable="true" onDelete="setNull"/>
+      <column name="handled_at" type="timestamp" nullable="true"/>
+      <column name="handling_note" type="text" nullable="true"/>
+      <column name="timestamps">`created_at` E' la "data della richiesta"</column>
+      <index>unique(pending_key)</index>
+      <index>index(subject_type, subject_id, status)</index>
+      <index>index(resource, status)</index>
+      <index>index(status, created_at)</index>
+      <index>index(requested_by_id)</index>
+    </table>
+
+    <!-- ================= RESOURCE SHAPE (unica, riusata da tutti gli endpoint) ================= -->
+    <shape name="FieldChangeRequestResource">
+      <![CDATA[
+      {
+        "id": 12,
+        "resource": "request-management",
+        "resource_label": "navigation.requestManagement",   // chiave i18n
+        "subject_id": 345,
+        "subject_label": "OPP_345",                          // etichetta del record
+        "subject_path": "/request-management/345",           // deep-link, null se non risolvibile
+        "field": "source_id",
+        "field_label": "requestManagement.columns.source",   // chiave i18n
+        "current_value": 3,
+        "current_label": "Campagna Google",
+        "requested_value": 7,
+        "requested_label": "Passaparola",
+        "reason": "Il cliente ha confermato di arrivare da un referral.",
+        "status": "pending",                                  // pending|approved|rejected
+        "requested_by": { "id": 8, "name": "Mario Rossi" },
+        "requested_at": "2026-08-03T10:12:00.000000Z",
+        "handled_by": null,                                   // { id, name } quando gestita
+        "handled_at": null,
+        "handling_note": null,
+        "can": { "approve": false, "reject": false }          // capacita' dell'attore su QUESTA richiesta
+      }
+      ]]>
+    </shape>
+
+    <endpoint method="POST" path="/api/field-change-requests">
+      <request>
+        <![CDATA[
+        {
+          "resource": "request-management",   // required|string, deve esistere in config resources
+          "subject_id": 345,                  // required|integer
+          "field": "source_id",               // required|string, deve essere protetto per quella resource
+          "requested_value": 7,               // required, tipo validato da CellValueValidator sulla colonna
+          "reason": "testo libero"            // sometimes|nullable|string|max:1000
+        }
+        ]]>
+        Il client NON invia mai `current_value` / label / stato / richiedente (D-6).
+      </request>
+      <response status="201">
+        <![CDATA[ { "success": true, "message": "Change request created", "data": <FieldChangeRequestResource> } ]]>
+      </response>
+      <errors>
+        <error status="403">manca `field-change-requests.create`; oppure l'attore non puo' vedere il record (`{resource}.view`).</error>
+        <error status="404">`resource` sconosciuta al TableRegistry, o record fuori dal `baseQuery()` del dominio (scoping).</error>
+        <error status="422">campo non protetto per quella resource; l'attore HA gia' il permesso di scrivere il campo (deve modificarlo direttamente); `requested_value` non valido per il tipo di colonna; `requested_value` uguale al valore attuale; esiste gia' una richiesta `pending` per (record, campo) [D-4].</error>
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/field-change-requests/{fieldChangeRequest}">
+      <request>nessun parametro</request>
+      <response status="200">
+        <![CDATA[ { "success": true, "message": "OK", "data": <FieldChangeRequestResource> } ]]>
+      </response>
+      <errors>
+        <error status="403">l'attore non ha `field-change-requests.view` e non e' il richiedente.</error>
+        <error status="404">id inesistente.</error>
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/field-change-requests/for-record">
+      <request>
+        <![CDATA[
+        resource=request-management   // required|string
+        subject_id=345                // required|integer
+        ]]>
+        Alimenta la sezione "richieste di modifica" nel dettaglio di un record. Ordinamento:
+        `pending` prima, poi `created_at desc`.
+      </request>
+      <response status="200">
+        <![CDATA[ { "success": true, "message": "OK", "data": [ <FieldChangeRequestResource>, ... ] } ]]>
+      </response>
+      <errors>
+        <error status="403">l'attore non ha `field-change-requests.viewAny` e non e' il richiedente di alcuna richiesta sul record.</error>
+        <error status="404">resource sconosciuta o record fuori scope.</error>
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/field-change-requests/{fieldChangeRequest}/approve">
+      <request><![CDATA[ { "note": "testo libero" }   // sometimes|nullable|string|max:1000 ]]></request>
+      <response status="200">
+        <![CDATA[ { "success": true, "message": "Change request approved", "data": <FieldChangeRequestResource> } ]]>
+        `status: "approved"`, `handled_by`, `handled_at`, `handling_note` valorizzati, `pending_key` a NULL.
+        Il valore e' gia' stato applicato al record nella STESSA transazione (D-7).
+      </response>
+      <errors>
+        <error status="403">manca `field-change-requests.manage`; oppure l'approvatore non puo' scrivere il campo (`{resource}.update` o il permesso del campo protetto) — sollevato da TableCellUpdateService.</error>
+        <error status="409">il valore attuale del campo non coincide piu' con `current_value`: nessuna scrittura, la richiesta RESTA `pending` (D-4).</error>
+        <error status="422">la richiesta non e' in stato `pending`; oppure il valore richiesto non e' piu' valido (es. Fonte cancellata).</error>
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/field-change-requests/{fieldChangeRequest}/reject">
+      <request><![CDATA[ { "note": "testo libero" }   // sometimes|nullable|string|max:1000 ]]></request>
+      <response status="200">
+        <![CDATA[ { "success": true, "message": "Change request rejected", "data": <FieldChangeRequestResource> } ]]>
+        `status: "rejected"`. Il record NON viene toccato.
+      </response>
+      <errors>
+        <error status="403">manca `field-change-requests.manage`.</error>
+        <error status="422">la richiesta non e' in stato `pending`.</error>
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/tables/field-change-requests/columns|rows">
+      Nessun endpoint nuovo: la tabella dedicata usa il framework generico esistente
+      (`config/tables.php` -> `FieldChangeRequestsTableDefinition`).
+      <request>
+        Colonne esposte (ordine congelato): `resource_label`, `subject_label`, `field_label`,
+        `current_label`, `requested_label`, `reason`, `requested_by`, `created_at`, `status`,
+        `handled_by`, `handled_at`, `handling_note`. Filtro `status` con badge
+        In attesa / Approvata / Rifiutata. Default sort `created_at desc`. Nessuna colonna editabile inline.
+      </request>
+      <response status="200">shape standard del framework tabellare, invariata.</response>
+      <errors><error status="403">manca `field-change-requests.viewAny`.</error></errors>
+    </endpoint>
+
+    <!-- ================= ESTENSIONI A CONTRATTI ESISTENTI ================= -->
+    <contract_extension target="ResourcePermissionsBuilder — blocco `permissions` di GET /api/meta/{resource} e dei detail">
+      <![CDATA[
+      {
+        "resource": { ... },              // invariato
+        "fields":   { ... },              // invariato
+        "actions":  { ... },              // invariato
+        "change_requestable_fields": ["source_id"]   // NUOVO: campi protetti che l'attore non puo'
+                                                     // scrivere ma per cui puo' proporre una richiesta.
+                                                     // Array vuoto se nessuno. Mai presente per chi
+                                                     // il campo lo puo' gia' scrivere.
+      }
+      ]]>
+    </contract_extension>
+
+    <contract_extension target="config colonna risolta dal framework tabellare (ResolvesColumnConfig)">
+      <![CDATA[
+      {
+        "id": "source",
+        "editable": true,
+        "editableField": "source_id",
+        "change_request": {                       // NUOVO: presente SOLO quando la colonna e' protetta
+          "resource": "request-management",       // e l'attore non ha il permesso di scriverla.
+          "field": "source_id"                    // Il client intercetta il commit e apre il dialog
+        }                                         // invece di eseguire il PATCH (D-2).
+      }
+      ]]>
+    </contract_extension>
+
+    <contract_extension target="tabella Gestione Richieste — nuova colonna derivata">
+      <![CDATA[
+      "pending_change_requests": 2      // conteggio richieste pending sul record; badge/alert di riga.
+                                        // Colonna non editabile, non ordinabile per default.
+      ]]>
+    </contract_extension>
+
+    <contract_extension target="notifiche (payload NotificationData esistente, invariato nella shape)">
+      <![CDATA[
+      // Ai titolari di field-change-requests.viewAny, escluso il richiedente:
+      { "title": "Nuova richiesta di modifica",
+        "message": "<Richiedente> chiede di cambiare <campo> di <record> da <attuale> a <richiesto>",
+        "level": "info",
+        "action_url": "/field-change-requests/<id>" }
+
+      // Al richiedente, alla decisione (D-3):
+      { "title": "Richiesta di modifica approvata|rifiutata",
+        "message": "<Gestore> ha <esito> la tua richiesta su <campo> di <record>[. Nota: <nota>]",
+        "level": "success|warning",
+        "action_url": "/request-management/<subject_id>" }
+      ]]>
+    </contract_extension>
+
+    <permissions>
+      <permission name="request-management.updateSource" label="Modificare la Fonte">
+        Generato da `config/field-change-requests.php` via `SyncPermissions`. Chi NON lo ha vede il
+        campo Fonte in sola lettura su TUTTI i canali di modifica di un record esistente.
+      </permission>
+      <permission name="field-change-requests.viewAny" label="Visualizzare le richieste di modifica">
+        Accesso alla tabella dedicata, alla sezione nel dettaglio record, e destinatario della notifica.
+      </permission>
+      <permission name="field-change-requests.manage" label="Gestire le richieste di modifica">
+        Unico permesso che consente approve/reject.
+      </permission>
+      <permission name="field-change-requests.view">Dettaglio di una singola richiesta.</permission>
+      <permission name="field-change-requests.create">Proporre una richiesta di modifica.</permission>
+      <permission name="field-change-requests.export"/>
+      <permission name="field-change-requests.viewActivity"/>
+      <note>
+        `FieldChangeRequestPolicy::abilities()` RESTRINGE l'elenco di `BasePolicy` a
+        [viewAny, view, create, manage, export, viewActivity]: `update`, `delete` e `import` non
+        esistono per questa risorsa (una richiesta e' immutabile una volta gestita).
+      </note>
+    </permissions>
+
+    <seed target="backend/database/seeders/TestUsersSeeder.php">
+      <![CDATA[
+      supervisor (deny-list): `field-change-requests` NON entra in SUPERVISOR_DENIED_RESOURCES e
+        `request-management` non e' denied -> ottiene automaticamente
+        request-management.updateSource + field-change-requests.* (viewAny, view, create, manage,
+        export, viewActivity). Verificare a test, non assumere.
+
+      commercial (whitelist request-management.* meno COMMERCIAL_DENIED_MODULE_ABILITIES):
+        + 'updateSource' aggiunto a COMMERCIAL_DENIED_MODULE_ABILITIES
+          (diventa ['delete','viewAll','assignOperator','updateSource'])
+        + COMMERCIAL_EXTRA_PERMISSIONS += ['field-change-requests.create', 'field-change-requests.view']
+        => non modifica la Fonte, puo' solo proporre e rivedere le proprie richieste.
+      ]]>
+    </seed>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- === Registro dei campi protetti e permessi === -->
+    <criterion id="AC-001">Dato `config/field-change-requests.php` con `request-management.source_id`, quando si esegue `php artisan permissions:sync`, allora il permesso `request-management.updateSource` esiste nella tabella `permissions`; e i permessi gia' esistenti non vengono ne' duplicati ne' rimossi.</criterion>
+    <criterion id="AC-002">Dato un utente senza `request-management.updateSource`, quando chiede `GET /api/meta/request-management` (o il detail del record), allora `permissions.fields.source_id.readonly` e' `true`, `.editable` e' `false`, `.visible` e' `true` e `permissions.change_requestable_fields` contiene `"source_id"`.</criterion>
+    <criterion id="AC-003">Dato un utente CON `request-management.updateSource`, quando chiede lo stesso payload, allora `permissions.fields.source_id.editable` e' `true` e `permissions.change_requestable_fields` NON contiene `"source_id"`.</criterion>
+    <criterion id="AC-004">Dato un super-admin, quando chiede lo stesso payload, allora `source_id` e' editabile e `change_requestable_fields` e' vuoto (il bypass privilegiato precede il restringimento).</criterion>
+    <criterion id="AC-005">Dato che la matrice `role_field_permissions` non contiene alcuna riga nuova, quando si verificano i field permission di una risorsa SENZA campi protetti in config (es. `users`), allora il payload e' identico a prima di questa spec (nessuna regressione sul choke point condiviso).</criterion>
+    <criterion id="AC-006">Dato un campo `mandatory` protetto, quando si applica il restringimento, allora `required` resta `true` e `visible` resta `true`: il campo diventa readonly, non nascosto ne' opzionale.</criterion>
+
+    <!-- === Blocco della scrittura diretta sui 3 canali === -->
+    <criterion id="AC-007">Dato un utente senza `request-management.updateSource`, quando esegue `PATCH /api/request-management/{id}` con un `source_id` DIVERSO da quello attuale, allora la risposta e' 422 con errore sul campo `source_id` e il valore su `opportunities.source_id` e' invariato.</criterion>
+    <criterion id="AC-008">Dato lo stesso utente, quando esegue lo stesso PATCH inviando `source_id` UGUALE a quello attuale, allora la risposta e' 200 (l'enforcement e' change-based, non presence-based) e gli altri campi vengono salvati.</criterion>
+    <criterion id="AC-009">Dato lo stesso utente, quando esegue `PATCH /api/tables/request-management/rows/{id}` con `{column:"source", value:<altro id>}`, allora la risposta e' 403 e il valore e' invariato.</criterion>
+    <criterion id="AC-010">Dato lo stesso utente, quando esegue `POST /api/request-management` (creazione) con un `source_id` qualsiasi valido, allora la risposta e' 201 e la Fonte e' quella inviata: l'attribuzione iniziale resta libera (F-4a).</criterion>
+    <criterion id="AC-011">Dato un utente CON `request-management.updateSource`, quando esegue il PATCH del pannello e quello inline con un nuovo `source_id`, allora entrambi rispondono 200 e il valore e' aggiornato.</criterion>
+    <criterion id="AC-012">Dato che la richiesta viene trasferita o riassegnata a un altro operatore (`POST /api/request-management/assign-operators`), quando il nuovo assegnatario privo del permesso tenta il PATCH della Fonte, allora la risposta resta 422: il trasferimento non concede il permesso.</criterion>
+
+    <!-- === Creazione della richiesta di modifica === -->
+    <criterion id="AC-013">Dato un utente con `field-change-requests.create` e senza `request-management.updateSource`, quando esegue `POST /api/field-change-requests` con resource/subject_id/field/requested_value validi, allora la risposta e' 201, la riga esiste con `status="pending"`, `requested_by_id` = attore, `current_value` = valore attuale letto dal server e `pending_key` = `"{subject_type}:{subject_id}:{field}"`.</criterion>
+    <criterion id="AC-014">Data la stessa richiesta con `reason` omesso o null, allora la risposta e' 201 e `reason` e' null: la motivazione e' facoltativa.</criterion>
+    <criterion id="AC-015">Dato un client che invia anche `current_value`, `status`, `requested_by_id` o `handled_by_id` nel body, quando la richiesta viene creata, allora quei valori sono IGNORATI e i campi sono calcolati dal server (D-6).</criterion>
+    <criterion id="AC-016">Dato un utente CON `request-management.updateSource`, quando prova a creare una richiesta sullo stesso campo, allora la risposta e' 422 (deve modificarlo direttamente) e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-017">Dato un `field` non presente in `config/field-change-requests.php` per quella resource, quando si tenta la creazione, allora la risposta e' 422 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-018">Dato un `requested_value` non valido per il tipo di colonna (es. id di Fonte inesistente), quando si tenta la creazione, allora la risposta e' 422 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-019">Dato un `requested_value` uguale al valore attuale, quando si tenta la creazione, allora la risposta e' 422 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-020">Data una richiesta `pending` gia' esistente per (record, campo), quando un utente qualsiasi ne crea una seconda, allora la risposta e' 422 e la seconda riga non viene scritta (D-4/D-5).</criterion>
+    <criterion id="AC-021">Data una richiesta gia' `approved` o `rejected` per (record, campo), quando se ne crea una nuova, allora la risposta e' 201: `pending_key` a NULL non blocca il vincolo UNIQUE.</criterion>
+    <criterion id="AC-022">Dato un utente che non puo' vedere il record (fuori dal `baseQuery()` scoped del dominio), quando tenta di creare una richiesta su quel record, allora la risposta e' 404 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-023">Dato un utente senza `field-change-requests.create`, quando tenta la creazione, allora la risposta e' 403.</criterion>
+
+    <!-- === Notifiche === -->
+    <criterion id="AC-024">Data la creazione di una richiesta, quando la transazione si chiude, allora ogni utente con `field-change-requests.viewAny` riceve una notifica su canale `database` E su canale `mail`; il richiedente NON la riceve; un utente senza quel permesso NON la riceve.</criterion>
+    <criterion id="AC-025">Data la notifica di creazione, allora `data.action_url` punta a `/field-change-requests/{id}` e `data.level` e' `"info"`; la shape del payload resta `{title, message, level, action_url}` (nessuna modifica a NotificationService/NotificationResource).</criterion>
+    <criterion id="AC-026">Data l'approvazione o il rifiuto, allora il RICHIEDENTE riceve una notifica database + mail che riporta l'esito e l'eventuale nota del gestore (D-3); `level` e' `"success"` per l'approvazione e `"warning"` per il rifiuto.</criterion>
+    <criterion id="AC-027">Data una notifica con `data.action_url` valorizzato, quando l'utente la apre dalla campanella, allora naviga alla rotta indicata e la notifica risulta letta; una notifica senza `action_url` resta non cliccabile e non produce errori (chiude il gap F-8).</criterion>
+
+    <!-- === Approvazione / rifiuto === -->
+    <criterion id="AC-028">Dato un gestore con `field-change-requests.manage`, `request-management.update` e `request-management.updateSource`, quando esegue `POST /api/field-change-requests/{id}/approve` su una richiesta `pending`, allora la risposta e' 200, `opportunities.source_id` vale `requested_value`, e la richiesta ha `status="approved"`, `handled_by_id`, `handled_at` valorizzati e `pending_key` a NULL.</criterion>
+    <criterion id="AC-029">Dato lo stesso scenario ma con `POST .../reject`, allora la risposta e' 200, `status="rejected"`, `pending_key` a NULL, e `opportunities.source_id` e' INVARIATO.</criterion>
+    <criterion id="AC-030">Dato che dopo la creazione della richiesta il valore del campo e' stato cambiato per altra via, quando il gestore approva, allora la risposta e' 409, il valore del record NON viene toccato e la richiesta resta `pending` (D-4).</criterion>
+    <criterion id="AC-031">Data una richiesta gia' `approved` o `rejected`, quando si tenta approve o reject, allora la risposta e' 422 e nulla cambia.</criterion>
+    <criterion id="AC-032">Dato un utente senza `field-change-requests.manage`, quando tenta approve o reject, allora la risposta e' 403 e nulla cambia — anche se e' il richiedente stesso.</criterion>
+    <criterion id="AC-033">Dato un gestore con `field-change-requests.manage` ma SENZA `request-management.updateSource`, quando approva, allora la risposta e' 403 e il valore non viene applicato (D-7: l'applicazione passa dal write path autorizzato).</criterion>
+    <criterion id="AC-034">Data una `note` passata ad approve o reject, allora `handling_note` la contiene; omessa o null, `handling_note` resta null.</criterion>
+    <criterion id="AC-035">Dato che l'applicazione del valore fallisce (es. la Fonte richiesta e' stata cancellata), quando il gestore approva, allora la risposta e' 422, la richiesta resta `pending` e il record e' invariato: nessuno stato parziale (l'intera operazione e' in una transazione).</criterion>
+
+    <!-- === Visibilita' === -->
+    <criterion id="AC-036">Dato un utente con `field-change-requests.viewAny`, quando chiede `POST /api/tables/field-change-requests/rows`, allora riceve 200 con le colonne dell'ordine congelato e puo' filtrare per `status` sui tre stati; un utente senza quel permesso riceve 403.</criterion>
+    <criterion id="AC-037">Dato un record con N richieste `pending`, quando si leggono le righe di `POST /api/tables/request-management/rows`, allora la colonna `pending_change_requests` vale N; vale 0 (o assente) per i record senza richieste pending, e le richieste gia' gestite non vengono contate.</criterion>
+    <criterion id="AC-038">Dato `GET /api/field-change-requests/for-record?resource=request-management&amp;subject_id={id}`, allora la risposta elenca le richieste di quel record con le `pending` per prime; un utente senza `field-change-requests.viewAny` che non e' richiedente di alcuna richiesta sul record riceve 403.</criterion>
+    <criterion id="AC-039">Dato il richiedente di una richiesta, quando chiede `GET /api/field-change-requests/{id}` senza avere `field-change-requests.view`, allora riceve 200 sulla PROPRIA richiesta e 403 su quella di un altro utente.</criterion>
+    <criterion id="AC-040">Dato il campo `can` della resource, allora `can.approve` e `can.reject` sono `true` solo per un attore con `field-change-requests.manage` su una richiesta `pending`, `false` in ogni altro caso.</criterion>
+
+    <!-- === Storicizzazione === -->
+    <criterion id="AC-041">Data la creazione, l'approvazione e il rifiuto di una richiesta, allora esistono tre voci di activity log distinte sul soggetto `FieldChangeRequest` con `causer` = attore e gli eventi `field_change_request.created`, `.approved`, `.rejected`; l'approvazione produce INOLTRE la voce di update standard su `Opportunity` con il cambio di `source_id`.</criterion>
+    <criterion id="AC-042">Dato `GET /api/activity-log/field-change-requests/{id}`, allora un utente con `field-change-requests.viewActivity` + `.view` riceve 200 e un utente senza riceve 403.</criterion>
+
+    <!-- === Frontend === -->
+    <criterion id="AC-043">Dato il pannello di lavorazione aperto da un utente senza `request-management.updateSource`, quando cambia il valore del select "Fonte", allora si apre il dialog "Richiesta di modifica" con valore attuale, nuovo valore e un campo facoltativo "Perche' vuoi cambiare la Fonte?"; il valore nel form NON cambia e nessun PATCH parte.</criterion>
+    <criterion id="AC-044">Dato lo stesso dialog, quando l'utente conferma, allora parte `POST /api/field-change-requests` con il payload congelato e appare un toast di conferma; quando l'utente annulla, nessuna chiamata parte e il campo resta al valore originale.</criterion>
+    <criterion id="AC-045">Dato lo stesso utente sulla griglia, quando conferma un nuovo valore nella cella "Fonte", allora si apre lo stesso dialog e NON viene eseguito il `PATCH /api/tables/...`; la cella torna al valore originale (D-2).</criterion>
+    <criterion id="AC-046">Dato un utente CON `request-management.updateSource`, quando cambia la Fonte dal pannello o dalla cella, allora non appare alcun dialog e la scrittura avviene come oggi.</criterion>
+    <criterion id="AC-047">Dato il dettaglio di una richiesta con `can.approve` true, allora sono visibili i pulsanti Approva e Rifiuta, ciascuno con un campo nota facoltativo; con `can.approve` false i pulsanti non sono presenti nel DOM (l'UI nasconde, il backend autorizza).</criterion>
+    <criterion id="AC-048">Dato il pannello di lavorazione di un record con richieste di modifica, allora la sezione dedicata le elenca con stato, campo, valore attuale, valore richiesto, motivazione, richiedente e data.</criterion>
+    <criterion id="AC-049">Dato l'errore 409 di conflitto in approvazione, allora la UI mostra il messaggio del server e la richiesta resta visibile come `pending` senza ricaricare la pagina.</criterion>
+    <criterion id="AC-050">Dati i file `en-field-change-requests.ts` e `it-field-change-requests.ts`, allora le chiavi coincidono esattamente fra le due lingue e nessun valore e' stringa vuota (test di parita', come per gli altri moduli).</criterion>
+
+    <!-- === Seed === -->
+    <criterion id="AC-051">Eseguito `TestUsersSeeder`, allora il ruolo `supervisor` possiede `request-management.updateSource`, `field-change-requests.viewAny` e `field-change-requests.manage`.</criterion>
+    <criterion id="AC-052">Eseguito `TestUsersSeeder`, allora il ruolo `commercial` NON possiede `request-management.updateSource` e possiede `field-change-requests.create`; un utente commerciale riceve 422 sul PATCH della Fonte e 201 sulla creazione di una richiesta di modifica.</criterion>
+    <criterion id="AC-053">Eseguito due volte di seguito, `TestUsersSeeder` produce lo stesso set di permessi (idempotenza, `syncRole` gia' idempotente).</criterion>
+
+    <!-- === Riusabilita' (il vincolo architetturale primario) === -->
+    <criterion id="AC-054">Dato un test che aggiunge in config un SECONDO campo protetto su una risorsa DIVERSA gia' registrata in `config/tables.php` (fixture di test, non in produzione), allora: il permesso viene generato da `permissions:sync`, il ceiling di quella risorsa diventa readonly per chi non lo ha, la creazione della richiesta funziona e l'approvazione applica il valore — senza modificare alcuna classe di dominio. Questo AC e' la prova eseguibile del requisito di riusabilita'.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <constraint>Nessuna nuova dipendenza: solo cio' che e' gia' in `composer.json` / `package.json`. In particolare si riusano spatie/laravel-permission, spatie/laravel-activitylog, le notifiche Laravel (database+mail), AG Grid SSRM, shadcn/ui, TanStack Query, RHF+Zod.</constraint>
+    <constraint>Autorizzazione SERVER-SIDE su ogni endpoint (Policy o `can()`), incluso il framework tabellare (`authorizeViewAny` della TableDefinition). L'UI nasconde, il backend autorizza.</constraint>
+    <constraint>Nessun model Eloquent restituito raw: sempre API Resource. Envelope di progetto rispettato (F-10). Gli errori non espongono nomi di classi o model interni.</constraint>
+    <constraint>`$fillable` via attributo `#[Fillable([...])]` e `casts()` come metodo, come ogni model recente del repo. `status`, `pending_key`, `handled_by_id`, `handled_at` NON sono scrivibili dal client: li governa il service.</constraint>
+    <constraint>Il model `FieldChangeRequest` va registrato nella morph map di `AppServiceProvider` (alias `field_change_request`): con `Relation::enforceMorphMap()` strict, un model con `LogsModelActivity` non registrato lancia `ClassMorphViolationException` al primo save.</constraint>
+    <constraint>Nessun `whereRaw`/`orderByRaw`/`groupByRaw` costruito da input: filtri e ordinamenti della tabella dedicata passano dall'allow-list di colonne del framework.</constraint>
+    <constraint>Nessun `throttle` introdotto su alcun endpoint (backend.md §2, decisione utente 2026-07-15).</constraint>
+    <constraint>Migrazione reversibile (`down()`), mai modificare una migrazione gia' committata. Indici su tutte le FK e sulle colonne usate nei filtri (`status`, `resource`, `subject`).</constraint>
+    <constraint>Il restringimento dei campi protetti NON tocca ne' `AbstractResourceAuthorization` (che resta con `fieldPermissions()` final) ne' le 37 classi concrete: 36 di esse dichiarano un costruttore esplicito, quindi cambiare la firma del costruttore padre avrebbe un blast radius inaccettabile. Si usa invece il pattern DECORATOR gia' presente nello stesso punto: `AuthorizationRegistry::resolve()` avvolge gia' l'authorization in `CustomFieldAwareAuthorization` (AuthorizationRegistry.php:53-59); si aggiunge nello stesso metodo un `ProtectedFieldAwareAuthorization` che, sull'output di `fieldPermissions()`, sostituisce con `FieldPermission::visibleReadonly()` i campi protetti per cui l'attore non ha il permesso (lasciando invariato un campo gia' `hidden`). Prerequisito da VERIFICARE prima di implementare, non da assumere: che ogni consumatore dei field permission passi da `AuthorizationRegistry::resolve()` e nessuno risolva la classe concreta dal container; se esistesse un bypass, va portato sul registry nello stesso microtask.</constraint>
+    <constraint>L'applicazione del valore approvato NON introduce un motore di scrittura polimorfico nuovo: passa da `TableCellUpdateService` / `TableDefinition::updateCell()` (D-7). Tutto in `DB::transaction`.</constraint>
+    <constraint>`action_url` e' sempre un percorso interno: la navigazione dalla campanella accetta solo path che iniziano con `/` e non con `//`, mai un URL assoluto o uno schema arbitrario (no `javascript:`/`data:`).</constraint>
+    <constraint>Identificatori in INGLESE ovunque (classi, colonne, rotte, chiavi); l'italiano vive solo nei valori i18n. File entro 300 righe soft / 500 hard. Zero dead code, zero emoticon.</constraint>
+    <constraint>Frontend: nessun `useEffect`+`fetch` (solo TanStack Query), sempre il client axios configurato, triade ARIA sui campi con errore, tipizzazione senza `any`, verifica a 375/768/1024px, densita' compatta della scala di `ui-design.md §2`.</constraint>
+    <constraint>Definition of Done: Pest + Vitest ESEGUITI (non "dovrebbero passare"), Pint pulito, ESLint pulito, `cd frontend &amp;&amp; npx tsc -b --force` EXIT=0 (mai `tsc --noEmit`, falso verde in questo repo).</constraint>
+  </constraints>
+
+</spec>

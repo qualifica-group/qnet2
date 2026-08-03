@@ -3,6 +3,368 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RICHIESTE: OPERATORE/SEDE ASSEGNATI D'UFFICIO IN CREAZIONE (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: una nuova richiesta nasce **gia' assegnata a chi la sta creando e alla sua sede di
+appartenenza**; il ruolo **Commerciale non vede piu' il campo Operatore** (solo seeder), Supervisor e
+Marketing continuano a sceglierlo liberamente.
+
+**Il meccanismo e' il permesso, non un ramo di codice per ruolo.** `TestUsersSeeder` aggiunge
+`assignOperator` a `COMMERCIAL_DENIED_MODULE_ABILITIES` (accanto a `delete`/`viewAll`): il campo
+"Operatore" del form era gia' condizionato a `request-management.assignOperator`
+(`request-create-attribution-section.tsx`), quindi sparisce senza toccare il frontend. Il Supervisor
+ha matrice deny-list e lo mantiene.
+
+**Chi non puo' assegnare, assegna se stesso — e il server lo garantisce.**
+`RequestManagementController::resolveOperator()`: con `assignOperator` nulla cambia (anche
+`operator_id` assente resta assente, serve al flusso bulk assign-operators); senza, l'unico operatore
+legale e' l'attore — un id altrui e' 403, l'assenza diventa l'attore via
+`CreateRequestData::withOperator()`. Non e' cosmetico: un Commerciale non ha `viewAll`, quindi una
+richiesta senza operatore sparirebbe dallo scope D-3 del suo stesso creatore appena salvata.
+
+**La Sede di default viene dal profilo impiego dell'attore**, quindi il payload utente autenticato ora
+la porta: `AuthController::ME_RELATIONS` include `employment.operationalSite.addresses.city` e TUTTE
+le risposte che contengono l'utente autenticato passano da `authenticatedUser()` — login, me,
+updateProfile, avatar upload/remove — piu' `ImpersonationController::loginPayload()`. Motivo: il client
+le cachea sotto **la stessa chiave** (`authKeys.me`), e una variante piu' magra restituita da un solo
+endpoint cancellerebbe `employment` in silenzio (lo fanno `profile-form`, `avatar-form`,
+`ui-scale-form`, `date-format-form`, `module-open-mode-form`).
+
+Lato client i default vivono in `useRequestCreateForm` (`operator_id: user?.id`,
+`operational_site_id: user?.employment?.operational_site_id`) e restano **default, non pin**: chi vede
+i campi puo' cambiarli o svuotarli, e `request-create-payload` continua a omettere le chiavi nulle.
+`previousSiteIdRef` in `request-create-attribution-section` parte ora dalla Sede iniziale: lasciato a
+null, ri-scegliere la Sede gia' a schermo avrebbe letto come cambio e svuotato l'Operatore.
+
+**Test cambiati perche' e' cambiato il requisito, non per farli passare:** "creates without any GA2
+slot when operator_id is absent" ora vale per un attore CON `assignOperator` (semantica supervisore);
+i due casi FE "omits the key entirely when it is not set" svuotano esplicitamente il campo, perche' il
+default non e' piu' vuoto.
+
+**Buco noto, NON chiuso (fuori scope, da decidere):** il Commerciale puo' ancora cambiare l'operatore
+dal **pannello di lavorazione** (`RequestManagementAuthorization::fields()` espone `operator_id` in
+base a `update`, non ad `assignOperator`) e dal **bulk** `POST /request-management/assign-operators`
+(gated su `request-management.update`). Inoltre il ruolo **Marketing non ha alcun permesso
+`request-management.*`** (`MARKETING_MODULES` = projects/campaigns/leads/pipeline-statuses, e
+`TestUsersSeederTest` lo asserisce esplicitamente): per lui "continua a vedere il campo Operatore" non
+e' applicabile finche' non gli si concede il modulo.
+
+**Verifica**: Pest 5085 passed / 1 skipped; Pint pulito; Vitest 3447 passed su 480 file; `tsc -b
+--force` EXIT=0; ESLint pulito sui file toccati.
+
+## RICHIESTE: LINEE DI PRODOTTO + PRODOTTI DI INTERESSE IN TESTA (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: nel form Gestione Richieste (creazione) e nella scheda di lavorazione, **"Linee di
+prodotto" e "Prodotti di interesse" sono le PRIME sezioni** della colonna principale, prima di stato
+di lavorazione + prossimo richiamo, attribuzione, campi dinamici, anagrafica cliente. Sono
+l'informazione di testa del record, non un dettaglio a meta' scheda.
+
+Solo riordino JSX in `request-create-form.tsx` e `request-work-panel.tsx` — **nessun cambio di
+wiring**: `pruneProductsOfInterest`/`handleProductLinesChange` (spec 0075 D-5) e lo scoping del
+picker prodotti via `useWatch('product_lines')` restano identici, e il picker continua a stare
+subito sotto le righe che ne definiscono l'ambito. Le due schermate restano gemelle (stesso ordine).
+
+**Nota su stato di lavorazione e campi dinamici nel form di creazione:** restano nascosti finche' non
+c'e' una categoria prodotto, e ora la sezione che la sceglie li precede — l'ordine e' anche piu'
+coerente di prima, non una regressione.
+
+Aggiornate le due asserzioni d'ordine che codificavano il layout vecchio (requisito cambiato, non
+test piegato): `request-create-form.test.tsx` ("ordina le sezioni...") e
+`request-create-attribution-link.test.tsx` ("renders product lines, then attribution, then the
+client details").
+
+**Verifica**: Vitest 3444 passed su 480 file; `tsc -b --force` EXIT=0; ESLint pulito su
+`src/features/request-management`. Nessun file backend toccato.
+
+## MODALITA' DI GESTIONE CATEGORIE PRODOTTO — spec 0077 (2026-08-03) — VERDE, NON COMMITTATO
+
+Colonna `product_categories.management_mode` (`single`|`multiple`, enum `App\Enums\CategoryManagementMode`,
+default DB `multiple` = comportamento storico). **Posseduta dalla RADICE e rispecchiata sui discendenti**
+via `CategoryManagementModeInheritance::syncSubtree()` — gemello esatto di `RequiresQuoteInheritance`,
+nessun pattern nuovo. Non e' ereditata a read-time: e' denormalizzata su ogni nodo.
+
+**Traduzione del linguaggio del committente, da non riaprire:** "Categoria" = `business_functions`
+(il PRIMO select della riga), "Categoria Prodotto" = `product_categories` (il secondo). Il "modulo
+Tipologie di Categoria" del brief NON esiste nel repo: la configurazione vive nel form Categorie
+Prodotto, accanto a `requires_quote` e `is_selectable`, ed e' editabile solo sulla radice.
+
+**Il punto che spiega il diff: la modalita' si risolve SEMPRE risalendo alla radice**, e per farlo
+c'e' UN solo metodo batch, `CategoryHierarchy::rootManagementModesFor(array $ids)` → `[id => {root_id,
+management_mode}|null]`, **una query per N id**. Validare 5 righe non deve costare 5 walk: chi aggiunge
+un consumatore usa quello, non un walk per riga. Lo usano gia' `ProductLineSetValidator`,
+`OpportunityProductLineCoverage` e il for-select.
+
+**Tre invarianti nuove in `ProductLineSetValidator` (punto unico, condiviso da 4 canali: form
+Opportunita', form creazione Richiesta, pannello di lavorazione, editor inline di cella):**
+`SAME_BUSINESS_FUNCTION_MESSAGE` (INV-2, una sola funzione aziendale per scheda — vale in ENTRAMBE le
+modalita'), `SAME_ROOT_CATEGORY_MESSAGE` (INV-1, senza cui la modalita' sarebbe indeterminata),
+`SINGLE_ROW_ONLY_MESSAGE` (INV-3). **Scattano solo con >= 2 righe ben formate** e **solo se la
+collezione `product_lines` viene effettivamente inviata** (grandfathering D-5): un record storico non
+conforme resta salvabile sugli altri campi. Non irrigidire questo gate senza rileggere AC-016/AC-044.
+
+**Trappola risolta, da non reintrodurre:** `OpportunityProductLineCoverage::ensure()` in modalita'
+`multiple` continua ad AGGIUNGERE d'ufficio la riga categoria mancante quando un preventivo usa un
+prodotto scoperto; in modalita' `single` quell'auto-aggiunta si DISATTIVA e diventa 422 che nomina i
+prodotti offendenti — altrimenti l'offerta violerebbe dalla porta di servizio l'invariante appena
+introdotta. Nessuna riga viene scritta quando rifiuta.
+
+**Nome opportunita': non e' piu' sempre `OPP_{id}`.** `OpportunityTitleBuilder` lo deriva dai prodotti
+delle righe **REVENUE di tutte** le offerte (le righe COST non entrano mai), dedup per `product_id`,
+separatore `' + '` → `ISO 9001 + SOA + Attestati HACCP`. Fallback `OPP_{id}` se non ci sono righe
+ricavo. Limite 191 (la colonna e' string(191)): concatena nomi INTERI, mai troncati a meta', e appende
+`' …'` se qualcosa resta fuori. Ricalcolo **imperativo dentro la transazione** di `QuoteService`
+create/update/delete, accanto a `persistAggregates()` — il repo non ha observer, non introdurne.
+`name` resta NON scrivibile dal client.
+
+**Seed cliente (direttiva utente):** `QualificaCatalogSeeder` imposta la radice `Formazione` a `single`
+e `Consulenza` a `multiple`, scrivendo solo il valore della radice e delegando la cascata a
+`syncSubtree()`. Riallineato a ogni run come gia' avviene per `is_selectable`.
+
+**Limite noto, dichiarato:** lato client solo INV-2 e' rispecchiata in zod. INV-1 e INV-3 non hanno un
+check zod perche' il meta categoria→radice vive dentro `useProductLinesField` e non e' esposto ai form;
+l'enforcement UI e' strutturale (bottone "Aggiungi" nascosto in `single`, picker categoria ristretto al
+sottoalbero via il nuovo parametro for-select `root_category_id`) e il server resta l'autorita' con 422
+gia' mostrato in tutti e tre i submit path. Se serve parita' piena, va aggiunto un resolver reattivo nei
+tre hook di form.
+
+**Contratto API** (congelato nella spec, gia' implementato): `management_mode` su store/update/show
+categoria + `management_mode_source_category` nel meta di show; `management_mode` nei nodi di
+`/product-categories/tree`; for-select con **nuovo filtro request `root_category_id`** e meta arricchito
+`{root_category_id, management_mode}`; colonna `management_mode` in griglia. Il for-select del modulo
+categorie e' stato estratto in `ProductCategoryForSelectResolver` (`ProductCategoryService` era a 517
+righe, oltre l'hard limit): chi tocca quel for-select lavora ora sul resolver.
+
+**Verifica**: Pest 5081 passed / 1 skipped / 0 failure; Pint pulito; Vitest 3444 passed su 480 file;
+`tsc -b --force` EXIT=0. AC-001..007, AC-010..018, AC-020/021, AC-030..037, AC-040..044 tutti coperti
+da test eseguiti.
+
+**Incidente da conoscere: `git stash` in questo working tree e' PERICOLOSO.** Un teammate lo ha usato
+per isolare un segfault; il `pop` e' fallito e ha revertito ~78 file tracciati, resuscitando codice che
+la spec 0073 aveva deliberatamente cancellato (`RewardLifecycleManager`, il suo test, il
+`DemoRewardStatusSeeder`, e la chiamata `reconcile()` in `OpportunityWorkflowService::delete()`) — 5
+failure + 3 error deterministici. Ripristinato e riverificato. Il tree e' condiviso da piu' sessioni
+con molto lavoro non committato: usare solo comandi git di sola lettura.
+
+## STATI DI LAVORAZIONE: 'VALIDATED' OPZIONALE, NESSUN DEFAULT (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: lo stato di sistema **`validated`** sugli stati di lavorazione
+(`OpportunityWorkflowStatus`) **non e' piu' obbligatorio e non ha default**; l'unico stato che lo
+porta e' **"OK_Da Caricare"**, impostato dal seed qualifica. Le altre tre righe di sistema
+(`open`/`closed_won`/`closed_lost`) restano obbligatorie e immutabili.
+
+**Backend.** `WorkflowStatusSystemKey::mandatoryTailKeys()` (nuovo) = `[ClosedWon, ClosedLost]`;
+`tailKeys()` resta la sequenza di ORDINAMENTO a tre. `WorkflowStatusWriter::createWithCustoms()`
+crea la riga validated SOLO se arriva `$validatedOverride`; `resequence()` salta la riga assente
+senza lasciare buchi. Nuovo collaboratore **`App\Services\OpportunityWorkflows\ValidatedStatusMarker`**
+(iniettato nel writer): promuove una riga custom a system `validated`, la retrocede, o ne crea una
+nuova; al massimo UNA per set (422 altrimenti), 422 anche se si prova a marcare una riga di sistema
+obbligatoria. Gira PRIMA di `partitionSubmitted()`, che salta le righe marcate.
+
+**Contratto (esteso, retrocompatibile).** `statuses.*.system_key` viaggia anche in UPDATE/
+default-statuses; solo `'validated'` viene onorato. La smarcatura e' **esplicita**: serve che la
+riga sia risottomessa CON la chiave `system_key` (per questo DTO e FormRequest portano
+`system_key_submitted`, convenzione gia' usata da `isActiveSubmitted`). Un payload che non
+menziona mai `system_key` — ogni client preesistente, `DemoOpportunityWorkflowSeeder` incluso —
+non retrocede nulla. Se un'altra riga reclama il marchio mentre la riga validated corrente NON e'
+nel payload: 422 (retrocederla significherebbe cancellarla dal sync dei custom).
+
+**Seed.** `WorkflowStatusCatalogue::VALIDATED_STATUSES = [self_employment => 'OK_Da Caricare']`,
+promozione per NOME (non per gruppo). Conseguenza voluta su Autoimpiego/Yisu: `closed_won` passa
+da "OK_Da Caricare" a **"Associato SI _ NOI"**. GOL / Autofinanziato / Consulenza restano SENZA
+riga validated.
+
+**Frontend.** Il form di creazione non seeda piu' la riga "Validato". Nuovo modulo puro
+`workflow-status-rows.ts` (`markValidatedRow`) condiviso da `use-opportunity-workflow-form` e
+`use-default-statuses`: sposta il marchio, riposiziona la riga dove il backend la persistera'
+(prima della coda chiusa) e riporta il gruppo a `pending` quando si smarca.
+`WorkflowStatusesEditor` espone uno Switch "Stato di sistema «Validato»" su ogni riga NON
+obbligatoria (`isMandatoryWorkflowSystemKey`), spento di default. `buildStatusesUpdatePayload`
+manda `system_key` su OGNI riga, `null` incluso.
+
+**Test aggiornati perche' il requisito e' cambiato** (dichiarato): conteggi 4->3 righe di sistema in
+`OpportunityWorkflowCrudTest`/`SystemRowTest`/`TableTest`, attese di `QualificaWorkflowSeederTest`,
+e lato FE `opportunity-workflow-form.test.tsx` / `opportunity-workflow-form-payload.test.ts`.
+Nuovi: `tests/Feature/OpportunityWorkflows/OpportunityWorkflowValidatedRowTest.php` (6 casi:
+promozione, retrocessione, client legacy, doppio marchio, riga obbligatoria, set globale) e
+`workflow-status-rows.test.ts` (4 casi).
+
+**Verifica**: pest 5079 passati + 1 skipped pre-esistente, `pint --dirty` pulito, vitest 3444/3444
+su 480 file, `tsc -b --force` EXIT=0. NB: pest va lanciato con `XDEBUG_MODE=off` (con Xdebug attivo
+il runner muore con signal 11, problema d'ambiente non del codice).
+
+**DA DECIDERE (aperto).** Il **set di default GLOBALE** contiene ancora una riga "Validato": e'
+inserita dalla migrazione gia' committata `2026_07_16_131200_create_opportunity_workflow_statuses_table`,
+quindi torna a ogni `migrate:fresh` e il "solo codice" non la tocca (decisione utente 2026-08-03:
+niente migrazione di pulizia). Per toglierla serve una nuova migrazione di una riga
+(`DELETE FROM opportunity_workflow_statuses WHERE opportunity_workflow_id IS NULL AND system_key = 'validated'`),
+oppure la si smarca a mano dal pannello "Stati di default".
+
+**ANOMALIA ALBERO DI LAVORO — RISOLTA (2026-08-03).** Un `git stash`/`pop` fallito in un working
+tree condiviso aveva resuscitato `app/Services/Rewards/RewardLifecycleManager.php` (+ la sua dir),
+`tests/Feature/Rewards/RewardLifecycleTest.php` e `database/seeders/DemoRewardStatusSeeder.php`,
+che la voce "BUONI: TRE STATI" qui sotto aveva deliberatamente eliminato: convivevano con la
+migrazione `2026_08_03_150000_drop_status_before_closure_from_rewards_table` (colonna
+`status_before_closure_id` droppata ma ancora scritta dal manager) e con
+`2026_08_03_150100_reshape_reward_status_system_rows` (riga di sistema rinominata "Approvato",
+collidente col nome che la factory/seeder demo si aspettava), causando 5 failure + 3 error.
+Ri-eliminati i tre file e rimossa da `OpportunityWorkflowService` l'iniezione/chiamata residua a
+`RewardLifecycleManager::reconcile()` (le altre 3 invocazioni erano gia' assenti, verificato via
+grep su `app`/`database`/`tests`). Nessun altro riferimento trovato. **Verifica**: pest full suite
+5080 test, 5079 passati + 1 skipped pre-esistente, 0 failure/error; `pint --test` pulito.
+
+## DATI LAVORAZIONE CONTATTO: ORE APPUNTAMENTO + RITIRO "CORSO" (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente, tre punti sul set OPPORTUNITY "Dati Lavorazione Contatto". NON in
+`QualificaTemplateSeeder` (come chiedeva la richiesta): quello provisiona i custom field di
+`company-sites`/`products` e non conosce le categorie. Il set vive in
+`QualificaCatalog/ContactProcessingAttributeCatalogue.php` (dati) +
+`QualificaContactProcessingSeeder.php` (scrittura), ed e' li' che sono andate le modifiche.
+
+1. **`ora_app_cpi` "Ora App. CPI"** (`text`) assegnato UNA volta sul contenitore **`GOL`**, non
+   dieci volte sulle regioni: `CategoryHierarchy::effectiveAttributes()` eredita per contesto, e i
+   dieci `GOL - <Regione>` lo risolvono da li'. Nuova costante `GOL_CATEGORY`.
+2. **`ora_app_apl` "Ora App. APL"** (`text`) su `GOL - Lombardia`, `GOL - Lazio`, `GOL - Sicilia`
+   soltanto — ripetuto per regione (const privata `APL_APPOINTMENT_TIME`) perche' sono fratelli e
+   appenderlo a `GOL` lo passerebbe alle altre sette. Stessa ragione dei due leaf Consulenza.
+3. **`corso` ("Corso di interesse", label legacy "Corso scelto") RITIRATO.** Attenzione: quel nome
+   non esisteva da nessuna parte nel codice — identificato con l'utente come `corso`, la riga
+   adottata dall'import q-crm. Nuova const `RETIRED_ATTRIBUTES = ['corso']` + step 2-bis
+   `retireAttributes()` nel seeder.
+
+**La riga `attributes` NON viene cancellata, vengono tolte le ASSEGNAZIONI** (`detach()` su tutte
+le categorie, tutti i contesti). Motivo: `corso` e' una riga che l'import q-crm possiede
+(`AttributesSource`), non creata da questo catalogo — cancellarla cascherebbe opzioni/storico e
+verrebbe comunque ricreata dallo step 4 di `QualificaProductionDataSeeder`, che gira DOPO. Togliere
+l'assegnazione e' l'inverso esatto di cio' che il catalogo aveva fatto e basta a farla sparire da
+ogni pannello (`ApplicableAttributesResolver` legge le categorie della richiesta). I valori gia'
+salvati in `opportunities.attribute_values` restano, inerti.
+
+**Trappola risolta, non reintrodurla:** `stripFromLayouts()` ripulisce anche i blob
+`attribute_layouts` gia' scritti. Non e' cosmetica — `OpportunityAttributeLayoutResolver` scarta a
+runtime un item non applicabile, ma `AttributeLayoutValidator` rifiuta in SCRITTURA un
+`attribute_code` fuori dal set effettivo: lasciare l'item stale manderebbe in 422 il primo salvataggio
+dal configuratore di layout. La riscrittura va dritta sul model, MAI via
+`AttributeLayoutService::upsert()`, che rivalida l'intero blob e farebbe cadere un layout
+configurato a mano per un motivo estraneo al ritiro.
+
+`ROWS`: nuova riga `['ora_app_cpi', 'ora_app_apl']` subito sotto `['data_scelta_cpi', 'data_app_apl']`
+— le due colonne si allineano, CPI sotto CPI e APL sotto APL. Fuori dal ramo GOL la riga cade
+interamente (`keepAllowedCodes`), in una regione senza APL resta la sola ora CPI, comunque sotto la
+sua data. `['id_corso', 'corso']` → `['id_corso']`.
+
+**Test aggiornato perche' il requisito e' cambiato** (dichiarato): in
+`QualificaContactProcessingSeederTest`, l'asserzione "adotta la riga q-crm" usava `corso` come
+esempio → ora usa `id_corso`. Tre test nuovi: ereditarieta' delle due ore, posizionamento nelle
+righe di layout, ritiro di `corso` (riga viva, pivot a zero, item stale rimosso dal blob).
+
+**Verifica**: `pest tests/Feature/Products/QualificaContactProcessingSeederTest.php` 10/10, 89
+asserzioni. `pest tests/Feature/Products tests/Feature/Seeding tests/Feature/CustomFields
+tests/Feature/RequestManagement tests/Feature/Migration` **785 test, 783 verdi**. I 2 rossi sono
+`RequestManagementProductLineInvariantsTest` AC-011/AC-018 (single-mode root, spec 0077) e NON sono
+miei: quei test costruiscono le categorie da factory e non seedano nulla, mentre il working tree
+porta gia' il lavoro non committato di un'altra sessione su `ProductLineSetValidator` (+84),
+`OpportunityProductLineCoverage` (+73), `ProductCategoryService` (+96), `CategoryHierarchy` (+26).
+`pint --dirty --test` pulito. Nessuna modifica frontend, quindi nessun typecheck in gioco.
+
+## GESTIONE RICHIESTE: AZIONI ANCHE A PIE' DI FORM (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: le azioni della barra sticky si ripetono in fondo alle due schermate del modulo.
+Nuovo componente condiviso `frontend/src/features/request-management/request-form-actions.tsx`
+(`RequestFormActions`): submit agganciato al `<form>` per id (stesso ponte della testata, mai
+annidamento DOM) + `cancel` opzionale. Nessun messaggio d'errore nel footer — la barra sticky resta
+visibile a ogni scroll ed e' li' che il submit rifiutato viene riportato.
+
+- Scheda di creazione (`request-create-form.tsx`): footer con "Annulla" + "Crea richiesta", copia
+  esatta della testata.
+- Pannello di lavorazione (`request-work-panel.tsx`): footer con il solo "Salva", gated su
+  `canUpdate` e disabilitato finche' `formState.isDirty` e' falso, come in testata. **Nessun
+  Annulla** qui — scelta utente 2026-08-03: la schermata edita un record persistito.
+  Posizionato in coda al `<form>`, prima di note/documenti/storico (che persistono per conto loro).
+
+Test aggiornati perche' il requisito e' cambiato (dichiarato): il click su "Salva" nelle suite del
+pannello e' ora scoped alla testata (`within(screen.getByRole('banner'))`), altrimenti la query
+matcha due bottoni; `request-create-form.test.tsx` "mette il salvataggio nella barra sticky, non in
+fondo alla pagina" diventa "...e lo ripete in fondo al form". Due test nuovi: footer del pannello
+(stesso form id, stesso gate, nessun Annulla) e Annulla dal footer della creazione.
+
+**Verifica**: `vitest run src/features/request-management` 23 file / 171 test verdi; eslint pulito
+sui file toccati; `tsc -b --force` non riporta errori in `request-management` (i 25 errori residui
+sono tutti in `product-categories`/`product-lines`, lavoro spec 0077 gia' in corso, fuori scope).
+
+## CATALOGO QUALIFICA: "AUTOFINANZIATO" SELEZIONABILE (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente. `QualificaCatalogSeeder` marcava container (`is_selectable = false`, spec 0074)
+TUTTE le sottocategorie di secondo livello — ma `seedSelfFundedCourses()` deposita i 10 corsi
+autofinanziati direttamente su `Autofinanziato`: quei prodotti finivano sotto una categoria su cui
+nulla e' classificabile. Nuova costante `SELECTABLE_SUBCATEGORIES` (oggi il solo
+`SelfFundedCourseCatalogue::CATEGORY`, legata per identita' al catalogo che vi deposita i prodotti):
+il secondo livello resta container per default, quella lista e' l'eccezione dichiarata.
+
+`seedCatalogCategory()` cambia firma: `(name, parentId, bool $isSelectable, bool $realign)` invece di
+`isContainer`. Il riallineamento ora e' **bidirezionale** e vale per i nodi che il catalogo dichiara
+(radici + sottocategorie): un'installazione seedata dalla versione precedente vede `Autofinanziato`
+tornare selezionabile, oltre alle madri diventare container. Le foglie (`GOL - <Regione>`) restano
+scritte solo alla creazione, mai riallineate — la scelta dell'operatore di ritirare una foglia resta
+sua (test "never re-selects a third-level node..." invariato).
+
+Test `QualificaCatalogSeederTest` adeguati (dichiarato, requisito cambiato): `Autofinanziato` esce
+dalla lista container ed entra tra i selezionabili; il test di riallineamento "prima del flag" usa
+ora `GOL` come esempio di container; due test nuovi (target + conteggio prodotti sulla categoria;
+riallineamento inverso da container a selezionabile).
+
+**Verifica**: `pest tests/Feature/Products tests/Feature/Seeding` **163/163, 827 asserzioni**;
+`pest tests/Feature/CustomFields/QualificaTemplateSeederTest.php
+tests/Feature/Migration/QualificaLegacyImportSeederTest.php` 13/13; `pint --dirty --test` pulito.
+
+## BUONI: TRE STATI E FINE DELL'AUTOMAZIONE (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente, emendamento a spec 0073 (scritto in testa a
+`docs/specs/0073-reward-status-groups-and-lifecycle.xml`, il resto del documento descrive lo stato
+originale ed e' storia): gli stati dei buoni sono **"In attesa" / "Approvato" / "Negato"**, e il
+cambio di stato automatico guidato dallo stato di LAVORAZIONE della richiesta **non esiste piu'**.
+
+Cosa e' cambiato, in due blocchi:
+
+1. **Catalogo stati.** `App\Enums\RewardStatusGroup` scende a TRE casi (`pending`, `closed_won`,
+   `closed_lost`): `open` e' eliminato **solo qui** — `QuoteStatusGroup`, `ContractStatusGroup`,
+   `StatusGroup` e `WorkflowStatusGroup` restano a quattro/cinque valori, non toccarli. Le righe di
+   sistema passano da quattro a tre: "Aperto" (`new`) cancellata, "Chiuso positivo"/"Chiuso
+   negativo" rinominate "Approvato"/"Negato". `RewardStatus::SYSTEM_HEAD_KEYS = [Pending]` (era
+   `[New, Pending]`), quindi la prima riga custom ora nasce a `sort_order = 10`, non 20. Default
+   della colonna `reward_statuses.group`: `pending`.
+2. **Automazione.** Eliminati `App\Services\Rewards\RewardLifecycleManager` (+ la sua dir), le sue
+   4 invocazioni (`OpportunityService::resolveWorkflowStatus()`, `OpportunityWorkflowService::delete()`,
+   `RequestManagementService::updateWork()` step 8-bis, `RequestCreationService::create()`), la
+   colonna `rewards.status_before_closure_id`, `Reward::statusBeforeClosure()`/`isClosedBySource()`,
+   `RewardLifecycleTest`. Lo stato di un buono si muove SOLO via `PATCH /api/rewards/{reward}`.
+
+**Migrazioni** (in quest'ordine): `2026_08_03_150000_drop_status_before_closure_from_rewards_table`,
+`2026_08_03_150100_reshape_reward_status_system_rows`. La seconda ha due rami che `migrate:fresh`
+non esercita e che un DB gia' popolato SI': sposta i buoni fermi su "Aperto" verso "In attesa"
+prima di cancellare la riga (`reward_status_id` e' `restrictOnDelete`) e ASSORBE una riga custom che
+gia' occupasse il nome "Approvato"/"Negato" (`name` e' unique — senza il merge la migrazione
+morirebbe li', ed e' esattamente il caso di ogni DB seedato col vecchio `DemoRewardStatusSeeder`).
+Coperti da `tests/Feature/RewardStatuses/RewardStatusReshapeMigrationTest.php`, che usa
+`DatabaseMigrations` e non `RefreshDatabase`: rigiocare `up()` altera la colonna `group`, su SQLite
+questo ricostruisce la tabella, e il `PRAGMA foreign_keys = 0` con cui Laravel si protegge e' un
+no-op dentro una transazione. Un `php artisan migrate` reale non ha il problema (la grammar SQLite
+non supporta le transazioni di schema; su MySQL e' un `ALTER` senza rebuild).
+
+**`DemoRewardStatusSeeder` eliminato** (e rimosso da `DemoDataSeeder`): seedava "Approvato"/
+"Consegnato"/"Scaduto", cioe' proprio i nomi ora di sistema. Su un DB di sviluppo gia' migrato,
+"Consegnato" e "Scaduto" **restano** come righe custom — la migrazione non cancella righe che a
+quel punto sono dati dell'utente. Se li vuoi via, si cancellano dal modulo Stati Buoni.
+
+**Test aggiornati perche' il requisito e' cambiato** (dichiarato): fixture con `group: 'open'` →
+`'pending'`, e i custom chiamati "Approvato" rinominati "Consegnato"/"Scaduto" (ora collidono col
+nome di sistema) in `RewardStatusCrudTest`, `RewardStatusTableTest`, `RewardStatusForSelectTest`,
+`RewardStatusActivityLogTest`, `RewardStatusSecurityTest`, `RewardStatusReorderTest`,
+`RewardStatusSystemRowTest`, `UpdateStatusEndpointTest`, + lato FE `reward-status-schema.test.ts`,
+`reward-status-form.test.tsx`.
+
+**Verifica**: pest full suite 5024 test, 5023 passati + 1 skipped pre-esistente, `pint --dirty` pulito,
+vitest 3419/3419 su 476 file, `tsc -b --force` EXIT=0.
+
 ## DEBITO CHIUSO: TEST STALE SU `attachments` ASSEGNABILE (2026-08-03) — VERDE, NON COMMITTATO
 
 Chiude la voce aperta piu' in basso in questo file ("Va aggiornato il test, il requisito e'

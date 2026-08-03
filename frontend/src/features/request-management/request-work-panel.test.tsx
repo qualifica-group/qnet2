@@ -134,7 +134,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
 
     fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     // The whole client set travels in the panel's own PATCH; the per-contact
@@ -159,7 +159,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
 
     fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Via Roma 1' } })
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '20100' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     expect(updateRequestWorkMock.mock.calls[0][1]).toMatchObject({
@@ -179,7 +179,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByLabelText(/Company name/)).toHaveValue('Acme S.p.A.')
 
     fireEvent.change(screen.getByLabelText('Tax code'), { target: { value: '01234567897' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     // A full replace of the card's identity fields, no id: the server resolves
@@ -224,7 +224,7 @@ describe('RequestWorkPanelScreen — sparse submit (spec 0049 AC-062)', () => {
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
     fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateRequestWorkMock.mock.calls[0]
@@ -252,7 +252,7 @@ describe('RequestWorkPanelScreen — sparse submit (spec 0049 AC-062)', () => {
 
     const notesField = screen.getByRole('textbox', { name: 'Notes' })
     fireEvent.change(notesField, { target: { value: 'Updated notes' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.getByText('Notes is required.')).toBeInTheDocument())
     const message = screen.getByText('Notes is required.')

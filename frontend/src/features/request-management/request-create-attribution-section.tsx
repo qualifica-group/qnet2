@@ -69,11 +69,14 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
   const operatorQuickCreate = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
   const siteQuickCreate = useQuickCreateAction(OPERATIONAL_SITES_FOR_SELECT_RESOURCE)
 
-  // Baseline the clear-on-change below reasons against: it starts empty (a new
-  // request has no Sede yet) and only ever moves inside an event handler, so a
-  // REAL Sede pick is told apart from the programmatic auto-fill (which never
-  // goes through the Sede field's own `onItemChange`).
-  const previousSiteIdRef = useRef<number | null>(null)
+  // Baseline the clear-on-change below reasons against: it starts at the Sede
+  // the form OPENED on (the actor's own, user directive 2026-08-03 — read
+  // once, it is a default, not a controlled value) and only ever moves inside
+  // an event handler, so a REAL Sede pick is told apart from the programmatic
+  // auto-fill (which never goes through the Sede field's own `onItemChange`).
+  // Seeding it matters: left at null, re-picking the very Sede already on
+  // screen would read as a change and clear the operator.
+  const previousSiteIdRef = useRef<number | null>(form.getValues('operational_site_id'))
   const siteId = useWatch({ control, name: 'operational_site_id' })
   const [autoFilledSite, setAutoFilledSite] = useState<ForSelectItem | null>(null)
 

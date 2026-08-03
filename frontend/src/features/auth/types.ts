@@ -1,5 +1,6 @@
 import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { PersonalDataCard } from '@/features/personal-data/types'
+import type { EmploymentDetail } from '@/features/users/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { DateFormat, TimeFormat } from '@/lib/formatting/date-display'
 
@@ -22,6 +23,12 @@ export interface User {
    * when none has been created yet. Same shape as the Users module (ADR 0013).
    */
   personal_data?: PersonalDataCard | null
+  /**
+   * The user's own employment profile (spec 0015). Read for its
+   * `operational_site_id`: the Sede a create form pre-assigns the new record
+   * to (user directive 2026-08-03). Absent when the account has no profile.
+   */
+  employment?: EmploymentDetail | null
   created_at: string | null
   /** Per-user modal-vs-page open mode preference (spec 0042). Never null on the wire. */
   module_open_preferences: ModuleOpenPreferences

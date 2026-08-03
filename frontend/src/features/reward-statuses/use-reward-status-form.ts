@@ -62,7 +62,7 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
     }
     // A brand-new buono status starts on the open phase, the same default the
     // backend column carries (spec 0073).
-    return { name: '', description: null, color: '', group: 'open', is_active: true }
+    return { name: '', description: null, color: '', group: 'pending', is_active: true }
   }, [mode])
 
   const form = useForm<RewardStatusFormValues>({

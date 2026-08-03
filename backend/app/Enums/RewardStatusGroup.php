@@ -8,15 +8,19 @@ namespace App\Enums;
  * `QuoteStatusGroup`/`ContractStatusGroup`: letting a status configurator
  * fall back on another module's enum would couple the two together, the same
  * reasoning already applied when `ContractStatusGroup` was split off (spec
- * 0072, D-5). Same four values as those two — the terminal phase carries its
- * OUTCOME, ClosedWon (chiuso positivo) and ClosedLost (chiuso negativo, the
- * state the lifecycle automation moves a reward to when its originating
- * request is closed negatively). Never mass-assignable on a system row
- * (App\Services\Statuses\SystemStatusGuard rejects it outright).
+ * 0072, D-5).
+ *
+ * THREE values, not the four of those two enums (user directive 2026-08-03,
+ * amendment to spec 0073): a buono is either waiting for a decision (Pending,
+ * the phase it is born on) or decided — ClosedWon ("Approvato") / ClosedLost
+ * ("Negato"). The `open` phase was dropped because it had no meaning here,
+ * which is also why Pending is the DEFAULT of a newly created custom row (the
+ * migration moved every pre-existing `open` row onto it). Never
+ * mass-assignable on a system row (App\Services\Statuses\SystemStatusGuard
+ * rejects it outright).
  */
 enum RewardStatusGroup: string
 {
-    case Open = 'open';
     case Pending = 'pending';
     case ClosedWon = 'closed_won';
     case ClosedLost = 'closed_lost';

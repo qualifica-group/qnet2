@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use App\Enums\CategoryManagementMode;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -24,6 +25,12 @@ use Illuminate\Validation\ValidationException;
  * inherited) cannot produce a valid row — `opportunity_product_lines`
  * requires both ids — so it is rejected as a 422 rather than silently
  * dropped.
+ *
+ * Spec 0077 D-6: the auto-add above is the `multiple`-mode behaviour only.
+ * When the opportunity's resolved management mode is `single`, coverage
+ * widening is disabled — a product outside the one covered category is
+ * refused (AC-020), not silently added (AC-021 keeps the `multiple`/
+ * indeterminate path exactly as it was).
  */
 final class OpportunityProductLineCoverage
 {
@@ -49,6 +56,13 @@ final class OpportunityProductLineCoverage
     public function ensure(Opportunity $opportunity, Collection $products, string $errorField = 'products_of_interest'): array
     {
         $coveredCategoryIds = $opportunity->productLines()->pluck('product_category_id')->all();
+
+        if ($this->resolvedManagementMode($coveredCategoryIds) === CategoryManagementMode::Single) {
+            $this->rejectOffCategoryProducts($products, $coveredCategoryIds, $errorField);
+
+            return [];
+        }
+
         $added = [];
 
         foreach ($products as $product) {
@@ -81,5 +95,64 @@ final class OpportunityProductLineCoverage
         }
 
         return $added;
+    }
+
+    /**
+     * The management mode governing the opportunity, resolved from the root
+     * of its FIRST covered category — INV-1 guarantees every existing
+     * `opportunity_product_lines` row already shares the same root, so one
+     * id is enough. A single batched lookup (CategoryHierarchy::
+     * rootManagementModesFor), never a query per row.
+     *
+     * Null (indeterminate) when the opportunity carries no product line yet,
+     * or when the covered category's root cannot be resolved: both fall back
+     * to the pre-existing auto-add behaviour (D-8's `multiple` default),
+     * never to the `single` rejection.
+     *
+     * @param  array<int, int>  $coveredCategoryIds
+     */
+    private function resolvedManagementMode(array $coveredCategoryIds): ?CategoryManagementMode
+    {
+        if ($coveredCategoryIds === []) {
+            return null;
+        }
+
+        $rootCategoryId = $coveredCategoryIds[0];
+        $root = $this->hierarchy->rootManagementModesFor([$rootCategoryId])[$rootCategoryId] ?? null;
+
+        return $root['management_mode'] ?? null;
+    }
+
+    /**
+     * D-6: in `single` mode the auto-add is disabled — a product whose
+     * category sits outside the opportunity's one covered category is
+     * refused instead of silently widening the coverage (AC-020). The
+     * message names every offending product the same way
+     * RequestProductCategoryCoherence::message() does, so the operator sees
+     * a consistent "which products, which category" shape across modules.
+     *
+     * @param  Collection<int, Product>  $products
+     * @param  array<int, int>  $coveredCategoryIds
+     *
+     * @throws ValidationException at least one product's category is not covered
+     */
+    private function rejectOffCategoryProducts(Collection $products, array $coveredCategoryIds, string $errorField): void
+    {
+        $offending = $products
+            ->filter(static fn (Product $product): bool => $product->category !== null && ! in_array($product->category->id, $coveredCategoryIds, true))
+            ->map(static fn (Product $product): string => "\"{$product->name}\" ({$product->category?->name})")
+            ->values()
+            ->all();
+
+        if ($offending === []) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $errorField => [__(
+                'This opportunity accepts a single product category: :products belongs to a different one. Add it to the covered category, or remove it from the offer.',
+                ['products' => implode(', ', $offending)],
+            )],
+        ]);
     }
 }

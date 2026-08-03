@@ -50,7 +50,7 @@ it('returns the 9 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'attributes_count', 'products_count', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'management_mode', 'attributes_count', 'products_count', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -68,6 +68,10 @@ it('returns the 9 columns in order with the declared flags, 403 without viewAny'
         ->and($columns['is_selectable']['type'])->toBe('boolean')
         ->and($columns['is_selectable']['filterType'])->toBe('boolean')
         ->and($columns['is_selectable']['sortable'])->toBeTrue()
+        ->and($columns['management_mode']['type'])->toBe('enum')
+        ->and($columns['management_mode']['filterType'])->toBe('set')
+        ->and($columns['management_mode']['sortable'])->toBeTrue()
+        ->and($columns['management_mode']['options'])->toBe(['single', 'multiple'])
         ->and($columns['attributes_count']['filterType'])->toBe('number')
         ->and($columns['products_count']['filterType'])->toBe('number');
 });

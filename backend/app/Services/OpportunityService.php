@@ -16,7 +16,6 @@ use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
-use App\Services\Rewards\RewardLifecycleManager;
 use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -78,7 +77,6 @@ class OpportunityService
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
-        private readonly RewardLifecycleManager $rewardLifecycleManager,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -322,22 +320,17 @@ class OpportunityService
      * written verbatim; otherwise OpportunityWorkflowResolver derives and
      * persists it — the SAME resolver Lane A's delete-reassign flow calls,
      * never duplicated here.
-     *
-     * Spec 0073: whichever branch ran, the rewards are reconciled against the
-     * resulting working status before the transaction closes — the reward
-     * sync of create()/update() has already run by then, so a reward assigned
-     * in the same request is reconciled too.
      */
     private function resolveWorkflowStatus(Opportunity $opportunity, ?int $submittedStatusId): void
     {
         if ($submittedStatusId !== null) {
             $opportunity->opportunity_workflow_status_id = $submittedStatusId;
             $opportunity->save();
-        } else {
-            $this->workflowResolver->resolveAndAssign($opportunity);
+
+            return;
         }
 
-        $this->rewardLifecycleManager->reconcile($opportunity);
+        $this->workflowResolver->resolveAndAssign($opportunity);
     }
 
     /**

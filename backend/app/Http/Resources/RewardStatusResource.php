@@ -21,8 +21,7 @@ class RewardStatusResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'color' => $this->color,
-            // spec 0073: the phase classification driving the lifecycle
-            // automation (App\Enums\RewardStatusGroup).
+            // spec 0073: the phase classification (App\Enums\RewardStatusGroup).
             'group' => $this->group->value,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,

@@ -74,12 +74,14 @@ describe('buildUpdatePayload', () => {
         { field: 'state_id', value_id: 1 },
         { field: 'source_id', value_id: 2 },
       ],
+      // `system_key` travels on every row, `null` included: only an
+      // explicitly-sent key may release the optional `validated` mark.
       statuses: [
-        { id: 1, name: 'Open', description: null, color: null, group: 'open', requires_note: false },
-        { id: 2, name: 'In progress', description: null, color: 'blue', group: 'pending', requires_note: false },
-        { id: undefined, name: 'New custom', description: null, color: 'green', group: 'pending', requires_note: false },
-        { id: 4, name: 'Closed won', description: null, color: null, group: 'closed_won', requires_note: false },
-        { id: 5, name: 'Closed lost', description: null, color: null, group: 'closed_lost', requires_note: false },
+        { id: 1, name: 'Open', description: null, color: null, group: 'open', requires_note: false, system_key: 'open' },
+        { id: 2, name: 'In progress', description: null, color: 'blue', group: 'pending', requires_note: false, system_key: null },
+        { id: undefined, name: 'New custom', description: null, color: 'green', group: 'pending', requires_note: false, system_key: null },
+        { id: 4, name: 'Closed won', description: null, color: null, group: 'closed_won', requires_note: false, system_key: 'closed_won' },
+        { id: 5, name: 'Closed lost', description: null, color: null, group: 'closed_lost', requires_note: false, system_key: 'closed_lost' },
       ],
     })
   })

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { useAuth } from '@/features/auth/use-auth'
 import { areCreateContactsValid, isCreateAddressValid } from '@/features/personal-data/create-validation'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import { emptyProductLineRow } from '@/features/product-lines/types'
@@ -85,6 +86,7 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
  */
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
   const [productLinesError, setProductLinesError] = useState<string | null>(null)
@@ -112,8 +114,14 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       product_lines: [emptyProductLineRow()],
       source_id: null,
       reporter_id: null,
-      operator_id: null,
-      operational_site_id: null,
+      // The request opens ALREADY assigned to whoever is creating it and to
+      // their own Sede (user directive 2026-08-03) — the common case, and the
+      // only one a Commercial can produce: they do not see the "Operatore"
+      // field at all (it needs `request-management.assignOperator`), and a
+      // request with no operator would fall outside their own D-3 scope.
+      // Whoever DOES see the two fields may still change or clear them.
+      operator_id: user?.id ?? null,
+      operational_site_id: user?.employment?.operational_site_id ?? null,
       products_of_interest: [],
       rewards: [],
       opportunity_workflow_status_id: null,

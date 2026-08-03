@@ -40,11 +40,11 @@ it('create + update produce created/updated activity-log events with the changed
     $actor = rewardStatusUserWith(['create', 'update', 'view', 'viewActivity']);
     Sanctum::actingAs($actor);
 
-    $created = $this->postJson('/api/reward-statuses', ['name' => 'Approvato', 'color' => 'green', 'group' => 'open'])
+    $created = $this->postJson('/api/reward-statuses', ['name' => 'Consegnato', 'color' => 'green', 'group' => 'pending'])
         ->assertCreated();
     $id = $created->json('data.id');
 
-    $this->patchJson("/api/reward-statuses/{$id}", ['name' => 'Approvato Plus', 'color' => 'blue'])
+    $this->patchJson("/api/reward-statuses/{$id}", ['name' => 'Consegnato Plus', 'color' => 'blue'])
         ->assertOk();
 
     $response = $this->getJson("/api/activity-log/reward-statuses/{$id}")
@@ -64,8 +64,8 @@ it('create + update produce created/updated activity-log events with the changed
     expect($updatedFields)->toContain('name', 'color');
 
     $byField = collect($updatedEvent['changes'])->keyBy('field');
-    expect($byField['name']['old_value'])->toBe('Approvato')
-        ->and($byField['name']['new_value'])->toBe('Approvato Plus')
+    expect($byField['name']['old_value'])->toBe('Consegnato')
+        ->and($byField['name']['new_value'])->toBe('Consegnato Plus')
         ->and($byField['color']['old_value'])->toBe('green')
         ->and($byField['color']['new_value'])->toBe('blue');
 });

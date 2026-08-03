@@ -7,6 +7,7 @@ import type { TFunction } from 'i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { markValidatedRow } from '@/features/opportunity-workflows/workflow-status-rows'
 import {
   createOpportunityWorkflow,
   fetchCriterionFields,
@@ -41,13 +42,16 @@ export type OpportunityWorkflowFormValues = CreateOpportunityWorkflowFormValues
 const EMPTY_CRITERION_ROW = { field: null, value_id: null }
 
 /**
- * The four pinned system rows before a workflow exists (AC-004): editable
- * from the start, pre-filled with the default open / validated / closed-won /
- * closed-lost labels, in pinned order (open first, then the validated ->
- * closed-won -> closed-lost tail). The user may rename them up front; they are
- * sent in the create payload (`buildCreatePayload`) so the backend seeds the
- * auto-created rows with these names. Non-deletable/non-reorderable (enforced
- * by the editor).
+ * The three MANDATORY pinned system rows before a workflow exists (AC-004):
+ * editable from the start, pre-filled with the default open / closed-won /
+ * closed-lost labels, in pinned order (open first, then the closed-won ->
+ * closed-lost tail). The user may rename them up front; they are sent in the
+ * create payload (`buildCreatePayload`) so the backend seeds the auto-created
+ * rows with these names. Non-deletable/non-reorderable (enforced by the
+ * editor).
+ *
+ * The optional `validated` row is deliberately NOT seeded (user directive
+ * 2026-08-03): it exists only if the user marks a status as such.
  */
 function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
   return [
@@ -58,15 +62,6 @@ function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
       color: null,
       group: 'open',
       system_key: 'open',
-      requires_note: false,
-    },
-    {
-      id: 'system-validated',
-      name: t('opportunityWorkflows.form.statuses.defaultValidatedName'),
-      description: null,
-      color: null,
-      group: 'validated',
-      system_key: 'validated',
       requires_note: false,
     },
     {
@@ -190,6 +185,10 @@ export function useOpportunityWorkflowForm({ mode, onSuccess }: UseOpportunityWo
     setStatusRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
   }
 
+  const markValidatedStatus = (id: string, marked: boolean) => {
+    setStatusRows((rows) => markValidatedRow(rows, id, marked))
+  }
+
   const reorderStatusRows = (orderedIds: string[]) => {
     setStatusRows((rows) => {
       const byId = new Map(rows.map((row) => [row.id, row]))
@@ -250,6 +249,7 @@ export function useOpportunityWorkflowForm({ mode, onSuccess }: UseOpportunityWo
     addCustomStatus,
     removeCustomStatus,
     updateStatusRow,
+    markValidatedStatus,
     reorderStatusRows,
   }
 }

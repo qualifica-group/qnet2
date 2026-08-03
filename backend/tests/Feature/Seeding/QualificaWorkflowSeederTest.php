@@ -49,15 +49,17 @@ it('seeds a GOL region column in the sheet order, between the pinned system rows
         ->get();
 
     // Every row of the Lombardia column is seeded once: three of them are
-    // promoted onto pinned system rows, the rest stay custom. The only extra
-    // row is 'validated', which the sheet has no state for.
+    // promoted onto pinned system rows, the rest stay custom. No extra row is
+    // added — the GOL block has no state for the optional 'validated' one
+    // (user directive 2026-08-03).
     $all = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
     $custom = WorkflowStatusCatalogue::customStatusesFor('GOL - Lombardia');
 
-    expect($statuses)->toHaveCount(count($all) + 1)
+    expect($statuses)->toHaveCount(count($all))
         ->and(count($custom))->toBe(count($all) - 3)
         ->and($statuses->first()->system_key)->toBe('open')
-        ->and($statuses->slice(-3)->pluck('system_key')->all())->toBe(['validated', 'closed_won', 'closed_lost']);
+        ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
+        ->and($statuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
 
     expect($statuses->slice(1, count($custom))->pluck('name')->values()->all())
         ->toBe(array_column($custom, 'name'));
@@ -83,33 +85,40 @@ it('labels the pinned system rows with the sheet states, never the generic defau
     };
 
     // Each pinned row takes over the FIRST state its block classifies under
-    // the same group; 'validated' has no counterpart in the sheet.
+    // the same group. The optional 'validated' row is promoted BY NAME and
+    // only where the sheet has a state for it: "OK_Da Caricare", which is
+    // therefore no longer the closed_won row of its own section (user
+    // directive 2026-08-03).
     expect($pinned('GOL - Lombardia'))->toBe([
         'closed_lost' => 'Percorso 101',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Da Richiamare',
-        'validated' => 'Validato',
     ]);
 
     expect($pinned('Consulenza'))->toBe([
         'closed_lost' => 'Persa',
         'closed_won' => 'VINTO',
         'open' => 'Da Richiamare',
-        'validated' => 'Validato',
     ]);
 
     expect($pinned('Autoimpiego'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
-        'closed_won' => 'OK_Da Caricare',
+        'closed_won' => 'Associato SI _ NOI',
         'open' => 'Da Richiamare',
-        'validated' => 'Validato',
+        'validated' => 'OK_Da Caricare',
+    ]);
+
+    expect($pinned('Yisu'))->toBe([
+        'closed_lost' => 'Non ha i Requisiti',
+        'closed_won' => 'Associato SI _ NOI',
+        'open' => 'Da Richiamare',
+        'validated' => 'OK_Da Caricare',
     ]);
 
     expect($pinned('Autofinanziato'))->toBe([
         'closed_lost' => 'Irreperibile',
         'closed_won' => 'OK_Iscritto',
         'open' => 'Da Richiamare',
-        'validated' => 'Validato',
     ]);
 });
 

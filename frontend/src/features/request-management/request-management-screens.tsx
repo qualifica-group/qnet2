@@ -52,4 +52,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.requestManagement',
   DetailScreen: RequestWorkPanelScreen,
   FormScreen: RequestManagementFormScreen,
+  // The create form's sticky bar IS the heading, with the save/cancel actions
+  // on its right (user directive 2026-08-03) — the hosts must not render a
+  // second one above it.
+  formOwnsHeader: true,
 }

@@ -90,6 +90,7 @@ export const opportunityWorkflows = {
       descriptionPlaceholder: 'Explain when this status applies…',
       descriptionHint: 'Show the status description',
       requiresNote: 'Requires an explanatory note',
+      markValidated: 'System status "Validated"',
       requiresNoteBadge: 'Note required',
       dragHandleLabel: 'Drag to reorder',
       add: 'Add status',

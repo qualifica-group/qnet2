@@ -110,6 +110,10 @@ export const opportunities = {
       'Lo stato di lavorazione interno, distinto dallo Stato Opportunità: limitato al set di stati risolto per questa opportunità.',
     productLines: {
       fieldLabel: 'Righe funzione/categoria',
+      // Spec 0077 INV-2: tutte le righe di una scheda condividono la stessa
+      // Funzione aziendale, in entrambe le modalità (D-5: solo se la
+      // collezione è stata effettivamente modificata).
+      businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
     },
     rewards: {
       fieldLabel: 'Buoni assegnati',

@@ -100,12 +100,22 @@ class TestUsersSeeder extends Seeder
      *    RequestAssignmentService all widen to every request for an actor who
      *    holds it. It is a supervisor-level ability, which is why the
      *    Supervisor role (whose matrix is deny-list based) keeps it.
+     *  - `assignOperator` (user directive 2026-08-03): a Commercial does not
+     *    choose who works a request — the request is theirs. Dropping the
+     *    permission is the whole mechanism: the create form renders the
+     *    "Operatore" field only for an actor holding it
+     *    (`request-create-attribution-section.tsx`), and
+     *    RequestManagementController::store() then forces the creator as the
+     *    operator, so the request stays inside their own D-3 scope. The
+     *    Supervisor and Marketing roles are unaffected — neither matrix denies
+     *    it — and keep picking the operator freely.
      *
      * @var array<int, string>
      */
     private const array COMMERCIAL_DENIED_MODULE_ABILITIES = [
         'delete',
         'viewAll',
+        'assignOperator',
     ];
 
     /**

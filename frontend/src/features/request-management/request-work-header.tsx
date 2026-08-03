@@ -39,10 +39,11 @@ export function StatusBadge({ label, color, children }: { label: string; color: 
 
 /**
  * Identity bar of the work panel: who the record is, its two statuses and the
- * scheduled callback on the left, the page's ONLY save action on the right.
- * Sticky so the primary action stays reachable while the operator scrolls the
- * long editable form below; the button submits the form by id, keeping this
- * component free of any form state.
+ * scheduled callback on the left, the save action on the right. Sticky so the
+ * primary action stays reachable while the operator scrolls the long editable
+ * form below (a second copy closes the form at its foot, user directive
+ * 2026-08-03); the button submits the form by id, keeping this component free
+ * of any form state.
  *
  * A refused submit is reported HERE, next to the button that was pressed: the
  * form below is long and some of its blocking fields render no message of

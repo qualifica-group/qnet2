@@ -91,7 +91,7 @@ describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
     )
 
     const picker = screen.getByRole('combobox', { name: /^Group/ })
-    expect(picker).toHaveTextContent('Closed (negative)')
+    expect(picker).toHaveTextContent('Denied')
     expect(picker).not.toBeDisabled()
     unmount()
 
@@ -139,8 +139,8 @@ describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
       name: 'Approvato',
       description: null,
       color: 'green',
-      // spec 0073: the picker defaults to the open phase, submitted as-is.
-      group: 'open',
+      // The picker defaults to the pending phase, submitted as-is.
+      group: 'pending',
       is_active: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(rewardStatus()))

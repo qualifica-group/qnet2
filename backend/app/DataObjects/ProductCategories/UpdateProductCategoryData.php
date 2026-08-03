@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\ProductCategories;
 
+use App\Enums\CategoryManagementMode;
+
 /**
  * Validated payload for a partial (PATCH) product category update
  * (PUT/PATCH /api/product-categories/{productCategory}, spec 0017).
@@ -40,6 +42,8 @@ final readonly class UpdateProductCategoryData
         public bool $requiresQuoteSubmitted = false,
         public ?bool $isSelectable = null,
         public bool $isSelectableSubmitted = false,
+        public ?CategoryManagementMode $managementMode = null,
+        public bool $managementModeSubmitted = false,
     ) {}
 
     /**
@@ -66,6 +70,8 @@ final readonly class UpdateProductCategoryData
             requiresQuoteSubmitted: array_key_exists('requires_quote', $data),
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : null,
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
+            managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
+            managementModeSubmitted: array_key_exists('management_mode', $data),
         );
     }
 
@@ -129,6 +135,13 @@ final readonly class UpdateProductCategoryData
         // across the subtree, since it is never inherited.
         if ($this->isSelectableSubmitted) {
             $attributes['is_selectable'] = $this->isSelectable;
+        }
+
+        // Spec 0077: only a ROOT category authors this mode; on a child the
+        // value written here is immediately re-aligned on the root's by
+        // CategoryManagementModeInheritance::syncSubtree (ProductCategoryService).
+        if ($this->managementModeSubmitted) {
+            $attributes['management_mode'] = $this->managementMode;
         }
 
         return $attributes;

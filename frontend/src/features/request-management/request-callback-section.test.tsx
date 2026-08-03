@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -157,7 +157,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     renderPanel()
     fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '2026-08-03' } })
     fireEvent.change(screen.getByLabelText(TIME_FIELD), { target: { value: '15:30' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateRequestWorkMock.mock.calls[0]
@@ -171,7 +171,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
 
     renderPanel()
     fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '2026-08-03' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateRequestWorkMock.mock.calls[0]
@@ -184,7 +184,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
 
     renderPanel()
     fireEvent.change(await screen.findByLabelText(DATE_FIELD), { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateRequestWorkMock.mock.calls[0]
@@ -203,7 +203,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
     fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateRequestWorkMock.mock.calls[0]

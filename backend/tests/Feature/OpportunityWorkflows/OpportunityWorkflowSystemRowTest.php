@@ -106,7 +106,7 @@ it('update: omitting a system row from the statuses sync does NOT delete it (AC-
         ],
     ])->assertOk();
 
-    expect($response->json('data.statuses'))->toHaveCount(5);
+    expect($response->json('data.statuses'))->toHaveCount(4);
 
     $this->assertDatabaseHas('opportunity_workflow_statuses', ['id' => $openId, 'system_key' => 'open']);
     $this->assertDatabaseHas('opportunity_workflow_statuses', ['id' => $closedId, 'system_key' => 'closed_won']);
@@ -170,7 +170,7 @@ it('update: a custom row omitted from the statuses sync is deleted (AC-007)', fu
         'statuses' => [
             ['id' => $keep['id'], 'name' => 'Keep', 'group' => 'open'],
         ],
-    ])->assertOk()->assertJsonCount(5, 'data.statuses');
+    ])->assertOk()->assertJsonCount(4, 'data.statuses');
 
     $this->assertDatabaseMissing('opportunity_workflow_statuses', ['name' => 'Drop']);
     $this->assertDatabaseHas('opportunity_workflow_statuses', ['id' => $keep['id']]);

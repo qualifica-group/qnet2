@@ -3,9 +3,9 @@
  * per mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6). Anagrafica degli STATI applicabili ai
  * buoni collegati (`rewards`), clone di `opportunity-statuses` con
- * `description` e `is_active` in più. Spec 0073: aggiunge il `group` a
- * quattro fasi (come gli stati offerta) e porta le righe di sistema a quattro
- * ("Aperto", "In attesa", "Chiuso positivo", "Chiuso negativo").
+ * `description` e `is_active` in più. Spec 0073: aggiunge il `group` a tre
+ * fasi e porta le righe di sistema a tre ("In attesa", "Approvato",
+ * "Negato").
  */
 
 export const rewardStatuses = {
@@ -52,10 +52,9 @@ export const rewardStatuses = {
     color: 'Colore',
     group: {
       label: 'Gruppo',
-      open: 'Aperto',
-      pending: 'In pending',
-      closed_won: 'Chiuso positivo',
-      closed_lost: 'Chiuso negativo',
+      pending: 'In attesa',
+      closed_won: 'Approvato',
+      closed_lost: 'Negato',
     },
     isActive: 'Attivo',
     save: 'Salva',

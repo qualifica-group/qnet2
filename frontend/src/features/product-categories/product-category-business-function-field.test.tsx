@@ -88,6 +88,7 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCate
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    management_mode: 'multiple',
     ...overrides,
   }
 }
@@ -120,6 +121,8 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    management_mode: 'multiple',
+    management_mode_source_category: null,
     permissions: permissivePermissions(),
     ...overrides,
   }

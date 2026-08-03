@@ -78,8 +78,6 @@ export const requestManagement = {
         contactsGroup: 'Contatti',
         addressGroup: 'Indirizzo',
       },
-      /** Identity bar of the create form, the twin of `workPanel.header.title`. */
-      title: 'Nuova richiesta',
       generalNotes: {
         label: 'Note generali',
         placeholder: 'Cosa ha chiesto il cliente, con le sue parole…',
@@ -121,6 +119,9 @@ export const requestManagement = {
       validation: {
         productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
         productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
+        // Spec 0077 INV-2: tutte le righe condividono la stessa Funzione
+        // aziendale (creazione: nessun record storico da salvaguardare).
+        businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
         sourceRequired: 'Seleziona una fonte.',
       },
       errors: {
@@ -226,6 +227,10 @@ export const requestManagement = {
       sourceRequired: 'Seleziona una fonte.',
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
       productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',
+      // Spec 0077 INV-2, D-5: applicato SOLO quando la collezione
+      // `product_lines` è stata effettivamente modificata (grandfathering di
+      // un record storico non conforme, vedi `request-work-schema.ts`).
+      businessFunctionMismatch: 'Tutte le righe devono condividere la stessa funzione aziendale.',
       summary: 'Impossibile salvare: controlla questi campi — {{fields}}.',
     },
   },
