@@ -90,6 +90,48 @@ condiviso, `projects/column-renderers.test.tsx`, `rewards/reward-card.test.tsx`,
 L'unico rosso backend, `AssignablePermissionCatalogueTest`, e' PRE-ESISTENTE (verificato
 stashando le mie modifiche: fallisce comunque) e non c'entra con le date.
 
+## L'API RISPONDE NELLA LINGUA DEL CLIENT (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: un errore inline arrivava in inglese dentro una UI italiana. **La causa non era il
+messaggio: era il locale.** `APP_LOCALE=en` e nessun middleware -> `app()->getLocale()` restava `en`
+su OGNI richiesta tranne il bootstrap pubblico (`ConfigService`), quindi tutto il catalogo italiano
+gia' presente in `lang/it.json` + `lang/it/validation.php` era **irraggiungibile**.
+
+**Come funziona ora**: `App\Http\Middleware\SetLocale` (prepend sul gruppo `api`) risolve il locale
+da `Accept-Language`; il parser e' UNO solo, `LocaleEnum::fromAcceptLanguage()`, condiviso con
+`ConfigService` (prima era duplicato li' dentro). Il frontend manda l'header con la lingua ATTIVA
+della UI (`api/client.ts`, interceptor), non con le preferenze del browser: la lingua dell'interfaccia
+e' quella in cui l'operatore si aspetta i messaggi, e la UI segue gia' il campo `locale` dell'utente.
+**Chi non chiede nulla resta in inglese** (test, chiamate server-to-server): per questo l'intera suite
+non e' cambiata di una riga.
+
+**Cosa e' passato da stringa hard-coded a `__()`**: coerenza prodotti/categorie
+(`RequestProductCategoryCoherence`, con placeholder `:products`), le due regole cross-riga di
+`ProductLineSetValidator`, i messaggi del motore di modifica in cella (`TableCellUpdateService`,
+`CellValueValidator`), l'envelope condiviso (`BaseApiController` + il render 404 in `bootstrap/app.php`).
+Le costanti `*_MESSAGE` restano le stringhe INGLESI: sono la chiave di traduzione, non il testo finale.
+Aggiunti anche i nomi leggibili dei campi in `lang/{it,en}/validation.php -> attributes`
+(`product_lines.*.business_function_id` -> "funzione aziendale"), altrimenti l'errore arrivava come
+"product lines.0.business function id".
+
+**Bug trovato strada facendo, corretto**: il 404 dei controller restituiva il messaggio grezzo di
+`ModelNotFoundException` — `No query results for model [App\Models\Opportunity] 2` — cioe' esponeva
+il nome della classe interna, vietato da `backend.md §2`. Ora `resolveExceptionMessage()` risponde
+con il generico "Risorsa non trovata.", lo stesso dell'altro canale 404.
+
+**Se aggiungi un messaggio utente d'ora in poi**: scrivilo in inglese dentro `__()` e aggiungi la voce
+a `lang/it.json`. Non tradurre in italiano nel codice.
+
+**File**: nuovi `app/Http/Middleware/SetLocale.php`, `tests/Feature/Localization/ApiLocaleTest.php`,
+`frontend/src/api/client.test.ts`. Toccati: `LocaleEnum`, `ConfigService`, `bootstrap/app.php`,
+`BaseApiController`, `TableCellUpdateService`, `CellValueValidator`, `ProductLineSetValidator`,
+`RequestProductCategoryCoherence`, `lang/it.json`, `lang/{it,en}/validation.php`,
+`frontend/src/api/client.ts`.
+
+**Verifica**: BE `pest` COMPLETA 4984 test, 4982 passed + 1 skipped, 1 failed (sempre e solo il
+preesistente `AssignablePermissionCatalogueTest`, rosso anche a HEAD); `pint --dirty` pulito.
+FE 471 file / 3322 test passed, `tsc -b --force` EXIT=0, `eslint` pulito sui file toccati.
+
 ## CATEGORIA PRODOTTO INLINE SULLA GRIGLIA RICHIESTE + COERENZA BF/CATEGORIA/PRODOTTO (2026-08-03)
 
 **Spec**: `docs/specs/0075-request-management-inline-product-lines.xml` (17 AC). Direttiva utente:
