@@ -4,10 +4,21 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ResetPasswordNotification extends Notification
+/**
+ * Queued like the other mail-bearing notifications (NoteMentionNotification,
+ * RequestTransferredNotification): a slow or unreachable SMTP host must not
+ * hold the forgot-password response open, since that endpoint answers with a
+ * generic message regardless of delivery outcome.
+ *
+ * The locale survives the queue hop because User implements
+ * HasLocalePreference: NotificationSender resolves it per-notifiable in the
+ * worker, not from the request-time App::setLocale().
+ */
+class ResetPasswordNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
