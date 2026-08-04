@@ -107,6 +107,9 @@ function category(
     is_selectable: true,
     management_mode: 'multiple',
     management_mode_source_category: null,
+    manager_labels: {},
+    inherits_manager_labels: true,
+    inherited_manager_labels: {},
     permissions: permissionsWithNotes(),
     ...overrides,
   }

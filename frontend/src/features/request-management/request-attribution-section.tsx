@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Route } from 'lucide-react'
+import { Info, Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
@@ -12,10 +12,25 @@ import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/us
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
 import { InterceptedRelationSelectField } from '@/features/request-management/intercepted-relation-select-field'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { cn } from '@/lib/utils'
+import { OPERATOR_MANAGER_LABEL_POSITION, REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
-import type { RequestRelationRef } from '@/features/request-management/types'
+import type { ManagerLabels, RequestRelationRef } from '@/features/request-management/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
+
+/**
+ * A picker plus whatever hangs under it (the reward chips, the scoping hint).
+ * `gap-2` is `FormItem`'s own label-to-control gap, so an attachment sits on
+ * the same vertical rhythm as the field it belongs to instead of floating.
+ */
+const FIELD_STACK_CLASS = 'flex min-w-0 flex-col gap-2'
+
+/** Tinted inset (never a rung of the surface scale) that keeps the reward chips visually attached to the reporter. */
+const REWARDS_BLOCK_CLASS = 'rounded-lg border bg-muted/40 px-3 py-2.5'
+
+/** Same reveal the other conditional blocks of the app use (see `opportunity-form-body.tsx`). */
+const REWARDS_REVEAL_CLASS =
+  'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-200'
 
 interface RequestAttributionSectionProps {
   /**
@@ -33,6 +48,13 @@ interface RequestAttributionSectionProps {
   operationalSite: RequestRelationRef | null
   /** Spec 0059 D-3: the panel's persisted reward assignments, for the "abbinamento buono" control under the Segnalatore field. */
   rewards: RewardAssignmentRef[]
+  /**
+   * Spec 0080: the panel's own resolved G.A. labels (string position keys),
+   * as returned by `RequestWorkPanel.manager_labels`. Used to relabel the GA2
+   * "Operatore" field when the request's category defines one; `undefined`
+   * (or a map missing position 2) keeps today's "Operator (GA2)" string.
+   */
+  managerLabels?: ManagerLabels
 }
 
 /**
@@ -51,6 +73,11 @@ interface RequestAttributionSectionProps {
  * the operator list is scoped to the chosen Sede, picking an operator first
  * hydrates its own Sede from `meta`, and a real Sede change clears a now
  * out-of-scope operator.
+ *
+ * The reward control (spec 0059 D-3) hangs under the Segnalatore because that
+ * reporter is always its beneficiary — and, since the user directive
+ * 2026-08-04, it is mounted only once there IS one (see `showRewards`),
+ * revealing itself with the app's standard motion-safe fade/slide.
  */
 export function RequestAttributionSection({
   form,
@@ -60,12 +87,16 @@ export function RequestAttributionSection({
   operator,
   operationalSite,
   rewards,
+  managerLabels,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const control = form.control
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const rewardsValue = useWatch({ control, name: 'rewards' })
+  const operatorLabel =
+    managerLabels?.[OPERATOR_MANAGER_LABEL_POSITION] ??
+    t('requestManagement.workPanel.attribution.operator', { defaultValue: 'Operator' })
 
   // Baseline every auto-fill/clear below reasons against: it starts at the
   // panel's persisted Sede and only ever moves inside an event handler (never
@@ -83,6 +114,13 @@ export function RequestAttributionSection({
   // 2026-08-04).
   const showOperatorScopeHint =
     siteId != null && fieldPermission('operator_id').visible && fieldPermission('operational_site_id').visible
+
+  // The reward control only ever assigns a buono TO the reporter, so with no
+  // reporter it has no subject and stays off screen (user directive
+  // 2026-08-04). The exception is a reporter cleared while rewards are still
+  // attached: the backend refuses that pair (422, `UpdateRequestRequest`), and
+  // hiding the block would hide the only control able to detach them.
+  const showRewards = reporterId != null || rewardsValue.length > 0
 
   // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
   // (no extra fetch). An operator with no Sede leaves the current value alone.
@@ -133,7 +171,7 @@ export function RequestAttributionSection({
         defaultValue: 'Where the request comes from and who is working on it.',
       })}
     >
-      <div className="grid gap-3 @2xl:grid-cols-2">
+      <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
         <InterceptedRelationSelectField
           control={control}
           name="source_id"
@@ -151,7 +189,7 @@ export function RequestAttributionSection({
           {...selectLabels}
         />
 
-        <div className="flex flex-col gap-1.5">
+        <div className={FIELD_STACK_CLASS}>
           <RelationSelectField
             control={control}
             name="reporter_id"
@@ -164,35 +202,38 @@ export function RequestAttributionSection({
             selected={reporter}
             {...selectLabels}
           />
-          <RewardAssignmentField
-            value={rewardsValue}
-            onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
-            initialAssignments={rewards}
-            reporterId={reporterId}
-            fieldLabel={t('requestManagement.workPanel.attribution.rewards.fieldLabel', {
-              defaultValue: 'Assigned rewards',
-            })}
-            disabledHint={t('requestManagement.workPanel.attribution.rewards.reporterRequiredHint', {
-              defaultValue: 'Select a reporter first to assign a reward.',
-            })}
-            addLabel={t('requestManagement.workPanel.attribution.rewards.add', { defaultValue: 'Add reward' })}
-            removeLabel={(name) =>
-              t('requestManagement.workPanel.attribution.rewards.remove', { name, defaultValue: `Remove ${name}` })
-            }
-            searchPlaceholder={t('requestManagement.workPanel.attribution.rewards.searchPlaceholder', {
-              defaultValue: 'Search a reward type…',
-            })}
-            emptyLabel={t('requestManagement.workPanel.attribution.rewards.empty', {
-              defaultValue: 'No reward type found.',
-            })}
-            errorLabel={t('requestManagement.workPanel.attribution.rewards.error', {
-              defaultValue: 'Could not load the reward types.',
-            })}
-            retryLabel={t('common.retry')}
-            loadMoreLabel={t('requestManagement.workPanel.attribution.rewards.loadMore', {
-              defaultValue: 'Load more',
-            })}
-          />
+          {showRewards && (
+            <RewardAssignmentField
+              className={cn(REWARDS_BLOCK_CLASS, REWARDS_REVEAL_CLASS)}
+              value={rewardsValue}
+              onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
+              initialAssignments={rewards}
+              reporterId={reporterId}
+              fieldLabel={t('requestManagement.workPanel.attribution.rewards.fieldLabel', {
+                defaultValue: 'Assigned rewards',
+              })}
+              disabledHint={t('requestManagement.workPanel.attribution.rewards.reporterRequiredHint', {
+                defaultValue: 'Select a reporter first to assign a reward.',
+              })}
+              addLabel={t('requestManagement.workPanel.attribution.rewards.add', { defaultValue: 'Add reward' })}
+              removeLabel={(name) =>
+                t('requestManagement.workPanel.attribution.rewards.remove', { name, defaultValue: `Remove ${name}` })
+              }
+              searchPlaceholder={t('requestManagement.workPanel.attribution.rewards.searchPlaceholder', {
+                defaultValue: 'Search a reward type…',
+              })}
+              emptyLabel={t('requestManagement.workPanel.attribution.rewards.empty', {
+                defaultValue: 'No reward type found.',
+              })}
+              errorLabel={t('requestManagement.workPanel.attribution.rewards.error', {
+                defaultValue: 'Could not load the reward types.',
+              })}
+              retryLabel={t('common.retry')}
+              loadMoreLabel={t('requestManagement.workPanel.attribution.rewards.loadMore', {
+                defaultValue: 'Load more',
+              })}
+            />
+          )}
         </div>
 
         <RelationSelectField
@@ -210,12 +251,12 @@ export function RequestAttributionSection({
         />
 
         {/* After the Sede on purpose: the Sede is what scopes this list. */}
-        <div className="space-y-1.5">
+        <div className={FIELD_STACK_CLASS}>
           <RelationSelectField
             control={control}
             name="operator_id"
             metaKey="operator_id"
-            label={t('requestManagement.workPanel.attribution.operator', { defaultValue: 'Operator' })}
+            label={operatorLabel}
             resource={USERS_FOR_SELECT_RESOURCE}
             searchPlaceholder={t('requestManagement.workPanel.attribution.operatorSearch', {
               defaultValue: 'Search an operator',
@@ -227,7 +268,8 @@ export function RequestAttributionSection({
             {...selectLabels}
           />
           {showOperatorScopeHint && (
-            <p className="text-xs text-muted-foreground">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Info className="size-3.5 shrink-0" aria-hidden="true" />
               {t('requestManagement.workPanel.attribution.operatorFilteredBySite', {
                 defaultValue: 'Only the operators of the selected site.',
               })}

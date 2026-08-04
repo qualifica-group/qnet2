@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import axios from 'axios'
-import { MessageSquare, Paperclip, Plus, UserCog } from 'lucide-react'
+import { ArrowRightLeft, MessageSquare, Paperclip, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -23,21 +23,23 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
-import { assignRequestOperators, deleteRequest } from '@/features/request-management/api'
+import { assignRequestOperators, deleteRequest, transferRequests } from '@/features/request-management/api'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { REQUEST_MANAGEMENT_DOMAIN, type TransferRequestsPayload } from '@/features/request-management/types'
 
 /**
- * Domain icon overrides for the `documents`/`notes` row actions: the backend
- * action catalog fixes their icon keys as 'paperclip'/'message-square',
- * absent from the shared defaults in `action-icon-map.ts`. Hoisted at module
- * level (not inline in JSX) so its identity stays stable across renders.
+ * Domain icon overrides for the `documents`/`notes`/`transfer-contact` row
+ * actions: the backend action catalog fixes their icon keys as
+ * 'paperclip'/'message-square'/'arrow-right-left', absent from the shared
+ * defaults in `action-icon-map.ts` (spec 0079). Hoisted at module level (not
+ * inline in JSX) so its identity stays stable across renders.
  */
 const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
   paperclip: Paperclip,
   'message-square': MessageSquare,
+  'arrow-right-left': ArrowRightLeft,
 }
 
 /**
@@ -75,14 +77,19 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
  * resource key (`request-management`, gated server-side by
  * `request-management.viewActivity` + the GA2 scope).
  *
- * Selection (user directive 2026-07-23): this module owns TWO bulk flows, as
- * the Lead table does — the generic "elimina selezionati" (switched on by the
- * `delete` action being in the catalog) and the shared "Assegna operatori"
- * popup. Both are gated by this module's OWN permissions; the checkbox column
- * exists BECAUSE of them, the generic table never shows it without a reachable
- * bulk action. Create (spec 0057) is its own affordance, gated by this
- * module's OWN `request-management.create` — the rest of the CRUD (update)
- * still stays on the work panel, never `opportunities.*`.
+ * Selection (user directive 2026-07-23): this module owns bulk flows, as the
+ * Lead table does — the generic "elimina selezionati" (switched on by the
+ * `delete` action being in the catalog), the shared "Assegna operatori"
+ * popup, and — spec 0079 — "Trasferisci contatto", which reuses the SAME
+ * `AssignOperatorsDialog` component with `lockedMode="single"` (no mode
+ * step, Operatore always shown) behind its own mutation
+ * (`POST /request-management/transfer`). All three are gated by this
+ * module's OWN permissions; the checkbox column exists BECAUSE of them, the
+ * generic table never shows it without a reachable bulk action. The
+ * `transfer-contact` row action opens the identical dialog on a
+ * one-element selection. Create (spec 0057) is its own affordance, gated by
+ * this module's OWN `request-management.create` — the rest of the CRUD
+ * (update) still stays on the work panel, never `opportunities.*`.
  */
 export function RequestManagementTable() {
   const { t } = useTranslation()
@@ -122,6 +129,48 @@ export function RequestManagementTable() {
     [refreshGrid, t],
   )
 
+  // Transfer to another Sede + Operatore (spec 0079): row and bulk share ONE
+  // dialog/mutation — a row transfer is just a one-element selection, so
+  // `handleAction` below reuses the same `openTransferDialog`.
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferIds, setTransferIds] = useState<number[]>([])
+  const [transferDefaultSite, setTransferDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
+  // Same double gate as `assignOperators` (:166 above): the popup writes the
+  // Sede AND the Operatore.
+  const canTransferContact = can('request-management.update') && can('request-management.transferContact')
+
+  const transferMutation = useMutation({
+    mutationFn: (payload: TransferRequestsPayload) => transferRequests(payload),
+    onSuccess: (result) => {
+      toast.success(t('requestManagement.transfer.success', { count: result.transferred }))
+      refreshGrid()
+      tableRef.current?.clearSelection()
+    },
+  })
+
+  const handleTransfer = useCallback(
+    async (input: AssignOperatorsDialogInput) => {
+      try {
+        // `lockedMode="single"` guarantees `operator_id` is always picked.
+        await transferMutation.mutateAsync({
+          request_ids: transferIds,
+          operational_site_id: input.operational_site_id,
+          operator_id: input.operator_id as number,
+        })
+      } catch (error) {
+        toast.error(t('requestManagement.transfer.errors.generic'))
+        throw error
+      }
+    },
+    [transferMutation, transferIds, t],
+  )
+
+  const openTransferDialog = useCallback((selection: TableSelection) => {
+    setTransferIds(selection.ids)
+    setTransferDefaultSite(resolveSharedOperationalSite(selection.rows))
+    setTransferOpen(true)
+  }, [])
+
   const handleAction: RowActionHandler = useCallback(
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
@@ -140,11 +189,14 @@ export function RequestManagementTable() {
         case 'activity':
           setActivityRow(row)
           break
+        case 'transfer-contact':
+          openTransferDialog({ ids: [row.id], rows: [row] })
+          break
         default:
           break
       }
     },
-    [openView, runDelete],
+    [openView, runDelete, openTransferDialog],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
@@ -193,18 +245,34 @@ export function RequestManagementTable() {
   }, [])
 
   // Surfaced inside the generic table's single "Actions" dropdown, alongside
-  // the built-in "elimina selezionati". `undefined` when the actor cannot
-  // update, so the menu never offers an unreachable action.
-  const getBulkActions = canAssignOperators
-    ? (selection: TableSelection): BulkAction[] => [
-        {
-          key: 'assign-operators',
-          label: t('requestManagement.assign.tableButton'),
-          icon: UserCog,
-          onSelect: () => openAssignDialog(selection),
-        },
-      ]
-    : undefined
+  // the built-in "elimina selezionati". Each entry gated on its own ability;
+  // `undefined` (not a function returning an empty array) when neither is
+  // reachable, so the checkbox column stays off entirely.
+  const getBulkActions =
+    canAssignOperators || canTransferContact
+      ? (selection: TableSelection): BulkAction[] => [
+          ...(canAssignOperators
+            ? [
+                {
+                  key: 'assign-operators',
+                  label: t('requestManagement.assign.tableButton'),
+                  icon: UserCog,
+                  onSelect: () => openAssignDialog(selection),
+                },
+              ]
+            : []),
+          ...(canTransferContact
+            ? [
+                {
+                  key: 'transfer-contact',
+                  label: t('actions.transferContact'),
+                  icon: ArrowRightLeft,
+                  onSelect: () => openTransferDialog(selection),
+                },
+              ]
+            : []),
+        ]
+      : undefined
 
   // The two entity-specific sentences of the shared popup, which otherwise
   // names leads.
@@ -217,6 +285,17 @@ export function RequestManagementTable() {
       },
     }),
     [t, assignIds.length],
+  )
+
+  // The locked-mode popup reads `title`/`description` (no mode hints — Step 1
+  // never renders).
+  const transferCopy = useMemo(
+    () => ({
+      title: t('requestManagement.transfer.title'),
+      description: t('requestManagement.transfer.description', { count: transferIds.length }),
+      modeHints: { balanced: '', single: '' },
+    }),
+    [t, transferIds.length],
   )
 
   // Documents are edited from inside the dialog (upload/delete); refresh the
@@ -294,6 +373,16 @@ export function RequestManagementTable() {
         defaultSite={assignDefaultSite}
         copy={assignCopy}
         onAssign={handleAssign}
+      />
+
+      <AssignOperatorsDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        selectionCount={transferIds.length}
+        defaultSite={transferDefaultSite}
+        copy={transferCopy}
+        lockedMode="single"
+        onAssign={handleTransfer}
       />
 
       <DocumentsDialog

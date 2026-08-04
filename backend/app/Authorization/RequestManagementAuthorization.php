@@ -95,7 +95,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['export', 'view_activity'];
+        return ['export', 'view_activity', 'transfer_contact'];
     }
 
     /**
@@ -135,6 +135,19 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // the record-level `request-management.view` boundary is
             // enforced separately by GET /api/activity-log/request-management/{id}.
             'view_activity' => $model !== null && $actor->can('request-management.viewActivity'),
+            // Spec 0079: gates the "Trasferisci contatto" button in the work
+            // panel (Lavora). Per-record like `view_activity` above: the
+            // action operates on an existing request, so it must stay false
+            // on the create form (`$model === null`). Requires BOTH abilities
+            // because it's a write: it must mirror the double gate enforced
+            // server-side by RequestManagementController::transfer()
+            // (`request-management.update` AND `.transferContact`), or this
+            // flag would tell the UI an action is allowed that the endpoint
+            // then rejects with 403. `export`/`view_activity` above are
+            // read-only and don't need `update`.
+            'transfer_contact' => $model !== null
+                && $actor->can('request-management.update')
+                && $actor->can('request-management.transferContact'),
         ];
     }
 }

@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0080 — Label dei Gestori Account configurabili per Categoria Prodotto.
+  Contract-first: la shape sotto e' CONGELATA prima del dispatch dei teammate.
+  Mirror strutturale di 0061 (sezioni attributi nel form Categoria Prodotto) e
+  del pattern barriera di ereditarieta' (inherits_*_attributes).
+-->
+<spec id="0080-product-category-manager-labels" status="approved" owner="utente" date="2026-08-04">
+
+  <goal>
+    Nel form di creazione/modifica della Categoria Prodotto, una nuova sezione permette di
+    definire una label personalizzata per ciascun livello di Gestore Account (G.A. 1..4),
+    es. GA1 -> "Commerciale", GA2 -> "Operatore", GA3 -> "Consulente", GA4 -> "Tutor".
+    Le label cambiano SOLO la denominazione mostrata all'utente: struttura, riferimenti e
+    logica dei campi GA restano identici. In assenza di label configurata si mostra la
+    denominazione predefinita attuale.
+  </goal>
+
+  <context>
+    Nomi reali verificati nel codebase (NON ipotizzare, riusare esatti):
+
+    COSA SONO I "GA" — non sono colonne ga1..ga4. Sono righe di due tabelle pivot con una
+    colonna `position` intera 1-based:
+      - `opportunity_user` (opportunity_id, user_id, position) -> Opportunity::managers()
+      - `registry_user`    (registry_id, user_id, position)    -> Registry::managers()
+    Il cap 4 e' SOLO a validazione: App\Http\Requests\Concerns\ValidatesManagerSlots
+    (MAX_MANAGERS = 4, MAX_MANAGER_SLOTS = 12). Nessun vincolo DB sul numero.
+    Il campo API di scrittura e' `manager_slots`: array ordinato gap-aware, index+1 = G.A. n,
+    null = slot vuoto persistente.
+    Unico livello con semantica codificata: Opportunity::OPERATOR_MANAGER_POSITION = 2
+    ("Operatore" del modulo Gestione Richieste).
+
+    SUPERFICIE DELLE LABEL OGGI (l'inventario completo — non ce ne sono altre):
+      - frontend/src/components/form/manager-slots-field.tsx:70 — UNICA label parametrica
+        per livello: t('registries.form.managerSlotLabel', { n: index + 1 })
+        = it "Gestore account {{n}}" / en "Account manager {{n}}"
+        (it-registries.ts:64 / en-registries.ts:64). Namespace CONDIVISO: lo usa anche
+        Opportunities tramite lo stesso componente.
+      - frontend/src/features/registries/registry-detail.tsx:262-290 — griglia slot in
+        sola lettura, stessa chiave managerSlotLabel + managerSlotEmpty.
+      - frontend/src/features/opportunities/opportunity-detail-sections.tsx:77 (sort per
+        position) e :131 (header t('opportunities.form.managers')).
+      - Gestione Richieste, tre stringhe hard-coded "Operatore (GA2)" (= livello 2):
+        it/en-request-management.ts:22|21 (requestManagement.columns.operator),
+        :111 (form.create.attribution.operator), :185 (workPanel.attribution.operator).
+
+    LEGAME GA <-> CATEGORIA PRODOTTO — non esiste relazione diretta. Il solo percorso e':
+        opportunity_user -> opportunities -> opportunity_product_lines.product_category_id
+                                                            -> product_categories
+    Gia' scritto in RequestCategoryTabsResolver.php:39-45 (join) + :61-70 (scope position 2)
+    e in OpportunityRelationColumns.php:63 (product_category -> productLines.productCategory).
+    Le Anagrafiche (registry_user) NON hanno alcun percorso verso product_categories.
+
+    PRECEDENTI DA RISPETTARE (0061 / 0077):
+      - product_categories e' un albero; l'ereditarieta' degli attributi usa una BARRIERA
+        booleana per contesto (inherits_product_attributes / inherits_opportunity_attributes)
+        letta via AttributeContext::inheritanceColumn().
+      - CategoryHierarchy::inheritedAncestors(ProductCategory, AttributeContext) walk-a
+        risalendo e TRONCA alla prima barriera; effectiveAttributes() dedup-a con
+        "il piu' specifico vince" mantenendo la posizione di prima apparizione.
+      - ProductCategoryService::syncAttributes() fa full-replace dentro DB::transaction.
+      - Il form usa MetaField/ResourcePermissions; il campo di permesso `attributes` e'
+        di tipo 'custom' in ProductCategoriesAuthorization::fields().
+
+    DECISIONI UTENTE (2026-08-04):
+      1. Opportunita' con PIU' product line: le label si applicano SOLO se la categoria
+         risolta e' univoca; in caso di conflitto -> label di default.
+      2. Anagrafiche (Registry): restano con le label di default. Nessuna categoria da cui
+         risolvere; NON si tocca il percorso Registry.
+      3. Ereditarieta' dal padre SI', con toggle di barriera esplicito (stesso pattern
+         degli attributi).
+      4. Il default runtime resta "Gestore account {{n}}" / "Account manager {{n}}".
+         NON si cambia in "GA1". "GA1..GA4" e' il nome del LIVELLO nel form di
+         configurazione, non la stringa mostrata a runtime.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuova sezione "Gestori Account" nel form Categoria Prodotto (create + edit),
+            4 righe (G.A. 1..4), una input di label per riga, opzionale.</item>
+      <item>Persistenza + ereditarieta' con barriera + risoluzione effettiva.</item>
+      <item>Applicazione delle label risolte dove i livelli GA sono enumerati o nominati:
+            form Opportunita' (ManagerSlotsField), dettaglio Opportunita', e i tre punti
+            "Operatore (GA2)" di Gestione Richieste.</item>
+      <item>Anteprima read-only delle label ereditate nella sezione, come per gli attributi.</item>
+    </in>
+    <out>
+      <item>Nessun modulo o configuratore separato (vincolo esplicito della richiesta).</item>
+      <item>Registry / Anagrafiche: label invariate (decisione 2). Non toccare
+            registry-form-details-tab.tsx ne' registry-detail.tsx.</item>
+      <item>Nessuna modifica alla struttura GA: niente colonne nuove su opportunity_user /
+            registry_user, nessun cambio a manager_slots, a OPERATOR_MANAGER_POSITION,
+            a ValidatesManagerSlots, ne' alla logica di sync dei manager.</item>
+      <item>DOCUMENTI GENERATI: nessun intervento. Verificato che i GA non compaiono nei
+            documenti: DocumentLayoutVariableCatalog.php:122,132 espone solo le categorie
+            client / referent / commercial / reporter / supervisor. Non esiste variabile
+            manager/GA da rietichettare. Se in futuro servisse, e' una spec a se'.</item>
+      <item>ESPORTAZIONI: nessun intervento dedicato. ExportService.php:102 scrive l'header
+            usando le label gia' risolte lato client dallo stato congelato della tabella:
+            l'export segue automaticamente la colonna. Da VERIFICARE, non da implementare.</item>
+      <item>Colonna tabella Opportunita' `managers` (stack di avatar) e filtro set relativo:
+            e' UNA colonna aggregata, non un livello; l'header resta "Gestori account".</item>
+      <item>Nessun nuovo permesso. Nessuna nuova dipendenza.</item>
+    </out>
+  </scope>
+
+  <data_model>
+    <migration file="add_manager_labels_to_product_categories_table">
+      Su `product_categories`:
+        - `manager_labels` json nullable (default null).
+        - `inherits_manager_labels` boolean NOT NULL default true, after `manager_labels`.
+      down() droppa entrambe. Reversibile su SQLite e MySQL.
+      Shape del JSON: oggetto chiave->stringa con chiavi "1".."4" (position come stringa),
+      SOLO le posizioni con label non vuota. Esempio: {"1":"Commerciale","2":"Operatore"}.
+      null / {} = nessuna label propria.
+    </migration>
+    <model class="App\Models\ProductCategory">
+      Aggiungere `manager_labels` e `inherits_manager_labels` a #[Fillable].
+      casts(): 'manager_labels' => 'array', 'inherits_manager_labels' => 'boolean'.
+    </model>
+    <constant>
+      App\Models\ProductCategory::MANAGER_LABEL_MAX_POSITION = 4 — allineata al cap
+      ValidatesManagerSlots::MAX_MANAGERS. Le posizioni valide sono 1..4. Niente magic number
+      sparso: FormRequest, service e resolver leggono questa costante.
+      Lunghezza massima di una label: 60 caratteri (costante MANAGER_LABEL_MAX_LENGTH).
+    </constant>
+  </data_model>
+
+  <resolution>
+    <service class="App\Services\ProductCategories\CategoryHierarchy">
+      Nuovo metodo `effectiveManagerLabels(ProductCategory $category): array` -> array<int,string>
+      con chiavi int 1..4, contenente SOLO le posizioni che hanno una label risolta.
+      Algoritmo (mirror di effectiveAttributes, ma merge per posizione):
+        1. chain = [...ancestors risaliti troncando alla PRIMA categoria che ha
+           inherits_manager_labels = false (barriera, la barriera stessa e' inclusa e
+           interrompe la risalita oltre), ...self] ordinata dal piu' generico al piu' specifico.
+        2. merge progressivo per position: il piu' specifico vince sulla singola posizione.
+           Merge GRANULARE per posizione, non sostituzione in blocco dell'oggetto: una
+           categoria che definisce solo GA2 eredita comunque GA1/GA3/GA4 dagli antenati.
+        3. Le stringhe vuote/whitespace non entrano mai nel risultato.
+      Il walk NON deve riusare inheritedAncestors(ProductCategory, AttributeContext) piegandolo
+      a questo scopo se cio' cambia il comportamento del percorso attributi. Se si estrae un
+      walk condiviso parametrizzato sulla colonna barriera, i test attributi esistenti DEVONO
+      restare verdi senza modifiche: e' la prova.
+      MAX_DEPTH = 100 esistente si applica anche qui.
+    </service>
+    <service class="App\Services\Opportunities\OpportunityManagerLabelResolver" new="true">
+      `resolve(Opportunity $opportunity): array` -> array<int,string>, vuoto se non risolvibile.
+      Regola di univocita' (decisione utente 1):
+        1. Raccoglie i product_category_id DISTINTI dalle productLines dell'opportunita'.
+        2. Zero categorie -> [] (default).
+        3. Una sola categoria -> effectiveManagerLabels(quella categoria).
+        4. Piu' categorie -> calcola effectiveManagerLabels per ciascuna; se i risultati sono
+           IDENTICI (stesso set posizione->label) restituisce quello, altrimenti [] (default).
+           Confronto sul risultato EFFETTIVO, non sull'id categoria: due categorie diverse che
+           risolvono alle stesse label non sono un conflitto.
+      Deve funzionare su relazioni eager-loaded senza violare Model::preventLazyLoading().
+    </service>
+  </resolution>
+
+  <data_contract>
+
+    <!-- (A) Configurazione: round-trip nel form Categoria Prodotto -->
+    <endpoint method="POST|PATCH" path="/api/product-categories[/{productCategory}]">
+      <request><![CDATA[
+        {
+          "manager_labels": { "1": "Commerciale", "2": "Operatore" } | {} | null,
+          "inherits_manager_labels": true | false
+        }
+      ]]></request>
+      <rules>
+        'manager_labels'            => ['sometimes','nullable','array'],
+        'manager_labels.*'          => ['nullable','string','max:60'],
+        'inherits_manager_labels'   => ['sometimes','boolean'],
+        + regola dedicata: ogni CHIAVE di manager_labels deve essere un intero 1..4
+          (ProductCategory::MANAGER_LABEL_MAX_POSITION). Chiave fuori range -> 422.
+        Normalizzazione nel service: trim; le label vuote dopo il trim vengono RIMOSSE
+        (non salvate come stringa vuota). Oggetto risultante vuoto -> salva null.
+        Store e Update condividono le regole (Update con `sometimes`, semantica *Submitted
+        del DTO gia' in uso per distinguere "non inviato" da "inviato null").
+      </rules>
+      <authz>ProductCategoryPolicy invariata (product-categories.create / .update).
+        Nuovo campo di permesso `manager_labels` (tipo 'custom') in
+        ProductCategoriesAuthorization::fields() + fieldPermissionCeiling, stesso trattamento
+        del campo `attributes`. Un solo campo copre l'intera sezione.</authz>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}">
+      <response status="200"><![CDATA[
+        // ProductCategoryResource, ADDITIVO — nessun campo esistente cambia:
+        "manager_labels": { "1": "Commerciale" } | {},        // SOLO le proprie
+        "inherits_manager_labels": true,
+        // aggiunto dal controller in resourceWithInherited(), accanto a inherited_attributes:
+        "inherited_manager_labels": { "2": "Operatore" }      // risolte dagli ANTENATI, escluse le proprie
+      ]]></response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/effective-manager-labels">
+      <request>nessun parametro</request>
+      <response status="200"><![CDATA[
+        { "success": true, "message": "...", "data": { "manager_labels": { "1": "Commerciale", "2": "Operatore" } } }
+      ]]></response>
+      <authz>Stessa autorizzazione permissiva di effectiveAttributes
+        (ProductCategoryController::authorizeEffectiveAttributes():192-202):
+        product-categories.view OPPURE products.view|create|update. Serve al form per
+        l'anteprima "ereditate dal padre" prima del salvataggio.</authz>
+      <errors>403 senza alcun permesso; 404 categoria inesistente.</errors>
+    </endpoint>
+
+    <!-- (B) Consumo: label risolte sulle entita' che hanno i GA -->
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <response status="200"><![CDATA[
+        // OpportunityResource, ADDITIVO:
+        "manager_labels": { "1": "Commerciale", "2": "Operatore" }   // {} se non risolvibile
+      ]]></response>
+      <note>Risolto da OpportunityManagerLabelResolver. `managers` e `manager_slots`
+        restano IDENTICI: nessun cambio di struttura, solo un campo di denominazione a fianco.</note>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/{opportunity}/work-panel">
+      <response status="200"><![CDATA[
+        // RequestManagementResource / payload del work panel, ADDITIVO:
+        "manager_labels": { "2": "Operatore" }   // {} se non risolvibile
+      ]]></response>
+      <note>Serve a rietichettare il campo "Operatore (GA2)" con la label del livello 2
+        della categoria della richiesta. operator_id / operator invariati.</note>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/request-management">
+      <note>La colonna `operator_ga2` (RequestColumnCatalog.php:175-187) mantiene id,
+        editableField `operator_id`, relation e nullable INVARIATI. Cambia solo la LABEL
+        risolta quando il tab categoria attivo definisce una label per il livello 2:
+        il modulo ha gia' un contesto di categoria univoco (RequestCategoryTabsResolver /
+        use-request-management-category-preference.ts:25). Se nessun tab categoria e' attivo
+        o la categoria non definisce il livello 2 -> label di default attuale.</note>
+    </endpoint>
+  </data_contract>
+
+  <frontend>
+    <product-categories root="frontend/src/features/product-categories/">
+      types.ts: `ManagerLabels = Record&lt;string, string&gt;`; ProductCategoryDetail guadagna
+        manager_labels, inherits_manager_labels, inherited_manager_labels;
+        Create/UpdateProductCategoryPayload guadagnano manager_labels + inherits_manager_labels.
+      product-category-schema.ts: campi `manager_labels` (record stringa->stringa, max 60 per
+        valore, messaggio i18n) e `inherits_manager_labels` (boolean). Il form li tiene come
+        4 righe controllate; il payload invia solo le posizioni non vuote.
+      NUOVO manager-label-editor.tsx: la sezione. 4 righe G.A. 1..4, ognuna
+        "G.A. {n}" + Input (placeholder = default corrente "Gestore account {n}"), piu' lo
+        slot del toggle di ereditarieta' e il blocco read-only delle label ereditate.
+        Riusa il layout di attribute-assignment-section.tsx (contenitore
+        `flex flex-col gap-3 rounded-lg border bg-surface p-3`, header h4 + p text-xs muted,
+        blocco ereditati separato da `border-t`) per parita' visiva con le sezioni attributi.
+      product-category-form-body.tsx: nuova FormSection dopo la sezione attributi, avvolta in
+        `MetaField name="manager_labels" metaKey="manager_labels"`. Il toggle di ereditarieta'
+        riusa il pattern InheritanceToggle esistente (righe 103-121) e va mostrato SOLO se
+        parentId !== null, come per gli attributi.
+      api.ts: fetchEffectiveManagerLabels(categoryId); query-keys.ts: chiave dedicata.
+      product-category-form-payload.ts: diff dedicato (confronto per posizione, non per
+        identita' di oggetto) — invia manager_labels solo se cambiato, come sameAssignments().
+      product-category-detail.tsx: blocco read-only delle label configurate (additivo).
+    </product-categories>
+
+    <consumers>
+      components/form/manager-slots-field.tsx: nuova prop OPZIONALE
+        `labels?: Record&lt;number, string&gt;`. Per ogni slot: labels[index+1] se presente,
+        altrimenti il fallback attuale t('registries.form.managerSlotLabel', {n}).
+        Prop opzionale = Registry continua a passare nulla e resta invariato (decisione 2).
+        NON cambiare la firma di value/selectedItems ne' la logica di slot.
+      features/opportunities/opportunity-team-section.tsx: passa le labels da
+        opportunity.manager_labels.
+      features/opportunities/opportunity-detail-sections.tsx:77,131: ogni manager mostra la
+        label del proprio position quando definita; l'header di sezione resta invariato.
+      features/request-management: il campo operator_id in request-attribution-section.tsx:216-222
+        e request-create-attribution-section.tsx:233-257 usa la label del livello 2 quando
+        presente, altrimenti la stringa attuale. Stessa risoluzione per la label di colonna
+        `operator_ga2` e per request-work-invalid-fields.ts:37 (coerenza dei messaggi di errore).
+    </consumers>
+
+    <i18n>
+      Namespace productCategories (en-products.ts / it-products.ts, export productCategories):
+        form.sections.managerLabels.title       it "Gestori Account" / en "Account managers"
+        form.sections.managerLabels.description it "Personalizza la denominazione di ogni
+          livello di Gestore Account per questa categoria. I campi lasciati vuoti usano la
+          denominazione predefinita."
+        form.managerLabelLevel        it "G.A. {{n}}" / en "A.M. {{n}}"
+        form.managerLabelPlaceholder  (riusa il default: "Gestore account {{n}}")
+        form.managerLabelMax          messaggio di validazione 60 caratteri
+        form.inheritsManagerLabels + Hint (mirror di inheritsAttributes/Hint)
+        form.inheritedManagerLabels   header del blocco read-only
+      Rispettare il limite di 500 righe per file locale: se l'aggiunta sfora, splittare il
+      file come gia' fatto in passato.
+    </i18n>
+  </frontend>
+
+  <acceptance_criteria>
+    <!-- Configurazione -->
+    <criterion id="AC-001">POST /product-categories con manager_labels {"1":"Commerciale","2":"Operatore"} -> 201; rilette dal GET identiche.</criterion>
+    <criterion id="AC-002">PATCH con una label a stringa vuota o soli spazi -> quella posizione viene RIMOSSA, non salvata come "".</criterion>
+    <criterion id="AC-003">manager_labels con chiave "0", "5" o non numerica -> 422; nessuna scrittura.</criterion>
+    <criterion id="AC-004">Label oltre 60 caratteri -> 422.</criterion>
+    <criterion id="AC-005">Utente senza product-categories.update -> 403. Utente senza il permesso di campo manager_labels -> il campo e' rifiutato/ignorato come per `attributes`.</criterion>
+    <criterion id="AC-006">Salvare manager_labels NON altera attributes, inherits_*_attributes, requires_quote, management_mode, is_selectable ne' le righe attribute_category.</criterion>
+
+    <!-- Ereditarieta' -->
+    <criterion id="AC-010">Figlia con inherits_manager_labels=true e nessuna label propria -> effectiveManagerLabels = quelle del padre.</criterion>
+    <criterion id="AC-011">Merge GRANULARE: padre {"1":"Commerciale","2":"Operatore"}, figlia {"2":"Consulente"} -> effettive {"1":"Commerciale","2":"Consulente"}.</criterion>
+    <criterion id="AC-012">Figlia con inherits_manager_labels=false -> barriera: solo le proprie label, nessuna dal padre; e la risalita si ferma li' anche per i nipoti.</criterion>
+    <criterion id="AC-013">Catena a 3 livelli senza barriere -> vince sempre il piu' specifico per singola posizione.</criterion>
+    <criterion id="AC-014">GET /product-categories/{id}/effective-manager-labels restituisce le label risolte; 403 senza alcun permesso ammesso.</criterion>
+
+    <!-- Risoluzione sull'Opportunita' -->
+    <criterion id="AC-020">Opportunita' con UNA product line -> manager_labels = effettive di quella categoria.</criterion>
+    <criterion id="AC-021">Opportunita' con DUE product line su categorie che risolvono label DIVERSE -> manager_labels = {} (default).</criterion>
+    <criterion id="AC-022">Opportunita' con DUE product line su categorie diverse che risolvono label IDENTICHE -> manager_labels = quelle label (non e' conflitto).</criterion>
+    <criterion id="AC-023">Opportunita' senza product line -> manager_labels = {}.</criterion>
+
+    <!-- Non-regressione (la piu' importante) -->
+    <criterion id="AC-030">manager_slots, managers, operator_id, OPERATOR_MANAGER_POSITION e il sync dei manager producono output IDENTICO a prima su tutta la suite Opportunities + RequestManagement + Registries.</criterion>
+    <criterion id="AC-031">Le Anagrafiche mostrano ancora "Gestore account n" ovunque: nessuna regressione visiva ne' di payload sul percorso Registry.</criterion>
+    <criterion id="AC-032">Una categoria senza alcuna label configurata produce esattamente le denominazioni predefinite odierne in ogni superficie toccata.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-040">La sezione "Gestori Account" compare nel form Categoria Prodotto in create e in edit, con 4 righe G.A. 1..4 e placeholder = denominazione predefinita.</criterion>
+    <criterion id="AC-041">Il toggle di ereditarieta' compare solo su una categoria con padre; disattivandolo l'anteprima delle label ereditate sparisce SUBITO, prima del salvataggio (stesso comportamento degli attributi).</criterion>
+    <criterion id="AC-042">Il form invia solo le posizioni valorizzate; svuotare una input la rimuove dal payload.</criterion>
+    <criterion id="AC-043">ManagerSlotsField senza prop `labels` rende esattamente le label di oggi (test di non-regressione sul percorso Registry).</criterion>
+    <criterion id="AC-044">Nel form Opportunita' con categoria che definisce GA1="Commerciale", il primo slot mostra "Commerciale"; gli slot senza label configurata mostrano il default.</criterion>
+    <criterion id="AC-045">In Gestione Richieste, con tab categoria che definisce il livello 2, il campo e la colonna operatore mostrano quella label al posto di "Operatore (GA2)"; senza configurazione mostrano la stringa attuale.</criterion>
+    <criterion id="AC-046">VERIFICA (non implementazione): esportando la tabella Gestione Richieste, l'header della colonna operatore riporta la label risolta lato client. Se cosi' non fosse, NON implementare: segnalare.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Solo librerie gia' presenti in composer.json / package.json.
+    - Layering backend: Controller thin -> FormRequest -> Service -> DTO -> Resource -> Policy.
+    - Nessun raw SQL non parametrizzato; nessun throttle nuovo (backend.md 2).
+    - File entro 300 soft / 500 hard; niente emoji; identificatori in inglese.
+    - UI compatta secondo ui-design.md 2; superfici dai token (bg-surface / bg-card), mai grigi
+      Tailwind hard-coded; parita' visiva con le sezioni attributi esistenti.
+    - Test eseguiti davvero: Pest + Vitest + tsc -b --force + Pint + ESLint.
+    - Git: nessun commit e nessun cambio di branch (CLAUDE.md 3.6).
+  </constraints>
+
+</spec>

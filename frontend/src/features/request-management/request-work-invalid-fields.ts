@@ -1,7 +1,8 @@
 import type { FieldErrors } from 'react-hook-form'
 import type { TFunction } from 'i18next'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
-import type { ApplicableAttribute } from '@/features/request-management/types'
+import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
+import type { ApplicableAttribute, ManagerLabels } from '@/features/request-management/types'
 
 /**
  * Names the fields that refused the work panel's submit, for the summary shown
@@ -20,8 +21,12 @@ import type { ApplicableAttribute } from '@/features/request-management/types'
  */
 const BUFFERED_BLOCKS = new Set(['client_identity', 'client_contacts', 'client_address'])
 
-/** Human label of each root field of the form. */
-function buildFieldLabels(t: TFunction): Record<string, string> {
+/**
+ * Human label of each root field of the form. `operator_id` mirrors the
+ * attribution section's own resolution (spec 0080): the request's resolved
+ * G.A. level-2 label when the category defines one, otherwise today's string.
+ */
+function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined): Record<string, string> {
   return {
     opportunity_workflow_status_id: t('requestManagement.workPanel.workflowStatus.label'),
     next_callback_at: t('requestManagement.workPanel.callback.label'),
@@ -34,7 +39,7 @@ function buildFieldLabels(t: TFunction): Record<string, string> {
     rewards: t('requestManagement.workPanel.attribution.rewards.fieldLabel'),
     source_id: t('requestManagement.workPanel.attribution.source'),
     reporter_id: t('requestManagement.workPanel.attribution.reporter'),
-    operator_id: t('requestManagement.workPanel.attribution.operator'),
+    operator_id: managerLabels?.[OPERATOR_MANAGER_LABEL_POSITION] ?? t('requestManagement.workPanel.attribution.operator'),
     operational_site_id: t('requestManagement.workPanel.attribution.operationalSite'),
     attribute_values: t('requestManagement.workPanel.dynamicFields.title'),
   }
@@ -69,9 +74,10 @@ function collectMessages(error: unknown): string[] {
 export function describeInvalidFields(
   errors: FieldErrors<RequestWorkFormValues>,
   attributes: ApplicableAttribute[],
+  managerLabels: ManagerLabels | undefined,
   t: TFunction,
 ): string[] {
-  const labels = buildFieldLabels(t)
+  const labels = buildFieldLabels(t, managerLabels)
 
   return Object.entries(errors).flatMap(([key, error]) => {
     if (key === 'attribute_values') {

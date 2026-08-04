@@ -13,6 +13,15 @@ interface ManagerSlotsFieldProps {
   /** Known {id,label} for the filled slots, for edit-mode trigger hydration. */
   selectedItems: ForSelectItem[]
   disabled?: boolean
+  /**
+   * Spec 0080: per-position label override (1-based, mirrors `value`'s own
+   * index+1), resolved by the caller from a Product Category's configured G.A.
+   * labels. A position missing from the map falls back to the default
+   * "Gestore account n" string, unchanged. OPTIONAL: Registries never passes
+   * it (decision 2 — that path keeps the default labels), which is what keeps
+   * this prop, and every existing call site, non-breaking.
+   */
+  labels?: Record<number, string>
 }
 
 /**
@@ -23,16 +32,20 @@ interface ManagerSlotsFieldProps {
  * entirely. The value is the gap-aware `manager_slots` array submitted
  * verbatim to the backend. Domain-agnostic (spec 0020, extracted for reuse by
  * Opportunities, spec 0040): every i18n string is the shared `registries.form.*`
- * namespace, generic enough that "G.A." reads the same across modules.
+ * namespace, generic enough that "G.A." reads the same across modules. Spec
+ * 0080 lets a caller override the per-slot denomination via `labels`.
  */
 export function ManagerSlotsField({
   value,
   onChange,
   selectedItems,
   disabled = false,
+  labels,
 }: ManagerSlotsFieldProps) {
   const { t } = useTranslation()
   const { quickCreated, renderAction } = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
+
+  const slotLabel = (index: number) => labels?.[index + 1] ?? t('registries.form.managerSlotLabel', { n: index + 1 })
 
   const setSlot = (index: number, id: number | null) =>
     onChange(value.map((slot, i) => (i === index ? id : slot)))
@@ -65,7 +78,7 @@ export function ManagerSlotsField({
           <li key={index} className="flex items-center gap-2">
             <span
               className="flex w-9 shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground"
-              title={t('registries.form.managerSlotLabel', { n: index + 1 })}
+              title={slotLabel(index)}
             >
               <UserRound aria-hidden="true" className="size-3.5" />
               {index + 1}
@@ -84,7 +97,7 @@ export function ManagerSlotsField({
                   empty: t('registries.form.managersEmpty'),
                   error: t('registries.form.managersError'),
                   clearLabel: t('common.clear'),
-                  triggerLabel: t('registries.form.managerSlotLabel', { n: index + 1 }),
+                  triggerLabel: slotLabel(index),
                   retry: t('common.retry'),
                 }}
                 action={renderAction((ref) => setSlot(index, ref.id), disabled)}

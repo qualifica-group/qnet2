@@ -23,14 +23,17 @@ export interface AssignOperatorsDialogSite {
   label: string
 }
 
-type AssignmentMode = 'single' | 'balanced'
+export type AssignmentMode = 'single' | 'balanced'
 
 /**
  * Copy that names the assigned entity ("… lead selezionati", "Distribuisce i
  * lead selezionati…"). Everything else in the dialog is entity-neutral and
- * stays on the shared strings.
+ * stays on the shared strings. `title`, optional (spec 0079): omitted, the
+ * header keeps the Lead wording (`leads.assign.title`) — the transfer flow is
+ * the only caller that overrides it.
  */
 export interface AssignOperatorsDialogCopy {
+  title?: string
   description: string
   modeHints: Record<AssignmentMode, string>
 }
@@ -91,6 +94,15 @@ export interface AssignOperatorsDialogProps {
    */
   copy?: AssignOperatorsDialogCopy
   /**
+   * Additive, opt-in (spec 0079): when set, Step 1 (the mode picker) never
+   * renders, `mode` is fixed to this value instead of user-picked, and the
+   * Operatore field is always shown (not only for `single`). The three
+   * pre-existing consumers (leads, this module's own assignment, the import
+   * wizard) leave it `undefined` and keep their behavior byte-for-byte
+   * (AC-029).
+   */
+  lockedMode?: AssignmentMode
+  /**
    * Wired by the consumer to its own endpoint (the Lead table via
    * `useAssignOperators`, the import review bar via its own PATCH). The
    * dialog never calls the API itself: it only collects the input, shows a
@@ -107,7 +119,9 @@ export interface AssignOperatorsDialogProps {
  * "Assegna a operatore" (`single`) — then the Sede, and (only for `single`)
  * the Operatore filtered by that Sede (AC-030). A single confirm action
  * commits the pick. Reused as-is by the Lead table's bulk action and the
- * import review bar.
+ * import review bar. With `lockedMode` (spec 0079, additive) the mode step is
+ * skipped entirely and the Operatore is always shown — the contact-transfer
+ * flow's own use, which never lets the user pick a mode.
  */
 export function AssignOperatorsDialog({
   open,
@@ -116,6 +130,7 @@ export function AssignOperatorsDialog({
   defaultSiteId,
   defaultSite,
   copy,
+  lockedMode,
   onAssign,
 }: AssignOperatorsDialogProps) {
   return (
@@ -126,6 +141,7 @@ export function AssignOperatorsDialog({
           defaultSiteId={defaultSiteId}
           defaultSite={defaultSite}
           copy={copy}
+          lockedMode={lockedMode}
           onAssign={onAssign}
           onClose={() => onOpenChange(false)}
         />
@@ -139,6 +155,7 @@ interface AssignOperatorsDialogBodyProps {
   defaultSiteId?: number | null
   defaultSite?: AssignOperatorsDialogSite | null
   copy?: AssignOperatorsDialogCopy
+  lockedMode?: AssignmentMode
   onAssign: AssignOperatorsDialogProps['onAssign']
   onClose: () => void
 }
@@ -154,11 +171,12 @@ function AssignOperatorsDialogBody({
   defaultSiteId,
   defaultSite,
   copy,
+  lockedMode,
   onAssign,
   onClose,
 }: AssignOperatorsDialogBodyProps) {
   const { t } = useTranslation()
-  const [mode, setMode] = useState<AssignmentMode | null>(null)
+  const [mode, setMode] = useState<AssignmentMode | null>(lockedMode ?? null)
   const [siteId, setSiteId] = useState<number | null>(defaultSiteId ?? defaultSite?.id ?? null)
   const [operatorId, setOperatorId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -170,19 +188,24 @@ function AssignOperatorsDialogBody({
     setOperatorId(null)
   }
 
-  // Single needs both Sede and Operatore; balanced needs only the Sede.
-  const canSubmit =
-    mode !== null && siteId !== null && (mode === 'balanced' || operatorId !== null)
+  // Locked mode (spec 0079): the step-1 picker never renders and the
+  // Operatore field is always shown, so submission always needs both Sede
+  // and Operatore. Free mode keeps the original per-mode gating: single
+  // needs both, balanced needs only the Sede.
+  const canSubmit = lockedMode
+    ? siteId !== null && operatorId !== null
+    : mode !== null && siteId !== null && (mode === 'balanced' || operatorId !== null)
 
   function handleAssign() {
     if (!canSubmit || siteId === null) {
       return
     }
+    const effectiveMode = (lockedMode ?? mode) as AssignmentMode
     setIsSubmitting(true)
     onAssign({
       operational_site_id: siteId,
-      mode: mode as AssignmentMode,
-      ...(mode === 'single' ? { operator_id: operatorId as number } : {}),
+      mode: effectiveMode,
+      ...(lockedMode || effectiveMode === 'single' ? { operator_id: operatorId as number } : {}),
     })
       .then(() => onClose())
       .catch(() => {
@@ -192,7 +215,11 @@ function AssignOperatorsDialogBody({
       .finally(() => setIsSubmitting(false))
   }
 
-  const ConfirmIcon = mode === 'single' ? UserCheck : Scale
+  const effectiveMode = lockedMode ?? mode
+  const ConfirmIcon = effectiveMode === 'single' ? UserCheck : Scale
+  // Locked mode always shows the Operatore field (spec 0079 AC-027); free
+  // mode keeps it gated behind the user's own `single` pick.
+  const showOperatorField = lockedMode !== undefined || mode === 'single'
 
   return (
     <>
@@ -205,7 +232,7 @@ function AssignOperatorsDialogBody({
           <Users className="size-4.5" />
         </span>
         <DialogHeader className="flex-1 gap-1">
-          <DialogTitle className="text-sm">{t('leads.assign.title')}</DialogTitle>
+          <DialogTitle className="text-sm">{copy?.title ?? t('leads.assign.title')}</DialogTitle>
           <DialogDescription className="text-xs">
             {copy?.description ?? t('leads.assign.description', { count: selectionCount })}
           </DialogDescription>
@@ -213,67 +240,69 @@ function AssignOperatorsDialogBody({
       </div>
 
       <div className="space-y-4 px-4 py-4">
-        {/* Step 1: pick the assignment mode. */}
-        <div className="space-y-2">
-          <Label className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            {t('leads.assign.mode.label')}
-          </Label>
-          <div role="radiogroup" aria-label={t('leads.assign.mode.label')} className="flex flex-col gap-2">
-            {ASSIGNMENT_MODES.map((entry) => {
-              const { mode: value, icon: Icon } = entry
-              const selected = mode === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={t(`leads.assign.actions.${value}`)}
-                  disabled={isSubmitting}
-                  onClick={() => setMode(value)}
-                  className={cn(
-                    'group relative flex items-start gap-3 rounded-xl border bg-card p-3 text-left transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
-                    'disabled:pointer-events-none disabled:opacity-50',
-                    selected
-                      ? cn(entry.card, 'shadow-sm')
-                      : 'border-border hover:border-foreground/20 hover:bg-muted/40 hover:shadow-sm motion-safe:hover:-translate-y-0.5',
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
+        {/* Step 1: pick the assignment mode — skipped entirely when locked (spec 0079 AC-027). */}
+        {!lockedMode && (
+          <div className="space-y-2">
+            <Label className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {t('leads.assign.mode.label')}
+            </Label>
+            <div role="radiogroup" aria-label={t('leads.assign.mode.label')} className="flex flex-col gap-2">
+              {ASSIGNMENT_MODES.map((entry) => {
+                const { mode: value, icon: Icon } = entry
+                const selected = mode === value
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={t(`leads.assign.actions.${value}`)}
+                    disabled={isSubmitting}
+                    onClick={() => setMode(value)}
                     className={cn(
-                      'flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors',
-                      selected ? entry.chip : 'bg-muted text-muted-foreground group-hover:bg-muted/70',
+                      'group relative flex items-start gap-3 rounded-xl border bg-card p-3 text-left transition-all',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+                      'disabled:pointer-events-none disabled:opacity-50',
+                      selected
+                        ? cn(entry.card, 'shadow-sm')
+                        : 'border-border hover:border-foreground/20 hover:bg-muted/40 hover:shadow-sm motion-safe:hover:-translate-y-0.5',
                     )}
                   >
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="min-w-0 flex-1 space-y-0.5 pr-4">
-                    <span className="block text-xs font-semibold text-foreground">
-                      {t(`leads.assign.actions.${value}`)}
-                    </span>
-                    <span className="block text-[11px] leading-snug text-muted-foreground">
-                      {copy?.modeHints[value] ?? t(`leads.assign.actions.${value}Hint`)}
-                    </span>
-                  </span>
-                  {selected && (
-                    <CheckCircle2
+                    <span
                       aria-hidden="true"
                       className={cn(
-                        'absolute top-2.5 right-2.5 size-4 shrink-0',
-                        entry.accent,
-                        'motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-75',
+                        'flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+                        selected ? entry.chip : 'bg-muted text-muted-foreground group-hover:bg-muted/70',
                       )}
-                    />
-                  )}
-                </button>
-              )
-            })}
+                    >
+                      <Icon className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1 space-y-0.5 pr-4">
+                      <span className="block text-xs font-semibold text-foreground">
+                        {t(`leads.assign.actions.${value}`)}
+                      </span>
+                      <span className="block text-[11px] leading-snug text-muted-foreground">
+                        {copy?.modeHints[value] ?? t(`leads.assign.actions.${value}Hint`)}
+                      </span>
+                    </span>
+                    {selected && (
+                      <CheckCircle2
+                        aria-hidden="true"
+                        className={cn(
+                          'absolute top-2.5 right-2.5 size-4 shrink-0',
+                          entry.accent,
+                          'motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-75',
+                        )}
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Step 2: pick the Sede (always) and the Operatore (single only). */}
+        {/* Step 2: pick the Sede (always) and the Operatore (single, or locked — spec 0079). */}
         {mode !== null && (
           <div className="space-y-3 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1">
             <div className="space-y-1.5">
@@ -304,7 +333,7 @@ function AssignOperatorsDialogBody({
               />
             </div>
 
-            {mode === 'single' && (
+            {showOperatorField && (
               <div className="space-y-1.5">
                 <Label
                   htmlFor="assign-operators-operator"

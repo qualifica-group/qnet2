@@ -104,6 +104,7 @@ export const it: TranslationResources = {
     impersonate: 'Impersona',
     layout: 'Layout attributi',
     generateWord: 'Scarica preventivo',
+    transferContact: 'Trasferisci contatto',
   },
   table,
   statsPanel,

@@ -6,10 +6,12 @@ use App\Http\Resources\Concerns\SummarizesWorkflowStatuses;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
+use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -35,7 +37,14 @@ use Illuminate\Support\Collection;
  * `attribute_layout` (spec 0062) is additive: the merged, multi-category
  * resolved layout (or null, flat fallback) — `applicable_attributes` stays
  * the untouched value-pipeline authority.
+ *
+ * #[PreserveKeys]: `manager_labels` (spec 0080) is a sparse
+ * position("1".."4")->label map — JsonResource's default filter() reindexes
+ * any NESTED array whose keys are ALL numeric, which would silently turn
+ * `{"2":"Operatore"}` into `["Operatore"]` on the wire. Every other array
+ * field here is already 0-indexed-sequential, so this is a no-op for them.
  */
+#[PreserveKeys]
 class RequestManagementResource extends JsonResource
 {
     use SummarizesWorkflowStatuses;
@@ -74,8 +83,18 @@ class RequestManagementResource extends JsonResource
             // {id, label} (OperationalSiteLabel), NOT summarizeByName().
             'operational_site_id' => $opportunity->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($opportunity->operationalSite),
+            // Spec 0079: the transfer flag + the origin Sede's label, both
+            // read-only outputs — no form, inline-editor or endpoint of this
+            // module accepts either in writing (AC-024).
+            'is_transferred' => (bool) $opportunity->is_transferred,
+            'transferred_from' => OperationalSiteLabel::summarize($opportunity->transferredFromOperationalSite),
             'operator_id' => $opportunity->operatorManager()?->id,
             'operator' => $this->summarizeByName($opportunity->operatorManager()),
+            // Spec 0080: ADDITIVE — the "Gestore Account" label overrides
+            // resolved from the request's product line(s), so the panel can
+            // rietichettare "Operatore (GA2)" with the level-2 label when the
+            // category defines one. `{}` when not resolvable.
+            'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($opportunity),
             'opportunity_status' => $this->summarizeStatus($opportunity->opportunityStatus),
             'workflow_status' => $this->summarizeWorkflowStatus($opportunity->workflowStatus),
             'workflow_statuses' => $this->summarizeWorkflowStatuses($this->resource['workflow_statuses']),

@@ -233,3 +233,95 @@ describe('AssignOperatorsDialog', () => {
     expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
   })
 })
+
+/**
+ * `lockedMode` (spec 0079, additive/retro-compatible): skips the step-1 mode
+ * picker entirely, fixes `mode`, and always shows the Operatore field. The
+ * three pre-existing consumers never pass it (AC-029), asserted by every test
+ * above still passing unmodified.
+ */
+describe('AssignOperatorsDialog — lockedMode (spec 0079)', () => {
+  it('never renders the mode radios and shows Sede + Operatore right away (AC-027)', () => {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={1}
+        lockedMode="single"
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+    expect(screen.queryByRole('radio', { name: 'Balanced split' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Assign to operator' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Site' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Operator' })).toBeInTheDocument()
+  })
+
+  it('overrides the title/description from copy', () => {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={2}
+        lockedMode="single"
+        copy={{ title: 'Transfer contact', description: '2 request(s) selected.', modeHints: { balanced: '', single: '' } }}
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+    expect(screen.getByRole('dialog')).toHaveTextContent('Transfer contact')
+    expect(screen.getByText('2 request(s) selected.')).toBeInTheDocument()
+  })
+
+  it('requires both Sede and Operatore before submitting, then calls onAssign with the locked mode (AC-027)', async () => {
+    const onAssign = vi.fn().mockResolvedValue(undefined)
+    const onOpenChange = vi.fn()
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={onOpenChange}
+        selectionCount={1}
+        lockedMode="single"
+        onAssign={onAssign}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+
+    pickSite()
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+
+    pickOperator()
+    expect(screen.getByRole('button', { name: 'Assign' })).not.toBeDisabled()
+    confirm()
+
+    await waitFor(() =>
+      expect(onAssign).toHaveBeenCalledWith({
+        operational_site_id: SITE_PICK_ID,
+        mode: 'single',
+        operator_id: OPERATOR_PICK_ID,
+      }),
+    )
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('clears the chosen Operatore when the Sede changes (AC-028)', () => {
+    render(
+      <AssignOperatorsDialog
+        open
+        onOpenChange={vi.fn()}
+        selectionCount={1}
+        lockedMode="single"
+        onAssign={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+    pickSite()
+    pickOperator()
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent(String(OPERATOR_PICK_ID))
+
+    pickSite()
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveTextContent('none')
+    expect(screen.getByRole('button', { name: 'Operator' })).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ operational_site_id: SITE_PICK_ID }),
+    )
+  })
+})

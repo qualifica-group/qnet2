@@ -145,6 +145,20 @@ final class RequestColumnCatalog
                 'relation' => ['resource' => 'operational-sites'],
                 'nullable' => true,
             ],
+            // "Trasferito" (spec 0079): a real, sortable/filterable boolean
+            // column — the generic engine serves ordering, the `boolean`
+            // filter and export with no derived-column hook. A system flag,
+            // deliberately NOT `editable`: no inline-editor or endpoint of
+            // this module accepts it in writing (AC-024).
+            [
+                'id' => 'is_transferred',
+                'label' => 'requestManagement.columns.transferred',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
             [
                 // Inline cell-editing (spec 0055, D-6): the same relation
                 // column LeadColumnCatalog already declares for its operator —
@@ -413,6 +427,20 @@ final class RequestColumnCatalog
                 'confirm' => false,
                 'permission' => 'request-management.view',
                 'count_field' => 'notes_count',
+            ],
+            // "Trasferisci contatto" (spec 0079): declared AFTER the first
+            // three so it falls into the overflow (three-dots) menu
+            // (INLINE_ACTION_LIMIT = 3, row-actions.tsx:33) — not frequent
+            // enough for an inline slot. Opens AssignOperatorsDialog in its
+            // `lockedMode="single"` shape, gated by its OWN ability
+            // (transferContact), on top of `request-management.update`.
+            [
+                'key' => 'transfer-contact',
+                'label' => 'actions.transferContact',
+                'icon' => 'arrow-right-left',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'request-management.transferContact',
             ],
             [
                 'key' => 'delete',

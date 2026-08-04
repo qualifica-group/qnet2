@@ -14,10 +14,30 @@ import { formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { CategoryAttributesContextSection } from '@/features/product-categories/product-category-detail-attributes'
 import { ProductCategoryAttributeLayoutPreview } from '@/features/product-categories/product-category-attribute-layout-preview'
+import { MANAGER_LABEL_POSITIONS } from '@/features/product-categories/product-category-schema'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 
 interface ProductCategoryDetailViewProps {
   category: ProductCategoryDetailWithPermissions
+}
+
+interface ResolvedManagerLabel {
+  position: number
+  label: string
+  inherited: boolean
+}
+
+/** Merges own + inherited manager labels for display, own winning per position (spec 0080), skipping positions with neither. */
+function resolveManagerLabels(category: ProductCategoryDetailWithPermissions): ResolvedManagerLabel[] {
+  return MANAGER_LABEL_POSITIONS.map((position): ResolvedManagerLabel | null => {
+    const key = String(position)
+    const own = category.manager_labels[key]
+    if (own) {
+      return { position, label: own, inherited: false }
+    }
+    const fromAncestor = category.inherited_manager_labels[key]
+    return fromAncestor ? { position, label: fromAncestor, inherited: true } : null
+  }).filter((entry): entry is ResolvedManagerLabel => entry !== null)
 }
 
 /**
@@ -32,6 +52,7 @@ interface ProductCategoryDetailViewProps {
 export function ProductCategoryDetailView({ category }: ProductCategoryDetailViewProps) {
   const { t } = useTranslation()
   const createdAt = formatDateTime(category.created_at)
+  const resolvedManagerLabels = resolveManagerLabels(category)
 
   return (
     <DetailPanel>
@@ -116,6 +137,25 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
           </DetailField>
         </DetailGrid>
       </DetailSection>
+
+      {resolvedManagerLabels.length > 0 && (
+        <DetailSection title={t('productCategories.form.sections.managerLabels.title')}>
+          <DetailGrid>
+            {resolvedManagerLabels.map(({ position, label, inherited }) => (
+              <DetailField key={position} label={t('productCategories.form.managerLabelLevel', { n: position })}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{label}</span>
+                  {inherited && (
+                    <Badge variant="outline" className="text-xs">
+                      {t('productCategories.detail.managerLabelInherited')}
+                    </Badge>
+                  )}
+                </div>
+              </DetailField>
+            ))}
+          </DetailGrid>
+        </DetailSection>
+      )}
 
       <CategoryAttributesContextSection
         title={t('productCategories.form.sections.productAttributes.title')}

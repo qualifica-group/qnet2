@@ -79,6 +79,7 @@ class Opportunity extends BaseModel
             'attribute_values' => 'array',
             'next_callback_at' => 'datetime',
             'next_callback_reminded_at' => 'datetime',
+            'is_transferred' => 'boolean',
         ];
     }
 
@@ -130,6 +131,18 @@ class Opportunity extends BaseModel
     public function operationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * The Sede operativa a request was transferred FROM (spec 0079): null
+     * when never transferred, or when the origin site has since been deleted
+     * (`nullOnDelete` — `is_transferred` survives that, only the origin
+     * reference and its detail-panel notice disappear). Written exclusively
+     * by RequestTransferService, never mass-assignable (see #[Fillable]).
+     */
+    public function transferredFromOperationalSite(): BelongsTo
+    {
+        return $this->belongsTo(OperationalSite::class, 'transferred_from_operational_site_id');
     }
 
     /**

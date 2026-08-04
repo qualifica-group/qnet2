@@ -21,4 +21,7 @@ export const requestManagementKeys = {
    */
   formContext: (sourceId: number | null, categoryPairs: string) =>
     ['request-management', 'form-context', sourceId, categoryPairs] as const,
+  /** Query key of the active category tab's resolved G.A. labels (spec 0080), the create form's own fetch. */
+  categoryManagerLabels: (categoryId: number | null) =>
+    ['request-management', 'category-manager-labels', categoryId] as const,
 }

@@ -7,6 +7,7 @@ use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
+use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
 use App\Models\ProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +28,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateProductCategoryRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesAttributeContextAssignments;
+    use EnforcesFieldPermissions, ValidatesAttributeContextAssignments, ValidatesManagerLabelPositions;
 
     public function authorize(): bool
     {
@@ -62,6 +63,12 @@ class UpdateProductCategoryRequest extends FormRequest
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],
             'attributes.*.is_required' => ['sometimes', 'boolean'],
             'attributes.*.sort_order' => ['sometimes', 'integer'],
+            // Spec 0080: sparse position->label map for the "Gestori Account"
+            // section. Key range (1..MANAGER_LABEL_MAX_POSITION) is checked by
+            // ValidatesManagerLabelPositions, called from withValidator().
+            'manager_labels' => ['sometimes', 'nullable', 'array'],
+            'manager_labels.*' => ['nullable', 'string', 'max:'.ProductCategory::MANAGER_LABEL_MAX_LENGTH],
+            'inherits_manager_labels' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -69,6 +76,7 @@ class UpdateProductCategoryRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateAttributeContextAssignments($validator);
+            $this->validateManagerLabelPositions($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

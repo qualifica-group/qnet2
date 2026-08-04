@@ -5,11 +5,14 @@ import type {
   AssignRequestOperatorsPayload,
   AssignRequestOperatorsResult,
   CreateRequestPayload,
+  ManagerLabels,
   RequestFormContext,
   RequestFormContextPayload,
   RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
+  TransferRequestsPayload,
+  TransferRequestsResult,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
 
@@ -97,6 +100,23 @@ export async function assignRequestOperators(
 }
 
 /**
+ * Contact transfer to another operational Sede + Operatore (spec 0079): the
+ * one endpoint behind both the row action and the bulk action, invoked with a
+ * single-element `request_ids` for the former. Returns how many requests were
+ * actually written — ids outside the actor's scope are skipped, same D-3 rule
+ * as `assignRequestOperators`.
+ */
+export async function transferRequests(
+  payload: TransferRequestsPayload,
+): Promise<TransferRequestsResult> {
+  const { data } = await apiClient.post<ApiResponse<TransferRequestsResult>>(
+    '/request-management/transfer',
+    payload,
+  )
+  return data.data
+}
+
+/**
  * Fetches the Product Category tab strip (spec 0064): only categories with at
  * least one request in the actor's own scope (`request-management.viewAny`),
  * ordered by name.
@@ -106,4 +126,20 @@ export async function fetchRequestManagementCategories(): Promise<RequestManagem
     '/request-management/product-categories',
   )
   return data.data.categories
+}
+
+/**
+ * Resolves a Product Category's effective G.A. labels (spec 0080, frozen
+ * contract owned by `features/product-categories`). Called directly here,
+ * not imported from that feature (out of this module's ownership): the
+ * create form has no persisted request yet to carry its own `manager_labels`
+ * (unlike the work panel, whose `fetchRequestWorkPanel` already resolves it
+ * per-request), so it relabels the GA2 "Operatore" from the active category
+ * tab instead (`useActiveCategoryManagerLabels`).
+ */
+export async function fetchCategoryManagerLabels(categoryId: number): Promise<ManagerLabels> {
+  const { data } = await apiClient.get<ApiResponse<{ manager_labels: ManagerLabels }>>(
+    `/product-categories/${categoryId}/effective-manager-labels`,
+  )
+  return data.data.manager_labels
 }

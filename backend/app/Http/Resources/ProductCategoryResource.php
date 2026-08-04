@@ -5,11 +5,20 @@ namespace App\Http\Resources;
 use App\Models\Attribute;
 use App\Models\ProductCategory;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @mixin ProductCategory
+ *
+ * #[PreserveKeys]: `manager_labels` (spec 0080) is a sparse position("1".."4")
+ * ->label map — JsonResource's default filter() reindexes any NESTED array
+ * whose keys are ALL numeric (Illuminate\Http\Resources\ConditionallyLoads
+ * Attributes::removeMissingValues()), which would silently turn
+ * `{"2":"Operatore"}` into `["Operatore"]` on the wire. Every other array
+ * field here is already 0-indexed-sequential, so this is a no-op for them.
  */
+#[PreserveKeys]
 class ProductCategoryResource extends JsonResource
 {
     /**
@@ -64,6 +73,12 @@ class ProductCategoryResource extends JsonResource
                 // the frontend splits this single flat list by the tag.
                 'context' => (string) $attribute->pivot->context,
             ])->all(),
+            // Spec 0080: own "Gestore Account" label overrides only — the
+            // ANCESTORS' resolved ones are attached by the controller as the
+            // sibling `inherited_manager_labels` key, never merged here (same
+            // treatment as `attributes`/`inherited_attributes`).
+            'manager_labels' => $this->manager_labels ?? [],
+            'inherits_manager_labels' => (bool) $this->inherits_manager_labels,
             'created_at' => $this->created_at,
         ];
     }

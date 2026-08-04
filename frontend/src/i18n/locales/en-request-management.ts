@@ -14,6 +14,7 @@ export const requestManagement = {
   },
   columns: {
     source: 'Source',
+    pendingChangeRequests: 'Change requests',
     productCategory: 'Product category',
     productsOfInterest: 'Products of interest',
     generalNotes: 'General notes',
@@ -26,6 +27,11 @@ export const requestManagement = {
     phone: 'Phone',
     createdAt: 'Created at',
     nextCallbackAt: 'Next callback',
+    transferred: 'Transferred',
+  },
+  pendingChangeRequests: {
+    alert_one: '{{count}} pending change request',
+    alert_other: '{{count}} pending change requests',
   },
   advancedFilters: {
     registry: 'Registry',
@@ -56,6 +62,15 @@ export const requestManagement = {
     errors: {
       noOperators: 'No operator found for the selected Site.',
       generic: 'Unable to assign the operators. Please try again.',
+    },
+  },
+  transfer: {
+    title: 'Transfer contact',
+    description: '{{count}} request(s) selected.',
+    notice: 'Contact transferred from {{site}}',
+    success: '{{count}} request(s) transferred.',
+    errors: {
+      generic: 'Unable to transfer the contact. Please try again.',
     },
   },
   form: {

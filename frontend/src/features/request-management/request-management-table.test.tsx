@@ -115,6 +115,8 @@ function panel(): RequestWorkPanelWithPermissions {
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    is_transferred: false,
+    transferred_from: null,
     opportunity_status: { id: 5, name: 'New', color: 'slate' },
     workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false },
     workflow_statuses: [{ id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false }],
@@ -140,11 +142,13 @@ const fetchRequestWorkPanelMock = vi.fn()
 const deleteRequestMock = vi.fn()
 const assignRequestOperatorsMock = vi.fn()
 const fetchRequestManagementCategoriesMock = vi.fn()
+const transferRequestsMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   fetchRequestWorkPanel: (...args: unknown[]) => fetchRequestWorkPanelMock(...args),
   updateRequestWork: vi.fn(),
   deleteRequest: (...args: unknown[]) => deleteRequestMock(...args),
   assignRequestOperators: (...args: unknown[]) => assignRequestOperatorsMock(...args),
+  transferRequests: (...args: unknown[]) => transferRequestsMock(...args),
   fetchRequestManagementCategories: (...args: unknown[]) => fetchRequestManagementCategoriesMock(...args),
 }))
 
@@ -180,6 +184,8 @@ beforeEach(() => {
   deleteRequestMock.mockResolvedValue(undefined)
   assignRequestOperatorsMock.mockReset()
   assignRequestOperatorsMock.mockResolvedValue({ assigned: 1 })
+  transferRequestsMock.mockReset()
+  transferRequestsMock.mockResolvedValue({ transferred: 1 })
   fetchRequestWorkPanelMock.mockReset()
   fetchRequestWorkPanelMock.mockResolvedValue(panel())
   fetchRequestManagementCategoriesMock.mockReset()
@@ -247,9 +253,25 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
 
   // User directive 2026-08-03: the popup writes the Sede AND the Operatore, so
   // it takes `assignOperator` on top of `update` — the same pair the endpoint
-  // now gates on, for a role restricted on those two fields.
-  it('withholds the bulk action from an actor without request-management.assignOperator', () => {
+  // now gates on, for a role restricted on those two fields. Requirement
+  // changed by spec 0079: the slot now carries a SECOND, independently gated
+  // bulk action ("transfer-contact"), so losing `assignOperator` alone only
+  // drops the "assign operators" entry, not the whole slot (mirrors
+  // `LeadsTable`'s own two-bulk-action gating, `leads-table-assign.test.tsx`).
+  it('drops only the "assign operators" entry for an actor without request-management.assignOperator', () => {
     canMock.mockImplementation((permission) => permission !== 'request-management.assignOperator')
+    renderTable()
+
+    expect(capturedBulkActions?.({ ids: [ROW.id], rows: [ROW] }).map((entry) => entry.key)).toEqual([
+      'transfer-contact',
+    ])
+  })
+
+  it('leaves the bulk slot unwired when the actor has neither assign nor transfer ability', () => {
+    canMock.mockImplementation(
+      (permission) =>
+        permission !== 'request-management.assignOperator' && permission !== 'request-management.transferContact',
+    )
     renderTable()
 
     expect(capturedBulkActions).toBeNull()

@@ -16,6 +16,16 @@ import {
 /** Backend `name` column limit (`max:191`). */
 const NAME_MAX_LENGTH = 191
 
+/** `ProductCategory::MANAGER_LABEL_MAX_LENGTH` (spec 0080): a manager label's max length. */
+export const MANAGER_LABEL_MAX_LENGTH = 60
+
+/**
+ * `ProductCategory::MANAGER_LABEL_MAX_POSITION` (spec 0080): the four G.A.
+ * levels the form always renders one row for, whether or not the category has
+ * a label for that position.
+ */
+export const MANAGER_LABEL_POSITIONS = [1, 2, 3, 4] as const
+
 function baseFields(t: TFunction) {
   return {
     name: z
@@ -38,6 +48,11 @@ function baseFields(t: TFunction) {
         sort_order: z.number().int(),
       }),
     ),
+    manager_labels: z.record(
+      z.string(),
+      z.string().max(MANAGER_LABEL_MAX_LENGTH, t('productCategories.form.managerLabelMax')),
+    ),
+    inherits_manager_labels: z.boolean(),
   }
 }
 

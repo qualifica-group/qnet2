@@ -34,7 +34,7 @@ export function WorkflowStatusSwatch({ color }: { color: string | null }) {
  * The selected status as rendered INSIDE the closed trigger: one compact line
  * (dot, name, note marker). Deliberately not `WorkflowStatusOption` — that one
  * also stacks the `description`, which turns the trigger into a two/three-line
- * block; the description is surfaced under the control instead.
+ * block. The description belongs to the open dropdown, where it helps choose.
  */
 function SelectedStatus({ status }: { status: RequestWorkflowStatusRef }) {
   return (
@@ -55,9 +55,9 @@ function SelectedStatus({ status }: { status: RequestWorkflowStatusRef }) {
  * (defensive only: the backend always seeds at least the system rows).
  *
  * Presented as its own section, like every other block of the work panel: the
- * closed trigger stays a single compact line and the selected status'
- * `description` reads underneath, so the operator sees what the state means
- * without reopening the dropdown.
+ * closed trigger stays a single compact line (user directive 2026-08-04 — the
+ * selected status' `description` is NOT repeated under the control, it only
+ * reads inside the open dropdown, same as the create form).
  */
 export function RequestWorkflowStatusField({ control, statuses }: RequestWorkflowStatusFieldProps) {
   const { t } = useTranslation()
@@ -90,41 +90,35 @@ export function RequestWorkflowStatusField({ control, statuses }: RequestWorkflo
         label={t('requestManagement.workPanel.workflowStatus.label', { defaultValue: 'Working status' })}
       >
         {({ field, disabled }) => (
-          <div className="flex flex-col gap-1.5">
-            <Select
-              value={field.value !== null ? String(field.value) : undefined}
-              onValueChange={(next) => field.onChange(Number(next))}
-              disabled={disabled}
-            >
-              <FormControl>
-                <SelectTrigger className="h-9 w-full">
-                  <SelectValue
-                    placeholder={t('requestManagement.workPanel.workflowStatus.placeholder', {
-                      defaultValue: 'Select a status',
-                    })}
-                  >
-                    {selected ? <SelectedStatus status={selected} /> : null}
-                  </SelectValue>
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {statuses.map((status) => (
-                  <SelectItem key={status.id} value={String(status.id)}>
-                    <WorkflowStatusOption
-                      name={status.name}
-                      description={status.description}
-                      color={status.color}
-                      requiresNote={status.requires_note}
-                    />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {selected?.description ? (
-              <p className="text-xs text-muted-foreground">{selected.description}</p>
-            ) : null}
-          </div>
+          <Select
+            value={field.value !== null ? String(field.value) : undefined}
+            onValueChange={(next) => field.onChange(Number(next))}
+            disabled={disabled}
+          >
+            <FormControl>
+              <SelectTrigger className="h-9 w-full">
+                <SelectValue
+                  placeholder={t('requestManagement.workPanel.workflowStatus.placeholder', {
+                    defaultValue: 'Select a status',
+                  })}
+                >
+                  {selected ? <SelectedStatus status={selected} /> : null}
+                </SelectValue>
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {statuses.map((status) => (
+                <SelectItem key={status.id} value={String(status.id)}>
+                  <WorkflowStatusOption
+                    name={status.name}
+                    description={status.description}
+                    color={status.color}
+                    requiresNote={status.requires_note}
+                  />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </MetaField>
 

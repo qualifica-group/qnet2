@@ -83,6 +83,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    is_transferred: false,
+    transferred_from: null,
     opportunity_status: { id: 5, name: 'New', color: 'slate' },
     workflow_status: WORKFLOW_OPEN,
     workflow_statuses: [WORKFLOW_OPEN],
@@ -131,16 +133,33 @@ beforeEach(() => {
 })
 
 describe('RequestAttributionSection — reward assignment (AC-031)', () => {
-  it('disables the add control with no reporter, and re-enables once one is set', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel({ reporter_id: null, reporter: null }))
+  // User directive 2026-08-04, replacing the previous "renders disabled with
+  // no reporter": the control has no subject without a reporter, so it is not
+  // mounted at all — except while rewards are still attached (next test),
+  // where it stays the only way to detach them.
+  it('hides the reward control entirely when there is no reporter and no reward', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ reporter_id: null, reporter: null, rewards: [] }))
 
     renderPanel()
 
-    expect(await screen.findByRole('button', { name: 'Add reward' })).toBeDisabled()
-    expect(screen.getByText('Select a reporter first to assign a reward.')).toBeInTheDocument()
+    // Awaited on the panel's own header: the assertions below are absences,
+    // which would hold while the panel is still loading too.
+    await screen.findByRole('banner')
+    expect(screen.queryByRole('button', { name: 'Add reward' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Select a reporter first to assign a reward.')).not.toBeInTheDocument()
   })
 
-  it('shows the reporter’s persisted rewards read-only when no reporter is set', async () => {
+  it('mounts the reward control as soon as a reporter is set', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ reporter_id: 20, reporter: { id: 20, name: 'Mario Rossi' } }),
+    )
+
+    renderPanel()
+
+    expect(await screen.findByRole('button', { name: 'Add reward' })).toBeEnabled()
+  })
+
+  it('keeps the rewards visible read-only when the reporter is missing but rewards are attached', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel({ reporter_id: null, reporter: null, rewards: [AMAZON] }))
 
     renderPanel()

@@ -3,6 +3,242 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## BUONI ASSEGNATI — MONTATO SOLO CON UN SEGNALATORE (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: senza Segnalatore il controllo buoni non si mostra piu' disabilitato, sparisce; ricompare
+con animazione quando il Segnalatore c'e'. In `request-attribution-section.tsx`:
+`showRewards = reporterId != null || rewardsValue.length > 0`, rendering condizionale + reveal
+`motion-safe:animate-in fade-in-0 slide-in-from-top-1 duration-200` (stessa classe degli altri
+blocchi condizionali, cfr. `opportunity-form-body.tsx`). Uscita immediata (smontaggio), come ogni
+altro blocco condizionale del repo: nessuno usa exit animation.
+
+**Perche' l'OR e non il solo `reporterId != null`:** `UpdateRequestRequest` rifiuta con 422 un
+`reporter_id` azzerato mentre esistono rewards. Nascondere il blocco in quello stato transitorio
+toglierebbe l'unico controllo capace di staccarli → 422 senza via d'uscita. Con rewards attaccati e
+Segnalatore vuoto il blocco resta visibile (chip read-only + hint "Select a reporter first…").
+
+**Test cambiati per requisito cambiato (dichiarato):** in `request-attribution-rewards.test.tsx` il
+caso "disables the add control with no reporter" e' stato sostituito da due casi — assenza totale del
+controllo senza segnalatore/senza buoni, e presenza abilitata con segnalatore. Il caso dei buoni
+persistiti senza segnalatore resta (rinominato), ed e' quello che copre l'eccezione sopra.
+
+**Verificato (eseguito):** vitest `src/features/request-management` → 30 file / 214 test verdi;
+ESLint EXIT=0 sui 2 file toccati. `npx tsc -b --force` e' ROSSO con 1 solo errore, in
+`features/product-categories/use-product-category-form.ts` (`manager_labels`/
+`inherits_manager_labels` mancanti): file NON di questo lavoro, modificato in parallelo alle 10:44-10:45
+insieme ad altri 12 di `product-categories`. Prima di quelle modifiche il typecheck era EXIT=0 due
+volte in questa sessione. Chi lavora su `product-categories` deve chiudere quell'errore.
+
+## STATO DI LAVORAZIONE — VIA LA DESCRIZIONE SOTTO IL CONTROLLO (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: nella sezione "Stato di lavorazione" del work panel la `description` dello stato
+selezionato (es. "Contatto da ricontattare per completare la lavorazione o fornire ulteriori
+informazioni.", seeded da `WorkflowStatusCatalogue.php`) non va piu' ripetuta sotto il select.
+Rimossi il `<p>` e il wrapper `flex flex-col gap-1.5` diventato inutile in
+`request-workflow-status-field.tsx`; JSDoc del componente e di `SelectedStatus` allineati.
+
+La descrizione resta dentro il dropdown aperto (`WorkflowStatusOption`, condiviso col form
+Opportunita'): li' serve a scegliere. Il work panel ora combacia col form di creazione
+(`request-create-workflow-status-field.tsx`), che gia' non la ripeteva. Nessun cambio ai dati del
+seeder ne' al contratto API (`description` continua ad arrivare nel payload).
+
+**Verificato (eseguito):** `npx tsc -b --force` EXIT=0; vitest `request-workflow-status-field`,
+`request-work-panel`, `request-work-panel-submit` → 28 test verdi; ESLint EXIT=0 sul file toccato.
+
+## SEZIONE ATTRIBUZIONE — ARMONIA VISIVA (2026-08-04) — VERDE, NON COMMITTATO
+
+Solo stile, nessun cambio di comportamento/authz. `request-attribution-section.tsx` (work panel):
+i quattro picker erano su ritmi diversi (wrapper `gap-1.5` / `space-y-1.5` contro il `gap-2` interno
+di `FormItem`) e il controllo buoni pendeva sotto il Segnalatore come blocco di chip nudi sul
+`bg-card`. Ora: griglia `gap-4 items-start` (stesso passo delle altre sezioni del pannello), un
+solo `FIELD_STACK_CLASS = flex min-w-0 flex-col gap-2` per le celle con appendice, e i buoni in un
+inset tinto `REWARDS_BLOCK_CLASS = rounded-lg border bg-muted/40 px-3 py-2.5` — tinta sopra la card,
+non un rung della scala superfici (`ui-design.md §1-bis`). Hint di scoping operatore con glifo
+`Info size-3.5`, stessa forma degli altri helper compatti.
+
+Il controllo buoni RESTA sotto il Segnalatore (spec 0059 D-3): l'inset serve proprio a rendere
+esplicito quel legame senza spostarlo.
+
+**Da sapere:** il gemello `request-create-attribution-section.tsx` (form di creazione) ha ancora il
+markup vecchio — NON toccato (fuori scope della richiesta). Se si vuole allineare, e' lo stesso
+diff su `grid`, wrapper e `className` del `RewardAssignmentField`.
+
+**Verificato (eseguito):** `npx tsc -b --force` EXIT=0; vitest sui 4 file del pannello/attribuzione
+(`request-attribution-rewards`, `-operator-link`, `-source-interception`, `request-work-panel`) →
+30 test verdi; ESLint pulito sul file toccato.
+
+## TRASFERIMENTO CONTATTO TRA SEDI — SPEC 0079 (2026-08-04) — VERDE SUI FILE DELLA FEATURE, NON COMMITTATO
+
+Spec: `docs/specs/0079-request-contact-transfer.xml` (32 AC). Azione "Trasferisci contatto" in
+Gestione Richieste, di RIGA **e** MASSIVA (decisione utente), che sposta una richiesta su un'altra
+Sede operativa assegnandone l'Operatore GA2, con tracciamento, avviso in scheda, colonna di griglia,
+notifica in-app + email e Activity Log.
+
+**Il motore esisteva gia' quasi tutto e NON e' stato duplicato:** `AssignOperatorsDialog` era gia'
+montato in questo modulo per l'assegnazione massiva; `RequestOperatorWriter::apply()` era gia'
+l'unica scrittura dello slot GA2 e riportava gia' `old`/`changed` di `operator_id` (cioe' operatore
+precedente e nuovo, che la notifica richiede); `FieldChangeRequestedNotification` era il precedente
+esatto per `['database','mail']` + `NotificationData` + `action_url` path-only.
+
+**DUE COLONNE, non una — e non sono ridondanti.** `is_transferred` NON e' derivabile da
+`transferred_from_operational_site_id IS NOT NULL`: una richiesta SENZA sede di partenza puo' essere
+trasferita, e li' l'origine resta null pur essendo avvenuto il trasferimento. Colonna SQL reale (non
+derivata) perche' il motore generico serve ordinamento/filtro/export senza alcun hook
+`applyDerivedFilter`/`Sort`/`distinctValues`. Nessuna delle due in `#[Fillable]`: sono flag di
+sistema scritti solo da `RequestTransferService`.
+
+**`disableLogging()` sul save e' load-bearing:** `operational_site_id` E' fillable, quindi senza
+quella riga il trasferimento produrrebbe DUE entry di Activity Log (una automatica + una esplicita) e
+AC-011/AC-012 cadrebbero. Non rimuoverla scambiandola per una dimenticanza.
+
+**Un solo endpoint** `POST /api/request-management/transfer` serve sia la riga (array di un
+elemento) sia la selezione. Riga fuori scope D-3 = SALTATA in silenzio, mai 403/404 (per quell'attore
+non esiste). Ability nuova `request-management.transferContact`, richiesta IN PIU' a `update`.
+
+**`lockedMode` sul dialog condiviso e' additiva:** i tre consumer preesistenti (leads,
+request-management assign, import wizard) non la passano e restano invariati (AC-029). Con
+`lockedMode` lo step modalita' non si renderizza e l'Operatore e' sempre visibile.
+
+**L'avviso in scheda e' non modificabile PER COSTRUZIONE**, non per flag: deriva da due colonne che
+nessun form/inline-editor/endpoint espone in scrittura, e non ha alcun controllo di chiusura ne'
+stato di dismiss. Origine cancellata (`nullOnDelete`) -> l'avviso sparisce ma `is_transferred` resta
+true (voluto, AC-026).
+
+**Conseguenza dichiarata, non un difetto nascosto:** il contenuto della notifica e' PER CONTATTO,
+quindi un trasferimento massivo di N contatti produce N notifiche per destinatario. `ShouldQueue`
+evita il blocco HTTP, ma la campanella dei Supervisor riceve N voci. Rimedio eventuale = notifica
+aggregata, che cambierebbe il contenuto richiesto: non deciso qui.
+
+Destinatari = nuovo operatore + TUTTI gli utenti con ruolo spatie `supervisor` (costante
+`RequestTransferService::SUPERVISOR_ROLE`), deduplicati, escluso l'attore. Il ruolo `supervisor` oggi
+lo crea solo `TestUsersSeeder`: su un'istanza che non lo ha, `User::role()` lancerebbe
+`RoleDoesNotExist`, per questo c'e' la guardia su `Role::exists()` (AC-016).
+
+**IDEMPOTENZA — perche' `operator_id` e' seminato a mano in `transferOne()`.** Trasferire verso la
+sede e l'operatore GIA' correnti non e' un no-op: il flag e la entry di log si scrivono comunque.
+Ma `RequestOperatorWriter::apply()` fa early-return quando l'operatore non cambia, quindi non
+valorizzerebbe `operator_id` in `$changed`/`$old` e la entry di log resterebbe senza — in tensione
+con AC-011. Fix: `transferOne()` SEMINA `operator_id` nei due array PRIMA di chiamare `apply()`.
+Il writer condiviso NON e' stato toccato di proposito: per `updateWork()` e `RequestAssignmentService`
+l'early-return e' semanticamente corretto (riportano solo una transizione reale) e cambiarlo
+avrebbe alterato i loro log e i loro test. Se un domani "ripulisci" quella semina credendola
+ridondante, riapri il difetto. Coperto dal test `...is not a silent no-op...(IDEMPOTENZA...)`.
+
+**Verificato ed ESEGUITO (rimisurato dal lead, non solo riportato dai teammate):** Pest
+`tests/Feature/RequestManagement` 373 test / 1332 asserzioni verdi; `pint --test` pulito; Vitest
+request-management+leads+imports 519 test verdi; zero errori `tsc -b --force` nei file della feature.
+Verifier indipendente: VERDE 32/32 AC, suite backend COMPLETA 5229 test e frontend COMPLETA 3562
+test senza fallimenti, migrazione testata reversibile davvero (`migrate:rollback` + `migrate`, non
+`--pretend`), e sonde runtime che hanno confermato due punti non ovvi: il DELTA di Activity per
+record e' esattamente 1 (niente entry automatica duplicata, `disableLogging()` fa il suo lavoro) e
+l'inline-edit generico di cella risponde 422 su `is_transferred` (non solo il PATCH del pannello).
+
+**ATTENZIONE sullo stato del repo al momento della scrittura:** il gate `tsc -b` globale e' ROSSO per
+lavoro IN VOLO di un'altra sessione su `src/features/product-categories/` (`manager_labels`), NON per
+la 0079. Prima di committare, rimisurare a repo quieto.
+
+**BOTTONE ANCHE NEL PANNELLO "LAVORA" (direttiva utente 2026-08-04, secondo giro).** Oltre
+all'azione di riga e a quella massiva in griglia, "Trasferisci contatto" sta accanto al Salva in
+DUE punti del form di dettaglio: la barra identita' sticky (`RequestWorkHeader`) e la barra azioni a
+fondo form (`RequestFormActions`). Entrambe aprono lo stesso `AssignOperatorsDialog` in
+`lockedMode="single"` su `request_ids: [panel.id]`; al successo si invalida
+`requestManagementKeys.panel(id)` cosi' sede/operatore/avviso si aggiornano.
+
+`RequestFormActions` e' CONDIVISO con la create: il bottone entra da una prop opzionale
+`leadingActions`, che la create non passa. Non cablarcelo dentro.
+Stato + mutation stanno in `use-request-transfer.ts`, non nel JSX del pannello.
+`request-work-panel.tsx` e' a 331 righe (sopra il soft limit 300, sotto l'hard 500): non splittato di
+proposito, l'aggiunta e' solo prop-passing + mount del dialog e la logica sta gia' nell'hook.
+
+**IL GATE DEL BOTTONE VIVE SUL SERVER, non nel client — non duplicarlo.**
+`RequestManagementAuthorization::actionPermissions()` espone `transfer_contact` gia' combinato:
+`$model !== null && can('request-management.update') && can('request-management.transferContact')`,
+perche' rispecchia il doppio gate di `RequestManagementController::transfer()`. Il client fa
+solo `canAction('transfer_contact')`.
+Primo tentativo (poi corretto): il predicato server esponeva il solo `transferContact` e il client
+compensava con un AND su `canResource('update')` — cioe' la regola dell'endpoint viveva in due posti
+e sarebbe divergita al primo cambio da un lato solo. Se qualcuno "semplifica" l'AND lato server
+credendolo ridondante, riapre il difetto: un attore con `transferContact` ma senza `update`
+tornerebbe a vedere un bottone che va sempre in 403. Coperto da test di regressione lato backend
+(`RequestManagementShowTest`) e lato frontend (fixture con `transfer_contact: false`).
+`export`/`view_activity` restano SENZA l'AND: sono di sola lettura.
+
+Conseguenza nota e accettata (stesso precedente di `request-attribution-section.tsx`): trasferire dal
+pannello puo' far USCIRE il record dallo scope D-3 dell'attore, che alla rilettura riceve 403. E' la
+semantica del passaggio di consegne, confermata dall'utente 2026-08-04.
+
+**CHI VEDE L'AZIONE — decisione utente 2026-08-04, NON toccare scambiandola per una svista.**
+Stato verificato sul DB di sviluppo: `super-admin` SI, `supervisor` SI, `commercial` SI,
+`marketing` NO. Il commerciale ha ottenuto `transferContact` AUTOMATICAMENTE perche'
+`TestUsersSeeder::commercialPermissions()` e' una DENY-LIST sul modulo (tutto tranne
+`COMMERCIAL_DENIED_MODULE_ABILITIES` = delete/viewAll/updateSource/assignOperator) e l'ability nuova
+non e' stata aggiunta a quella lista. Sottoposto all'utente, che ha deciso di LASCIARLO COSI'.
+
+Conseguenza accettata e da conoscere: il diniego di `assignOperator` al commerciale non e' piu' un
+vincolo effettivo sulla riassegnazione. Il trasferimento accetta come destinazione la sede in cui il
+contatto GIA' si trova (caso IDEMPOTENZA, sopra), quindi il commerciale puo' scegliere la sede
+corrente + un operatore diverso e ottenere una riassegnazione, per una via diversa. Restano le
+differenze: passa dall'azione "Trasferisci", e' tracciata come trasferimento in Activity Log e alza
+`is_transferred`. Se un domani si vuole richiudere il varco, la leva e' aggiungere `transferContact`
+a `COMMERCIAL_DENIED_MODULE_ABILITIES` e revocare il permesso sul ruolo esistente.
+
+**Follow-up segnalati, NON risolti qui (fuori scope):**
+- `ExportController::authorizeExport()` (:113) risolve la policy da `$definition->modelClass()`,
+  quindi l'export di Gestione Richieste e' gated da `opportunities.export`, NON da
+  `request-management.export` — contraddice la regola D-1 della spec 0049. Preesistente.
+- `request-management-table.tsx`: `mutationFn: assignRequestOperators` (riferimento diretto) fa
+  trapelare il secondo argomento di contesto di TanStack Query; il nuovo `transferMutation` usa la
+  arrow function per evitarlo. Il vecchio non e' stato toccato.
+
+## NAV "RICHIESTE DI MODIFICA" ANNIDATA SOTTO "GESTIONE RICHIESTE" (2026-08-04) — VERDE, NON COMMITTATO
+
+Decisione utente: la voce `field-change-requests` non e' piu' un figlio piatto di
+`opportunities-group` — ora pende da `request-management` come figlio annidato, stessa forma di
+Leads -> Import (`marketing-leads.php`), che `nav-main.tsx` gia' rende (parent navigabile +
+chevron sui figli). Motivo: l'unico campo protetto oggi e' la "Fonte" di request-management, quindi
+la coda e' un satellite di quel modulo, non un pari grado di Opportunita'/Preventivi/Contratti.
+
+Toccato **solo** `backend/config/navigation/opportunities.php`. Rotta, permesso, breadcrumb
+(`routes/breadcrumbs.tsx:62`) e router restano piatti e invariati: nessuna modifica frontend.
+
+**Conseguenza da sapere (voluta):** `NavigationService::filter()` fa `continue` sul parent negato
+PRIMA di ricorrere, quindi `request-management.view` e' ora prerequisito della voce. Ok perche' la
+pagina e' supervisor-only (direttiva 2026-08-04) e il `supervisor` non ha `request-management` fra
+le `SUPERVISOR_DENIED_RESOURCES`; il Commercial ha solo `field-change-requests.create`, mai `.view`.
+Se in futuro servisse un ruolo con `.view` ma senza accesso alla worklist, la voce va rimessa piatta
+(o il filtro cambiato).
+
+Nuovo `tests/Feature/FieldChangeRequests/FieldChangeRequestsNavigationTest.php`: annidamento
+presente + assenza come fratello del gruppo, drop senza `.view` proprio, drop col parent negato.
+
+**Verificato (eseguito):** `php artisan test --filter=Navigation` → 49 test verdi;
+`tests/Feature/FieldChangeRequests` + `tests/Feature/RequestManagement` → 434 test verdi;
+Pint pulito sui 2 file toccati.
+
+## COLONNA `pending_change_requests` TRADOTTA + BADGE DI ALERT (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: in Gestione Richieste la colonna `pending_change_requests` doveva essere
+tradotta e mostrare un badge di alert col numero se > 0, **niente** se 0.
+
+La label `requestManagement.columns.pendingChangeRequests` esisteva solo lato backend
+(`RequestColumnCatalog`) ma **non** nelle risorse i18n: l'header mostrava la chiave grezza. Aggiunta
+in `it-request-management.ts` ("Richieste di modifica") e `en-request-management.ts` ("Change
+requests"), piu' il blocco plurale `requestManagement.pendingChangeRequests.alert_one/_other` usato
+come aria-label + tooltip del badge.
+
+Nuovo `PendingChangeRequestsCell` in `features/request-management/column-renderers.tsx`, registrato
+su `pending_change_requests` subito dopo `source`: sopra zero rende un `Badge` ambra
+(`badgeColorClass('amber')`, quindi lo stesso token dei badge di stato — nessun colore hard-coded)
+con `AlertTriangle` + il numero; a zero o con valore assente fa `return null`, cella vuota. Non e' un
+`EmptyCell`: l'em-dash sarebbe rumore su una colonna che per la maggior parte delle righe e' vuota
+per definizione.
+
+**Non toccato:** il backend (colonna, `withCount`, non-sortable/non-filterable) resta com'era.
+
+**Verificato (eseguito):** `npx vitest run src/i18n src/features/request-management` → 31 file / 264
+test verdi (3 nuovi casi sul badge: >0, 0, null); `npx tsc -b --force --pretty false` EXIT=0; ESLint
+pulito sui 4 file toccati.
+
 ## STATO DI LAVORAZIONE DISABILITATO INVECE CHE NASCOSTO NELLA CREATE (2026-08-04) — VERDE, NON COMMITTATO
 
 Direttiva utente: nella create di Gestione Richieste il blocco "Stato di lavorazione" non deve

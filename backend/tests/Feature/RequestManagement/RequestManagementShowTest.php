@@ -24,7 +24,7 @@ if (! function_exists('requestManagementUserWith')) {
      */
     function requestManagementUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'viewAll', 'transferContact'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -250,4 +250,49 @@ it('a PATCH attempting to write general_notes from this module leaves the field 
     $this->patchJson("/api/request-management/{$opportunity->id}", ['general_notes' => 'Riscritta']);
 
     expect($opportunity->fresh()->general_notes)->toBe('Nota originale');
+});
+
+// ---------------------------------------------------------------------------
+// Spec 0079 — permissions.actions.transfer_contact gates the panel's
+// "Trasferisci contatto" button.
+// ---------------------------------------------------------------------------
+
+it('permissions.actions.transfer_contact is true with both request-management.update and .transferContact', function () {
+    // Explicit findOrCreate: `requestManagementUserWith` is a
+    // function_exists-guarded helper shared by several test files in this
+    // directory, so whichever file's copy loads first wins for the whole
+    // run and may predate this ability — don't depend on it for existence.
+    Permission::findOrCreate('request-management.transferContact');
+    $actor = requestManagementUserWith(['view', 'viewAll', 'update', 'transferContact']);
+    $opportunity = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/request-management/{$opportunity->id}")
+        ->assertOk()
+        ->assertJsonPath('permissions.actions.transfer_contact', true);
+});
+
+it('permissions.actions.transfer_contact is false without request-management.transferContact', function () {
+    Permission::findOrCreate('request-management.transferContact');
+    $actor = requestManagementUserWith(['view', 'viewAll', 'update']);
+    $opportunity = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/request-management/{$opportunity->id}")
+        ->assertOk()
+        ->assertJsonPath('permissions.actions.transfer_contact', false);
+});
+
+it('permissions.actions.transfer_contact is false with .transferContact but without request-management.update', function () {
+    // The double gate mirrors RequestManagementController::transfer(),
+    // which requires update AND transferContact — this exposed the wrong
+    // predicate ("true" while the endpoint would 403) until fixed.
+    Permission::findOrCreate('request-management.transferContact');
+    $actor = requestManagementUserWith(['view', 'viewAll', 'transferContact']);
+    $opportunity = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/request-management/{$opportunity->id}")
+        ->assertOk()
+        ->assertJsonPath('permissions.actions.transfer_contact', false);
 });

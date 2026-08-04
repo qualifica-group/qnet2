@@ -92,6 +92,7 @@ export const productCategories = {
     businessFunctionInherited: 'Ereditata da {{category}}',
     requiresQuoteInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
+    managerLabelInherited: 'Ereditata',
   },
   bulkMove: {
     tableButton: 'Sposta sotto…',
@@ -168,6 +169,13 @@ export const productCategories = {
       'La modalità di gestione è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
     managementModeSingle: 'Singola (una riga per scheda)',
     managementModeMultiple: 'Multipla (più righe per scheda)',
+    managerLabelLevel: 'G.A. {{n}}',
+    managerLabelPlaceholder: 'Gestore account {{n}}',
+    managerLabelMax: "L'etichetta deve avere al massimo 60 caratteri.",
+    inheritsManagerLabels: 'Eredita dal padre',
+    inheritsManagerLabelsHint:
+      'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano queste etichette dai livelli superiori.',
+    inheritedManagerLabels: 'Ereditate dalle categorie antenate',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -194,6 +202,11 @@ export const productCategories = {
       opportunityAttributes: {
         title: 'Attributi Opportunità',
         description: 'Caricati nelle informazioni preliminari della richiesta per questa categoria.',
+      },
+      managerLabels: {
+        title: 'Gestori Account',
+        description:
+          'Personalizza la denominazione di ogni livello di Gestore Account per questa categoria. I campi lasciati vuoti usano la denominazione predefinita.',
       },
     },
   },

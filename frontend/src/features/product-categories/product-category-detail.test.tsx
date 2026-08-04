@@ -58,6 +58,9 @@ function category(
     is_selectable: true,
     management_mode: 'multiple',
     management_mode_source_category: null,
+    manager_labels: {},
+    inherits_manager_labels: true,
+    inherited_manager_labels: {},
     permissions: PERMISSIONS,
     ...overrides,
   }
@@ -173,5 +176,39 @@ describe('ProductCategoryDetailView — quote flag', () => {
     const section = screen.getByRole('heading', { name: 'Quoted' }).closest('section') as HTMLElement
     expect(within(section).getByText('Yes')).toBeInTheDocument()
     expect(within(section).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+})
+
+describe('ProductCategoryDetailView — manager labels (spec 0080)', () => {
+  it('renders nothing when the category has neither own nor inherited labels', () => {
+    render(<ProductCategoryDetailView category={category()} />)
+
+    expect(screen.queryByRole('heading', { name: 'Account managers' })).not.toBeInTheDocument()
+  })
+
+  it('shows an own label with no "Inherited" badge', () => {
+    render(<ProductCategoryDetailView category={category({ manager_labels: { '1': 'Commercial' } })} />)
+
+    const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
+    expect(within(section).getByText('Commercial')).toBeInTheDocument()
+    expect(within(section).queryByText('Inherited')).not.toBeInTheDocument()
+  })
+
+  it('shows an inherited label with the "Inherited" badge, own winning over inherited on the same position', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          manager_labels: { '1': 'Commercial' },
+          inherited_manager_labels: { '1': 'Sales rep', '2': 'Operator' },
+        })}
+      />,
+    )
+
+    const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
+    // Position 1: own wins, no badge; position 2: inherited only, badge shown.
+    expect(within(section).getByText('Commercial')).toBeInTheDocument()
+    expect(within(section).queryByText('Sales rep')).not.toBeInTheDocument()
+    expect(within(section).getByText('Operator')).toBeInTheDocument()
+    expect(within(section).getAllByText('Inherited')).toHaveLength(1)
   })
 })

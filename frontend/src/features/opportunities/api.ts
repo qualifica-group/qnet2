@@ -65,3 +65,23 @@ export async function updateOpportunity(
 export async function deleteOpportunity(id: number): Promise<void> {
   await apiClient.delete(`/opportunities/${id}`)
 }
+
+/** Query key of a Product Category's resolved G.A. labels (spec 0080), one entry per distinct category id in play. */
+export function categoryManagerLabelsQueryKey(categoryId: number) {
+  return ['opportunities', 'category-manager-labels', categoryId] as const
+}
+
+/**
+ * Resolves a Product Category's effective G.A. labels (spec 0080, frozen
+ * contract owned by `features/product-categories`). Called directly here,
+ * not imported from that feature (module decoupling, same reasoning as
+ * `ApplicableAttributeSummary` above): the form's team section resolves the
+ * labels LIVE from the product lines being edited, not from the persisted
+ * `OpportunityDetail.manager_labels` (see `use-opportunity-manager-labels.ts`).
+ */
+export async function fetchCategoryManagerLabels(categoryId: number): Promise<Record<string, string>> {
+  const { data } = await apiClient.get<ApiResponse<{ manager_labels: Record<string, string> }>>(
+    `/product-categories/${categoryId}/effective-manager-labels`,
+  )
+  return data.data.manager_labels
+}

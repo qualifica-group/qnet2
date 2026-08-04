@@ -51,6 +51,10 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('is_selectable', 'boolean'),
             new FieldDefinition('management_mode', 'select'),
             new FieldDefinition('attributes', 'custom'),
+            // Spec 0080: covers the WHOLE "Gestori Account" section — both
+            // `manager_labels` and `inherits_manager_labels` — a single field
+            // like `attributes`, not one entry per input.
+            new FieldDefinition('manager_labels', 'custom'),
         ];
     }
 
@@ -80,6 +84,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'is_selectable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'management_mode' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_labels' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

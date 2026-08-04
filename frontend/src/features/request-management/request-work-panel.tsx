@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
-import { ListChecks } from 'lucide-react'
+import { ArrowRightLeft, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
@@ -11,6 +11,7 @@ import { toRelationFieldRef } from '@/components/form/relation-field-ref'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
 import { RecordFieldChangeRequests } from '@/features/field-change-requests/record-field-change-requests'
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
+import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
@@ -27,6 +28,7 @@ import { RequestWorkHeader } from '@/features/request-management/request-work-he
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
 import { RequestWorkflowStatusField } from '@/features/request-management/request-workflow-status-field'
 import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
+import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
@@ -151,6 +153,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const canViewActivity = canAction('view_activity')
   const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
   const queryClient = useQueryClient()
+  const transfer = useRequestTransfer(panel)
 
   // Spec 0075, D-5: re-pointing or removing a product line drops the products
   // of interest it was covering, right there in the handler — the operator
@@ -191,6 +194,8 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
         isSubmitting={isSubmitting}
         isDirty={form.formState.isDirty}
         submitError={submitError}
+        canTransfer={transfer.canTransfer}
+        onTransfer={transfer.open}
       />
 
       <div className={PANEL_GRID_CLASS}>
@@ -266,6 +271,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 operator={panel.operator}
                 operationalSite={toRelationFieldRef(panel.operational_site)}
                 rewards={panel.rewards ?? []}
+                managerLabels={panel.manager_labels}
               />
 
               <RequestDynamicFields
@@ -287,6 +293,14 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                   submitLabel={t('requestManagement.workPanel.save')}
                   submittingLabel={t('requestManagement.workPanel.saving')}
                   isSubmitDisabled={!form.formState.isDirty}
+                  leadingActions={
+                    transfer.canTransfer ? (
+                      <Button type="button" variant="outline" onClick={transfer.open}>
+                        <ArrowRightLeft className="size-4" aria-hidden="true" />
+                        {t('actions.transferContact')}
+                      </Button>
+                    ) : undefined
+                  }
                 />
               )}
             </form>
@@ -299,6 +313,19 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           <RequestWorkCollaboration panel={panel} canViewActivity={canViewActivity} />
         </div>
       </div>
+
+      {/* Same dialog the table's row/bulk "Trasferisci contatto" drives
+          (spec 0079), locked to this one record: a row transfer is just a
+          one-element selection. */}
+      <AssignOperatorsDialog
+        open={transfer.isOpen}
+        onOpenChange={transfer.onOpenChange}
+        selectionCount={1}
+        defaultSite={transfer.defaultSite}
+        lockedMode="single"
+        copy={transfer.copy}
+        onAssign={transfer.handleTransfer}
+      />
     </div>
   )
 }

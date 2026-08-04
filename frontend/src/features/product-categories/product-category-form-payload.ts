@@ -1,10 +1,12 @@
 import type {
   AttributeAssignmentInput,
   CreateProductCategoryPayload,
+  ManagerLabels,
   ProductCategoryDetail,
   UpdateProductCategoryPayload,
 } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
+import { MANAGER_LABEL_POSITIONS } from '@/features/product-categories/product-category-schema'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
 function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentInput[]): boolean {
@@ -15,6 +17,28 @@ function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentIn
     `${assignment.attribute_id}:${assignment.context}:${assignment.is_required ?? false}:${assignment.sort_order ?? 0}`
   const bKeys = new Set(b.map(key))
   return a.every((assignment) => bKeys.has(key(assignment)))
+}
+
+/** Strips blank/whitespace-only rows and trims the rest, so the payload only ever carries valorized G.A. positions (spec 0080 AC-042). */
+function buildManagerLabelsValue(labels: ManagerLabels): ManagerLabels {
+  const result: ManagerLabels = {}
+  for (const position of MANAGER_LABEL_POSITIONS) {
+    const trimmed = (labels[String(position)] ?? '').trim()
+    if (trimmed) {
+      result[String(position)] = trimmed
+    }
+  }
+  return result
+}
+
+/** Position-by-position comparison (spec 0080): object identity/key order never matters, only the resolved label per G.A. level. */
+function sameManagerLabels(a: ManagerLabels, b: ManagerLabels): boolean {
+  const aKeys = Object.keys(a)
+  const bKeys = Object.keys(b)
+  if (aKeys.length !== bKeys.length) {
+    return false
+  }
+  return aKeys.every((key) => a[key] === b[key])
 }
 
 /** Builds the create payload: generic fields + the own attribute assignments. */
@@ -37,6 +61,8 @@ export function buildCreatePayload(
     // Same rule for the management mode (spec 0077 D-2/INV-5): only a ROOT
     // authors it, a child inherits and a divergent value is a 422.
     ...(values.parent_id === null ? { management_mode: values.management_mode } : {}),
+    manager_labels: buildManagerLabelsValue(values.manager_labels),
+    inherits_manager_labels: values.inherits_manager_labels,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -104,6 +130,14 @@ export function buildUpdatePayload(
   }))
   if (!sameAssignments(values.attributes, originalAssignments)) {
     payload.attributes = values.attributes
+  }
+
+  if (values.inherits_manager_labels !== original.inherits_manager_labels) {
+    payload.inherits_manager_labels = values.inherits_manager_labels
+  }
+  const managerLabels = buildManagerLabelsValue(values.manager_labels)
+  if (!sameManagerLabels(managerLabels, original.manager_labels)) {
+    payload.manager_labels = managerLabels
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

@@ -7,10 +7,12 @@ use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
+use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -63,7 +65,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * the Offerte panel's initial header value, before the panel's own grid
  * reports `pagination.total`. Relies on OpportunityService::loadDetail()
  * always calling `loadCount('quotes')`, so it is never missing here.
+ *
+ * Spec 0080: `manager_labels` is ADDITIVE — the per-position "Gestore
+ * Account" denomination overrides resolved from the product line(s)' product
+ * category (OpportunityManagerLabelResolver), `{}` when not resolvable.
+ * `managers`/`manager_slots` stay byte-for-byte identical: this is purely a
+ * denomination layer alongside them.
+ *
+ * #[PreserveKeys]: `manager_labels` is a sparse position("1".."4")->label
+ * map — JsonResource's default filter() reindexes any NESTED array whose
+ * keys are ALL numeric, which would silently turn `{"2":"Operatore"}` into
+ * `["Operatore"]` on the wire. Every other array field here is already
+ * 0-indexed-sequential, so this is a no-op for them.
  */
+#[PreserveKeys]
 class OpportunityResource extends JsonResource
 {
     /**
@@ -101,6 +116,7 @@ class OpportunityResource extends JsonResource
             'lead_id' => $this->lead_id,
             'lead' => $this->summarizeLead($this->lead),
             'managers' => $this->summarizeManagers($this->managers),
+            'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($this->resource),
             'start_date' => $this->start_date,
             'estimated_value' => $this->estimated_value,
             'expected_close_date' => $this->expected_close_date,

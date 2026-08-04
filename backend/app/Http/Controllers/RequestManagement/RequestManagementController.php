@@ -11,6 +11,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\AssignRequestOperatorsRequest;
 use App\Http\Requests\RequestManagement\RequestFormContextRequest;
 use App\Http\Requests\RequestManagement\StoreRequestRequest;
+use App\Http\Requests\RequestManagement\TransferRequestsRequest;
 use App\Http\Requests\RequestManagement\UpdateRequestRequest;
 use App\Http\Resources\RequestFormContextResource;
 use App\Http\Resources\RequestManagementResource;
@@ -21,6 +22,7 @@ use App\Services\RequestManagement\RequestCreationService;
 use App\Services\RequestManagement\RequestFormContextResolver;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Services\RequestManagement\RequestManagementService;
+use App\Services\RequestManagement\RequestTransferService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -46,6 +48,7 @@ class RequestManagementController extends BaseApiController
         private readonly RequestManagementService $service,
         private readonly RequestManagementScope $scope,
         private readonly RequestAssignmentService $assignmentService,
+        private readonly RequestTransferService $transferService,
         private readonly RequestCreationService $creationService,
         private readonly RequestFormContextResolver $formContextResolver,
         private readonly AuthorizationRegistry $authorization,
@@ -241,6 +244,39 @@ class RequestManagementController extends BaseApiController
             );
 
             return $this->ok(['assigned' => $assigned], 'Operators assigned');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
+
+    /**
+     * POST /api/request-management/transfer (spec 0079) — transfers one or
+     * many requests to another Sede operativa, assigning that site's own GA2
+     * "Operatore" in the same call. Same D-3 skip-in-scope semantics as
+     * assignOperators() above: an id the actor may not reach is silently
+     * excluded, never a 403/404 on the batch (`transferred` reports what was
+     * actually written).
+     *
+     * `transferContact` on top of `update`, mirroring `assignOperator` above:
+     * the endpoint writes the Sede AND the Operatore of many requests at
+     * once, the two per-field-restricted dimensions, so `update` alone would
+     * be a way around that restriction.
+     */
+    public function transfer(TransferRequestsRequest $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            abort_unless($user->can('request-management.update'), 403);
+            abort_unless($user->can('request-management.transferContact'), 403);
+
+            $transferred = $this->transferService->transfer(
+                $request->requestIds(),
+                $user,
+                $request->operationalSiteId(),
+                $request->operatorId(),
+            );
+
+            return $this->ok(['transferred' => $transferred], 'Contacts transferred');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

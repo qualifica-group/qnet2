@@ -9,6 +9,7 @@ import type {
   BulkMoveCategoriesResult,
   CreateProductCategoryPayload,
   EffectiveAttribute,
+  ManagerLabels,
   ProductCategoryDetail,
   ProductCategoryDetailWithPermissions,
   ProductCategoryTreeNode,
@@ -38,6 +39,19 @@ export async function fetchEffectiveAttributes(
     { params: { context } },
   )
   return data.data
+}
+
+/**
+ * Fetches a category's effective manager labels (own + every ancestor's,
+ * merged position by position) — the form's read-only "inherited" preview
+ * for the manager-labels section (spec 0080), same shape as
+ * `fetchEffectiveAttributes` for the parent/inherited relationship.
+ */
+export async function fetchEffectiveManagerLabels(categoryId: number): Promise<ManagerLabels> {
+  const { data } = await apiClient.get<ApiResponse<{ manager_labels: ManagerLabels }>>(
+    `/product-categories/${categoryId}/effective-manager-labels`,
+  )
+  return data.data.manager_labels
 }
 
 /**

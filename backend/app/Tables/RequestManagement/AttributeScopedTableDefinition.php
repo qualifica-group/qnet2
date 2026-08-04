@@ -6,9 +6,11 @@ namespace App\Tables\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Models\Opportunity;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
+use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
@@ -50,6 +52,17 @@ use Illuminate\Support\Collection;
  * `columns()`/`defaultColumnLayout()` are UNSCOPED by design (always the
  * union): they back `TableCellUpdateService`'s structural PATCH lookup and
  * the preferences default baseline, neither of which is a per-tab concept.
+ *
+ * Spec 0080: `resolveConfig()` ALSO relabels the pre-existing `operator_ga2`
+ * column when the scoped category defines a level-2 "Gestore Account" label
+ * — same RAW-TEXT-instead-of-i18n-key treatment `AttributeColumnBuilder`
+ * already gives `attr.*` columns, applied here to an EXISTING native column
+ * instead of an appended one. Deliberately NOT done in `columns()`: that
+ * method is the UNSCOPED one (see above) and, empirically, is never on the
+ * path `resolveConfig()`'s response is built from (`$this->inner->
+ * resolveConfig($actor)` never calls `$this->columns()`) — mutating it there
+ * would be a no-op for the grid and would needlessly touch the
+ * `TableCellUpdateService`/export/migration callers that DO use it.
  */
 class AttributeScopedTableDefinition implements TableDefinition
 {
@@ -62,6 +75,9 @@ class AttributeScopedTableDefinition implements TableDefinition
         WritesAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
         WritesAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
     }
+
+    /** Spec 0080: the pre-existing `operator_ga2` column's id — never changes, only its `label` does. */
+    private const string OPERATOR_COLUMN_ID = 'operator_ga2';
 
     private ?int $categoryScope = null;
 
@@ -89,6 +105,7 @@ class AttributeScopedTableDefinition implements TableDefinition
         private readonly RequestManagementService $service,
         private readonly ApplicableAttributesResolver $attributesResolver,
         private readonly AttributeDateFilterApplier $dateFilterApplier,
+        private readonly ProductCategoryService $productCategoryService,
     ) {}
 
     /**
@@ -188,6 +205,7 @@ class AttributeScopedTableDefinition implements TableDefinition
     public function resolveConfig(User $actor): array
     {
         $config = $this->inner->resolveConfig($actor);
+        $config['columns'] = $this->relabelOperatorColumn($config['columns']);
         $attributes = $this->categoryAttributes();
 
         if ($attributes->isEmpty()) {
@@ -206,6 +224,56 @@ class AttributeScopedTableDefinition implements TableDefinition
         $config['columns'] = [...$config['columns'], ...$resolved];
 
         return $config;
+    }
+
+    /**
+     * Spec 0080: rewrites the pre-existing `operator_ga2` column's `label`
+     * to the scoped category's level-2 "Gestore Account" RAW TEXT when one
+     * is configured — `id`/`editableField`/`relation`/`nullable`/every other
+     * property, and every OTHER column, stay untouched. The "Tutte" tab
+     * (`categoryScope` null) or a category with no level-2 label leaves the
+     * column exactly as it is today (the `requestManagement.columns.operator`
+     * i18n key).
+     *
+     * @param  array<int, array<string, mixed>>  $columns
+     * @return array<int, array<string, mixed>>
+     */
+    private function relabelOperatorColumn(array $columns): array
+    {
+        $label = $this->scopedOperatorLabel();
+
+        if ($label === null) {
+            return $columns;
+        }
+
+        return array_map(function (array $column) use ($label): array {
+            if (($column['id'] ?? null) === self::OPERATOR_COLUMN_ID) {
+                $column['label'] = $label;
+            }
+
+            return $column;
+        }, $columns);
+    }
+
+    /**
+     * The scoped category's EFFECTIVE label for
+     * `Opportunity::OPERATOR_MANAGER_POSITION` (GA2), or null when there is
+     * no scope, the category no longer exists, or it defines no label for
+     * that position.
+     */
+    private function scopedOperatorLabel(): ?string
+    {
+        if ($this->categoryScope === null) {
+            return null;
+        }
+
+        $category = ProductCategory::find($this->categoryScope);
+
+        if ($category === null) {
+            return null;
+        }
+
+        return $this->productCategoryService->effectiveManagerLabels($category)[Opportunity::OPERATOR_MANAGER_POSITION] ?? null;
     }
 
     /**

@@ -379,6 +379,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('product-categories/tree', [ProductCategoryController::class, 'tree']);
     Route::get('product-categories/{productCategory}/effective-attributes', [ProductCategoryController::class, 'effectiveAttributes']);
 
+    // "Gestore Account" label preview (spec 0080): same literal-segment-wins
+    // reasoning as effective-attributes above, declared ABOVE the plain
+    // `{productCategory}` show route.
+    Route::get('product-categories/{productCategory}/effective-manager-labels', [ProductCategoryController::class, 'effectiveManagerLabels']);
+
     // Attribute layout configurator (spec 0062): GET/PUT the category's
     // configured (context, form_mode) layout blob. Declared ABOVE the plain
     // `{productCategory}` show route, same literal-segment-wins-over-wildcard

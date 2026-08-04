@@ -32,6 +32,8 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    is_transferred: false,
+    transferred_from: null,
     opportunity_status: { id: 5, name: 'New', color: 'slate' },
     workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false },
     workflow_statuses: [

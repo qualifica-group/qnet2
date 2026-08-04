@@ -111,6 +111,7 @@ export const en = {
     impersonate: 'Impersonate',
     layout: 'Attribute layout',
     generateWord: 'Download quote',
+    transferContact: 'Transfer contact',
   },
   table,
   // Strings of the generic statistics panel (spec 0026). The per-module widget

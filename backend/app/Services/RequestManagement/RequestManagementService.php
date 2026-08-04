@@ -81,6 +81,10 @@ final class RequestManagementService
         // Spec 0056: the Sede operativa, also in the attribution block — the
         // site has no own name, its label composed from the primary address.
         'operationalSite.addresses.city',
+        // Spec 0079: the origin Sede of a transfer, same composed-label need
+        // — eager-loaded so RequestManagementResource never lazy-loads it
+        // (Model::preventLazyLoading() outside production).
+        'transferredFromOperationalSite.addresses.city',
         'opportunityStatus',
         'workflowStatus',
         'productLines.businessFunction',

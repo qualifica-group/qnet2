@@ -14,6 +14,9 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
+import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
+import { useActiveCategoryManagerLabels } from '@/features/request-management/use-active-category-manager-labels'
+import { useRequestManagementCategoryPreference } from '@/features/request-management/use-request-management-category-preference'
 import {
   ASSIGN_OPERATOR_PERMISSION,
   OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
@@ -58,6 +61,14 @@ interface RequestCreateAttributionSectionProps {
  * The reward control (spec 0059 D-3) sits under the Segnalatore because the
  * beneficiary is always that reporter: it disables itself with an accessible
  * hint until a reporter is chosen.
+ *
+ * "Operatore" relabeling (spec 0080): the create form has no persisted
+ * request yet to resolve its own G.A. labels from (unlike the work panel), so
+ * it falls back to the module's currently active category tab
+ * (`useRequestManagementCategoryPreference`) and resolves ITS effective
+ * labels (`useActiveCategoryManagerLabels`) — the same "already have a
+ * univocal category context" the table's own column header relies on. No tab
+ * active, or the category defines no level-2 label -> today's string.
  */
 export function RequestCreateAttributionSection({ form, rewardsError }: RequestCreateAttributionSectionProps) {
   const { t } = useTranslation()
@@ -65,6 +76,12 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
   const control = form.control
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const rewardsValue = useWatch({ control, name: 'rewards' })
+
+  const { categoryId: activeCategoryId } = useRequestManagementCategoryPreference()
+  const { data: activeCategoryManagerLabels } = useActiveCategoryManagerLabels(activeCategoryId)
+  const operatorLabel =
+    activeCategoryManagerLabels?.[OPERATOR_MANAGER_LABEL_POSITION] ??
+    t('requestManagement.form.create.attribution.operator')
 
   const sourceQuickCreate = useQuickCreateAction(SOURCES_FOR_SELECT_RESOURCE)
   const reporterQuickCreate = useQuickCreateAction(REFERENTS_FOR_SELECT_RESOURCE)
@@ -233,7 +250,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
             name="operator_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('requestManagement.form.create.attribution.operator')}</FormLabel>
+                <FormLabel>{operatorLabel}</FormLabel>
                 <FormControl>
                   <AsyncPaginatedSelect
                     resource={USERS_FOR_SELECT_RESOURCE}
@@ -247,7 +264,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
                     labels={{
                       ...selectLabels,
                       searchPlaceholder: t('requestManagement.form.create.attribution.operatorSearch'),
-                      triggerLabel: t('requestManagement.form.create.attribution.operator'),
+                      triggerLabel: operatorLabel,
                     }}
                   />
                 </FormControl>

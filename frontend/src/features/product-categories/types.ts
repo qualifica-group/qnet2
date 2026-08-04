@@ -49,6 +49,14 @@ export type CategoryManagementMode = 'single' | 'multiple'
  */
 export type AttributeContext = 'product' | 'opportunity'
 
+/**
+ * A category's manager-label overrides (spec 0080): position ("1".."4",
+ * matching `ProductCategory::MANAGER_LABEL_MAX_POSITION`) to the custom
+ * denomination for that G.A. level. Only ever carries valorized positions —
+ * an empty/whitespace label is never a key.
+ */
+export type ManagerLabels = Record<string, string>
+
 /** A category's own attribute assignment (pivot `attribute_category`). */
 export interface ProductCategoryAttributeAssignment {
   attribute_id: number
@@ -121,6 +129,12 @@ export interface ProductCategoryDetail {
   management_mode: CategoryManagementMode
   /** The root `management_mode` is inherited from; null when this category IS the root and owns the value. */
   management_mode_source_category: { id: number; name: string } | null
+  /** This category's OWN manager-label overrides (spec 0080) — never the inherited ones. */
+  manager_labels: ManagerLabels
+  /** When false the category ignores its ancestry for manager labels (barrier), same shape as the attribute barriers. */
+  inherits_manager_labels: boolean
+  /** Manager labels resolved from the ancestry chain, excluding this category's own (spec 0080). */
+  inherited_manager_labels: ManagerLabels
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
 }
@@ -202,6 +216,9 @@ export interface CreateProductCategoryPayload {
   is_selectable?: boolean
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the value and the server refuses a divergent one (spec 0077). */
   management_mode?: CategoryManagementMode
+  /** Own manager-label overrides, only valorized positions (spec 0080). */
+  manager_labels?: ManagerLabels
+  inherits_manager_labels?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

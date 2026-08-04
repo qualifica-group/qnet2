@@ -7,6 +7,8 @@ export const productCategoryKeys = {
   detail: (id: number) => ['product-categories', 'detail', id] as const,
   effectiveAttributes: (categoryId: number, context: AttributeContext) =>
     ['product-categories', categoryId, 'effective-attributes', context] as const,
+  effectiveManagerLabels: (categoryId: number) =>
+    ['product-categories', categoryId, 'effective-manager-labels'] as const,
   attributeLayout: (categoryId: number, context: AttributeContext, scope: LayoutFormScope) =>
     ['product-categories', categoryId, 'attribute-layout', context, scope] as const,
 }

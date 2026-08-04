@@ -79,6 +79,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    is_transferred: false,
+    transferred_from: null,
     opportunity_status: { id: 5, name: 'New', color: 'slate' },
     workflow_status: WORKFLOW_OPEN,
     workflow_statuses: [WORKFLOW_OPEN, WORKFLOW_IN_PROGRESS],

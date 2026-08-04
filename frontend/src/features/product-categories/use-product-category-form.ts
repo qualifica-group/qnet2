@@ -17,7 +17,9 @@ import {
   type CreateProductCategoryFormValues,
 } from '@/features/product-categories/product-category-schema'
 import { productCategoryKeys } from '@/features/product-categories/query-keys'
+import { MANAGER_LABEL_POSITIONS } from '@/features/product-categories/product-category-schema'
 import type {
+  ManagerLabels,
   ProductCategoryDetail,
   ProductCategoryFormMode,
 } from '@/features/product-categories/types'
@@ -35,7 +37,19 @@ const SERVER_ERROR_FIELDS = [
   'requires_quote',
   'is_selectable',
   'management_mode',
+  'manager_labels',
+  'inherits_manager_labels',
 ] as const
+
+/** Empty form value: every position present as a blank row (spec 0080), the always-4-controlled-inputs shape. */
+const EMPTY_MANAGER_LABELS_FORM: ManagerLabels = Object.fromEntries(
+  MANAGER_LABEL_POSITIONS.map((position) => [String(position), '']),
+)
+
+/** Fills in every position with an empty string so all four rows stay controlled inputs; the payload builder strips blanks back out before sending (spec 0080 AC-042). */
+function toManagerLabelsFormValue(labels: ManagerLabels): ManagerLabels {
+  return { ...EMPTY_MANAGER_LABELS_FORM, ...labels }
+}
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues
 
@@ -93,6 +107,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         requires_quote: category.requires_quote,
         is_selectable: category.is_selectable,
         management_mode: category.management_mode,
+        manager_labels: toManagerLabelsFormValue(category.manager_labels),
+        inherits_manager_labels: category.inherits_manager_labels,
         custom_fields: customFields.defaultValues,
       }
     }
@@ -111,6 +127,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',
+      manager_labels: EMPTY_MANAGER_LABELS_FORM,
+      inherits_manager_labels: true,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])

@@ -60,10 +60,23 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level gate for the row/bulk "Trasferisci contatto" action
+     * (spec 0079): moves a request to another Sede operativa, assigning that
+     * site's own GA2 "Operatore" in the same call. Required ON TOP OF
+     * `update` (RequestManagementController::transfer()), mirroring
+     * `assignOperator` above: a combined write of Sede + Operatore resolves
+     * no per-field permission, so this ability is the only gate on it.
+     */
+    public function transferContact(User $user): bool
+    {
+        return $user->can($this->permission('transferContact'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator', 'transferContact'];
     }
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Award, Building2, Contact, StickyNote, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import {
@@ -21,6 +22,17 @@ import type {
 const EMPTY_APPLICABLE_ATTRIBUTES: ApplicableAttributeSummary[] = []
 const EMPTY_ATTRIBUTE_VALUES: Record<string, unknown> = {}
 const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
+
+/**
+ * The manager row's visible role label (spec 0080): the opportunity's own
+ * resolved override for that `position` when configured, otherwise the same
+ * shared default `ManagerSlotsField` falls back to — VISIBLE text, not a
+ * `title`-only tooltip (a hover affordance is invisible on touch and
+ * unreliable for screen readers).
+ */
+function managerPositionLabel(t: TFunction, position: number, labels: Record<string, string> | undefined): string {
+  return labels?.[String(position)] ?? t('registries.form.managerSlotLabel', { n: position })
+}
 
 /** Read-only list of the opportunity's business-function + product-category rows (spec 0040 amendment rev.3, AC-101). */
 function ProductLinesList({ lines }: { lines: OpportunityProductLine[] }) {
@@ -131,15 +143,21 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
           <span className="text-xs font-medium text-muted-foreground">{t('opportunities.form.managers')}</span>
           {sortedManagers.length > 0 ? (
             <ul className="flex flex-col gap-2">
-              {sortedManagers.map((manager) => (
-                <li key={manager.id} className="flex items-center gap-2">
-                  <span className="w-5 shrink-0 text-xs font-semibold text-muted-foreground">
-                    {manager.position}
-                  </span>
-                  <UserAvatar name={manager.name} size="sm" />
-                  <span className="truncate text-sm text-foreground">{manager.name}</span>
-                </li>
-              ))}
+              {sortedManagers.map((manager) => {
+                const positionLabel = managerPositionLabel(t, manager.position, opportunity.manager_labels)
+                return (
+                  <li key={manager.id} className="flex items-center gap-2">
+                    <span
+                      className="max-w-28 shrink-0 truncate text-xs font-semibold text-muted-foreground"
+                      title={positionLabel}
+                    >
+                      {positionLabel}
+                    </span>
+                    <UserAvatar name={manager.name} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{manager.name}</span>
+                  </li>
+                )
+              })}
             </ul>
           ) : (
             <DetailEmpty />

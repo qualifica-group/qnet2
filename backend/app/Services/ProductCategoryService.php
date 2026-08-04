@@ -9,6 +9,7 @@ use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagementModeInheritance;
+use App\Services\ProductCategories\CategoryManagerLabelResolver;
 use App\Services\ProductCategories\RequiresQuoteInheritance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ class ProductCategoryService
         private readonly CategoryHierarchy $hierarchy,
         private readonly RequiresQuoteInheritance $requiresQuote,
         private readonly CategoryManagementModeInheritance $managementMode,
+        private readonly CategoryManagerLabelResolver $managerLabels,
     ) {}
 
     public function create(CreateProductCategoryData $data): ProductCategory
@@ -59,6 +61,8 @@ class ProductCategoryService
                 // Spec 0077, D-8: same root-only semantics — a fresh root
                 // with no submitted value defaults to "multiple".
                 'management_mode' => $this->managementMode->inheritedValueFor($data->parentId) ?? ($data->managementMode ?? CategoryManagementMode::Multiple),
+                'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
+                'inherits_manager_labels' => $data->inheritsManagerLabels,
             ]);
 
             if ($data->hasAttributes()) {
@@ -95,6 +99,14 @@ class ProductCategoryService
 
         return DB::transaction(function () use ($category, $data): ProductCategory {
             $attributes = $data->submittedAttributes();
+
+            // Spec 0080: the label VALUES are normalized (trim, empty
+            // removed, empty object -> null) here, never inside the DTO —
+            // `submittedAttributes()` deliberately leaves `manager_labels`
+            // out for exactly this reason.
+            if ($data->managerLabelsSubmitted) {
+                $attributes['manager_labels'] = $this->normalizeManagerLabels($data->managerLabels);
+            }
 
             // Unconditional save: fire the model's saved event even when no native
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
@@ -214,6 +226,30 @@ class ProductCategoryService
     public function managementModeSourceCategory(ProductCategory $category): ?array
     {
         return $this->managementMode->sourceCategoryFor($category);
+    }
+
+    /**
+     * $category's EFFECTIVE manager labels: its own UNION its inherited
+     * ancestors', merged per position (spec 0080).
+     *
+     * @return array<int, string>
+     */
+    public function effectiveManagerLabels(ProductCategory $category): array
+    {
+        return $this->managerLabels->effectiveManagerLabels($category);
+    }
+
+    /**
+     * The manager labels $category inherits from its ancestors ALONE — its
+     * own assignments excluded (spec 0080), for the show endpoint's
+     * read-only `inherited_manager_labels` side value, mirroring
+     * `inherited_attributes`.
+     *
+     * @return array<int, string>
+     */
+    public function inheritedManagerLabels(ProductCategory $category): array
+    {
+        return $this->managerLabels->ancestorManagerLabels($category);
     }
 
     /**
@@ -343,5 +379,40 @@ class ProductCategoryService
 
             DB::table('attribute_category')->insert($rows);
         });
+    }
+
+    /**
+     * Normalizes a submitted `manager_labels` payload (spec 0080): trims
+     * every value, drops non-string/empty-after-trim entries (never saved as
+     * an empty string), and collapses an empty result to null (never an
+     * empty JSON object) — the same "no own labels" representation the
+     * column default and the resolver both expect.
+     *
+     * @param  array<int|string, mixed>|null  $labels
+     * @return array<int, string>|null
+     */
+    private function normalizeManagerLabels(?array $labels): ?array
+    {
+        if ($labels === null) {
+            return null;
+        }
+
+        $normalized = [];
+
+        foreach ($labels as $position => $label) {
+            if (! is_string($label)) {
+                continue;
+            }
+
+            $trimmed = trim($label);
+
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $normalized[(int) $position] = $trimmed;
+        }
+
+        return $normalized === [] ? null : $normalized;
     }
 }

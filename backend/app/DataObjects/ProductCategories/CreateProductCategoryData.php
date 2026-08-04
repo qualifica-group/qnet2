@@ -30,6 +30,10 @@ final readonly class CreateProductCategoryData
         public bool $isSelectable = true,
         /** Spec 0077: null = not submitted, resolved server-side (root's value, or "multiple" at a fresh root — D-8). */
         public ?CategoryManagementMode $managementMode = null,
+        /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
+        public ?array $managerLabels = null,
+        /** Spec 0080: whether this category inherits its ancestors' manager labels. Defaults to true, same as the attribute barriers. */
+        public bool $inheritsManagerLabels = true,
     ) {}
 
     /**
@@ -50,6 +54,8 @@ final readonly class CreateProductCategoryData
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
+            managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
+            inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : true,
         );
     }
 

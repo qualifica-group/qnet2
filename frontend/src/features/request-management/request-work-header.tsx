@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, Loader2, TriangleAlert } from 'lucide-react'
+import { ArrowRightLeft, CalendarClock, Loader2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
@@ -16,6 +16,17 @@ interface RequestWorkHeaderProps {
   isDirty: boolean
   /** Why the last submit did not go through (validation summary or server error); `null` when there is none. */
   submitError: string | null
+  /**
+   * Spec 0079 addendum (user directive): shows the "Trasferisci contatto"
+   * button next to Save. Straight from `useResourcePermissions().canAction
+   * ('transfer_contact')` (`useRequestTransfer`) — the server already
+   * combines `request-management.update` with `.transferContact` into this
+   * one flag (`RequestManagementAuthorization::actionPermissions`), so the
+   * button never opens onto a guaranteed 403 without a second copy of that
+   * rule here.
+   */
+  canTransfer: boolean
+  onTransfer: () => void
 }
 
 /**
@@ -57,6 +68,8 @@ export function RequestWorkHeader({
   isSubmitting,
   isDirty,
   submitError,
+  canTransfer,
+  onTransfer,
 }: RequestWorkHeaderProps) {
   const { t } = useTranslation()
   // The callback hour is optional (user directive 2026-07-31): one planned
@@ -99,10 +112,31 @@ export function RequestWorkHeader({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        {/*
+         * Spec 0079 AC-023/AC-024: derived from two read-only flags no
+         * form/inline-editor/endpoint exposes in write — no dismiss control
+         * or state, by construction, is the requirement. Absent origin
+         * (Sede deleted, `nullOnDelete`) hides the whole notice rather than
+         * showing a label-less badge (AC-026).
+         */}
+        {panel.is_transferred && panel.transferred_from && (
+          <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
+            <ArrowRightLeft className="size-3" aria-hidden="true" />
+            <span className="truncate">
+              {t('requestManagement.transfer.notice', { site: panel.transferred_from.label })}
+            </span>
+          </Badge>
+        )}
         {isDirty && (
           <span className="text-xs text-muted-foreground">
             {t('requestManagement.workPanel.header.unsavedChanges', { defaultValue: 'Unsaved changes' })}
           </span>
+        )}
+        {canTransfer && (
+          <Button type="button" variant="outline" onClick={onTransfer}>
+            <ArrowRightLeft className="size-4" aria-hidden="true" />
+            {t('actions.transferContact')}
+          </Button>
         )}
         {canUpdate && (
           <Button type="submit" form={formId} disabled={isSubmitting || !isDirty}>

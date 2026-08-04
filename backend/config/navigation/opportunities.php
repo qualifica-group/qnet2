@@ -92,22 +92,37 @@ return [
             // commercial operators (D-1, no new entity). Gated by its
             // OWN `request-management.*` permission set, never
             // `opportunities.*`.
+            // Navigable parent: clicking it opens the worklist
+            // (/request-management); the change-request queue hangs
+            // beneath it (user decision 2026-08-04), the same shape as
+            // Leads -> Import.
             'key' => 'request-management',
             'label' => 'navigation.requestManagement',
             'icon' => 'clipboard-list',
             'route' => '/request-management',
             'permission' => 'request-management.view',
-        ],
-        [
-            // Field change requests (spec 0078): the dedicated browse
-            // view over proposed changes to a protected field (today:
-            // request-management's "Fonte"), gated by its OWN
-            // `field-change-requests.*` set.
-            'key' => 'field-change-requests',
-            'label' => 'navigation.fieldChangeRequests',
-            'icon' => 'list-checks',
-            'route' => '/field-change-requests',
-            'permission' => 'field-change-requests.view',
+            'children' => [
+                [
+                    // Field change requests (spec 0078): the dedicated
+                    // browse view over proposed changes to a protected
+                    // field, gated by its OWN `field-change-requests.*`
+                    // set. Nested here rather than a sibling of the
+                    // group because the only protected field today is
+                    // this module's "Fonte" (ProtectedFieldRegistry) —
+                    // the queue is a satellite of the worklist, not a
+                    // module of its own. Safe under
+                    // NavigationService::filter(), which drops a child
+                    // with a denied parent: the page is supervisor-only
+                    // (that role holds `request-management.view` too),
+                    // and the Commercial role never had
+                    // `field-change-requests.view` to begin with.
+                    'key' => 'field-change-requests',
+                    'label' => 'navigation.fieldChangeRequests',
+                    'icon' => 'list-checks',
+                    'route' => '/field-change-requests',
+                    'permission' => 'field-change-requests.view',
+                ],
+            ],
         ],
     ],
 ];

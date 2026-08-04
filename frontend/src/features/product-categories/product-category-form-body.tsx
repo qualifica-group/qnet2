@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { FolderTree, ListChecks } from 'lucide-react'
+import { FolderTree, ListChecks, Users } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
+import { useEffectiveManagerLabels } from '@/features/product-categories/use-effective-manager-labels'
 import {
   ROOT_PARENT_VALUE,
   collectSubtreeIds,
@@ -23,6 +24,7 @@ import {
   type ProductCategoryFormValues,
 } from '@/features/product-categories/use-product-category-form'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
+import { ManagerLabelEditor, ManagerLabelsInheritanceToggle } from '@/features/product-categories/manager-label-editor'
 import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
@@ -31,6 +33,7 @@ import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSectio
 import type {
   AttributeContext,
   EffectiveAttribute,
+  ManagerLabels,
   ProductCategoryDetail,
   ProductCategoryFormMode,
   ProductCategoryInheritedAttribute,
@@ -61,6 +64,9 @@ function toInheritedAttributes(
 
 /** Hoisted so an opted-out context feeds a stable reference to `toInheritedAttributes`. */
 const EMPTY_ATTRIBUTES: EffectiveAttribute[] = []
+
+/** Hoisted so an opted-out (or root) manager-labels barrier feeds a stable, empty reference. */
+const EMPTY_MANAGER_LABELS: ManagerLabels = {}
 
 /** Hoisted for the same reason, on the create path (no category loaded yet). */
 const EMPTY_KNOWN_ATTRIBUTES: AttributeCatalogEntry[] = []
@@ -156,6 +162,14 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
     ],
   )
 
+  const inheritsManagerLabels = form.watch('inherits_manager_labels')
+  const inheritedManagerLabelsQuery = useEffectiveManagerLabels(parentId)
+  // Same immediate-barrier behavior as the attribute contexts above: turning
+  // the switch off drops the inherited preview before the save round-trips.
+  const inheritedManagerLabels = inheritsManagerLabels
+    ? (inheritedManagerLabelsQuery.data ?? EMPTY_MANAGER_LABELS)
+    : EMPTY_MANAGER_LABELS
+
   const parentOptions = useMemo(() => {
     const nodes = treeQuery.data ?? []
     const excluded = mode.type === 'edit' ? collectSubtreeIds(nodes, mode.category.id) : new Set<number>()
@@ -173,6 +187,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
     fieldPermission('requires_quote').visible ||
     fieldPermission('management_mode').visible
   const attributesVisible = fieldPermission('attributes').visible
+  const managerLabelsVisible = fieldPermission('manager_labels').visible
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -306,6 +321,34 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                     }
                     opportunityInheritToggle={
                       parentId !== null ? <InheritanceToggle control={form.control} context="opportunity" /> : null
+                    }
+                  />
+                )}
+              </MetaField>
+            </FormSection>
+          )}
+
+          {managerLabelsVisible && (
+            <FormSection
+              icon={Users}
+              title={t('productCategories.form.sections.managerLabels.title')}
+              description={t('productCategories.form.sections.managerLabels.description')}
+            >
+              <MetaField
+                control={form.control}
+                name="manager_labels"
+                metaKey="manager_labels"
+                label={t('productCategories.form.sections.managerLabels.title')}
+              >
+                {({ field, disabled }) => (
+                  <ManagerLabelEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    inherited={inheritedManagerLabels}
+                    disabled={disabled}
+                    // A root category has no ancestry to inherit from: no switch to show.
+                    inheritToggle={
+                      parentId !== null ? <ManagerLabelsInheritanceToggle control={form.control} /> : null
                     }
                   />
                 )}

@@ -44,6 +44,11 @@ final readonly class UpdateProductCategoryData
         public bool $isSelectableSubmitted = false,
         public ?CategoryManagementMode $managementMode = null,
         public bool $managementModeSubmitted = false,
+        /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
+        public ?array $managerLabels = null,
+        public bool $managerLabelsSubmitted = false,
+        public ?bool $inheritsManagerLabels = null,
+        public bool $inheritsManagerLabelsSubmitted = false,
     ) {}
 
     /**
@@ -72,6 +77,10 @@ final readonly class UpdateProductCategoryData
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             managementModeSubmitted: array_key_exists('management_mode', $data),
+            managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
+            managerLabelsSubmitted: array_key_exists('manager_labels', $data),
+            inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
+            inheritsManagerLabelsSubmitted: array_key_exists('inherits_manager_labels', $data),
         );
     }
 
@@ -142,6 +151,15 @@ final readonly class UpdateProductCategoryData
         // CategoryManagementModeInheritance::syncSubtree (ProductCategoryService).
         if ($this->managementModeSubmitted) {
             $attributes['management_mode'] = $this->managementMode;
+        }
+
+        // Spec 0080: mirrors inherits_product_attributes/
+        // inherits_opportunity_attributes — a plain boolean, written verbatim.
+        // `manager_labels` itself is deliberately NOT added here: its values
+        // need normalizing (trim, empty removed), which ProductCategoryService
+        // applies on top of this array — this DTO stays a dumb data carrier.
+        if ($this->inheritsManagerLabelsSubmitted) {
+            $attributes['inherits_manager_labels'] = $this->inheritsManagerLabels;
         }
 
         return $attributes;

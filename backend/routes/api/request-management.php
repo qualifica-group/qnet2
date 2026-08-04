@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Route;
 // Declared BEFORE the {opportunity} routes: a POST to the literal segment
 // must never be swallowed by the wildcard.
 Route::post('request-management/assign-operators', [RequestManagementController::class, 'assignOperators']);
+// Spec 0079: same "declared before the wildcard" rule as assign-operators
+// above — a POST to this literal segment must never be swallowed by the
+// GET/PUT/DELETE `{opportunity}` routes.
+Route::post('request-management/transfer', [RequestManagementController::class, 'transfer']);
 // Spec 0064 (M3): the category tab strip's data source — declared BEFORE
 // GET /request-management/{opportunity} for the same reason as
 // assign-operators above, otherwise "product-categories" is swallowed by the

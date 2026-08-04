@@ -23,12 +23,14 @@ const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode
 const fetchAttributeLayoutMock = vi.fn<
   (categoryId: number, context: string, formMode: string) => Promise<AttributeLayoutData>
 >()
+const fetchEffectiveManagerLabelsMock = vi.fn<(categoryId: number) => Promise<Record<string, string>>>()
 
 vi.mock('@/features/product-categories/api', () => ({
   createProductCategory: vi.fn(),
   updateProductCategory: vi.fn(),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
+  fetchEffectiveManagerLabels: (categoryId: number) => fetchEffectiveManagerLabelsMock(categoryId),
   fetchAttributeLayout: (...args: [number, string, string]) => fetchAttributeLayoutMock(...args),
   saveAttributeLayout: vi.fn(),
 }))
@@ -86,6 +88,9 @@ function category(
     is_selectable: true,
     management_mode: 'multiple',
     management_mode_source_category: null,
+    manager_labels: {},
+    inherits_manager_labels: true,
+    inherited_manager_labels: {},
     permissions: permissivePermissions(),
     ...overrides,
   }
@@ -107,6 +112,8 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchAttributeLayoutMock.mockReset()
   fetchAttributeLayoutMock.mockResolvedValue({ layout: null, inherited: null, attributes: [] })
+  fetchEffectiveManagerLabelsMock.mockReset()
+  fetchEffectiveManagerLabelsMock.mockResolvedValue({})
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
 })
@@ -143,6 +150,15 @@ function attributeSection(title: string): HTMLElement {
   const section = screen.getByRole('heading', { name: title }).closest('div')?.parentElement
   if (section === null || section === undefined) {
     throw new Error(`Attribute section "${title}" not found`)
+  }
+  return section
+}
+
+/** A whole top-level `FormSection` (its `<section>` root), located by its own h3 title. */
+function formSection(title: string): HTMLElement {
+  const section = screen.getByRole('heading', { name: title }).closest('section')
+  if (section === null) {
+    throw new Error(`Form section "${title}" not found`)
   }
   return section
 }
@@ -220,5 +236,61 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
     expect(selectableSwitch).not.toBeChecked()
     // Unlike the quote flag, this one is never inherited: a child still edits it.
     expect(selectableSwitch).toBeEnabled()
+  })
+})
+
+describe('ProductCategoryFormBody — manager labels section (spec 0080)', () => {
+  it('create mode: renders 4 G.A. rows with the default-denomination placeholder (AC-040)', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    for (const n of [1, 2, 3, 4]) {
+      const input = screen.getByRole('textbox', { name: `A.M. ${n}` })
+      expect(input).toHaveAttribute('placeholder', `Account manager ${n}`)
+      expect(input).toHaveValue('')
+    }
+  })
+
+  it("edit mode: prefills the rows with the category's own labels (AC-040)", async () => {
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'edit', category: category({ manager_labels: { '1': 'Commercial', '3': 'Consultant' } }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    expect(screen.getByRole('textbox', { name: 'A.M. 1' })).toHaveValue('Commercial')
+    expect(screen.getByRole('textbox', { name: 'A.M. 3' })).toHaveValue('Consultant')
+    expect(screen.getByRole('textbox', { name: 'A.M. 2' })).toHaveValue('')
+  })
+
+  it('disabling the inherit toggle drops the inherited preview immediately, before saving (AC-041)', async () => {
+    fetchEffectiveManagerLabelsMock.mockResolvedValue({ '2': 'Operator' })
+
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'edit', category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' } }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+    await screen.findByText('Operator')
+
+    const toggle = within(formSection('Account managers')).getByRole('switch')
+    expect(toggle).toBeChecked()
+
+    fireEvent.click(toggle)
+
+    await waitFor(() => expect(screen.queryByText('Operator')).not.toBeInTheDocument())
   })
 })

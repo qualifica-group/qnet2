@@ -281,17 +281,18 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * `view` ("Lavora"), `notes` (spec 0052 B4b), `documents`, `delete` (user
-     * directive 2026-07-23, gated by this module's OWN
-     * `request-management.delete` — see authorizeDelete()) and `activity` —
-     * `view` and `notes` gated by the SAME `request-management.view` (D-6:
-     * reading a record's notes is inherited from the ability to open the
-     * record, no separate notes permission), never OpportunityPolicy:
-     * `Gate::allows('view', $row)` would resolve OpportunityPolicy
-     * (`opportunities.view`), the wrong permission for this domain — same
-     * reason `activity` reads `request-management.viewActivity` directly (the
-     * endpoint re-checks it plus the GA2 scope via
-     * RequestManagementActivityAuthorizer).
+     * `view` ("Lavora"), `notes` (spec 0052 B4b), `documents`,
+     * `transfer-contact` (spec 0079, gated by its OWN
+     * `request-management.transferContact`), `delete` (user directive
+     * 2026-07-23, gated by this module's OWN `request-management.delete` —
+     * see authorizeDelete()) and `activity` — `view` and `notes` gated by
+     * the SAME `request-management.view` (D-6: reading a record's notes is
+     * inherited from the ability to open the record, no separate notes
+     * permission), never OpportunityPolicy: `Gate::allows('view', $row)`
+     * would resolve OpportunityPolicy (`opportunities.view`), the wrong
+     * permission for this domain — same reason `activity` reads
+     * `request-management.viewActivity` directly (the endpoint re-checks it
+     * plus the GA2 scope via RequestManagementActivityAuthorizer).
      *
      * @return array<int, string>
      */
@@ -306,6 +307,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
         if ($actor->can('request-management.viewDocuments')) {
             $allowed[] = 'documents';
+        }
+
+        if ($actor->can('request-management.transferContact')) {
+            $allowed[] = 'transfer-contact';
         }
 
         if ($actor->can('request-management.delete')) {

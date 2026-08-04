@@ -18,11 +18,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
     use HasFactory, LogsModelActivity;
+
+    /**
+     * Highest valid "Gestore Account" pivot position (spec 0080), aligned
+     * with the validation-layer cap on the number of managers a
+     * record may have (App\Http\Requests\Concerns\ValidatesManagerSlots::
+     * MAX_MANAGERS). `manager_labels` keys outside 1..this are rejected.
+     */
+    public const int MANAGER_LABEL_MAX_POSITION = 4;
+
+    /** Max length of a single manager label (spec 0080). */
+    public const int MANAGER_LABEL_MAX_LENGTH = 60;
 
     /**
      * @return array<string, string>
@@ -45,6 +56,15 @@ class ProductCategory extends BaseModel
             // requires_quote: a child's own column is never authored
             // directly, it only ever reflects its root's.
             'management_mode' => CategoryManagementMode::class,
+            // Spec 0080 — sparse position("1".."4")->label map, own
+            // assignments only; null/[] = no own labels. Read-side resolution
+            // (own UNION inherited) lives in CategoryManagerLabelResolver,
+            // never here.
+            'manager_labels' => 'array',
+            // Spec 0080 — per-context inheritance barrier for manager_labels,
+            // same shape as inherits_product_attributes/
+            // inherits_opportunity_attributes (spec 0061).
+            'inherits_manager_labels' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for a
             // migrated category, guarded (not in #[Fillable]) so it is only ever
             // set by property assignment post-create. Also the remap key for the

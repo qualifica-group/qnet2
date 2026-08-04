@@ -15,6 +15,7 @@ export const requestManagement = {
   },
   columns: {
     source: 'Fonte',
+    pendingChangeRequests: 'Richieste di modifica',
     productCategory: 'Categoria prodotto',
     productsOfInterest: 'Prodotti di interesse',
     generalNotes: 'Note generali',
@@ -27,6 +28,11 @@ export const requestManagement = {
     phone: 'Telefono',
     createdAt: 'Caricato il',
     nextCallbackAt: 'Prossimo richiamo',
+    transferred: 'Trasferito',
+  },
+  pendingChangeRequests: {
+    alert_one: '{{count}} richiesta di modifica in attesa',
+    alert_other: '{{count}} richieste di modifica in attesa',
   },
   advancedFilters: {
     registry: 'Anagrafica',
@@ -57,6 +63,15 @@ export const requestManagement = {
     errors: {
       noOperators: 'Nessun operatore trovato per la Sede selezionata.',
       generic: 'Impossibile assegnare gli operatori. Riprova.',
+    },
+  },
+  transfer: {
+    title: 'Trasferisci contatto',
+    description: '{{count}} richieste selezionate.',
+    notice: 'Contatto trasferito dalla sede di {{site}}',
+    success: '{{count}} richieste trasferite.',
+    errors: {
+      generic: 'Impossibile trasferire il contatto. Riprova.',
     },
   },
   form: {

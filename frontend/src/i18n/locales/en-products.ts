@@ -92,6 +92,7 @@ export const productCategories = {
     businessFunctionInherited: 'Inherited from {{category}}',
     requiresQuoteInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
+    managerLabelInherited: 'Inherited',
   },
   bulkMove: {
     tableButton: 'Move under…',
@@ -166,6 +167,13 @@ export const productCategories = {
       'The management mode is inherited from the root category "{{category}}". To change it, edit that category instead.',
     managementModeSingle: 'Single (one line per card)',
     managementModeMultiple: 'Multiple (several lines per card)',
+    managerLabelLevel: 'A.M. {{n}}',
+    managerLabelPlaceholder: 'Account manager {{n}}',
+    managerLabelMax: 'The label must be at most 60 characters.',
+    inheritsManagerLabels: 'Inherit from parent',
+    inheritsManagerLabelsHint:
+      'When off, this category ignores its ancestors: neither it nor its subcategories inherit these labels from above.',
+    inheritedManagerLabels: 'Inherited from ancestor categories',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -192,6 +200,11 @@ export const productCategories = {
       opportunityAttributes: {
         title: 'Opportunity attributes',
         description: 'Loaded in the Opportunity preliminary info for requests in this category.',
+      },
+      managerLabels: {
+        title: 'Account managers',
+        description:
+          'Customize the denomination of each Account Manager level for this category. Fields left blank use the default denomination.',
       },
     },
   },

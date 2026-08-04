@@ -81,6 +81,24 @@ class ProductCategoryController extends BaseApiController
     }
 
     /**
+     * GET /api/product-categories/{productCategory}/effective-manager-labels
+     * — own + inherited "Gestore Account" labels (spec 0080), for the
+     * category form's read-only "ereditate dal padre" preview before saving.
+     * Same permissive authorization as effectiveAttributes(): a user who may
+     * only create/edit products still needs this to render the section.
+     */
+    public function effectiveManagerLabels(Request $request, ProductCategory $productCategory): JsonResponse
+    {
+        try {
+            $this->authorizeEffectiveAttributes($request->user());
+
+            return $this->ok(['manager_labels' => $this->service->effectiveManagerLabels($productCategory)]);
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['productCategory' => $productCategory->id]);
+        }
+    }
+
+    /**
      * GET /api/product-categories/{productCategory} — single category (view row-action).
      */
     public function show(Request $request, ProductCategory $productCategory): JsonResponse
@@ -228,6 +246,11 @@ class ProductCategoryController extends BaseApiController
                 // Spec 0077: same read-only "inherited from X" hint for the
                 // card-line management mode.
                 'management_mode_source_category' => $this->service->managementModeSourceCategory($productCategory),
+                // Spec 0080: the "Gestore Account" labels resolved from the
+                // ANCESTORS alone (own ones already sit in the Resource's own
+                // `manager_labels`) — the form's read-only "ereditate dal
+                // padre" preview.
+                'inherited_manager_labels' => $this->service->inheritedManagerLabels($productCategory),
             ],
         );
     }

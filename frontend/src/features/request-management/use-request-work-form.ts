@@ -190,7 +190,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     (errors) => {
       setSubmitError(
         t('requestManagement.workPanel.validation.summary', {
-          fields: describeInvalidFields(errors, panel.applicable_attributes, t).join(', '),
+          fields: describeInvalidFields(errors, panel.applicable_attributes, panel.manager_labels, t).join(', '),
         }),
       )
     },

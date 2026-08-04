@@ -1,9 +1,18 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
+import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
-import { MapPin, Radio } from 'lucide-react'
+import { AlertTriangle, MapPin, Radio } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import type { ProductLineCellValue } from '@/features/product-lines/product-lines-cell-editor'
-import { DateTimeCell, EmptyCell } from '@/features/table/cell-renderers'
-import { RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import {
+  BADGE_BASE,
+  CELL_WRAPPER,
+  DateTimeCell,
+  EmptyCell,
+  badgeColorClass,
+} from '@/features/table/cell-renderers'
+import { BooleanBadgeCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -53,6 +62,38 @@ function ProductCategoriesCell({ value }: ICellRendererParams) {
 }
 
 /**
+ * The "Richieste di modifica" cell (spec 0078, AC-037): a count that only
+ * matters when it is NOT zero. Above zero it reads as an alert — amber pill,
+ * warning icon and the number, with the localized count as its accessible name
+ * and native tooltip; at zero (or with no value at all) the cell stays empty,
+ * so the operator's eye is drawn only by the rows that actually need handling.
+ */
+function PendingChangeRequestsCell({ value }: ICellRendererParams) {
+  const { t } = useTranslation()
+  const count = typeof value === 'number' && Number.isFinite(value) ? value : 0
+
+  if (count <= 0) {
+    return null
+  }
+
+  const label = t('requestManagement.pendingChangeRequests.alert', { count })
+
+  return (
+    <div className={CELL_WRAPPER}>
+      <Badge
+        variant="secondary"
+        className={cn(BADGE_BASE, 'gap-1 tabular-nums', badgeColorClass('amber'))}
+        aria-label={label}
+        title={label}
+      >
+        <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0" />
+        {count}
+      </Badge>
+    </div>
+  )
+}
+
+/**
  * Custom cell renderers keyed by the backend column `id` (spec 0049). `source`
  * ("Fonte", user directive 2026-07-31) is a plain `{id, name}` relation, so it
  * reuses the shared `RelationCell` exactly as the leads grid does for the same
@@ -72,11 +113,16 @@ function ProductCategoriesCell({ value }: ICellRendererParams) {
  */
 export const requestManagementColumnRenderers: TableRendererMap = {
   source: (params) => <RelationCell {...params} icon={Radio} />,
+  pending_change_requests: (params) => <PendingChangeRequestsCell {...params} />,
   product_categories: (params) => <ProductCategoriesCell {...params} />,
   products_of_interest: (params) => <RefNamesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
+  // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`
+  // (only `type: 'badge'`/`enum` are) — without this row the cell would show
+  // the raw boolean instead of the Si/No badge (AC-022).
+  is_transferred: (params) => <BooleanBadgeCell {...params} />,
   workflow_status: (params) => <StatusBadgeCell {...params} />,
   first_name: (params) => <TextCell {...params} />,
   last_name: (params) => <TextCell {...params} />,

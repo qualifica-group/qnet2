@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
+import i18n from '@/i18n'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
+
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
 
 /**
  * Spec 0075: the "Categoria prodotto" cell reads the row's own {funzione
@@ -45,5 +50,54 @@ describe('request-management product_categories cell (spec 0075)', () => {
 
     expect(container.textContent).not.toContain('Luce')
     expect(container.textContent?.trim()).not.toBe('')
+  })
+})
+
+function renderPendingChangeRequests(value: unknown) {
+  const renderer = requestManagementColumnRenderers.pending_change_requests
+
+  return render(<>{renderer({ value } as ICellRendererParams)}</>)
+}
+
+describe('request-management pending_change_requests cell (spec 0078, AC-037)', () => {
+  it('renders an alert badge with the count when there are pending requests', () => {
+    renderPendingChangeRequests(2)
+
+    const badge = screen.getByLabelText('2 pending change requests')
+
+    expect(badge).toHaveTextContent('2')
+  })
+
+  it('renders nothing at zero', () => {
+    const { container } = renderPendingChangeRequests(0)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('renders nothing when the value is missing', () => {
+    const { container } = renderPendingChangeRequests(null)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+})
+
+function renderIsTransferred(value: unknown) {
+  const renderer = requestManagementColumnRenderers.is_transferred
+
+  return render(<>{renderer({ value } as ICellRendererParams)}</>)
+}
+
+describe('request-management is_transferred cell (spec 0079, AC-022)', () => {
+  it('renders the Yes badge, never the raw boolean', () => {
+    renderIsTransferred(true)
+
+    expect(screen.getByText('Yes')).toBeInTheDocument()
+    expect(screen.queryByText('true')).not.toBeInTheDocument()
+  })
+
+  it('renders the No badge for false', () => {
+    renderIsTransferred(false)
+
+    expect(screen.getByText('No')).toBeInTheDocument()
   })
 })

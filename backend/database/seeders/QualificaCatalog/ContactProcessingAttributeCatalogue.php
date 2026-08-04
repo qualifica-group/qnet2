@@ -88,7 +88,7 @@ final class ContactProcessingAttributeCatalogue
             ['code' => 'data_scelta_cpi', 'name' => 'Data app. CPI', 'type' => 'date'],
             ['code' => 'data_app_apl', 'name' => 'OK app. APL', 'type' => 'date'],
             ['code' => 'dote_remaining_hours', 'name' => 'Residuo Ore Dote', 'type' => 'integer'],
-            ['code' => 'stato_assoc_cpi', 'name' => 'Data associazione CPI', 'type' => 'date'],
+            ['code' => 'stato_assoc_cpi', 'name' => 'Data associazione', 'type' => 'date'],
             ['code' => 'cpi', 'name' => 'CPI', 'type' => 'text'],
             ['code' => 'profilo_cpi', 'name' => 'Profilo CPI', 'type' => 'enum', 'options' => [
                 ['value' => '101', 'label' => '101'],

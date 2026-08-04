@@ -81,6 +81,9 @@ final class RequestRowMapper
             // Spec 0056: the Sede operativa — the site has no own name, so
             // its label is composed server-side from its primary address.
             'operational_site' => OperationalSiteLabel::summarize($row->operationalSite),
+            // "Trasferito" (spec 0079): a real column, never derived —
+            // display-only, no inline editor exists for it (AC-024).
+            'is_transferred' => (bool) $row->is_transferred,
             ...$this->clientAnagraphics($row),
             // "Prossimo richiamo" (spec 0052 D-1/D-5), same wire format as
             // RequestManagementResource so FE date parsing stays identical.

@@ -14,6 +14,12 @@ import type { RewardAssignmentRef } from '@/features/rewards/types'
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
 
+/** Position-keyed G.A. label overrides (spec 0080), string keys "1".."4" — the wire shape of `manager_labels`. */
+export type ManagerLabels = Record<string, string>
+
+/** GA2 pivot position, string form: mirrors `Opportunity::OPERATOR_MANAGER_POSITION` server-side. */
+export const OPERATOR_MANAGER_LABEL_POSITION = '2'
+
 /** A hydrated `{id, name}` relation projection (registry/referent/commercial). */
 export interface RequestRelationRef {
   id: number
@@ -30,6 +36,23 @@ export interface RequestRelationRef {
 export interface RequestOperationalSiteRef {
   id: number
   label: string
+}
+
+/**
+ * Body of POST /request-management/transfer (spec 0079, frozen contract):
+ * the same row/selection ids the bulk-assign endpoint takes, but the mode is
+ * always `single` (never sent on the wire — the dialog locks it) and
+ * `operator_id` is always required.
+ */
+export interface TransferRequestsPayload {
+  request_ids: number[]
+  operational_site_id: number
+  operator_id: number
+}
+
+/** Response of the same endpoint: how many requests were actually written. */
+export interface TransferRequestsResult {
+  transferred: number
 }
 
 /** The linked opportunity status's identity, read-only in this module. */
@@ -185,6 +208,15 @@ export interface RequestWorkPanel {
   /** Spec 0056: the operational site, facoltativa, editable from the attribution section like Fonte/Segnalatore/Operatore. */
   operational_site_id: number | null
   operational_site: RequestOperationalSiteRef | null
+  /**
+   * Spec 0079: system flags, never writable (no form/inline-editor/endpoint
+   * exposes them). `true` once the request has EVER been transferred, even if
+   * `transferred_from` later turns `null` (its origin Sede deleted,
+   * `nullOnDelete`) — the two answer different questions and are not derived
+   * from one another.
+   */
+  is_transferred: boolean
+  transferred_from: RequestOperationalSiteRef | null
   /** Sales-pipeline status: read-only in this module. */
   opportunity_status: RequestOpportunityStatusRef | null
   workflow_status: RequestWorkflowStatusRef | null
@@ -224,6 +256,13 @@ export interface RequestWorkPanel {
    * treat a missing key the same as `[]`.
    */
   rewards?: RewardAssignmentRef[]
+  /**
+   * Spec 0080: G.A. labels resolved from this request's own product-line
+   * categories, additive. `{}` when not resolvable. Optional for the same
+   * fixture-compatibility reason as `rewards` above — treat a missing key the
+   * same as `{}`.
+   */
+  manager_labels?: ManagerLabels
 }
 
 /**

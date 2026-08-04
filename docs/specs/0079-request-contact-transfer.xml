@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0079 — Trasferimento contatto tra sedi operative (Gestione Richieste).
+  Grounding VERIFICATO sul codice reale (esplorazione 2026-08-04), non ipotizzato.
+
+  Decisioni utente (AskUserQuestion 2026-08-04):
+    - L'azione agisce SIA su riga singola SIA su selezione multipla.
+    - Destinatari "Supervisor": TUTTI gli utenti con ruolo spatie `supervisor`
+      (non i supervisori di sede, non `opportunities.supervisor_id`).
+    - Il dialog mostra SOLO Sede + Operatore: lo step "modalita'" (bilanciato/singolo)
+      non compare, la modalita' e' forzata a `single`.
+-->
+<spec id="0079-request-contact-transfer" status="draft" owner="nicola" date="2026-08-04">
+
+  <goal>
+    Da Gestione Richieste un attore abilitato trasferisce uno o piu' contatti verso un'altra Sede
+    operativa, assegnandoli a un Operatore di quella sede. Il trasferimento e' tracciato (colonna
+    "Trasferito" in griglia, avviso non rimovibile nella scheda, voce in Activity Log) e notificato
+    in-app e via email al nuovo operatore e a tutti i Supervisor.
+  </goal>
+
+  <context>
+    Tutti i nomi qui sotto sono VERIFICATI sul codice reale (esplorazione 2026-08-04).
+
+    L'ENTITA' E' `Opportunity`, NON un model nuovo. `RequestManagementTableDefinition::modelClass()`
+    ritorna `Opportunity::class` (:100), ma TUTTA l'autorizzazione del modulo passa dal set
+    `request-management.*`, MAI da `opportunities.*` (spec 0049, D-1). L'azione nuova rispetta la
+    stessa regola: nessun permesso `opportunities.*` viene interrogato.
+
+    IL MOTORE ESISTE GIA' QUASI PER INTERO. Questa spec NON progetta un flusso nuovo: ricalca uno
+    gia' in produzione nello STESSO modulo.
+      - `POST /api/request-management/assign-operators` (routes/api/request-management.php:23) fa
+        gia' esattamente "assegna Sede + Operatore a N richieste", con scoping D-3, distribuzione
+        bilanciata e Activity Log esplicito — `RequestAssignmentService::assignOperators()`:48-72.
+      - Il componente `AssignOperatorsDialog`
+        (frontend/src/features/leads/assign-operators-dialog.tsx) e' gia' consumato da TRE punti,
+        tra cui Gestione Richieste stessa (request-management-table.tsx:290). E' il componente che
+        l'utente ha indicato ("lo stesso componente dell'azione massiva dei Lead") ed e' gia' montato
+        in questo modulo: non va ne' duplicato ne' ricreato.
+      - `RequestOperatorWriter::apply()`:37-60 e' l'UNICA implementazione della scrittura dello slot
+        GA2 e riporta gia' `$old['operator_id']` / `$changed['operator_id']`, cioe' esattamente
+        "operatore precedente" e "nuovo operatore" richiesti dalla notifica. Nessuna query in piu'.
+      - Notifiche: `FieldChangeRequestedNotification` (ultimo commit) e' il precedente esatto —
+        `via(): ['database','mail']`, `ShouldQueue`, payload `NotificationData`
+        (title/message/level/action_url), `action_url` PATH INTERNO e mai assoluto (:76-79), CTA mail
+        che antepone `config('app.frontend_url')`. Nessuna dipendenza nuova.
+
+    L'OPERATORE NON E' UNA COLONNA. E' la riga pivot `opportunity_user` a
+    `position = Opportunity::OPERATOR_MANAGER_POSITION` (=2, Opportunity.php:207). `operator_id` e'
+    un accessor VIRTUALE (:249-252). Conseguenza non negoziabile: il pivot non passa mai dal log
+    automatico di `LogsModelActivity` (che fa `logFillable()`), quindi l'Activity Log del
+    trasferimento va scritto ESPLICITAMENTE dal chiamante, come gia' fa
+    `RequestAssignmentService::assignOne()`:151-156.
+
+    LA SEDE NON HA UN NOME. `operational_sites` ha solo `id, old_id, alias, timestamps`: la sede E'
+    il suo indirizzo primario, e la label e' composta server-side "{line1} - {city}" dall'helper
+    condiviso `OperationalSiteLabel::summarize()` (gia' usato da RequestRowMapper:83 e
+    RequestManagementResource:76). Shape del riferimento: `{id, label}`, MAI `{id, name}`.
+    Conseguenza sul testo dell'avviso: "{Nome Sede}" e' la label composta, non un campo `name`.
+
+    NESSUN CONCETTO "transferred" ESISTE OGGI: `grep -ril transferred backend/app frontend/src` non
+    trova nulla. La parte di tracciamento e' interamente nuova.
+
+    RUOLO `supervisor`: la stringa esatta del ruolo spatie e' `'supervisor'`
+    (TestUsersSeeder.php:34, `SUPERVISOR_ROLE`); "Supervisore operativo" e' solo la DESCRIZIONE.
+    Da non confondere con `Opportunity::supervisor()` / `opportunities.supervisor_id`
+    (Opportunity.php:113), che e' il supervisore DELL'AFFARE ed e' un concetto diverso: la
+    decisione utente 2026-08-04 sceglie il RUOLO, quindi `supervisor_id` NON viene interrogato.
+    Caveat dichiarato: il ruolo `supervisor` e' creato oggi solo da `TestUsersSeeder`. In un'istanza
+    che non lo ha, l'insieme dei Supervisor e' vuoto e la notifica raggiunge il solo operatore —
+    comportamento corretto e da coprire con test, non un errore.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `is_transferred` + `transferred_from_operational_site_id` su `opportunities`.</item>
+      <item>Endpoint unico `POST /api/request-management/transfer` (usato sia dalla riga sia dalla selezione).</item>
+      <item>Nuova ability `transferContact` su `RequestManagementPolicy`.</item>
+      <item>`RequestTransferService` — scrittura sede + operatore + flag + audit, in una transazione.</item>
+      <item>`RequestTransferredNotification` (`database` + `mail`, `ShouldQueue`).</item>
+      <item>Colonna griglia `is_transferred` (badge Si/No, ordinabile, filtrabile, esportabile).</item>
+      <item>Avviso non rimovibile nella scheda (`RequestWorkHeader`, cluster destro).</item>
+      <item>Prop additiva `lockedMode` su `AssignOperatorsDialog` per nascondere lo step modalita'.</item>
+      <item>Azione di riga + azione massiva nella tabella Gestione Richieste.</item>
+      <item>i18n it/en per colonna, avviso, dialog, azione, notifica.</item>
+    </in>
+    <out>
+      <item>NESSUNA tabella `opportunity_transfers`: lo storico E' l'Activity Log (requisito esplicito).</item>
+      <item>L'azione massiva esistente "Assegna operatori" NON viene modificata ne' sostituita.</item>
+      <item>Trasferimento su moduli diversi da Gestione Richieste (Lead, Opportunita'): fuori scope.</item>
+      <item>Inline-edit della colonna "Trasferito": e' un flag di sistema, mai scrivibile a mano.</item>
+      <item>Revoca/annullamento di un trasferimento: non richiesto.</item>
+      <item>Refactor delle 14 copie di `composeLabel` (follow-up gia' segnalato in spec 0056).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- CONGELATO. Backend implementa, frontend consuma, identico. -->
+
+    <database>
+      Nuova migrazione `add_transfer_tracking_to_opportunities_table` (MAI editare la
+      2026_07_16_140000 gia' committata):
+        $table->boolean('is_transferred')->default(false)->after('operational_site_id');
+        $table->foreignId('transferred_from_operational_site_id')->nullable()
+              ->after('is_transferred')->constrained('operational_sites')->nullOnDelete();
+        $table->index('is_transferred');
+      down(): dropForeign -> dropIndex -> dropColumn, in quest'ordine.
+
+      PERCHE' DUE COLONNE E NON UNA. `is_transferred` NON e' derivabile da
+      `transferred_from_operational_site_id IS NOT NULL`: una richiesta SENZA sede di partenza puo'
+      essere trasferita, e in quel caso l'origine resta null pur essendo avvenuto il trasferimento.
+      Le due colonne rispondono quindi a due domande diverse (e' mai stato trasferito? / da dove?) e
+      non sono ridondanti. `nullOnDelete` sull'origine: cancellare una Sede azzera l'origine e fa
+      sparire l'AVVISO, ma NON abbassa `is_transferred` — voluto, coperto da test.
+
+      PERCHE' UNA COLONNA REALE E NON UNA DERIVATA. La colonna deve supportare ordinamento, filtro ed
+      export "come le altre". Con una colonna SQL reale il motore generico li serve tutti e tre senza
+      alcun hook; una colonna derivata imporrebbe `applyDerivedFilter` + `applyDerivedSort` +
+      `distinctValues` (RequestManagementTableDefinition:334/:413/:439) per un valore booleano.
+
+      `is_transferred` e `transferred_from_operational_site_id` NON entrano in `#[Fillable]`
+      (Opportunity.php:46-63): sono flag di sistema, scritti solo dal service. Restare fuori dai
+      fillable li tiene anche fuori dal log automatico, coerente con l'entry esplicita (vedi audit).
+    </database>
+
+    <endpoint method="POST" path="/api/request-management/transfer">
+      Rotta da dichiarare PRIMA del wildcard `{opportunity}` (routes/api/request-management.php:38),
+      come gia' fa `assign-operators` (:23). UN SOLO endpoint serve entrambi i casi d'uso: l'azione
+      di riga invia un array di un elemento. Nessun secondo endpoint per-record.
+
+      <request>
+        {
+          "request_ids": number[],          // required, array, min:1, exists:opportunities,id
+          "operational_site_id": number,    // required, integer, exists:operational_sites,id
+          "operator_id": number             // required, integer, exists:users,id
+        }
+        `operator_id` e' REQUIRED (non `required_if`): il trasferimento senza operatore di
+        destinazione non esiste per definizione (decisione utente: solo modalita' Sede + Operatore).
+      </request>
+      <response status="200">
+        { "success": true, "message": "Contacts transferred", "data": { "transferred": number } }
+        `transferred` = quante richieste sono state EFFETTIVAMENTE scritte (le fuori-scope sono
+        escluse silenziosamente, vedi errors).
+      </response>
+      <errors>
+        403 — attore senza `request-management.update` OPPURE senza `request-management.transferContact`.
+        422 — payload invalido (id inesistenti, operatore mancante).
+        Fuori-scope: NON e' un errore. Una richiesta che l'attore non gestisce e per cui non ha
+        `request-management.viewAll` viene SALTATA in silenzio e non conteggiata in `transferred`
+        (stessa regola D-3 di RequestAssignmentService:81-94: per quell'attore quella riga non
+        esiste, quindi un 403/404 rivelerebbe la sua esistenza).
+      </errors>
+    </endpoint>
+
+    <authorization>
+      Nuova ability `transferContact` in `RequestManagementPolicy::abilities()` (:65-68, accanto a
+      `viewAll`/`viewDocuments`/`assignOperator`) + metodo `transferContact()` sulla policy.
+      Il controller richiede ENTRAMBE: `request-management.update` E `request-management.transferContact`
+      (stesso doppio gate di `assignOperators()`, RequestManagementController:228).
+      Le tendine ereditano i gate dei loro endpoint esistenti: `operational-sites/for-select` e
+      `users/for-select` restano invariati.
+      Ordine canonico delle ability per il form Ruoli: `PermissionCatalogueBuilder:25-27`.
+    </authorization>
+
+    <api-read>
+      `RequestManagementResource` (accanto a :75-76) aggiunge:
+        "is_transferred": boolean,
+        "transferred_from": { "id": number, "label": string } | null
+      La label passa da `OperationalSiteLabel::summarize()`, MAI ricomposta lato client.
+      `RequestManagementService::WORK_PANEL_RELATIONS` (:73-93) aggiunge
+      `transferredFromOperationalSite.addresses.city` per non introdurre una N+1 (il progetto ha
+      `Model::preventLazyLoading()` fuori produzione: una relazione dimenticata FALLISCE, non degrada).
+
+      Relazione su `Opportunity`:
+        transferredFromOperationalSite(): BelongsTo(OperationalSite::class, 'transferred_from_operational_site_id')
+    </api-read>
+
+    <grid>
+      `RequestColumnCatalog::columns()` aggiunge, dopo `operational_site` (:141-147):
+        [
+          'id' => 'is_transferred',
+          'label' => 'requestManagement.columns.transferred',
+          'type' => 'boolean',
+          'visible' => true,
+          'sortable' => true,
+          'filterable' => true,
+          'filterType' => 'boolean',
+        ]
+      `filters()` (:350-362) deriva il filtro da solo: NESSUNA lista separata da aggiornare.
+      Colonna NON `editable`: e' un flag di sistema.
+      `RequestRowMapper::map()` (:41-91) proietta `'is_transferred' => (bool) $row->is_transferred`.
+      Export: generico, nessuna dichiarazione per-colonna (ability `request-management.export`).
+
+      Frontend: UNA riga in `requestManagementColumnRenderers` (column-renderers.tsx:114-127):
+        is_transferred: (params) => <BooleanBadgeCell {...params} />
+      `BooleanBadgeCell` (rich-cells.tsx:178-190) rende gia' il badge verde/rosso con icona +
+      `common.yes` / `common.no`. NON e' auto-montato (`resolveCellRenderer` auto-monta solo
+      `type: 'badge'`/`enum`, column-defaults.tsx:102-124), quindi la riga serve davvero: senza,
+      la cella mostrerebbe il booleano grezzo. Stesso identico wiring di
+      `reward-statuses/column-renderers.tsx:17` e `contract-statuses/column-renderers.tsx:19-20`.
+    </grid>
+
+    <row-and-bulk-action>
+      RIGA — `RequestColumnCatalog::actions()` (:388-434) aggiunge:
+        ['key' => 'transfer-contact', 'label' => 'actions.transferContact', 'icon' => 'arrow-right-left',
+         'type' => 'action', 'confirm' => false, 'permission' => 'request-management.transferContact']
+      Va dichiarata DOPO le prime tre (`INLINE_ACTION_LIMIT = 3`, row-actions.tsx:33): finisce nel
+      menu a tre puntini, che e' la collocazione giusta per un'azione non frequente.
+      `RequestManagementTableDefinition::actionsFor()` (:298-320) aggiunge il ramo per-riga.
+      Frontend: icona `ArrowRightLeft` in `REQUEST_MANAGEMENT_ACTION_ICONS`
+      (request-management-table.tsx:38-41) + `case 'transfer-contact':` nello switch di
+      `handleAction` (:125-148), che apre il dialog sull'id della riga.
+
+      MASSIVA — secondo `BulkAction` accanto a quello esistente in `getBulkActions` (:191-207),
+      key `transfer-contact`, gated su `can('request-management.update') &&
+      can('request-management.transferContact')`. Apre lo STESSO dialog sugli id selezionati.
+      Al successo: toast + `refreshGrid()` + `tableRef.current?.clearSelection()`, identico al
+      precedente dell'assegnazione (:158-165).
+    </row-and-bulk-action>
+
+    <dialog>
+      `AssignOperatorsDialog` riceve UNA prop additiva, opzionale e retro-compatibile:
+        lockedMode?: AssignmentMode
+      Quando valorizzata: lo step modalita' non e' renderizzato, `mode` e' fissa e il campo Operatore
+      e' sempre visibile. I TRE consumer esistenti non passano la prop e restano invariati byte per
+      byte nel comportamento. `canSubmit` diventa quindi "sede scelta && operatore scelto".
+      Il trasferimento passa `lockedMode="single"` piu' `copy` proprio (descrizione + titolo del
+      trasferimento), come gia' fa Gestione Richieste per l'assegnazione (:209-219).
+
+      Vincolo gia' presente da conservare: `handleSiteChange` (:168) azzera l'operatore a ogni cambio
+      di sede — e' cio' che garantisce che l'operatore appartenga SEMPRE alla sede scelta, insieme al
+      `params={{ operational_site_id: siteId }}` del select (:323).
+    </dialog>
+
+    <detail-alert>
+      In `RequestWorkHeader` (request-work-header.tsx), cluster destro
+      `<div className="ml-auto flex shrink-0 items-center gap-2">` (:101), PRIMA del pulsante Salva:
+        {panel.is_transferred && panel.transferred_from && (
+          <Badge variant="outline" ...><ArrowRightLeft /> {t('requestManagement.transfer.notice', { site: panel.transferred_from.label })}</Badge>
+        )}
+      Testo it: "Contatto trasferito dalla sede di {{site}}".
+
+      NON MODIFICABILE E NON ELIMINABILE, per costruzione: e' output derivato da due colonne che
+      nessun form, nessun inline-editor e nessun endpoint di modifica espone in scrittura. Non c'e'
+      alcun pulsante di chiusura e nessuno stato di dismiss (ne' locale ne' persistito). Questa e'
+      la garanzia richiesta: non un flag "non nascondibile", ma l'assenza totale di un percorso di
+      scrittura o di dismiss.
+
+      Con `is_transferred = true` ma origine cancellata (nullOnDelete) l'avviso non compare: non
+      esiste un nome di sede da mostrare e un avviso monco sarebbe peggio del silenzio. Documentato,
+      coperto da test.
+
+      Nessun `components/ui/alert.tsx` esiste in questo repo: si usa `Badge` come gia' fanno gli
+      altri elementi informativi della stessa barra (`StatusBadge` :30-38, badge next-callback :91).
+      Densita' compatta (`h-5`, `text-xs`) come da ui-design.md §2.
+    </detail-alert>
+
+    <notification>
+      `App\Notifications\RequestTransferredNotification implements ShouldQueue`, modellata su
+      `FieldChangeRequestedNotification`:
+        via(): ['database', 'mail']
+        toArray(): (new NotificationData(title:, message:, level: NotificationLevelEnum::Info,
+                    actionUrl: "/request-management/{id}"))->toArray()
+        toMail(): MailMessage subject/greeting/line/action, con `config('app.frontend_url')`
+                  anteposto SOLO nella CTA mail.
+      `action_url` e' un PATH INTERNO, mai assoluto (vincolo del contratto notifiche, validato
+      client-side da `safe-internal-path.ts`).
+
+      DESTINATARI (decisione utente): il nuovo operatore + `User::role('supervisor')->get()`,
+      uniti, deduplicati per id, ESCLUSO l'attore che ha eseguito il trasferimento (stessa esclusione
+      di FieldChangeRequestCreator::notifyViewers:145-162 — non ci si notifica da soli).
+
+      CONTENUTO (tutti i campi richiesti, precalcolati dal chiamante e passati al costruttore: la
+      Notification resta una presentazione di fatti gia' noti, mai un secondo punto che interroga il
+      DB — stessa nota di FieldChangeRequestedNotification:24-27):
+        contatto (label della richiesta), sede di provenienza, sede di destinazione,
+        operatore precedente, nuovo operatore, autore del trasferimento, data e ora.
+      Sede di provenienza assente -> segnaposto "—", come gia' fanno le notifiche esistenti per i
+      valori nulli.
+
+      DISPATCH: dopo il COMMIT della transazione, mai dentro (una notifica partita e una transazione
+      poi fallita e' irrecuperabile). Precedente: FieldChangeRequestCreator.
+
+      CONSEGUENZA DICHIARATA (non un difetto nascosto): il contenuto richiesto e' PER CONTATTO, quindi
+      un trasferimento massivo di N contatti produce N notifiche per destinatario. Con `ShouldQueue`
+      non blocca la richiesta HTTP, ma su una selezione ampia la campanella e la casella dei
+      Supervisor ricevono N voci. Se questo diventasse un problema d'uso, il rimedio e' una notifica
+      aggregata per operazione — cambia il contenuto richiesto, quindi NON viene deciso qui.
+    </notification>
+
+    <audit>
+      `RequestTransferService` scrive UNA entry esplicita per richiesta trasferita, con lo stesso
+      idioma gia' in uso (RequestAssignmentService:151-156, RequestManagementService:436-441):
+        activity($request->getTable())          // log name = 'opportunities'
+            ->performedOn($request)
+            ->causedBy($actor)
+            ->event('updated')
+            ->withProperties(['attributes' => $changed, 'old' => $old])
+            ->log('Request management contact transfer');
+      `$changed`/`$old` contengono ALMENO `operational_site_id` e `operator_id` (quest'ultimo
+      riempito da `RequestOperatorWriter::apply()`), piu' `is_transferred`.
+      La descrizione 'Request management contact transfer' e' cio' che distingue un trasferimento da
+      un'assegnazione nello storico: e' il requisito "storico completo di tutti i passaggi".
+      Lettura: gia' servita da `config/activity-log.php:165-188` + `RequestManagementActivityAuthorizer`
+      (`request-management.viewActivity` + scope). NESSUNA modifica al lato lettura.
+    </audit>
+
+    <service>
+      `App\Services\RequestManagement\RequestTransferService`, iniettando
+      `RequestManagementScope` + `RequestOperatorWriter` (le stesse due dipendenze di
+      RequestAssignmentService, meno il distributor che qui non serve).
+
+      transfer(array $requestIds, User $actor, int $operationalSiteId, int $operatorId): int
+        // Step 1: scarta gli id fuori scope (D-3), come inScopeRequests():81-94
+        // Step 2: per ciascuna, dentro UNA transazione, transferOne()
+      transferOne():
+        // Step 1: cattura l'origine PRIMA di sovrascrivere (operational_site_id corrente)
+        // Step 2: scrive sede, is_transferred = true, transferred_from_operational_site_id = origine
+        // Step 3: RequestOperatorWriter::apply() per lo slot GA2 (riempie $changed/$old)
+        // Step 4: entry Activity Log esplicita
+        // Step 5: accumula i dati della notifica (nessun invio qui: si spedisce dopo il commit)
+
+      SRP: e' un service PROPRIO, non un metodo in piu' su RequestAssignmentService. Quest'ultimo
+      documenta se stesso come "bulk assignment"; il trasferimento ha regole diverse (origine,
+      flag, notifica, descrizione di log distinta) e mescolarli farebbe divergere entrambi.
+
+      IDEMPOTENZA / CASO LIMITE: trasferire verso la sede e l'operatore GIA' correnti non e' un
+      no-op silenzioso — `is_transferred` diventa comunque true e l'entry di log viene scritta, perche'
+      l'operazione E' avvenuta ed e' stata richiesta. Documentato, coperto da test.
+    </service>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /request-management/transfer con un id valido: la richiesta cambia `operational_site_id`, il pivot GA2 passa al nuovo operatore, `is_transferred` diventa true.</criterion>
+    <criterion id="AC-002">`transferred_from_operational_site_id` contiene la sede che la richiesta aveva PRIMA del trasferimento.</criterion>
+    <criterion id="AC-003">Richiesta senza sede di partenza: il trasferimento riesce, `transferred_from_operational_site_id` resta null, `is_transferred` e' true.</criterion>
+    <criterion id="AC-004">Tutte le altre relazioni della richiesta (registry, referent, product_lines, products_of_interest, rewards, quotes, note, allegati e gli altri slot manager) sono identiche prima e dopo il trasferimento.</criterion>
+    <criterion id="AC-005">Il trasferimento su piu' id in una sola chiamata scrive tutte le richieste e ritorna `transferred` = numero scritto.</criterion>
+    <criterion id="AC-006">Attore senza `request-management.transferContact` -> 403, nessuna scrittura.</criterion>
+    <criterion id="AC-007">Attore senza `request-management.update` -> 403, nessuna scrittura.</criterion>
+    <criterion id="AC-008">Attore senza `request-management.viewAll` che passa l'id di una richiesta che non gestisce: quella riga NON viene scritta e non e' conteggiata in `transferred` (nessun 403/404).</criterion>
+    <criterion id="AC-009">`operator_id` assente nel payload -> 422.</criterion>
+    <criterion id="AC-010">`operational_site_id` o `operator_id` inesistenti -> 422.</criterion>
+    <criterion id="AC-011">Ogni trasferimento scrive UNA entry di Activity Log con description 'Request management contact transfer', causer = attore, properties contenenti `operational_site_id` e `operator_id` in `old` e `attributes`.</criterion>
+    <criterion id="AC-012">Due trasferimenti successivi lasciano DUE entry distinte in Activity Log (storico completo dei passaggi, non solo l'ultimo).</criterion>
+    <criterion id="AC-013">Il nuovo operatore riceve una notifica `database` e una `mail`.</criterion>
+    <criterion id="AC-014">Ogni utente con ruolo `supervisor` riceve la notifica; l'attore che ha eseguito il trasferimento NON la riceve nemmeno se e' supervisor o nuovo operatore.</criterion>
+    <criterion id="AC-015">Il corpo della notifica contiene: contatto, sede di provenienza, sede di destinazione, operatore precedente, nuovo operatore, autore, data e ora.</criterion>
+    <criterion id="AC-016">Nessun ruolo `supervisor` presente: il trasferimento riesce e notifica il solo operatore (nessuna eccezione).</criterion>
+    <criterion id="AC-017">`action_url` della notifica e' un path interno (`/request-management/{id}`), mai un URL assoluto.</criterion>
+    <criterion id="AC-018">`RequestManagementResource` espone `is_transferred` e `transferred_from: {id,label}` con label "{line1} - {city}"; null quando non trasferito.</criterion>
+    <criterion id="AC-019">La colonna `is_transferred` compare in griglia e ordina.</criterion>
+    <criterion id="AC-020">La colonna filtra su vero/falso attraverso il motore generico, con parametri bound e nessun SQL raw.</criterion>
+    <criterion id="AC-021">La colonna e' inclusa nell'export come le altre.</criterion>
+    <criterion id="AC-022">La cella rende il badge Si/No, mai `true`/`false` grezzi.</criterion>
+    <criterion id="AC-023">La scheda di una richiesta trasferita mostra in alto a destra l'avviso "Contatto trasferito dalla sede di {label}".</criterion>
+    <criterion id="AC-024">L'avviso non espone alcun controllo di chiusura/modifica e nessun endpoint del modulo accetta in scrittura `is_transferred` o `transferred_from_operational_site_id` (inclusi PATCH del pannello e inline-edit di cella).</criterion>
+    <criterion id="AC-025">Richiesta mai trasferita: nessun avviso nella scheda.</criterion>
+    <criterion id="AC-026">Cancellando la Sede di origine: nessun 409, la richiesta sopravvive, `is_transferred` resta true, l'avviso sparisce.</criterion>
+    <criterion id="AC-027">Il dialog aperto dal trasferimento mostra SOLO Sede e Operatore: nessuno step modalita'.</criterion>
+    <criterion id="AC-028">Nel dialog, cambiando Sede l'Operatore gia' scelto viene azzerato e la tendina Operatore e' filtrata sulla nuova sede.</criterion>
+    <criterion id="AC-029">I tre consumer esistenti di `AssignOperatorsDialog` (leads, request-management assign, import wizard) continuano a mostrare lo step modalita' e passano i loro test invariati.</criterion>
+    <criterion id="AC-030">L'azione di riga "Trasferisci contatto" compare solo per chi ha `request-management.transferContact` e apre il dialog sulla riga.</criterion>
+    <criterion id="AC-031">L'azione massiva compare con una selezione attiva e trasferisce tutti gli id selezionati; al successo la griglia si aggiorna e la selezione si svuota.</criterion>
+    <criterion id="AC-032">Nessuna stringa hardcoded: tutte le chiavi i18n presenti in it e en.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna dipendenza nuova (composer.json / package.json invariati).
+    - Autorizzazione SERVER-SIDE su ogni percorso; l'UI nasconde, il backend autorizza.
+    - Solo Eloquent/parametri bound: MAI `whereRaw`/`orderByRaw` su input (backend.md §8).
+    - `$request->safe()->only()` se serve, MAI `$request->only()` da solo.
+    - `is_transferred` e `transferred_from_operational_site_id` fuori da `#[Fillable]`: nessun percorso
+      di mass-assignment li puo' raggiungere.
+    - Ownership disgiunta tra i teammate; contratto sopra CONGELATO prima del dispatch.
+    - Definition of Done: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend && npx tsc -b --force`.
+      `tsc --noEmit` e' un falso verde in questo repo e non vale come verifica.
+    - File entro 300 righe (soft) / 500 (hard); nessuna emoticon; identificatori in INGLESE.
+  </constraints>
+
+</spec>

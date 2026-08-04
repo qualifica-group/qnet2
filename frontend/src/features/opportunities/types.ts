@@ -249,6 +249,14 @@ export interface OpportunityDetail {
    * missing key the same as `0`.
    */
   quotes_count?: number
+  /**
+   * Spec 0080: G.A. labels resolved from this opportunity's product-line
+   * categories (position, as a string key "1".."4" -> label), additive. `{}`
+   * when not resolvable (no product line, or several product lines resolving
+   * to different labels). Optional for the same fixture-compatibility reason
+   * as `state`/`workflow_status` above — treat a missing key the same as `{}`.
+   */
+  manager_labels?: Record<string, string>
 }
 
 /**

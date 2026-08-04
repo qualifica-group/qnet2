@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +15,13 @@ interface RequestFormActionsProps {
    * persisted record and carries no cancel (user directive 2026-08-03).
    */
   cancel?: { label: string; onCancel: () => void }
+  /**
+   * Extra action(s) rendered right before Save (spec 0079 addendum, user
+   * directive: the "Trasferisci contatto" button repeated at the foot of the
+   * form). Omitted by every other caller — the create form never passes it
+   * and stays byte-for-byte unchanged.
+   */
+  leadingActions?: ReactNode
 }
 
 /**
@@ -35,6 +43,7 @@ export function RequestFormActions({
   submittingLabel,
   isSubmitDisabled = false,
   cancel,
+  leadingActions,
 }: RequestFormActionsProps) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
@@ -43,6 +52,7 @@ export function RequestFormActions({
           {cancel.label}
         </Button>
       )}
+      {leadingActions}
       <Button type="submit" form={formId} disabled={isSubmitting || isSubmitDisabled}>
         {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         {isSubmitting ? submittingLabel : submitLabel}
