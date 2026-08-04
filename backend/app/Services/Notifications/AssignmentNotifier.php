@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Enums\AssignmentRoleEnum;
-use App\Enums\AssignmentTargetEnum;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
+use App\Support\Notifications\RecordDetails;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\DB;
 final class AssignmentNotifier
 {
     /**
+     * @param  Model  $record  the Registry or Opportunity just written; its
+     *                         label and detail card are derived here
      * @param  ?User  $actor  who performed the write; excluded from the
      *                        recipients, since nobody needs to be told what
      *                        they just did. Null for system-initiated writes
@@ -36,9 +39,7 @@ final class AssignmentNotifier
      *                                             slot, for NEW attachments only
      */
     public function notify(
-        AssignmentTargetEnum $target,
-        int $recordId,
-        string $recordLabel,
+        Model $record,
         ?User $actor,
         ?int $supervisorId,
         array $managerPositions,
@@ -53,12 +54,18 @@ final class AssignmentNotifier
             return;
         }
 
+        // Step 2: resolve every fact ONCE, here — a Notification presents
+        // known facts and never queries, and the detail card needs relations.
+        $target = RecordDetails::targetFor($record);
+        $recordId = (int) $record->getKey();
+        $recordLabel = (string) $record->getAttribute('name');
+        $details = RecordDetails::for($record);
         $actorName = $actor?->name ?? __('The system');
 
-        // Step 2: dispatch only once the write is durable — a notification
+        // Step 3: dispatch only once the write is durable — a notification
         // sent from inside a transaction that later rolls back would be
         // irrecoverable (same rule as NoteService::syncMentionsAndNotify()).
-        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $actorName, $supervisorId, $managerPositions): void {
+        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions): void {
             $recipients = $this->recipients($supervisorId, $managerPositions);
 
             if ($supervisorId !== null) {
@@ -69,6 +76,7 @@ final class AssignmentNotifier
                     recordLabel: $recordLabel,
                     position: null,
                     actorName: $actorName,
+                    details: $details,
                 ));
             }
 
@@ -80,6 +88,7 @@ final class AssignmentNotifier
                     recordLabel: $recordLabel,
                     position: $position,
                     actorName: $actorName,
+                    details: $details,
                 ));
             }
         });

@@ -10,16 +10,18 @@ use App\Models\Registry;
 use App\Models\User;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Builds the "scheda dettagli" a notification email carries about the record
  * it is talking about (direttiva utente 2026-08-04).
  *
- * Returns an ORDERED map `english label => value`. The key is the i18n key,
- * NOT a rendered string: the notification calls `__()` on it at render time,
- * inside the per-recipient locale Laravel has already switched to
- * (HasLocalePreference). Translating here would freeze the sender's locale
- * onto every recipient.
+ * Returns an ORDERED map `i18n label key => value`, with keys from the
+ * `notifications` lang file and NEVER a rendered label. Nothing is
+ * translated here on purpose: `__()` must run at render time, inside the
+ * per-recipient locale Laravel switches to via HasLocalePreference, or the
+ * locale of whoever performed the write would be frozen onto every
+ * recipient.
  *
  * A field with no value is OMITTED, never rendered as an empty row: a table
  * half full of dashes reads as broken data.
@@ -74,11 +76,13 @@ final class RecordDetails
         $registry->loadMissing(self::REGISTRY_RELATIONS);
 
         return self::compact([
-            'Name' => $registry->name,
-            'Type' => $registry->is_supplier ? __('Supplier') : __('Client'),
-            'Source' => $registry->source?->name,
-            'Supervisor' => $registry->supervisor?->name,
-            'Account managers' => self::managerList($registry->managers),
+            'notifications.fields.name' => $registry->name,
+            // The i18n KEY, not a rendered word: DetailsTable translates it in
+            // the recipient's locale (see its value() method).
+            'notifications.fields.type' => $registry->is_supplier ? 'notifications.values.supplier' : 'notifications.values.client',
+            'notifications.fields.source' => $registry->source?->name,
+            'notifications.fields.supervisor' => $registry->supervisor?->name,
+            'notifications.fields.account_managers' => self::managerList($registry->managers),
         ]);
     }
 
@@ -92,14 +96,14 @@ final class RecordDetails
         $site = $opportunity->operationalSite;
 
         return self::compact([
-            'Title' => $opportunity->name,
-            'Client' => $opportunity->registry?->name,
-            'Operational site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
-            'Status' => $opportunity->opportunityStatus?->name,
-            'Working status' => $opportunity->workflowStatus?->name,
-            'Source' => $opportunity->source?->name,
-            'Supervisor' => $opportunity->supervisor?->name,
-            'Operator' => $opportunity->operatorManager()?->name,
+            'notifications.fields.title' => $opportunity->name,
+            'notifications.fields.client' => $opportunity->registry?->name,
+            'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
+            'notifications.fields.status' => $opportunity->opportunityStatus?->name,
+            'notifications.fields.working_status' => $opportunity->workflowStatus?->name,
+            'notifications.fields.source' => $opportunity->source?->name,
+            'notifications.fields.supervisor' => $opportunity->supervisor?->name,
+            'notifications.fields.operator' => $opportunity->operatorManager()?->name,
         ]);
     }
 
@@ -108,7 +112,7 @@ final class RecordDetails
      * is the "G.A. n" slot and carries the order of importance, so it is part
      * of the information, not decoration.
      *
-     * @param  \Illuminate\Support\Collection<int, User>  $managers
+     * @param  Collection<int, User>  $managers
      */
     private static function managerList(iterable $managers): ?string
     {

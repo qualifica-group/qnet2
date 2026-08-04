@@ -6,6 +6,7 @@ use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\OperationalSitesSource;
+use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
@@ -76,6 +77,7 @@ return [
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
         'vat-rates' => VatRatesSource::class,
+        'payment-methods' => PaymentMethodsSource::class,
         'attributes' => AttributesSource::class,
         'product-categories' => ProductCategoriesSource::class,
         'product-category-attributes' => ProductCategoryAttributesSource::class,

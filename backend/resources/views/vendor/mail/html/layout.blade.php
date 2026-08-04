@@ -54,11 +54,23 @@ background-color: #1b2130 !important;
 background-color: #34507a !important;
 }
 
-p, .table td {
+p, .table td, .content-cell td {
 color: #e7eaee !important;
 }
 
-h1, h2, h3, strong, .table th {
+.content-cell table, .content-cell th, .content-cell td {
+border-color: #4f5972 !important;
+}
+
+.content-cell th {
+background-color: #262c3c !important;
+}
+
+.content-cell td:first-child {
+color: #b2b9c3 !important;
+}
+
+h1, h2, h3, strong, .table th, .content-cell th {
 color: #ffffff !important;
 }
 

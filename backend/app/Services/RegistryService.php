@@ -7,7 +7,6 @@ use App\DataObjects\Registries\UpdateRegistryData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Users\ProfileData;
-use App\Enums\AssignmentTargetEnum;
 use App\Models\Registry;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
@@ -108,9 +107,7 @@ class RegistryService
             // spec 0081: notified after the name is derived from the card, so
             // the message carries the real label and not the INSERT placeholder.
             $this->assignmentNotifier->notify(
-                AssignmentTargetEnum::Registry,
-                $registry->id,
-                $registry->name,
+                $registry,
                 $actor,
                 $registry->supervisor_id,
                 $attachedManagers,
@@ -155,9 +152,7 @@ class RegistryService
             $this->normalizeQualifiedSupplier($registry);
 
             $this->assignmentNotifier->notify(
-                AssignmentTargetEnum::Registry,
-                $registry->id,
-                $registry->name,
+                $registry,
                 $actor,
                 $newSupervisorId,
                 $attachedManagers,

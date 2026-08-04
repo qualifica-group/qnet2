@@ -3,6 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE `payment-methods` — spec 0013 su 0068 (2026-08-04) — VERDE, NON COMMITTATO
+
+Nuova migration source per il modulo `/migrations` (import da sistema esterno): i **metodi di
+pagamento** ora si importano come tutte le altre anagrafiche. Solo backend, **zero righe di
+frontend** (il picker delle source e il pannello del piano sono registry-driven: leggono
+`GET /api/migrations` e la `label()` della source).
+
+**File toccati:**
+- `backend/database/migrations/2026_08_04_120000_add_old_id_to_payment_methods_table.php` — NUOVO:
+  `old_id` nullable + unique su `payment_methods` (la create table era gia' committata, backend.md §3).
+- `backend/app/Migrations/Sources/PaymentMethodsSource.php` — NUOVO, key `payment-methods`,
+  endpoint esterno `payment-methods`, crea via `PaymentMethodService::create()` (cosi' `sort_order`
+  resta server-managed da `PaymentMethodOrderManager`).
+- `backend/config/migrations.php` — riga `'payment-methods' => PaymentMethodsSource::class`.
+- `backend/app/Migrations/MigrationOrder.php` — aggiunta alla **fase 1** (lookup indipendente: e' il
+  consumer, `quotes`, a referenziarla, non il contrario).
+- `backend/tests/Feature/Migration/PaymentMethodsSourceImportTest.php` — NUOVO, 9 test.
+
+**Decisioni da rispettare (non re-inventare):**
+- **Idempotenza**: skip per `old_id`; una riga gia' presente con lo stesso `code` e `old_id` NULL
+  (catalogo seedato da `DemoPaymentMethodSeeder`) viene **ADOTTATA**, non duplicata — `code` e `name`
+  hanno entrambi unique index. `code` gia' migrato sotto un altro `old_id` = errore fatale di riga.
+- **`code` derivato** dal `name` quando l'esterno non lo manda: lowercase, non-alfanumerici collassati
+  in `_`, prefisso `pm_` se non inizia per lettera (vincolo `^[a-z][a-z0-9_]*$`, D-3 spec 0068).
+- `payment_days` fuori da [0, 3650] → null + **warning** nel report (non clamp, non errore);
+  `is_active` assente → true; testi vuoti → null.
+
+**Da verificare quando l'API esterna sara' disponibile:** la shape reale di `GET {base}/payment-methods`
+(qui assunta `id, name, code, description, payment_instructions, payment_days, is_active`, cioe' il
+mirror dei campi locali). Se differisce, cambia solo `mapNativeRow()`/`processRow()`.
+
+**Verde:** `pest tests/Feature/Migration` 201/201 · `pest --filter=PaymentMethod` 113/113 · Pint pulito.
+
 ## NOTIFICHE DI ASSEGNAZIONE E TRASFERIMENTO — spec 0081 (2026-08-04) — VERDE, NON COMMITTATO
 
 Spec: `docs/specs/0081-assignment-and-transfer-notifications.xml`. Notifiche in-app + email quando
@@ -42,10 +75,58 @@ in quel caso nessuno viene escluso e l'autore nel messaggio e' `__('The system')
 `OpportunityController`, `LeadController`, `RequestCreationService`, `LeadRowPersister`.
 `RequestTransferredNotification::__construct` ha un 9° parametro obbligatorio `recipientRole`.
 
-**Verificato eseguendo:** `vendor/bin/pest` 5282 test, 5280 passati, 1 skipped. L'unico fallimento e'
-`CampaignCrudTest` AC-028 (422 "Budget insufficiente"), **flaky preesistente** dovuto ai valori random
-della factory: passa 3/3 in isolamento e non tocca nessun file di questa modifica. Pint pulito,
-`npx tsc -b --force` EXIT=0.
+### Template email: le view del framework, prima mai pubblicate
+
+**Il restyling di `resources/views/emails/layout.blade.php` non si vedeva, e il motivo e' strutturale.**
+Quel layout e' `@extends`-ato SOLO da `emails/reset-password.blade.php`, cioe' da UNA email
+(`ResetPasswordNotification`, che usa `->view(...)`). Tutte le ALTRE email costruiscono un
+`MailMessage` (`->greeting()->line()->action()`), che Laravel renderizza con le PROPRIE view markdown;
+`resources/views/vendor/mail` non era pubblicata, quindi restavano con l'aspetto stock del framework.
+
+Ora `php artisan vendor:publish --tag=laravel-mail` e' stato eseguito e le view sono vestite con la
+stessa palette (`themes/default.css` per la base inlinata, il `<style>` di `html/layout.blade.php` per
+responsive e dark mode, che NON sono inlinabili). `html/header.blade.php` rende il quadrato con
+l'iniziale + nome app; il ramo con il logo remoto di Laravel e' stato rimosso (immagine esterna
+bloccata dai client e tracciante). **Conseguenza da ricordare: da qui in poi lo stile delle email
+transazionali si cambia in `resources/views/vendor/mail/`, non solo in `emails/layout.blade.php`.**
+
+### Scheda dettagli nell'email (direttiva utente)
+
+`App\Support\Notifications\RecordDetails::for($record)` costruisce la scheda dal record (campi presi
+dalle Resource reali; un campo vuoto viene OMESSO, non reso come riga vuota) e
+`DetailsTable::markdown()` la rende.
+
+**Due trappole gia' pagate, non ripeterle:**
+1. `DetailsTable::markdown()` ritorna un **`HtmlString`, non una stringa**:
+   `SimpleMessage::formatLine()` collassa i newline di una stringa semplice in spazi, appiattendo la
+   tabella su una riga e stampando i pipe come testo. Un `Htmlable` passa intatto e Blade non lo escapa.
+2. Markdown e non HTML: `Illuminate\Mail\Markdown` parsa con `html_input => 'escape'`, quindi l'HTML
+   grezzo in una `->line()` esce come tag visibili. La `TableExtension` di CommonMark e' attiva, la
+   sintassi a pipe rende un vero `<table>`. Lo stile e' `.content-cell table/th/td` — **scoped alla
+   cella del corpo**, perche' il layout email E' fatto di tabelle e una regola su `table` nudo le
+   ridipingerebbe tutte.
+
+Nel trasferimento l'email ha ora una frase BREVE (`lead()`) + la tabella; la campanella conserva il
+messaggio completo (`message()`), non avendo tabella su cui appoggiarsi.
+
+### Lingua per destinatario (direttiva utente)
+
+Gia' cablata e ora verificata eseguendo: `users.locale`, `User implements HasLocalePreference`,
+`NotificationSender` cambia locale per notifiable. Due buchi chiusi:
+- Le stringhe del FRAMEWORK non erano tradotte: un utente `it` riceveva "Regards," e il subcopy
+  "If you're having trouble clicking..." in inglese. Ora sono in `lang/it.json`.
+- Le etichette della scheda dettagli stanno in **`lang/{en,it}/notifications.php`**, NON in it.json:
+  sono parole generiche ("Name", "Source", "Status") e come chiavi JSON tradurrebbero quella parola
+  OVUNQUE `__()` la incontri, in qualunque feature futura.
+- Regola vincolante: **nessuna label/valore si traduce nel service**. `RecordDetails` passa la CHIAVE
+  i18n (anche per il valore Cliente/Fornitore, via il prefisso `notifications.values.`) e `__()` gira
+  a render time nel locale del destinatario. Tradurre prima congelerebbe il locale di chi scrive.
+
+**Verificato eseguendo:** `vendor/bin/pest` 5290 test, 5289 passati, 1 skipped, 0 falliti. Pint pulito,
+`npx tsc -b --force` EXIT=0. Email rese davvero e ispezionate in IT e EN (tabella `<table>` presente,
+etichette tradotte, "Cordiali saluti"/"Regards"). Nota: `CampaignCrudTest` AC-028 e' **flaky
+preesistente** (422 "Budget insufficiente" da valori random della factory) — fallito in una run
+intermedia, verde nelle altre e 3/3 in isolamento; non tocca nessun file di questa modifica.
 
 **Attenzione, vale ancora:** `QUEUE_CONNECTION=sync` in `backend/.env`. Tutte le notifiche nuove sono
 `ShouldQueue`, ma col driver `sync` partono dentro la richiesta HTTP. Conseguenza concreta ora che le

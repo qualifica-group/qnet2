@@ -33,8 +33,9 @@ final class MigrationOrder
         // cross-source reference; `sectors` references only itself (parent_id
         // remapped via old_id, relinked within its own run); `roles` are
         // adopted/created by name and are referenced by `users` via old_id, so
-        // they anchor here too.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'roles'],
+        // they anchor here too; `payment-methods` is likewise a plain lookup,
+        // referenced by its consumer modules (quotes first), not referencing.
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'payment-methods', 'roles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
         // users (companies/sites/functions/roles), company-sites (companies)

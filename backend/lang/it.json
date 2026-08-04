@@ -61,5 +61,13 @@
     ":contact was transferred from :origin to :destination by :actor on :date. You are no longer the operator of this contact: it is now assigned to :new.": ":contact e' stato trasferito da :origin a :destination da :actor il :date. Non sei piu' l'operatore di questo contatto: ora e' assegnato a :new.",
     ":actor assigned you :contact, transferred from :origin to :destination on :date.": ":actor ti ha assegnato :contact, trasferito da :origin a :destination il :date.",
     ":actor transferred :contact from :origin to :destination (operator :previous to :new) on :date": ":actor ha trasferito :contact da :origin a :destination (operatore da :previous a :new) il :date",
-    "You were mentioned": "Sei stato menzionato"
+    "You were mentioned": "Sei stato menzionato",
+    "Regards,": "Cordiali saluti,",
+    "Hello!": "Ciao!",
+    "Whoops!": "Attenzione!",
+    "All rights reserved.": "Tutti i diritti riservati.",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below into your web browser:": "Se hai difficolta' a cliccare il pulsante \":actionText\", copia e incolla nel browser l'indirizzo qui sotto:",
+    "You are no longer the operator of :contact.": "Non sei piu' l'operatore di :contact.",
+    ":actor assigned you the contact :contact.": ":actor ti ha assegnato il contatto :contact.",
+    ":actor transferred the contact :contact.": ":actor ha trasferito il contatto :contact."
 }

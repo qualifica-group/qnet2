@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
-use App\Enums\AssignmentTargetEnum;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Opportunity;
 use App\Models\User;
@@ -155,9 +154,7 @@ final class RequestAssignmentService
         // per-record work panel emits — a batch of N produces N.
         if (($changed['operator_id'] ?? null) !== null) {
             $this->assignmentNotifier->notify(
-                AssignmentTargetEnum::Opportunity,
-                $request->id,
-                $request->name,
+                $request,
                 $actor,
                 null,
                 [$changed['operator_id'] => Opportunity::OPERATOR_MANAGER_POSITION],

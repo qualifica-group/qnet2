@@ -3,6 +3,7 @@
 use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\TransferRecipientRoleEnum;
+use App\Models\Registry;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Notifications\RequestTransferredNotification;
@@ -59,13 +60,12 @@ it('a rolled back write sends nothing (AC-012)', function () {
 
     $actor = User::factory()->create();
     $manager = User::factory()->create();
+    $registry = Registry::factory()->create();
 
     try {
-        DB::transaction(function () use ($actor, $manager): void {
+        DB::transaction(function () use ($registry, $actor, $manager): void {
             app(AssignmentNotifier::class)->notify(
-                AssignmentTargetEnum::Registry,
-                1,
-                'Acme',
+                $registry,
                 $actor,
                 null,
                 [$manager->id => 1],

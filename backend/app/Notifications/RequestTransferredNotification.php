@@ -82,10 +82,14 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
     {
         $path = $this->pathFor($notifiable);
 
+        // A SHORT lead here, not the full sentence the bell shows: the detail
+        // card right below carries the same facts as a table, and printing
+        // them twice in one email reads as a mistake.
         $mail = (new MailMessage)
             ->subject($this->title())
             ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($path));
+            ->line($this->withAccessNote($this->lead(), $path))
+            ->line(DetailsTable::markdown($this->details()));
 
         // No reachable module, no button: a CTA that lands on a 403 is worse
         // than none, and the message already says what to ask for.
@@ -115,14 +119,51 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         };
     }
 
+    /**
+     * The self-contained sentence the bell shows: it has no detail card to
+     * lean on, so it spells every fact out.
+     */
     private function message(?string $path): string
     {
-        $message = match ($this->recipientRole) {
+        return $this->withAccessNote(match ($this->recipientRole) {
             TransferRecipientRoleEnum::PreviousOperator => __(':contact was transferred from :origin to :destination by :actor on :date. You are no longer the operator of this contact: it is now assigned to :new.', $this->placeholders()),
             TransferRecipientRoleEnum::NewOperator => __(':actor assigned you :contact, transferred from :origin to :destination on :date.', $this->placeholders()),
             TransferRecipientRoleEnum::Supervisor => __(':actor transferred :contact from :origin to :destination (operator :previous to :new) on :date', $this->placeholders()),
-        };
+        }, $path);
+    }
 
+    /**
+     * The email's opening line, deliberately short (see toMail()).
+     */
+    private function lead(): string
+    {
+        return match ($this->recipientRole) {
+            TransferRecipientRoleEnum::PreviousOperator => __('You are no longer the operator of :contact.', $this->placeholders()),
+            TransferRecipientRoleEnum::NewOperator => __(':actor assigned you the contact :contact.', $this->placeholders()),
+            TransferRecipientRoleEnum::Supervisor => __(':actor transferred the contact :contact.', $this->placeholders()),
+        };
+    }
+
+    /**
+     * The detail card: every fact of the transfer, already in hand.
+     *
+     * @return array<string, string>
+     */
+    private function details(): array
+    {
+        return [
+            'notifications.fields.contact' => $this->contactLabel,
+            'notifications.fields.origin_site' => $this->originSiteLabel ?? __('notifications.values.empty'),
+            'notifications.fields.destination_site' => $this->destinationSiteLabel,
+            'notifications.fields.previous_operator' => $this->previousOperatorName ?? __('notifications.values.empty'),
+            'notifications.fields.new_operator' => $this->newOperatorName,
+            'notifications.fields.performed_by' => $this->actorName,
+            'notifications.fields.date' => $this->transferredAt->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function withAccessNote(string $message, ?string $path): string
+    {
         if ($path !== null) {
             return $message;
         }

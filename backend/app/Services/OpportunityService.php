@@ -8,7 +8,6 @@ use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Opportunities\UpdateOpportunityData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
-use App\Enums\AssignmentTargetEnum;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
@@ -245,9 +244,7 @@ class OpportunityService
             // spec 0081: dispatched last, when `name` is already the derived
             // `OPP_{id}` and the manager slots are final.
             $this->assignmentNotifier->notify(
-                AssignmentTargetEnum::Opportunity,
-                $opportunity->id,
-                $opportunity->name,
+                $opportunity,
                 $actor,
                 $opportunity->supervisor_id,
                 $attachedManagers,
@@ -315,9 +312,7 @@ class OpportunityService
             );
 
             $this->assignmentNotifier->notify(
-                AssignmentTargetEnum::Opportunity,
-                $opportunity->id,
-                $opportunity->name,
+                $opportunity,
                 $actor,
                 $newSupervisorId,
                 $attachedManagers,
