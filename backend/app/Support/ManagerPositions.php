@@ -24,4 +24,34 @@ namespace App\Support;
 final class ManagerPositions
 {
     public const int MAX = 12;
+
+    /**
+     * The subset of a `sync()` map that was genuinely ATTACHED, as
+     * `userId => position` (spec 0081). A manager who merely MOVED between
+     * slots comes back under sync()'s `updated` key and is deliberately left
+     * out: being renumbered is not being put in charge, so it notifies
+     * nobody (decisione utente 2026-08-04).
+     *
+     * Lives here, beside the cap, because both `registry_user` and
+     * `opportunity_user` are synced from the same `manager_slots` shape by
+     * two services that must not grow a second, divergent copy of this rule.
+     *
+     * @param  array<int, array{position: int}>  $syncMap  the map handed to sync()
+     * @param  array{attached: array<int, mixed>, detached: array<int, mixed>, updated: array<int, mixed>}  $syncResult
+     * @return array<int, int>
+     */
+    public static function attachedPositions(array $syncMap, array $syncResult): array
+    {
+        $positions = [];
+
+        foreach ($syncResult['attached'] as $userId) {
+            $position = $syncMap[$userId]['position'] ?? null;
+
+            if ($position !== null) {
+                $positions[(int) $userId] = $position;
+            }
+        }
+
+        return $positions;
+    }
 }

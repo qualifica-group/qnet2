@@ -19,5 +19,12 @@ final readonly class RequestTransferNotice
         public string $contactLabel,
         public ?string $originSiteLabel,
         public ?string $previousOperatorName,
+        /**
+         * The user who held the GA2 slot BEFORE this transfer (spec 0081):
+         * they get their own "questo contatto non e' piu' tuo" notification,
+         * so the id travels beside the name. Null when the request had no
+         * operator at all.
+         */
+        public ?int $previousOperatorId = null,
     ) {}
 }

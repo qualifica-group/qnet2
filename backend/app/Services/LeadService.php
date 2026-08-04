@@ -11,6 +11,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\OperationalSite;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
@@ -62,7 +63,7 @@ class LeadService
      * transaction: the conversion logic itself lives entirely in
      * ConvertLeadToOpportunity, not unrolled here.
      */
-    public function create(CreateLeadData $data): Lead
+    public function create(CreateLeadData $data, ?User $actor = null): Lead
     {
         $attributes = $this->withResolvedStateId($data);
 
@@ -72,9 +73,9 @@ class LeadService
             return $this->loadDetail($lead);
         }
 
-        $lead = DB::transaction(function () use ($attributes): Lead {
+        $lead = DB::transaction(function () use ($attributes, $actor): Lead {
             $lead = Lead::create($attributes);
-            $this->converter->handle($lead);
+            $this->converter->handle($lead, $actor);
 
             return $lead;
         });

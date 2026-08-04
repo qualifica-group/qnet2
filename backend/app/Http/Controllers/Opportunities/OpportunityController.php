@@ -64,7 +64,7 @@ class OpportunityController extends BaseApiController
         try {
             $this->authorize('create', Opportunity::class);
 
-            $opportunity = $this->service->create($request->toData());
+            $opportunity = $this->service->create($request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new OpportunityResource($opportunity),
@@ -85,7 +85,7 @@ class OpportunityController extends BaseApiController
         try {
             $this->authorize('update', $opportunity);
 
-            $opportunity = $this->service->update($opportunity, $request->toData());
+            $opportunity = $this->service->update($opportunity, $request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new OpportunityResource($opportunity),

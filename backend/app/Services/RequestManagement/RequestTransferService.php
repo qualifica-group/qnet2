@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement;
 
 use App\DataObjects\RequestManagement\RequestTransferNotice;
+use App\Enums\TransferRecipientRoleEnum;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
 use App\Support\OperationalSiteLabel;
@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Business logic for POST /api/request-management/transfer (spec 0079):
@@ -25,9 +26,12 @@ use Illuminate\Support\Facades\Notification;
  *
  * A SEPARATE service from RequestAssignmentService on purpose (SRP): the
  * bulk assignment documents itself as a plain reassignment, while a transfer
- * carries its own rules — origin capture, the transfer flag, a dedicated
- * notification and a distinct log description — mixing the two would make
- * both drift.
+ * carries its own rules — origin capture, the transfer flag, its own set of
+ * notifications and a distinct log description — mixing the two would make
+ * both drift. For the same reason this path never emits the generic
+ * RecordAssignmentNotification the bulk assignment does (spec 0081): a
+ * transfer already tells the incoming operator they were assigned, and a
+ * second, vaguer copy would be noise.
  *
  * Same two dependencies as RequestAssignmentService, minus the distributor:
  * this endpoint has no `balanced` mode (decision utente 2026-08-04, the
@@ -36,11 +40,13 @@ use Illuminate\Support\Facades\Notification;
 final class RequestTransferService
 {
     /**
-     * The spatie role name notified alongside the new operator (decision
-     * utente 2026-08-04) — the ROLE, never `Opportunity::supervisor()`/
-     * `supervisor_id` (see spec 0079 context).
+     * The permission whose holders are copied on every transfer (spec 0081,
+     * decisione utente 2026-08-04). It replaces the `supervisor` ROLE this
+     * service used to look up, and it is never
+     * `Opportunity::supervisor()`/`supervisor_id`, which is a different
+     * concept entirely (see spec 0079 context).
      */
-    private const string SUPERVISOR_ROLE = 'supervisor';
+    private const string TRANSFER_NOTIFICATION_PERMISSION = 'request-management.receiveTransferNotifications';
 
     public function __construct(
         private readonly RequestManagementScope $scope,
@@ -183,14 +189,15 @@ final class RequestTransferService
             contactLabel: $request->name,
             originSiteLabel: $originSiteId === null ? null : ($originLabels[$originSiteId] ?? null),
             previousOperatorName: $previousOperator?->name,
+            previousOperatorId: $previousOperator?->id,
         );
     }
 
     /**
-     * The nuovo operatore + every `supervisor`, deduplicated, excluded the
-     * actor (decision utente 2026-08-04) — one send per request, so a batch
-     * of N produces N notifications per recipient (documented consequence,
-     * data_contract).
+     * Three DISJOINT audiences per request (spec 0081): whoever lost the
+     * contact, whoever gained it, and whoever supervises the module — each
+     * with its own text. One send per request, so a batch of N produces N
+     * notifications per recipient (documented consequence, data_contract).
      *
      * @param  array<int, RequestTransferNotice>  $notices
      */
@@ -200,17 +207,13 @@ final class RequestTransferService
             return;
         }
 
-        $recipients = $this->recipients($actor, $newOperator);
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
         $destinationLabel = OperationalSiteLabel::compose($destinationSite->primaryAddress);
         $transferredAt = Carbon::now();
+        $previousOperators = $this->previousOperators($notices);
+        $supervisors = $this->supervisors($actor, $newOperator, $previousOperators);
 
         foreach ($notices as $notice) {
-            Notification::send($recipients, new RequestTransferredNotification(
+            $build = fn (TransferRecipientRoleEnum $role): RequestTransferredNotification => new RequestTransferredNotification(
                 requestId: $notice->requestId,
                 contactLabel: $notice->contactLabel,
                 originSiteLabel: $notice->originSiteLabel,
@@ -219,28 +222,80 @@ final class RequestTransferService
                 newOperatorName: $newOperator->name,
                 actorName: $actor->name,
                 transferredAt: $transferredAt,
-            ));
+                recipientRole: $role,
+            );
+
+            // Step 1: the outgoing operator — never the actor, and never the
+            // incoming operator (a "transfer" onto the same person is not a
+            // loss, and IDEMPOTENZA lets that call through).
+            $previousOperator = $previousOperators->get($notice->previousOperatorId);
+
+            if ($previousOperator !== null && $previousOperator->id !== $actor->id && $previousOperator->id !== $newOperator->id) {
+                $previousOperator->notify($build(TransferRecipientRoleEnum::PreviousOperator));
+            }
+
+            // Step 2: the incoming operator.
+            if ($newOperator->id !== $actor->id) {
+                $newOperator->notify($build(TransferRecipientRoleEnum::NewOperator));
+            }
+
+            // Step 3: the supervisory copy, to nobody already served above.
+            if ($supervisors->isNotEmpty()) {
+                Notification::send($supervisors, $build(TransferRecipientRoleEnum::Supervisor));
+            }
         }
     }
 
     /**
-     * The nuovo operatore + every titolare of the `supervisor` role.
-     * `User::role()` THROWS RoleDoesNotExist when the role row is absent
-     * (an instance that never ran TestUsersSeeder, spec 0079 context's
-     * documented caveat) — guarded here so that case degrades to "no
-     * supervisors" instead of a 500 (AC-016).
+     * Every DISTINCT outgoing operator of the batch, in one query, keyed by
+     * id — never one query per request (N+1).
      *
+     * @param  array<int, RequestTransferNotice>  $notices
      * @return Collection<int, User>
      */
-    private function recipients(User $actor, User $newOperator): Collection
+    private function previousOperators(array $notices): Collection
     {
-        $supervisors = Role::query()->where('name', self::SUPERVISOR_ROLE)->exists()
-            ? User::role(self::SUPERVISOR_ROLE)->get()
-            : new Collection;
+        $ids = array_values(array_unique(array_filter(
+            array_map(static fn (RequestTransferNotice $notice): ?int => $notice->previousOperatorId, $notices),
+        )));
 
-        return $supervisors->push($newOperator)
-            ->unique('id')
-            ->reject(fn (User $user): bool => $user->id === $actor->id)
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        return User::query()->whereIn('id', $ids)->get()->keyBy('id');
+    }
+
+    /**
+     * Everyone holding `request-management.receiveTransferNotifications`
+     * (spec 0081, decisione utente 2026-08-04) — a PERMISSION, not the
+     * `supervisor` role this service used to hardcode: the grant survives
+     * roles being renamed or split, and it can be revoked per role from the
+     * roles screen.
+     *
+     * The actor, the incoming operator and every outgoing operator are
+     * removed: they each already receive their own, more specific text, and
+     * nobody is notified twice for one transfer.
+     *
+     * `User::permission()` THROWS PermissionDoesNotExist when the row is
+     * absent (an instance that never ran `permissions:sync`) — guarded here
+     * so that case degrades to "no supervisory copy" instead of a 500, the
+     * same defence the role lookup this method replaces used to carry.
+     *
+     * @param  Collection<int, User>  $previousOperators
+     * @return Collection<int, User>
+     */
+    private function supervisors(User $actor, User $newOperator, Collection $previousOperators): Collection
+    {
+        if (! Permission::query()->where('name', self::TRANSFER_NOTIFICATION_PERMISSION)->exists()) {
+            return new Collection;
+        }
+
+        $excludedIds = [$actor->id, $newOperator->id, ...$previousOperators->modelKeys()];
+
+        return User::permission(self::TRANSFER_NOTIFICATION_PERMISSION)
+            ->get()
+            ->reject(fn (User $user): bool => in_array($user->id, $excludedIds, true))
             ->values();
     }
 }

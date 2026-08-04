@@ -73,10 +73,29 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Distribution-list ability (spec 0081, decisione utente 2026-08-04):
+     * who is copied on the "contatto trasferito" notifications. It authorizes
+     * NO endpoint — it decides recipients, which is why nothing calls it
+     * through `$this->authorize()`; RequestTransferService resolves the set
+     * with `User::permission(...)`.
+     *
+     * A permission and not the spatie role `supervisor` the spec 0079
+     * implementation hardcoded: "chi ha massimo accesso su gestione
+     * richieste" is a grant, and a grant survives roles being renamed, split
+     * or added from the roles UI. Declared here rather than in a config array
+     * for the same reason — this is the only vocabulary the roles screen can
+     * edit.
+     */
+    public function receiveTransferNotifications(User $user): bool
+    {
+        return $user->can($this->permission('receiveTransferNotifications'));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator', 'transferContact'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'assignOperator', 'transferContact', 'receiveTransferNotifications'];
     }
 }

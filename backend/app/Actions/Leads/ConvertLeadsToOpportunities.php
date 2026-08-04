@@ -6,6 +6,7 @@ namespace App\Actions\Leads;
 
 use App\Exceptions\Leads\BulkConversionBlockedException;
 use App\Models\Lead;
+use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,9 +34,11 @@ final class ConvertLeadsToOpportunities
 
     /**
      * @param  array<int, int>  $leadIds
+     * @param  ?User  $actor  propagated to the per-lead conversion for the
+     *                        assignment notifications (spec 0081)
      * @return array<int, int> ids of the created Opportunities, in lead id order
      */
-    public function handle(array $leadIds): array
+    public function handle(array $leadIds, ?User $actor = null): array
     {
         // Step 1: load the batch once, eager-loading exactly what the
         // per-lead conversion reads, so neither the pre-check nor the
@@ -56,7 +59,7 @@ final class ConvertLeadsToOpportunities
         // Step 4: the batch is atomic — a failure on any lead rolls back the
         // Opportunities already created for the previous ones.
         return DB::transaction(fn (): array => $leads
-            ->map(fn (Lead $lead): int => $this->converter->handle($lead)->id)
+            ->map(fn (Lead $lead): int => $this->converter->handle($lead, $actor)->id)
             ->all());
     }
 

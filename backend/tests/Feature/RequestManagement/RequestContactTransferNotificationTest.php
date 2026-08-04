@@ -1,8 +1,8 @@
 <?php
 
+use App\Enums\TransferRecipientRoleEnum;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
 use App\Support\OperationalSiteLabel;
@@ -11,8 +11,15 @@ use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// POST /api/request-management/transfer (spec 0079): notifications —
-// AC-013 -> AC-017.
+// POST /api/request-management/transfer: notifications — spec 0079 AC-013 ->
+// AC-017, AMENDED by spec 0081. Two requirements changed here, so the
+// expectations below changed WITH them (never to make a test pass):
+//   1. The supervisory copy goes to holders of the PERMISSION
+//      `request-management.receiveTransferNotifications`, not to the spatie
+//      role `supervisor` (decisione utente 2026-08-04).
+//   2. One transfer now produces THREE different texts. The full audit
+//      sentence (both operators, author, both Sedi) is the SUPERVISORY copy;
+//      the incoming operator gets a shorter, assignment-shaped one.
 
 uses(RefreshDatabase::class);
 
@@ -44,10 +51,16 @@ if (! function_exists('transferNotifSite')) {
 }
 
 if (! function_exists('transferNotifSupervisor')) {
+    /**
+     * A recipient of the supervisory copy: whoever HOLDS the permission,
+     * however they got it (spec 0081). Creating the permission row here and
+     * nowhere else is deliberate — the AC-016 case below relies on it being
+     * absent when no supervisor exists.
+     */
     function transferNotifSupervisor(): User
     {
         $user = User::factory()->create();
-        $user->assignRole(Role::findOrCreate('supervisor'));
+        $user->givePermissionTo(Permission::findOrCreate('request-management.receiveTransferNotifications'));
 
         return $user;
     }
@@ -78,15 +91,15 @@ it('the new operator receives a database and a mail notification (AC-013)', func
 });
 
 // ---------------------------------------------------------------------------
-// AC-014 — every supervisor, actor always excluded
+// AC-014 — every permission holder, actor always excluded
 // ---------------------------------------------------------------------------
 
-it('every `supervisor` receives the notification; the actor never does, even as supervisor or new operator (AC-014)', function () {
+it('every holder of the transfer-notification permission receives the copy; the actor never does, even as holder or new operator (AC-014)', function () {
     Notification::fake();
 
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
-    $actor->assignRole(Role::findOrCreate('supervisor'));
     $supervisor = transferNotifSupervisor();
+    $actor->givePermissionTo('request-management.receiveTransferNotifications');
     $destinationSite = transferNotifSite();
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
@@ -94,7 +107,7 @@ it('every `supervisor` receives the notification; the actor never does, even as 
     $this->postJson('/api/request-management/transfer', [
         'request_ids' => [$opportunity->id],
         'operational_site_id' => $destinationSite->id,
-        // The actor is ALSO the new operator here, on top of being supervisor.
+        // The actor is ALSO the new operator here, on top of holding the grant.
         'operator_id' => $actor->id,
     ])->assertOk();
 
@@ -103,13 +116,14 @@ it('every `supervisor` receives the notification; the actor never does, even as 
 });
 
 // ---------------------------------------------------------------------------
-// AC-015 — notification content
+// AC-015 — notification content (the supervisory copy is the full record)
 // ---------------------------------------------------------------------------
 
-it('the notification body carries contact, origin, destination, operators, author and date (AC-015)', function () {
+it('the supervisory copy carries contact, origin, destination, operators, author and date (AC-015)', function () {
     Notification::fake();
 
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
+    $supervisor = transferNotifSupervisor();
     $originSite = transferNotifSite();
     $destinationSite = transferNotifSite();
     $previousOperator = User::factory()->create(['name' => 'Old Operator']);
@@ -131,9 +145,9 @@ it('the notification body carries contact, origin, destination, operators, autho
     $destinationLabel = OperationalSiteLabel::compose($destinationSite->fresh(['addresses.city'])->primaryAddress);
 
     Notification::assertSentTo(
-        $newOperator,
-        function (RequestTransferredNotification $notification) use ($newOperator, $actor, $originLabel, $destinationLabel): bool {
-            $message = (string) $notification->toArray($newOperator)['message'];
+        $supervisor,
+        function (RequestTransferredNotification $notification) use ($supervisor, $actor, $originLabel, $destinationLabel): bool {
+            $message = (string) $notification->toArray($supervisor)['message'];
 
             return str_contains($message, 'Acme deal')
                 && str_contains($message, $originLabel)
@@ -146,10 +160,10 @@ it('the notification body carries contact, origin, destination, operators, autho
 });
 
 // ---------------------------------------------------------------------------
-// AC-016 — no `supervisor` role in the system
+// AC-016 — nobody can receive the supervisory copy
 // ---------------------------------------------------------------------------
 
-it('with no `supervisor` role in the system, the transfer succeeds and notifies only the operator (AC-016)', function () {
+it('with no holder of the transfer-notification permission, the transfer succeeds and notifies only the operator (AC-016)', function () {
     Notification::fake();
 
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
@@ -173,6 +187,9 @@ it('with no `supervisor` role in the system, the transfer succeeds and notifies 
 // ---------------------------------------------------------------------------
 
 it('action_url is an internal path, never an absolute URL (AC-017)', function () {
+    $recipient = User::factory()->create();
+    $recipient->givePermissionTo(Permission::findOrCreate('request-management.view'));
+
     $notification = new RequestTransferredNotification(
         requestId: 42,
         contactLabel: 'Acme deal',
@@ -182,9 +199,10 @@ it('action_url is an internal path, never an absolute URL (AC-017)', function ()
         newOperatorName: 'New Operator',
         actorName: 'Actor',
         transferredAt: now(),
+        recipientRole: TransferRecipientRoleEnum::NewOperator,
     );
 
-    $payload = $notification->toArray((object) []);
+    $payload = $notification->toArray($recipient);
 
     expect($payload['action_url'])->toBe('/request-management/42')
         ->and($payload['action_url'])->not->toStartWith('http');

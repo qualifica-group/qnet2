@@ -61,6 +61,7 @@ final class LeadRowPersister
             : $this->createRegistry($actor, $mapped);
 
         $this->attachLead(
+            $actor,
             $registry,
             $globalConfig,
             $mapped,
@@ -122,6 +123,7 @@ final class LeadRowPersister
      * @param  array<string, mixed>  $extraValues
      */
     private function attachLead(
+        User $actor,
         Registry $registry,
         array $globalConfig,
         array $mapped,
@@ -175,7 +177,7 @@ final class LeadRowPersister
             notes: $notes,
             extraFields: $extraFields,
             convertToOpportunity: $this->shouldConvert($convertToOpportunity, $effectiveOperatorId, $effectiveSiteId, $campaignId),
-        ));
+        ), $actor);
     }
 
     /**

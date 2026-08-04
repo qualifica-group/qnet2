@@ -8,6 +8,7 @@ use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
+use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\OpportunityService;
 use App\Services\Statuses\SystemStatusGuard;
@@ -35,7 +36,14 @@ final class ConvertLeadToOpportunity
         private readonly OpportunityService $opportunityService,
     ) {}
 
-    public function handle(Lead $lead): Opportunity
+    /**
+     * @param  ?User  $actor  who triggered the conversion, propagated to
+     *                        OpportunityService so the assignment notifications
+     *                        (spec 0081) can exclude them and name them as the
+     *                        author. Null on system-initiated conversions (the
+     *                        lead import), where there is nobody to exclude.
+     */
+    public function handle(Lead $lead, ?User $actor = null): Opportunity
     {
         // Step 1: derive the BR-1 values (registry_id/source_id) and the
         // campaign/project's product line from the lead.
@@ -82,7 +90,7 @@ final class ConvertLeadToOpportunity
             // User directive 2026-07-27: the "Note generali" are seeded from
             // the lead's own notes (plain default, never BR-2-locked).
             generalNotes: $defaults->values['general_notes'],
-        ));
+        ), $actor);
     }
 
     /**

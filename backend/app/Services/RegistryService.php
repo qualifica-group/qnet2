@@ -7,8 +7,11 @@ use App\DataObjects\Registries\UpdateRegistryData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Users\ProfileData;
+use App\Enums\AssignmentTargetEnum;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\Notifications\AssignmentNotifier;
+use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +64,10 @@ class RegistryService
         'managers.personalData.contacts',
     ];
 
-    public function __construct(private readonly RegistryProfileWriter $profileWriter) {}
+    public function __construct(
+        private readonly RegistryProfileWriter $profileWriter,
+        private readonly AssignmentNotifier $assignmentNotifier,
+    ) {}
 
     /**
      * Eager-load the nested read tree so a plain GET /registries/{registry}
@@ -85,7 +91,7 @@ class RegistryService
             throw new InvalidArgumentException('A personal-data profile is required to create a registry (its name is derived from the card).');
         }
 
-        $registry = DB::transaction(function () use ($data, $profile): Registry {
+        $registry = DB::transaction(function () use ($actor, $data, $profile): Registry {
             $attributes = $data->attributes();
             // `registries.name` is NOT NULL but the authoritative value is
             // derived by RegistryProfileWriter from the card (single
@@ -96,8 +102,19 @@ class RegistryService
             $registry = Registry::create($attributes);
 
             $this->profileWriter->write($registry, $profile);
-            $this->syncPivots($registry, $data);
+            $attachedManagers = $this->syncPivots($registry, $data);
             $this->normalizeQualifiedSupplier($registry);
+
+            // spec 0081: notified after the name is derived from the card, so
+            // the message carries the real label and not the INSERT placeholder.
+            $this->assignmentNotifier->notify(
+                AssignmentTargetEnum::Registry,
+                $registry->id,
+                $registry->name,
+                $actor,
+                $registry->supervisor_id,
+                $attachedManagers,
+            );
 
             return $registry;
         });
@@ -116,7 +133,7 @@ class RegistryService
      */
     public function update(User $actor, Registry $registry, UpdateRegistryData $data, ?ProfileData $profile): Registry
     {
-        $registry = DB::transaction(function () use ($registry, $data, $profile): Registry {
+        $registry = DB::transaction(function () use ($actor, $registry, $data, $profile): Registry {
             $attributes = $data->submittedAttributes();
 
             // fill+save unconditionally (never guarded behind a non-empty
@@ -128,9 +145,23 @@ class RegistryService
             // native path when nothing changed.
             $registry->fill($attributes)->save();
 
+            // Captured right after THIS save: the writes below save() again
+            // and would reset wasChanged()'s diff (same discipline as the
+            // reporter_id check in OpportunityService::update).
+            $newSupervisorId = $registry->wasChanged('supervisor_id') ? $registry->supervisor_id : null;
+
             $this->profileWriter->write($registry, $profile);
-            $this->syncPivots($registry, $data);
+            $attachedManagers = $this->syncPivots($registry, $data);
             $this->normalizeQualifiedSupplier($registry);
+
+            $this->assignmentNotifier->notify(
+                AssignmentTargetEnum::Registry,
+                $registry->id,
+                $registry->name,
+                $actor,
+                $newSupervisorId,
+                $attachedManagers,
+            );
 
             return $registry;
         });
@@ -255,8 +286,12 @@ class RegistryService
      * SectorService::create/update's `if ($data->hasTagIds())` guard): an
      * omitted key leaves that relation untouched, a submitted array
      * (including empty) is an authoritative sync.
+     *
+     * @return array<int, int> the managers this sync ATTACHED, userId => position
+     *                         (spec 0081): the notification set, empty when no
+     *                         manager slot was submitted or nobody is new
      */
-    private function syncPivots(Registry $registry, CreateRegistryData|UpdateRegistryData $data): void
+    private function syncPivots(Registry $registry, CreateRegistryData|UpdateRegistryData $data): array
     {
         if ($data->hasSectorIds()) {
             $registry->sectors()->sync($data->sectorIds);
@@ -266,9 +301,13 @@ class RegistryService
             $registry->referents()->sync($data->referentIds);
         }
 
-        if ($data->hasManagerSlots()) {
-            $registry->managers()->sync($this->managerSyncMap($data->managerSlots));
+        if (! $data->hasManagerSlots()) {
+            return [];
         }
+
+        $syncMap = $this->managerSyncMap($data->managerSlots);
+
+        return ManagerPositions::attachedPositions($syncMap, $registry->managers()->sync($syncMap));
     }
 
     /**

@@ -8,15 +8,19 @@ use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Opportunities\UpdateOpportunityData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
+use App\Enums\AssignmentTargetEnum;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityStatus;
+use App\Models\User;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Statuses\SystemStatusGuard;
+use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +81,7 @@ class OpportunityService
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
+        private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -180,9 +185,9 @@ class OpportunityService
      * client left absent). `name` (spec 0057, D-5) is derived as `OPP_{id}`
      * right after the insert — never a client input.
      */
-    public function create(CreateOpportunityData $data): Opportunity
+    public function create(CreateOpportunityData $data, ?User $actor = null): Opportunity
     {
-        $opportunity = DB::transaction(function () use ($data): Opportunity {
+        $opportunity = DB::transaction(function () use ($data, $actor): Opportunity {
             $attributes = $data->attributes();
 
             if ($data->leadId !== null) {
@@ -203,8 +208,11 @@ class OpportunityService
 
             $opportunity->forceFill(['name' => 'OPP_'.$opportunity->id])->save();
 
+            $attachedManagers = [];
+
             if ($data->hasManagerSlots()) {
-                $opportunity->managers()->sync($this->managerSyncMap($data->managerSlots));
+                $syncMap = $this->managerSyncMap($data->managerSlots);
+                $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
             }
 
             if ($data->hasProductLines()) {
@@ -234,6 +242,17 @@ class OpportunityService
             // final values.
             $this->resolveWorkflowStatus($opportunity, $data->workflowStatusId);
 
+            // spec 0081: dispatched last, when `name` is already the derived
+            // `OPP_{id}` and the manager slots are final.
+            $this->assignmentNotifier->notify(
+                AssignmentTargetEnum::Opportunity,
+                $opportunity->id,
+                $opportunity->name,
+                $actor,
+                $opportunity->supervisor_id,
+                $attachedManagers,
+            );
+
             return $opportunity;
         });
 
@@ -246,13 +265,17 @@ class OpportunityService
      * already been validated (UpdateOpportunityRequest) to match its
      * current derived value, so no extra enforcement runs here.
      */
-    public function update(Opportunity $opportunity, UpdateOpportunityData $data): Opportunity
+    public function update(Opportunity $opportunity, UpdateOpportunityData $data, ?User $actor = null): Opportunity
     {
-        DB::transaction(function () use ($opportunity, $data): void {
+        DB::transaction(function () use ($opportunity, $data, $actor): void {
             // Unconditional save: fire the model's saved event even when no
             // native attribute changed, so the HasCustomFields write pipeline
             // (spec 0021) persists a custom-fields-only edit.
             $opportunity->fill($data->submittedAttributes())->save();
+
+            // spec 0081: same reason as the reporter_id check right below —
+            // resolveWorkflowStatus() saves again and resets the diff.
+            $newSupervisorId = $opportunity->wasChanged('supervisor_id') ? $opportunity->supervisor_id : null;
 
             // spec 0059, D-3/AC-022: a genuine `reporter_id` change retargets
             // EVERY existing reward row, independent of whether `rewards`
@@ -263,8 +286,11 @@ class OpportunityService
                 $this->rewardAssignmentWriter->retarget($opportunity);
             }
 
+            $attachedManagers = [];
+
             if ($data->hasManagerSlots()) {
-                $opportunity->managers()->sync($this->managerSyncMap($data->managerSlots));
+                $syncMap = $this->managerSyncMap($data->managerSlots);
+                $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
             }
 
             if ($data->hasProductLines()) {
@@ -286,6 +312,15 @@ class OpportunityService
             $this->resolveWorkflowStatus(
                 $opportunity,
                 $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null,
+            );
+
+            $this->assignmentNotifier->notify(
+                AssignmentTargetEnum::Opportunity,
+                $opportunity->id,
+                $opportunity->name,
+                $actor,
+                $newSupervisorId,
+                $attachedManagers,
             );
         });
 

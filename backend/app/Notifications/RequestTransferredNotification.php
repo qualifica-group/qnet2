@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\DataObjects\Notifications\NotificationData;
+use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
+use App\Enums\TransferRecipientRoleEnum;
+use App\Models\User;
+use App\Support\Notifications\DetailsTable;
+use App\Support\Notifications\RecordLinkResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -13,19 +18,26 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
 
 /**
- * Sent to the newly-assigned GA2 "Operatore" plus every titolare of the
- * `supervisor` role (spec 0079, decision utente 2026-08-04), excluded the
- * actor who performed the transfer (recipient list/exclusion built by the
- * caller, RequestTransferService::recipients()). Modelled on
- * FieldChangeRequestedNotification: `via(): ['database', 'mail']`,
- * `ShouldQueue`, payload through the same NotificationData shape
- * (title/message/level/action_url), `action_url` a PATH INTERNO, never
- * absolute — the mail CTA is the only place `config('app.frontend_url')` is
- * prepended.
+ * Sent on a "Trasferisci contatto" (spec 0079) to THREE disjoint audiences,
+ * each with its own text (spec 0081): the operator who lost the contact, the
+ * one who gained it, and everyone holding
+ * `request-management.receiveTransferNotifications`. The recipient sets and
+ * the exclusion of the actor are built by the caller
+ * (RequestTransferService::dispatchNotifications()); `$recipientRole` only
+ * selects which of the three stories this copy tells.
+ *
+ * `via(): ['database', 'mail']`, `ShouldQueue`, payload through the shared
+ * NotificationData shape (title/message/level/action_url), `action_url` a
+ * PATH INTERNO, never absolute — the mail CTA is the only place
+ * `config('app.frontend_url')` is prepended.
  *
  * Every fact is precomputed by the caller and passed to the constructor: a
  * Notification stays a thin presentation of already-known facts, never a
- * second place that queries the database.
+ * second place that queries the database. The ONE exception is the link,
+ * which depends on the RECIPIENT's own permissions and so is resolved per
+ * notifiable (spec 0081): a transfer notifies people who reach the record
+ * from the opportunities module and people who only reach it from request
+ * management.
  */
 class RequestTransferredNotification extends Notification implements ShouldQueue
 {
@@ -40,6 +52,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         private readonly string $newOperatorName,
         private readonly string $actorName,
         private readonly Carbon $transferredAt,
+        private readonly TransferRecipientRoleEnum $recipientRole,
     ) {}
 
     /**
@@ -55,35 +68,74 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
+        $path = $this->pathFor($notifiable);
+
         return (new NotificationData(
-            title: __('Contact transferred'),
-            message: $this->message(),
+            title: $this->title(),
+            message: $this->message($path),
             level: NotificationLevelEnum::Info,
-            actionUrl: $this->dataActionUrl(),
+            actionUrl: $path,
         ))->toArray();
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject(__('Contact transferred'))
+        $path = $this->pathFor($notifiable);
+
+        $mail = (new MailMessage)
+            ->subject($this->title())
             ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message())
-            ->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$this->dataActionUrl());
+            ->line($this->message($path));
+
+        // No reachable module, no button: a CTA that lands on a 403 is worse
+        // than none, and the message already says what to ask for.
+        if ($path !== null) {
+            $mail->action(__('View'), rtrim((string) config('app.frontend_url'), '/').$path);
+        }
+
+        return $mail;
     }
 
     /**
-     * A path only (never an absolute URL, contract-frozen): see
-     * FieldChangeRequestedNotification's own dataActionUrl().
+     * A path only (never an absolute URL, contract-frozen), and which path
+     * depends on what THIS recipient may open (spec 0081).
      */
-    private function dataActionUrl(): string
+    private function pathFor(object $notifiable): ?string
     {
-        return "/request-management/{$this->requestId}";
+        /** @var User $notifiable */
+        return RecordLinkResolver::pathFor($notifiable, AssignmentTargetEnum::Opportunity, $this->requestId);
     }
 
-    private function message(): string
+    private function title(): string
     {
-        return __(':actor transferred :contact from :origin to :destination (operator :previous to :new) on :date', [
+        return match ($this->recipientRole) {
+            TransferRecipientRoleEnum::PreviousOperator => __('Contact no longer assigned to you'),
+            TransferRecipientRoleEnum::NewOperator => __('New contact assigned to you'),
+            TransferRecipientRoleEnum::Supervisor => __('Contact transferred'),
+        };
+    }
+
+    private function message(?string $path): string
+    {
+        $message = match ($this->recipientRole) {
+            TransferRecipientRoleEnum::PreviousOperator => __(':contact was transferred from :origin to :destination by :actor on :date. You are no longer the operator of this contact: it is now assigned to :new.', $this->placeholders()),
+            TransferRecipientRoleEnum::NewOperator => __(':actor assigned you :contact, transferred from :origin to :destination on :date.', $this->placeholders()),
+            TransferRecipientRoleEnum::Supervisor => __(':actor transferred :contact from :origin to :destination (operator :previous to :new) on :date', $this->placeholders()),
+        };
+
+        if ($path !== null) {
+            return $message;
+        }
+
+        return $message.' '.__('You cannot open this record: ask an administrator to grant you access to the module.');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function placeholders(): array
+    {
+        return [
             'actor' => $this->actorName,
             'contact' => $this->contactLabel,
             'origin' => $this->originSiteLabel ?? '—',
@@ -91,6 +143,6 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
             'previous' => $this->previousOperatorName ?? '—',
             'new' => $this->newOperatorName,
             'date' => $this->transferredAt->format('d/m/Y H:i'),
-        ]);
+        ];
     }
 }

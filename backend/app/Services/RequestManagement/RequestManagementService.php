@@ -7,6 +7,7 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
+use App\Enums\AssignmentTargetEnum;
 use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\RequestManagement\OpportunityAttributeLayoutResolver;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
@@ -105,6 +107,7 @@ final class RequestManagementService
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
+        private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     /**
@@ -196,7 +199,7 @@ final class RequestManagementService
             // Step 5: the GA2 "Operatore" — a pivot row, so it is written
             // after the model save like every other reference collection.
             if (array_key_exists('operator_id', $data)) {
-                $this->applyOperator($opportunity, $data['operator_id'], $changed, $old);
+                $this->applyOperator($opportunity, $data['operator_id'], $actor, $changed, $old);
             }
 
             // Step 6: a changed fonte — or a changed product line, same
@@ -316,9 +319,28 @@ final class RequestManagementService
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    private function applyOperator(Opportunity $opportunity, mixed $value, array &$changed, array &$old): void
+    private function applyOperator(Opportunity $opportunity, mixed $value, User $actor, array &$changed, array &$old): void
     {
         $this->operatorWriter->apply($opportunity, $value === null ? null : (int) $value, $changed, $old);
+
+        // spec 0081: only a GENUINE transition is an assignment — apply()
+        // leaves `operator_id` unset in $changed when the slot already held
+        // this user, which is exactly the "renamed nothing" case that must
+        // notify nobody.
+        $newOperatorId = $changed['operator_id'] ?? null;
+
+        if ($newOperatorId === null) {
+            return;
+        }
+
+        $this->assignmentNotifier->notify(
+            AssignmentTargetEnum::Opportunity,
+            $opportunity->id,
+            $opportunity->name,
+            $actor,
+            null,
+            [$newOperatorId => Opportunity::OPERATOR_MANAGER_POSITION],
+        );
     }
 
     /**

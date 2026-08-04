@@ -3,6 +3,108 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## NOTIFICHE DI ASSEGNAZIONE E TRASFERIMENTO — spec 0081 (2026-08-04) — VERDE, NON COMMITTATO
+
+Spec: `docs/specs/0081-assignment-and-transfer-notifications.xml`. Notifiche in-app + email quando
+un utente viene inserito come **Supervisore** o come **Gestore Account** su un'anagrafica o su
+un'opportunita'/richiesta, piu' le tre prospettive del **trasferimento contatto**.
+
+**Cosa NON e' stato fatto perche' gia' esisteva:** la menzione in nota (`NoteMentionNotification`,
+gia' dispatchata da `NoteService::syncMentionsAndNotify()`; le note esistono solo su
+`request-management`, `config/notes.php`) e tutta l'infrastruttura in-app (canale `database`,
+`NotificationData`, campanella FE). **Zero righe di frontend**: `NotificationItem` gestiva gia'
+`action_url` null rendendo la riga non cliccabile.
+
+**Nomi nuovi da rispettare** (verificati, non ipotizzati):
+- Permesso `request-management.receiveTransferNotifications` — dichiarato come ability in
+  `RequestManagementPolicy::abilities()`, creato da `permissions:sync`. **Sostituisce** il ruolo
+  spatie `supervisor` che `RequestTransferService` interrogava: la costante `SUPERVISOR_ROLE`, l'import
+  di `App\Models\Role` e `User::role()` sono stati CANCELLATI da quel service (AC-028 lo verifica sul
+  sorgente). Il ruolo `supervisor` lo eredita comunque da `TestUsersSeeder` (`request-management` non
+  e' fra `SUPERVISOR_DENIED_RESOURCES`).
+- `App\Enums\AssignmentTargetEnum` (Registry|Opportunity), `AssignmentRoleEnum` (Supervisor|Manager),
+  `TransferRecipientRoleEnum` (PreviousOperator|NewOperator|Supervisor) — interni, senza metadata UI.
+- `App\Support\Notifications\RecordLinkResolver::pathFor()` — **statico**. Risolve il deep link PER
+  DESTINATARIO: `opportunities.view` -> `/opportunities/{id}`, altrimenti `request-management.view` ->
+  `/request-management/{id}`, altrimenti **null** (nessun bottone nella mail + frase "chiedi
+  l'abilitazione" in coda al messaggio). Registry: `registries.view` -> `/registries/{id}` o null.
+- `App\Notifications\RecordAssignmentNotification` — UNA classe per le 4 combinazioni target x ruolo.
+- `App\Services\Notifications\AssignmentNotifier::notify()` — l'UNICO punto che trasforma
+  "queste persone sono ora in carico" in notifiche: esclude l'attore, dispatcha in `DB::afterCommit`,
+  risolve i destinatari in una query sola.
+- `ManagerPositions::attachedPositions($syncMap, $syncResult)` — solo gli `attached` di `sync()`.
+  Lo spostamento di slot (chiave `updated`) NON notifica: e' una decisione utente, non una svista.
+
+**Firme cambiate (ripple da rispettare):** `OpportunityService::create/update` e
+`LeadService::create` e `ConvertLeadToOpportunity::handle` e `ConvertLeadsToOpportunities::handle`
+hanno ora un ultimo parametro `?User $actor = null`. Nullable per i percorsi di sistema (import):
+in quel caso nessuno viene escluso e l'autore nel messaggio e' `__('The system')`. Propagato da
+`OpportunityController`, `LeadController`, `RequestCreationService`, `LeadRowPersister`.
+`RequestTransferredNotification::__construct` ha un 9° parametro obbligatorio `recipientRole`.
+
+**Verificato eseguendo:** `vendor/bin/pest` 5282 test, 5280 passati, 1 skipped. L'unico fallimento e'
+`CampaignCrudTest` AC-028 (422 "Budget insufficiente"), **flaky preesistente** dovuto ai valori random
+della factory: passa 3/3 in isolamento e non tocca nessun file di questa modifica. Pint pulito,
+`npx tsc -b --force` EXIT=0.
+
+**Attenzione, vale ancora:** `QUEUE_CONNECTION=sync` in `backend/.env`. Tutte le notifiche nuove sono
+`ShouldQueue`, ma col driver `sync` partono dentro la richiesta HTTP. Conseguenza concreta ora che le
+assegnazioni notificano: una conversione bulk di N lead con un G.A. preassegnato manda N email
+in-process. Passare a `QUEUE_CONNECTION=database` + `queue:work` non richiede codice.
+
+**Conseguenza accettata:** `roles:create-super-admin` sincronizza l'intero catalogo sul ruolo
+`super-admin` (nessun `Gate::before` di bypass), quindi ogni super-admin riceve le email di
+trasferimento. E' revocabile a mano sul ruolo — che e' esattamente il motivo per cui e' un permesso
+e non piu' un ruolo hardcoded.
+
+**Test 0079 aggiornati per requisito cambiato** (dichiarato, non per farli passare):
+`RequestContactTransferNotificationTest` AC-014/AC-015/AC-016/AC-017 — i destinatari sono il permesso
+e non il ruolo, e il testo completo dell'audit e' ora la COPIA SUPERVISORE (l'operatore entrante
+riceve un testo piu' corto, di assegnazione).
+
+## EMAIL — RESTYLING DEL LAYOUT CONDIVISO (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: rendere il template email piu' curato. **Scope scelto dall'utente: SOLO
+`backend/resources/views/emails/layout.blade.php`** — le view figlie non si toccano, comportamento
+invariato. La richiesta iniziale citava anche tab/accordion/tooltip/animazioni: non applicabili alle
+email (i client non eseguono JS e strippano gran parte del CSS), quindi resi come gerarchia
+tipografica, spaziature, colore, responsive e stati hover.
+
+**Contratto che il layout DEVE continuare a esporre** (usato da `reset-password.blade.php`, che
+`@extends('emails.layout')`): le classi `.button`, `.muted`, `.break`, gli stili di `h1`/`p` dentro
+`.body`, la variabile `$appName` con fallback `config('app.name')`, e la stringa
+`__('This is an automated message, please do not reply.')`. Chi tocca il layout non rinomina queste
+classi senza toccare anche le view figlie.
+
+**Cosa e' cambiato:** scheletro a tabelle `role="presentation"` (compatibilita' Outlook) al posto dei
+div; palette allineata ai token del gestionale (`--primary` #1F3654, `--ring` #3976C6, hairline
+#D8DEE7); testata con monogramma dell'iniziale + filo di accento; tipografia e spaziature ritmate;
+bottone con `mso-padding-alt`, hover e full-width sotto i 600px; dark mode via
+`prefers-color-scheme`; footer separato da hairline.
+
+**Due trappole trovate misurando, da non reintrodurre:**
+1. Nel blocco dark, `.body a { color: ... !important }` ha specificita' (0,1,1) e **batte** `.button`
+   (0,1,0): l'etichetta del bottone ereditava l'azzurro del link sul fondo azzurro, illeggibile. La
+   regola dark del bottone e' scritta come `.body a.button, .button` apposta.
+2. `.content` usa `width: 100%` + `max-width: 520px` (non `width: 520px`) + **ghost table MSO**: se un
+   client strippa il `<style>` (caso Gmail app), una larghezza fissa a 520 sfonda su un telefono
+   reale, mentre l'attributo `width="100%"` degrada fluido. Outlook ignora `max-width`, per questo la
+   ghost table condizionale.
+
+**Nota di metodo sulla verifica visiva:** Chrome headless su macOS impone un **viewport minimo di
+500px** — `--window-size=375` ritaglia lo screenshot ma impagina a 500, e fa sembrare che la card
+sfondi. Per verificare davvero le larghezze strette usa un **iframe** della larghezza voluta (360px),
+oppure misura con uno script + `--dump-dom`. Non fidarti dello screenshot ritagliato.
+
+**Verificato (eseguito):** render reale della view con e senza `$appName` (fallback OK), presenza di
+tutti gli hook delle view figlie, screenshot a 360/600/1024 in light e dark, caso limite con `<style>`
+rimosso. Suite backend completa: **5252 passed, 1 skipped, 0 failed**. Unico file modificato.
+
+**Aperto / prossimi passi:** le altre 4 notifiche mail (`FieldChangeRequested`,
+`FieldChangeRequestResolved`, `NoteMention`, `RequestTransferred`) usano ancora il **markdown mail di
+default di Laravel** e NON passano da questo layout: oggi le email del gestionale hanno due estetiche
+diverse. Uniformarle e' fuori dallo scope scelto, resta da decidere.
+
 ## EMAIL — RESET PASSWORD IN CODA + REDIRECT GLOBALE DI STAGING (2026-08-04) — VERDE, NON COMMITTATO
 
 Due direttive utente sullo strato email.

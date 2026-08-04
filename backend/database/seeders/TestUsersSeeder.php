@@ -348,6 +348,12 @@ class TestUsersSeeder extends Seeder
      * Everything the system offers minus the denied resources, which keep at
      * most their `viewAny` (see SUPERVISOR_SELECT_ONLY_RESOURCES).
      *
+     * `request-management` is NOT among the denied resources, so this role
+     * also receives `request-management.receiveTransferNotifications` — the
+     * grant that decides who is copied on the transfer notifications (spec
+     * 0081). That is the intended binding, not an accident: revoking it on a
+     * role is the supported way to stop those emails.
+     *
      * @param  Collection<int, string>  $catalogue
      * @return Collection<int, string>
      */

@@ -96,7 +96,7 @@ final class RequestCreationService
                 successProbability: null,
                 rewards: $data->rewards,
                 generalNotes: $data->generalNotes,
-            ));
+            ), $actor);
 
             // Step 3: the operative fields the work panel edits, submitted at
             // creation too (user directive 2026-07-31). They run AFTER the

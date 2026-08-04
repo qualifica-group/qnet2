@@ -46,5 +46,20 @@
     "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
     "An unexpected error occurred.": "Si è verificato un errore imprevisto.",
     "Resource not found.": "Risorsa non trovata.",
-    "This action is unauthorized.": "Non hai i permessi per questa azione."
+    "This action is unauthorized.": "Non hai i permessi per questa azione.",
+    "Hello :name": "Ciao :name",
+    "View": "Apri",
+    "The system": "Il sistema",
+    "You cannot open this record: ask an administrator to grant you access to the module.": "Non puoi aprire questo record: chiedi a un amministratore di abilitarti all'accesso al modulo.",
+    "You were assigned as Supervisor": "Sei stato inserito come Supervisore",
+    "You were assigned as Account Manager": "Sei stato inserito come Gestore Account",
+    ":actor assigned you as Supervisor on :label.": ":actor ti ha inserito come Supervisore su :label.",
+    ":actor assigned you as Account Manager :position on :label.": ":actor ti ha inserito come Gestore Account :position su :label.",
+    "Contact transferred": "Contatto trasferito",
+    "Contact no longer assigned to you": "Contatto non piu' in gestione",
+    "New contact assigned to you": "Nuovo contatto assegnato",
+    ":contact was transferred from :origin to :destination by :actor on :date. You are no longer the operator of this contact: it is now assigned to :new.": ":contact e' stato trasferito da :origin a :destination da :actor il :date. Non sei piu' l'operatore di questo contatto: ora e' assegnato a :new.",
+    ":actor assigned you :contact, transferred from :origin to :destination on :date.": ":actor ti ha assegnato :contact, trasferito da :origin a :destination il :date.",
+    ":actor transferred :contact from :origin to :destination (operator :previous to :new) on :date": ":actor ha trasferito :contact da :origin a :destination (operatore da :previous a :new) il :date",
+    "You were mentioned": "Sei stato menzionato"
 }

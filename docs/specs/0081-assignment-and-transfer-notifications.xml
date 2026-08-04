@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0081 — Notifiche di assegnazione (Supervisore / Gestore Account) e
+  notifiche di trasferimento contatto, in-app + email.
+  Grounding VERIFICATO sul codice reale (esplorazione 2026-08-04), non ipotizzato.
+
+  Decisioni utente (AskUserQuestion 2026-08-04):
+    - I "supervisori" destinatari NON sono piu' il ruolo spatie `supervisor`: si crea
+      un PERMESSO dedicato ("chi ha accesso a queste email") e lo si abbina al ruolo
+      `supervisor`.
+    - Fa scattare la notifica QUALSIASI slot G.A., non solo il GA2 "Operatore".
+      Il solo spostamento di posizione di chi era gia' gestore NON notifica.
+    - `action_url` risolto PER DESTINATARIO: chi puo' vedere l'opportunita' va su
+      /opportunities/{id}; chi non puo' ma vede gestione richieste va su
+      /request-management/{id}; chi non vede nessuno dei due non riceve alcun link
+      ma un messaggio che gli dice di farsi abilitare al modulo.
+    - I supervisori sono in copia SOLO sul trasferimento, mai sulle assegnazioni.
+-->
+<spec id="0081-assignment-and-transfer-notifications" status="draft" owner="nicola" date="2026-08-04">
+
+  <goal>
+    Un utente riceve una notifica in-app E una email quando viene inserito come Supervisore o come
+    Gestore Account su un'anagrafica cliente o su un'opportunita'/richiesta. Sul trasferimento di una
+    richiesta, chi PERDE il contatto riceve un avviso dedicato, chi lo RICEVE un avviso di
+    assegnazione, e i supervisori del modulo una copia riepilogativa.
+  </goal>
+
+  <context>
+    Tutti i nomi qui sotto sono VERIFICATI sul codice reale (esplorazione 2026-08-04).
+
+    L'INFRASTRUTTURA ESISTE GIA' PER INTERO — questa spec non la progetta, la usa.
+      - Notifiche in-app: canale `database` delle Notification Laravel, payload
+        `App\DataObjects\Notifications\NotificationData` (title/message/level/action_url),
+        `NotificationService` + `NotificationResource` + campanella FE
+        (`frontend/src/features/notifications/`). NESSUNA modifica a questi file.
+      - Email: `toMail()` -> `MailMessage`. In questo repo NON esiste alcun Mailable e nessuna
+        chiamata `Mail::`: tutte le email escono dalle Notification. Nessuna dipendenza nuova.
+      - Il precedente esatto da ricalcare e' `RequestTransferredNotification`:
+        `via(): ['database','mail']`, `implements ShouldQueue`, payload via `NotificationData`,
+        `action_url` PATH INTERNO mai assoluto, CTA mail che antepone `config('app.frontend_url')`.
+      - Il FE gestisce GIA' `action_url` null: `NotificationItem` (notification-item.tsx:37,66)
+        calcola `targetPath = safeInternalPath(...)` e, se e' null, rende il contenuto NON
+        cliccabile senza errori. Il caso "nessun link" della decisione utente non richiede
+        UNA RIGA di frontend.
+
+    LA MENZIONE IN NOTA E' GIA' IMPLEMENTATA E RESTA FUORI SCOPE. `NoteMentionNotification`
+    (database + mail, ShouldQueue) e' gia' dispatchata da `NoteService::syncMentionsAndNotify()`
+    (:196-214) in `DB::afterCommit`, solo ai mention NUOVI, mai all'autore. E le note esistono su
+    UN SOLO modulo: `config/notes.php` registra il solo slug `request-management`. Il punto 2 della
+    richiesta utente e' quindi gia' soddisfatto: questa spec non lo tocca.
+
+    DOVE VIVONO DAVVERO SUPERVISORE E G.A.
+      - Anagrafica cliente = `App\Models\Registry`. Supervisore = colonna `registries.supervisor_id`
+        (`Registry::supervisor()`:74). G.A. = pivot `registry_user` con `position` 1-based
+        (`Registry::managers()`:109, `->withPivot('position')->orderByPivot('position')`).
+      - Opportunita' E gestione richieste sono LO STESSO model `Opportunity` (spec 0049 D-1:
+        `RequestManagementTableDefinition::modelClass()` ritorna `Opportunity::class`, ma
+        l'autorizzazione del modulo passa da `request-management.*`). Supervisore =
+        `opportunities.supervisor_id` (`Opportunity::supervisor()`:114). G.A. = pivot
+        `opportunity_user`, stesso schema; lo slot `position = Opportunity::OPERATOR_MANAGER_POSITION`
+        (=2, :220) e' il GA2 "Operatore" del modulo richieste, ma questa spec notifica QUALSIASI
+        posizione (decisione utente).
+      - `Opportunity::operator_id` e' un accessor VIRTUALE (:257), non una colonna: il pivot non
+        passa mai dal log automatico ne' da `wasChanged()`. La sorgente della transizione e' il
+        valore di ritorno di `sync()` (chiave `attached`) oppure `$changed`/`$old` riempiti da
+        `RequestOperatorWriter::apply()` (:37-60).
+
+    I PUNTI DI SCRITTURA REALI (nessun altro esiste — verificato con grep su `managers()`):
+      - `RegistryService::create()` / `update()` -> `syncPivots()` (:262-276) e la colonna
+        `supervisor_id` dentro `$data->attributes()`/`submittedAttributes()`. ENTRAMBI i metodi
+        ricevono gia' `User $actor` (attualmente NON usato: e' il parametro giusto per l'esclusione
+        dell'attore, non serve aggiungerne uno).
+      - `OpportunityService::create()` (:207) / `update()` (:267) -> `managers()->sync()`, piu'
+        `supervisor_id` fra gli attributi. NESSUNO dei due riceve l'attore: va aggiunto un
+        parametro `User $actor` e propagato dai DUE soli chiamanti interni
+        (`ConvertLeadToOpportunity`:56, `RequestCreationService`:76) oltre al controller.
+      - `RequestOperatorWriter::apply()` — UNICA implementazione della scrittura dello slot GA2,
+        usata da `RequestManagementService::applyOperator()` (:321), `RequestAssignmentService`
+        e `RequestTransferService`. Riporta gia' `$old['operator_id']`/`$changed['operator_id']`:
+        la transizione e' gia' disponibile senza query aggiuntive.
+
+    LO STATO ATTUALE DEL TRASFERIMENTO (spec 0079, gia' in produzione).
+      `RequestTransferService::dispatchNotifications()` (:196-224) manda UNA SOLA
+      `RequestTransferredNotification`, con UN SOLO testo, a "nuovo operatore + ruolo spatie
+      `supervisor`", escluso l'attore. `RequestTransferNotice` CATTURA GIA'
+      `previousOperatorName` (:186) ma il precedente operatore NON e' fra i destinatari: manca solo
+      lui, piu' la differenziazione del testo. La costante `SUPERVISOR_ROLE` (:43) e il guard
+      `Role::query()->where('name', ...)->exists()` di `recipients()` (:232-242) diventano codice
+      morto con D-1 e vanno CANCELLATI, non commentati.
+
+    ROTTE SPA VERIFICATE (i tre deep link esistono davvero):
+      - `/registries/:id` — dichiarata a mano in `router.tsx`:133.
+      - `/opportunities/:id` — generata da `buildModuleRoutes()` (module-routes.tsx:18) dal
+        `moduleScreen` di `opportunity-screens.tsx`:181-182 (`generateRoutes` non e' false).
+      - `/request-management/:id` — dichiarata a mano in `router.tsx`:286.
+
+    IL CATALOGO PERMESSI E' DERIVATO DALLE POLICY. `permissions:sync`
+    (`SyncPermissions::policyPermissions()`) fa glob su `app/Policies/*.php` e crea un permesso per
+    ogni voce di `abilities()`. Aggiungere un'ability a `RequestManagementPolicy::abilities()` E'
+    l'unico modo di creare un permesso: nessuna migrazione, nessun seeder da toccare.
+    `TestUsersSeeder::supervisorPermissions()` (:354) concede TUTTO il catalogo tranne
+    `SUPERVISOR_DENIED_RESOURCES` (:47-59), che NON contiene `request-management`: il ruolo
+    `supervisor` erediterebbe il nuovo permesso automaticamente. L'abbinamento richiesto dall'utente
+    va comunque reso ESPLICITO e testato (AC-020), non lasciato a un effetto collaterale.
+
+    CONSEGUENZA DA ACCETTARE: `roles:create-super-admin` sincronizza sul ruolo `super-admin`
+    l'INTERO catalogo permessi (CreateSuperAdminRole:33-36) — non c'e' alcun `Gate::before` di
+    bypass. Ogni super-admin ricevera' quindi le email di trasferimento. E' il comportamento
+    coerente con "chi ha massimo accesso", ed e' revocabile a mano sul ruolo proprio perche' e' un
+    permesso e non piu' un ruolo hardcoded.
+
+    QUEUE: `backend/.env` ha `QUEUE_CONNECTION=sync`. `ShouldQueue` non ha effetto e ogni email
+    parte dentro la richiesta HTTP. Vale ancora quanto scritto in HANDOFF: passare a
+    `QUEUE_CONNECTION=database` + `queue:work` non richiede codice. Questa spec NON lo cambia, ma
+    ogni notifica che introduce e' `ShouldQueue` cosi' il giorno del passaggio non serve toccarla.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo permesso `request-management.receiveTransferNotifications` via `RequestManagementPolicy`.</item>
+      <item>Notifica (database + mail) all'utente inserito come Supervisore su un'anagrafica.</item>
+      <item>Notifica (database + mail) all'utente inserito come G.A. (qualsiasi slot) su un'anagrafica.</item>
+      <item>Notifica (database + mail) all'utente inserito come Supervisore su un'opportunita'/richiesta.</item>
+      <item>Notifica (database + mail) all'utente inserito come G.A. (qualsiasi slot, incluso il GA2 "Operatore" scritto dal modulo richieste) su un'opportunita'/richiesta.</item>
+      <item>Trasferimento: notifica dedicata al PRECEDENTE operatore ("non gestisci piu' questo contatto").</item>
+      <item>Trasferimento: notifica dedicata al NUOVO operatore ("ti e' stato assegnato un contatto").</item>
+      <item>Trasferimento: notifica riepilogativa a chi ha il nuovo permesso.</item>
+      <item>Risoluzione di `action_url` PER DESTINATARIO, con caso "nessun accesso" testuale.</item>
+      <item>Chiavi i18n backend (lang/it.json + lang/en) per tutti i testi introdotti.</item>
+      <item>Feature test Pest per ogni criterio di accettazione.</item>
+    </in>
+    <out>
+      <item>Menzione in nota: GIA' implementata (`NoteMentionNotification`), non si tocca.</item>
+      <item>Qualsiasi modifica a `NotificationService`, `NotificationResource`, `NotificationData`, campanella FE.</item>
+      <item>Notifiche di RIMOZIONE da supervisore/G.A. fuori dal trasferimento (nessuna).</item>
+      <item>Supervisori in copia sulle notifiche di assegnazione (decisione utente: solo trasferimento).</item>
+      <item>Preferenze/opt-out utente per canale, digest, raggruppamento email.</item>
+      <item>Template email HTML custom: si resta sul `MailMessage` markdown di default come tutte le altre.</item>
+      <item>Cambio di `QUEUE_CONNECTION` o avvio di un worker.</item>
+      <item>Notifiche su Quote/Contract, che pure hanno un `supervisor_id` snapshot: fuori richiesta.</item>
+      <item>Notifica all'attore che esegue l'azione (sempre escluso, anche se e' il destinatario).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ==========================================================
+         1. PERMESSO NUOVO
+         ========================================================== -->
+    <permission name="request-management.receiveTransferNotifications">
+      Dichiarato come ability in `RequestManagementPolicy::abilities()` + metodo
+      `receiveTransferNotifications(User $user): bool` che delega a `$user->can($this->permission(...))`,
+      esattamente come `viewAll`/`assignOperator`/`transferContact`. Creato da `permissions:sync`.
+      Abbinato ESPLICITAMENTE al ruolo `supervisor` in `TestUsersSeeder`.
+      SOSTITUISCE la costante `RequestTransferService::SUPERVISOR_ROLE` e la lookup
+      `User::role('supervisor')`, che vengono cancellate.
+      Risoluzione destinatari: `User::permission('request-management.receiveTransferNotifications')->get()`
+      (lo scope spatie copre sia i permessi diretti sia quelli ereditati dai ruoli).
+    </permission>
+
+    <!-- ==========================================================
+         2. ENUM CONDIVISI (App\Enums)
+         ========================================================== -->
+    <enum name="AssignmentTargetEnum" backing="string">
+      <case name="Registry" value="REGISTRY">Anagrafica cliente. Deep link base `/registries/{id}`.</case>
+      <case name="Opportunity" value="OPPORTUNITY">Opportunita' / gestione richieste. Deep link risolto per destinatario.</case>
+    </enum>
+
+    <enum name="AssignmentRoleEnum" backing="string">
+      <case name="Supervisor" value="SUPERVISOR">Inserito come Supervisore (colonna `supervisor_id`).</case>
+      <case name="Manager" value="MANAGER">Inserito come Gestore Account (pivot, con `position`).</case>
+    </enum>
+
+    <enum name="TransferRecipientRoleEnum" backing="string">
+      <case name="PreviousOperator" value="PREVIOUS_OPERATOR">Chi PERDE il contatto.</case>
+      <case name="NewOperator" value="NEW_OPERATOR">Chi RICEVE il contatto.</case>
+      <case name="Supervisor" value="SUPERVISOR">Chi ha `request-management.receiveTransferNotifications`.</case>
+    </enum>
+
+    <!-- ==========================================================
+         3. RISOLUTORE DEL LINK PER DESTINATARIO
+         ========================================================== -->
+    <class name="App\Support\Notifications\RecordLinkResolver">
+      Metodo unico: `pathFor(User $notifiable, AssignmentTargetEnum $target, int $recordId): ?string`.
+      Ritorna SEMPRE un path interno o null, MAI un URL assoluto (stesso contratto congelato di
+      `RequestTransferredNotification::dataActionUrl()`).
+
+      Scala di risoluzione, nell'ordine (decisione utente):
+        - target Registry:
+            1. `$notifiable->can('registries.view')` -> "/registries/{id}"
+            2. altrimenti -> null
+        - target Opportunity:
+            1. `$notifiable->can('opportunities.view')` -> "/opportunities/{id}"
+            2. `$notifiable->can('request-management.view')` -> "/request-management/{id}"
+            3. altrimenti -> null
+
+      Quando ritorna null: `action_url` e' null nel payload database (il FE rende la riga non
+      cliccabile, gia' supportato) e il `MailMessage` NON espone alcun bottone `->action()`;
+      in entrambi i canali il messaggio termina con la frase i18n
+      `notifications.no_module_access` ("Non hai accesso al modulo: chiedi a un amministratore
+      di abilitartelo per aprire il record.").
+    </class>
+
+    <!-- ==========================================================
+         4. NOTIFICA DI ASSEGNAZIONE (unica classe, 4 casi)
+         ========================================================== -->
+    <notification name="App\Notifications\RecordAssignmentNotification">
+      `extends Notification implements ShouldQueue`, `use Queueable`,
+      `via(): ['database', 'mail']`.
+
+      Costruttore — ogni fatto e' PRECALCOLATO dal chiamante, la notifica non interroga mai il DB
+      (stessa disciplina di `RequestTransferredNotification`):
+        - `AssignmentTargetEnum $target`
+        - `AssignmentRoleEnum $role`
+        - `int $recordId`
+        - `string $recordLabel`   (Registry: `registries.name`; Opportunity: `opportunities.name`,
+                                   che dalla spec 0077 e' il titolo derivato dai prodotti con
+                                   fallback `OPP_{id}`)
+        - `?int $position`        (valorizzato SOLO con role = Manager, e' la "G.A. n"; null per Supervisor)
+        - `string $actorName`
+
+      `toArray(object $notifiable)`: `NotificationData` con
+        - title: "Sei stato assegnato come Supervisore" | "Sei stato assegnato come Gestore Account"
+        - message: vedi sotto
+        - level: `NotificationLevelEnum::Info`
+        - action_url: `RecordLinkResolver::pathFor($notifiable, $target, $recordId)` (nullable)
+
+      `toMail(object $notifiable)`: stesso subject del title, `->greeting(__('Hello :name'))`,
+      `->line($message)`, e SOLO se il path non e' null
+      `->action(__('View'), rtrim(config('app.frontend_url'),'/').$path)`.
+
+      Messaggio (chiavi i18n, mai stringhe concatenate a mano):
+        - Supervisor: ":actor ti ha inserito come Supervisore su :label."
+        - Manager:    ":actor ti ha inserito come Gestore Account :position su :label."
+      con, in coda, la frase `notifications.no_module_access` quando il path e' null.
+    </notification>
+
+    <!-- ==========================================================
+         5. NOTIFICA DI TRASFERIMENTO (estensione della classe esistente)
+         ========================================================== -->
+    <notification name="App\Notifications\RequestTransferredNotification" change="extend">
+      Si AGGIUNGE un parametro `TransferRecipientRoleEnum $recipientRole` al costruttore esistente
+      (tutti gli altri restano invariati: requestId, contactLabel, originSiteLabel,
+      destinationSiteLabel, previousOperatorName, newOperatorName, actorName, transferredAt).
+
+      Il parametro pilota subject/title e corpo:
+        - PreviousOperator — title "Contatto non piu' in gestione";
+          ":contact e' stato trasferito da :origin a :destination da :actor il :date.
+            Non sei piu' l'operatore di questo contatto: ora e' assegnato a :new."
+        - NewOperator — title "Nuovo contatto assegnato";
+          ":actor ti ha assegnato :contact, trasferito da :origin a :destination il :date."
+        - Supervisor — title "Contatto trasferito"; il messaggio ATTUALE resta invariato
+          (":actor transferred :contact from :origin to :destination (operator :previous to :new)
+            on :date"), cosi' la vista di controllo non cambia.
+
+      `dataActionUrl()` NON e' piu' hardcoded a "/request-management/{id}": passa da
+      `RecordLinkResolver::pathFor($notifiable, AssignmentTargetEnum::Opportunity, $requestId)`,
+      con la stessa regola del caso null (nessun bottone, frase di coda). Il metodo diventa quindi
+      dipendente dal notifiable, come nella notifica di assegnazione.
+    </notification>
+
+    <!-- ==========================================================
+         6. PUNTI DI DISPATCH (nessun endpoint nuovo, nessun contratto HTTP tocco)
+         ========================================================== -->
+    <dispatch service="App\Services\RegistryService" methods="create,update">
+      Dentro la transazione si RACCOGLIE (non si spedisce):
+        - supervisore: `create` -> `supervisor_id` non null; `update` -> `$registry->wasChanged('supervisor_id')`
+          e nuovo valore non null.
+        - gestori: valore di ritorno di `managers()->sync(...)`, chiave `attached` SOLTANTO
+          (`updated` = cambio di sola posizione -> NESSUNA notifica, decisione utente).
+      Si spedisce in `DB::afterCommit(...)`, escluso `$actor` (parametro gia' presente e oggi
+      inutilizzato). `position` per ogni attached si legge dalla mappa gia' costruita da
+      `managerSyncMap()`, senza rileggere il pivot.
+    </dispatch>
+
+    <dispatch service="App\Services\OpportunityService" methods="create,update">
+      Identico a RegistryService, target `Opportunity`. Richiede l'aggiunta del parametro
+      `User $actor` alle due firme e la propagazione dai chiamanti:
+      `OpportunityController` (store/update), `ConvertLeadToOpportunity`:56,
+      `RequestCreationService`:76. Nei due chiamanti non-HTTP l'attore e' quello che gia'
+      possiedono/ricevono: nessuna chiamata a `Auth::user()` dentro un service (SoC).
+      `recordLabel` = `opportunities.name` DOPO il forceFill del nome (create) o dopo il save
+      (update).
+    </dispatch>
+
+    <dispatch service="App\Services\RequestManagement\RequestManagementService" method="applyOperator">
+      Quando `RequestOperatorWriter::apply()` riporta una transizione REALE
+      (`$changed['operator_id']` presente e diverso da `$old['operator_id']`) e il nuovo operatore
+      non e' l'attore: `RecordAssignmentNotification` con role = Manager,
+      position = `Opportunity::OPERATOR_MANAGER_POSITION`, target Opportunity, in `DB::afterCommit`.
+    </dispatch>
+
+    <dispatch service="App\Services\RequestManagement\RequestAssignmentService">
+      Stessa regola, una notifica per richiesta assegnata (coerente con il comportamento gia'
+      documentato del trasferimento in batch).
+    </dispatch>
+
+    <dispatch service="App\Services\RequestManagement\RequestTransferService" change="extend">
+      `dispatchNotifications()` passa da UN invio a TRE gruppi, tutti dopo il commit (il metodo e'
+      gia' chiamato fuori dalla transazione, riga :81):
+        1. precedente operatore (uno per richiesta, solo se esiste, solo se != attore, solo se !=
+           nuovo operatore) -> `TransferRecipientRoleEnum::PreviousOperator`.
+        2. nuovo operatore (se != attore) -> `NewOperator`.
+        3. titolari del permesso `request-management.receiveTransferNotifications`, deduplicati,
+           esclusi l'attore, il nuovo operatore e il precedente operatore (che hanno gia' ricevuto
+           il loro testo dedicato) -> `Supervisor`.
+      `RequestTransferNotice` guadagna `previousOperatorId` accanto a `previousOperatorName`
+      (l'oggetto `$previousOperator` e' gia' in mano a `transferOne()`:141, nessuna query nuova).
+      La notifica generica di assegnazione NON parte da questo percorso: il trasferimento ha il suo
+      testo dedicato e un doppio invio sarebbe rumore.
+    </dispatch>
+
+    <i18n>
+      Tutte le stringhe passano da `__()` con chiavi presenti in `lang/it.json` E nel corrispettivo
+      inglese. Nessuna stringa hardcoded nel corpo dei metodi. Il locale per-destinatario e' gia'
+      garantito: `User implements HasLocalePreference` (`User.php`:30, `preferredLocale()`:116).
+    </i18n>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Creando un'anagrafica con `supervisor_id` valorizzato, quell'utente riceve una notifica `database` e una `mail`.</criterion>
+    <criterion id="AC-002">Aggiornando un'anagrafica cambiando `supervisor_id`, il NUOVO supervisore riceve la notifica; il precedente non riceve nulla.</criterion>
+    <criterion id="AC-003">Aggiornando un'anagrafica SENZA cambiare `supervisor_id` (stesso valore), nessuna notifica parte.</criterion>
+    <criterion id="AC-004">Aggiungendo un utente a uno slot G.A. qualsiasi (position 1, 3, 12) di un'anagrafica, quell'utente riceve la notifica con la posizione corretta nel testo.</criterion>
+    <criterion id="AC-005">Spostando un gestore GIA' presente da uno slot a un altro (`updated` di sync, non `attached`), NESSUNA notifica parte.</criterion>
+    <criterion id="AC-006">Rimuovendo un gestore o un supervisore da un'anagrafica, nessuna notifica parte (nessuna notifica di rimozione fuori dal trasferimento).</criterion>
+    <criterion id="AC-007">L'attore che esegue la scrittura non riceve mai la notifica, nemmeno quando assegna se stesso come supervisore o gestore.</criterion>
+    <criterion id="AC-008">Stessi AC-001..AC-007 verificati su `Opportunity` attraverso `OpportunityService::create/update`.</criterion>
+    <criterion id="AC-009">Assegnando l'Operatore (slot GA2) dal pannello di gestione richieste, il nuovo operatore riceve la notifica di assegnazione con position = 2.</criterion>
+    <criterion id="AC-010">Assegnazione massiva di N richieste: l'operatore riceve N notifiche, una per richiesta.</criterion>
+    <criterion id="AC-011">Riassegnando l'Operatore allo STESSO utente gia' presente, nessuna notifica parte (`RequestOperatorWriter::apply()` non riporta transizione).</criterion>
+    <criterion id="AC-012">Se la transazione fallisce e fa rollback, nessuna notifica viene spedita (dispatch in `DB::afterCommit`).</criterion>
+    <criterion id="AC-013">Destinatario con `opportunities.view`: `action_url` = "/opportunities/{id}" e l'email espone il bottone.</criterion>
+    <criterion id="AC-014">Destinatario SENZA `opportunities.view` ma con `request-management.view`: `action_url` = "/request-management/{id}".</criterion>
+    <criterion id="AC-015">Destinatario senza nessuno dei due permessi: `action_url` e' null, l'email NON contiene alcun bottone, e il messaggio (in-app e email) contiene la frase di richiesta abilitazione.</criterion>
+    <criterion id="AC-016">Destinatario di una notifica su anagrafica con `registries.view`: `action_url` = "/registries/{id}"; senza il permesso: null + frase di richiesta abilitazione.</criterion>
+    <criterion id="AC-017">`action_url` e' SEMPRE un path interno; nessuna notifica introdotta persiste un URL assoluto nel payload `database`.</criterion>
+    <criterion id="AC-018">Trasferendo una richiesta, il PRECEDENTE operatore riceve `database` + `mail` con il testo "non sei piu' l'operatore", contenente contatto, sede di origine, sede di destinazione, nuovo operatore, autore e data.</criterion>
+    <criterion id="AC-019">Trasferendo una richiesta priva di operatore precedente, il trasferimento riesce e nessuna notifica "precedente operatore" viene spedita.</criterion>
+    <criterion id="AC-020">Il permesso `request-management.receiveTransferNotifications` esiste dopo `permissions:sync` ed e' assegnato al ruolo `supervisor` da `TestUsersSeeder`.</criterion>
+    <criterion id="AC-021">Un utente che ha `request-management.receiveTransferNotifications` (per ruolo o diretto) riceve la copia del trasferimento; un utente che ha il ruolo `supervisor` con quel permesso REVOCATO non la riceve.</criterion>
+    <criterion id="AC-022">Il nuovo operatore riceve UNA sola notifica di trasferimento (quella con il testo "nuovo contatto assegnato"), mai anche la copia supervisore ne' la notifica generica di assegnazione.</criterion>
+    <criterion id="AC-023">L'attore del trasferimento non riceve nulla, nemmeno se ha il permesso o e' il nuovo operatore.</criterion>
+    <criterion id="AC-024">Nessun utente ha il permesso: il trasferimento riesce e notifica solo precedente + nuovo operatore, senza eccezioni.</criterion>
+    <criterion id="AC-025">I test esistenti della spec 0079 (`tests/Feature/RequestManagement/`) restano verdi, aggiornati SOLO dove il testo per-destinatario cambia per requisito, mai per farli passare.</criterion>
+    <criterion id="AC-026">Nessuna stringa hardcoded: ogni chiave i18n introdotta e' presente sia in italiano sia in inglese.</criterion>
+    <criterion id="AC-027">Ogni notifica introdotta e' `implements ShouldQueue`.</criterion>
+    <criterion id="AC-028">`RequestTransferService` non contiene piu' alcun riferimento al ruolo `supervisor` ne' a `Role`/`User::role()` (codice morto cancellato, non commentato).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna dipendenza nuova: solo cio' che e' gia' in `composer.json`/`package.json`.</item>
+    <item>NON si toccano `NotificationService`, `NotificationResource`, `NotificationData`, `GenericNotification`, ne' alcun file di `frontend/src/features/notifications/`.</item>
+    <item>NON si tocca `NoteMentionNotification` ne' `NoteService`.</item>
+    <item>Una Notification non interroga mai il database: ogni fatto e' precalcolato dal chiamante e passato al costruttore (disciplina gia' scritta in `RequestTransferredNotification`).</item>
+    <item>Nessun `Auth::user()` dentro un Service: l'attore arriva sempre come parametro.</item>
+    <item>Ogni dispatch avviene DOPO il commit (`DB::afterCommit`), mai dentro la transazione.</item>
+    <item>Nessun N+1: i destinatari si risolvono in una query per gruppo, mai per riga.</item>
+    <item>`action_url` persistito e' sempre un path interno; `config('app.frontend_url')` si antepone SOLO nella CTA email.</item>
+    <item>File entro 300 righe (soft) / 500 (hard); zero dead code; Pint pulito.</item>
+    <item>Definition of Done: Pest ESEGUITO verde + Pint + `cd frontend &amp;&amp; npx tsc -b --force` (mai `tsc --noEmit`).</item>
+  </constraints>
+
+</spec>

@@ -80,7 +80,7 @@ class LeadController extends BaseApiController
                 $this->authorize('create', Opportunity::class);
             }
 
-            $lead = $this->service->create($data);
+            $lead = $this->service->create($data, $request->user());
 
             return $this->okWithPermissions(
                 new LeadResource($lead),
@@ -168,7 +168,7 @@ class LeadController extends BaseApiController
                 $this->authorize('view', $lead);
             }
 
-            $opportunityIds = $this->bulkConverter->handle($leadIds);
+            $opportunityIds = $this->bulkConverter->handle($leadIds, $request->user());
 
             return $this->ok([
                 'converted' => count($opportunityIds),

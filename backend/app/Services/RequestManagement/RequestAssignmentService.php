@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\Enums\AssignmentTargetEnum;
 use App\Enums\LeadAssignmentMode;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\LeadOperatorDistributor;
+use App\Services\Notifications\AssignmentNotifier;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +36,7 @@ final class RequestAssignmentService
         private readonly RequestManagementScope $scope,
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly LeadOperatorDistributor $distributor,
+        private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     /**
@@ -146,6 +149,19 @@ final class RequestAssignmentService
 
         if ($changed === []) {
             return;
+        }
+
+        // spec 0081: one assignment notification per request, exactly as the
+        // per-record work panel emits — a batch of N produces N.
+        if (($changed['operator_id'] ?? null) !== null) {
+            $this->assignmentNotifier->notify(
+                AssignmentTargetEnum::Opportunity,
+                $request->id,
+                $request->name,
+                $actor,
+                null,
+                [$changed['operator_id'] => Opportunity::OPERATOR_MANAGER_POSITION],
+            );
         }
 
         activity($request->getTable())
