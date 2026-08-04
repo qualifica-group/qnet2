@@ -43,11 +43,14 @@ final class FieldPermission
 
     /**
      * A visible field shown but not changeable (contextual lock, e.g. a
-     * super-admin-protected value).
+     * super-admin-protected value). `required` defaults to false to keep
+     * every pre-existing call site unchanged; pass `true` when the field
+     * being restricted was already mandatory (spec 0078, AC-006) so the
+     * restriction narrows to readonly without also dropping `required`.
      */
-    public static function visibleReadonly(): self
+    public static function visibleReadonly(bool $required = false): self
     {
-        return new self(visible: true, editable: false, required: false, disabled: false);
+        return new self(visible: true, editable: false, required: $required, disabled: false);
     }
 
     /**

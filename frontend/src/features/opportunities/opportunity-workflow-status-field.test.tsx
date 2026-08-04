@@ -19,6 +19,14 @@ import type { OpportunityDetailWithPermissions } from '@/features/opportunities/
 const createOpportunityMock = vi.fn()
 const updateOpportunityMock = vi.fn()
 
+/**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03) and mounts its own quick-create affordance; this suite is about
+ * the surrounding form, so it stands in for the picker with the shared double.
+ */
+vi.mock('@/features/product-lines/product-category-tree-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
+
 vi.mock('@/features/opportunities/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
     '@/features/opportunities/api',

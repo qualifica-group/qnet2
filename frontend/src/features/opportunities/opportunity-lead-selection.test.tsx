@@ -27,6 +27,14 @@ import type { ResourceMeta } from '@/features/authorization/types'
 
 const createOpportunityMock = vi.fn()
 
+/**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03) and mounts its own quick-create affordance; this suite is about
+ * the surrounding form, so it stands in for the picker with the shared double.
+ */
+vi.mock('@/features/product-lines/product-category-tree-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
+
 vi.mock('@/features/opportunities/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
     '@/features/opportunities/api',
@@ -297,7 +305,10 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     // Amendment rev.3 (AC-102/103): the derived function+category is a
     // normal, editable/removable product-line row — never a locked field.
     expect(screen.getByText('Sales')).toBeInTheDocument()
-    expect(screen.getByText(/Consulting/)).toBeInTheDocument()
+    // The category picker is the tree select's double here, so the row is
+    // asserted by the id it carries; the label now comes from the tree that
+    // component reads (covered against the real one in the work-panel suite).
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('50')
     // AC-051: the origin banner also sources its name from the registry now.
     expect(screen.getByRole('status')).toHaveTextContent('Acme S.p.A.')
   })

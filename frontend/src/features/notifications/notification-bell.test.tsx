@@ -1,8 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import type { Notification, NotificationFilter } from '@/features/notifications/types'
+
+/**
+ * `NotificationItem` (spec 0078, AC-027) reads `useNavigate()` to make
+ * `action_url` clickable, so every render needs a Router ancestor now.
+ */
+function renderBell() {
+  return render(
+    <MemoryRouter>
+      <NotificationBell />
+    </MemoryRouter>,
+  )
+}
 
 const useUnreadCountMock = vi.fn()
 const useNotificationListMock = vi.fn()
@@ -94,7 +107,7 @@ beforeEach(() => {
 
 describe('NotificationBell', () => {
   it('shows all, unread and read filters inside the panel', () => {
-    render(<NotificationBell />)
+    renderBell()
 
     openPanel()
 
@@ -104,7 +117,7 @@ describe('NotificationBell', () => {
   })
 
   it('requests the unread server filter when the user selects Unread', async () => {
-    render(<NotificationBell />)
+    renderBell()
 
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: 'Unread' }))
@@ -115,7 +128,7 @@ describe('NotificationBell', () => {
   })
 
   it('keeps using the all feed for Read and filters visible rows locally', async () => {
-    render(<NotificationBell />)
+    renderBell()
 
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: 'Read' }))
@@ -145,7 +158,7 @@ describe('NotificationBell', () => {
       fetchNextPage,
     })
 
-    render(<NotificationBell />)
+    renderBell()
 
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: 'Read' }))

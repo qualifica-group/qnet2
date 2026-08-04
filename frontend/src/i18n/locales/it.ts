@@ -38,6 +38,7 @@ import { rewardStatuses } from './it-reward-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { requestManagement } from './it-request-management'
+import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
 import { notifications } from './it-notifications'
 import { leadImports } from './it-lead-imports'
@@ -382,6 +383,7 @@ export const it: TranslationResources = {
   contracts,
   commissionConfigurations,
   requestManagement,
+  fieldChangeRequests,
   rewardTypes,
   rewardStatuses,
   rewardedReferents,

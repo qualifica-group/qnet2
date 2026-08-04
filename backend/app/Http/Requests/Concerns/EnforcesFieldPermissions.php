@@ -197,12 +197,19 @@ trait EnforcesFieldPermissions
      * reference field's semantic value being WHICH rows it points at. No
      * current catalogue field is a to-one top-level relation; add that branch
      * if/when one is introduced (YAGNI).
+     *
+     * `isRelation()` rather than a bare `method_exists()`: an Attribute-style
+     * accessor is a method of the SAME camelCase name as its field (e.g.
+     * Opportunity::operatorId() for the virtual `operator_id`), so
+     * method_exists alone reads it as a relation candidate and invoking it
+     * fatals — it is protected and takes no arguments. Eloquent's own check
+     * excludes attribute mutators, which is exactly the distinction needed.
      */
     private function readTopLevel(Model $model, string $key): mixed
     {
         $relationMethod = Str::camel($key);
 
-        if (! method_exists($model, $relationMethod) || ! $model->{$relationMethod}() instanceof Relation) {
+        if (! $model->isRelation($relationMethod) || ! $model->{$relationMethod}() instanceof Relation) {
             return $model->getAttribute($key);
         }
 
@@ -216,7 +223,8 @@ trait EnforcesFieldPermissions
     {
         $key = array_shift($segments);
         $relationMethod = Str::camel($key);
-        $isRelation = method_exists($model, $relationMethod) && $model->{$relationMethod}() instanceof Relation;
+        // Same accessor-vs-relation distinction as readTopLevel() above.
+        $isRelation = $model->isRelation($relationMethod) && $model->{$relationMethod}() instanceof Relation;
 
         if (! $isRelation) {
             return $segments === [] ? $model->getAttribute($key) : null;

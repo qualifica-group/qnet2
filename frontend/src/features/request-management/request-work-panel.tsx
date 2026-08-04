@@ -1,13 +1,19 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
+import { useQueryClient } from '@tanstack/react-query'
+import { ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
+import { FormSection } from '@/components/form-section'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { toRelationFieldRef } from '@/components/form/relation-field-ref'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
+import { RecordFieldChangeRequests } from '@/features/field-change-requests/record-field-change-requests'
+import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { RequestAttributionSection } from '@/features/request-management/request-attribution-section'
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
@@ -48,6 +54,17 @@ export const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:t
 
 /** The main column: its own `@container`, so the sections split on ITS width, not the panel's. */
 export const MAIN_COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4 @4xl:order-1'
+
+/**
+ * The one protected field of this module (spec 0078, `config/field-change-
+ * requests.php`) that is ALSO a control of this form. Approving a request on
+ * it writes the new value server-side, so the control must follow it: the
+ * refetch alone is not enough — when it settles inside the same React batch
+ * the body never remounts, the form keeps its pre-approval value, and
+ * `buildRequestWorkPayload` (which diffs the form against the refreshed
+ * panel) sends that value back on the next save, undoing the approval.
+ */
+const SOURCE_FIELD = 'source_id'
 
 /** Props shape matches the module registry's `ModuleDetailScreenProps` (spec 0042), so this mounts as-is as the module's `DetailScreen`. */
 interface RequestWorkPanelScreenProps {
@@ -133,12 +150,29 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
   const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
+  const queryClient = useQueryClient()
 
   // Spec 0075, D-5: re-pointing or removing a product line drops the products
   // of interest it was covering, right there in the handler — the operator
   // never reaches the server's refusal of an incoherent pair.
   const productsOfInterest = useWatch({ control: form.control, name: 'products_of_interest' })
   const keepCoveredProducts = useProductsOfInterestCoherence(productsOfInterest)
+
+  // An approved change request writes the protected field server-side (spec
+  // 0078, D-7), so the panel it was decided from is stale the moment it
+  // resolves: refetch it, and realign the control the value landed on (see
+  // SOURCE_FIELD).
+  const handleChangeRequestHandled = (request: FieldChangeRequestResource) => {
+    void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(panel.id) })
+
+    if (
+      request.status === 'approved' &&
+      request.field === SOURCE_FIELD &&
+      typeof request.requested_value === 'number'
+    ) {
+      form.setValue(SOURCE_FIELD, request.requested_value)
+    }
+  }
 
   const handleProductLinesChange = (rows: ProductLineRow[]) => {
     const kept = keepCoveredProducts(rows)
@@ -167,6 +201,25 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
               operators read them before anything else. */}
           <RequestGeneralNotesCallout notes={panel.context.general_notes ?? null} />
           <RequestWorkSummary panel={panel} />
+
+          {/* Field-change-request proposals on this record (spec 0078
+              AC-048), generic and domain-agnostic (`RecordFieldChangeRequests`
+              only knows `(resource, subjectId)`) — the panel is the only
+              thing that knows it is request-management's own record. */}
+          <FormSection
+            icon={ListChecks}
+            title={t('fieldChangeRequests.section.title', { defaultValue: 'Change requests' })}
+            description={t('fieldChangeRequests.section.description', {
+              defaultValue: 'Proposals awaiting approval on this record.',
+            })}
+            className="min-w-0"
+          >
+            <RecordFieldChangeRequests
+              resource={REQUEST_MANAGEMENT_DOMAIN}
+              subjectId={panel.id}
+              onHandled={handleChangeRequestHandled}
+            />
+          </FormSection>
         </aside>
 
         <div className={MAIN_COLUMN_CLASS}>
@@ -207,6 +260,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                   touch and before the request's own content. */}
               <RequestAttributionSection
                 form={form}
+                requestId={panel.id}
                 source={panel.source}
                 reporter={panel.reporter}
                 operator={panel.operator}

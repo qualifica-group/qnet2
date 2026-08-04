@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\CustomFieldDefinition;
 use App\Models\DocumentLayout;
+use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -102,6 +103,9 @@ return [
         ],
         'document-layouts' => [
             'model' => DocumentLayout::class,
+        ],
+        'field-change-requests' => [
+            'model' => FieldChangeRequest::class,
         ],
         'leads' => [
             'model' => Lead::class,

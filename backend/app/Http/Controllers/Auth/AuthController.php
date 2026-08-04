@@ -22,25 +22,21 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends BaseApiController
 {
-    /**
-     * Relations the authenticated-user payload carries: the personal-data card
-     * the profile screen renders, plus the employment Sede (user directive
-     * 2026-08-03) a create form defaults its "Sede operativa"/"Operatore"
-     * from. The Sede path matches UserService's for-select eager load — the
-     * label EmploymentResource composes reads the site's primary address.
-     *
-     * Public because ImpersonationController returns the very same `user`
-     * payload under the same client-side cache key.
-     *
-     * @var array<int, string>
-     */
-    public const array ME_RELATIONS = [
-        'personalData.contacts',
-        'personalData.addresses',
-        'employment.operationalSite.addresses.city',
-    ];
-
     public function __construct(private readonly AuthService $authService) {}
+
+    /**
+     * Ogni payload dell'utente autenticato passa da qui: il client lo mette in
+     * cache come utente corrente, quindi l'oggetto restituito da un PATCH di
+     * profilo/avatar deve avere le stesse chiavi di quello di `me()`.
+     *
+     * `employment` serve al form di creazione richieste, che precompila la
+     * Sede operativa con `employment.operational_site_id` dell'utente connesso
+     * (direttiva utente 2026-08-04).
+     */
+    private function authenticatedUserPayload(User $user): UserResource
+    {
+        return new UserResource($user->loadMissing('employment'));
+    }
 
     /**
      * Autenticazione: emette un token di accesso.
@@ -58,7 +54,7 @@ class AuthController extends BaseApiController
         return $this->ok([
             'token' => $result->token,
             'token_type' => 'Bearer',
-            'user' => $this->authenticatedUser($result->user),
+            'user' => $this->authenticatedUserPayload($result->user),
         ], 'Authenticated.');
     }
 
@@ -122,7 +118,10 @@ class AuthController extends BaseApiController
      */
     public function me(Request $request): JsonResponse
     {
-        return $this->ok($this->authenticatedUser($request->user()));
+        $user = $request->user()
+            ->loadMissing(['personalData.contacts', 'personalData.addresses']);
+
+        return $this->ok($this->authenticatedUserPayload($user));
     }
 
     /**
@@ -145,7 +144,7 @@ class AuthController extends BaseApiController
             $request->moduleOpenPreferences(),
         );
 
-        return $this->ok($this->authenticatedUser($user), __('auth.profile_updated'));
+        return $this->ok($this->authenticatedUserPayload($user), __('auth.profile_updated'));
     }
 
     /**
@@ -167,7 +166,7 @@ class AuthController extends BaseApiController
 
         $avatars->set($user, $request->avatarFile());
 
-        return $this->ok($this->authenticatedUser($user->refresh()), __('auth.avatar_updated'));
+        return $this->ok($this->authenticatedUserPayload($user->refresh()), __('auth.avatar_updated'));
     }
 
     /**
@@ -179,18 +178,6 @@ class AuthController extends BaseApiController
 
         $avatars->remove($user);
 
-        return $this->ok($this->authenticatedUser($user->refresh()), __('auth.avatar_removed'));
-    }
-
-    /**
-     * Every payload that carries the AUTHENTICATED user goes through here, so
-     * they all describe the same account: the client caches this single shape
-     * under one key, and a partially-loaded variant returned by one endpoint
-     * would silently drop keys the others provide (spec 0015 `employment`
-     * included, which the request create form defaults its Sede from).
-     */
-    private function authenticatedUser(User $user): UserResource
-    {
-        return new UserResource($user->loadMissing(self::ME_RELATIONS));
+        return $this->ok($this->authenticatedUserPayload($user->refresh()), __('auth.avatar_removed'));
     }
 }

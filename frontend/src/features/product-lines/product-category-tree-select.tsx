@@ -13,7 +13,7 @@ import {
 } from '@/features/product-lines/category-tree-scope'
 import type { CategoryManagementMeta } from '@/features/product-lines/management-mode'
 
-interface ProductCategoryTreeSelectProps {
+export interface ProductCategoryTreeSelectProps {
   value: number | null
   /** Fired with the picked id and the meta resolved from the tree (spec 0077: branch root + management mode). */
   onChange: (categoryId: number, meta: CategoryManagementMeta | null) => void

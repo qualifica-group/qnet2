@@ -120,6 +120,18 @@ export interface TableColumn {
    */
   editable?: boolean
   /**
+   * Marks a column whose commit must be intercepted into a field-change-request
+   * proposal instead of a direct PATCH (spec 0078 D-2): present only when the
+   * actor lacks the field's own update permission but the column stays
+   * `editable: true` regardless — the grid opens the cell, the CLIENT
+   * intercepts the commit before it ever reaches the PATCH endpoint.
+   * `resource`/`field` are the backend's own `(resource, field)` vocabulary
+   * for `POST /field-change-requests` (`config/field-change-requests.php`),
+   * which may differ from this column's own `id`. Absent for every column
+   * that PATCHes directly, unchanged.
+   */
+  change_request?: { resource: string; field: string }
+  /**
    * Overrides the `type`-driven cell editor lookup (spec 0054 D-7, extended by
    * 0055 D-1): `relation` is a `/for-select`-fed picker, `select` a dropdown
    * over the column's own backend-resolved `options`, `datetime` a date+time

@@ -59,6 +59,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'document-layouts': 'navigation.documentLayouts',
   imports: 'navigation.imports',
   'pipeline-statuses': 'navigation.pipelineStatuses',
+  'field-change-requests': 'navigation.fieldChangeRequests',
   // Namespaced key (`ns:key`): the migrations module registers its own
   // i18next namespace instead of merging into `en.ts`/`it.ts` (see
   // `features/migrations/i18n.ts`).

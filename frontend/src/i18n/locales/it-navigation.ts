@@ -37,6 +37,7 @@ export const navigation = {
   contracts: 'Contratti',
   commissionConfigurations: 'Configuratore Commissioni',
   requestManagement: 'Gestione Richieste',
+  fieldChangeRequests: 'Richieste di modifica',
   rewards: 'Premi e Incentivi',
   rewardTypes: 'Buoni, Premi e Incentivi',
   rewardStatuses: 'Stati Buoni Collegati',

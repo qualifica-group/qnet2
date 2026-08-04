@@ -46,6 +46,13 @@ final class RequestRowMapper
             // "Fonte" (user directive 2026-07-31): the `{id, name}` ref both
             // the relation cell and its inline picker read.
             'source' => $this->summarize($row->source),
+            // "Richieste di modifica in attesa" (spec 0078, AC-037): rides
+            // along from baseQuery's withCount('pendingFieldChangeRequests')
+            // — already excludes approved/rejected requests (D-4/D-5), so no
+            // further filtering is needed here. 0 when the relation was not
+            // counted (defensive default, never expected on this domain's
+            // own baseQuery).
+            'pending_change_requests' => (int) ($row->pending_field_change_requests_count ?? 0),
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own free text, projected raw — display-only in this module.
             'general_notes' => $row->general_notes,

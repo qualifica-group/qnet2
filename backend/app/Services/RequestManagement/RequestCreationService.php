@@ -63,6 +63,16 @@ final class RequestCreationService
             // (out of scope, D-4). `reporterId` is part of the insert, so RewardAssignmentWriter
             // (invoked by OpportunityService::create) already targets the right
             // beneficiary — no retarget step needed.
+            //
+            // Operatore and Sede operativa DEFAULT to the creating actor and
+            // the actor's own Sede (user directive 2026-08-04): a request is
+            // always worked by whoever opened it, from the Sede they belong to,
+            // and that holds whether or not the form showed the two fields —
+            // an actor without `request-management.assignOperator` /
+            // `operational-sites.viewAny` never renders them, so an absent key
+            // is exactly the case this default covers. A submitted value (only
+            // an actor holding those abilities gets past the controller's
+            // guards) always wins.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
@@ -72,8 +82,8 @@ final class RequestCreationService
                 sourceId: $data->sourceId,
                 leadId: null,
                 opportunityStatusId: null,
-                managerSlots: $this->operatorManagerSlots($data->operatorId),
-                operationalSiteId: $data->operationalSiteId,
+                managerSlots: $this->operatorManagerSlots($data->operatorId ?? $actor->id),
+                operationalSiteId: $data->operationalSiteId ?? $this->actorOperationalSiteId($actor),
                 productLines: $data->productLines,
                 // "Prodotti di interesse" (user directive 2026-07-31): already
                 // checked against the product lines above by
@@ -147,20 +157,31 @@ final class RequestCreationService
      * 2026-07-29): OpportunityService maps slot index+1 to the pivot
      * `position`, so the operator sits at index 1 with GA1 left empty —
      * Opportunity::OPERATOR_MANAGER_POSITION expressed in the slots
-     * vocabulary. `null` when no operator was submitted: nothing to sync.
+     * vocabulary. Always called with an operator: the actor is the default
+     * (see create()), so a request never lands without one.
      *
-     * @return array<int, int|null>|null
+     * @return array<int, int|null>
      */
-    private function operatorManagerSlots(?int $operatorId): ?array
+    private function operatorManagerSlots(int $operatorId): array
     {
-        if ($operatorId === null) {
-            return null;
-        }
-
         $slots = array_fill(0, Opportunity::OPERATOR_MANAGER_POSITION, null);
         $slots[Opportunity::OPERATOR_MANAGER_POSITION - 1] = $operatorId;
 
         return $slots;
+    }
+
+    /**
+     * The creating actor's own Sede operativa, from their employment profile
+     * (spec 0015) — `null` when they have no profile or no Sede on it, which
+     * leaves the request without one exactly as before.
+     *
+     * `loadMissing`: the authenticated actor arrives with no relations loaded,
+     * and Model::preventLazyLoading() is active outside production
+     * (backend.md §3).
+     */
+    private function actorOperationalSiteId(User $actor): ?int
+    {
+        return $actor->loadMissing('employment')->employment?->operational_site_id;
     }
 
     /**

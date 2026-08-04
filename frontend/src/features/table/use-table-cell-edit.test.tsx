@@ -19,6 +19,10 @@ import type { TableColumn, TableRow } from '@/features/table/types'
  * `{id, name}` value (unwrapped to its id before PATCHing) and the
  * `requires_note` dialog flow (held-back PATCH, single request with `note`
  * on confirm, local revert with no request on cancel).
+ *
+ * The `change_request` interception (spec 0078 AC-045/046) has its own file,
+ * `use-table-cell-edit-change-request.test.tsx`, to keep this one under the
+ * file-size limit.
  */
 
 const updateTableCellMock = vi.fn()

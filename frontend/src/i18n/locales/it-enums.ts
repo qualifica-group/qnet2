@@ -82,6 +82,12 @@ export const enums = {
     medium: 'Media',
     large: 'Grande',
   },
+  // Stato di una richiesta di modifica campo (spec 0078).
+  field_change_request_status: {
+    pending: 'In attesa',
+    approved: 'Approvata',
+    rejected: 'Rifiutata',
+  },
   // Stato di una import run (badge dello storico import).
   import_status: {
     validating: 'In validazione',

@@ -81,20 +81,22 @@ it('returns the authenticated user on /me with a UserResource', function () {
         ->assertJsonStructure(['success', 'message', 'data' => ['id', 'name', 'email', 'roles', 'created_at']]);
 });
 
-// User directive 2026-08-03: the request create form pre-assigns the new
-// record to the actor's own Sede, which it reads from this payload — so the
-// authenticated user always carries their employment profile.
-it('carries the authenticated user employment Sede on /me', function () {
-    $site = OperationalSite::factory()->create();
+/**
+ * The client caches this payload as the current user, and the
+ * request-management create form defaults the Sede operativa from
+ * `employment.operational_site_id` (user directive 2026-08-04) — so the key
+ * must be there, not only on the Users module's own endpoints.
+ */
+it('exposes the authenticated user employment Sede on /me', function () {
     $user = User::factory()->create();
+    $site = OperationalSite::factory()->create();
     EmploymentProfile::factory()->create(['user_id' => $user->id, 'operational_site_id' => $site->id]);
 
     Sanctum::actingAs($user);
 
     $this->getJson('/api/auth/me')
         ->assertOk()
-        ->assertJsonPath('data.employment.operational_site_id', $site->id)
-        ->assertJsonPath('data.employment.operational_site.id', $site->id);
+        ->assertJsonPath('data.employment.operational_site_id', $site->id);
 });
 
 it('blocks /me without authentication', function () {

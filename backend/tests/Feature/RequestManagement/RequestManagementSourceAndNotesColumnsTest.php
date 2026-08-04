@@ -23,7 +23,11 @@ if (! function_exists('worklistColumnsActor')) {
      */
     function worklistColumnsActor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
+        // updateSource included in the catalogue below: source_id became a
+        // protected field (spec 0078, ProtectedFieldAwareAuthorization) —
+        // callers that pass it in $abilities exercise the source column's
+        // write path, not the new restriction.
+        foreach (['viewAny', 'view', 'update', 'viewAll', 'updateSource'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -124,7 +128,7 @@ it('rows: an opportunity without a source projects a null ref', function () {
 // ---------------------------------------------------------------------------
 
 it('PATCH source persists the FK and returns the row with the new ref', function () {
-    $actor = worklistColumnsActor(['viewAny', 'update']);
+    $actor = worklistColumnsActor(['viewAny', 'update', 'updateSource']);
     $opportunity = worklistColumnsRequest($actor);
     $source = Source::factory()->create(['name' => 'Passaparola']);
     Sanctum::actingAs($actor);
@@ -142,7 +146,7 @@ it('PATCH source persists the FK and returns the row with the new ref', function
 // 2026-07-29): the resolved field's `required` wins over any column-level
 // nullability, so the cell can be changed but never emptied.
 it('PATCH source with null -> 422, the previous source untouched', function () {
-    $actor = worklistColumnsActor(['viewAny', 'update']);
+    $actor = worklistColumnsActor(['viewAny', 'update', 'updateSource']);
     $source = Source::factory()->create();
     $opportunity = worklistColumnsRequest($actor);
     $opportunity->update(['source_id' => $source->id]);
@@ -157,7 +161,7 @@ it('PATCH source with null -> 422, the previous source untouched', function () {
 });
 
 it('PATCH source with an unknown id -> 422, nothing written', function () {
-    $actor = worklistColumnsActor(['viewAny', 'update']);
+    $actor = worklistColumnsActor(['viewAny', 'update', 'updateSource']);
     $opportunity = worklistColumnsRequest($actor);
     Sanctum::actingAs($actor);
 

@@ -3,54 +3,298 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## RICHIESTE: OPERATORE/SEDE ASSEGNATI D'UFFICIO IN CREAZIONE (2026-08-03) — VERDE, NON COMMITTATO
+## CATEGORIA PRODOTTO VUOTA PER IL RUOLO COMMERCIALE (2026-08-04) — VERDE, NON COMMITTATO
 
-Direttiva utente: una nuova richiesta nasce **gia' assegnata a chi la sta creando e alla sua sede di
-appartenenza**; il ruolo **Commerciale non vede piu' il campo Operatore** (solo seeder), Supervisor e
-Marketing continuano a sceglierlo liberamente.
+Bug riportato: da utente `commercial`, nella create di Gestione Richieste la "funzione aziendale" si
+apriva e la "categoria prodotto" restava senza lista.
 
-**Il meccanismo e' il permesso, non un ramo di codice per ruolo.** `TestUsersSeeder` aggiunge
-`assignOperator` a `COMMERCIAL_DENIED_MODULE_ABILITIES` (accanto a `delete`/`viewAll`): il campo
-"Operatore" del form era gia' condizionato a `request-management.assignOperator`
-(`request-create-attribution-section.tsx`), quindi sparisce senza toccare il frontend. Il Supervisor
-ha matrice deny-list e lo mantiene.
+**Causa:** le due meta' della riga leggono canali DIVERSI. La funzione aziendale legge
+`GET /business-functions/for-select`, che non ha gate oltre `auth:sanctum` (ADR 0011, emendata
+2026-07-31). La categoria, dalla direttiva 2026-08-03, non legge piu' il for-select ma il TREE
+strutturale (`ProductCategoryTreeSelect` → `GET /product-categories/tree`), che
+`ProductCategoryController::tree()` autorizza con `viewAny` via `ProductCategoryPolicy`. Il ruolo
+`commercial` non aveva alcun `product-categories.*` → 403 → select vuota. Lo swap for-select → tree ha
+introdotto una dipendenza da un permesso di browse che il canale precedente non aveva.
 
-**Chi non puo' assegnare, assegna se stesso — e il server lo garantisce.**
-`RequestManagementController::resolveOperator()`: con `assignOperator` nulla cambia (anche
-`operator_id` assente resta assente, serve al flusso bulk assign-operators); senza, l'unico operatore
-legale e' l'attore — un id altrui e' 403, l'assenza diventa l'attore via
-`CreateRequestData::withOperator()`. Non e' cosmetico: un Commerciale non ha `viewAll`, quindi una
-richiesta senza operatore sparirebbe dallo scope D-3 del suo stesso creatore appena salvata.
+**Fix:** `product-categories` aggiunta a `TestUsersSeeder::COMMERCIAL_SELECT_ONLY_RESOURCES` (solo
+`viewAny`, stesso trattamento che il ruolo `marketing` ha gia'). `view` resta NON concesso ed e'
+load-bearing: la voce di menu e' gated su `product-categories.view`
+(`config/navigation/products.php`), quindi il modulo resta fuori dalla navigazione e nessuna abilita'
+di scrittura arriva con il grant. Grant applicato anche al DB di sviluppo sul ruolo esistente.
 
-**La Sede di default viene dal profilo impiego dell'attore**, quindi il payload utente autenticato ora
-la porta: `AuthController::ME_RELATIONS` include `employment.operationalSite.addresses.city` e TUTTE
-le risposte che contengono l'utente autenticato passano da `authenticatedUser()` — login, me,
-updateProfile, avatar upload/remove — piu' `ImpersonationController::loginPayload()`. Motivo: il client
-le cachea sotto **la stessa chiave** (`authKeys.me`), e una variante piu' magra restituita da un solo
-endpoint cancellerebbe `employment` in silenzio (lo fanno `profile-form`, `avatar-form`,
-`ui-scale-form`, `date-format-form`, `module-open-mode-form`).
+**Test:** `TestUsersSeederTest` — nuovo caso che chiama entrambi i canali (for-select + tree) come
+commerciale e verifica che il POST di creazione categoria resti 403 e la rotta fuori dal menu. Rosso
+verificato senza il grant (403 sul tree), poi verde: 21 test / 363 asserzioni, Pint pulito.
 
-Lato client i default vivono in `useRequestCreateForm` (`operator_id: user?.id`,
-`operational_site_id: user?.employment?.operational_site_id`) e restano **default, non pin**: chi vede
-i campi puo' cambiarli o svuotarli, e `request-create-payload` continua a omettere le chiavi nulle.
-`previousSiteIdRef` in `request-create-attribution-section` parte ora dalla Sede iniziale: lasciato a
-null, ri-scegliere la Sede gia' a schermo avrebbe letto come cambio e svuotato l'Operatore.
+**Nota aperta (non implementata):** qualsiasi ALTRO ruolo che usi `ProductLinesField` (form
+opportunita', form prodotto) ha lo stesso vincolo — serve `product-categories.viewAny`. Se si vuole
+che il picker torni indipendente dai permessi di browse, la strada e' allineare il tree allo standard
+for-select (gate `auth:sanctum`) oppure esporre una sorgente-opzioni ad albero dedicata: e' una
+decisione di autorizzazione, non e' stata presa qui.
 
-**Test cambiati perche' e' cambiato il requisito, non per farli passare:** "creates without any GA2
-slot when operator_id is absent" ora vale per un attore CON `assignOperator` (semantica supervisore);
-i due casi FE "omits the key entirely when it is not set" svuotano esplicitamente il campo, perche' il
-default non e' piu' vuoto.
+## OPERATORE + SEDE OPERATIVA DI DEFAULT SULLA CREATE RICHIESTE (2026-08-04) — VERDE, NON COMMITTATO
 
-**Buco noto, NON chiuso (fuori scope, da decidere):** il Commerciale puo' ancora cambiare l'operatore
-dal **pannello di lavorazione** (`RequestManagementAuthorization::fields()` espone `operator_id` in
-base a `update`, non ad `assignOperator`) e dal **bulk** `POST /request-management/assign-operators`
-(gated su `request-management.update`). Inoltre il ruolo **Marketing non ha alcun permesso
-`request-management.*`** (`MARKETING_MODULES` = projects/campaigns/leads/pipeline-statuses, e
-`TestUsersSeederTest` lo asserisce esplicitamente): per lui "continua a vedere il campo Operatore" non
-e' applicabile finche' non gli si concede il modulo.
+Direttiva utente: nella create di Gestione Richieste **Operatore = utente connesso** e **Sede operativa
+= sede dell'utente connesso**, "a prescindere se il campo lo vede o meno". Semantica scelta dall'utente:
+**default precompilato, non valore forzato** — chi ha i permessi puo' ancora cambiarli, il valore
+inviato vince sempre.
 
-**Verifica**: Pest 5085 passed / 1 skipped; Pint pulito; Vitest 3447 passed su 480 file; `tsc -b
---force` EXIT=0; ESLint pulito sui file toccati.
+**L'autorita' e' il server, non il form.** `RequestCreationService::create()` ora risolve
+`$data->operatorId ?? $actor->id` e `$data->operationalSiteId ?? $actor->employment?->operational_site_id`:
+e' questo che copre l'attore che i due campi non li vede nemmeno (senza
+`request-management.assignOperator` / `operational-sites.viewAny` il form non li rende e il payload
+omette le chiavi — `buildRequestCreatePayload` manda entrambe solo se non-null). I due guard 403 del
+controller restano invariati: proteggono il valore ESPLICITO, non il default.
+Conseguenza sul DTO: per `operatorId`/`operationalSiteId` **`null` non significa piu' "non impostato"**
+ma "attore + sede dell'attore" (documentato in `CreateRequestData`). `operatorManagerSlots()` non ha piu'
+il ramo null (ora `int`): una richiesta nasce sempre con un GA2.
+
+Se l'attore non ha employment profile o non ha Sede, la Sede resta `null` come prima.
+
+**Meta' visibile (solo UX, mai l'autorita'):** nuovo hook
+`frontend/src/features/request-management/use-request-actor-defaults.ts` — seeda i due controlli con
+l'attore connesso, **in un effect e non in `defaultValues`** perche' la ability map puo' risolversi dopo
+il mount, e **una volta sola per campo** (ref) cosi' una scelta successiva non viene sovrascritta. Il
+seed e' gated dalla ability corrispondente: precompilare un campo che l'endpoint rifiuta con 403
+romperebbe il salvataggio invece di aiutare. Le due costanti di permesso vivono qui (owner unico) e la
+sezione le importa. Il label dei due select non serve passarlo: `AsyncPaginatedSelect` idrata da solo
+l'id selezionato via query `ids`.
+
+Per avere la sede lato client, **ogni payload dell'utente autenticato porta ora `employment`**
+(`AuthController::authenticatedUserPayload()` + `ImpersonationController::loginPayload()`): serve su
+TUTTI i path, non solo `me()`, perche' il client rimpiazza l'utente in cache anche dopo un PATCH di
+profilo/avatar. Sul tipo FE `User` e' una fetta stretta e onesta (`{ operational_site_id }`), non
+l'`EmploymentDetail` completo del modulo Users.
+
+`request-create-attribution-section.tsx`: `previousSiteIdRef` ora si sincronizza in un effect (ogni
+valore, anche programmatico, diventa il nuovo baseline) invece di essere assegnato a mano nei due
+handler — senza questo, ri-scegliere la propria Sede precompilata cancellava l'Operatore.
+
+**Test cambiati perche' il requisito e' cambiato (dichiarato):** i due casi "absent" di
+`RequestManagementCreateTest` (`operator_id` assente -> ora l'attore; `operational_site_id` assente ->
+ora la sede dell'attore, il caso null vale solo per un attore senza employment). Nuova copertura:
+`RequestManagementCreateActorDefaultsTest` (5 casi, incluso l'attore che non puo' inviare nessuna delle
+due chiavi e il caso "valore inviato vince"), `AuthTest` (`employment.operational_site_id` su `/auth/me`),
+`use-request-create-form-actor-defaults.test.ts` (5 casi). L'harness
+`request-create-form-harness.ts` monta ora un AuthContext + abilities in cache:
+`renderCreateForm(onSuccess, permissions)` — senza `permissions` nessun seed, che e' cio' che vede un
+operatore semplice.
+
+Verde: backend 5177/5178 (1 skip preesistente), frontend 3507/3507, `tsc -b --force` EXIT=0, Pint e
+ESLint puliti.
+
+## APPROVA/RIFIUTA SULLA CARD DEL RECORD, SOLO PENDING (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: nel pannello di Gestione Richieste la sezione "Richieste di modifica" mostra **solo le
+`pending`** e, per chi puo' decidere, i bottoni Approva/Rifiuta **sulla card stessa**.
+
+- `record-field-change-requests.tsx`: filtro `status === 'pending'` (le gestite restano nella browse/
+  dettaglio dedicati) + `<FieldChangeRequestActions>` inline quando `can.approve || can.reject`. Nuova
+  prop **opzionale** `onHandled(request)`: il componente resta generico (AC-054), e' l'host a sapere
+  cosa invalidare.
+- `field-change-request-actions.tsx`: aggiunta prop `className` (default = la barra del dettaglio) —
+  stesso componente montato in due layout, nessuna duplicazione di logica approve/reject.
+- i18n `fieldChangeRequests.section.empty` riscritto ("in attesa"), coerente col filtro.
+
+**Trappola trovata col test, da non rimuovere:** approvare dal pannello scrive `source_id` lato server,
+ma il refetch **non basta**. `useEntityDetail` tiene `isLoading` su durante il refetch, quindi in teoria
+il body si rimonta e il form si ricostruisce — nella pratica, quando la fetch risolve dentro lo stesso
+batch React, il rimontaggio non avviene, il form conserva la Fonte pre-approvazione e
+`buildRequestWorkPayload` (che fa il diff **contro il panel aggiornato**) la rispedisce al salvataggio
+successivo, annullando l'approvazione. Per questo `RequestWorkPanelBody.handleChangeRequestHandled`
+invalida `requestManagementKeys.panel(id)` **e** fa `form.setValue(SOURCE_FIELD, ...)`. Regressione
+bloccata da `request-work-panel-submit.test.tsx` ("does not send back the pre-approval Fonte"): senza il
+`setValue` il payload contiene `source_id: 30`.
+
+Test: `record-field-change-requests.test.tsx` (+3: solo pending, approve dalla card con `onHandled`,
+reject), `request-work-panel-submit.test.tsx` (+1). Frontend **3512/3512**, `tsc -b --force` EXIT=0,
+ESLint pulito. Backend non toccato in questo giro.
+
+## AZIONE DI RIGA `view` SULLA GRIGLIA RICHIESTE DI MODIFICA (2026-08-04) — VERDE, NON COMMITTATO
+
+Segnalazione utente: dalla pagina `/field-change-requests` non si arrivava ad approvare nulla. Causa
+reale: `FieldChangeRequestsTableDefinition::actions()`/`actionsFor()` tornavano array vuoti e l'adapter
+frontend aveva un `handleRowAction` no-op → **la griglia non aveva alcun ingresso al dettaglio**, unica
+superficie che porta i bottoni Approva/Rifiuta (AC-047). L'unico ingresso cablato era il link della
+campanella (`FieldChangeRequestedNotification.php:78`).
+
+**Fix (nessuna semantica nuova, solo l'ingresso mancante):**
+- `FieldChangeRequestColumnCatalog::actions()` (nuovo) espone **una sola** azione `view`
+  (`type: link`, permesso `field-change-requests.view`). Nessuna azione mutante: la richiesta resta
+  immutabile una volta gestita (D-4) e approve/reject passano solo dai loro endpoint.
+- `FieldChangeRequestsTableDefinition::actionsFor()` torna `['view']` via
+  `Gate::forUser($actor)->allows('view', $row)` — copre anche il richiedente che legge la PROPRIA
+  richiesta senza il permesso (AC-039).
+- `field-change-requests-table.tsx` instrada `view` su `useModuleOpener(...).openView(row)`: con
+  `defaultMode: OPEN_MODE_PAGE` naviga a `/field-change-requests/:id`, lo stesso target della campanella.
+
+**Da sapere se si toccano i permessi:** il catalogo azioni e' filtrato da `resolveActions()` sul
+permesso `field-change-requests.view`, mentre la visibilita' per-riga viene dalla Policy. Un ruolo con
+`viewAny` **ma senza** `.view` vedrebbe la griglia con zero azioni anche sulle proprie righe. Il
+Supervisore ha entrambi; il Commerciale non ha `viewAny` e non apre affatto la pagina (voce sopra).
+
+Test: `FieldChangeRequestsTableTest` +3 casi (catalogo per chi ha/non ha `.view`, `actions: ['view']`
+sulla riga, `[]` sulla riga altrui per chi non ha `.view`), `field-change-requests-table.test.tsx` +1.
+Suite reali eseguite: backend **5177/5178** (1 skip preesistente, `xdebug.mode=off` — con Xdebug attivo
+la suite intera segfaulta, exit 139), frontend **3507/3507**, `tsc -b --force` EXIT=0, Pint/ESLint puliti.
+
+## PAGINA "RICHIESTE DI MODIFICA" SOLO AI SUPERVISORI (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: la pagina `/field-change-requests` (spec 0078) deve vedersi **solo** per il ruolo
+`supervisor`. Modifica di **solo seed**, una riga: `TestUsersSeeder::COMMERCIAL_EXTRA_PERMISSIONS`
+non contiene piu' `field-change-requests.view`. Al Commerciale resta `field-change-requests.create`.
+
+**Perche' bastava togliere `.view`:** la voce di menu e' gated su `field-change-requests.view`
+(`config/navigation/opportunities.php:110`, convenzione `<resource>.view` di tutta la navigazione),
+la pagina dietro su `field-change-requests.viewAny` (`frontend/src/pages/field-change-requests-page.tsx:16`).
+Il Commerciale aveva `.view` **senza** `.viewAny`: vedeva la voce e atterrava sul fallback "forbidden".
+Il Supervisore ha la matrice deny-list e `field-change-requests` non e' fra le risorse negate → conserva
+`.view`/`.viewAny`/`.manage` senza toccare nulla. Il Marketing non li ha mai avuti.
+
+**Cosa NON si rompe (verificato, non dedotto):** il Commerciale continua a rileggere le proprie proposte
+senza `.view` — `FieldChangeRequestController::forRecord()` ripiega sulle righe di cui e' richiedente
+quando manca `viewAny`, e `FieldChangeRequestPolicy::view()` lascia passare il richiedente sul proprio
+record (AC-039). Chi tocchera' di nuovo questa matrice non deve "restituire `.view`" per far funzionare
+la sezione del work panel: non e' mai stato `.view` a reggerla.
+
+**Test.** `TestUsersSeederPermissionsTest`: AC-051 asserisce anche `.view` sul supervisore; due test nuovi
+(pagina concessa al solo supervisore; il commerciale crea una proposta e la rilegge via
+`GET /api/field-change-requests/{id}` e `/for-record`). `TestUsersSeederTest` — **assertion aggiornata
+perche' e' cambiato il requisito, non per far passare il test**: il menu del Commerciale ora e'
+`['/dashboard', '/request-management']`, senza `/field-change-requests`.
+
+**Eseguito:** `tests/Feature/FieldChangeRequests/` + `tests/Feature/Users/TestUsersSeederTest.php`
+102/102; `tests/Feature/Seeding/` + `RequestManagementBulkActionsTest` +
+`RequestManagementCommercialAttributionRestrictionTest` 66/66; Pint pulito. Nessun file frontend toccato.
+
+**Trappola segnalata, non risolta (fuori scope):** menu su `.view` e pagina su `.viewAny` restano due gate
+diversi per la stessa destinazione. Oggi nessun ruolo sta nel mezzo, ma un ruolo futuro con `.view` e
+senza `.viewAny` rivedrebbe il link verso lo schermo "forbidden".
+
+## RICHIESTE DI MODIFICA CAMPO (GENERICHE) + FONTE — spec 0078 (2026-08-03) — VERDE, NON COMMITTATO
+
+Sistema generico di **change request con approvazione**: chi non ha il permesso di scrivere un campo
+protetto non lo modifica, ma propone una richiesta che un gestore approva (valore applicato) o rifiuta.
+Primo e unico caso cablato in produzione: `source_id` (Fonte) di Gestione Richieste.
+**54 AC verdi, verificati uno per uno dal verifier.** Suite backend 5166/5167 (1 skip preesistente),
+frontend 3501/3501, `tsc -b --force` EXIT=0, Pint pulito.
+
+**Il perno, da capire prima di toccare qualunque cosa:** una richiesta si indirizza con la coppia
+`(resource, field)`, e quello spazio di nomi **coincide gia'** fra `config/authorization.php`,
+`config/tables.php`, `role_field_permissions.field` e i permessi `{resource}.{ability}`. Tutto il resto
+e' riuso, non codice nuovo.
+
+**Perche' NON si e' usata la matrice `role_field_permissions` (non riaprire):** `source_id` e'
+`mandatory: true` (`RequestManagementAuthorization.php:72`) e i campi mandatory **bypassano l'intersect**
+con la matrice (`AbstractResourceAuthorization.php:85-87`). La matrice non puo' quindi rendere la Fonte
+readonly. La semantica di `mandatory` (spec 0008 D5) **non e' stata toccata**: si e' introdotto un
+permesso dedicato derivato da config.
+
+**Proteggere un altro campo di un altro modulo = UNA VOCE in `config/field-change-requests.php`, zero
+codice.** Questo non e' un'aspirazione: e' dimostrato da `FieldChangeRequestReusabilityTest` (AC-054),
+che protegge `payment-methods.is_active` con un override di config runtime e completa create→approve
+sugli endpoint reali senza toccare una sola classe di dominio. Chi aggiunge un campo protetto parte da li'.
+
+**Il restringimento NON tocca `AbstractResourceAuthorization` ne' le 37 classi concrete** (36 hanno un
+costruttore esplicito: cambiare la firma del padre avrebbe un blast radius inaccettabile). Si usa il
+DECORATOR gia' presente nello stesso punto: `AuthorizationRegistry::resolve()` avvolge in
+`ProtectedFieldAwareAuthorization`. **Ordine vincolante: PRIMA di `CustomFieldAwareAuthorization`**,
+perche' `MetaController::fieldDescriptors()` fa `instanceof CustomFieldAwareAuthorization`; invertendolo,
+`request-management` perderebbe in silenzio i custom field dal payload. Verificato che nessun consumatore
+bypassi il registry.
+
+**L'applicazione del valore approvato riusa `TableCellUpdateService::update()` agendo COME
+L'APPROVATORE** (D-7): allow-list, permessi per campo, validazione per tipo e persistenza sono quelli
+esistenti. Conseguenza voluta e testata: approvare richiede `{resource}.update` **+** il permesso del
+campo protetto, oltre a `field-change-requests.manage` (AC-033 → 403). Nessun motore di scrittura
+polimorfico nuovo: non introdurne.
+
+**Unicita' della pending, D-5:** colonna `pending_key` string nullable UNIQUE, valorizzata
+`"{subject_type}:{subject_id}:{field}"` finche' `pending` e **azzerata a NULL** quando la richiesta e'
+gestita. Un partial index `WHERE status='pending'` non e' portabile MySQL/SQLite; entrambi ammettono N
+NULL su UNIQUE. Chi gestisce una richiesta senza azzerare `pending_key` rompe AC-021.
+
+**Conflitto in approvazione, D-4:** se il valore attuale non coincide piu' con lo snapshot
+`current_value` → **409**, nessuna scrittura, la richiesta **resta pending**. Lo snapshot
+(`current_value`/`current_label`/`requested_label`) e' calcolato SEMPRE dal server: il client invia solo
+`requested_value` e `reason` (D-6, AC-015 lo verifica inviando campi malevoli).
+
+**Tre canali di scrittura coperti; la creazione NO.** PATCH pannello → 422; cella inline → 403; form di
+creazione → **libero** (AC-010): `StoreRequestRequest` non applica i field permission per scelta
+documentata, e "una volta assegnata" significa dalla creazione in poi. Non irrigidirlo senza rileggere AC-010.
+
+**La cella della griglia resta `editable: true` anche per chi non ha il permesso** (D-2): serve perche'
+il client intercetti il commit e apra il dialog. Il server resta l'autorita' (403 se qualcuno scrive
+davvero). La colonna porta `change_request: {resource, field}` **solo** per chi non ha il permesso.
+
+Permessi: `request-management.updateSource` (Modificare la Fonte, generato da config via
+`permissions:sync`), `field-change-requests.viewAny` (Visualizzare), `.manage` (Gestire, unico che
+approva/rifiuta), piu' `.view`/`.create`/`.export`/`.viewActivity`. `FieldChangeRequestPolicy::abilities()`
+**restringe** l'elenco di `BasePolicy`: niente `update`/`delete`/`import` (una richiesta gestita e' immutabile).
+Seed in **`TestUsersSeeder`** (non `QualificaTemplateSeeder`): al commerciale `updateSource` e' negato via
+`COMMERCIAL_DENIED_MODULE_ABILITIES`, e ha `field-change-requests.create`/`.view`; il supervisor eredita
+tutto dalla deny-list, verificato.
+
+**Nota operativa:** `config/navigation.php` ha superato il limite hard di 500 righe ed e' stato splittato
+in `config/navigation/*.php` (8 file, uno per gruppo di primo livello) richiamati dal principale.
+Contenuto invariato, `NavigationService` legge `config('navigation.items')` come prima.
+
+**Bug reale trovato e risolto, da ricordare:** `JsonResource` dichiara una property pubblica `$resource`
+che collide con la colonna `resource` del model — dentro la Resource va letta via variabile locale
+(`$model = $this->resource;` poi `$model->resource`), altrimenti si ottiene il wrapper.
+
+## COMMERCIALE: SEDE OPERATIVA + OPERATORE TOLTI DAL RUOLO (2026-08-03) — VERDE, NON COMMITTATO
+
+Direttiva utente: nel seed di Qualifica, il ruolo **Commerciale non vede ne' modifica** i campi
+"Sede operativa" (`operational_site_id`) e "Operatore" GA2 (`operator_id`) di una richiesta;
+**Supervisore e Marketing restano invariati** (vedono e modificano — scelta esplicita dell'utente).
+Il seed dei ruoli NON e' `QualificaTemplateSeeder` (che contiene solo i custom field): e'
+**`TestUsersSeeder`**, step 3 di `QualificaProductionDataSeeder`.
+
+Il permesso per-campo e' un layer distinto dai permessi di risorsa: righe `role_field_permissions`
+(spec 0006), che possono solo **restringere** il ceiling di codice
+(`AbstractResourceAuthorization::fieldPermissions()`). Da sole pero' non bastano — i canali che non
+risolvono field permission vanno chiusi con permessi propri. Tre leve, tutte nel seed:
+
+1. `TestUsersSeeder::COMMERCIAL_HIDDEN_FIELDS` — la matrice (`visible:false`) su
+   `request-management.operational_site_id` / `operator_id`, sincronizzata da `syncHiddenFields()`
+   (full-replace come `syncPermissions`, idempotente). Chiude: envelope del work panel (`MetaField`
+   non renderizza), PATCH del panel (422 via `EnforcesFieldPermissions`), edit inline in griglia
+   (403 da `TableCellUpdateService`).
+2. `assignOperator` aggiunto a `COMMERCIAL_DENIED_MODULE_ABILITIES` — chiude il campo Operatore del
+   form di creazione e il bulk `POST /request-management/assign-operators`.
+3. `operational-sites` **rimosso** da `COMMERCIAL_SELECT_ONLY_RESOURCES` — e' il permesso da cui
+   pende il ceiling di `operational_site_id`, quindi lo blocca anche in creazione (la creazione non
+   risolve field permission: lo dice il docblock di `StoreRequestRequest`). `users.viewAny` resta.
+
+Codice a supporto (necessario, non opzionale): `RequestManagementController::store()` ora rifiuta
+403 anche un `operational_site_id` da chi non ha `operational-sites.viewAny` (gemello della guardia
+gia' presente su `operator_id`); `assignOperators()` richiede `assignOperator` oltre a `update`.
+Frontend: nel form di creazione la Sede e' dietro `can('operational-sites.viewAny')` (gemello del
+gate gia' presente sull'Operatore) e l'auto-fill Operatore->Sede non scatta per chi non puo'
+sceglierla; in griglia `canAssignOperators` richiede entrambe le ability.
+
+**Bug latente trovato e corretto** (root cause, non cerotto): `EnforcesFieldPermissions::readTopLevel()`
+usava `method_exists()` per distinguere una relazione — ma `Opportunity::operatorId()` e' un
+**accessor `Attribute`** con lo stesso nome camelCase del campo, protected: invocarlo dava
+`BadMethodCallException` -> 500. Non era mai emerso perche' `operator_id` era sempre editable (il
+guard esce prima). Ora usa `Model::isRelation()`, che esclude gli attribute mutator. Stessa
+correzione in `readNestedPath()`.
+
+**Residuo noto, NON chiuso** (fuori scope, serve decisione): le **colonne** "Sede operativa" e
+"Operatore" della griglia restano **leggibili** dal Commerciale. `ResolvesColumnConfig` deriva
+`visible` dal layout utente (ADR-0004), non dalle field permission, e `RequestColumnCatalog::columns()`
+non riceve l'attore — nasconderle per ruolo richiede un meccanismo nuovo, non una riga di seed.
+Le celle non sono comunque editabili e ogni scrittura e' rifiutata.
+
+**Verifica**: Pest 5167 test, 5166 passed / 1 skipped, EXIT=0 (`XDEBUG_MODE=off`); Pint pulito;
+Vitest 3501 passed su 490 file; `tsc -b --force` EXIT=0; ESLint pulito su
+`src/features/request-management`. Nuovi test:
+`tests/Feature/RequestManagement/RequestManagementCommercialAttributionRestrictionTest.php` (6),
+`request-create-attribution-restricted.test.tsx` (3), piu' il gate bulk in
+`request-management-table.test.tsx`. Aggiornati (requisito cambiato, non test piegati):
+`RequestManagementBulkActionsTest` e `RequestManagementCreateTest` ora concedono le ability che il
+nuovo gate richiede, `TestUsersSeederTest` asserisce i permessi revocati.
 
 ## RICHIESTE: LINEE DI PRODOTTO + PRODOTTI DI INTERESSE IN TESTA (2026-08-03) — VERDE, NON COMMITTATO
 

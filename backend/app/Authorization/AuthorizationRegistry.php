@@ -7,6 +7,7 @@ namespace App\Authorization;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
 use App\CustomFields\FieldTypeRegistry;
+use App\FieldChangeRequests\ProtectedFieldRegistry;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -41,6 +42,18 @@ class AuthorizationRegistry
         /** @var ResourceAuthorization $authorization */
         $authorization = $this->container->make($class);
 
+        // Protected fields wrap FIRST (inner), custom fields SECOND (outer):
+        // MetaController::fieldDescriptors() type-checks
+        // `instanceof CustomFieldAwareAuthorization` to decide whether to
+        // include customFieldDescriptors() — that check must keep seeing
+        // CustomFieldAwareAuthorization as the OUTERMOST layer, so a
+        // protected-fields resource that is ALSO custom-fieldable (e.g.
+        // request-management) does not silently lose its custom-field
+        // descriptors. The restriction itself is order-independent (the
+        // protected-fields registry only ever names native FieldDefinition
+        // keys, never a `custom.*` one), so this ordering costs nothing.
+        $authorization = $this->decorateWithProtectedFields($resource, $authorization);
+
         return $this->decorateWithCustomFields($resource, $authorization);
     }
 
@@ -70,6 +83,24 @@ class AuthorizationRegistry
             $this->container->make(FieldPermissionRepository::class),
             $resource,
         );
+    }
+
+    /**
+     * Restrict $authorization's protected fields (spec 0078, D-1) to
+     * visible+readonly for an actor lacking their dedicated permission — zero
+     * per-module code, see ProtectedFieldAwareAuthorization. A resource with
+     * no protected fields declared in config/field-change-requests.php skips
+     * the wrap entirely (AC-005's no-regression guarantee).
+     */
+    private function decorateWithProtectedFields(string $resource, ResourceAuthorization $authorization): ResourceAuthorization
+    {
+        $registry = $this->container->make(ProtectedFieldRegistry::class);
+
+        if ($registry->forResource($resource) === []) {
+            return $authorization;
+        }
+
+        return new ProtectedFieldAwareAuthorization($authorization, $registry);
     }
 
     /**

@@ -10,6 +10,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { CellNoteDialog } from '@/components/data-table/cell-note-dialog'
 import { updateTableCell } from '@/features/table/api'
 import type { TableColumn, TableRow } from '@/features/table/types'
+import { useRequestFieldChange } from '@/features/field-change-requests/use-field-change-request-dialog'
 
 /** One {funzione aziendale, categoria prodotto} pair as a `product_lines` cell PATCH sends it (spec 0075). */
 type CellPatchPair = Record<string, number>
@@ -140,6 +141,22 @@ interface PendingNoteEdit {
 }
 
 /**
+ * A cell's own display label — the relation projection's `name` when the
+ * value carries one, the scalar itself otherwise. Feeds a change-request
+ * proposal's `currentLabel`/`requestedLabel` (spec 0078 E4), distinct from
+ * `resolveCellPatchValue`'s wire id.
+ */
+function resolveCellDisplayLabel(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+  if (typeof value === 'object' && 'name' in value) {
+    return String((value as { name: unknown }).name)
+  }
+  return String(value)
+}
+
+/**
  * Wires AG Grid's `onCellValueChanged` to the generic per-cell PATCH endpoint
  * (spec 0053, extended by 0054 D-5): guards a no-op edit, swaps the row for
  * the server's re-mapped copy on success (`node.setData`), and reverts to the
@@ -156,6 +173,7 @@ interface PendingNoteEdit {
  */
 export function useTableCellEdit(domain: string, columns: TableColumn[]) {
   const { t } = useTranslation()
+  const { requestFieldChange } = useRequestFieldChange()
   const [pendingNote, setPendingNote] = useState<PendingNoteEdit | null>(null)
 
   // Only `mutate` is read, and it is referentially stable across renders —
@@ -189,7 +207,10 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
   // Enter without a change) must not fire a network call (AC-021 / 0054
   // AC-018's "annulla" case for a relation pick, which never touches this
   // path at all since a cancelled relation editor never calls onValueChange).
-  // Step 2: a value that requires a note holds the PATCH until the dialog
+  // Step 2: a column marked `change_request` (spec 0078 D-2) never PATCHes at
+  // all — the cell reverts and the commit opens a proposal instead
+  // (AC-045/046).
+  // Step 3: a value that requires a note holds the PATCH until the dialog
   // resolves it (D-5); everything else PATCHes immediately, unchanged from
   // 0053.
   const handleCellValueChanged = useCallback(
@@ -202,6 +223,21 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
       const columnId = event.column.getColId()
       const revertedData: TableRow = { ...event.data, [columnId]: event.oldValue }
       const patchValue = resolveCellPatchValue(event.newValue)
+      const column = columns.find((candidate) => candidate.id === columnId)
+
+      if (column?.change_request) {
+        event.node.setData(revertedData)
+        requestFieldChange({
+          resource: column.change_request.resource,
+          subjectId: rowId,
+          field: column.change_request.field,
+          requestedValue: patchValue,
+          currentLabel: resolveCellDisplayLabel(event.oldValue),
+          requestedLabel: resolveCellDisplayLabel(event.newValue),
+          fieldLabelKey: column.label,
+        })
+        return
+      }
 
       if (resolveRequiresNote(columns, columnId, patchValue)) {
         setPendingNote({ event, patchValue, revertedData })
@@ -210,7 +246,7 @@ export function useTableCellEdit(domain: string, columns: TableColumn[]) {
 
       runPatch({ rowId, column: columnId, value: patchValue }, event.node, revertedData)
     },
-    [columns, runPatch],
+    [columns, requestFieldChange, runPatch],
   )
 
   const handleConfirmNote = useCallback(

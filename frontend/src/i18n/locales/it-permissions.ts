@@ -35,6 +35,14 @@ export const permissions = {
     // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).
     assignOperator: 'Assegna operatore',
     impersonate: 'Impersona',
+    // Ability non canoniche introdotte dalla spec 0078: `manage` governa
+    // l'approvazione/rifiuto di una richiesta di modifica campo
+    // (FieldChangeRequestPolicy); `updateSource` governa la scrittura
+    // diretta del campo protetto "Fonte" di Gestione Richieste su
+    // ciascuno dei suoi tre canali di scrittura (RequestManagementPolicy,
+    // generato come `request-management.updateSource`).
+    manage: 'Gestire',
+    updateSource: 'Modificare la Fonte',
   },
   resources: {
     users: 'Utenti',
@@ -57,6 +65,7 @@ export const permissions = {
     contracts: 'Contratti',
     'custom-fields': 'Campi personalizzati',
     'document-layouts': 'Layout',
+    'field-change-requests': 'Richieste di modifica',
     leads: 'Lead',
     'operational-sites': 'Sedi operative',
     opportunities: 'Opportunità',

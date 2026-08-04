@@ -188,7 +188,13 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // HasNotes): roots AND replies together (the whole discussion),
             // soft-deleted notes excluded automatically by Note's own
             // SoftDeletes global scope — a single aggregated query, no N+1.
-            ->withCount('notes');
+            ->withCount('notes')
+            // Spec 0078, AC-037: the `pending_change_requests` badge column
+            // counts only the STILL-OPEN requests on the record (D-4/D-5) —
+            // `pendingFieldChangeRequests` (HasFieldChangeRequests) already
+            // filters to `status = pending`, so an approved/rejected request
+            // never inflates the count. A plain withCount, no raw subquery.
+            ->withCount('pendingFieldChangeRequests');
 
         // D-3 scoping: only the opportunities where the actor is the GA2
         // "Operatore" (pivot position 2), unless they hold the viewAll ability.

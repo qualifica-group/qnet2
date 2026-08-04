@@ -26,8 +26,14 @@ import type { RequestWorkPanelWithPermissions } from '@/features/request-managem
  * `request-management-table-documents.test.tsx`.
  */
 
+const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({
+    can: (permission: string) => canMock(permission),
+    hasRole: () => false,
+    roles: [],
+    isLoading: false,
+  }),
 }))
 
 let requestManagementOpenMode: OpenMode = 'page'
@@ -167,6 +173,8 @@ beforeEach(() => {
   navigateMock.mockReset()
   capturedOnAction = null
   capturedBulkActions = null
+  canMock.mockReset()
+  canMock.mockReturnValue(true)
   capturedScope = undefined
   deleteRequestMock.mockReset()
   deleteRequestMock.mockResolvedValue(undefined)
@@ -235,6 +243,16 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
     fireEvent.click(screen.getByText('trigger-bulk-assign'))
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Assign operators')
+  })
+
+  // User directive 2026-08-03: the popup writes the Sede AND the Operatore, so
+  // it takes `assignOperator` on top of `update` — the same pair the endpoint
+  // now gates on, for a role restricted on those two fields.
+  it('withholds the bulk action from an actor without request-management.assignOperator', () => {
+    canMock.mockImplementation((permission) => permission !== 'request-management.assignOperator')
+    renderTable()
+
+    expect(capturedBulkActions).toBeNull()
   })
 })
 

@@ -10,6 +10,8 @@ import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
+import { InterceptedRelationSelectField } from '@/features/request-management/intercepted-relation-select-field'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestRelationRef } from '@/features/request-management/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
@@ -20,6 +22,8 @@ interface RequestAttributionSectionProps {
    * writes the other field through `setValue`.
    */
   form: UseFormReturn<RequestWorkFormValues>
+  /** The panel's own id: the subject of a Fonte field-change-request proposal (spec 0078). */
+  requestId: number
   /** The panel's hydrated `{id, name}` projections, for the pickers' labels. */
   source: RequestRelationRef | null
   reporter: RequestRelationRef | null
@@ -49,6 +53,7 @@ interface RequestAttributionSectionProps {
  */
 export function RequestAttributionSection({
   form,
+  requestId,
   source,
   reporter,
   operator,
@@ -119,7 +124,7 @@ export function RequestAttributionSection({
       })}
     >
       <div className="grid gap-3 @2xl:grid-cols-2">
-        <RelationSelectField
+        <InterceptedRelationSelectField
           control={control}
           name="source_id"
           metaKey="source_id"
@@ -129,6 +134,10 @@ export function RequestAttributionSection({
             defaultValue: 'Search a source',
           })}
           selected={source}
+          changeRequestSubjectId={requestId}
+          changeRequestResource={REQUEST_MANAGEMENT_DOMAIN}
+          changeRequestField="source_id"
+          changeRequestFieldLabelKey="requestManagement.columns.source"
           {...selectLabels}
         />
 

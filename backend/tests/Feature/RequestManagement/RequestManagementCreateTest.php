@@ -319,7 +319,7 @@ it('creates with operator_id -> 201, the user lands on the GA2 pivot slot', func
     ]);
 });
 
-it('rejects operator_id pointing at ANOTHER user from an actor without request-management.assignOperator -> 403, no row created', function () {
+it('rejects operator_id from an actor without request-management.assignOperator -> 403, no row created', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     $operator = User::factory()->create();
@@ -335,12 +335,10 @@ it('rejects operator_id pointing at ANOTHER user from an actor without request-m
     expect(Opportunity::count())->toBe(0);
 });
 
-// User directive 2026-08-03: assigning ONESELF is not a supervisory act, and
-// it is the default — the create form does not even render the field for an
-// actor without `assignOperator` (the Commercial role), and a request with no
-// operator would fall outside its own creator's D-3 scope.
-
-it('defaults the GA2 operator to the creator when the actor may not assign one', function () {
+// An ABSENT operator_id is not "no operator": it defaults to the creating
+// actor (user directive 2026-08-04) — see
+// RequestManagementCreateActorDefaultsTest for the whole default block.
+it('falls back to the creating actor as GA2 when operator_id is absent', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     Sanctum::actingAs($actor);
@@ -353,51 +351,21 @@ it('defaults the GA2 operator to the creator when the actor may not assign one',
 
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
     expect($opportunity->operatorManager()?->id)->toBe($actor->id);
-    $this->assertDatabaseHas('opportunity_user', [
-        'opportunity_id' => $opportunity->id,
-        'user_id' => $actor->id,
-        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
-    ]);
-});
-
-it('accepts an actor without assignOperator submitting their OWN id as operator_id', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-        'operator_id' => $actor->id,
-    ])->assertCreated();
-
-    expect(Opportunity::findOrFail($response->json('data.id'))->operatorManager()?->id)->toBe($actor->id);
-});
-
-it('creates without any GA2 slot when an actor holding assignOperator omits operator_id', function () {
-    $actor = requestManagementCreatorWith(['create', 'assignOperator']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-    ])->assertCreated();
-
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager())->toBeNull();
-    $this->assertDatabaseMissing('opportunity_user', ['opportunity_id' => $opportunity->id]);
 });
 
 // ---------------------------------------------------------------------------
 // Sede operativa at creation (user directive 2026-07-31): the same field the
 // work panel edits, and what scopes the operator list the form offers.
+//
+// Submitting it needs `operational-sites.viewAny` ON TOP of `create` (user
+// directive 2026-08-03), the same ability the field's own ceiling hangs off in
+// RequestManagementAuthorization — creation resolves no field permission, so
+// the restriction is enforced in the controller instead.
 // ---------------------------------------------------------------------------
 
 it('creates with operational_site_id -> 201, the site is persisted on the request', function () {
     $actor = requestManagementCreatorWith(['create']);
+    $actor->givePermissionTo(Permission::findOrCreate('operational-sites.viewAny'));
     $registry = Registry::factory()->create();
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
@@ -410,6 +378,22 @@ it('creates with operational_site_id -> 201, the site is persisted on the reques
     ])->assertCreated();
 
     expect(Opportunity::findOrFail($response->json('data.id'))->operational_site_id)->toBe($site->id);
+});
+
+it('rejects operational_site_id from an actor without operational-sites.viewAny -> 403, no row created', function () {
+    $actor = requestManagementCreatorWith(['create']);
+    $registry = Registry::factory()->create();
+    $site = OperationalSite::factory()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'product_lines' => oneProductLine(),
+        'source_id' => aSourceId(),
+        'operational_site_id' => $site->id,
+    ])->assertForbidden();
+
+    expect(Opportunity::count())->toBe(0);
 });
 
 it('rejects an operational_site_id that does not exist -> 422', function () {
@@ -427,7 +411,9 @@ it('rejects an operational_site_id that does not exist -> 422', function () {
     expect(Opportunity::count())->toBe(0);
 });
 
-it('creates without a site when operational_site_id is absent', function () {
+// Absent falls back to the actor's OWN Sede (user directive 2026-08-04); this
+// actor has no employment profile, so there is none to fall back to.
+it('creates without a site when operational_site_id is absent and the actor has no Sede', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     Sanctum::actingAs($actor);

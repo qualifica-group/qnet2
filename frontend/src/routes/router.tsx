@@ -58,6 +58,7 @@ const LeadImportHistoryPage = lazy(() => import('@/pages/lead-import-history-pag
 const LeadImportDetailPage = lazy(() => import('@/pages/lead-import-detail-page'))
 const MigrationsPage = lazy(() => import('@/features/migrations/migrations-page'))
 const SettingsPage = lazy(() => import('@/pages/settings-page'))
+const FieldChangeRequestsPage = lazy(() => import('@/pages/field-change-requests-page'))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 export const router = createBrowserRouter([
@@ -284,6 +285,20 @@ export const router = createBrowserRouter([
           {
             path: 'request-management/:id',
             element: <RequestManagementDetailPage />,
+          },
+          // A field change request is never created/edited through a route
+          // (spec 0078, D-2: the generic proposal dialog is the only entry
+          // point), so `field-change-requests` sets `generateRoutes: false`
+          // on its `moduleScreen`, same as `contracts` above: only the list
+          // and the read-only `:id` detail (reached from the notification
+          // bell's `action_url`, F-8) are wired here by hand.
+          {
+            path: 'field-change-requests',
+            element: <FieldChangeRequestsPage />,
+          },
+          {
+            path: 'field-change-requests/:id',
+            element: <ModuleDetailPage domain="field-change-requests" />,
           },
           // Deep-link routes (`new`/`:id`/`:id/edit`) of every registered
           // module — projects/campaigns/leads/opportunities in Wave 0 — are

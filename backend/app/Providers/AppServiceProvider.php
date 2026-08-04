@@ -6,6 +6,7 @@ use App\Authorization\FieldPermissionRepository;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
 use App\CustomFields\CustomFieldRequestBag;
+use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Models\Address;
 use App\Models\Attachment;
 use App\Models\Attribute;
@@ -22,6 +23,7 @@ use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\DocumentLayout;
 use App\Models\EmploymentProfile;
+use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -87,6 +89,12 @@ class AppServiceProvider extends ServiceProvider
         // saving/saved observers read it) but reset between requests under
         // Octane/long-running workers.
         $this->app->scoped(CustomFieldRequestBag::class);
+
+        // Singleton, same reasoning as FieldPermissionRepository above: the
+        // protected-fields config (spec 0078) is parsed once per request even
+        // though it is consulted on every field-permission resolution
+        // (ProtectedFieldAwareAuthorization) AND by permissions:sync.
+        $this->app->singleton(ProtectedFieldRegistry::class);
     }
 
     /**
@@ -167,6 +175,9 @@ class AppServiceProvider extends ServiceProvider
             // alias must match config('attachments.attachable_types').
             'contract' => Contract::class,
             'contract_status' => ContractStatus::class,
+            // Spec 0078 (field-change-requests module): FieldChangeRequest
+            // uses LogsModelActivity, same reasoning as document_layout above.
+            'field_change_request' => FieldChangeRequest::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

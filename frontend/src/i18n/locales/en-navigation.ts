@@ -36,6 +36,7 @@ export const navigation = {
   contracts: 'Contracts',
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
+  fieldChangeRequests: 'Change Requests',
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',
   rewardStatuses: 'Reward Statuses',

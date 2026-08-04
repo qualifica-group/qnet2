@@ -24,12 +24,17 @@ uses(RefreshDatabase::class);
 if (! function_exists('attributionActor')) {
     function attributionActor(): User
     {
-        foreach (['viewAny', 'view', 'update'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'updateSource'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
+        // updateSource: source_id became a protected field (spec 0078,
+        // ProtectedFieldAwareAuthorization) — without it the field is forced
+        // readonly, which is orthogonal to what this file tests (the
+        // attribution block's read/write plumbing), so the actor is granted
+        // it here.
         $user = User::factory()->create();
-        $user->givePermissionTo(['request-management.view', 'request-management.update']);
+        $user->givePermissionTo(['request-management.view', 'request-management.update', 'request-management.updateSource']);
 
         return $user;
     }

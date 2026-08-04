@@ -142,11 +142,6 @@ it('leaves the supervisor the operational modules', function () {
             ->and($supervisor->can("{$resource}.view"))->toBeTrue("{$resource}.view")
             ->and($supervisor->can("{$resource}.update"))->toBeTrue("{$resource}.update");
     }
-
-    // The counterpart of the commercial denial (user directive 2026-08-03):
-    // the supervisor keeps choosing the operator freely, so the create form
-    // still renders the "Operatore" field for them.
-    expect($supervisor->can('request-management.assignOperator'))->toBeTrue();
 });
 
 it('restricts the commercial role to request-management plus the selects it reads', function () {
@@ -163,19 +158,25 @@ it('restricts the commercial role to request-management plus the selects it read
         // Nor is seeing the requests of the other commercials: without
         // `viewAll` the module's D-3 scoping applies (see the test below).
         ->and($commercial->can('request-management.viewAll'))->toBeFalse()
-        // Nor is deciding who works a request (user directive 2026-08-03):
-        // without `assignOperator` the create form hides the "Operatore"
-        // field and the endpoint pins the creator as the operator.
+        // Deciding who works a request is supervisory (user directive
+        // 2026-08-03): without it the create form's Operatore control is not
+        // rendered and both write endpoints refuse it.
         ->and($commercial->can('request-management.assignOperator'))->toBeFalse()
         // The module's own permission set only — never opportunities.*.
         ->and($commercial->can('opportunities.viewAny'))->toBeFalse()
         ->and($commercial->can('opportunities.view'))->toBeFalse();
 
-    foreach (['registries', 'sources', 'operational-sites', 'users'] as $resource) {
+    foreach (['registries', 'sources', 'product-categories', 'users'] as $resource) {
         expect($commercial->can("{$resource}.viewAny"))->toBeTrue("{$resource}.viewAny")
             ->and($commercial->can("{$resource}.view"))->toBeFalse("{$resource}.view")
             ->and($commercial->can("{$resource}.create"))->toBeFalse("{$resource}.create");
     }
+
+    // The Sede operativa's own select is closed too (user directive
+    // 2026-08-03): the ceiling of `operational_site_id` hangs off this exact
+    // ability, so revoking it locks the field even where the per-field matrix
+    // cannot reach (creation).
+    expect($commercial->can('operational-sites.viewAny'))->toBeFalse();
 
     // `referents` is the one exception (user directive 2026-07-31): `create`
     // rides along so the "Segnalatore" quick-create "+" of the create form
@@ -342,6 +343,26 @@ it('lets the commercial role create a referent, for the create form quick-create
     $this->getJson('/api/meta/referents')->assertOk();
 });
 
+// The two halves of a product-line row read DIFFERENT channels: the "funzione
+// aziendale" a for-select (ungated, ADR 0011 amended), the "categoria prodotto"
+// the structural tree (gated by ProductCategoryPolicy::viewAny since the user
+// directive 2026-08-03). Without `product-categories.viewAny` the first select
+// answered and the second stayed empty.
+it('lets the commercial role read both channels the product-lines row selects feed on', function () {
+    $this->seed(TestUsersSeeder::class);
+
+    Sanctum::actingAs(User::query()->where('email', 'campania@commerciale.com')->firstOrFail());
+
+    $this->getJson('/api/business-functions/for-select')->assertOk();
+    $this->getJson('/api/product-categories/tree')->assertOk();
+
+    // Read-only: the grant is `viewAny` alone, so writing a category stays 403
+    // and the module stays out of their navigation.
+    $this->postJson('/api/product-categories', ['name' => 'Nuova categoria'])->assertForbidden();
+    expect(visibleRoutes(User::query()->where('email', 'campania@commerciale.com')->firstOrFail()))
+        ->not->toContain('/product-categories');
+});
+
 it('lets the commercial role write a collaborative note on a request', function () {
     $this->seed(TestUsersSeeder::class);
 
@@ -397,6 +418,11 @@ it('leaves the commercial menu with request-management only', function () {
 
     // `/dashboard` carries no permission at all: it is public to every
     // authenticated user by design, so it is the only companion entry.
+    // `/field-change-requests` (spec 0078) is NOT one: user directive
+    // 2026-08-04 made that page supervisor-only, so the seed dropped
+    // `field-change-requests.view` — the very permission the navigation entry
+    // is gated on (config/navigation/opportunities.php). The role keeps
+    // `.create`, which carries no menu entry.
     expect($routes)->toBe(['/dashboard', '/request-management']);
 });
 

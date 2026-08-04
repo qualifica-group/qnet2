@@ -35,6 +35,13 @@ export const permissions = {
     // Operator at creation (user directive 2026-07-29).
     assignOperator: 'Assign operator',
     impersonate: 'Impersonate',
+    // Non-canonical abilities introduced by spec 0078: `manage` gates
+    // approve/reject on a field-change-request (FieldChangeRequestPolicy);
+    // `updateSource` gates writing request-management's protected "Fonte"
+    // field directly on any of its three write channels
+    // (RequestManagementPolicy, generated as `request-management.updateSource`).
+    manage: 'Manage',
+    updateSource: 'Edit the Source',
   },
   resources: {
     users: 'Users',
@@ -57,6 +64,7 @@ export const permissions = {
     contracts: 'Contracts',
     'custom-fields': 'Custom Fields',
     'document-layouts': 'Layouts',
+    'field-change-requests': 'Change Requests',
     leads: 'Leads',
     'operational-sites': 'Operational Sites',
     opportunities: 'Opportunities',

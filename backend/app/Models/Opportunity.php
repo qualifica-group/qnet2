@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\OpportunityFactory;
@@ -63,7 +64,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Opportunity extends BaseModel
 {
     /** @use HasFactory<OpportunityFactory> */
-    use HasAttachments, HasFactory, HasNotes, LogsModelActivity;
+    use HasAttachments, HasFactory, HasFieldChangeRequests, HasNotes, LogsModelActivity;
 
     /**
      * @return array<string, string>

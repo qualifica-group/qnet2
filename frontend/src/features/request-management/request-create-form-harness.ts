@@ -1,6 +1,9 @@
 import { createElement, type ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context'
+import { authKeys } from '@/features/auth/query-keys'
+import type { User } from '@/features/auth/types'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 import type { ApplicableAttribute, RequestFormContext } from '@/features/request-management/types'
@@ -62,15 +65,62 @@ export function anApplicableAttribute(code: string, isRequired = false): Applica
   }
 }
 
+/** The connected actor every case runs as, and the Sede on its employment profile. */
+export const TEST_ACTOR_ID = 42
+export const TEST_ACTOR_SITE_ID = 9
+
+const TEST_ACTOR: User = {
+  id: TEST_ACTOR_ID,
+  name: 'Test Actor',
+  email: 'actor@example.test',
+  locale: 'en',
+  roles: [],
+  avatar_url: null,
+  employment: { operational_site_id: TEST_ACTOR_SITE_ID },
+  created_at: null,
+  module_open_preferences: { mode: 'custom', overrides: {} },
+  ui_scale: 40,
+  date_format: 'dmy',
+  time_format: '24h',
+}
+
+const NOT_CALLED = async () => {}
+
 /**
  * Renders the hook with its own QueryClient (frontend.md §10: one PER TEST,
  * never shared — a shared cache would leak the resolved form-context between
- * cases).
+ * cases) and its own AuthContext: the form reads the connected actor to default
+ * the Operatore / Sede operativa (user directive 2026-08-04).
+ *
+ * `permissions` are the abilities granted to that actor, seeded straight into
+ * the cache `useAbilities` reads (no network double needed). Empty by default,
+ * so a case that is not about the two supervisory fields sees them untouched —
+ * which is exactly what a plain operator gets.
  */
-export function renderCreateForm(onSuccess: () => void) {
+export function renderCreateForm(onSuccess: () => void, permissions: string[] = []) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(authKeys.abilities, {
+    roles: [],
+    permissions: Object.fromEntries(permissions.map((permission) => [permission, true])),
+  })
+
+  const auth: AuthContextValue = {
+    user: TEST_ACTOR,
+    isAuthenticated: true,
+    isInitializing: false,
+    login: NOT_CALLED,
+    logout: NOT_CALLED,
+    impersonator: null,
+    impersonate: NOT_CALLED,
+    stopImpersonation: NOT_CALLED,
+  }
+
   const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client: queryClient }, children)
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(AuthContext.Provider, { value: auth }, children),
+    )
 
   return renderHook(() => useRequestCreateForm({ onSuccess }), { wrapper })
 }

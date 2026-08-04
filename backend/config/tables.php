@@ -10,6 +10,7 @@ use App\Tables\ContractsTableDefinition;
 use App\Tables\ContractStatusesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
+use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
@@ -77,6 +78,9 @@ return [
         'attributes' => AttributesTableDefinition::class,
         'custom-fields' => CustomFieldsTableDefinition::class,
         'document-layouts' => DocumentLayoutsTableDefinition::class,
+        // spec 0078: the dedicated browse view over every proposed field
+        // change (any resource/field/status).
+        'field-change-requests' => FieldChangeRequestsTableDefinition::class,
         'product-categories' => ProductCategoriesTableDefinition::class,
         'products' => ProductsTableDefinition::class,
         'sources' => SourcesTableDefinition::class,

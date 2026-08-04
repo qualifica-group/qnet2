@@ -87,6 +87,32 @@ describe('useResourcePermissions', () => {
     expect(result.current.field('email').editable).toBe(true)
     expect(result.current.canAction('anything')).toBe(true)
     expect(result.current.canResource('delete')).toBe(true)
+    expect(result.current.canRequestChange('anything')).toBe(false)
+  })
+
+  // Spec 0078: unlike field/canAction/canResource, an absent block must NOT
+  // default to permissive — proposing a change is never assumed.
+  describe('canRequestChange', () => {
+    it('is true for a field listed in change_requestable_fields', () => {
+      const { result } = renderHook(() => useResourcePermissions(), {
+        wrapper: wrapWith(permissions({ change_requestable_fields: ['source_id'] })),
+      })
+      expect(result.current.canRequestChange('source_id')).toBe(true)
+    })
+
+    it('is false for a field not listed in change_requestable_fields', () => {
+      const { result } = renderHook(() => useResourcePermissions(), {
+        wrapper: wrapWith(permissions({ change_requestable_fields: ['source_id'] })),
+      })
+      expect(result.current.canRequestChange('operator_id')).toBe(false)
+    })
+
+    it('is false when the block is missing entirely', () => {
+      const { result } = renderHook(() => useResourcePermissions(), {
+        wrapper: wrapWith(permissions()),
+      })
+      expect(result.current.canRequestChange('source_id')).toBe(false)
+    })
   })
 
   it('reads canAction/canResource from the provided metadata', () => {

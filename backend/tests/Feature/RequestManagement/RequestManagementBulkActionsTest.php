@@ -25,7 +25,7 @@ if (! function_exists('bulkActionsActor')) {
      */
     function bulkActionsActor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'delete', 'viewAll'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'delete', 'viewAll', 'assignOperator'] as $ability) {
             Permission::findOrCreate("request-management.{$ability}");
         }
 
@@ -184,7 +184,7 @@ it('DELETE /request-management/{id} is 403 on a request the actor does not manag
 // ---------------------------------------------------------------------------
 
 it('mode=single assigns the Sede and the GA2 operator to every selected request', function () {
-    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
     $first = Opportunity::factory()->create();
@@ -204,7 +204,7 @@ it('mode=single assigns the Sede and the GA2 operator to every selected request'
 });
 
 it('the assignment replaces the previous GA2 without touching the other manager slots', function () {
-    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $nextOperator = bulkActionsOperatorAtSite($site);
     $accountManager = User::factory()->create();
@@ -225,7 +225,7 @@ it('the assignment replaces the previous GA2 without touching the other manager 
 });
 
 it('mode=balanced spreads the selected requests across the Sede operators', function () {
-    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $firstOperator = bulkActionsOperatorAtSite($site);
     $secondOperator = bulkActionsOperatorAtSite($site);
@@ -246,7 +246,7 @@ it('mode=balanced spreads the selected requests across the Sede operators', func
 });
 
 it('mode=balanced is 422 when the chosen Sede has no operators', function () {
-    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $request = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
@@ -261,7 +261,7 @@ it('mode=balanced is 422 when the chosen Sede has no operators', function () {
 });
 
 it('the assignment skips a request outside the actor GA2 scope (D-3)', function () {
-    $actor = bulkActionsActor(['viewAny', 'update']);
+    $actor = bulkActionsActor(['viewAny', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
     $ownRequest = bulkActionsRequestManagedBy($actor);
@@ -279,8 +279,31 @@ it('the assignment skips a request outside the actor GA2 scope (D-3)', function 
         ->and($outOfScope->fresh()->operational_site_id)->toBeNull();
 });
 
+/**
+ * User directive 2026-08-03: this endpoint writes the Sede AND the Operatore
+ * of many requests at once, and a bulk write resolves no field permission —
+ * without its own ability it would be the way around a per-field restriction
+ * (see TestUsersSeeder's Commercial matrix).
+ */
+it('the assignment endpoint is 403 without request-management.assignOperator', function () {
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'update']);
+    $site = OperationalSite::factory()->withAddress()->create();
+    $operator = bulkActionsOperatorAtSite($site);
+    $request = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management/assign-operators', [
+        'request_ids' => [$request->id],
+        'operational_site_id' => $site->id,
+        'mode' => 'single',
+        'operator_id' => $operator->id,
+    ])->assertForbidden();
+
+    expect($request->fresh()->operational_site_id)->toBeNull();
+});
+
 it('the assignment endpoint is 403 without request-management.update', function () {
-    $actor = bulkActionsActor(['viewAny', 'viewAll', 'view']);
+    $actor = bulkActionsActor(['viewAny', 'viewAll', 'view', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $operator = bulkActionsOperatorAtSite($site);
     $request = Opportunity::factory()->create();

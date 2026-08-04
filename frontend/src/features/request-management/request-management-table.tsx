@@ -154,7 +154,11 @@ export function RequestManagementTable() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignIds, setAssignIds] = useState<number[]>([])
   const [assignDefaultSite, setAssignDefaultSite] = useState<AssignOperatorsDialogSite | null>(null)
-  const canAssignOperators = can('request-management.update')
+  // `assignOperator` on top of `update` (user directive 2026-08-03): the popup
+  // writes the Sede AND the Operatore, the two attribution dimensions a role
+  // may be restricted on — the same pair the store endpoint and the bulk
+  // endpoint now both gate on this ability.
+  const canAssignOperators = can('request-management.update') && can('request-management.assignOperator')
 
   const assignMutation = useMutation({
     mutationFn: assignRequestOperators,

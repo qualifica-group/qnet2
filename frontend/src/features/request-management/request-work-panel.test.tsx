@@ -50,6 +50,52 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
+/**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03), which is where the persisted category's LABEL now comes from —
+ * the fixture below mirrors the panel's saved pair (`Sales` / `Consulting`,
+ * category 500), so the assertion on the rendered trigger stays a real one
+ * against the real component.
+ */
+const { CATEGORY_TREE } = vi.hoisted(() => ({
+  CATEGORY_TREE: [
+    {
+      id: 400,
+      name: 'Formazione',
+      parent_id: null,
+      attributes_count: 0,
+      products_count: 0,
+      business_function_id: 40,
+      requires_quote: false,
+      is_selectable: false,
+      management_mode: 'multiple' as const,
+      children: [
+        {
+          id: 500,
+          name: 'Consulting',
+          parent_id: 400,
+          attributes_count: 0,
+          products_count: 0,
+          business_function_id: null,
+          requires_quote: false,
+          is_selectable: true,
+          management_mode: 'multiple' as const,
+          children: [],
+        },
+      ],
+    },
+  ],
+}))
+
+vi.mock('@/features/product-categories/use-product-category-tree', () => ({
+  useProductCategoryTree: () => ({
+    data: CATEGORY_TREE,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}))
+
 // Stubs the timeline (its own behavior has its own suite) so the history tab can
 // be opened without the activity-log query.
 const activityLogSectionMock = vi.fn()

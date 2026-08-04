@@ -41,6 +41,7 @@ import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
+import { fieldChangeRequests } from './en-field-change-requests'
 import { documentLayouts } from './en-document-layouts'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
@@ -396,6 +397,7 @@ export const en = {
   contracts,
   commissionConfigurations,
   requestManagement,
+  fieldChangeRequests,
   rewardTypes,
   rewardStatuses,
   rewardedReferents,

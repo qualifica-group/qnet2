@@ -32,14 +32,13 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 /**
- * The form defaults its Sede from the actor's employment profile (user
- * directive 2026-08-03). This double deliberately has NONE: the link cases
- * below are about what happens as a Sede is picked, so they need to start
- * from an empty one — the defaulting itself is covered by
- * `use-request-create-form.test.ts`.
+ * No connected actor: the Operatore/Sede defaults (user directive 2026-08-04)
+ * would otherwise seed both controls, which is not what this suite is about —
+ * they have their own coverage in
+ * `use-request-create-form-actor-defaults.test.ts`.
  */
 vi.mock('@/features/auth/use-auth', () => ({
-  useAuth: () => ({ user: { id: 42, employment: null } }),
+  useAuth: () => ({ user: null, isAuthenticated: true }),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))

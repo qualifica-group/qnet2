@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { useAuth } from '@/features/auth/use-auth'
 import { areCreateContactsValid, isCreateAddressValid } from '@/features/personal-data/create-validation'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import { emptyProductLineRow } from '@/features/product-lines/types'
@@ -19,6 +18,7 @@ import {
   buildRequestCreateSchema,
   type RequestCreateFormValues,
 } from '@/features/request-management/request-create-schema'
+import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
 
 interface UseRequestCreateFormArgs {
@@ -86,7 +86,6 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
  */
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { t } = useTranslation()
-  const { user } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
   const [productLinesError, setProductLinesError] = useState<string | null>(null)
@@ -114,14 +113,11 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       product_lines: [emptyProductLineRow()],
       source_id: null,
       reporter_id: null,
-      // The request opens ALREADY assigned to whoever is creating it and to
-      // their own Sede (user directive 2026-08-03) — the common case, and the
-      // only one a Commercial can produce: they do not see the "Operatore"
-      // field at all (it needs `request-management.assignOperator`), and a
-      // request with no operator would fall outside their own D-3 scope.
-      // Whoever DOES see the two fields may still change or clear them.
-      operator_id: user?.id ?? null,
-      operational_site_id: user?.employment?.operational_site_id ?? null,
+      // Seeded from the connected actor right after mount, not here: the
+      // abilities that decide whether these two are rendered at all can resolve
+      // after the form is built (`useRequestActorAttributionDefaults`).
+      operator_id: null,
+      operational_site_id: null,
       products_of_interest: [],
       rewards: [],
       opportunity_workflow_status_id: null,
@@ -134,6 +130,11 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
 
   const registryId = useWatch({ control: form.control, name: 'registry_id' })
   const usingExistingRegistry = registryId !== null
+
+  // The connected actor is the default attribution of a new request (user
+  // directive 2026-08-04): Operatore = the actor, Sede operativa = the actor's
+  // own Sede, mirrored server-side for the actors who never see the two fields.
+  useRequestActorAttributionDefaults(form)
 
   // The create form's live equivalent of what the panel receives already
   // resolved (user directive 2026-07-31): which working statuses may be

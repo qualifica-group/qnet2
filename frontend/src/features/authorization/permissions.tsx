@@ -47,6 +47,13 @@ export interface UseResourcePermissionsResult {
   canAction(name: string): boolean
   /** Whether the given resource-level ability is currently available. */
   canResource(ability: ResourceAbility): boolean
+  /**
+   * Whether the actor may propose a change on this field via a field-change
+   * request (spec 0078) instead of writing it directly. Unlike the other
+   * accessors, this defaults to `false` when the block is missing: a locked
+   * field must not offer a proposal affordance the backend never advertised.
+   */
+  canRequestChange(field: string): boolean
 }
 
 /**
@@ -62,5 +69,6 @@ export function useResourcePermissions(): UseResourcePermissionsResult {
     field: (name) => permissions?.fields[name] ?? FALLBACK_FIELD_PERMISSION,
     canAction: (name) => permissions?.actions[name] ?? true,
     canResource: (ability) => permissions?.resource[ability] ?? true,
+    canRequestChange: (field) => permissions?.change_requestable_fields?.includes(field) ?? false,
   }
 }

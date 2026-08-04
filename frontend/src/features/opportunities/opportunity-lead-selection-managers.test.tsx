@@ -17,6 +17,14 @@ import type { ResourceMeta } from '@/features/authorization/types'
  * values/locks, the origin banner, submit) lives in the sibling file.
  */
 
+/**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03) and mounts its own quick-create affordance; this suite is about
+ * the surrounding form, so it stands in for the picker with the shared double.
+ */
+vi.mock('@/features/product-lines/product-category-tree-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const FULL_PERMISSIONS = {

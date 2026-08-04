@@ -73,6 +73,21 @@ final class RequestColumnCatalog
                 'editableField' => 'source_id',
                 'relation' => ['resource' => 'sources'],
             ],
+            // "Richieste di modifica in attesa" (spec 0078, AC-037): a
+            // per-record pending-count badge/alert, declared right after
+            // "Fonte" since it is today's only protected field. A real
+            // aggregated value (withCount on the HasFieldChangeRequests
+            // relation, RequestManagementTableDefinition::baseQuery()),
+            // display-only — never editable, and not sortable/filterable
+            // (no operative need for either in this microtask).
+            [
+                'id' => 'pending_change_requests',
+                'label' => 'requestManagement.columns.pendingChangeRequests',
+                'type' => 'number',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
             // Inline-editable (user directive 2026-08-03, spec 0075 D-3 —
             // REVERSING spec 0055's "work-panel concern" call): the cell edits
             // the `product_lines` collection itself, in the SAME flow as the

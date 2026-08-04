@@ -28,11 +28,14 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-// The form defaults its Sede/Operatore from the authenticated actor (user
-// directive 2026-08-03); this suite is about layout, so the double only has
-// to keep that read from throwing.
+/**
+ * No connected actor: the Operatore/Sede defaults (user directive 2026-08-04)
+ * would otherwise seed both controls, which is not what this suite is about —
+ * they have their own coverage in
+ * `use-request-create-form-actor-defaults.test.ts`.
+ */
 vi.mock('@/features/auth/use-auth', () => ({
-  useAuth: () => ({ user: { id: 42, employment: { operational_site_id: 9 } } }),
+  useAuth: () => ({ user: null, isAuthenticated: true }),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))

@@ -29,16 +29,6 @@ const createRequestMock = vi.fn()
 const fetchRequestFormContextMock = vi.fn<(payload: RequestFormContextPayload) => Promise<RequestFormContext>>(
   async () => EMPTY_FORM_CONTEXT,
 )
-/**
- * The form defaults its Sede/Operatore from the authenticated actor (user
- * directive 2026-08-03), so the hook reads the auth context. These cases are
- * about the operative block, not the attribution: the double only has to keep
- * that read from throwing.
- */
-vi.mock('@/features/auth/use-auth', () => ({
-  useAuth: () => ({ user: { id: 42, employment: { operational_site_id: 9 } } }),
-}))
-
 vi.mock('@/features/request-management/api', () => ({
   createRequest: (...args: unknown[]) => createRequestMock(...args),
   fetchRequestFormContext: (payload: RequestFormContextPayload) => fetchRequestFormContextMock(payload),

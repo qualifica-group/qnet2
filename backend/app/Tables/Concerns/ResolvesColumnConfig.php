@@ -2,6 +2,8 @@
 
 namespace App\Tables\Concerns;
 
+use App\FieldChangeRequests\ProtectedField;
+use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Models\User;
 
 /**
@@ -81,6 +83,13 @@ trait ResolvesColumnConfig
      */
     private function resolveColumn(array $column, User $actor, array $layout, array $editableIds): array
     {
+        // Spec 0078, D-1/D-2/D-7: a column whose field is PROTECTED
+        // (config/field-change-requests.php) for an actor lacking the
+        // field's dedicated permission. Resolved once and threaded through
+        // both `editable` (kept true, see below) and the `change_request`
+        // extra (withOptionalColumnExtras) so the two never drift.
+        $protectedField = $this->protectedFieldFor($column, $actor);
+
         $resolved = [
             'id' => $column['id'],
             'label' => $column['label'],
@@ -96,13 +105,21 @@ trait ResolvesColumnConfig
             'hasFilterValues' => $this->hasFilterValues($column),
             // Inline cell-editing (spec 0053, D-2): already reduced for the
             // actor — a UI hint, never the authority (the PATCH endpoint
-            // re-derives its own guards against the real row).
-            'editable' => in_array($column['id'], $editableIds, true),
+            // re-derives its own guards against the real row). Spec 0078,
+            // D-2: a PROTECTED column stays editable even when
+            // $editableIds excludes it (ProtectedFieldAwareAuthorization
+            // restricts the field-permission ceiling to visibleReadonly()
+            // for an actor without the dedicated permission) — the cell
+            // still opens, but the client intercepts the commit and opens
+            // the "Richiesta di modifica" dialog instead of PATCHing. The
+            // server remains the sole authority: TableCellUpdateService
+            // still 403s a real write attempt on this same field.
+            'editable' => in_array($column['id'], $editableIds, true) || $protectedField !== null,
             'options' => $this->optionsFor($column['id'], $actor)
                 ?? ($column['options'] ?? null),
         ];
 
-        return $this->withOptionalColumnExtras($resolved, $column, $actor);
+        return $this->withOptionalColumnExtras($resolved, $column, $actor, $protectedField);
     }
 
     /**
@@ -115,7 +132,7 @@ trait ResolvesColumnConfig
      * @param  array<string, mixed>  $column
      * @return array<string, mixed>
      */
-    private function withOptionalColumnExtras(array $resolved, array $column, User $actor): array
+    private function withOptionalColumnExtras(array $resolved, array $column, User $actor, ?ProtectedField $protectedField = null): array
     {
         $badges = $this->badgesFor($column['id'], $actor);
 
@@ -138,6 +155,17 @@ trait ResolvesColumnConfig
 
         if ($editor !== null) {
             $resolved['editor'] = $editor;
+        }
+
+        // Spec 0078, D-2/D-7: present ONLY when the column's field is
+        // protected for this actor (see protectedFieldFor()) — absent
+        // (never null) for every other column, so the client uses its mere
+        // presence as the discriminant (contract_extension, spec 0078).
+        if ($protectedField !== null) {
+            $resolved['change_request'] = [
+                'resource' => $protectedField->resource,
+                'field' => $protectedField->field,
+            ];
         }
 
         if (isset($column['relation'])) {
@@ -186,4 +214,52 @@ trait ResolvesColumnConfig
 
         return ($column['filterable'] ?? false) === true && ($column['filterType'] ?? null) !== null;
     }
+
+    /**
+     * The protected field this column maps to (config/field-change-requests.php
+     * via App\FieldChangeRequests\ProtectedFieldRegistry), keyed by THIS
+     * definition's own resource() and the column's `editableField` (falling
+     * back to its id — same fallback ResolvesEditableColumns::editableColumnIds
+     * uses for a RELATION column's field key, spec 0054 D-1). Null for the
+     * two cases that must leave every column byte-identical to before this
+     * spec (AC-003/AC-005): the field is not protected at all, or the actor
+     * already holds its dedicated permission (Gate::before's super-admin
+     * bypass folds AC-004 into this same branch — `can()` is true, so no
+     * change_request is ever emitted for that actor).
+     *
+     * @param  array<string, mixed>  $column
+     */
+    private function protectedFieldFor(array $column, User $actor): ?ProtectedField
+    {
+        // Guard against widening exposure beyond D-2's intent: the carve-out
+        // only applies to a column that would ALREADY be editable but for
+        // its own field protection — i.e. raw-declared `editable: true` AND
+        // the actor holds the resource's general `{resource}.update` (the
+        // same gate ResolvesEditableColumns::editableColumnIds() requires
+        // before it even looks at the field-permission ceiling). Without
+        // this, an actor with no update ability at all would see a
+        // protected column turn "editable" purely because they also lack
+        // its dedicated permission — true of nearly everyone.
+        if (($column['editable'] ?? false) !== true || ! $actor->can("{$this->resource()}.update")) {
+            return null;
+        }
+
+        $fieldKey = $column['editableField'] ?? $column['id'];
+
+        $protected = app(ProtectedFieldRegistry::class)->find($this->resource(), $fieldKey);
+
+        if ($protected === null || $actor->can($protected->permission())) {
+            return null;
+        }
+
+        return $protected;
+    }
+
+    /**
+     * Declared here (not just inherited from AbstractTableDefinition) so
+     * protectedFieldFor() above can call $this->resource() from the trait —
+     * mirrors the sibling ResolvesEditableColumns trait's own abstract
+     * resource()/modelClass() declarations for the same reason.
+     */
+    abstract public function resource(): string;
 }

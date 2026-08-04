@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\NavigationService;
 use Illuminate\Console\Command;
@@ -27,11 +28,12 @@ class SyncPermissions extends Command
     /**
      * Execute the console command.
      */
-    public function handle(NavigationService $navigation): int
+    public function handle(NavigationService $navigation, ProtectedFieldRegistry $protectedFields): int
     {
         $permissions = array_values(array_unique(array_merge(
             $navigation->permissions(),
             $this->policyPermissions(),
+            $protectedFields->permissions(),
         )));
 
         if ($permissions === []) {

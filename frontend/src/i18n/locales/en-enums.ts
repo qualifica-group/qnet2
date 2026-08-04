@@ -83,6 +83,12 @@ export const enums = {
     medium: 'Medium',
     large: 'Large',
   },
+  // Field change request status (spec 0078).
+  field_change_request_status: {
+    pending: 'Pending',
+    approved: 'Approved',
+    rejected: 'Rejected',
+  },
   // Import run status (import history badge).
   import_status: {
     validating: 'Validating',

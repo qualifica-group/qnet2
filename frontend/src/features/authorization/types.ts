@@ -33,6 +33,13 @@ export interface ResourcePermissions {
   resource: Record<ResourceAbility, boolean>
   fields: Record<string, FieldPermission>
   actions: Record<string, boolean>
+  /**
+   * Field keys the actor may PROPOSE a change on, even though they cannot
+   * write them directly (spec 0078): drives `useResourcePermissions().canRequestChange`.
+   * Always present on `GET /meta/{resource}` and instance detail payloads
+   * (never `null`/absent); an entry not listed here simply cannot be proposed.
+   */
+  change_requestable_fields?: string[]
 }
 
 /** A single entry of the create-context field catalogue (`GET /meta/{resource}`). */

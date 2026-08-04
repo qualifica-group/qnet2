@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
@@ -14,9 +14,10 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
-
-/** Supervisory ability gating the Operatore field (mirrors RequestManagementPolicy::assignOperator). */
-const ASSIGN_OPERATOR_PERMISSION = 'request-management.assignOperator'
+import {
+  ASSIGN_OPERATOR_PERMISSION,
+  OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
+} from '@/features/request-management/use-request-actor-defaults'
 
 interface RequestCreateAttributionSectionProps {
   form: UseFormReturn<RequestCreateFormValues>
@@ -40,10 +41,11 @@ interface RequestCreateAttributionSectionProps {
  * Fonte is REQUIRED (user directive 2026-07-29), mirroring
  * `StoreRequestRequest`'s own `required` rule.
  *
- * The Operatore is the one field NOT covered by `request-management.create`:
- * deciding who works a request is supervisory, so it is rendered only for an
- * actor holding `request-management.assignOperator` — the same ability the
- * endpoint enforces server-side.
+ * Operatore and Sede operativa are the two fields NOT covered by
+ * `request-management.create`: attributing a request is supervisory, so each is
+ * rendered only for an actor holding its own ability
+ * (`request-management.assignOperator` / `operational-sites.viewAny`, user
+ * directive 2026-08-03) — the same two the store endpoint enforces server-side.
  *
  * Sede <-> Operatore are reciprocally linked exactly as in the work panel
  * (`request-attribution-section.tsx`) and in the Lead form (spec 0048
@@ -69,22 +71,29 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
   const operatorQuickCreate = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
   const siteQuickCreate = useQuickCreateAction(OPERATIONAL_SITES_FOR_SELECT_RESOURCE)
 
-  // Baseline the clear-on-change below reasons against: it starts at the Sede
-  // the form OPENED on (the actor's own, user directive 2026-08-03 — read
-  // once, it is a default, not a controlled value) and only ever moves inside
-  // an event handler, so a REAL Sede pick is told apart from the programmatic
-  // auto-fill (which never goes through the Sede field's own `onItemChange`).
-  // Seeding it matters: left at null, re-picking the very Sede already on
-  // screen would read as a change and clear the operator.
-  const previousSiteIdRef = useRef<number | null>(form.getValues('operational_site_id'))
+  // Baseline the clear-on-change below reasons against: the last Sede the
+  // operator list was scoped to. Every value the field takes becomes the new
+  // baseline — a pick, the Sede hydrated from a picked operator, or the actor's
+  // own Sede seeded at mount (`useRequestActorAttributionDefaults`) — but only a pick runs
+  // through `handleSiteItemChange`, so only a REAL change of Sede invalidates
+  // the chosen operator. Synced in an effect, which runs AFTER that handler has
+  // compared against the previous value.
+  const previousSiteIdRef = useRef<number | null>(null)
   const siteId = useWatch({ control, name: 'operational_site_id' })
+  useEffect(() => {
+    previousSiteIdRef.current = siteId
+  }, [siteId])
   const [autoFilledSite, setAutoFilledSite] = useState<ForSelectItem | null>(null)
 
+  const canPickSite = can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)
+
   // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
-  // (no extra fetch). An operator with no Sede leaves the current value alone.
+  // (no extra fetch). An operator with no Sede leaves the current value alone,
+  // and so does an actor who may not set the Sede at all — auto-filling a field
+  // they cannot see would submit a key the endpoint answers 403 on.
   const handleOperatorItemChange = (item: ForSelectItem | null) => {
     const site = (item as UserForSelectItem | null)?.meta
-    if (site?.operational_site_id == null) return
+    if (!canPickSite || site?.operational_site_id == null) return
     form.setValue('operational_site_id', site.operational_site_id, {
       shouldDirty: true,
       shouldValidate: true,
@@ -93,7 +102,6 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
       id: site.operational_site_id,
       label: site.operational_site_label ?? `#${site.operational_site_id}`,
     })
-    previousSiteIdRef.current = site.operational_site_id
   }
 
   // Sede -> Operatore: a real pick/clear re-scopes the operator list, so an
@@ -104,7 +112,6 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
     if (nextSiteId !== previousSiteIdRef.current) {
       form.setValue('operator_id', null, { shouldDirty: true })
     }
-    previousSiteIdRef.current = nextSiteId
   }
 
   const selectLabels = {
@@ -191,31 +198,33 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
           />
         </div>
 
-        <FormField
-          control={control}
-          name="operational_site_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('requestManagement.form.create.attribution.operationalSite')}</FormLabel>
-              <FormControl>
-                <AsyncPaginatedSelect
-                  resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onItemChange={handleSiteItemChange}
-                  selectedItem={siteQuickCreate.selectedItemFor(field.value) ?? autoFilledSite}
-                  action={siteQuickCreate.renderAction((ref) => field.onChange(ref.id))}
-                  labels={{
-                    ...selectLabels,
-                    searchPlaceholder: t('requestManagement.form.create.attribution.operationalSiteSearch'),
-                    triggerLabel: t('requestManagement.form.create.attribution.operationalSite'),
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {canPickSite && (
+          <FormField
+            control={control}
+            name="operational_site_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('requestManagement.form.create.attribution.operationalSite')}</FormLabel>
+                <FormControl>
+                  <AsyncPaginatedSelect
+                    resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onItemChange={handleSiteItemChange}
+                    selectedItem={siteQuickCreate.selectedItemFor(field.value) ?? autoFilledSite}
+                    action={siteQuickCreate.renderAction((ref) => field.onChange(ref.id))}
+                    labels={{
+                      ...selectLabels,
+                      searchPlaceholder: t('requestManagement.form.create.attribution.operationalSiteSearch'),
+                      triggerLabel: t('requestManagement.form.create.attribution.operationalSite'),
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* After the Sede on purpose: the Sede is what scopes this list. */}
         {can(ASSIGN_OPERATOR_PERMISSION) && (
