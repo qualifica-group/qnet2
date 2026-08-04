@@ -22,15 +22,19 @@ interface RequestCreateWorkflowStatusFieldProps {
  * the work panel carries, limited to the same resolved set — a request that is
  * already past "aperta" when it is opened records that straight away.
  *
- * Left EMPTY by default on purpose: with nothing picked the server keeps
- * deriving the initial status through OpportunityWorkflowResolver, exactly as
- * every request created before this field existed.
+ * Seeded with the set's FIRST status as soon as the criteria resolve one (user
+ * directive 2026-08-04, see `useRequestCreateForm`): the create form therefore
+ * submits an explicit status instead of letting OpportunityWorkflowResolver
+ * derive it, which it still does for a payload that omits the key.
  *
  * Twin of `RequestWorkflowStatusField` (plain `FormField` instead of
  * `MetaField`) for the same reason as every other `RequestCreate*` section:
- * this create-only form has no `permissions` envelope to gate against. Renders
- * nothing until the criteria resolve a set — an empty select would offer a
- * decision the operator cannot yet make.
+ * this create-only form has no `permissions` envelope to gate against.
+ *
+ * With no categoria prodotto picked the criteria resolve no set: the section
+ * stays in place but the select is DISABLED (user directive 2026-08-04) — the
+ * field keeps its slot in the layout and says why it cannot be used yet,
+ * instead of appearing out of nowhere once a category is chosen.
  */
 export function RequestCreateWorkflowStatusField({
   control,
@@ -39,10 +43,7 @@ export function RequestCreateWorkflowStatusField({
   const { t } = useTranslation()
   const selectedStatusId = useWatch({ control, name: 'opportunity_workflow_status_id' })
 
-  if (statuses.length === 0) {
-    return null
-  }
-
+  const hasStatuses = statuses.length > 0
   const selected = statuses.find((status) => status.id === selectedStatusId) ?? null
 
   return (
@@ -64,13 +65,20 @@ export function RequestCreateWorkflowStatusField({
             <Select
               value={field.value !== null ? String(field.value) : undefined}
               onValueChange={(next) => field.onChange(Number(next))}
+              disabled={!hasStatuses}
             >
               <FormControl>
                 <SelectTrigger className="h-9 w-full">
                   <SelectValue
-                    placeholder={t('requestManagement.workPanel.workflowStatus.placeholder', {
-                      defaultValue: 'Select a status',
-                    })}
+                    placeholder={
+                      hasStatuses
+                        ? t('requestManagement.workPanel.workflowStatus.placeholder', {
+                            defaultValue: 'Select a status',
+                          })
+                        : t('requestManagement.workPanel.workflowStatus.awaitingCriteria', {
+                            defaultValue: 'Pick a product category first',
+                          })
+                    }
                   >
                     {selected ? (
                       <span className="flex min-w-0 items-center gap-2">

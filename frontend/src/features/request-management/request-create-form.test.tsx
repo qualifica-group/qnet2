@@ -157,15 +157,20 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
   })
 
   /**
-   * Both are resolved FROM the chosen categoria prodotto: with none picked
-   * there is nothing to offer, and an empty card would read as "this request
-   * has no working status / no additional fields".
+   * Both are resolved FROM the chosen categoria prodotto. The dynamic fields
+   * have nothing to render with none picked (an empty card would read as "this
+   * request has no additional fields"); the working status instead KEEPS its
+   * slot and shows up disabled (user directive 2026-08-04).
    */
-  it('non mostra stato di lavorazione e campi dinamici finche non ci sono criteri', async () => {
+  it('mostra stato di lavorazione disabilitato e nasconde i campi dinamici finche non ci sono criteri', async () => {
     renderCreateForm()
 
     await waitFor(() => expect(fetchRequestFormContextMock).not.toHaveBeenCalled())
-    expect(screen.queryByText('Stato di lavorazione')).not.toBeInTheDocument()
+
+    const statusSelect = screen.getByRole('combobox', { name: 'Stato di lavorazione' })
+    expect(statusSelect).toBeDisabled()
+    expect(statusSelect).toHaveTextContent('Seleziona prima una categoria prodotto')
+
     expect(screen.queryByText('Informazioni aggiuntive')).not.toBeInTheDocument()
   })
 

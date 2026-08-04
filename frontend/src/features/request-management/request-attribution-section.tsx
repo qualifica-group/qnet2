@@ -4,6 +4,7 @@ import { Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
@@ -61,6 +62,7 @@ export function RequestAttributionSection({
   rewards,
 }: RequestAttributionSectionProps) {
   const { t } = useTranslation()
+  const { field: fieldPermission } = useResourcePermissions()
   const control = form.control
   const reporterId = useWatch({ control, name: 'reporter_id' })
   const rewardsValue = useWatch({ control, name: 'rewards' })
@@ -73,6 +75,14 @@ export function RequestAttributionSection({
   const previousSiteIdRef = useRef<number | null>(operationalSite?.id ?? null)
   const siteId = useWatch({ control, name: 'operational_site_id' })
   const [autoFilledSite, setAutoFilledSite] = useState<RelationFieldRef | null>(null)
+
+  // The scoping hint is a sibling of the picker, so it does NOT disappear with
+  // it: `MetaField` hides a non-visible field from inside, leaving the sentence
+  // behind to describe a control (and a Sede) the actor cannot see. It belongs
+  // on screen only when both fields are actually rendered (user directive
+  // 2026-08-04).
+  const showOperatorScopeHint =
+    siteId != null && fieldPermission('operator_id').visible && fieldPermission('operational_site_id').visible
 
   // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
   // (no extra fetch). An operator with no Sede leaves the current value alone.
@@ -216,7 +226,7 @@ export function RequestAttributionSection({
             showAvatar
             {...selectLabels}
           />
-          {siteId != null && (
+          {showOperatorScopeHint && (
             <p className="text-xs text-muted-foreground">
               {t('requestManagement.workPanel.attribution.operatorFilteredBySite', {
                 defaultValue: 'Only the operators of the selected site.',

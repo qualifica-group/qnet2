@@ -115,6 +115,60 @@ describe('useRequestCreateForm — operative fields', () => {
     expect(createRequestMock.mock.calls[0][0]).toMatchObject({ opportunity_workflow_status_id: 3 })
   })
 
+  /**
+   * User directive 2026-08-04: the select must never sit empty once the
+   * criteria enable it — the set's first row (ordered by `sort_order`
+   * server-side) is picked for the operator.
+   */
+  it('preseleziona il primo stato risolto e lo invia senza che venga scelto', async () => {
+    fetchRequestFormContextMock.mockResolvedValue({
+      ...EMPTY_FORM_CONTEXT,
+      workflow_statuses: [
+        { id: 6, name: 'Aperta', description: null, color: null, system_key: 'open', requires_note: false },
+        { id: 7, name: 'Validata', description: null, color: null, system_key: null, requires_note: false },
+      ],
+    })
+    createRequestMock.mockResolvedValue({ id: 55 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => fillMandatory(result.current.form))
+    await waitFor(() =>
+      expect(result.current.form.getValues('opportunity_workflow_status_id')).toBe(6),
+    )
+
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).toMatchObject({ opportunity_workflow_status_id: 6 })
+  })
+
+  /** A pick that left the set falls back to the NEW set's default, not to empty. */
+  it('riporta al primo stato del nuovo set una scelta che ne e uscita', async () => {
+    fetchRequestFormContextMock.mockResolvedValue({
+      ...EMPTY_FORM_CONTEXT,
+      workflow_statuses: [
+        { id: 3, name: 'Validata', description: null, color: null, system_key: null, requires_note: false },
+      ],
+    })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => fillMandatory(result.current.form))
+    await waitFor(() => expect(result.current.form.getValues('opportunity_workflow_status_id')).toBe(3))
+
+    fetchRequestFormContextMock.mockResolvedValue({
+      ...EMPTY_FORM_CONTEXT,
+      workflow_statuses: [
+        { id: 8, name: 'Bozza', description: null, color: null, system_key: 'open', requires_note: false },
+      ],
+    })
+    act(() => {
+      result.current.form.setValue('product_lines', [{ business_function_id: 9, product_category_id: 9 }])
+    })
+
+    await waitFor(() => expect(result.current.form.getValues('opportunity_workflow_status_id')).toBe(8))
+  })
+
   /** Spec 0054 D-5, mirrored client-side so the submit never leaves for a 422 it can predict. */
   it('blocks the submit when the picked status requires a note, and goes through once written', async () => {
     fetchRequestFormContextMock.mockResolvedValue({

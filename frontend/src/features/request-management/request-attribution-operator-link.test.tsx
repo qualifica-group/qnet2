@@ -186,6 +186,25 @@ describe('Work panel — the Sede scopes the Operatore picker', () => {
     expect(screen.getByText('Only the operators of the selected site.')).toBeInTheDocument()
   })
 
+  it('drops the scoping hint when the two fields are not visible', async () => {
+    const hidden = { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: true }
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({
+        operational_site_id: 77,
+        operational_site: { id: 77, label: 'Warehouse A' },
+        permissions: {
+          ...FULL_PERMISSIONS,
+          fields: { operator_id: hidden, operational_site_id: hidden },
+        },
+      }),
+    )
+
+    renderPanel()
+
+    await waitFor(() => expect(screen.queryByTestId('select-Operator (GA2)')).not.toBeInTheDocument())
+    expect(screen.queryByText('Only the operators of the selected site.')).not.toBeInTheDocument()
+  })
+
   it('re-scopes the picker as soon as a Sede is picked', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 

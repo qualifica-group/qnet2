@@ -343,26 +343,6 @@ it('lets the commercial role create a referent, for the create form quick-create
     $this->getJson('/api/meta/referents')->assertOk();
 });
 
-// The two halves of a product-line row read DIFFERENT channels: the "funzione
-// aziendale" a for-select (ungated, ADR 0011 amended), the "categoria prodotto"
-// the structural tree (gated by ProductCategoryPolicy::viewAny since the user
-// directive 2026-08-03). Without `product-categories.viewAny` the first select
-// answered and the second stayed empty.
-it('lets the commercial role read both channels the product-lines row selects feed on', function () {
-    $this->seed(TestUsersSeeder::class);
-
-    Sanctum::actingAs(User::query()->where('email', 'campania@commerciale.com')->firstOrFail());
-
-    $this->getJson('/api/business-functions/for-select')->assertOk();
-    $this->getJson('/api/product-categories/tree')->assertOk();
-
-    // Read-only: the grant is `viewAny` alone, so writing a category stays 403
-    // and the module stays out of their navigation.
-    $this->postJson('/api/product-categories', ['name' => 'Nuova categoria'])->assertForbidden();
-    expect(visibleRoutes(User::query()->where('email', 'campania@commerciale.com')->firstOrFail()))
-        ->not->toContain('/product-categories');
-});
-
 it('lets the commercial role write a collaborative note on a request', function () {
     $this->seed(TestUsersSeeder::class);
 

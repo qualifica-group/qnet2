@@ -6,6 +6,7 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
 import { workPanel as panel } from '@/features/request-management/request-work-panel-fixtures'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
+import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 
 /**
  * What the work panel does with a submit it cannot send.
@@ -43,6 +44,42 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+const approveFieldChangeRequestMock = vi.fn()
+vi.mock('@/features/field-change-requests/api', () => ({
+  fetchFieldChangeRequestsForRecord: () => Promise.resolve([sourceChangeRequest()]),
+  approveFieldChangeRequest: (...args: unknown[]) => approveFieldChangeRequestMock(...args),
+  rejectFieldChangeRequest: vi.fn(),
+}))
+
+/** The one pending proposal the record carries in this suite: the Fonte, decidable by this actor. */
+function sourceChangeRequest(
+  overrides: Partial<FieldChangeRequestResource> = {},
+): FieldChangeRequestResource {
+  return {
+    id: 12,
+    resource: 'request-management',
+    resource_label: 'navigation.requestManagement',
+    subject_id: 1,
+    subject_label: 'OPP_1',
+    subject_path: '/request-management/1',
+    field: 'source_id',
+    field_label: 'requestManagement.columns.source',
+    current_value: 30,
+    current_label: 'Web',
+    requested_value: 7,
+    requested_label: 'Passaparola',
+    reason: 'Referral confermato.',
+    status: 'pending',
+    requested_by: { id: 8, name: 'Mario Rossi' },
+    requested_at: '2026-08-03T10:12:00.000000Z',
+    handled_by: null,
+    handled_at: null,
+    handling_note: null,
+    can: { approve: true, reject: true },
+    ...overrides,
+  }
+}
 
 /** A company card whose VAT number fails the control digit, as imported data often is. */
 function legacyVatPanel(): RequestWorkPanelWithPermissions {
@@ -222,5 +259,41 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     expect(alert).toHaveTextContent('Identity')
     expect(alert).toHaveTextContent('The VAT number is not valid.')
     expect(updateRequestWorkMock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * A change request approved from the record's own card (spec 0078, user
+   * directive 2026-08-04) writes the protected field server-side: the panel
+   * has to refetch, or the Fonte control keeps the pre-approval value and the
+   * sparse payload sends it straight back on the next save — silently undoing
+   * the approval the operator just granted.
+   */
+  it('does not send back the pre-approval Fonte after approving a change request on it', async () => {
+    const stored = panel()
+    const approved: RequestWorkPanelWithPermissions = {
+      ...stored,
+      source_id: 7,
+      source: { id: 7, name: 'Passaparola' },
+    }
+    fetchRequestWorkPanelMock.mockResolvedValueOnce(stored).mockResolvedValue(approved)
+    updateRequestWorkMock.mockResolvedValue(approved)
+    approveFieldChangeRequestMock.mockResolvedValue(
+      sourceChangeRequest({ status: 'approved', can: { approve: false, reject: false } }),
+    )
+
+    renderPanel()
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(fetchRequestWorkPanelMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
+
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+    expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('source_id')
   })
 })

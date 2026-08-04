@@ -150,6 +150,7 @@ export const requestManagement = {
       sectionDescription: 'Fai avanzare lo stato di lavorazione della richiesta.',
       label: 'Stato di lavorazione',
       placeholder: 'Seleziona uno stato',
+      awaitingCriteria: 'Seleziona prima una categoria prodotto',
       noteLabel: 'Nota',
       notePlaceholder: 'Spiega il motivo di questo cambio…',
     },

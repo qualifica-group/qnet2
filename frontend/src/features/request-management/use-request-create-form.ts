@@ -165,14 +165,31 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     )
   }, [context.applicable_attributes, form])
 
-  // A status that left the resolved set (the categories changed under it) can
-  // no longer be submitted: the server would 422 it.
+  // The first status of the resolved set is the default (user directive
+  // 2026-08-04): as soon as the criteria enable the select it carries a value
+  // instead of an empty placeholder. The set arrives ordered by `sort_order`
+  // from `statusesFor()`, so "first" is the configured first.
+  //
+  // The same effect covers the selection that LEFT the set (the categories
+  // changed under it): it falls back to the new set's default rather than to
+  // null, since submitting an out-of-set id would 422.
   useEffect(() => {
+    const statuses = context.workflow_statuses
     const selected = form.getValues('opportunity_workflow_status_id')
 
-    if (selected !== null && !context.workflow_statuses.some((status) => status.id === selected)) {
-      form.setValue('opportunity_workflow_status_id', null)
+    if (selected !== null && statuses.some((status) => status.id === selected)) {
+      return
     }
+
+    if (statuses.length === 0) {
+      if (selected !== null) {
+        form.setValue('opportunity_workflow_status_id', null)
+      }
+
+      return
+    }
+
+    form.setValue('opportunity_workflow_status_id', statuses[0].id)
   }, [context.workflow_statuses, form])
 
   // The card is mandatory only on the "new client" branch (D-2): block the

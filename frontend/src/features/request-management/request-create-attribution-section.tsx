@@ -251,7 +251,8 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
                     }}
                   />
                 </FormControl>
-                {siteId != null && (
+                {/* Never without the Sede field itself: the sentence describes a control the actor would not see. */}
+                {canPickSite && siteId != null && (
                   <p className="text-xs text-muted-foreground">
                     {t('requestManagement.form.create.attribution.operatorFilteredBySite')}
                   </p>

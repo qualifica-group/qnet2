@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STATO DI LAVORAZIONE DISABILITATO INVECE CHE NASCOSTO NELLA CREATE (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: nella create di Gestione Richieste il blocco "Stato di lavorazione" non deve
+sparire quando nessuna categoria prodotto e' selezionata — **deve esserci, disabilitato**.
+
+`RequestCreateWorkflowStatusField` non fa piu' `return null` con `statuses.length === 0`: la
+`FormSection` resta sempre montata, il `Select` va in `disabled` e il placeholder passa alla nuova
+chiave `requestManagement.workPanel.workflowStatus.awaitingCriteria` ("Seleziona prima una categoria
+prodotto", it/en). Il campo `note` continua a comparire solo con uno stato `requires_note` scelto,
+quindi con set vuoto non c'e' nulla di extra.
+
+**Non toccato di proposito:** `RequestCreateDynamicFields` resta nascosto senza criteri (una card
+vuota li' leggerebbe come "questa richiesta non ha campi aggiuntivi"), e
+`RequestWorkflowStatusField` del work panel resta com'era (il server risolve sempre almeno le righe
+di sistema, il `return null` li' e' solo difensivo).
+
+**Default = primo stato del set (stessa direttiva, secondo giro):** appena i criteri risolvono un
+set, `useRequestCreateForm` seleziona `statuses[0]` — il set arriva gia' ordinato per `sort_order`
+da `OpportunityWorkflowResolver::statusesFor()`, quindi "primo" e' il primo configurato. L'effect
+che prima azzerava una scelta uscita dal set ora la riporta sul default del NUOVO set (null solo se
+il set e' vuoto).
+
+**Conseguenza da sapere:** la create ora manda sempre `opportunity_workflow_status_id`, quindi il
+server non deriva piu' lo stato iniziale via `targetStatus()` (che sceglierebbe la riga
+`system_key = open`). Se un giorno un admin ordina uno stato custom prima della riga `open`, il
+default della create sara' quello — comportamento voluto dalla direttiva ("il primo disponibile"),
+non un bug. Stesso discorso per un primo stato con `requires_note`: la nota diventerebbe
+obbligatoria all'apertura del form.
+
+I test `request-create-form.test.tsx` (combobox presente + `toBeDisabled()` + placeholder) e
+`use-request-create-form-operative.test.ts` (+2 casi: preselezione del primo stato, fallback sul
+default del nuovo set) coprono il nuovo requisito.
+
+Verificato: `vitest run src/features/request-management` 28 file / 197 test verdi, `tsc -b --force`
+EXIT=0, eslint pulito sui file toccati.
+
 ## CATEGORIA PRODOTTO VUOTA PER IL RUOLO COMMERCIALE (2026-08-04) — VERDE, NON COMMITTATO
 
 Bug riportato: da utente `commercial`, nella create di Gestione Richieste la "funzione aziendale" si
@@ -25,6 +61,22 @@ di scrittura arriva con il grant. Grant applicato anche al DB di sviluppo sul ru
 **Test:** `TestUsersSeederTest` — nuovo caso che chiama entrambi i canali (for-select + tree) come
 commerciale e verifica che il POST di creazione categoria resti 403 e la rotta fuori dal menu. Rosso
 verificato senza il grant (403 sul tree), poi verde: 21 test / 363 asserzioni, Pint pulito.
+
+**"Prodotti di interesse" vuoto — NON e' lo stesso bug.** Verificato: `GET /products/for-select` non
+ha gate oltre `auth:sanctum` (ADR 0011), quindi il commerciale lo legge pur non avendo alcun
+`products.*`. Le due cause reali sono di SCOPE: (a) `ProductsOfInterestField` con `lockScope` si
+disabilita finche' nessuna categoria e' scelta (`lockedWithoutScope`) — cioe' era bloccato a valle
+della categoria rotta; (b) `ProductService::forSelect` filtra su `category_id` ESATTO, nessun rollup
+sul sottoalbero. Sul DB di sviluppo solo 8 delle 167 categorie selezionabili hanno prodotti (GOL -
+Campania/Lombardia/Abruzzo/Lazio/Molise/Calabria/Umbria + Autofinanziato, tutte con funzione aziendale
+efficace FORMAZIONE id 10): su ogni altra categoria la lista e' legittimamente vuota. I due parent
+(Formazione, GOL) non sono `is_selectable`, quindi la trappola "scelgo il padre e non vedo i prodotti
+dei figli" oggi non si presenta.
+
+Test: nuovo file `tests/Feature/Users/CommercialProductChannelsTest.php` (i due casi sono usciti da
+`TestUsersSeederTest`, che con l'aggiunta superava il hard limit di 500 righe — hook `code-guard`).
+Copre i tre canali di lettura del blocco: for-select funzione aziendale, tree categorie, for-select
+prodotti scoped. 22 test / 369 asserzioni verdi, Pint pulito.
 
 **Nota aperta (non implementata):** qualsiasi ALTRO ruolo che usi `ProductLinesField` (form
 opportunita', form prodotto) ha lo stesso vincolo — serve `product-categories.viewAny`. Se si vuole

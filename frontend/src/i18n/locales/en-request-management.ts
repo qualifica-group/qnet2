@@ -150,6 +150,7 @@ export const requestManagement = {
       sectionDescription: 'Advance the working state of the request.',
       label: 'Working status',
       placeholder: 'Select a status',
+      awaitingCriteria: 'Pick a product category first',
       noteLabel: 'Note',
       notePlaceholder: 'Explain the reason for this change…',
     },
