@@ -3,6 +3,62 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## EMAIL — RESET PASSWORD IN CODA + REDIRECT GLOBALE DI STAGING (2026-08-04) — VERDE, NON COMMITTATO
+
+Due direttive utente sullo strato email.
+
+**Fotografia dello stato precedente** (utile a chi riprende): in questo repo NON esiste nessun
+Mailable — `app/Mail/` non c'era e non c'e' nessuna chiamata `Mail::` nel codice applicativo. **Tutte**
+le email escono dal canale `mail` delle Notification Laravel (`toMail()` -> `MailMessage`), sul mailer
+di default (nessun `->mailer()` da nessuna parte). Le notification che spediscono davvero email sono
+`NoteMentionNotification`, `FieldChangeRequestedNotification`, `FieldChangeRequestResolvedNotification`,
+`RequestTransferredNotification` (tutte `database` + `mail`) e `ResetPasswordNotification` (solo `mail`).
+`GenericNotification` e `ImportCompletedNotification` sono solo `database`: non mandano email.
+
+**Attenzione, vale ancora:** `backend/.env` ha `QUEUE_CONNECTION=sync` (mentre `.env.example` dice
+`database`). Col driver `sync` Laravel esegue il job in-process: `ShouldQueue` non ha alcun effetto e
+ogni email parte dentro la richiesta HTTP. La tabella `jobs` esiste gia'
+(`0001_01_01_000002_create_jobs_table.php`), quindi per rendere async davvero bastano
+`QUEUE_CONNECTION=database` + `php artisan queue:work`, senza toccare codice. **Non e' stato fatto in
+questa sessione** (nessuna direttiva in merito): resta un passo aperto.
+
+**1. `ResetPasswordNotification` ora e' `implements ShouldQueue`** — era l'unica notification con email
+a non esserlo. Il locale sopravvive al salto in coda perche' `User implements HasLocalePreference`
+(`User.php:30`, `preferredLocale()` a `:116`): `NotificationSender` lo risolve per-notifiable nel
+worker, non dall'`App::setLocale()` del momento della richiesta. Verificato, non ipotizzato.
+
+**2. Redirect globale di staging — `MAIL_ALWAYS_TO`.** Con quella variabile valorizzata, OGNI email
+viene dirottata su quella singola casella e to/cc/bcc originali vengono azzerati.
+- `config/mail.php` -> nuova chiave piatta `'always_to' => env('MAIL_ALWAYS_TO')`.
+- `app/Mail/StagingMailRedirector.php` (nuovo) -> `handle()` chiama `Mail::alwaysTo()`. Si e' scelto
+  `alwaysTo()` e non un listener su `MessageSending` perche' e' il meccanismo del framework
+  (`Mailer::setGlobalToAndRemoveCcAndBcc()`, `Mailer.php:453`, fa gia' `forgetTo/forgetCc/forgetBcc`)
+  e perche' tutte le email passano dal mailer di default: verificato in vendor, non assunto.
+- `AppServiceProvider::boot()` -> `$this->app->make(StagingMailRedirector::class)->handle()` in coda al
+  metodo. Applicato una volta al boot e non per call-site proprio perche' deve coprire tutto.
+- **Guardia dura sulla produzione:** il redirect e' ignorato se `app()->isProduction()`, anche con la
+  variabile valorizzata. Motivo: se qualcuno copia un `.env` di staging sull'host di produzione, la
+  posta dei clienti reali non deve finire in silenzio in una casella di QA. Se in futuro serve il
+  redirect anche in produzione, va richiesto esplicitamente: e' una scelta di sicurezza, non un caso
+  dimenticato.
+- Attivazione legata alla **presenza della variabile** (piu' `!isProduction()`), non a un confronto
+  `APP_ENV === 'staging'`: cosi' funziona anche in locale, e la si valorizza solo dove serve.
+- `.env.example` documenta `MAIL_ALWAYS_TO=` (vuoto).
+
+Non implementato di proposito (fuori scope, da chiedere se serve): prefisso al subject col destinatario
+originale, che con `alwaysTo()` va perso.
+
+**Verifica eseguita:** `tests/Feature/Mail/StagingMailRedirectTest.php` (nuovo, 5 test: dirottamento
+con cc/bcc azzerati, dirottamento sul canale notification, nessun redirect senza indirizzo, indirizzo
+solo-spazi trattato come assente, nessun redirect in produzione). Il test applica il redirect su
+transport `array` e ispeziona l'envelope: **`mail.default` va messo a `array` PRIMA di `handle()`**,
+perche' `alwaysTo()` risolve e mette in cache l'istanza del mailer di default, che e' quella poi
+riusata dall'invio. Pest verde su `Auth`, `Mail`, `Notifications`, `Notes`, `FieldChangeRequests`,
+`Localization` (257 test) e su `RequestManagement`, `Imports` (551 test). Pint pulito sui file toccati.
+
+Nota operativa per chi lancia i test qui: `./vendor/bin/pest` sputa centinaia di righe
+`Xdebug: [Step Debug] Could not connect` che soffocano l'output. Usa `XDEBUG_MODE=off ./vendor/bin/pest`.
+
 ## ATTRIBUZIONE — I DUE GEMELLI ALLINEATI + BUONI CONDIZIONALI ANCHE IN CREAZIONE (2026-08-04) — VERDE, NON COMMITTATO
 
 Direttiva utente: restyling della sezione Attribuzione di Gestione Richieste e blocco "Buoni assegnati"

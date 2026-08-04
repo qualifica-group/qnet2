@@ -7,6 +7,7 @@ use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
 use App\CustomFields\CustomFieldRequestBag;
 use App\FieldChangeRequests\ProtectedFieldRegistry;
+use App\Mail\StagingMailRedirector;
 use App\Models\Address;
 use App\Models\Attachment;
 use App\Models\Attribute;
@@ -187,5 +188,9 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+
+        // Staging safety net: with MAIL_ALWAYS_TO set, every email is funnelled
+        // to that one mailbox instead of the real contacts. No-op when unset.
+        $this->app->make(StagingMailRedirector::class)->handle();
     }
 }
