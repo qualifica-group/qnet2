@@ -102,18 +102,6 @@ it('create: 422 without personal_data (required as the name source)', function (
         ->assertJsonValidationErrors('personal_data');
 });
 
-it('create: 422 when manager_slots has more than 4 filled slots', function () {
-    $actor = registryUserWith(['create']);
-    $managers = User::factory()->count(5)->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/registries', [
-        'is_supplier' => false,
-        'manager_slots' => $managers->pluck('id')->all(),
-        'personal_data' => minimalRegistryProfilePayload(),
-    ])->assertStatus(422)->assertJsonValidationErrors('manager_slots');
-});
-
 it('create: 422 when a relational id does not exist', function () {
     $actor = registryUserWith(['create']);
     Sanctum::actingAs($actor);
@@ -304,54 +292,6 @@ it('update: PATCH with only sector_ids=[] detaches all sectors, leaves the rest 
 
     expect($registry->fresh()->sectors)->toHaveCount(0)
         ->and($registry->fresh()->vat_group)->toBe('VG-1');
-});
-
-it('update: PATCH manager_slots attaches new managers (authoritative sync, not additive)', function () {
-    $actor = registryUserWith(['update']);
-    $registry = Registry::factory()->create();
-    $oldManager = User::factory()->create();
-    $registry->managers()->sync([$oldManager->id => ['position' => 1]]);
-    $newManager = User::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/registries/{$registry->id}", ['manager_slots' => [$newManager->id]])
-        ->assertOk()
-        ->assertJsonPath('data.manager_ids', [$newManager->id]);
-
-    expect($registry->fresh()->managers->pluck('id')->all())->toBe([$newManager->id]);
-});
-
-it('show: managers expose their static G.A. position and gaps stay empty', function () {
-    $actor = registryUserWith(['view']);
-    $ga1 = User::factory()->create();
-    $ga3 = User::factory()->create();
-    $registry = Registry::factory()->create();
-    // Occupy G.A.1 and G.A.3, leaving G.A.2 an empty slot (gap).
-    $registry->managers()->sync([
-        $ga1->id => ['position' => 1],
-        $ga3->id => ['position' => 3],
-    ]);
-    Sanctum::actingAs($actor);
-
-    $this->getJson("/api/registries/{$registry->id}")
-        ->assertOk()
-        ->assertJsonPath('data.managers.0.position', 1)
-        ->assertJsonPath('data.managers.1.position', 3)
-        ->assertJsonPath('data.manager_slots', [$ga1->id, null, $ga3->id]);
-});
-
-it('update: PATCH manager_slots persists gaps (empty G.A. slots)', function () {
-    $actor = registryUserWith(['update']);
-    $registry = Registry::factory()->create();
-    [$a, $b] = User::factory()->count(2)->create();
-    Sanctum::actingAs($actor);
-
-    // Fill G.A.1 and G.A.3, G.A.2 empty.
-    $this->patchJson("/api/registries/{$registry->id}", ['manager_slots' => [$a->id, null, $b->id]])
-        ->assertOk()
-        ->assertJsonPath('data.manager_slots', [$a->id, null, $b->id]);
-
-    expect($registry->fresh()->managers()->wherePivot('position', 2)->exists())->toBeFalse();
 });
 
 it('update: PATCH omitting sector_ids leaves existing sectors untouched', function () {

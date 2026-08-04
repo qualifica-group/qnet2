@@ -170,6 +170,10 @@ export const productCategories = {
     managerLabelLevel: 'A.M. {{n}}',
     managerLabelPlaceholder: 'Account manager {{n}}',
     managerLabelMax: 'The label must be at most 60 characters.',
+    managerLabelsHelp:
+      'Add a level for each Account Manager rank this category uses. Resetting a level only clears its custom label — it never removes an assigned account manager.',
+    addManagerLabelLevel: 'Add level',
+    resetManagerLabelLevel: 'Reset A.M. {{n}} to the default label',
     inheritsManagerLabels: 'Inherit from parent',
     inheritsManagerLabelsHint:
       'When off, this category ignores its ancestors: neither it nor its subcategories inherit these labels from above.',

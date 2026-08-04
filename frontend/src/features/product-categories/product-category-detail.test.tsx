@@ -211,4 +211,15 @@ describe('ProductCategoryDetailView — manager labels (spec 0080)', () => {
     expect(within(section).getByText('Operator')).toBeInTheDocument()
     expect(within(section).getAllByText('Inherited')).toHaveLength(1)
   })
+
+  // Spec 0080 amendment A1: positions are no longer bounded to 1..4.
+  it('shows positions beyond the 4th, sorted ascending (AC-050, AC-053)', () => {
+    render(<ProductCategoryDetailView category={category({ manager_labels: { '12': 'Director', '5': 'Regional lead' } })} />)
+
+    const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
+    const rows = within(section).getAllByText(/A\.M\./)
+    expect(rows.map((row) => row.textContent)).toEqual(['A.M. 5', 'A.M. 12'])
+    expect(within(section).getByText('Regional lead')).toBeInTheDocument()
+    expect(within(section).getByText('Director')).toBeInTheDocument()
+  })
 })

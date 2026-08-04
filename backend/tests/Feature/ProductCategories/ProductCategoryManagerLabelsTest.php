@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Attribute;
+use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\User;
@@ -89,11 +91,11 @@ it('AC-002: an object that normalizes to fully empty saves as null', function ()
 // Key validation (AC-003) / length validation (AC-004)
 // ---------------------------------------------------------------------------
 
-it('AC-003: a key of "0", "5" or non-numeric -> 422, no write', function (): void {
+it('AC-003/AC-051: a key of "0", "13" (beyond the spec 0080 amendment A1 cap of 12) or non-numeric -> 422, no write', function (): void {
     $actor = managerLabelUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    foreach (['0' => 'x', '5' => 'x', 'abc' => 'x'] as $key => $label) {
+    foreach (['0' => 'x', '13' => 'x', 'abc' => 'x'] as $key => $label) {
         $this->postJson('/api/product-categories', [
             'name' => "Invalid-{$key}",
             'manager_labels' => [$key => $label],
@@ -101,6 +103,25 @@ it('AC-003: a key of "0", "5" or non-numeric -> 422, no write', function (): voi
 
         expect(ProductCategory::where('name', "Invalid-{$key}")->exists())->toBeFalse();
     }
+});
+
+it('AC-050/AC-051: positions beyond the 4th (up to 12, the cap) are accepted, saved and reread', function (): void {
+    $actor = managerLabelUserWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/product-categories', [
+        'name' => 'Beyond Four',
+        'manager_labels' => ['5' => 'GA Cinque', '12' => 'GA Dodici'],
+    ])->assertCreated()
+        ->assertJsonPath('data.manager_labels.5', 'GA Cinque')
+        ->assertJsonPath('data.manager_labels.12', 'GA Dodici');
+
+    $category = ProductCategory::where('name', 'Beyond Four')->firstOrFail();
+
+    $this->getJson("/api/product-categories/{$category->id}")
+        ->assertOk()
+        ->assertJsonPath('data.manager_labels.5', 'GA Cinque')
+        ->assertJsonPath('data.manager_labels.12', 'GA Dodici');
 });
 
 it('AC-004: a label over 60 characters -> 422', function (): void {
@@ -320,4 +341,38 @@ it('show: inherited_manager_labels is the ancestor\'s FULL own set even on a pos
     // views — mirrors inherited_attributes' pre-existing behavior.
     expect($response->json('data.manager_labels'))->toBe(['2' => 'Consulente'])
         ->and($response->json('data.inherited_manager_labels'))->toBe(['1' => 'Commerciale', '2' => 'Operatore']);
+});
+
+// ---------------------------------------------------------------------------
+// AC-054 — removing a label only touches the denomination, never a pivot row
+// ---------------------------------------------------------------------------
+
+it('AC-054: removing a manager_labels position resets its denomination and never touches assigned managers', function (): void {
+    $actor = managerLabelUserWith(['update']);
+    $category = ProductCategory::factory()->create([
+        'manager_labels' => ['1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D', '5' => 'E', '6' => 'F'],
+    ]);
+    $opportunity = Opportunity::factory()->create();
+    OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
+    $managers = User::factory()->count(6)->create();
+    $opportunity->managers()->sync(
+        $managers->mapWithKeys(fn (User $manager, int $index): array => [$manager->id => ['position' => $index + 1]])->all(),
+    );
+    $pivotBefore = DB::table('opportunity_user')->where('opportunity_id', $opportunity->id)
+        ->orderBy('position')->get()->map(fn (object $row): array => (array) $row)->all();
+
+    Sanctum::actingAs($actor);
+
+    // Drop position 5's label only — every other position resubmitted as-is.
+    $this->patchJson("/api/product-categories/{$category->id}", [
+        'manager_labels' => ['1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D', '6' => 'F'],
+    ])->assertOk()
+        ->assertJsonMissingPath('data.manager_labels.5')
+        ->assertJsonPath('data.manager_labels.6', 'F');
+
+    $pivotAfter = DB::table('opportunity_user')->where('opportunity_id', $opportunity->id)
+        ->orderBy('position')->get()->map(fn (object $row): array => (array) $row)->all();
+
+    expect($pivotAfter)->toBe($pivotBefore)
+        ->and($opportunity->fresh()->managers)->toHaveCount(6);
 });

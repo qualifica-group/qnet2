@@ -3,6 +3,54 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ATTRIBUZIONE — I DUE GEMELLI ALLINEATI + BUONI CONDIZIONALI ANCHE IN CREAZIONE (2026-08-04) — VERDE, NON COMMITTATO
+
+Direttiva utente: restyling della sezione Attribuzione di Gestione Richieste e blocco "Buoni assegnati"
+montato solo con un Segnalatore, con animazione, su **entrambi** i gemelli (work panel + form di
+creazione). Supera le due voci sotto ("BUONI ASSEGNATI…" e "SEZIONE ATTRIBUZIONE — ARMONIA VISIVA"),
+di cui conserva la regola dell'OR e i motivi.
+
+**NIENTE gruppi etichettati (direttiva utente, secondo giro).** Un primo tentativo aveva diviso i 4
+picker in due gruppi con icona + caption (`Provenienza` / `Assegnazione`) e un `border-t` in mezzo:
+**respinto e rimosso**. La sezione resta una griglia unica di 4 campi. Di conseguenza sono stati
+annullati anche il rinomino `ClientGroup` -> `RequestFieldGroup` e le chiavi i18n `originGroup`/
+`assignmentGroup`: `request-client-section.tsx` e `request-create-client-section.tsx` sono tornati
+identici a HEAD. **Non riproporre caption/divisori in questa sezione.**
+
+**Il restyling che resta** e' l'allineamento del form di creazione al work panel (prima erano su ritmi
+diversi): `FIELD_GRID_CLASS` al posto di `grid gap-3` (quindi `gap-4` + `items-start`),
+`FIELD_STACK_CLASS` al posto di `flex flex-col gap-1.5`, buoni nell'inset tinto e hint di scoping
+operatore col glifo `Info size-3.5` come nel pannello.
+
+**Nuovi file condivisi dai due gemelli** (l'anti-drift che la voce precedente segnalava come mancante):
+- `request-form-layout.ts` — `FIELD_GRID_CLASS` (`grid min-w-0 items-start gap-4 @2xl:grid-cols-2`) e
+  `FIELD_STACK_CLASS` (`flex min-w-0 flex-col gap-2`, il passo di `FormItem`).
+- `request-rewards-field.tsx` — `RequestRewardsField`: possiede **la regola di visibilita' + l'inset tinto
+  + il reveal**, con i18n via `labelPrefix` (pattern gia' in repo: `labelPrefix`/`keyPrefix` in
+  `table/rich-cells.tsx`). Ritorna `null` se `reporterId == null && value.length === 0`.
+
+Il form di creazione (`request-create-attribution-section.tsx`) prima montava il controllo buoni
+**sempre, solo disabilitato**: ora si comporta come il work panel (assente senza Segnalatore, reveal
+`motion-safe:animate-in fade-in-0 slide-in-from-top-1 duration-200` alla selezione, uscita immediata).
+
+**Resta valido l'OR, non il solo `reporterId != null`:** `StoreRequestRequest`/`UpdateRequestRequest`
+rifiutano con 422 rewards senza reporter; nascondere il blocco in quello stato toglierebbe l'unico
+controllo capace di staccarli (chip read-only + hint "Select a reporter first…").
+
+Nessuna chiave i18n nuova: i due blocchi `rewards` esistenti (en+it) coprono tutto.
+
+**Verificato (eseguito):** `npx tsc -b --force` EXIT=0; vitest `src/features/request-management` →
+35 file / 232 test verdi (di cui i 4 nuovi di `request-create-attribution-rewards.test.tsx`);
+`opportunities/reward-assignment-field.test.tsx` (il componente condiviso, non toccato) 6/6 verde;
+ESLint EXIT=0 sui 5 file toccati.
+
+**Attenzione, rosso NON di questo lavoro:** durante la sessione un altro flusso di lavoro ha modificato
+`manager-slots-field.tsx`, `opportunity-schema.ts`, `ValidatesManagerSlots.php` e affini (slot G.A.,
+spec 0080). Con quelle modifiche in albero `opportunities/opportunity-schema.test.ts > rejects more than
+4 filled manager slots` fallisce. Prima di quelle modifiche l'intera run
+`request-management + opportunities` era verde (57 file / 431 test). Chi lavora sugli slot G.A. deve
+chiudere quel test.
+
 ## BUONI ASSEGNATI — MONTATO SOLO CON UN SEGNALATORE (2026-08-04) — VERDE, NON COMMITTATO
 
 Direttiva utente: senza Segnalatore il controllo buoni non si mostra piu' disabilitato, sparisce; ricompare

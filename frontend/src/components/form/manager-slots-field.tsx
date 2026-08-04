@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 
@@ -143,7 +144,10 @@ export function ManagerSlotsField({
         type="button"
         variant="outline"
         size="sm"
-        disabled={disabled}
+        // Spec 0080 A1: the array itself (incl. empty slots) is capped at
+        // MAX_MANAGER_SLOTS regardless of how many are actually filled —
+        // mirrors the backend's own `ValidatesManagerSlots::MAX_MANAGER_SLOTS`.
+        disabled={disabled || value.length >= MAX_MANAGER_SLOTS}
         onClick={() => onChange([...value, null])}
         className="w-full justify-center border-dashed text-muted-foreground hover:border-solid hover:text-foreground"
       >

@@ -221,7 +221,8 @@ class Opportunity extends BaseModel
 
     /**
      * The internal users managing this opportunity ("Gestori Account", max
-     * 4 — validation-layer only, see StoreOpportunityRequest), mirroring
+     * App\Support\ManagerPositions::MAX — validation-layer only, see
+     * StoreOpportunityRequest), mirroring
      * Registry::managers() verbatim (spec 0040, "ranking inherited by future
      * modules like Opportunities" per the 2026_07_13_130000 docblock).
      */

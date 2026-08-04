@@ -72,4 +72,22 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
     expect(screen.getByText('Account manager 2')).toBeInTheDocument()
     expect(screen.queryByText('Account manager 1')).not.toBeInTheDocument()
   })
+
+  it('AC-053 (amendment A1): a label configured past the 4th position shows the same as the first four', () => {
+    render(
+      <OpportunityDetailSections
+        opportunity={opportunity({
+          managers: [
+            { id: 200, name: 'Anna Bianchi', position: 1 },
+            { id: 205, name: 'Elio Ferro', position: 5 },
+          ],
+          manager_labels: { '5': 'Field consultant' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Account manager 1')).toBeInTheDocument()
+    expect(screen.getByText('Field consultant')).toBeInTheDocument()
+    expect(screen.queryByText('Account manager 5')).not.toBeInTheDocument()
+  })
 })

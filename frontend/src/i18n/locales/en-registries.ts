@@ -58,7 +58,7 @@ export const registries = {
     managersEmpty: 'No account managers found.',
     managersError: 'Unable to load account managers.',
     managersRemove: 'Remove account manager',
-    managersMax: 'You can select at most 4 account managers.',
+    managersMax: 'You can select at most {{max}} account managers.',
     managersHint: 'Account managers are listed by importance (top one first); the order is inherited by other modules. Assign a person to each row, clear it to leave it empty, or reorder with the arrows.',
     managersAddSlot: 'Add account manager',
     managerSlotLabel: 'Account manager {{n}}',

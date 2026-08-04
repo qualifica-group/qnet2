@@ -6,7 +6,6 @@ import type {
   UpdateProductCategoryPayload,
 } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
-import { MANAGER_LABEL_POSITIONS } from '@/features/product-categories/product-category-schema'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
 function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentInput[]): boolean {
@@ -19,13 +18,18 @@ function sameAssignments(a: AttributeAssignmentInput[], b: AttributeAssignmentIn
   return a.every((assignment) => bKeys.has(key(assignment)))
 }
 
-/** Strips blank/whitespace-only rows and trims the rest, so the payload only ever carries valorized G.A. positions (spec 0080 AC-042). */
+/**
+ * Strips blank/whitespace-only rows and trims the rest, so the payload only
+ * ever carries valorized G.A. positions (spec 0080 AC-042). Generic over
+ * whatever positions the dynamic section currently holds (spec 0080 A1) — the
+ * UI, not this builder, is what keeps positions within the 1..12 ceiling.
+ */
 function buildManagerLabelsValue(labels: ManagerLabels): ManagerLabels {
   const result: ManagerLabels = {}
-  for (const position of MANAGER_LABEL_POSITIONS) {
-    const trimmed = (labels[String(position)] ?? '').trim()
+  for (const [position, rawLabel] of Object.entries(labels)) {
+    const trimmed = rawLabel.trim()
     if (trimmed) {
-      result[String(position)] = trimmed
+      result[position] = trimmed
     }
   }
   return result

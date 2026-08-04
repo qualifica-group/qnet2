@@ -105,8 +105,9 @@ class Registry extends BaseModel
     }
 
     /**
-     * The internal users managing this registry ("Gestori interni", max 4 —
-     * validation-layer only, see StoreRegistryRequest). Each membership carries
+     * The internal users managing this registry ("Gestori interni", max
+     * App\Support\ManagerPositions::MAX — validation-layer only, see
+     * StoreRegistryRequest). Each membership carries
      * a 1-based `position` = its static "G.A. n" slot; always read in that
      * order so the numbering (and the order of importance it encodes) is stable.
      */

@@ -329,6 +329,90 @@
     <criterion id="AC-046">VERIFICA (non implementazione): esportando la tabella Gestione Richieste, l'header della colonna operatore riporta la label risolta lato client. Se cosi' non fosse, NON implementare: segnalare.</criterion>
   </acceptance_criteria>
 
+  <!-- ==================== AMENDMENT 1 — NUMERO DI GA FLESSIBILE ==================== -->
+  <!-- Decisione utente 2026-08-04, DOPO la consegna verde dell'impianto base.
+       Non riscrive quanto sopra: lo estende. Tutto cio' che non e' toccato qui resta valido. -->
+  <amendment id="A1" date="2026-08-04" status="approved">
+
+    <goal>
+      Il numero di livelli GA non e' piu' fisso a 4. Si devono poter AGGIUNGERE livelli e
+      nominarli, e le label devono propagarsi in tutto il sistema come gia' previsto.
+    </goal>
+
+    <why-no-contract-break>
+      Il DB non ha MAI avuto il vincolo di 4: i GA sono righe pivot con `position` intera
+      (`opportunity_user`, `registry_user`), nessun cap sullo schema. Il tetto vive SOLO nella
+      validazione. Quindi NESSUNA migrazione di dati, NESSUN cambio di shape del contratto:
+      `manager_labels` resta la mappa SPARSA posizione->label gia' implementata e testata
+      (con #[PreserveKeys]), e il merge di ereditarieta' per posizione resta identico.
+      `ManagerSlotsField` sa gia' aggiungere/rimuovere slot: era solo limitato dalla validazione.
+    </why-no-contract-break>
+
+    <decisions source="user 2026-08-04">
+      <d1>Il numero di livelli lo decide OGNI CATEGORIA PRODOTTO: categorie diverse possono
+          esporre un numero diverso di GA. La configurazione vive dove gia' e' (la sezione
+          "Gestori Account" del form Categoria Prodotto).</d1>
+      <d2>Tetto di sicurezza FISSO NEL CODICE, piu' alto dell'attuale. Valore: 12, allineato
+          all'esistente `ValidatesManagerSlots::MAX_MANAGER_SLOTS = 12` (numero gia' precedentato
+          in questo codebase, non inventato).</d2>
+      <d3>Anagrafiche (Registry): adottano lo STESSO tetto (piu' di 4 slot disponibili) ma
+          continuano a mostrare le label di DEFAULT, coerentemente con la decisione precedente.
+          Non hanno categoria da cui leggere le label.</d3>
+    </decisions>
+
+    <constant-unification>
+      Oggi il cap 4 e' DUPLICATO in tre punti piu' uno introdotto dalla spec base:
+        - backend App\Http\Requests\Concerns\ValidatesManagerSlots::MAX_MANAGERS = 4
+        - backend App\Models\ProductCategory::MANAGER_LABEL_MAX_POSITION = 4
+        - frontend features/opportunities/opportunity-schema.ts:14  MAX_MANAGERS = 4
+        - frontend features/registries/registry-schema.ts:20        MAX_MANAGERS = 4
+      Portarli tutti a 12. NON lasciare il numero sparso: lato backend una sola costante
+      condivisa e' la fonte di verita' (`ValidatesManagerSlots::MAX_MANAGER_SLOTS` gia' vale 12 —
+      valutare se far derivare le altre da quella invece di ripetere il letterale); lato frontend
+      una sola costante esportata e riusata dai due schema. Il messaggio di validazione i18n
+      ("al massimo 4 gestori") va reso PARAMETRICO sul numero, non riscritto a mano.
+    </constant-unification>
+
+    <backend>
+      - `ValidatesManagerSlots`: MAX_MANAGERS 4 -> 12. `MAX_MANAGER_SLOTS` resta 12 (lunghezza
+        array incl. slot vuoti): con 12 riempibili su 12 slot il vincolo resta coerente. Se la
+        verifica mostra che serve piu' respiro per i gap, alzarlo e DICHIARARLO, non subirlo.
+      - `ProductCategory::MANAGER_LABEL_MAX_POSITION` 4 -> 12. Le chiavi valide di
+        `manager_labels` diventano 1..12; chiave 0, 13 o non numerica -> 422 (AC-003 aggiornato).
+      - Nessun'altra modifica backend: risolutori, ereditarieta', resource, endpoint,
+        relabel della colonna `operator_ga2` restano COME SONO — sono gia' generici sulla posizione.
+      - VERIFICARE che nessun punto assuma implicitamente "4" (es. array a lunghezza fissa,
+        loop 1..4 hard-coded). Se ne esiste, e' un difetto da correggere, non da aggirare.
+    </backend>
+
+    <frontend>
+      - La sezione "Gestori Account" del form Categoria Prodotto NON e' piu' 4 righe fisse:
+        diventa una lista DINAMICA con "Aggiungi livello" / rimuovi, fino al tetto di 12.
+        Le righe mostrate all'apertura = le posizioni gia' configurate (proprie + ereditate),
+        con un minimo ragionevole; il pulsante di aggiunta si disabilita al tetto.
+        Stessa UX/densita' compatta delle sezioni attributi (ui-design.md), come gia' fatto.
+      - RIMUOVERE una riga rimuove SOLO la label di quella posizione: quel livello torna alla
+        denominazione predefinita. NON detach-a nessun gestore, NON tocca `manager_slots`,
+        NON cancella righe pivot. E' un vincolo, non un dettaglio: va coperto da test.
+      - `opportunity-schema.ts` / `registry-schema.ts`: cap 4 -> 12 dalla costante condivisa.
+        `ManagerSlotsField` non cambia struttura: sa gia' aggiungere/rimuovere slot.
+      - La risoluzione live delle label dalle product line (create + edit) resta com'e':
+        e' gia' generica sulla posizione.
+    </frontend>
+
+    <acceptance_criteria>
+      <criterion id="AC-050">Una Categoria Prodotto puo' configurare label per posizioni oltre la 4a (es. GA5, GA6) e riletta dal GET le restituisce.</criterion>
+      <criterion id="AC-051">Chiave manager_labels 13 (oltre il tetto) o 0 -> 422; chiave 12 -> accettata.</criterion>
+      <criterion id="AC-052">Un'Opportunita' accetta piu' di 4 gestori assegnati (fino a 12); oltre il tetto -> 422.</criterion>
+      <criterion id="AC-053">Le label configurate oltre la 4a posizione compaiono in tutte le superfici gia' coperte (form, dettaglio, Gestione Richieste) esattamente come le prime 4.</criterion>
+      <criterion id="AC-054">Rimuovere una label dalla configurazione riporta quel livello alla denominazione predefinita e NON altera i gestori assegnati (nessuna riga pivot toccata).</criterion>
+      <criterion id="AC-055">La sezione di configurazione permette di aggiungere/rimuovere livelli fino a 12 e disabilita l'aggiunta al tetto.</criterion>
+      <criterion id="AC-056">Le Anagrafiche accettano piu' di 4 gestori (stesso tetto) e continuano a mostrare le label di DEFAULT: nessuna regressione sul percorso Registry.</criterion>
+      <criterion id="AC-057">NON-REGRESSIONE: tutti gli AC precedenti (001-046) restano verdi; in particolare l'ereditarieta' per posizione e la regola di univocita' funzionano identiche sulle posizioni oltre la 4a.</criterion>
+      <criterion id="AC-058">Il messaggio di validazione sul numero massimo di gestori e' parametrico (riporta 12, non la stringa "4" riscritta a mano).</criterion>
+    </acceptance_criteria>
+  </amendment>
+
   <constraints>
     - Solo librerie gia' presenti in composer.json / package.json.
     - Layering backend: Controller thin -> FormRequest -> Service -> DTO -> Resource -> Policy.

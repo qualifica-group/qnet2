@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
@@ -10,8 +11,21 @@ import type { ProductLineRow } from '@/features/product-lines/types'
  * remains nullable when editing an existing one.
  */
 
-/** Backend limit on FILLED manager slots (`max:4`, `ValidatesManagerSlots`, mirrors registries). */
-export const MAX_MANAGERS = 4
+/**
+ * Backend limit on FILLED manager slots (`ValidatesManagerSlots`, spec 0080
+ * amendment A1), shared with `registry-schema.ts` via the single neutral
+ * `MAX_MANAGER_SLOTS` constant so the two never drift apart again.
+ */
+export const MAX_MANAGERS = MAX_MANAGER_SLOTS
+
+/**
+ * How many empty G.A. rows the create form opens on (user directive
+ * 2026-07-29) — a UX default, INDEPENDENT of `MAX_MANAGERS` (the actual
+ * ceiling): the ranking stays visible without pressing "Add" first, without
+ * seeding a brand-new opportunity with a full page of empty rows now that the
+ * ceiling itself is 12 (spec 0080 A1).
+ */
+export const DEFAULT_MANAGER_SLOTS = 4
 
 /** Backend `estimated_value` column ceiling, `decimal(15,2)` (`max:9999999999999.99`). */
 export const ESTIMATED_VALUE_MAX = 9999999999999.99
@@ -146,7 +160,7 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
       .array(z.number().nullable())
       .refine(
         (slots) => slots.filter((slot) => slot !== null).length <= MAX_MANAGERS,
-        t('opportunities.form.managersMax'),
+        t('opportunities.form.managersMax', { max: MAX_MANAGERS }),
       ),
     start_date: z.string().nullable(),
     expected_close_date: z.string().nullable(),

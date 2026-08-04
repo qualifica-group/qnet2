@@ -58,7 +58,7 @@ export const registries = {
     managersEmpty: 'Nessun gestore account trovato.',
     managersError: 'Impossibile caricare i gestori account.',
     managersRemove: 'Rimuovi gestore account',
-    managersMax: 'Puoi selezionare al massimo 4 gestori account.',
+    managersMax: 'Puoi selezionare al massimo {{max}} gestori account.',
     managersHint: 'I gestori account sono in ordine di importanza (dal primo in alto): l’ordine viene ereditato dagli altri moduli. Assegna una persona a ogni riga, svuotala per lasciarla libera o riordinala con le frecce.',
     managersAddSlot: 'Aggiungi gestore account',
     managerSlotLabel: 'Gestore account {{n}}',

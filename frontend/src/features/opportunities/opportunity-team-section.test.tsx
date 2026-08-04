@@ -145,4 +145,22 @@ describe('OpportunityTeamSection', () => {
       ),
     )
   })
+
+  it('AC-053 (amendment A1): threads a label configured past the 4th position the same as any other', async () => {
+    fetchCategoryManagerLabelsMock.mockResolvedValue({ '5': 'Field consultant' })
+
+    render(
+      <TeamSectionHarness
+        supervisorRequired={false}
+        productLines={[{ business_function_id: 40, product_category_id: 500 }]}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('manager-slots-field')).toHaveAttribute(
+        'data-labels',
+        JSON.stringify({ 5: 'Field consultant' }),
+      ),
+    )
+  })
 })

@@ -23,7 +23,7 @@ import {
 import {
   buildCreateOpportunitySchema,
   buildUpdateOpportunitySchema,
-  MAX_MANAGERS,
+  DEFAULT_MANAGER_SLOTS,
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
 import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
@@ -58,19 +58,21 @@ export type OpportunityFormValues = CreateOpportunityFormValues
 
 /**
  * The create form's G.A. slots: one empty card per assignable position, G.A. 1
- * through G.A. MAX_MANAGERS (user directive 2026-07-29). Empty slots are
+ * through G.A. DEFAULT_MANAGER_SLOTS (user directive 2026-07-29) — a UX
+ * default, independent of the actual ceiling (spec 0080 A1's `MAX_MANAGERS`,
+ * now 12): "Add slot" (`ManagerSlotsField`) reaches the rest. Empty slots are
  * gap-aware and submit as nothing, so this changes what the user SEES, not
  * what is sent.
  */
 function defaultManagerSlots(): (number | null)[] {
-  return Array.from({ length: MAX_MANAGERS }, () => null)
+  return Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null)
 }
 
 /** Keeps every derived slot in place while topping the list up to the four defaults. */
 function padManagerSlots(slots: (number | null)[]): (number | null)[] {
-  return slots.length >= MAX_MANAGERS
+  return slots.length >= DEFAULT_MANAGER_SLOTS
     ? slots
-    : [...slots, ...Array.from({ length: MAX_MANAGERS - slots.length }, () => null)]
+    : [...slots, ...Array.from({ length: DEFAULT_MANAGER_SLOTS - slots.length }, () => null)]
 }
 
 /** Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape. */

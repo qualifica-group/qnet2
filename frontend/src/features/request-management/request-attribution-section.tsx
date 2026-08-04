@@ -10,27 +10,16 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
 import { InterceptedRelationSelectField } from '@/features/request-management/intercepted-relation-select-field'
-import { cn } from '@/lib/utils'
+import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/features/request-management/request-form-layout'
+import { RequestRewardsField } from '@/features/request-management/request-rewards-field'
 import { OPERATOR_MANAGER_LABEL_POSITION, REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { ManagerLabels, RequestRelationRef } from '@/features/request-management/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
-/**
- * A picker plus whatever hangs under it (the reward chips, the scoping hint).
- * `gap-2` is `FormItem`'s own label-to-control gap, so an attachment sits on
- * the same vertical rhythm as the field it belongs to instead of floating.
- */
-const FIELD_STACK_CLASS = 'flex min-w-0 flex-col gap-2'
-
-/** Tinted inset (never a rung of the surface scale) that keeps the reward chips visually attached to the reporter. */
-const REWARDS_BLOCK_CLASS = 'rounded-lg border bg-muted/40 px-3 py-2.5'
-
-/** Same reveal the other conditional blocks of the app use (see `opportunity-form-body.tsx`). */
-const REWARDS_REVEAL_CLASS =
-  'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-200'
+/** i18n root of the reward block's strings, resolved inside `RequestRewardsField`. */
+const REWARDS_LABEL_PREFIX = 'requestManagement.workPanel.attribution.rewards'
 
 interface RequestAttributionSectionProps {
   /**
@@ -75,9 +64,9 @@ interface RequestAttributionSectionProps {
  * out-of-scope operator.
  *
  * The reward control (spec 0059 D-3) hangs under the Segnalatore because that
- * reporter is always its beneficiary — and, since the user directive
- * 2026-08-04, it is mounted only once there IS one (see `showRewards`),
- * revealing itself with the app's standard motion-safe fade/slide.
+ * reporter is always its beneficiary, and mounts only once there IS one — see
+ * `RequestRewardsField`, which owns that rule for both this panel and the
+ * create form.
  */
 export function RequestAttributionSection({
   form,
@@ -114,13 +103,6 @@ export function RequestAttributionSection({
   // 2026-08-04).
   const showOperatorScopeHint =
     siteId != null && fieldPermission('operator_id').visible && fieldPermission('operational_site_id').visible
-
-  // The reward control only ever assigns a buono TO the reporter, so with no
-  // reporter it has no subject and stays off screen (user directive
-  // 2026-08-04). The exception is a reporter cleared while rewards are still
-  // attached: the backend refuses that pair (422, `UpdateRequestRequest`), and
-  // hiding the block would hide the only control able to detach them.
-  const showRewards = reporterId != null || rewardsValue.length > 0
 
   // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
   // (no extra fetch). An operator with no Sede leaves the current value alone.
@@ -171,7 +153,7 @@ export function RequestAttributionSection({
         defaultValue: 'Where the request comes from and who is working on it.',
       })}
     >
-      <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
+      <div className={FIELD_GRID_CLASS}>
         <InterceptedRelationSelectField
           control={control}
           name="source_id"
@@ -202,38 +184,13 @@ export function RequestAttributionSection({
             selected={reporter}
             {...selectLabels}
           />
-          {showRewards && (
-            <RewardAssignmentField
-              className={cn(REWARDS_BLOCK_CLASS, REWARDS_REVEAL_CLASS)}
-              value={rewardsValue}
-              onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
-              initialAssignments={rewards}
-              reporterId={reporterId}
-              fieldLabel={t('requestManagement.workPanel.attribution.rewards.fieldLabel', {
-                defaultValue: 'Assigned rewards',
-              })}
-              disabledHint={t('requestManagement.workPanel.attribution.rewards.reporterRequiredHint', {
-                defaultValue: 'Select a reporter first to assign a reward.',
-              })}
-              addLabel={t('requestManagement.workPanel.attribution.rewards.add', { defaultValue: 'Add reward' })}
-              removeLabel={(name) =>
-                t('requestManagement.workPanel.attribution.rewards.remove', { name, defaultValue: `Remove ${name}` })
-              }
-              searchPlaceholder={t('requestManagement.workPanel.attribution.rewards.searchPlaceholder', {
-                defaultValue: 'Search a reward type…',
-              })}
-              emptyLabel={t('requestManagement.workPanel.attribution.rewards.empty', {
-                defaultValue: 'No reward type found.',
-              })}
-              errorLabel={t('requestManagement.workPanel.attribution.rewards.error', {
-                defaultValue: 'Could not load the reward types.',
-              })}
-              retryLabel={t('common.retry')}
-              loadMoreLabel={t('requestManagement.workPanel.attribution.rewards.loadMore', {
-                defaultValue: 'Load more',
-              })}
-            />
-          )}
+          <RequestRewardsField
+            labelPrefix={REWARDS_LABEL_PREFIX}
+            reporterId={reporterId}
+            value={rewardsValue}
+            onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
+            initialAssignments={rewards}
+          />
         </div>
 
         <RelationSelectField

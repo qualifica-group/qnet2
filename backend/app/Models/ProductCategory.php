@@ -6,6 +6,7 @@ use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
+use App\Support\ManagerPositions;
 use Database\Factories\ProductCategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,12 +26,13 @@ class ProductCategory extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
-     * Highest valid "Gestore Account" pivot position (spec 0080), aligned
-     * with the validation-layer cap on the number of managers a
+     * Highest valid "Gestore Account" pivot position (spec 0080 amendment
+     * A1): shared with the validation-layer cap on the number of managers a
      * record may have (App\Http\Requests\Concerns\ValidatesManagerSlots::
-     * MAX_MANAGERS). `manager_labels` keys outside 1..this are rejected.
+     * MAX_MANAGERS) via App\Support\ManagerPositions, the single source of
+     * truth. `manager_labels` keys outside 1..this are rejected.
      */
-    public const int MANAGER_LABEL_MAX_POSITION = 4;
+    public const int MANAGER_LABEL_MAX_POSITION = ManagerPositions::MAX;
 
     /** Max length of a single manager label (spec 0080). */
     public const int MANAGER_LABEL_MAX_LENGTH = 60;

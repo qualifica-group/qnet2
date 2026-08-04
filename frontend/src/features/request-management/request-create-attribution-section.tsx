@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Route } from 'lucide-react'
+import { Info, Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -8,19 +8,27 @@ import { FormSection } from '@/components/form-section'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { useAbilities } from '@/features/auth/use-abilities'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { RewardAssignmentField } from '@/features/opportunities/reward-assignment-field'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
+import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/features/request-management/request-form-layout'
+import { RequestRewardsField } from '@/features/request-management/request-rewards-field'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 import { useActiveCategoryManagerLabels } from '@/features/request-management/use-active-category-manager-labels'
 import { useRequestManagementCategoryPreference } from '@/features/request-management/use-request-management-category-preference'
 import {
   ASSIGN_OPERATOR_PERMISSION,
   OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
 } from '@/features/request-management/use-request-actor-defaults'
+
+/** i18n root of the reward block's strings, resolved inside `RequestRewardsField`. */
+const REWARDS_LABEL_PREFIX = 'requestManagement.form.create.attribution.rewards'
+
+/** Hoisted: nothing is persisted yet on a create form, and a fresh `[]` per render would reseed the chips' cache. */
+const EMPTY_ASSIGNMENTS: RewardAssignmentRef[] = []
 
 interface RequestCreateAttributionSectionProps {
   form: UseFormReturn<RequestCreateFormValues>
@@ -59,8 +67,8 @@ interface RequestCreateAttributionSectionProps {
  * it is what scopes the list below it.
  *
  * The reward control (spec 0059 D-3) sits under the Segnalatore because the
- * beneficiary is always that reporter: it disables itself with an accessible
- * hint until a reporter is chosen.
+ * beneficiary is always that reporter, and is mounted only once there IS one:
+ * `RequestRewardsField` owns that rule for this form and the work panel alike.
  *
  * "Operatore" relabeling (spec 0080): the create form has no persisted
  * request yet to resolve its own G.A. labels from (unlike the work panel), so
@@ -103,6 +111,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
   const [autoFilledSite, setAutoFilledSite] = useState<ForSelectItem | null>(null)
 
   const canPickSite = can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)
+  const canAssignOperator = can(ASSIGN_OPERATOR_PERMISSION)
 
   // Operatore -> Sede: picking an operator hydrates its own Sede from `meta`
   // (no extra fetch). An operator with no Sede leaves the current value alone,
@@ -145,7 +154,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
       title={t('requestManagement.form.create.attribution.title')}
       description={t('requestManagement.form.create.attribution.description')}
     >
-      <div className="grid gap-3 @2xl:grid-cols-2">
+      <div className={FIELD_GRID_CLASS}>
         <FormField
           control={control}
           name="source_id"
@@ -171,7 +180,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
           )}
         />
 
-        <div className="flex flex-col gap-1.5">
+        <div className={FIELD_STACK_CLASS}>
           <FormField
             control={control}
             name="reporter_id"
@@ -196,22 +205,12 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
               </FormItem>
             )}
           />
-          <RewardAssignmentField
+          <RequestRewardsField
+            labelPrefix={REWARDS_LABEL_PREFIX}
+            reporterId={reporterId}
             value={rewardsValue}
             onChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
-            initialAssignments={[]}
-            reporterId={reporterId}
-            fieldLabel={t('requestManagement.form.create.attribution.rewards.fieldLabel')}
-            disabledHint={t('requestManagement.form.create.attribution.rewards.reporterRequiredHint')}
-            addLabel={t('requestManagement.form.create.attribution.rewards.add')}
-            removeLabel={(name) =>
-              t('requestManagement.form.create.attribution.rewards.remove', { name, defaultValue: `Remove ${name}` })
-            }
-            searchPlaceholder={t('requestManagement.form.create.attribution.rewards.searchPlaceholder')}
-            emptyLabel={t('requestManagement.form.create.attribution.rewards.empty')}
-            errorLabel={t('requestManagement.form.create.attribution.rewards.error')}
-            retryLabel={t('common.retry')}
-            loadMoreLabel={t('requestManagement.form.create.attribution.rewards.loadMore')}
+            initialAssignments={EMPTY_ASSIGNMENTS}
           />
         </div>
 
@@ -244,7 +243,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
         )}
 
         {/* After the Sede on purpose: the Sede is what scopes this list. */}
-        {can(ASSIGN_OPERATOR_PERMISSION) && (
+        {canAssignOperator && (
           <FormField
             control={control}
             name="operator_id"
@@ -270,7 +269,8 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
                 </FormControl>
                 {/* Never without the Sede field itself: the sentence describes a control the actor would not see. */}
                 {canPickSite && siteId != null && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Info className="size-3.5 shrink-0" aria-hidden="true" />
                     {t('requestManagement.form.create.attribution.operatorFilteredBySite')}
                   </p>
                 )}

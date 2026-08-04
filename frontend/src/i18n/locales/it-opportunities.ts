@@ -128,7 +128,7 @@ export const opportunities = {
     supervisor: 'Supervisore',
     supervisorSearch: 'Cerca supervisori…',
     managers: 'Gestori account',
-    managersMax: "Un'opportunità ha al massimo 4 gestori.",
+    managersMax: "Un'opportunità ha al massimo {{max}} gestori.",
     startDate: 'Data inizio',
     expectedCloseDate: 'Data chiusura prevista',
     estimatedValue: 'Valore stimato',

@@ -20,11 +20,49 @@ const NAME_MAX_LENGTH = 191
 export const MANAGER_LABEL_MAX_LENGTH = 60
 
 /**
- * `ProductCategory::MANAGER_LABEL_MAX_POSITION` (spec 0080): the four G.A.
- * levels the form always renders one row for, whether or not the category has
- * a label for that position.
+ * `ProductCategory::MANAGER_LABEL_MAX_POSITION` (spec 0080 amendment A1): the
+ * safety ceiling on G.A. levels, aligned with the backend
+ * `ValidatesManagerSlots::MAX_MANAGER_SLOTS`. The single source of truth for
+ * every cap check in the manager-labels section — never a bare `12` (or `4`)
+ * sprinkled elsewhere.
  */
-export const MANAGER_LABEL_POSITIONS = [1, 2, 3, 4] as const
+export const MANAGER_LABEL_MAX_POSITION = 12
+
+/**
+ * How many rows the section opens with when the category has fewer own
+ * positions than this (spec 0080 A1 D-frontend: "un minimo ragionevole cosi'
+ * la sezione non appare vuota"). Padded with the smallest free positions —
+ * this is the same baseline the fixed 4-row layout used to always show.
+ */
+export const MANAGER_LABEL_MIN_ROWS = 4
+
+/**
+ * The smallest G.A. position (1..`MANAGER_LABEL_MAX_POSITION`) not already in
+ * `positions` — what "Add level" appends next. `null` at the ceiling (spec
+ * 0080 A1 AC-055).
+ */
+export function nextFreeManagerLabelPosition(positions: number[]): number | null {
+  const used = new Set(positions)
+  for (let position = 1; position <= MANAGER_LABEL_MAX_POSITION; position += 1) {
+    if (!used.has(position)) {
+      return position
+    }
+  }
+  return null
+}
+
+/** Pads `positions` with the smallest free ones until it reaches `minimum` rows (or the ceiling is hit) — never drops what is already there. */
+export function padManagerLabelPositions(positions: number[], minimum: number): number[] {
+  const rows = [...new Set(positions)]
+  while (rows.length < minimum) {
+    const next = nextFreeManagerLabelPosition(rows)
+    if (next === null) {
+      break
+    }
+    rows.push(next)
+  }
+  return rows.sort((a, b) => a - b)
+}
 
 function baseFields(t: TFunction) {
   return {

@@ -462,4 +462,31 @@ describe('buildUpdatePayload', () => {
       inherits_manager_labels: false,
     })
   })
+
+  // Spec 0080 amendment A1: the cap moved from 4 to 12, positions beyond the
+  // old fixed range are ordinary payload keys, no special-casing needed.
+  it('sends positions beyond the 4th unchanged, up to the 12-level ceiling (AC-050)', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_opportunity_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'opportunity', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'multiple',
+      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({
+      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+    })
+    expect(buildCreatePayload(values)).toMatchObject({
+      manager_labels: { '5': 'Regional lead', '12': 'Director' },
+    })
+  })
 })

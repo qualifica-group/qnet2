@@ -129,3 +129,18 @@ it('show: manager_labels is [] when the opportunity has no product line', functi
         ->assertOk()
         ->assertJsonPath('data.manager_labels', []);
 });
+
+it('AC-053: a label configured beyond the 4th position (spec 0080 amendment A1) surfaces here exactly like the first four', function (): void {
+    $actor = managerLabelOpportunityUserWith(['view']);
+    $category = ProductCategory::factory()->create(['manager_labels' => ['5' => 'GA Cinque']]);
+    $opportunity = Opportunity::factory()->create();
+    OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
+    $manager = User::factory()->create();
+    $opportunity->managers()->attach($manager->id, ['position' => 5]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/opportunities/{$opportunity->id}")
+        ->assertOk()
+        ->assertJsonPath('data.manager_labels.5', 'GA Cinque')
+        ->assertJsonPath('data.managers.0.position', 5);
+});

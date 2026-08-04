@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import { AGREEMENT_STATUSES, SIZE_CLASSES } from '@/features/registries/types'
 import {
   asCustomFieldsField,
@@ -16,8 +17,8 @@ import {
  * registry's display `name` is derived server-side from that card.
  */
 
-/** Backend limit on FILLED manager slots (`max:4`, spec 0020 constraint). */
-const MAX_MANAGERS = 4
+/** Backend limit on FILLED manager slots (spec 0020 constraint, cap raised by spec 0080 A1), shared with `opportunity-schema.ts`. */
+const MAX_MANAGERS = MAX_MANAGER_SLOTS
 
 /** Backend `agreement_notes` column limit (`max:5000`). */
 const AGREEMENT_NOTES_MAX_LENGTH = 5000
@@ -45,7 +46,7 @@ function baseFields(t: TFunction) {
       .array(z.number().nullable())
       .refine(
         (slots) => slots.filter((slot) => slot !== null).length <= MAX_MANAGERS,
-        t('registries.form.managersMax'),
+        t('registries.form.managersMax', { max: MAX_MANAGERS }),
       ),
     // Empty string = "no VAT group", mapped to `null` at the payload boundary.
     vat_group: z.string().max(VAT_GROUP_MAX_LENGTH, t('registries.form.vatGroupMax')),

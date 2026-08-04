@@ -3,6 +3,7 @@ import i18n from '@/i18n'
 import {
   buildCreateOpportunitySchema,
   buildUpdateOpportunitySchema,
+  MAX_MANAGERS,
 } from '@/features/opportunities/opportunity-schema'
 
 /**
@@ -237,9 +238,19 @@ describe('buildCreateOpportunitySchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects more than 4 filled manager slots', () => {
+  // Spec 0080 amendment A1: the ceiling moved from 4 to 12 (MAX_MANAGERS, now
+  // shared with `registry-schema.ts` via `MAX_MANAGER_SLOTS`).
+  it(`AC-052: accepts exactly ${MAX_MANAGERS} filled manager slots`, () => {
     const schema = buildCreateOpportunitySchema(i18n.t)
-    const result = schema.safeParse(baseValues({ manager_slots: [1, 2, 3, 4, 5] }))
+    const filled = Array.from({ length: MAX_MANAGERS }, (_, index) => index + 1)
+    const result = schema.safeParse(baseValues({ manager_slots: filled }))
+    expect(result.success).toBe(true)
+  })
+
+  it(`AC-052: rejects more than ${MAX_MANAGERS} filled manager slots`, () => {
+    const schema = buildCreateOpportunitySchema(i18n.t)
+    const overflowing = Array.from({ length: MAX_MANAGERS + 1 }, (_, index) => index + 1)
+    const result = schema.safeParse(baseValues({ manager_slots: overflowing }))
     expect(result.success).toBe(false)
   })
 })

@@ -14,10 +14,11 @@ import {
 import {
   buildCreateProductCategorySchema,
   buildUpdateProductCategorySchema,
+  MANAGER_LABEL_MIN_ROWS,
+  padManagerLabelPositions,
   type CreateProductCategoryFormValues,
 } from '@/features/product-categories/product-category-schema'
 import { productCategoryKeys } from '@/features/product-categories/query-keys'
-import { MANAGER_LABEL_POSITIONS } from '@/features/product-categories/product-category-schema'
 import type {
   ManagerLabels,
   ProductCategoryDetail,
@@ -41,14 +42,22 @@ const SERVER_ERROR_FIELDS = [
   'inherits_manager_labels',
 ] as const
 
-/** Empty form value: every position present as a blank row (spec 0080), the always-4-controlled-inputs shape. */
+/** Empty form value: the reasonable-minimum blank rows a brand-new category opens with (spec 0080 A1). */
 const EMPTY_MANAGER_LABELS_FORM: ManagerLabels = Object.fromEntries(
-  MANAGER_LABEL_POSITIONS.map((position) => [String(position), '']),
+  padManagerLabelPositions([], MANAGER_LABEL_MIN_ROWS).map((position) => [String(position), '']),
 )
 
-/** Fills in every position with an empty string so all four rows stay controlled inputs; the payload builder strips blanks back out before sending (spec 0080 AC-042). */
+/**
+ * Seeds the dynamic rows the section opens with: the category's own
+ * positions, padded with the smallest free ones up to the reasonable minimum
+ * (spec 0080 A1) — never trimmed, so a category with more own positions than
+ * the minimum still shows all of them. The payload builder strips blanks back
+ * out before sending (AC-042).
+ */
 function toManagerLabelsFormValue(labels: ManagerLabels): ManagerLabels {
-  return { ...EMPTY_MANAGER_LABELS_FORM, ...labels }
+  const ownPositions = Object.keys(labels).map(Number)
+  const rows = padManagerLabelPositions(ownPositions, MANAGER_LABEL_MIN_ROWS)
+  return Object.fromEntries(rows.map((position) => [String(position), labels[String(position)] ?? '']))
 }
 
 export type ProductCategoryFormValues = CreateProductCategoryFormValues

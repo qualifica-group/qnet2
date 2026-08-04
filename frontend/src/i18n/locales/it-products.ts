@@ -172,6 +172,10 @@ export const productCategories = {
     managerLabelLevel: 'G.A. {{n}}',
     managerLabelPlaceholder: 'Gestore account {{n}}',
     managerLabelMax: "L'etichetta deve avere al massimo 60 caratteri.",
+    managerLabelsHelp:
+      'Aggiungi un livello per ogni rango di Gestore Account usato da questa categoria. Ripristinare un livello cancella solo la sua etichetta personalizzata: non rimuove mai un gestore account assegnato.',
+    addManagerLabelLevel: 'Aggiungi livello',
+    resetManagerLabelLevel: "Ripristina G.A. {{n}} all'etichetta predefinita",
     inheritsManagerLabels: 'Eredita dal padre',
     inheritsManagerLabelsHint:
       'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano queste etichette dai livelli superiori.',

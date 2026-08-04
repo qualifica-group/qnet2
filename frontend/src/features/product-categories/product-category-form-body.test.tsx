@@ -293,4 +293,43 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
 
     await waitFor(() => expect(screen.queryByText('Operator')).not.toBeInTheDocument())
   })
+
+  // Spec 0080 amendment A1.
+  it('"Add level" appends a 5th row, and resetting it removes only that row (AC-050, AC-054, AC-055)', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('button', { name: 'Save' })
+    expect(screen.queryByRole('textbox', { name: 'A.M. 5' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add level' }))
+
+    const fifthRow = await screen.findByRole('textbox', { name: 'A.M. 5' })
+    fireEvent.change(fifthRow, { target: { value: 'Regional lead' } })
+    expect(fifthRow).toHaveValue('Regional lead')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset A.M. 5 to the default label' }))
+
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'A.M. 5' })).not.toBeInTheDocument())
+    // The other rows are untouched by the reset.
+    expect(screen.getByRole('textbox', { name: 'A.M. 1' })).toHaveValue('')
+  })
+
+  it('"Add level" is disabled once all 12 positions are configured (AC-055)', async () => {
+    const twelvePositions = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [String(index + 1), '']))
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'edit', category: category({ manager_labels: twelvePositions }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    expect(screen.getByRole('textbox', { name: 'A.M. 12' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add level' })).toBeDisabled()
+  })
 })

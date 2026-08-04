@@ -244,48 +244,7 @@ it('create: estimated_value negative -> 422 (AC-014)', function () {
 // create: manager_slots (AC-015)
 // ---------------------------------------------------------------------------
 
-it('create: manager_slots [u1, null, u2] -> pivot with position 1 and 3, gap preserved (AC-015)', function () {
-    $actor = opportunityUserWith(['create']);
-    $userOne = User::factory()->create();
-    $userTwo = User::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/opportunities', array_merge([
-        'name' => 'Managed deal',
-        'manager_slots' => [$userOne->id, null, $userTwo->id],
-    ], mandatoryOpportunityFks()))->assertCreated();
-
-    $opportunityId = $response->json('data.id');
-
-    $this->assertDatabaseHas('opportunity_user', ['opportunity_id' => $opportunityId, 'user_id' => $userOne->id, 'position' => 1]);
-    $this->assertDatabaseHas('opportunity_user', ['opportunity_id' => $opportunityId, 'user_id' => $userTwo->id, 'position' => 3]);
-    expect($response->json('data.managers'))->toBe([
-        ['id' => $userOne->id, 'name' => $userOne->name, 'position' => 1],
-        ['id' => $userTwo->id, 'name' => $userTwo->name, 'position' => 3],
-    ]);
-});
-
-it('create: a duplicate user across manager slots -> 422 (AC-015)', function () {
-    $actor = opportunityUserWith(['create']);
-    $user = User::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/opportunities', array_merge([
-        'name' => 'Duplicate manager',
-        'manager_slots' => [$user->id, $user->id],
-    ], mandatoryOpportunityFks()))->assertStatus(422)->assertJsonValidationErrors('manager_slots');
-});
-
-it('create: more than 4 filled manager slots -> 422 (AC-015)', function () {
-    $actor = opportunityUserWith(['create']);
-    $users = User::factory()->count(5)->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/opportunities', array_merge([
-        'name' => 'Too many managers',
-        'manager_slots' => $users->pluck('id')->all(),
-    ], mandatoryOpportunityFks()))->assertStatus(422)->assertJsonValidationErrors('manager_slots');
-});
+// manager_slots tests: OpportunityManagerSlotsTest.php (file-size split).
 
 // ---------------------------------------------------------------------------
 // update (AC-013)
