@@ -1,9 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ProductsOfInterestField } from '@/features/products/products-of-interest-field'
 
 const fetchForSelectMock = vi.fn()
@@ -23,9 +22,7 @@ const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
 }
 
@@ -51,8 +48,14 @@ beforeEach(() => {
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
 })
 
+/**
+ * Requirement CHANGED (user directive 2026-08-05): the whole-catalogue escape
+ * spec 0075's D-4 kept for the opportunities form is gone from BOTH modules —
+ * a product outside the record's own product categories is refused server-side
+ * (ProductCategoryCoherence), so the picker never offers one.
+ */
 describe('ProductsOfInterestField (user directive 2026-07-22)', () => {
-  it('scopes the options to the opportunity categories by default', async () => {
+  it('scopes the options to the record categories, and says so', async () => {
     renderField({ categoryIds: [7, 9] })
 
     await openPicker()
@@ -61,83 +64,24 @@ describe('ProductsOfInterestField (user directive 2026-07-22)', () => {
       'products',
       expect.objectContaining({ params: { category_ids: [7, 9] } }),
     )
-    expect(screen.getByText("Only products of this opportunity's categories.")).toBeInTheDocument()
+    expect(
+      screen.getByText('Only products of the product categories selected above.'),
+    ).toBeInTheDocument()
   })
 
-  it('unlocking asks for confirmation FIRST, stating that a cross-category product adds its row', async () => {
-    renderField()
+  it('offers no way out of that scope: the picker trigger is the only control', () => {
+    renderField({ categoryIds: [7] })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show all products' }))
-
-    const dialog = await screen.findByRole('alertdialog')
-    expect(dialog).toHaveTextContent(
-      "Picking a product from another business function and product category adds that pair to this opportunity's business functions and product categories.",
-    )
-    // Nothing is unlocked until the dialog is answered: the hint still reads scoped.
-    expect(screen.getByText("Only products of this opportunity's categories.")).toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Products of interest' })).toBeInTheDocument()
   })
 
-  it('cancelling the dialog keeps the picker scoped', async () => {
-    renderField()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show all products' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
-
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Show all products' })).toBeInTheDocument()
-  })
-
-  it('confirming drops the category scope and offers to re-lock it', async () => {
-    renderField()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show all products' }))
-    const dialog = await screen.findByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Show all products' }))
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: "Limit to the opportunity's categories" })).toBeInTheDocument(),
-    )
-
-    await openPicker()
-    expect(fetchForSelectMock).toHaveBeenCalledWith(
-      'products',
-      expect.not.objectContaining({ params: expect.anything() }),
-    )
-  })
-
-  it('disables the picker when locked with no category to scope to', () => {
+  it('disables the picker when there is no category to scope to', () => {
     renderField({ categoryIds: [] })
 
     expect(screen.getByRole('button', { name: 'Products of interest' })).toBeDisabled()
     expect(
-      screen.getByText('Add a business function with its product category first, or unlock the whole catalogue.'),
+      screen.getByText('Add a business function with its product category first.'),
     ).toBeInTheDocument()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Spec 0075, D-4 — the locked variant (request-management)
-// ---------------------------------------------------------------------------
-
-describe('ProductsOfInterestField with lockScope (spec 0075, AC-016)', () => {
-  it('offers no unlock at all: the module refuses what falls outside the scope', async () => {
-    renderField({ lockScope: true, categoryIds: [7] })
-
-    await openPicker()
-
-    expect(screen.queryByRole('button', { name: 'Show all products' })).not.toBeInTheDocument()
-    expect(
-      screen.getByText("Only products of this request's product categories."),
-    ).toBeInTheDocument()
-    expect(fetchForSelectMock).toHaveBeenCalledWith(
-      'products',
-      expect.objectContaining({ params: { category_ids: [7] } }),
-    )
-  })
-
-  it('keeps offering the unlock without it (the opportunities form)', () => {
-    renderField({ categoryIds: [7] })
-
-    expect(screen.getByRole('button', { name: 'Show all products' })).toBeInTheDocument()
   })
 })

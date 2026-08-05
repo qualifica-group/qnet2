@@ -173,6 +173,10 @@ it('update: product_lines is a full-replace sync (AC-099)', function () {
         'product_lines' => [
             ['business_function_id' => $businessFunction->id, 'product_category_id' => $categoryTwo->id],
         ],
+        // User directive 2026-08-05: the products of interest travel along,
+        // else the coherence rule refuses a classification that would leave
+        // the persisted (categoryOne) product uncovered.
+        'products_of_interest' => [Product::factory()->create(['category_id' => $categoryTwo->id])->id],
     ])->assertOk();
 
     $this->assertDatabaseCount('opportunity_product_lines', 1);

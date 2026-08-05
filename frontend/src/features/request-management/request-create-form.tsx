@@ -20,7 +20,7 @@ import { RequestCreateHeader } from '@/features/request-management/request-creat
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
 import { RequestCreateWorkflowStatusField } from '@/features/request-management/request-create-workflow-status-field'
-import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
+import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
 /**

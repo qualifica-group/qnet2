@@ -230,25 +230,14 @@ export const products = {
     searchPlaceholder: 'Search products…',
     empty: 'No products found.',
     remove: 'Remove product',
-    hintScoped: "Only products of this opportunity's categories.",
-    // Spec 0075, D-4/D-5: the request-management variant, where a product
-    // outside the request's categories is refused instead of covered.
-    hintLocked: "Only products of this request's product categories.",
+    // Spec 0075, D-4/D-5, extended to both modules by the user directive
+    // 2026-08-05: a product outside the record's own product categories is
+    // refused, so the picker never leaves that scope.
+    hintScoped: 'Only products of the product categories selected above.',
     prunedNotice:
       'Removed from the selection, their product category is no longer on the record: {{names}}.',
-    hintUnlocked:
-      'Whole catalogue: a product from another category will add its business function / category row.',
-    hintNoCategories:
-      'Add a business function with its product category first, or unlock the whole catalogue.',
+    hintNoCategories: 'Add a business function with its product category first.',
     required: 'Select at least one product of interest.',
-    unlock: 'Show all products',
-    relock: "Limit to the opportunity's categories",
-    unlockDialog: {
-      title: 'Show the whole product catalogue?',
-      description:
-        "Picking a product from another business function and product category adds that pair to this opportunity's business functions and product categories.",
-      confirm: 'Show all products',
-    },
   },
   empty: 'No product selected.',
   columns: {

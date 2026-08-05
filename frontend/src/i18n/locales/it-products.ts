@@ -232,25 +232,14 @@ export const products = {
     searchPlaceholder: 'Cerca prodotti…',
     empty: 'Nessun prodotto trovato.',
     remove: 'Rimuovi prodotto',
-    hintScoped: 'Solo i prodotti delle categorie di questa opportunità.',
-    // Spec 0075, D-4/D-5: la variante Gestione Richieste, dove un prodotto
-    // fuori dalle categorie della richiesta viene rifiutato, non coperto.
-    hintLocked: 'Solo i prodotti delle categorie prodotto di questa richiesta.',
+    // Spec 0075, D-4/D-5, estesa a entrambi i moduli dalla direttiva utente
+    // 2026-08-05: un prodotto fuori dalle categorie prodotto del record viene
+    // rifiutato, quindi il picker non esce mai da quell'ambito.
+    hintScoped: 'Solo i prodotti delle categorie prodotto selezionate sopra.',
     prunedNotice:
       'Rimossi dalla selezione, la loro categoria prodotto non è più sul record: {{names}}.',
-    hintUnlocked:
-      "Catalogo completo: un prodotto di un'altra categoria aggiungerà la relativa riga funzione/categoria.",
-    hintNoCategories:
-      'Aggiungi prima una funzione aziendale con la sua categoria prodotto, oppure sblocca il catalogo completo.',
+    hintNoCategories: 'Aggiungi prima una funzione aziendale con la sua categoria prodotto.',
     required: 'Seleziona almeno un prodotto di interesse.',
-    unlock: 'Mostra tutti i prodotti',
-    relock: "Limita alle categorie dell'opportunità",
-    unlockDialog: {
-      title: 'Mostrare tutto il catalogo prodotti?',
-      description:
-        "Scegliendo un prodotto di un'altra funzione aziendale e categoria prodotto, quella coppia sarà aggiunta alle funzioni aziendali e categorie prodotto di questa opportunità.",
-      confirm: 'Mostra tutti i prodotti',
-    },
   },
   empty: 'Nessun prodotto selezionato.',
   columns: {

@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
-import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
+import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 
 /**
  * Spec 0075, AC-017: on the FORM side of the coherence rule, changing the

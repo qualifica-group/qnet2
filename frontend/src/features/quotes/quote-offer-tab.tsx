@@ -28,9 +28,11 @@ interface QuoteOfferTabProps {
  * to the SELECTED opportunity's own product-line categories, refetched
  * whenever `opportunity_id` changes (`fetchOpportunity`, already exported by
  * `features/opportunities/api.ts` — no new opportunities-side file). An
- * explicit unlock, confirmed via `useConfirm()` (mirrors
- * `ProductsOfInterestField`), drops the filter for every row in this tab;
- * `QuoteCostsTab` never carries it at all (AC-073).
+ * explicit unlock, confirmed via `useConfirm()`, drops the filter for every
+ * row in this tab; `QuoteCostsTab` never carries it at all (AC-073). This is
+ * the LAST picker that offers it: a cross-category quote line still widens the
+ * opportunity's coverage (OpportunityProductLineCoverage), unlike the products
+ * of interest since the user directive 2026-08-05.
  */
 export function QuoteOfferTab({
   control,

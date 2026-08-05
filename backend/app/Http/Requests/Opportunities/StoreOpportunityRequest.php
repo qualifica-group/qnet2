@@ -108,10 +108,10 @@ class StoreOpportunityRequest extends FormRequest
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines` — at least one product to create, and
             // the whole collection is replaced when submitted. A product
-            // outside the opportunity's product-line categories is ACCEPTED on
-            // purpose — OpportunityProductInterestWriter adds the matching row
-            // to `product_lines`, which is what the form warns about before
-            // unlocking the picker.
+            // outside the submitted `product_lines` categories is REFUSED
+            // (user directive 2026-08-05): the coherence rule is checked by
+            // OpportunityProductInterestWriter, once the lines are persisted,
+            // so it cannot be expressed as a rule here.
             'products_of_interest' => ['required', 'array', 'min:1'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: true), $this->rewardsRules());

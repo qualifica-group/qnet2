@@ -6,77 +6,75 @@ namespace App\Services\Opportunities;
 
 use App\Models\Opportunity;
 use App\Models\Product;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
  * The single write path for an opportunity's "prodotti di interesse" (user
- * directive 2026-07-22), shared by BOTH channels that can set them: the
- * opportunities CRUD (OpportunityService) and the operative work panel
- * (RequestManagementService). One writer, so the rule below can never
- * diverge between them.
+ * directive 2026-07-22), shared by EVERY channel that can set them: the
+ * opportunities CRUD (OpportunityService), the opportunities grid inline
+ * editor (OpportunitiesTableDefinition), the operative work panel and its own
+ * inline editor (RequestManagementService). One writer, so the rule below can
+ * never diverge between them.
  *
- * THE RULE (user directive): the picker is scoped by default to the products
- * of the opportunity's own product-line categories, but the operator may
- * unlock the whole catalogue. Picking a product from ANOTHER category is
- * therefore legal, and it must ADD the matching funzione-aziendale +
- * categoria-prodotto row to the opportunity — the frontend warns before
- * doing it, this writer is what actually performs it, so the invariant holds
- * even for a client that never showed the warning. The coverage rule itself
- * (spec 0065, D-7/AC-054) is extracted into OpportunityProductLineCoverage,
- * shared verbatim with QuoteService.
+ * THE RULE (user directive 2026-07-31 for request-management, extended to the
+ * opportunities module by the user directive 2026-08-05): every product of
+ * interest must belong to a product category the record already carries. A
+ * product from ANOTHER category is REFUSED (ProductCategoryCoherence) — the
+ * operator adds the categoria prodotto first, or drops the product. The
+ * frontend prunes and locks its picker so that refusal is rarely reached, but
+ * the guarantee lives here, for any client that does neither.
+ *
+ * This REPLACED the previous "a cross-category pick adds the matching
+ * funzione-aziendale + categoria-prodotto row" behaviour on this path;
+ * OpportunityProductLineCoverage, which implements it, now serves quotes
+ * only.
  */
 final class OpportunityProductInterestWriter
 {
-    public function __construct(private readonly OpportunityProductLineCoverage $coverage) {}
+    public function __construct(private readonly ProductCategoryCoherence $coherence) {}
 
     /**
-     * Replaces the whole collection (authoritative sync) and returns the
-     * product-line rows that had to be created to keep the invariant.
+     * Replaces the whole collection (authoritative sync).
      *
      * @param  array<int, int>  $productIds
-     * @return array<int, array{business_function_id: int, product_category_id: int}>
      *
-     * @throws ValidationException a submitted product does not exist, or its category resolves to no business function
+     * @throws ValidationException a submitted product does not exist, or its category is not covered by the record's product lines
      */
-    public function sync(Opportunity $opportunity, array $productIds): array
+    public function sync(Opportunity $opportunity, array $productIds): void
     {
-        // Step 1: normalize the submitted set and resolve it in one query.
+        // Step 1: normalize the submitted set and check it exists in one query.
         $ids = array_values(array_unique(array_map(static fn ($id): int => (int) $id, $productIds)));
-        $products = $this->resolveProducts($ids);
+        $this->assertProductsExist($ids);
 
-        // Step 2: cover every selected product's category with a product line
-        // (the cross-category pick the frontend warns about).
-        $addedLines = $this->coverage->ensure($opportunity, $products);
+        // Step 2: refuse anything the record's product lines do not cover.
+        $this->coherence->assert(
+            $ids,
+            $opportunity->productLines()->pluck('product_category_id')->map(intval(...))->all(),
+            'products_of_interest',
+        );
 
         // Step 3: replace the collection.
         $opportunity->productsOfInterest()->sync($ids);
         $opportunity->unsetRelation('productsOfInterest');
-
-        return $addedLines;
     }
 
     /**
      * @param  array<int, int>  $ids
-     * @return Collection<int, Product>
      *
      * @throws ValidationException
      */
-    private function resolveProducts(array $ids): Collection
+    private function assertProductsExist(array $ids): void
     {
         if ($ids === []) {
-            return collect();
+            return;
         }
 
-        /** @var Collection<int, Product> $products */
-        $products = Product::query()->with('category')->whereIn('id', $ids)->get();
-
-        if ($products->count() !== count($ids)) {
-            throw ValidationException::withMessages([
-                'products_of_interest' => ['One of the selected products does not exist.'],
-            ]);
+        if (Product::query()->whereIn('id', $ids)->count() === count($ids)) {
+            return;
         }
 
-        return $products;
+        throw ValidationException::withMessages([
+            'products_of_interest' => ['One of the selected products does not exist.'],
+        ]);
     }
 }

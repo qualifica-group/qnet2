@@ -16,10 +16,11 @@ use Illuminate\Validation\ValidationException;
  * AC-054): given an Opportunity and a set of Products, ensure every product's
  * category is covered by the opportunity's `opportunity_product_lines` —
  * creating the missing (funzione aziendale effettiva, categoria) row when it
- * is not. Shared by TWO write paths that must never diverge:
- * OpportunityProductInterestWriter (the "prodotti di interesse" picker, user
- * directive 2026-07-22) and QuoteService (a REVENUE quote line whose product
- * sits outside the covered categories, spec 0065 AC-050/051/052/053).
+ * is not. Its ONLY caller is QuoteService (a REVENUE quote line whose product
+ * sits outside the covered categories, spec 0065 AC-050/051/052/053): the
+ * "prodotti di interesse" picker no longer widens coverage since the user
+ * directive 2026-08-05 — there an uncovered product is refused outright
+ * (ProductCategoryCoherence).
  *
  * A product whose category has no EFFECTIVE business function (own or
  * inherited) cannot produce a valid row — `opportunity_product_lines`
@@ -128,7 +129,7 @@ final class OpportunityProductLineCoverage
      * category sits outside the opportunity's one covered category is
      * refused instead of silently widening the coverage (AC-020). The
      * message names every offending product the same way
-     * RequestProductCategoryCoherence::message() does, so the operator sees
+     * ProductCategoryCoherence::message() does, so the operator sees
      * a consistent "which products, which category" shape across modules.
      *
      * @param  Collection<int, Product>  $products

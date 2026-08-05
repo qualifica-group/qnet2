@@ -16,17 +16,16 @@ use Faker\Generator;
  *
  * An "offer" is a category that can carry BOTH: it resolves an EFFECTIVE
  * business function (its own or an ancestor's — without one the pair is
- * invalid) AND it has at least one product in itself or in a descendant, so
- * the products drawn alongside a line never force
- * OpportunityProductInterestWriter to add a category the seeder did not choose.
+ * invalid) AND it has at least one product filed on ITSELF. Own products only,
+ * since the user directive 2026-08-05: a product whose category is not one of
+ * the card's own lines is refused outright (ProductCategoryCoherence), no
+ * longer covered by an auto-added line.
  *
  * On top of that an offer is always SELECTABLE (spec 0074, user directive
  * 2026-08-03): a category flagged `is_selectable = false` is a container, and
  * the App\Rules\SelectableProductCategory rule rejects it on every write path
  * the form uses. Seeding a line on one would produce a deal the edit form
- * itself refuses to resubmit. The filter applies TWICE — to the category the
- * line points at, and to the category the drawn products are filed on, because
- * OpportunityProductLineCoverage adds a line for each product's OWN category.
+ * itself refuses to resubmit.
  *
  * Each offer also carries its branch ROOT and that root's management mode
  * (spec 0077), because a card's lines are not free to combine: they must all
@@ -54,20 +53,14 @@ trait PicksDemoOffers
     protected function loadOffers(CategoryHierarchy $hierarchy): void
     {
         $selectableIds = $this->selectableCategoryIds();
-        $productIdsByCategory = $this->productIdsByCategory($hierarchy, $selectableIds);
+        $productIdsByCategory = $this->productIdsByCategory($selectableIds);
         $summaries = $hierarchy->effectiveBusinessFunctionSummaries();
         $roots = $hierarchy->rootManagementModesFor(array_keys($summaries));
         $offers = [];
 
         foreach ($summaries as $categoryId => $summary) {
             $root = $roots[$categoryId] ?? null;
-            // On a `single` root the coverage rule REJECTS a product filed
-            // outside the one covered category (spec 0077 D-6/AC-020) instead
-            // of widening the card, so such an offer may only draw the
-            // products of its OWN category — and is no offer at all without.
-            $productIds = $root !== null && $root['management_mode'] === CategoryManagementMode::Single
-                ? ($productIdsByCategory[$categoryId]['own'] ?? [])
-                : ($productIdsByCategory[$categoryId]['subtree'] ?? []);
+            $productIds = $productIdsByCategory[$categoryId] ?? [];
 
             if ($summary === null || $productIds === [] || $root === null) {
                 continue;
@@ -93,7 +86,7 @@ trait PicksDemoOffers
     /**
      * One to MAX_PRODUCT_LINES lines, rotated by $index so consecutive
      * opportunities cover the whole catalogue, plus one to
-     * MAX_PRODUCTS_PER_LINE products of each line's own category subtree.
+     * MAX_PRODUCTS_PER_LINE products of each line's own category.
      *
      * The FIRST line decides the card (spec 0077): a `single` root ends the
      * draw there, a `multiple` one may take further lines, but only among the
@@ -177,44 +170,22 @@ trait PicksDemoOffers
     }
 
     /**
-     * selectable category id => the SELECTABLE-filed products of that category
-     * alone (`own`) and those of the category AND every descendant
-     * (`subtree`) — so a line pointing at a branch root still draws a real
-     * product, the one filed under one of its leaves, without the coverage
-     * rule pushing a container onto the deal, while a `single` card can stay
-     * strictly inside its own category.
+     * selectable category id => the products filed on THAT category, so every
+     * product drawn beside a line hangs from the very category the line points
+     * at — the only shape the coherence rule accepts (user directive
+     * 2026-08-05). A category with none is simply not an offer.
      *
      * @param  array<int, true>  $selectableIds
-     * @return array<int, array{own: list<int>, subtree: list<int>}>
+     * @return array<int, list<int>>
      */
-    private function productIdsByCategory(CategoryHierarchy $hierarchy, array $selectableIds): array
+    private function productIdsByCategory(array $selectableIds): array
     {
-        $directIds = Product::query()
+        return Product::query()
             ->whereIn('category_id', array_keys($selectableIds))
             ->orderBy('id')
             ->get(['id', 'category_id'])
             ->groupBy('category_id')
             ->map(static fn ($products): array => $products->pluck('id')->all())
             ->all();
-
-        $byCategory = [];
-
-        foreach (array_keys($selectableIds) as $categoryId) {
-            $own = $directIds[$categoryId] ?? [];
-            $subtree = $own;
-
-            foreach ($hierarchy->descendantIds($categoryId) as $descendantId) {
-                $subtree = [...$subtree, ...($directIds[$descendantId] ?? [])];
-            }
-
-            if ($subtree !== []) {
-                $byCategory[$categoryId] = [
-                    'own' => array_values(array_unique($own)),
-                    'subtree' => array_values(array_unique($subtree)),
-                ];
-            }
-        }
-
-        return $byCategory;
     }
 }

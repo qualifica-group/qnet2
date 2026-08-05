@@ -156,9 +156,10 @@ function baseFields(
       }),
     // "Prodotti di interesse": a plain id set, MANDATORY since the user
     // directive 2026-07-23 (at least one product, mirroring `product_lines`).
-    // Cross-category picks are LEGAL (the server adds the matching product
-    // line, after the picker's unlock dialog), so there is nothing else to
-    // cross-validate against `product_lines` here.
+    // A product outside the `product_lines` categories is refused server-side
+    // (user directive 2026-08-05), but the form never submits one: the picker
+    // cannot leave that scope and the section prunes what a row change
+    // orphans, so there is nothing to cross-validate here.
     products_of_interest: z.array(z.number()).min(1, t('products.ofInterest.required')),
     // Spec 0059 D-3: reward assignments for the reporter (chips under the
     // field). Only the type id travels — beneficiary/date are server-derived.

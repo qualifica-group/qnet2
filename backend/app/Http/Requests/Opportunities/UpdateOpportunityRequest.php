@@ -110,10 +110,10 @@ class UpdateOpportunityRequest extends FormRequest
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines`' own partial-PATCH shape — the key may
             // be omitted (untouched), but never cleared to `[]`. A product
-            // outside the opportunity's product-line categories is ACCEPTED on
-            // purpose — OpportunityProductInterestWriter adds the matching row
-            // to `product_lines`, which is what the form warns about before
-            // unlocking the picker.
+            // outside the opportunity's product-line categories is REFUSED
+            // (user directive 2026-08-05): the coherence rule needs the
+            // record's persisted lines, so it is checked service-side
+            // (OpportunityProductInterestWriter), not here.
             'products_of_interest' => ['sometimes', 'array', 'min:1'],
             'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: false), $this->rewardsRules());

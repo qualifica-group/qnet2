@@ -16,12 +16,14 @@ use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
+use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\RequestManagement\RequestAttributeValueWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic for the `opportunities` resource (spec 0040): create/
@@ -77,6 +79,11 @@ class OpportunityService
         private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
+        // User directive 2026-08-05: the products-of-interest half of the rule
+        // travels inside OpportunityProductInterestWriter; this service only
+        // owns the OTHER half — a submitted `product_lines` that orphans the
+        // products already persisted (mirrors RequestManagementService).
+        private readonly ProductCategoryCoherence $coherence,
         // User directive 2026-08-05: the same writer the request-management
         // channels use — it is already typed on Opportunity (the dynamic
         // values ARE an opportunity-level concept, spec 0049 D-4), so the two
@@ -218,10 +225,10 @@ class OpportunityService
             }
 
             // "Prodotti di interesse" (user directive 2026-07-22): synced
-            // AFTER the product lines, so a product from a category the
-            // submission did not cover adds its own row on top of them
-            // (OpportunityProductInterestWriter owns that rule) and the
-            // workflow resolution below already sees the final set.
+            // AFTER the product lines, because the writer checks each product
+            // against the categories they cover — a product outside them is
+            // refused (user directive 2026-08-05, ProductCategoryCoherence),
+            // rolling this whole transaction back.
             if ($data->hasProductsOfInterest()) {
                 $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
             }
@@ -322,6 +329,13 @@ class OpportunityService
             // See create(): same ordering, same writer, same rule.
             if ($data->hasProductsOfInterest()) {
                 $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
+            } elseif ($data->hasProductLines()) {
+                // The other half of the rule (user directive 2026-08-05,
+                // mirrors RequestManagementService::assertProductCategoryCoherence):
+                // a PATCH that only re-points the classification must not
+                // leave the PERSISTED products uncovered. The 422 lands on
+                // `product_lines`, the key the actor actually submitted.
+                $this->assertPersistedProductsStayCovered($opportunity);
             }
 
             if ($data->hasRewards()) {
@@ -345,6 +359,27 @@ class OpportunityService
         });
 
         return $this->loadDetail($opportunity);
+    }
+
+    /**
+     * The `product_lines` half of the coherence rule (user directive
+     * 2026-08-05): once the submitted classification is persisted, every
+     * product of interest ALREADY on the record must still hang from one of
+     * the categories it covers.
+     *
+     * Only reached when `products_of_interest` did NOT travel in the same
+     * payload — when it did, the writer has already checked the submitted set
+     * against these very lines.
+     *
+     * @throws ValidationException a persisted product is left uncovered
+     */
+    private function assertPersistedProductsStayCovered(Opportunity $opportunity): void
+    {
+        $this->coherence->assert(
+            $opportunity->productsOfInterest()->pluck('products.id')->map(intval(...))->all(),
+            $opportunity->productLines()->pluck('product_category_id')->map(intval(...))->all(),
+            'product_lines',
+        );
     }
 
     /**

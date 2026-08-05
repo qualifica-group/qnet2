@@ -31,7 +31,7 @@ use Illuminate\Validation\ValidationException;
  * The coherence of the resulting classification with the request's products
  * of interest is NOT checked here: it depends on the whole payload (the
  * products may be replaced in the same PATCH), so it belongs to the caller,
- * which owns both — see RequestProductCategoryCoherence.
+ * which owns both — see ProductCategoryCoherence.
  */
 final class RequestProductLineWriter
 {

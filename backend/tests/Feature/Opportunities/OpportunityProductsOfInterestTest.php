@@ -81,27 +81,51 @@ it('create: products_of_interest persists and is exposed on the detail resource'
     ]);
 });
 
-it('create: a product outside the submitted product_lines adds its own row (user directive 2026-07-22)', function () {
+// Requirement CHANGED (user directive 2026-08-05): a cross-category pick used
+// to ADD the matching funzione-aziendale + categoria-prodotto row. The module
+// now applies the request-management coherence rule instead — the pick is
+// refused, and the operator adds the categoria prodotto explicitly.
+it('create: a product outside the submitted product_lines -> 422, nothing created', function () {
     $actor = productsOfInterestActor(['create']);
     $lineCategory = productsOfInterestCategory();
     $otherCategory = productsOfInterestCategory();
-    $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id]);
+    $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id, 'name' => 'Fibra 1000']);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/opportunities', array_merge(productsOfInterestMandatoryFks(), [
+    $this->postJson('/api/opportunities', array_merge(productsOfInterestMandatoryFks(), [
         'name' => 'Cross-category pick',
         'product_lines' => [
             ['business_function_id' => $lineCategory->business_function_id, 'product_category_id' => $lineCategory->id],
         ],
         'products_of_interest' => [$outsideProduct->id],
-    ]))->assertCreated();
+    ]))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('products_of_interest')
+        ->assertJsonFragment(['message' => 'These products of interest belong to a product category the opportunity does not carry: "Fibra 1000" ('.$otherCategory->name.'). Add that product category to the opportunity, or remove the product.']);
 
-    $this->assertDatabaseHas('opportunity_product_lines', [
-        'opportunity_id' => $response->json('data.id'),
-        'business_function_id' => $otherCategory->business_function_id,
-        'product_category_id' => $otherCategory->id,
+    expect(Opportunity::count())->toBe(0);
+    $this->assertDatabaseCount('opportunity_product_lines', 0);
+});
+
+it('update: product_lines that leave a persisted product uncovered -> 422 on product_lines, nothing written', function () {
+    $actor = productsOfInterestActor(['update']);
+    $category = productsOfInterestCategory();
+    $otherCategory = productsOfInterestCategory();
+    $opportunity = Opportunity::factory()->create();
+    $opportunity->productLines()->create([
+        'business_function_id' => $category->business_function_id,
+        'product_category_id' => $category->id,
     ]);
-    expect($response->json('data.product_lines'))->toHaveCount(2);
+    $opportunity->productsOfInterest()->sync([Product::factory()->create(['category_id' => $category->id])->id]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/opportunities/{$opportunity->id}", [
+        'product_lines' => [
+            ['business_function_id' => $otherCategory->business_function_id, 'product_category_id' => $otherCategory->id],
+        ],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines');
+
+    expect($opportunity->fresh()->productLines->pluck('product_category_id')->all())->toBe([$category->id]);
 });
 
 // Requirement CHANGED (user directive 2026-07-23): products_of_interest used
@@ -141,6 +165,13 @@ it('update: products_of_interest is an authoritative replace; omitting it leaves
     $actor = productsOfInterestActor(['update']);
     $opportunity = Opportunity::factory()->create();
     $category = productsOfInterestCategory();
+    // The coherence rule (user directive 2026-08-05) reads the record's own
+    // product lines: without one covering $category, every product below
+    // would be refused.
+    $opportunity->productLines()->create([
+        'business_function_id' => $category->business_function_id,
+        'product_category_id' => $category->id,
+    ]);
     $kept = Product::factory()->create(['category_id' => $category->id]);
     $dropped = Product::factory()->create(['category_id' => $category->id]);
     $opportunity->productsOfInterest()->sync([$kept->id, $dropped->id]);

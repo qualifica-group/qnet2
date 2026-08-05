@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { useForm } from 'react-hook-form'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import { Form } from '@/components/ui/form'
 import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
@@ -44,6 +46,12 @@ vi.mock('@/features/products/products-of-interest-field', () => ({
   ProductsOfInterestField: () => <div data-testid="products-of-interest-stub" />,
 }))
 
+/** The opportunity section prunes through a cached for-select query, so it needs a client. */
+function withQueryClient({ children }: { children: ReactNode }) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+}
+
 const ROWS: ProductLineRow[] = [{ business_function_id: 40, product_category_id: 500 }]
 const KNOWN_LINES: ProductLine[] = [
   { id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 500, name: 'Consulting' } },
@@ -77,7 +85,7 @@ function RequestWorkHarness({ disabled }: { disabled: boolean }) {
 
 describe('product-lines wiring parity (AC-043)', () => {
   it('opportunity form: forwards the RHF value and knownLines untouched to ProductLinesField', () => {
-    render(<OpportunityHarness disabled={false} />)
+    render(<OpportunityHarness disabled={false} />, { wrapper: withQueryClient })
 
     expect(screen.getByTestId('value')).toHaveTextContent(JSON.stringify(ROWS))
     expect(screen.getByTestId('known-lines')).toHaveTextContent(JSON.stringify([]))
@@ -97,7 +105,7 @@ describe('product-lines wiring parity (AC-043)', () => {
    * derived `disabled` flag.
    */
   it('forwards knownLines identically once populated, in either module', () => {
-    const opportunity = render(<OpportunityHarness disabled />)
+    const opportunity = render(<OpportunityHarness disabled />, { wrapper: withQueryClient })
     const opportunityKnownLines = screen.getByTestId('known-lines').textContent
     opportunity.unmount()
 

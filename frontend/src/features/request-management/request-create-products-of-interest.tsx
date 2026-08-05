@@ -19,8 +19,7 @@ interface RequestCreateProductsOfInterestProps {
  *
  * The picker is scoped by the categories of the rows being filled in right
  * above it (`useWatch`), which is also the rule the server enforces: a product
- * outside them is refused (RequestProductCategoryCoherence), never covered by
- * an auto-added product line as in the opportunities form. Plain `FormField`,
+ * outside them is refused (ProductCategoryCoherence). Plain `FormField`,
  * not `MetaField`: this create-only form has no `permissions` envelope to gate
  * against (see `RequestCreateAttributionSection`).
  */
@@ -56,7 +55,6 @@ export function RequestCreateProductsOfInterest({ control }: RequestCreateProduc
                 value={field.value}
                 onChange={field.onChange}
                 categoryIds={categoryIds}
-                lockScope
               />
             </FormControl>
             <FormMessage />

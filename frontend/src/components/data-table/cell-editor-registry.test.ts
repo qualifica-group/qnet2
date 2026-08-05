@@ -250,13 +250,14 @@ describe('resolveCellEditorSpec', () => {
       expect(spec?.cellEditorParams?.(column)).toEqual({
         resource: 'products',
         scope: { category_ids: 'product_category_ids' },
-        // Spec 0075, D-4: absent on the column ⇒ the unlock stays available,
-        // which is the opportunities behaviour.
+        // Spec 0075, D-4: absent on the column ⇒ the unlock stays available.
+        // Generic default: the products-of-interest column itself declares
+        // `lockScope` on BOTH domains since the user directive 2026-08-05.
         lockScope: false,
       })
     })
 
-    // Spec 0075, D-4: request-management declares it, and the editor drops its
+    // Spec 0075, D-4: a column that declares it makes the editor drop its
     // whole-catalogue escape — the module refuses what falls outside the scope.
     it('forwards `lockScope` when the column declares it', () => {
       const column = stubColumn({

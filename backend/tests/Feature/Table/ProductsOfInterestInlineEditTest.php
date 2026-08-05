@@ -153,49 +153,27 @@ it('PATCH replaces the whole collection and returns the re-mapped row', function
         ->and($row['products_of_interest'])->toHaveCount(1);
 })->with(['opportunities', 'request-management']);
 
-// The two domains DIVERGE here since the user directive 2026-07-31, so the
-// dataset splits: `opportunities` keeps the auto-add rule
-// (OpportunityProductLineCoverage), `request-management` refuses the pick
-// (RequestProductCategoryCoherence) now that its own commercials edit the
-// funzione/categoria rows themselves. Everything else on this column is still
-// shared, hence still covered by one declaration.
-it('PATCH with a product outside the row categories adds its product line (opportunities: same rule as the form)', function () {
-    $actor = productsColumnActor(['opportunities.viewAny', 'opportunities.update']);
+// The two domains DIVERGED between the user directives 2026-07-31 (which gave
+// request-management the coherence rule) and 2026-08-05 (which extended it to
+// opportunities, retiring the auto-add on this path): both now REFUSE a
+// product the row's categories do not cover, so the dataset is shared again.
+it('PATCH with a product outside the row categories is refused (coherence rule)', function (string $domain) {
+    $abilities = ["{$domain}.viewAny", "{$domain}.update"];
+    $actor = productsColumnActor($domain === 'request-management' ? [...$abilities, 'request-management.viewAll'] : $abilities);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $otherCategory = productsColumnCategory();
     $outsider = Product::factory()->create(['category_id' => $otherCategory->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/opportunities/rows/{$opportunity->id}", [
-        'column' => 'products_of_interest',
-        'value' => [$outsider->id],
-    ])->assertOk();
-
-    $this->assertDatabaseHas('opportunity_product_lines', [
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $otherCategory->business_function_id,
-        'product_category_id' => $otherCategory->id,
-    ]);
-    expect($opportunity->fresh()->productLines)->toHaveCount(2);
-});
-
-it('PATCH with a product outside the row categories is refused (request-management: coherence rule)', function () {
-    $actor = productsColumnActor(['request-management.viewAny', 'request-management.update', 'request-management.viewAll']);
-    $category = productsColumnCategory();
-    $opportunity = productsColumnOpportunity($actor, $category);
-    $otherCategory = productsColumnCategory();
-    $outsider = Product::factory()->create(['category_id' => $otherCategory->id]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/{$domain}/rows/{$opportunity->id}", [
         'column' => 'products_of_interest',
         'value' => [$outsider->id],
     ])->assertStatus(422);
 
     expect($opportunity->fresh()->productLines)->toHaveCount(1)
         ->and($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
-});
+})->with(['opportunities', 'request-management']);
 
 it('PATCH with an empty collection -> 422, the collection is kept (mandatory field)', function (string $domain) {
     $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);

@@ -69,7 +69,6 @@ export function RequestProductsOfInterest({ control, products }: RequestProducts
             onChange={field.onChange}
             categoryIds={categoryIds}
             selectedItems={selectedItems}
-            lockScope
             disabled={disabled}
           />
         )}

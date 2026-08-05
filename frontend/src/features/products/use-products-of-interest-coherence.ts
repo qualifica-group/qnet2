@@ -6,12 +6,13 @@ import { PRODUCTS_FOR_SELECT_RESOURCE, productCategoryIdOf } from '@/features/pr
 import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
- * The form half of the request-management coherence rule (spec 0075, D-5):
- * every product of interest must belong to a product category the request
- * carries. The server refuses the incoherent set on both write channels
- * (`RequestProductCategoryCoherence`); what this hook adds is that the operator
- * never reaches that refusal — removing (or re-pointing) a product line drops
- * the products it was covering, with a toast naming them.
+ * The form half of the coherence rule (spec 0075, D-5; extended to the
+ * opportunity form by the user directive 2026-08-05): every product of
+ * interest must belong to a product category the record carries. The server
+ * refuses the incoherent set on every write channel of both modules
+ * (`ProductCategoryCoherence`); what this hook adds is that the operator never
+ * reaches that refusal — removing (or re-pointing) a product line drops the
+ * products it was covering, with a toast naming them.
  *
  * It is a pruning function, not an effect: the categories changing is a USER
  * EVENT on the product-lines field, so the correction belongs to that event's

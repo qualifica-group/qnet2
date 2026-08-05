@@ -10,9 +10,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * Validates the query for GET /api/products/for-select (ADR 0011), mirroring
  * ProductCategoryForSelectRequest. `category_ids` (user directive
  * 2026-07-22, optional): scopes the results to the products of those exact
- * categories — the "prodotti di interesse" picker sends the categories of
- * the opportunity's product lines, and omits the key when the operator
- * explicitly unlocks the whole catalogue.
+ * categories — the "prodotti di interesse" picker always sends the categories
+ * of the record's product lines; the quotes offer tab omits the key when the
+ * operator explicitly unlocks the whole catalogue.
  *
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('viewAny', Product::class)). Pagination bounds mirror

@@ -23,11 +23,12 @@ use Illuminate\Support\Facades\DB;
  * (a full-replace sync), validated by CellValueValidator and written by the
  * ONE writer both channels already use (OpportunityProductInterestWriter).
  *
- * `relation.scope` mirrors the form picker's default scope: the editor sends
- * the row's OWN product-line categories as `category_ids`, so the dropdown
- * offers the same subset the form does — and offers the same explicit
- * "show the whole catalogue" escape, with the same warning, since picking a
- * product outside them ADDS the matching product line server-side.
+ * `relation.scope` mirrors the form picker's scope: the editor sends the row's
+ * OWN product-line categories as `category_ids`, so the dropdown offers the
+ * same subset the form does — and, like the form, offers no "show the whole
+ * catalogue" escape (`relation.lockScope`): both domains REFUSE a product
+ * outside those categories (ProductCategoryCoherence), so the escape would
+ * only lead to a 422.
  */
 final class ProductsOfInterestColumn
 {
@@ -37,16 +38,9 @@ final class ProductsOfInterestColumn
     public const string COLUMN_ID = 'products_of_interest';
 
     /**
-     * @param  bool  $lockScope  spec 0075 D-4: the editor drops its "show the
-     *                           whole catalogue" escape — request-management
-     *                           REFUSES a product outside the request's own
-     *                           categories, so offering the choice would only
-     *                           lead to a 422. Opportunities, where the pick
-     *                           legitimately adds the missing product line,
-     *                           leaves it false.
      * @return array<string, mixed>
      */
-    public static function declaration(string $label, bool $lockScope = false): array
+    public static function declaration(string $label): array
     {
         return [
             'id' => self::COLUMN_ID,
@@ -61,7 +55,7 @@ final class ProductsOfInterestColumn
             'relation' => [
                 'resource' => 'products',
                 'scope' => ['category_ids' => self::SCOPE_COLUMN],
-                ...($lockScope ? ['lockScope' => true] : []),
+                'lockScope' => true,
             ],
         ];
     }

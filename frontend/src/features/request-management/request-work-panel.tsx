@@ -32,7 +32,7 @@ import { RequestWorkCollaboration } from '@/features/request-management/request-
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
 import { RequestWorkflowStatusField } from '@/features/request-management/request-workflow-status-field'
-import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
+import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
 import type { ProductLineRow } from '@/features/product-lines/types'

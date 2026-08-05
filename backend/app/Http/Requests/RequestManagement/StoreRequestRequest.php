@@ -10,7 +10,7 @@ use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
-use App\Services\RequestManagement\RequestProductCategoryCoherence;
+use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -164,7 +164,7 @@ class StoreRequestRequest extends FormRequest
      * picked at creation must belong to one of the submitted product-line
      * categories. Both collections travel in THIS payload — nothing is
      * persisted yet — so the check belongs here, unlike on the PATCH, where
-     * the same rule (RequestProductCategoryCoherence, shared) needs the
+     * the same rule (ProductCategoryCoherence, shared) needs the
      * record's stored sets.
      *
      * Skipped when `product_lines` is malformed: its own rules already report
@@ -190,11 +190,14 @@ class StoreRequestRequest extends FormRequest
             ->map(static fn (array $line): int => (int) $line['product_category_id'])
             ->all();
 
-        $coherence = app(RequestProductCategoryCoherence::class);
+        $coherence = app(ProductCategoryCoherence::class);
         $offending = $coherence->offendingProducts(array_map(intval(...), $products), $categoryIds);
 
         if ($offending !== []) {
-            $validator->errors()->add('products_of_interest', $coherence->message($offending));
+            $validator->errors()->add(
+                'products_of_interest',
+                $coherence->message($offending, ProductCategoryCoherence::REQUEST_MESSAGE),
+            );
         }
     }
 

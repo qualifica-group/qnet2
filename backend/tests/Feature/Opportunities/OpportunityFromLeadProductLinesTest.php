@@ -111,9 +111,15 @@ it('create with lead_id: the client-submitted product_lines (matching the defaul
 
     // Editable — NOT a BR-2-locked field: a PATCH to a DIFFERENT valid row
     // succeeds (200), unlike a genuinely locked field which would 422.
-    $this->patchJson("/api/opportunities/{$opportunityId}", ['product_lines' => [
-        ['business_function_id' => $otherBusinessFunction->id, 'product_category_id' => $otherCategory->id],
-    ]])->assertOk();
+    $this->patchJson("/api/opportunities/{$opportunityId}", [
+        'product_lines' => [
+            ['business_function_id' => $otherBusinessFunction->id, 'product_category_id' => $otherCategory->id],
+        ],
+        // User directive 2026-08-05: re-pointing the classification carries
+        // the products of interest with it, else the coherence rule refuses a
+        // set that would leave the persisted product uncovered.
+        'products_of_interest' => [Product::factory()->create(['category_id' => $otherCategory->id])->id],
+    ])->assertOk();
     $this->assertDatabaseCount('opportunity_product_lines', 1);
 
     // But NOT clearable to empty (user directive 2026-07-17: always >=1 row).

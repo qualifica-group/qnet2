@@ -284,7 +284,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
 
       {orphanedProducts.length > 0 ? (
         // Anticipatory only: the commit itself is refused server-side
-        // (RequestProductCategoryCoherence) with the same list of products.
+        // (ProductCategoryCoherence) with the same list of products.
         <p role="alert" className="flex gap-1.5 border-t border-border p-2 text-xs text-muted-foreground">
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>{t('table.productLinesEditor.uncoveredProducts', { names: orphanedProducts.join(', ') })}</span>

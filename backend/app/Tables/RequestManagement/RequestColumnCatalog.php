@@ -110,11 +110,12 @@ final class RequestColumnCatalog
             // — unlike `product_categories` above — inline-editable: the
             // collection is a first-class operative field here, written through
             // updateWork() like every other cell of this domain.
-            // `lockScope` (spec 0075, D-4): this module refuses a product
-            // outside the request's own categories instead of covering it with
-            // a new product line, so the in-cell picker never offers the
-            // whole-catalogue escape the opportunities grid keeps.
-            ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest', lockScope: true),
+            // The shared declaration carries `lockScope` for both domains
+            // since the user directive 2026-08-05: neither module covers a
+            // cross-category pick with a new product line any more, both
+            // refuse it, so the in-cell picker offers no whole-catalogue
+            // escape on either grid.
+            ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest'),
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own `general_notes` free text, right beside the products the
             // operator reads it against. A REAL DB column, so sorting and the

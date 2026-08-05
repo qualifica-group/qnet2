@@ -17,6 +17,7 @@ use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
+use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -102,7 +103,7 @@ final class RequestManagementService
         private readonly RequestAttributeValueWriter $attributeValueWriter,
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly RequestOperatorWriter $operatorWriter,
-        private readonly RequestProductCategoryCoherence $coherence,
+        private readonly ProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
@@ -214,10 +215,10 @@ final class RequestManagementService
 
             // Step 7: "prodotti di interesse" (user directive 2026-07-22) —
             // a to-many reference, written after the model save like every
-            // other collection. Its cross-category branch (the writer adds
-            // the missing product line) is unreachable from here: Step 2-bis
-            // has already refused an incoherent set (user directive
-            // 2026-07-31).
+            // other collection. The writer re-checks the coherence Step 2-bis
+            // has already asserted; the redundancy is what keeps every OTHER
+            // channel (including this module's inline editor, which reaches
+            // the writer directly) covered by one rule.
             if (array_key_exists('products_of_interest', $data)) {
                 $this->applyProductsOfInterest($opportunity, (array) $data['products_of_interest'], $changed, $old);
             }
@@ -277,6 +278,7 @@ final class RequestManagementService
             // The 422 lands on the key the actor actually edited, so the
             // panel highlights the field they were working in.
             $productsSubmitted ? 'products_of_interest' : 'product_lines',
+            ProductCategoryCoherence::REQUEST_MESSAGE,
         );
     }
 
@@ -344,9 +346,7 @@ final class RequestManagementService
      * "Prodotti di interesse" (user directive 2026-07-22): an authoritative
      * replace of the whole collection. Like every other operative field here
      * it is NOT mass-assignable (it is a relation), so the change is logged
-     * explicitly. `product_lines_added` stays in the log shape for the rows
-     * the shared writer may still report, though the coherence rule (user
-     * directive 2026-07-31) leaves it empty on this channel.
+     * explicitly.
      *
      * @param  array<int, int>  $submitted
      * @param  array<string, mixed>  $changed
@@ -363,14 +363,10 @@ final class RequestManagementService
             return;
         }
 
-        $addedLines = $this->productInterestWriter->sync($opportunity, $next);
+        $this->productInterestWriter->sync($opportunity, $next);
 
         $old['products_of_interest'] = $current;
         $changed['products_of_interest'] = $next;
-
-        if ($addedLines !== []) {
-            $changed['product_lines_added'] = $addedLines;
-        }
     }
 
     /**
