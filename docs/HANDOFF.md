@@ -3,6 +3,303 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DETTAGLIO OPPORTUNITA' RIDISEGNATO (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente su `/opportunities/21`: record a sinistra, note/documenti/cronologia a destra,
+offerte in basso; Sede e Regione oscurate; niente offerte dove i prodotti non possono arrivare a
+un'offerta; "Informazioni raccolte" -> "Informazioni aggiuntive".
+
+**Contratto (unico cambio API, additivo):** `OpportunityResource.requires_quote` (bool) — true se
+ALMENO UNA categoria delle `product_lines` porta `requires_quote` (flag di radice denormalizzato su
+ogni nodo, spec 0070: la colonna della riga e' autoritativa, nessuna risalita). Zero product line
+-> false. Calcolato in `resolveRequiresQuote()` sulle relazioni gia' in eager load (nessun N+1).
+Gli endpoint quotes NON sono stati toccati: il gate e' di sola UI, il server autorizza come prima.
+**Da valutare (NON fatto):** rifiutare server-side la creazione di un'offerta su un'opportunita'
+con `requires_quote=false` — oggi e' possibile (il seeder demo ha gia' creato offerte su GOL, es.
+opportunita' 21, che ora non sono piu' visibili dal dettaglio).
+
+**Layout (`opportunity-detail.tsx`):** griglia `@5xl:grid-cols-[7fr_4fr]`, colonna sinistra =
+`RecordCard` (header + KPI + sezioni), destra = card collaborazione a tab (Note | Documenti |
+Cronologia, invariata), `OpportunityQuotesSection` a piena larghezza sotto, `RecordMeta` in fondo.
+Sotto `@5xl` tutto si impila in quest'ordine. **Ogni colonna e' un `@container` proprio**, cosi'
+`RecordSectionsGrid`/`RecordField` rompono sulla larghezza della COLONNA, non della canvas.
+Nuovo `useCollaborationGates(opportunity)`: i tre gate per-tab servono anche al layout, che senza
+di essi non saprebbe se riservare la colonna destra (nessuna abilita' -> niente colonna, il record
+prende tutta la larghezza invece di lasciare un terzo di canvas vuoto).
+
+**Oscurati:** `RecordField` Sede operativa e Regione in `opportunity-detail-sections.tsx` + badge
+Regione in `opportunity-detail-header.tsx`. Stessa scelta gia' fatta nel form: nascosti, NON
+rimossi — `operational_site`/`state` restano sul payload e sopravvivono ai salvataggi.
+
+**Label G.A. da categoria: gia' corretto sul dettaglio, nessuna modifica.** La scheda legge
+`opportunity.manager_labels` risolto server-side da `OpportunityManagerLabelResolver` (stessa
+regola del form: 1 categoria -> le sue label, N categorie con lo STESSO set -> quel set, set
+diversi -> default). Sull'opportunita' 21 le categorie GOL - Molise/Abruzzo (e le radici GOL e
+Formazione) non hanno `manager_labels`: per questo si vede "Gestore account n". Coperto da
+`opportunity-detail-sections.test.tsx` AC-044.
+
+i18n: `opportunities.detail.collectedInformation` = 'Informazioni aggiuntive' / 'Additional
+information' (stessa denominazione della sezione del form).
+
+**Verifica eseguita:** Pest `tests/Feature/Opportunities` + `tests/Feature/RequestManagement` 606
+test verdi (4 nuovi in `OpportunityRequiresQuoteTest.php`); Vitest full suite 502 file / 3601 test
+verdi (4 nuovi sul gate offerte + 1 su Sede/Regione assenti); `tsc -b --force` EXIT=0; ESLint e
+Pint puliti.
+**Aperto:** l'utente segnala "alcune label non tradotte" su questa pagina ma un audit di tutte le
+chiavi `t()` dell'albero dettaglio (opportunities, notes, attachments, activity-log, table, quotes,
+components/ui) contro il bundle `it` non trova ne' chiavi mancanti ne' valori rimasti in inglese:
+serve sapere QUALI label.
+
+## AZIONI TABELLA OPPORTUNITA' = GESTIONE RICHIESTE (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente: togliere `edit` dalle azioni di riga (la modifica parte dal bottone nel dettaglio,
+sempre gated dai permessi) e aggiungere note (componente + azione), con disposizione delle azioni
+IDENTICA a Gestione Richieste. Spec 0040 amendment rev.5 (AC-111..AC-114).
+
+Catalogo azioni ora: `view`, `documents`, `notes` inline (INLINE_ACTION_LIMIT = 3), `delete` e
+`activity` nell'overflow. `edit` non esiste piu' ne' nel catalogo ne' in `row.actions`: il dettaglio
+ha gia' il bottone Modifica (`detailOwnsEditAction`, gated da `permissions.resource.update`).
+
+- `backend/app/Tables/Opportunities/OpportunityColumnCatalog.php` — rimossa l'azione `edit`, aggiunta
+  `notes` (icon `message-square`, `count_field` `notes_count`, permission `request-management.view`),
+  riordinato come Gestione Richieste.
+- `backend/app/Tables/OpportunitiesTableDefinition.php` — `actionsFor()` senza `edit`; nuovo
+  `allowsNotes()` che replica per intero `RequestManagementNotable::authorizeRead`:
+  `request-management.view` AND (`request-management.viewAll` OR essere GA2 Operatore della riga).
+  Serve perche' questa lista, a differenza di request-management, NON e' gia' scoped: gating sul solo
+  `view` avrebbe offerto l'azione su righe che il dialog poi 403a. Usa `operatorManager()` sulla
+  collection `managers` gia' eager-loaded -> nessuna query per riga. baseQuery: `withCount('notes')`;
+  mapRow proietta `notes_count`.
+- `frontend/src/features/opportunities/opportunities-table.tsx` — via il case `edit` (e `openEdit`),
+  nuovo case `notes` + `NotesDialog` con `entityType` **`request-management`** (e' li' che il record
+  Opportunity e' registrato in `config/notes.php`; `opportunities` non e' uno slug valido -> 422),
+  refresh griglia alla chiusura per il badge; icona `message-square` nella icon map.
+- Test nuovi: `backend/tests/Feature/Opportunities/OpportunityTableActionsTest.php` (7 casi, incluso
+  lo scope GA2 per riga) e `frontend/src/features/opportunities/opportunities-table-notes.test.tsx`
+  (3 casi). `OpportunityTableTest.php` era gia' a ridosso del limite 500 righe -> file separato.
+
+Verificato: Pest `tests/Feature/Opportunities` 213 passed; `RequestManagement`+`Table`+`Notes` 661 passed;
+Vitest `opportunities`+`request-management`+`table` 79 file / 633 test passed; `tsc -b --force` EXIT=0;
+Pint pulito sul diff.
+
+## MODALITA' GESTIONE CATEGORIA APPLICATA ANCHE IN MODIFICA (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente: in modifica opportunita' e nel pannello di lavorazione di Gestione Richieste il
+vincolo `management_mode` (spec 0077) non scattava — si potevano aggiungere righe anche su una
+categoria `single`. Causa: la modalita' si risolveva SOLO dal `meta` della categoria scelta nella
+sessione (`categoryMetaById`), quindi le righe idratate dal server restavano indeterminate.
+Ora si risolve dall'albero categorie gia' in cache, uguale in creazione e in modifica. Solo frontend,
+nessun cambio di contratto API (il server gia' validava: `ProductLineSetValidator` su Store/Update di
+entrambi i moduli; grandfathering D-5 invariato).
+
+- `frontend/src/features/product-lines/category-tree-scope.ts` — nuovo `resolveRowSetManagementMode(rows, nodes)`
+  (usa `categoryManagementMetaFor` sull'albero); e' qui la risoluzione, non piu' in `management-mode.ts`.
+- `frontend/src/features/product-lines/use-product-lines-field.ts` — legge `useProductCategoryTree()`
+  (stessa query cache dei picker, nessuna richiesta extra); rimosso lo stato `categoryMetaById` e il
+  parametro `meta` di `setRowProductCategory`.
+- `frontend/src/features/product-lines/management-mode.ts` — resta il solo tipo `CategoryManagementMeta`;
+  rimossi `CategoryMetaById` e `categoryManagementMetaOf` (canale for-select, gia' morto).
+- `frontend/src/features/product-lines/product-category-tree-select.tsx` — `onChange(categoryId)` senza `meta`.
+- Test: due casi nuovi in `product-lines-field-management-mode.test.tsx` (AC-041/AC-042 su righe CARICATE).
+- Spec 0077: nuovo AC-045.
+
+Verificato: Vitest full suite 500 file / 3585 test passed; `tsc -b --force` EXIT=0; ESLint pulito.
+Nota: l'editor inline di cella `product_lines` in griglia NON e' toccato (blocco solo server-side, AC-018).
+
+### Seed allineati alle invarianti 0077 (stessa sessione)
+
+I seeder scrivono via `OpportunityService` (nessuna FormRequest, quindi nessun `ProductLineSetValidator`):
+`PicksDemoOffers::pickOffer()` ruotava sull'intero catalogo e produceva 2 righe anche su radice
+`single` e anche mescolando radici/funzioni aziendali diverse (INV-1/INV-2/INV-3 violate).
+
+- `backend/database/seeders/Concerns/PicksDemoOffers.php` — ogni offerta porta ora `root_category_id`
+  e `management_mode` (`CategoryHierarchy::rootManagementModesFor`, una sola query in piu' in load).
+  La PRIMA riga decide la scheda: radice `single` -> una sola riga; `multiple` -> righe aggiuntive solo
+  tra le offerte con STESSA radice e STESSA funzione aziendale (`companionLines()`).
+  `productIdsByCategory()` restituisce ora `{own, subtree}`: su radice `single` i prodotti si pescano
+  solo dalla categoria propria, altrimenti `OpportunityProductLineCoverage` li rifiuta (D-6/AC-020).
+- Consumatori invariati: `DemoOpportunitySeeder`, `QualificaSampleOpportunitySeeder`, `DemoQuoteSeeder`
+  (quest'ultimo legge solo `product_ids`).
+- Test nuovi (falliti sul codice pre-fix, verificato): INV-3 in
+  `tests/Feature/Seeding/QualificaSampleOpportunitySeederTest.php`, INV-1/INV-2 in
+  `tests/Feature/Opportunities/DemoOpportunitySeederTest.php`.
+
+Verificato: Pest full suite 5267 test (5266 passed, 1 skipped); Pint pulito.
+Da valutare (NON fatto, fuori scope): `DemoQuoteSeeder::offerLine()` pesca il prodotto della riga
+ricavo da un'offerta a rotazione, non dalle righe dell'opportunita' a cui il preventivo appartiene:
+su un DB che contenga anche opportunita' `single` (catalogo Qualifica) la copertura D-6 lo rifiuterebbe.
+
+## DEFAULT "MODALITA' APERTURA MODULI" = PAGINA INTERA (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente: nelle impostazioni, la modalita' di apertura moduli deve avere **pagine intere
+come default**. Cambiata la sola preferenza di default (spec 0042), nessun cambio di contratto:
+
+- `backend/app/Http/Resources/UserResource.php` — `DEFAULT_MODULE_OPEN_PREFERENCES` da
+  `['mode' => 'custom', ...]` a `['mode' => 'page', 'overrides' => []]` (colonna null -> pagina).
+- `frontend/src/features/modules/types.ts` — `DEFAULT_MODULE_OPEN_PREFERENCES.mode` = `'page'`;
+  e' anche il valore che "Ripristina default" riapplica in `module-open-mode-form.tsx`.
+- `defaultMode` per-modulo nel registry NON toccato: resta il fallback del solo `mode: 'custom'`.
+- Test allineati: AC-002 in `backend/tests/Feature/Auth/ModuleOpenPreferencesTest.php` (ora attende
+  `page`); i due test reward-types che verificano il mount nativo (sheet) usano ora una fixture
+  esplicita `NATIVE_MODE_PREFERENCES = { mode: 'custom', overrides: {} }` invece del default.
+- Spec `docs/specs/0042-user-module-open-mode.xml` aggiornata (contesto, endpoint GET, AC-002).
+
+Verificato: Pest `tests/Feature/Auth` 101 passed; Vitest full suite 500 file / 3584 test passed;
+`tsc -b --force` EXIT=0; Pint pulito. Utenti che avevano gia' salvato una preferenza non cambiano.
+
+### STATO NEL FORM: UNA SOLA LETTURA (2026-08-05)
+
+Direttiva utente: "nella sezione stato togliere lo stato read-only che non serve, rimanere solo
+stato di lavorazione ma renderlo come in gestione richieste; in alto i due stati mergiali come
+mergiati sulla tabella".
+
+- **Rimossa** `opportunity-status-section.tsx`: il badge read-only dello stato calcolato non e' piu'
+  nel corpo del form. Al suo posto, nella stessa cella della griglia, sta direttamente
+  `OpportunityWorkflowStatusField`, che ora rende **la propria `FormSection`** (icona `Workflow`,
+  titolo/descrizione) e un trigger compatto swatch + nome + `RequiresNoteBadge`, cioe' esattamente
+  come `RequestWorkflowStatusField` in Gestione Richieste. Gating `MetaField` invariato; in
+  creazione (set non ancora noto) continua a non rendere nulla.
+- **Header: una sola pill di stato.** `mergeWorkingStatus()` in `opportunity-form-header.tsx` passa
+  al badge della tabella (`OpportunityStatusBadge`) il summary calcolato, sostituendo l'entry solo
+  quando `source === 'workflow'` (nessuna offerta: cio' che il badge mostra E' lo stato di
+  lavorazione) — cosi' la pill segue il select in tempo reale. Con `source === 'quotes'` il summary
+  resta intatto (N offerte -> badge neutro "N stati" col tooltip, come in griglia).
+- i18n: `opportunities.form.sections.status` -> `sections.workflowStatus`
+  ("Stato di lavorazione" / "Avanza lo stato di lavorazione interno dell'opportunita'").
+  `opportunities.form.opportunityStatus` e `opportunities.status.empty` non hanno piu' consumer nel
+  form (restano nel bundle: fanno parte del contratto UI di spec 0082).
+- Test allineato (requisito cambiato): "renders every relational select" ora verifica che il
+  placeholder "No status" NON sia piu' nel corpo del form.
+
+### FIX i18n (2026-08-05) — label non tradotte nel form opportunita'
+
+Tre chiavi rendevano la chiave grezza a schermo:
+- `opportunities.form.header.{status,workflowStatus,expectedCloseDate}` e
+  `opportunities.form.summary.{title,description}` erano finite dentro `columns:` invece che dentro
+  `form:` (inserimento ancorato alla prima occorrenza di `registry:`, che e' quella di `columns`).
+  Spostate sotto `form:` in it/en.
+- `opportunities.form.sections.classification.title` era stata rimossa insieme alla card del form,
+  ma **la scheda di dettaglio la usa ancora** (`opportunity-detail-sections.tsx:114`, card
+  fonte/sede/regione): reintrodotta con descrizione aggiornata.
+
+Verificato con un audit temporaneo (ora rimosso) che risolveva ogni `t('...')` dei file del form
+contro il bundle `it`: zero chiavi mancanti. Restano fuori scope 25 chiavi `configurator.*` +
+`attributes.form.optionsEmpty` del configuratore layout attributi (schermata diversa, preesistenti).
+
+## FORM OPPORTUNITA' ALLINEATO A GESTIONE RICHIESTE (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente: il form Opportunita' deve avere **la stessa posizione e lo stesso design** del
+form/pannello di Gestione Richieste, **senza perdere** i campi avanzati (G.A. 1..n, Supervisore,
+stato calcolato, pianificazione, Lead di origine). Solo frontend, nessun cambio di contratto API,
+nessun campo aggiunto/rimosso dal payload.
+
+**Chrome condivisa estratta in `frontend/src/components/record-form/`** (le due schermate usano
+ora LETTERALMENTE gli stessi oggetti, non copie): `layout.ts` (`RECORD_HEADER_CLASS`,
+`PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`, `FIELD_GRID_CLASS`/`FIELD_STACK_CLASS`,
+`GENERAL_NOTES_CALLOUT_CLASS`/`GENERAL_NOTES_TITLE_CLASS`), `record-summary.tsx`
+(`SummaryRow`/`SUMMARY_LIST_CLASS`/`EMPTY_VALUE`), `record-form-actions.tsx` (`RecordFormActions`,
+ex `RequestFormActions`), `status-badge.tsx` (`StatusBadge`). `WorkflowStatusSwatch` spostato in
+`features/opportunity-workflows/workflow-status-swatch.tsx`. Rimossi da request-management:
+`request-form-actions.tsx`, `request-form-layout.ts`, `REQUEST_HEADER_CLASS` (ora
+`RECORD_HEADER_CLASS`) — request-management aggiornato ai nuovi import, comportamento invariato.
+
+**Nuovo scheletro del form opportunita'** (`opportunity-form-body.tsx`, 235 righe): `@container` +
+`bg-surface`, barra identita' sticky (`OpportunityFormHeader`: titolo/sottotitolo + pill stato
+calcolato / stato di lavorazione / chiusura prevista + Salva-Annulla, errore server sotto il
+bottone premuto), due colonne a `@4xl` con la side column PRIMA nel DOM e riordinata a destra
+(callout ambra "Note generali" editabile + `OpportunityFormSummary` live), azioni ripetute a fondo
+form (`RecordFormActions`). Modulo registrato `formOwnsHeader: true` (`opportunity-screens.tsx`):
+pagina dedicata e Sheet non stampano piu' un secondo titolo.
+
+**Ordine colonna principale** (specchio di Gestione Richieste): Lead di origine ->
+funzioni/categorie -> prodotti di interesse -> [Stato | Pianificazione] -> Attribuzione -> Team ->
+Anagrafica e contatti.
+
+**Nuovi file opportunita':** `opportunity-form-header.tsx`, `opportunity-form-summary.tsx`,
+`opportunity-lead-section.tsx`, `opportunity-status-section.tsx` (badge calcolato read-only + stato
+di lavorazione), `opportunity-attribution-section.tsx` (fonte, sede, regione, segnalatore + buoni),
+`opportunity-client-section.tsx` (anagrafica, referente, commerciale + recap contatti).
+**Rimosso:** `opportunity-classification-section.tsx` (contenuto ripartito tra Stato e
+Attribuzione). `opportunity-product-lines-section.tsx` ora rende DUE card (righe / prodotti di
+interesse); `opportunity-general-notes-section.tsx` e' il callout ambra della side column (label =
+micro-titolo, `MetaField` mantenuto); `opportunity-planning-section.tsx` e' `@container` con
+`@sm:grid-cols-2` (sta a meta' larghezza accanto a Stato).
+
+**Da sapere per il prossimo intervento:** il Salva esiste in DUE copie (barra + footer, come nel
+pannello richieste) — nei test si targetta `within(screen.getByRole('banner')).getByRole('button',
+{ name: 'Save' })`; 5 test opportunita' aggiornati solo per questo. i18n nuove chiavi:
+`opportunities.form.sections.{lead,status,attribution}`, `opportunities.form.header.*`,
+`opportunities.form.summary.*`; `sections.classification` rimossa, `sections.identity` ridefinita.
+
+**Segnalatore — stesso flusso di Gestione Richieste (direttiva 2026-08-05):** il blocco "buono" e'
+ora `ReporterRewardsField` (`components/record-form/reporter-rewards-field.tsx`, ex
+`RequestRewardsField` promosso a chrome condivisa, `labelPrefix` guida le stringhe): compare solo
+quando c'e' un Segnalatore, inset tinto + reveal motion-safe; resta montato con l'hint "seleziona
+prima un segnalatore" solo nel caso segnalatore-svuotato-con-buoni-attaccati (l'unico controllo in
+grado di staccarli). Opportunita' usa `labelPrefix = 'opportunities.form.rewards'`.
+
+**Sede operativa e Regione OSCURATE in opportunita' (direttiva 2026-08-05):** i due picker non
+sono piu' renderizzati nel form opportunita' (servono solo in Gestione Richieste). **Nascosti, non
+rimossi**: `operational_site_id`/`state_id` restano valori di form, quindi un valore ereditato dal
+Lead o gia' persistito sopravvive al salvataggio (PATCH sparso: la chiave non viene mai inviata).
+Nessun cambio a schema, payload, backend o a Gestione Richieste.
+
+**Label G.A. da categoria prodotto: gia' attivo, nessuna modifica necessaria** (spec 0080,
+`use-opportunity-manager-labels.ts` + `OpportunityTeamSection`): le label degli slot "Gestori
+account" si risolvono LIVE dalle `product_lines` correnti — 1 categoria -> le sue label; N
+categorie che risolvono lo STESSO set -> quel set; N categorie con set DIVERSI -> `{}` = default.
+Coperto da `use-opportunity-manager-labels.test.tsx` (AC-020/021/022/023) e
+`opportunity-team-section.test.tsx` (AC-043/044/053).
+
+**Test aggiornati per requisito cambiato** (non per farli passare): 5 call-site sul Salva duplicato
+(`within(getByRole('banner'))`), l'asserzione "renders every relational select" ora verifica
+l'ASSENZA di Sede/Regione, i due test sull'eredita' della Sede dal Lead passano dal payload
+(`operational_site_id` inviato) e dall'hook (`selectLead(null)` -> `setValue('operational_site_id',
+null)`), i tre test "Regione editabile" diventano "Regione non renderizzata + il PATCH non manda
+mai `state_id`".
+
+**Verifica eseguita:** `npx vitest run` 500 file / 3585 test verdi, `npx tsc -b --force` pulito,
+`npx eslint` pulito su opportunities/request-management/record-form.
+
+## INFORMAZIONI AGGIUNTIVE SUL FORM OPPORTUNITA' (2026-08-05) — VERDE, NON COMMITTATO
+
+Direttiva utente: "voglio informazioni aggiuntive anche sul form di opportunita' come sta in
+gestione richieste" — parita' piena create + edit (scelta confermata dall'utente). I campi dinamici
+sono un concetto GIA' opportunity-level (spec 0049 D-4: `opportunities.attribute_values`,
+`ApplicableAttributesResolver`): Gestione Richieste e' solo un'altra UI sullo stesso record. Nessun
+resolver/validator duplicato.
+
+**Contratto congelato (backend):**
+- `OpportunityResource` ora espone anche `attribute_layout` (`OpportunityAttributeLayoutResolver`,
+  `FormMode::Edit`, `null` = flat) accanto a `attribute_values`/`applicable_attributes` gia'
+  presenti.
+- `attribute_values` accettato come `['sometimes','array']` in `StoreOpportunityRequest` e
+  `UpdateOpportunityRequest`; la validazione per-code (applicabilita'/tipo/required) NON e'
+  duplicata: gira in `RequestAttributeValueWriter`, 422 keyed `attribute_values.<code>`.
+- `Create/UpdateOpportunityData::$attributeValues` (null = chiave assente, fuori da `attributes()`).
+- `OpportunityService`: writer chiamato DOPO il sync delle product lines in `create()` (il set
+  applicabile e' quello che le righe appena inserite producono) e PRIMA in `update()` (il set da cui
+  il form ha reso i campi) — stesso ordine di `RequestManagementService::updateWork` Step 1. Merge
+  sparso: un codice assente mantiene il valore persistito.
+- **Nuova rotta** `POST /api/opportunities/form-context` (`OpportunityController::formContext`), gate
+  `opportunities.create`, riusa `RequestFormContextRequest` + `RequestFormContextResolver` +
+  `RequestFormContextResource` (stesso contratto della gemella request-management, zero copie).
+
+**Frontend:** `OpportunityDynamicFieldsSection` (gemella di `RequestDynamicFields`: stesso
+`AttributeLayoutRenderer`, gate `MetaField` su `attribute_values`, stati loading/empty), montata
+dopo l'Attribuzione e prima di Team/Anagrafica — la posizione che ha in Gestione Richieste.
+`use-opportunity-form-context.ts` risolve il set live dalle product lines in CREATE (query key =
+criteri); in EDIT il set arriva gia' risolto sul record. `useOpportunityForm` monta lo schema
+dinamico con il pattern `resolverRef` di `useRequestCreateForm` e riseeda `attribute_values`
+(`seedAttributeValues`) a ogni cambio di set. Payload: create manda solo i codici risolti, update
+manda l'intera mappa solo se un valore applicabile e' cambiato (`pickAttributeValues`).
+
+**Verifica eseguita:** Pest `tests/Feature/Opportunities` + `tests/Feature/RequestManagement` 595
+test verdi (8 nuovi in `OpportunityAttributeValuesWriteTest.php`: create/422 non-applicabile/merge
+sparso/PATCH senza chiave/`attribute_layout`/form-context 200-403-riga-incompleta); Vitest 501 file
+/ 3593 test verdi (nuovi: `opportunity-dynamic-fields-section.test.tsx` + casi payload
+create/update); `tsc -b --force` pulito, ESLint pulito, Pint pulito.
+
 ## STATO OPPORTUNITA' CALCOLATO — spec 0082 (2026-08-05) — VERDE, NON COMMITTATO
 
 L'Opportunita' non ha piu' uno stato scelto a mano: lo stato e' **calcolato** dagli stati delle

@@ -1,17 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { StickyNote } from 'lucide-react'
-
-/**
- * The callout's own chrome, exported so the create form writes the notes
- * INSIDE the very box the panel reads them from (user directive 2026-07-31) —
- * the amber wash, the left rule and the micro-title are the visual identity of
- * this block on both screens, and a copy would be free to drift.
- */
-export const GENERAL_NOTES_CALLOUT_CLASS =
-  'rounded-lg border border-amber-500/40 border-l-4 border-l-amber-500 bg-amber-100 p-3 shadow-sm dark:border-amber-400/30 dark:border-l-amber-400 dark:bg-amber-400/15'
-
-export const GENERAL_NOTES_TITLE_CLASS =
-  'flex items-center gap-1.5 text-xs font-semibold tracking-tight text-amber-800 uppercase dark:text-amber-300'
+import {
+  GENERAL_NOTES_CALLOUT_CLASS,
+  GENERAL_NOTES_TITLE_CLASS,
+} from '@/components/record-form/layout'
 
 interface RequestGeneralNotesCalloutProps {
   /** The opportunity's "Note generali", read-only in this module. */

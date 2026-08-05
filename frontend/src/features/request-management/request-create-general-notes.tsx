@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   GENERAL_NOTES_CALLOUT_CLASS,
   GENERAL_NOTES_TITLE_CLASS,
-} from '@/features/request-management/request-general-notes-callout'
+} from '@/components/record-form/layout'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 
 interface RequestCreateGeneralNotesProps {

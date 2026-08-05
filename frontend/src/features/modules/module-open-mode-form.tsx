@@ -47,8 +47,8 @@ export function ModuleOpenModeForm() {
 
   const onSave = () => void persist(value)
 
-  // Restore the initial defaults ({mode:'custom', overrides:{}} = every module
-  // opens in its native mode) and apply them in one click.
+  // Restore the initial defaults ({mode:'page', overrides:{}} = every module
+  // opens as a full page) and apply them in one click.
   const onReset = () => {
     setValue(DEFAULT_MODULE_OPEN_PREFERENCES)
     void persist(DEFAULT_MODULE_OPEN_PREFERENCES)

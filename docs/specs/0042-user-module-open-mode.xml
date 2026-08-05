@@ -67,9 +67,9 @@
       mode='modal'  -> 'modal'
       mode='page'   -> 'page'
       mode='custom' -> overrides[domain] ?? registry.defaultMode(domain)
-    Preferenza assente/null == { mode:'custom', overrides:{} } -> ogni modulo apre ESATTAMENTE
-    come oggi (defaultMode = modalita' nativa). Cosi' gli utenti che non toccano l'impostazione
-    non vedono alcun cambiamento.
+    Preferenza assente/null == { mode:'page', overrides:{} } (decisione utente 2026-08-05) ->
+    ogni modulo apre a pagina intera finche' l'utente non sceglie un'altra modalita'. La
+    modalita' nativa del modulo (`defaultMode`) resta il fallback del solo mode='custom'.
   </context>
 
   <scope>
@@ -97,7 +97,8 @@
         mode: 'modal' | 'page' | 'custom',
         overrides: { [domain: string]: 'modal' | 'page' }   // domain = slug di config/tables.php
       }
-      Default quando la colonna e' null: { mode: 'custom', overrides: {} }.
+      Default quando la colonna e' null: { mode: 'page', overrides: {} } (decisione utente 2026-08-05:
+      tutti i moduli si aprono a pagina intera finche' l'utente non sceglie altro).
     -->
     <endpoint method="GET" path="/api/auth/me">
       <request><!-- nessun parametro; auth:sanctum --></request>
@@ -105,7 +106,7 @@
         <!-- BaseApiController::ok(): { success:true, message:"OK", data: UserResource } -->
         <!-- UserResource.data ora include: -->
         <!--   module_open_preferences: { mode:'modal'|'page'|'custom', overrides:{[domain]:'modal'|'page'} } -->
-        <!-- Mai null nella response: se la colonna e' null, si serializza il default {mode:'custom',overrides:{}}. -->
+        <!-- Mai null nella response: se la colonna e' null, si serializza il default {mode:'page',overrides:{}}. -->
       </response>
       <errors><!-- 401 se non autenticato (invariato) --></errors>
     </endpoint>
@@ -134,7 +135,7 @@
   <acceptance_criteria>
     <!-- ===== BACKEND ===== -->
     <criterion id="AC-001">Migration: `users` acquisisce `module_open_preferences` json nullable; `down()` la rimuove. Migrate + rollback puliti.</criterion>
-    <criterion id="AC-002">GET /api/auth/me di un utente senza preferenza -> `data.module_open_preferences` == `{mode:'custom',overrides:{}}` (mai null).</criterion>
+    <criterion id="AC-002">GET /api/auth/me di un utente senza preferenza -> `data.module_open_preferences` == `{mode:'page',overrides:{}}` (mai null).</criterion>
     <criterion id="AC-003">PATCH /api/auth/me con `{mode:'modal'}` -> 201/200, persiste; una GET successiva ritorna `{mode:'modal',overrides:{}}`.</criterion>
     <criterion id="AC-004">PATCH /api/auth/me con `{mode:'custom',overrides:{projects:'page',campaigns:'modal'}}` -> persiste esattamente quegli override; GET li rispecchia.</criterion>
     <criterion id="AC-005">PATCH con `mode` non in [modal,page,custom] -> 422 sul campo `module_open_preferences.mode`.</criterion>

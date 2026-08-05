@@ -53,7 +53,7 @@ vi.mock('@/features/attachments/documents-section', () => ({
   },
 }))
 
-const ROW: TableRow = { id: 42, actions: ['view', 'edit', 'delete', 'documents'], documents_count: 3 }
+const ROW: TableRow = { id: 42, actions: ['view', 'documents', 'notes', 'delete'], documents_count: 3 }
 
 function action(key: string): TableActionDefinition {
   return {

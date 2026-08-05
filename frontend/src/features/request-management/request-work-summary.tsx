@@ -1,25 +1,10 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
+import { EMPTY_VALUE, SUMMARY_LIST_CLASS, SummaryRow } from '@/components/record-form/record-summary'
 import { formatDecimal } from '@/features/products/column-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 import { formatDate } from '@/lib/formatting/date-display'
-
-export const EMPTY_VALUE = '—'
-
-/** The summary list's own chrome, exported so the create form's live recap renders the identical rows. */
-export const SUMMARY_LIST_CLASS = 'min-w-0 divide-y divide-border/60'
-
-/** One `label / value` row of the summary list. Exported: the create form's live recap uses the same row. */
-export function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5 py-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="truncate text-sm font-medium text-foreground">{children}</dd>
-    </div>
-  )
-}
 
 /**
  * Read-only commercial context of the record (spec 0049), rendered as the side

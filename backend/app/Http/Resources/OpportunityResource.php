@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
+use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -60,6 +62,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * OpportunityService::loadDetail() already eager-loading
  * `productLines.productCategory`, so resolving it here never N+1s.
  *
+ * User directive 2026-08-05 ("informazioni aggiuntive anche sul form
+ * opportunita'"): `attribute_layout` completes that trio with the merged,
+ * multi-category layout (spec 0062) the form renders those attributes
+ * through — `FormMode::Edit`, since this resource IS what the edit form
+ * hydrates from; `null` when no contributing category configures one, which
+ * the renderer reads as "flat".
+ *
  * Spec 0059: `rewards`, ordered by `reward_type.name` (data contract), feeds
  * the form's edit-mode hydration for the "abbinamento buono" control. Relies
  * on OpportunityService::DETAIL_RELATIONS eager-loading `rewards.rewardType`.
@@ -68,6 +77,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * the Offerte panel's initial header value, before the panel's own grid
  * reports `pagination.total`. Relies on OpportunityService::loadDetail()
  * always calling `loadCount('quotes')`, so it is never missing here.
+ *
+ * User directive 2026-08-05: `requires_quote` is ADDITIVE — the derived
+ * "this opportunity's products can proceed to an offer" flag (true when any
+ * product line's category carries the root-owned `requires_quote`). It gates
+ * the Offerte panel client-side; the quotes endpoints keep their own
+ * authorization untouched.
  *
  * Spec 0080: `manager_labels` is ADDITIVE — the per-position "Gestore
  * Account" denomination overrides resolved from the product line(s)' product
@@ -125,9 +140,12 @@ class OpportunityResource extends JsonResource
             'success_probability' => $this->success_probability,
             'general_notes' => $this->general_notes,
             'quotes_count' => (int) ($this->quotes_count ?? 0),
+            'requires_quote' => $this->resolveRequiresQuote(),
             'locked_fields' => $this->resolveLockedFields(),
             'attribute_values' => $this->attribute_values ?? [],
             'applicable_attributes' => $this->resolveApplicableAttributes(),
+            'attribute_layout' => app(OpportunityAttributeLayoutResolver::class)
+                ->resolve($this->resource, FormMode::Edit),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -254,6 +272,25 @@ class OpportunityResource extends JsonResource
         return $resolver->statusesFor($resolver->resolve($this->resource))
             ->map(fn (OpportunityWorkflowStatus $status): array => $this->summarizeWorkflowStatus($status))
             ->all();
+    }
+
+    /**
+     * Whether this opportunity's products can proceed to an offer (user
+     * directive 2026-08-05): true when AT LEAST ONE of its product lines'
+     * categories carries `requires_quote` — the branch-root-owned flag
+     * denormalised onto every node (spec 0070), so the row's own column is
+     * authoritative and no hierarchy walk is needed here. An opportunity with
+     * no product line has nothing quotable, hence false.
+     *
+     * Reads the already eager-loaded `productLines.productCategory`
+     * (OpportunityService::DETAIL_RELATIONS), so it never lazy-loads.
+     */
+    private function resolveRequiresQuote(): bool
+    {
+        return $this->productLines
+            ->pluck('productCategory')
+            ->filter()
+            ->contains(fn (Model $category): bool => (bool) $category->requires_quote);
     }
 
     /**

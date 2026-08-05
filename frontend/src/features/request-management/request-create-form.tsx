@@ -3,6 +3,12 @@ import { useWatch } from 'react-hook-form'
 import { Boxes } from 'lucide-react'
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
@@ -11,15 +17,9 @@ import { RequestCreateClientSection } from '@/features/request-management/reques
 import { RequestCreateDynamicFields } from '@/features/request-management/request-create-dynamic-fields'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
-import { RequestFormActions } from '@/features/request-management/request-form-actions'
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
 import { RequestCreateWorkflowStatusField } from '@/features/request-management/request-create-workflow-status-field'
-import {
-  MAIN_COLUMN_CLASS,
-  PANEL_GRID_CLASS,
-  SIDE_COLUMN_CLASS,
-} from '@/features/request-management/request-work-panel'
 import { useProductsOfInterestCoherence } from '@/features/request-management/use-products-of-interest-coherence'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
@@ -43,11 +43,11 @@ interface RequestCreateFormProps {
  * Create-only form for the request-management module (spec 0057, D-7), built
  * as the work panel's TWIN (user directive 2026-07-31, "la scheda di creazione
  * il piu' simile possibile a quella di gestione"). Not a resemblance: the
- * layout primitives are literally the panel's own, imported from it
- * (`PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`,
- * `REQUEST_HEADER_CLASS`, `StatusBadge`, `SummaryRow`, the general-notes
- * callout chrome), so the two screens cannot drift apart with a later edit to
- * one of them.
+ * layout primitives are literally the same objects
+ * (`@/components/record-form`: `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/
+ * `MAIN_COLUMN_CLASS`, `RECORD_HEADER_CLASS`, `StatusBadge`, `SummaryRow`,
+ * `RecordFormActions`, the general-notes callout chrome), so the screens
+ * sharing them cannot drift apart with a later edit to one of them.
  *
  * Same skeleton as the panel:
  *  - `@container` + `bg-surface`, sticky identity bar with the live status /
@@ -200,7 +200,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 errorMessage={clientBlockError}
               />
 
-              <RequestFormActions
+              <RecordFormActions
                 formId={REQUEST_CREATE_FORM_ID}
                 isSubmitting={isSubmitting}
                 submitLabel={t('requestManagement.form.create.save')}

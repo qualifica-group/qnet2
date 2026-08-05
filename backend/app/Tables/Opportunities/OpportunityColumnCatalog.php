@@ -203,6 +203,16 @@ final class OpportunityColumnCatalog
     }
 
     /**
+     * Same layout as the Gestione Richieste catalog (user directive
+     * 2026-08-05): `view`, `documents`, `notes` inline (INLINE_ACTION_LIMIT =
+     * 3), `delete` and `activity` in the overflow menu. `edit` is NOT a row
+     * action here — editing starts from the record's own detail surface,
+     * whose Edit button is gated by the same `opportunities.update` the
+     * update endpoint re-checks. `notes` is gated by `request-management.view`
+     * because the thread is registered under the `request-management`
+     * entity_type (config/notes.php → RequestManagementNotable): the note
+     * endpoints would 403 an actor holding only `opportunities.*`.
+     *
      * @return array<int, array<string, mixed>>
      */
     public static function actions(): array
@@ -217,12 +227,22 @@ final class OpportunityColumnCatalog
                 'permission' => 'opportunities.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
+                'key' => 'documents',
+                'label' => 'actions.documents',
+                'icon' => 'paperclip',
+                'type' => 'action',
                 'confirm' => false,
-                'permission' => 'opportunities.update',
+                'permission' => 'opportunities.viewDocuments',
+                'count_field' => 'documents_count',
+            ],
+            [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'message-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'request-management.view',
+                'count_field' => 'notes_count',
             ],
             [
                 'key' => 'delete',
@@ -231,15 +251,6 @@ final class OpportunityColumnCatalog
                 'type' => 'danger',
                 'confirm' => true,
                 'permission' => 'opportunities.delete',
-            ],
-            [
-                'key' => 'documents',
-                'label' => 'actions.documents',
-                'icon' => 'paperclip',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'opportunities.viewDocuments',
-                'count_field' => 'documents_count',
             ],
             [
                 'key' => 'activity',

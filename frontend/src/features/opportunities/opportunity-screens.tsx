@@ -185,4 +185,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   DetailScreen: OpportunityDetailScreen,
   FormScreen: OpportunityFormScreen,
   detailOwnsEditAction: true,
+  // The form renders its own identity bar (title/subtitle + actions on one
+  // row, user directive 2026-08-05), so the hosts must not stack a second
+  // heading above it — same registration Gestione Richieste carries.
+  formOwnsHeader: true,
 }

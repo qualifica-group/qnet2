@@ -7,10 +7,9 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { MetaField } from '@/features/authorization/MetaField'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { RequiresNoteBadge } from '@/features/opportunity-workflows/requires-note-badge'
 import { WorkflowStatusOption } from '@/features/opportunity-workflows/workflow-status-option'
-import { cn } from '@/lib/utils'
+import { WorkflowStatusSwatch } from '@/features/opportunity-workflows/workflow-status-swatch'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestWorkflowStatusRef } from '@/features/request-management/types'
 
@@ -18,16 +17,6 @@ interface RequestWorkflowStatusFieldProps {
   control: Control<RequestWorkFormValues>
   /** The resolved working-state set for this opportunity (spec 0047/0049 AC-063): the select never offers a value outside it. */
   statuses: RequestWorkflowStatusRef[]
-}
-
-/** A status option's leading color dot, shared with the read-only context summary. */
-export function WorkflowStatusSwatch({ color }: { color: string | null }) {
-  return (
-    <span
-      className={cn('size-2.5 shrink-0 rounded-full border', swatchClassFor(color) ?? 'bg-transparent')}
-      aria-hidden="true"
-    />
-  )
 }
 
 /**

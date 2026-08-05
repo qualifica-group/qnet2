@@ -22,6 +22,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('opportunities/for-select', OpportunityForSelectController::class);
 
+// Live preview of the dynamic "Informazioni aggiuntive" the criteria typed so
+// far resolve to (user directive 2026-08-05), for the CREATE form — the same
+// endpoint request-management already exposes, on the opportunities gate.
+// Declared above the `{opportunity}` wildcard for the same reason as
+// for-select: the literal segment must win over route-model binding.
+Route::post('opportunities/form-context', [OpportunityController::class, 'formContext']);
+
 // Opportunities CRUD. Authorization (opportunities.view/create/update/
 // delete) is enforced server-side in OpportunityController via
 // OpportunityPolicy on every endpoint.

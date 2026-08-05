@@ -5,7 +5,8 @@ import { useWatch, type Control } from 'react-hook-form'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
-import { REQUEST_HEADER_CLASS, StatusBadge } from '@/features/request-management/request-work-header'
+import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
+import { StatusBadge } from '@/components/record-form/status-badge'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import type { RequestWorkflowStatusRef } from '@/features/request-management/types'
 
@@ -22,7 +23,7 @@ interface RequestCreateHeaderProps {
 
 /**
  * Identity bar of the create form — the same bar as the work panel's
- * (`RequestWorkHeader`), down to the shared `REQUEST_HEADER_CLASS` and the
+ * (`RequestWorkHeader`), down to the shared `RECORD_HEADER_CLASS` and the
  * shared `StatusBadge`: heading and live status/callback pills on the left,
  * the actions on the right, a refused submit reported right under the button
  * that was pressed.
@@ -56,7 +57,7 @@ export function RequestCreateHeader({
   const nextCallback = formatDateTimeOptionalTime(nextCallbackAt)
 
   return (
-    <header className={REQUEST_HEADER_CLASS}>
+    <header className={RECORD_HEADER_CLASS}>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <div className="flex min-w-0 flex-col">
           <h1 className="min-w-0 truncate text-base font-semibold">

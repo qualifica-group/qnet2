@@ -107,11 +107,27 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
     expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
     expect(screen.getByText('Paolo Blu')).toBeInTheDocument()
     expect(screen.getByText('Web')).toBeInTheDocument()
-    expect(screen.getByText('Warehouse A - Milan')).toBeInTheDocument()
     expect(screen.getByText(/Consulting/)).toBeInTheDocument()
     expect(screen.getByText('Anna Bianchi')).toBeInTheDocument()
     expect(screen.getByText('Marco Gialli')).toBeInTheDocument()
     expect(screen.getByText('60%')).toBeInTheDocument()
+  })
+
+  /**
+   * User directive 2026-08-05: the two fields are hidden here exactly as they
+   * already are in the form — the values still travel on the payload.
+   */
+  it('renders neither the operational site nor the region', () => {
+    render(
+      <OpportunityDetailView
+        opportunity={opportunity({ state_id: 3, state: { id: 3, name: 'Lombardia' } })}
+      />,
+    )
+
+    expect(screen.queryByText('Warehouse A - Milan')).not.toBeInTheDocument()
+    expect(screen.queryByText('Operational site')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lombardia')).not.toBeInTheDocument()
+    expect(screen.queryByText('Region')).not.toBeInTheDocument()
   })
 
   it('renders no editable control and no edit action without onEdit', () => {
@@ -302,8 +318,8 @@ describe('OpportunityDetailView — rewards', () => {
   })
 })
 
-/** Spec 0049 D-8/AC-064: additive read-only "Collected information" section. */
-describe('OpportunityDetailView — collected information (AC-064)', () => {
+/** Spec 0049 D-8/AC-064: additive read-only "Informazioni aggiuntive" section. */
+describe('OpportunityDetailView — additional information (AC-064)', () => {
   it('renders the applicable attributes with their formatted collected values', () => {
     render(
       <OpportunityDetailView
@@ -340,7 +356,7 @@ describe('OpportunityDetailView — collected information (AC-064)', () => {
       />,
     )
 
-    expect(screen.getByText('Collected information')).toBeInTheDocument()
+    expect(screen.getByText('Additional information')).toBeInTheDocument()
     expect(screen.getByText('Floor area')).toBeInTheDocument()
     expect(screen.getByText('120.50')).toBeInTheDocument()
     expect(screen.getByText('Has elevator')).toBeInTheDocument()
@@ -358,7 +374,7 @@ describe('OpportunityDetailView — collected information (AC-064)', () => {
       />,
     )
 
-    expect(screen.queryByText('Collected information')).not.toBeInTheDocument()
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
   })
 
   it('does not crash and omits the section when both fields are absent from the fixture (older shape)', () => {
@@ -368,6 +384,6 @@ describe('OpportunityDetailView — collected information (AC-064)', () => {
       />,
     )
 
-    expect(screen.queryByText('Collected information')).not.toBeInTheDocument()
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
   })
 })

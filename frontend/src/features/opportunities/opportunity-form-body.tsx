@@ -1,25 +1,22 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch } from 'react-hook-form'
-import { CircleAlert, Contact, Loader2 } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Form } from '@/components/ui/form'
-import { RelationSelectField } from '@/components/form/relation-select-field'
-import { cn } from '@/lib/utils'
-import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { OpportunityRegistryField } from '@/features/opportunities/opportunity-registry-field'
-import { OpportunityClassificationSection } from '@/features/opportunities/opportunity-classification-section'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { OpportunityAttributionSection } from '@/features/opportunities/opportunity-attribution-section'
+import { OpportunityClientSection } from '@/features/opportunities/opportunity-client-section'
+import { OpportunityDynamicFieldsSection } from '@/features/opportunities/opportunity-dynamic-fields-section'
+import { OpportunityFormHeader } from '@/features/opportunities/opportunity-form-header'
+import { OpportunityFormSummary } from '@/features/opportunities/opportunity-form-summary'
+import { OpportunityGeneralNotesSection } from '@/features/opportunities/opportunity-general-notes-section'
+import { OpportunityLeadSection } from '@/features/opportunities/opportunity-lead-section'
+import { OpportunityPlanningSection } from '@/features/opportunities/opportunity-planning-section'
 import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
 import { OpportunityTeamSection } from '@/features/opportunities/opportunity-team-section'
-import { OpportunityPlanningSection } from '@/features/opportunities/opportunity-planning-section'
-import { OpportunityGeneralNotesSection } from '@/features/opportunities/opportunity-general-notes-section'
-import { OpportunityFromLeadBanner } from '@/features/opportunities/opportunity-from-lead-banner'
-import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
-import { OpportunityLeadField } from '@/features/opportunities/opportunity-lead-field'
-import { OpportunityReporterField } from '@/features/opportunities/opportunity-reporter-field'
+import { OpportunityWorkflowStatusField } from '@/features/opportunities/opportunity-workflow-status-field'
 import {
   NO_LEAD_SUBMISSION,
   useOpportunityForm,
@@ -34,39 +31,52 @@ import type { RewardAssignmentRef } from '@/features/rewards/types'
 /** Stable empty default: create mode has no persisted reward assignments to hydrate. */
 const EMPTY_REWARDS: RewardAssignmentRef[] = []
 
+/**
+ * DOM id bridging the sticky header's save action to the RHF `<form>` below,
+ * exactly as the Gestione Richieste screens do: the same id serves the footer
+ * actions, so both copies of the button submit this form without either of
+ * them nesting the other.
+ */
+const OPPORTUNITY_FORM_ID = 'opportunity-form'
+
 interface OpportunityFormBodyProps {
   mode: OpportunityFormMode
   onSuccess: (opportunity: OpportunityDetail) => void
   onCancel: () => void
 }
 
-/** Motion-safe staggered entrance shared by every top-level section. */
-const SECTION_REVEAL_CLASS =
-  'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300'
-
-/** Staggers a section's entrance by 50ms per index via an arbitrary Tailwind property. */
-function sectionRevealClassName(index: number): string {
-  return cn(SECTION_REVEAL_CLASS, `[animation-delay:${index * 50}ms]`)
-}
-
 /**
- * The opportunity create/edit form UI (spec 0040 + amendment rev.1): an
- * optional in-form "Lead" picker in create (A-1) or its read-only equivalent
- * in edit (D-2), identity (the required anagrafica and its 3 BR-4 scoped
- * relations — spec 0057 D-5: the name is no longer an input, it is derived
- * server-side as `OPP_{id}`), classification (source), team (supervisor +
- * managers) and planning (dates/value/probability) — all wrapped in
- * `MetaField`. All non-render logic lives in
- * `useOpportunityForm`/`useOpportunityFormSubmit` and
- * `useOpportunityLeadSelection`. BR-2 field locking (from a linked Lead)
- * applies uniformly whether the lead came from the `?lead_id=N` deep-link or
- * from picking one in the select (`useOpportunityLeadSelection` unifies
- * both).
+ * The opportunity create/edit form UI (spec 0040 + amendment rev.1), rebuilt
+ * as the TWIN of the Gestione Richieste screens (user directive 2026-08-05:
+ * "voglio che siano uguali di posizione e di design"). Not a resemblance: the
+ * layout primitives are literally the same objects (`@/components/record-form`
+ * — `RECORD_HEADER_CLASS`, `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/
+ * `MAIN_COLUMN_CLASS`, `SummaryRow`, `RecordFormActions`, the general-notes
+ * callout chrome), so neither screen can drift apart with a later edit to the
+ * other.
+ *
+ * Same skeleton as the work panel:
+ *  - `@container` + `bg-surface`, sticky identity bar carrying the live status
+ *    pills and the save/cancel actions, repeated at the foot of the form;
+ *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
+ *    (narrow containers read it before the long form), reordered to the right;
+ *  - side column = the "Note generali" callout on top, then the live summary;
+ *  - main column = origin, then the record's headline classification (product
+ *    lines, products of interest), the two state dimensions next to the
+ *    planning estimates, attribution, team, and the client's data last.
+ *
+ * Nothing was dropped in the move: the dimensions Gestione Richieste has no
+ * equivalent for (the computed status, the G.A. slots and the Supervisore, the
+ * planning estimates, the Lead link) keep their own cards inside that
+ * skeleton. All non-render logic still lives in `useOpportunityForm`/
+ * `useOpportunityFormSubmit` and `useOpportunityLeadSelection`; BR-2 field
+ * locking applies uniformly whether the lead came from the `?lead_id=N`
+ * deep-link or from picking one in the select.
  */
 export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFormBodyProps) {
   const { t } = useTranslation()
 
-  const { form } = useOpportunityForm({ mode })
+  const { form, attributes, attributeLayout, isAttributesLoading } = useOpportunityForm({ mode })
 
   // `useOpportunityLeadSelection` needs `form.setValue`, so it can only run
   // AFTER `useOpportunityForm` — and `leadSubmission` (below) can only be
@@ -98,7 +108,13 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
         }
       : NO_LEAD_SUBMISSION
 
-  const { serverError, onSubmit } = useOpportunityFormSubmit({ form, mode, leadSubmission, onSuccess })
+  const { serverError, onSubmit } = useOpportunityFormSubmit({
+    form,
+    mode,
+    leadSubmission,
+    onSuccess,
+    attributeCodes: attributes.map((attribute) => attribute.code),
+  })
   const selectedItems = useOpportunitySelectedItems(mode, leadSelection.state)
 
   // Amendment rev.3: rows whose label is already known without a fetch — the
@@ -119,172 +135,117 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
     mode.type === 'edit' ? mode.opportunity.locked_fields : leadSelection.state.lockedFields,
   )
 
-  const { errors, isSubmitting } = form.formState
-  const [planningOpen, setPlanningOpen] = useState(false)
-  const planningHasError = Boolean(
-    errors.start_date || errors.expected_close_date || errors.estimated_value || errors.success_probability,
-  )
-  const [generalNotesOpen, setGeneralNotesOpen] = useState(false)
+  const { isSubmitting } = form.formState
 
-  const registryId = useWatch({ control: form.control, name: 'registry_id' })
-  const registryChosen = registryId !== null
-
-  // Spec 0047 (D1): the Regione is inherited from the Lead only as an initial
-  // value and stays freely editable at any time (backend keeps state_id out of
-  // the locked fields). The working-state select is limited to the resolved set
+  // Spec 0047 (D1): the working-state select is limited to the resolved set
   // exposed on the loaded instance; `null` in create mode (set not yet known).
   const workflowStatuses = mode.type === 'edit' ? (mode.opportunity.workflow_statuses ?? []) : null
-
-  // A-4: recap of the chosen person's primary contacts, under each of the 3
-  // selects. commercial/reporter (A-3) are the whole platform list, independent
-  // of the anagrafica; only the referent stays anagrafica-scoped (BR-4).
-  const referentId = useWatch({ control: form.control, name: 'referent_id' })
-  const commercialId = useWatch({ control: form.control, name: 'commercial_id' })
-  const reporterId = useWatch({ control: form.control, name: 'reporter_id' })
-  const rewards = useWatch({ control: form.control, name: 'rewards' })
   const initialRewards = mode.type === 'edit' ? (mode.opportunity.rewards ?? EMPTY_REWARDS) : EMPTY_REWARDS
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
+      {/* The provider wraps BOTH columns (it renders no DOM of its own): the
+          side column's "Note generali" is a form field like any other, it just
+          reads better next to the summary than buried in the long column. */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          <FormSection
-            icon={Contact}
-            title={t('opportunities.form.sections.identity.title')}
-            description={t('opportunities.form.sections.identity.description')}
-            className={sectionRevealClassName(0)}
-          >
-            {mode.type === 'create' ? (
-              <OpportunityLeadField state={leadSelection.state} onSelect={leadSelection.selectLead} />
-            ) : mode.opportunity.lead ? (
-              <div className="grid gap-2">
-                <Label>{t('opportunities.form.lead')}</Label>
-                <Input value={mode.opportunity.lead.label} disabled readOnly />
-              </div>
-            ) : null}
+        <OpportunityFormHeader
+          control={form.control}
+          isEdit={mode.type === 'edit'}
+          status={mode.type === 'edit' ? mode.opportunity.status : null}
+          workflowStatuses={workflowStatuses}
+          formId={OPPORTUNITY_FORM_ID}
+          isSubmitting={isSubmitting}
+          isSubmitDisabled={leadIsBlocked}
+          submitError={serverError}
+          onCancel={onCancel}
+        />
 
-            {mode.type === 'create' && leadSelection.state.leadId !== null && !leadIsBlocked ? (
-              <OpportunityFromLeadBanner registryName={leadSelection.state.registry?.name ?? null} />
-            ) : null}
+        <div className={PANEL_GRID_CLASS}>
+          {/* First in the DOM so a narrow container reads it before the form,
+              reordered to the right on two columns — the panel's own rule. */}
+          <aside className={SIDE_COLUMN_CLASS}>
+            <OpportunityGeneralNotesSection control={form.control} />
+            <OpportunityFormSummary control={form.control} selectedItems={selectedItems} />
+          </aside>
 
-            <OpportunityRegistryField
-              control={form.control}
-              setValue={form.setValue}
-              selected={selectedItems.registry}
-              forceDisabled={lockedFields.has('registry_id')}
-            />
+          <div className={MAIN_COLUMN_CLASS}>
+            {/* `display: contents`: this native `<form>` only scopes the HTML
+                submit boundary, it must not become an extra flex box. */}
+            <form
+              id={OPPORTUNITY_FORM_ID}
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="contents"
+              noValidate
+            >
+              <OpportunityLeadSection
+                mode={mode}
+                leadSelection={leadSelection.state}
+                onSelect={leadSelection.selectLead}
+              />
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <RelationSelectField
-                  control={form.control}
-                  name="referent_id"
-                  metaKey="referent_id"
-                  label={t('opportunities.form.referent')}
-                  resource={REFERENTS_FOR_SELECT_RESOURCE}
-                  searchPlaceholder={t('opportunities.form.referentSearch')}
-                  selected={selectedItems.referent}
-                  params={registryId !== null ? { registry_id: registryId } : undefined}
-                  forceDisabled={!registryChosen || lockedFields.has('referent_id')}
-                  placeholder={t('opportunities.form.selectPlaceholder')}
-                  emptyLabel={t('opportunities.form.selectEmpty')}
-                  errorLabel={t('opportunities.form.selectError')}
-                  clearLabel={t('common.clear')}
-                  retryLabel={t('common.retry')}
-                />
-                <OpportunityContactRecap referentId={referentId} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <RelationSelectField
-                  control={form.control}
-                  name="commercial_id"
-                  metaKey="commercial_id"
-                  label={t('opportunities.form.commercial')}
-                  resource={REFERENTS_FOR_SELECT_RESOURCE}
-                  searchPlaceholder={t('opportunities.form.commercialSearch')}
-                  selected={selectedItems.commercial}
-                  placeholder={t('opportunities.form.selectPlaceholder')}
-                  emptyLabel={t('opportunities.form.selectEmpty')}
-                  errorLabel={t('opportunities.form.selectError')}
-                  clearLabel={t('common.clear')}
-                  retryLabel={t('common.retry')}
-                />
-                <OpportunityContactRecap referentId={commercialId} />
-              </div>
-
-              <OpportunityReporterField
+              <OpportunityProductLinesSection
                 control={form.control}
-                selected={selectedItems.reporter}
-                reporterId={reporterId}
-                rewards={rewards}
-                onRewardsChange={(next) => form.setValue('rewards', next, { shouldDirty: true })}
+                knownProductLines={knownProductLines}
+                knownProductsOfInterest={knownProductsOfInterest}
+              />
+
+              {/* Stato di lavorazione + pianificazione side by side. The
+                  computed status is NOT repeated here (user directive
+                  2026-08-05): the identity bar carries it, merged the way the
+                  table merges it. On create the working-state set is unknown,
+                  so that cell renders nothing and planning takes the row. */}
+              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
+                <OpportunityWorkflowStatusField control={form.control} statuses={workflowStatuses} />
+
+                <OpportunityPlanningSection control={form.control} />
+              </div>
+
+              <OpportunityAttributionSection
+                control={form.control}
+                setValue={form.setValue}
+                selectedItems={selectedItems}
+                lockedFields={lockedFields}
                 initialRewards={initialRewards}
               />
-            </div>
-          </FormSection>
 
-          <OpportunityClassificationSection
-            control={form.control}
-            selectedItems={selectedItems}
-            lockedFields={lockedFields}
-            workflowStatuses={workflowStatuses}
-            status={mode.type === 'edit' ? mode.opportunity.status : null}
-            className={sectionRevealClassName(1)}
-          />
+              {/* "Informazioni aggiuntive" sits where Gestione Richieste keeps
+                  it: after the attribution, before the client's own data. */}
+              <OpportunityDynamicFieldsSection
+                control={form.control}
+                attributes={attributes}
+                layout={attributeLayout}
+                isLoading={isAttributesLoading}
+              />
 
-          <OpportunityProductLinesSection
-            control={form.control}
-            knownProductLines={knownProductLines}
-            knownProductsOfInterest={knownProductsOfInterest}
-            className={sectionRevealClassName(2)}
-          />
+              <OpportunityTeamSection
+                control={form.control}
+                selectedItems={selectedItems}
+                // Directive 2026-07-21: supervisor_id is never required — it
+                // derives from the linked Lead's Operatore, which may be empty.
+                supervisorRequired={false}
+              />
 
-          <OpportunityTeamSection
-            control={form.control}
-            selectedItems={selectedItems}
-            // Directive 2026-07-21: supervisor_id is never required — it
-            // derives from the linked Lead's Operatore, which may be empty.
-            supervisorRequired={false}
-            className={sectionRevealClassName(3)}
-          />
+              <OpportunityClientSection
+                control={form.control}
+                setValue={form.setValue}
+                selectedItems={selectedItems}
+                lockedFields={lockedFields}
+              />
 
-          <OpportunityPlanningSection
-            control={form.control}
-            collapsible
-            open={planningOpen || planningHasError}
-            onOpenChange={setPlanningOpen}
-            className={sectionRevealClassName(4)}
-          />
-
-          <OpportunityGeneralNotesSection
-            control={form.control}
-            collapsible
-            open={generalNotesOpen || Boolean(errors.general_notes)}
-            onOpenChange={setGeneralNotesOpen}
-            className={sectionRevealClassName(5)}
-          />
-
-          {serverError && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200"
-            >
-              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              {serverError}
-            </div>
-          )}
-
-          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 mt-auto flex justify-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-              {t('opportunities.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSubmitting || leadIsBlocked}>
-              {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-              {isSubmitting ? t('opportunities.form.saving') : t('opportunities.form.save')}
-            </Button>
+              {/* The same actions the identity bar carries, repeated where the
+                  form ends: it is long enough that the operator finishes typing
+                  far from the sticky bar. */}
+              <RecordFormActions
+                formId={OPPORTUNITY_FORM_ID}
+                isSubmitting={isSubmitting}
+                isSubmitDisabled={leadIsBlocked}
+                submitLabel={t('opportunities.form.save')}
+                submittingLabel={t('opportunities.form.saving')}
+                cancel={{ label: t('opportunities.form.cancel'), onCancel }}
+              />
+            </form>
           </div>
-        </form>
+        </div>
       </Form>
     </div>
   )

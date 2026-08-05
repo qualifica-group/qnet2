@@ -49,7 +49,7 @@ export const opportunities = {
     subtitle: 'Read-only view of the selected opportunity.',
     loadError: 'Unable to load the opportunity. Please try again.',
     sourceLead: 'Originating lead',
-    collectedInformation: 'Collected information',
+    collectedInformation: 'Additional information',
     rewards: 'Rewards',
     quotes: {
       title: 'Quotes',
@@ -61,18 +61,39 @@ export const opportunities = {
   },
   form: {
     newOpportunity: 'New opportunity',
+    header: {
+      status: 'Status',
+      workflowStatus: 'Working',
+      expectedCloseDate: 'Expected close',
+    },
+    summary: {
+      title: 'Opportunity summary',
+      description: 'What you are about to save, read-only.',
+    },
     createTitle: 'Create opportunity',
     createSubtitle: 'Add a new commercial opportunity.',
     editTitle: 'Edit opportunity',
     editSubtitle: 'Update the selected opportunity.',
     sections: {
-      identity: {
-        title: 'Opportunity & registry',
-        description: 'Name, the linked registry and its scoped contacts.',
-      },
       classification: {
         title: 'Classification',
-        description: 'Source.',
+        description: 'Source, operational site and region.',
+      },
+      lead: {
+        title: 'Originating lead',
+        description: 'The lead this opportunity converts: it prefills and locks the derived fields.',
+      },
+      identity: {
+        title: 'Registry & contacts',
+        description: 'The linked registry and its scoped contacts.',
+      },
+      workflowStatus: {
+        title: 'Working status',
+        description: 'Advance the internal working state of the opportunity.',
+      },
+      attribution: {
+        title: 'Attribution',
+        description: 'Provenance and ownership: source and reporter.',
       },
       productLines: {
         title: 'Business functions and product categories',
@@ -89,6 +110,10 @@ export const opportunities = {
       generalNotes: {
         title: 'General notes',
         description: 'Free-form notes about the opportunity.',
+      },
+      dynamicFields: {
+        title: 'Additional information',
+        empty: 'No additional fields for this opportunity.',
       },
     },
     registry: 'Registry',

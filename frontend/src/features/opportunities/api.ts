@@ -5,6 +5,7 @@ import type {
   CreateOpportunityPayload,
   OpportunityDetail,
   OpportunityDetailWithPermissions,
+  OpportunityFormContext,
   UpdateOpportunityPayload,
 } from '@/features/opportunities/types'
 
@@ -67,6 +68,27 @@ export async function deleteOpportunity(id: number): Promise<void> {
 }
 
 /** Query key of a Product Category's resolved G.A. labels (spec 0080), one entry per distinct category id in play. */
+export function opportunityFormContextQueryKey(sourceId: number | null, criteriaKey: string) {
+  return ['opportunities', 'form-context', sourceId, criteriaKey] as const
+}
+
+/**
+ * Resolves the dynamic attributes the criteria typed so far produce (user
+ * directive 2026-08-05), so the CREATE form can render "Informazioni
+ * aggiuntive" before anything is persisted. POST despite being read-only: the
+ * criteria are a collection of objects, with no sane query-string encoding.
+ */
+export async function fetchOpportunityFormContext(payload: {
+  source_id: number | null
+  product_lines: { business_function_id: number; product_category_id: number }[]
+}): Promise<OpportunityFormContext> {
+  const { data } = await apiClient.post<ApiResponse<OpportunityFormContext>>(
+    '/opportunities/form-context',
+    payload,
+  )
+  return data.data
+}
+
 export function categoryManagerLabelsQueryKey(categoryId: number) {
   return ['opportunities', 'category-manager-labels', categoryId] as const
 }

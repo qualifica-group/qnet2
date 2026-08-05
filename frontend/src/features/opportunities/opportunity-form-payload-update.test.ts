@@ -320,4 +320,54 @@ describe('buildUpdatePayload', () => {
       expect(payload).toEqual({ manager_slots: [] })
     })
   })
+
+  /**
+   * "Informazioni aggiuntive" (user directive 2026-08-05): a merge/replace-
+   * whole-map field server-side, so the diff is "did any applicable value
+   * change", never a per-code sparse patch.
+   */
+  describe('attribute_values', () => {
+    const attribute = {
+      id: 1,
+      code: 'contract_length',
+      name: 'Contract length',
+      type: 'integer',
+      description: null,
+      help_text: null,
+      placeholder: null,
+      icon: null,
+      config: null,
+      relation_target: null,
+      is_required: false,
+      sort_order: 0,
+      options: [],
+    }
+
+    it('omits the map when every applicable value still matches the loaded one', () => {
+      const payload = buildUpdatePayload(
+        values({ attribute_values: { contract_length: 12 } }),
+        original({ applicable_attributes: [attribute], attribute_values: { contract_length: 12 } }),
+      )
+
+      expect(payload).not.toHaveProperty('attribute_values')
+    })
+
+    it('sends the whole map as soon as one applicable value differs', () => {
+      const payload = buildUpdatePayload(
+        values({ attribute_values: { contract_length: 36 } }),
+        original({ applicable_attributes: [attribute], attribute_values: { contract_length: 12 } }),
+      )
+
+      expect(payload.attribute_values).toEqual({ contract_length: 36 })
+    })
+
+    it('never sends a code outside the applicable set, even when the form still holds it', () => {
+      const payload = buildUpdatePayload(
+        values({ attribute_values: { contract_length: 36, stale_code: 'x' } }),
+        original({ applicable_attributes: [attribute], attribute_values: { contract_length: 12 } }),
+      )
+
+      expect(payload.attribute_values).toEqual({ contract_length: 36 })
+    })
+  })
 })

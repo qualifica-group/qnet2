@@ -66,7 +66,8 @@ interface CollectedAttributesSectionProps {
 }
 
 /**
- * Read-only "Informazioni raccolte" section (spec 0049 D-8, AC-064): one
+ * Read-only "Informazioni aggiuntive" section (spec 0049 D-8, AC-064 — same
+ * denomination as the form's own section, user directive 2026-08-05): one
  * `RecordField` per applicable Attribute, its value formatted per `type`.
  * Absent entirely when the opportunity has no applicable Attribute (no
  * product-category row defines any).

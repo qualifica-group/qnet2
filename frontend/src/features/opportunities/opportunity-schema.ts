@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
+import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import {
+  buildAttributeValuesSchema,
+  type TypedAttributeValuesSchema,
+} from '@/features/request-management/attribute-values-schema'
+import { attributeValuesChanged } from '@/features/request-management/request-work-payload'
+import type { ApplicableAttributeSummary } from '@/features/opportunities/types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
@@ -77,7 +85,11 @@ function productLinesRowsEqual(a: ProductLineRow[], b: ProductLineRow[]): boolea
  * actually differs from it, mirroring `request-work-schema.ts`'s sparse gate
  * (AC-016/017 apply to the opportunity form too, not only the work panel).
  */
-function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null) {
+function baseFields(
+  t: TFunction,
+  originalProductLines: ProductLineRow[] | null,
+  attributes: ApplicableAttributeSummary[],
+) {
   return {
     // D-4/D-5 (spec 0057): registry_id is the required identity field — the
     // name is no longer a form input, it is derived server-side as `OPP_{id}`.
@@ -182,6 +194,38 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
       .string()
       .max(GENERAL_NOTES_MAX_LENGTH, t('opportunities.form.generalNotesMax'))
       .nullable(),
+    // "Informazioni aggiuntive" (user directive 2026-08-05): one key per
+    // applicable Attribute `code`, per-type shape from the SHARED
+    // `buildAttributeValuesSchema` — the same builder both Gestione Richieste
+    // forms use, so a per-type rule fixed on one channel can never stay wrong
+    // on the other. Requiredness is added by each caller below: it depends on
+    // whether the map travels at all, which only the caller knows.
+    attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
+  }
+}
+
+/** The applicable codes flagged `is_required`, the only ones a refinement enforces. */
+function requiredAttributeCodes(attributes: ApplicableAttributeSummary[]): string[] {
+  return attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+}
+
+/** Adds one "this field is required" issue per empty required code. */
+function addMissingRequiredAttributes(
+  values: Record<string, CustomFieldValue>,
+  codes: string[],
+  t: TFunction,
+  ctx: z.RefinementCtx,
+): void {
+  for (const code of codes) {
+    if (isEmptyCustomFieldValue(values[code])) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['attribute_values', code],
+        message: t('requestManagement.workPanel.validation.required', {
+          defaultValue: 'This field is required.',
+        }),
+      })
+    }
   }
 }
 
@@ -190,8 +234,16 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
  * on create either — it derives from the linked Lead's Operatore, which may
  * now be empty — so create and edit share the exact same (nullable) shape.
  */
-export function buildCreateOpportunitySchema(t: TFunction) {
-  return z.object(baseFields(t, null))
+export function buildCreateOpportunitySchema(
+  t: TFunction,
+  attributes: ApplicableAttributeSummary[] = [],
+) {
+  return z.object(baseFields(t, null, attributes)).superRefine((values, ctx) => {
+    // On create the map ALWAYS travels (there is nothing persisted to keep),
+    // so a required attribute is required outright — no "did it change" gate,
+    // unlike the update schema below.
+    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+  })
 }
 
 /**
@@ -199,8 +251,23 @@ export function buildCreateOpportunitySchema(t: TFunction) {
  * nullable. `originalProductLines` is the loaded opportunity's persisted rows
  * (D-5 grandfathering, see `baseFields`).
  */
-export function buildUpdateOpportunitySchema(t: TFunction, originalProductLines: ProductLineRow[]) {
-  return z.object(baseFields(t, originalProductLines))
+export function buildUpdateOpportunitySchema(
+  t: TFunction,
+  originalProductLines: ProductLineRow[],
+  attributes: ApplicableAttributeSummary[] = [],
+  originalAttributeValues: Record<string, unknown> = {},
+) {
+  const codes = attributes.map((attribute) => attribute.code)
+
+  return z.object(baseFields(t, originalProductLines, attributes)).superRefine((values, ctx) => {
+    // Gated on the key actually being sent — the SAME predicate
+    // `buildUpdatePayload` uses to decide that, so the two cannot drift: an
+    // opportunity saved before an attribute became required must stay savable
+    // for any unrelated edit (mirrors `request-work-schema.ts`).
+    if (attributeValuesChanged(values.attribute_values, originalAttributeValues, codes)) {
+      addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+    }
+  })
 }
 
 export type CreateOpportunityFormValues = z.infer<ReturnType<typeof buildCreateOpportunitySchema>>

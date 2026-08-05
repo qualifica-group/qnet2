@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { toRelationFieldRef } from '@/components/form/relation-field-ref'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
@@ -19,7 +25,6 @@ import { RequestAttributionSection } from '@/features/request-management/request
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestDynamicFields } from '@/features/request-management/request-dynamic-fields'
-import { RequestFormActions } from '@/features/request-management/request-form-actions'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
@@ -42,20 +47,6 @@ import type { RequestWorkPanelWithPermissions } from '@/features/request-managem
  * does its copy in the footer actions.
  */
 const REQUEST_WORK_FORM_ID = 'request-work-form'
-
-/**
- * The panel is mounted both in its dedicated page and in a Sheet, so the
- * two-column split must react to the CONTAINER width, not the viewport:
- * `@container` + `@4xl:` (56rem) instead of `lg:`/`xl:`. Below that width the
- * whole panel collapses to a single column.
- */
-export const PANEL_GRID_CLASS = 'grid items-start gap-4 p-4 @4xl:grid-cols-[minmax(0,1fr)_20rem]'
-
-/** Clears the sticky header (`py-3` around a badge row) so the side column never scrolls under it. */
-export const SIDE_COLUMN_CLASS = 'flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-16 @4xl:order-2'
-
-/** The main column: its own `@container`, so the sections split on ITS width, not the panel's. */
-export const MAIN_COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4 @4xl:order-1'
 
 /**
  * The one protected field of this module (spec 0078, `config/field-change-
@@ -287,7 +278,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                   long, and the collaboration block below persists on its own.
                   No cancel here — this edits a persisted record. */}
               {canUpdate && (
-                <RequestFormActions
+                <RecordFormActions
                   formId={REQUEST_WORK_FORM_ID}
                   isSubmitting={isSubmitting}
                   submitLabel={t('requestManagement.workPanel.save')}

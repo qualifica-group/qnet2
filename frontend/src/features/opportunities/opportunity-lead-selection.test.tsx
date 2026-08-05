@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { OpportunityForm } from '@/features/opportunities/opportunity-form'
+import { useOpportunityLeadSelection } from '@/features/opportunities/use-opportunity-lead-selection'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
 import type { ResourceMeta } from '@/features/authorization/types'
 
@@ -310,39 +311,51 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Acme S.p.A.')
   })
 
-  it('inherits the lead operational site, unlocked, with its composed label (directive 2026-07-23)', async () => {
+  /**
+   * Directive 2026-07-23 still holds — the lead's Sede operativa is inherited
+   * on conversion — but since the 2026-08-05 directive ("oscurare sede
+   * operativa e regione") this form renders no picker for it, so the
+   * inheritance is asserted where it is now observable: in the payload.
+   */
+  it('inherits the lead operational site into the payload, with no picker on screen (directive 2026-07-23 + 2026-08-05)', async () => {
+    createOpportunityMock.mockResolvedValue({ id: 1 })
+
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
     await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
     screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
+    await waitFor(() => expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('true'))
+    expect(screen.queryByTestId('select-Operational site')).not.toBeInTheDocument()
 
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Operational site')).toHaveTextContent(
-        String(TEST_OPERATIONAL_SITE_ID),
-      ),
-    )
-    expect(screen.getByTestId('disabled-Operational site')).toHaveTextContent('false')
-    expect(screen.getByTestId('label-Operational site')).toHaveTextContent('Via Roma 1 - Milano')
+    fireEvent.click(screen.getByRole('button', { name: 'select Supervisor 1' }))
+    fireEvent.click(screen.getByRole('button', { name: `select Products of interest ${TEST_PRODUCT_ID}` }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createOpportunityMock).toHaveBeenCalledTimes(1))
+    expect(createOpportunityMock.mock.calls[0][0].operational_site_id).toBe(TEST_OPERATIONAL_SITE_ID)
   })
 
-  it('clears the inherited operational site when the lead selection is cleared', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
-    screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Operational site')).toHaveTextContent(
-        String(TEST_OPERATIONAL_SITE_ID),
-      ),
+  /**
+   * Directive 2026-07-23's other half — clearing the lead clears the
+   * inherited Sede — asserted on the hook that owns it: with no picker left on
+   * the form (directive 2026-08-05) and `product_lines` reset to `[]` by the
+   * very same clear, a create can no longer submit right after it, so the
+   * payload is not an observation point here.
+   */
+  it('clears the inherited operational site on the hook when the lead selection is cleared', async () => {
+    const setValue = vi.fn()
+    const { result } = renderHook(
+      () => useOpportunityLeadSelection(null, setValue, () => [] as unknown as never),
+      { wrapper: wrapper() },
     )
 
-    screen.getByRole('button', { name: 'clear Lead' }).click()
+    await act(async () => {
+      await result.current.selectLead(null)
+    })
 
-    await waitFor(() => expect(screen.getByTestId('value-Operational site')).toHaveTextContent(''))
+    expect(setValue).toHaveBeenCalledWith('operational_site_id', null, { shouldDirty: true })
   })
 
   it('resets and unlocks the derived fields when the lead selection is cleared', async () => {
@@ -381,7 +394,7 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     // form would not submit at all.
     fireEvent.click(screen.getByRole('button', { name: `select Products of interest ${TEST_PRODUCT_ID}` }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createOpportunityMock).toHaveBeenCalledTimes(1))
     const payload = createOpportunityMock.mock.calls[0][0]
@@ -411,11 +424,11 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
       'href',
       '/opportunities/777',
     )
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' })).toBeDisabled()
     // Never applied: no derived value written, no lock either.
     expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('false')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
     expect(createOpportunityMock).not.toHaveBeenCalled()
   })
 })

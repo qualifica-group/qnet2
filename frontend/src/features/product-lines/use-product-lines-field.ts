@@ -2,15 +2,15 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { fetchForSelect } from '@/features/for-select/api'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
-import type { CategoryManagementMode } from '@/features/product-categories/types'
-import {
-  resolveRowSetManagementMode,
-  type CategoryManagementMeta,
-  type CategoryMetaById,
-} from '@/features/product-lines/management-mode'
+import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
+import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
 import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
 
 type LabelMap = Record<number, string>
+
+/** Stable empty tree while the shared query is still loading: no fresh reference per render. */
+const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 interface UseProductLinesFieldArgs {
   /** The `product_lines` field's current value (RHF or plain state, mirrors `ManagerSlotsField`). */
@@ -46,13 +46,13 @@ function indexKnownLabels(lines: ProductLine[]): LabelMap {
 export function useProductLinesField({ value, onChange, knownLines }: UseProductLinesFieldArgs) {
   const queryClient = useQueryClient()
   const [fetchedBusinessFunctionLabels, setFetchedBusinessFunctionLabels] = useState<LabelMap>({})
-  // Meta of whichever picked categories are known this session (spec 0077):
-  // keyed by category id, handed over by the row's picker on pick
-  // (resolved from the category tree it renders), never fetched separately.
-  const [categoryMetaById, setCategoryMetaById] = useState<CategoryMetaById>({})
+  // Spec 0077: the card's policy is resolved against the SAME cached category
+  // tree the row pickers render — no extra request — so it is known for the
+  // rows loaded on edit too, not only for those picked in this session.
+  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
 
   const knownBusinessFunctionLabels = indexKnownLabels(knownLines)
-  const resolvedManagementMode = resolveRowSetManagementMode(value, categoryMetaById)
+  const resolvedManagementMode = resolveRowSetManagementMode(value, categoryTree)
   const managementMode: CategoryManagementMode | null = resolvedManagementMode?.managementMode ?? null
   const managementModeRootCategoryId: number | null = resolvedManagementMode?.rootCategoryId ?? null
   // INV-2, gated to the resolved-multiple case only (point 4: unknown mode
@@ -117,24 +117,11 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
     }
   }
 
-  /**
-   * Spec 0077: `meta` (branch root + management mode) now comes from the
-   * category TREE the row's picker reads, resolved by the picker itself —
-   * still no extra request, and still captured only for the categories picked
-   * in this session (D-5 grandfathering unchanged).
-   */
-  const setRowProductCategory = (
-    index: number,
-    productCategoryId: number | null,
-    meta: CategoryManagementMeta | null = null,
-  ) => {
+  const setRowProductCategory = (index: number, productCategoryId: number | null) => {
     const next = value.map((row, rowIndex) =>
       rowIndex === index ? { ...row, product_category_id: productCategoryId } : row,
     )
     onChange(next)
-    if (productCategoryId !== null && meta !== null) {
-      setCategoryMetaById((previous) => ({ ...previous, [productCategoryId]: meta }))
-    }
   }
 
   return {

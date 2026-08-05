@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -163,32 +163,27 @@ beforeEach(() => {
 })
 
 describe('OpportunityFormBody — Regione + working-state (spec 0047, AC-026)', () => {
-  it('create mode: Regione renders editable and the working-state field is not rendered', async () => {
+  it('create mode: neither the Regione picker nor the working-state field is rendered', async () => {
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    await waitFor(() => expect(screen.getByTestId('select-Region')).toBeInTheDocument())
-    expect(screen.getByTestId('disabled-Region')).toHaveTextContent('false')
+    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
+    // User directive 2026-08-05: the Regione is Gestione Richieste' business,
+    // hidden here — it used to render editable in both modes.
+    expect(screen.queryByTestId('select-Region')).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: 'Working status' })).not.toBeInTheDocument()
     expect(screen.queryByText('Assigned automatically on save.')).not.toBeInTheDocument()
   })
 
-  it('edit mode, standalone opportunity: Regione stays editable', async () => {
-    render(
-      <OpportunityForm
-        mode={{ type: 'edit', opportunity: editOpportunity() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  /**
+   * Hidden, NOT dropped: the persisted `state_id` (here inherited from the
+   * Lead) must survive a save that touches something else — the sparse PATCH
+   * simply never mentions the key, so the server keeps its own value.
+   */
+  it('edit mode: the Regione picker is gone and a save never sends state_id', async () => {
+    updateOpportunityMock.mockResolvedValue(editOpportunity())
 
-    await waitFor(() => expect(screen.getByTestId('select-Region')).toBeInTheDocument())
-    expect(screen.getByTestId('disabled-Region')).toHaveTextContent('false')
-  })
-
-  it('edit mode, lead-linked opportunity: Regione is pre-filled from the Lead but stays editable', async () => {
     render(
       <OpportunityForm
         mode={{
@@ -206,9 +201,18 @@ describe('OpportunityFormBody — Regione + working-state (spec 0047, AC-026)', 
       { wrapper: wrapper() },
     )
 
-    await waitFor(() => expect(screen.getByTestId('select-Region')).toBeInTheDocument())
-    expect(screen.getByTestId('disabled-Region')).toHaveTextContent('false')
-    expect(screen.getByTestId('value-Region')).toHaveTextContent('3')
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Working status' })).toBeInTheDocument(),
+    )
+    expect(screen.queryByTestId('select-Region')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
+    fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateOpportunityMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateOpportunityMock.mock.calls[0]
+    expect(payload).not.toHaveProperty('state_id')
   })
 
   it('edit mode: the working-state select lists the resolved set and submits the picked id', async () => {
@@ -229,7 +233,7 @@ describe('OpportunityFormBody — Regione + working-state (spec 0047, AC-026)', 
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
     fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateOpportunityMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateOpportunityMock.mock.calls[0]
@@ -259,7 +263,7 @@ describe('OpportunityFormBody — Regione + working-state (spec 0047, AC-026)', 
     )
 
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(screen.getByText('The selected working status is invalid.')).toBeInTheDocument(),

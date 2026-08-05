@@ -1,14 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
+import { FIELD_STACK_CLASS } from '@/components/record-form/layout'
+import { ReporterRewardsField } from '@/components/record-form/reporter-rewards-field'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
-import {
-  RewardAssignmentField,
-  type RewardAssignmentValue,
-} from '@/features/opportunities/reward-assignment-field'
+import type { RewardAssignmentValue } from '@/features/opportunities/reward-assignment-field'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
+
+/** i18n root of the reward block's strings, resolved inside `ReporterRewardsField`. */
+const REWARDS_LABEL_PREFIX = 'opportunities.form.rewards'
 
 interface OpportunityReporterFieldProps {
   control: Control<OpportunityFormValues>
@@ -23,10 +25,14 @@ interface OpportunityReporterFieldProps {
 /**
  * The Segnalatore select plus its two dependents: the contacts recap (A-4)
  * and the reward "abbinamento" control (spec 0059 D-3), which must sit
- * immediately under this field. Split out of `OpportunityFormBody` (whose
- * three-column identity row was pushing the file past the 300-line soft
- * limit) rather than folded into `OpportunityContactRecap`, which stays a
- * read-only recap shared by all three relation columns.
+ * immediately under this field.
+ *
+ * Same flow as Gestione Richieste (user directive 2026-08-05): the reward
+ * block is the shared `ReporterRewardsField`, so it APPEARS — tinted inset,
+ * motion-safe reveal — only once a Segnalatore is picked, instead of standing
+ * there permanently disabled with a "pick a reporter first" hint. That hint
+ * survives for the one case that needs it: a reporter cleared while rewards
+ * are still attached, where the block is the only control able to detach them.
  */
 export function OpportunityReporterField({
   control,
@@ -39,7 +45,7 @@ export function OpportunityReporterField({
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={FIELD_STACK_CLASS}>
       <RelationSelectField
         control={control}
         name="reporter_id"
@@ -55,20 +61,12 @@ export function OpportunityReporterField({
         retryLabel={t('common.retry')}
       />
       <OpportunityContactRecap referentId={reporterId} />
-      <RewardAssignmentField
+      <ReporterRewardsField
+        labelPrefix={REWARDS_LABEL_PREFIX}
+        reporterId={reporterId}
         value={rewards}
         onChange={onRewardsChange}
         initialAssignments={initialRewards}
-        reporterId={reporterId}
-        fieldLabel={t('opportunities.form.rewards.fieldLabel')}
-        disabledHint={t('opportunities.form.rewards.reporterRequiredHint')}
-        addLabel={t('opportunities.form.rewards.add')}
-        removeLabel={(name) => t('opportunities.form.rewards.remove', { name })}
-        searchPlaceholder={t('opportunities.form.rewards.searchPlaceholder')}
-        emptyLabel={t('opportunities.form.rewards.empty')}
-        errorLabel={t('opportunities.form.rewards.error')}
-        retryLabel={t('common.retry')}
-        loadMoreLabel={t('opportunities.form.rewards.loadMore')}
       />
     </div>
   )

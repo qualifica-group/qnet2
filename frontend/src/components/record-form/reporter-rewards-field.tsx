@@ -10,7 +10,7 @@ const BLOCK_CLASS = 'rounded-lg border bg-muted/40 px-3 py-2.5'
 const REVEAL_CLASS =
   'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-200'
 
-interface RequestRewardsFieldProps {
+interface ReporterRewardsFieldProps {
   /** i18n root of the block's strings, e.g. `requestManagement.workPanel.attribution.rewards`. */
   labelPrefix: string
   reporterId: number | null
@@ -21,28 +21,30 @@ interface RequestRewardsFieldProps {
 }
 
 /**
- * The "abbinamento buono" control (spec 0059 D-3) as both Gestione Richieste
- * forms render it: the shared `RewardAssignmentField` in a tinted inset under
- * the Segnalatore, which is always the beneficiary — the inset is what makes
- * that binding explicit without moving the control elsewhere.
+ * The "abbinamento buono" control (spec 0059 D-3) as every form carrying a
+ * Segnalatore renders it — the two Gestione Richieste screens and the
+ * Opportunità form (user directive 2026-08-05, same flow on both): the shared
+ * `RewardAssignmentField` in a tinted inset under the Segnalatore, which is
+ * always the beneficiary — the inset is what makes that binding explicit
+ * without moving the control elsewhere.
  *
  * It is mounted only once there IS a reporter (user directive 2026-08-04),
  * revealing itself with the app's standard motion-safe fade/slide; the exit is
  * an immediate unmount, like every other conditional block of the repo.
  *
  * The exception is a reporter cleared while rewards are still attached: the
- * backend refuses that pair with a 422 (`StoreRequestRequest`,
- * `UpdateRequestRequest`), so hiding the block there would hide the only
- * control able to detach them. It stays on screen, chips read-only, carrying
+ * backend refuses that pair with a 422 (the request and opportunity store/update
+ * rules alike), so hiding the block there would hide the only control able to
+ * detach them. It stays on screen, chips read-only, carrying
  * the "select a reporter first" hint.
  */
-export function RequestRewardsField({
+export function ReporterRewardsField({
   labelPrefix,
   reporterId,
   value,
   onChange,
   initialAssignments,
-}: RequestRewardsFieldProps) {
+}: ReporterRewardsFieldProps) {
   const { t } = useTranslation()
 
   if (reporterId == null && value.length === 0) {

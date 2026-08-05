@@ -49,7 +49,9 @@ export const opportunities = {
     subtitle: "Visualizzazione in sola lettura dell'opportunità selezionata.",
     loadError: "Impossibile caricare l'opportunità. Riprova.",
     sourceLead: 'Lead di origine',
-    collectedInformation: 'Informazioni raccolte',
+    // Stessa denominazione della sezione del form (direttiva utente 2026-08-05):
+    // e' lo stesso insieme di campi, in sola lettura.
+    collectedInformation: 'Informazioni aggiuntive',
     rewards: 'Premi',
     quotes: {
       title: 'Offerte',
@@ -61,18 +63,39 @@ export const opportunities = {
   },
   form: {
     newOpportunity: 'Nuova opportunità',
+    header: {
+      status: 'Stato',
+      workflowStatus: 'Lavorazione',
+      expectedCloseDate: 'Chiusura prevista',
+    },
+    summary: {
+      title: 'Riepilogo opportunità',
+      description: "Ciò che stai per salvare, in sola lettura.",
+    },
     createTitle: 'Crea opportunità',
     createSubtitle: "Aggiungi una nuova opportunità commerciale.",
     editTitle: 'Modifica opportunità',
     editSubtitle: "Aggiorna l'opportunità selezionata.",
     sections: {
-      identity: {
-        title: 'Opportunità e anagrafica',
-        description: "Il nome, l'anagrafica collegata e i suoi contatti dedicati.",
-      },
       classification: {
         title: 'Classificazione',
-        description: 'Fonte.',
+        description: 'Fonte, sede operativa e regione.',
+      },
+      lead: {
+        title: 'Lead di origine',
+        description: "Il lead che questa opportunità converte: precompila e blocca i campi derivati.",
+      },
+      identity: {
+        title: 'Anagrafica e contatti',
+        description: "L'anagrafica collegata e i suoi contatti dedicati.",
+      },
+      workflowStatus: {
+        title: 'Stato di lavorazione',
+        description: "Avanza lo stato di lavorazione interno dell'opportunità.",
+      },
+      attribution: {
+        title: 'Attribuzione',
+        description: 'Provenienza e assegnazione: fonte e segnalatore.',
       },
       productLines: {
         title: 'Funzioni aziendali e categorie prodotto',
@@ -89,6 +112,10 @@ export const opportunities = {
       generalNotes: {
         title: 'Note generali',
         description: "Annotazioni libere sull'opportunità.",
+      },
+      dynamicFields: {
+        title: 'Informazioni aggiuntive',
+        empty: 'Nessun campo aggiuntivo per questa opportunità.',
       },
     },
     registry: 'Anagrafica',

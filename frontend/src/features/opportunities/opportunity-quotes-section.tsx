@@ -12,20 +12,22 @@ import { useOpportunityQuotesPanel } from '@/features/opportunities/use-opportun
 import type { OpportunityDetail } from '@/features/opportunities/types'
 
 export interface OpportunityQuotesSectionProps {
-  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count'>
+  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count' | 'requires_quote'>
 }
 
 /**
- * Permission gate (AC-041): absent entirely without `quotes.viewAny`. Kept
- * as its own component, not an early-return inside `OpportunityQuotesPanel`,
- * so the panel — which mounts `useModuleOpener` (and therefore `useNavigate`)
- * unconditionally, per rules-of-hooks — is never even instantiated for an
- * actor who cannot view the module.
+ * Eligibility + permission gate: absent entirely when this opportunity's
+ * products cannot proceed to an offer (`requires_quote === false`, user
+ * directive 2026-08-05 — neither the list nor the create affordance) or
+ * without `quotes.viewAny` (AC-041). Kept as its own component, not an
+ * early-return inside `OpportunityQuotesPanel`, so the panel — which mounts
+ * `useModuleOpener` (and therefore `useNavigate`) unconditionally, per
+ * rules-of-hooks — is never even instantiated in either case.
  */
 export function OpportunityQuotesSection({ opportunity }: OpportunityQuotesSectionProps) {
   const { can } = useAbilities()
 
-  if (!can('quotes.viewAny')) {
+  if (opportunity.requires_quote === false || !can('quotes.viewAny')) {
     return null
   }
 

@@ -1,3 +1,6 @@
+import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import { seedAttributeValues } from '@/features/request-management/request-work-payload'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   CreateOpportunityPayload,
   OpportunityDetail,
@@ -30,6 +33,8 @@ export interface CreatePayloadFromLead {
 export function buildCreatePayload(
   values: OpportunityFormValues,
   fromLead?: CreatePayloadFromLead,
+  /** The codes the chosen categories resolved (user directive 2026-08-05); nothing travels without them. */
+  attributeCodes: string[] = [],
 ): CreateOpportunityPayload {
   const locked = new Set(fromLead?.lockedFields ?? [])
 
@@ -55,6 +60,13 @@ export function buildCreatePayload(
     // "Note generali" (user directive 2026-07-27): prefilled from the lead
     // but never locked — always sent as-is, like `state_id` above.
     general_notes: values.general_notes,
+  }
+
+  // "Informazioni aggiuntive": only the codes the resolved set actually
+  // carries — a stale key from a category the user has since changed would be
+  // refused as not applicable (422).
+  if (attributeCodes.length > 0) {
+    payload.attribute_values = pickAttributeValues(values.attribute_values, attributeCodes)
   }
 
   if (!locked.has('registry_id')) {
@@ -170,8 +182,45 @@ export function buildUpdatePayload(
   if (values.general_notes !== (original.general_notes ?? null)) {
     payload.general_notes = values.general_notes
   }
+  // "Informazioni aggiuntive" (user directive 2026-08-05): a merge/replace-
+  // whole-map field server-side, so there is no per-code sparse diff to
+  // compute — only whether the map as a whole needs resending. Seeded from
+  // the loaded record the same way the form hydrated it, or a stored `null`
+  // on a boolean would read as a change on every unrelated save.
+  const attributes = original.applicable_attributes ?? []
+  const attributeCodes = attributes.map((attribute) => attribute.code)
+  const originalAttributeValues = seedAttributeValues(attributes, original.attribute_values ?? {})
+  if (
+    attributeCodes.some(
+      (code) =>
+        !isEqualCustomFieldValue(
+          values.attribute_values[code] ?? null,
+          originalAttributeValues[code] ?? null,
+        ),
+    )
+  ) {
+    payload.attribute_values = pickAttributeValues(values.attribute_values, attributeCodes)
+  }
 
   return payload
+}
+
+/**
+ * The submitted map narrowed to the codes currently applicable: a value left
+ * over from a category the user has since changed is not part of the set the
+ * server will validate against, and sending it would 422 the whole save.
+ */
+function pickAttributeValues(
+  values: Record<string, CustomFieldValue>,
+  codes: string[],
+): Record<string, CustomFieldValue> {
+  const picked: Record<string, CustomFieldValue> = {}
+
+  for (const code of codes) {
+    picked[code] = values[code] ?? null
+  }
+
+  return picked
 }
 
 /**

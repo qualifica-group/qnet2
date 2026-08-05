@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { CalendarRange } from 'lucide-react'
 import type { Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { FormControl } from '@/components/ui/form'
@@ -30,6 +31,11 @@ function numberInputValue(value: number | null): string {
  * `expected_close_date` are independent estimates with no order constraint
  * between them; `estimated_value` mirrors `projects.total_budget`'s
  * decimal(15,2); `success_probability` is an integer 0..100.
+ *
+ * Its own `@container`: the card shares a row with the status card on a wide
+ * form (user directive 2026-08-05), so the field pairs must split on the
+ * CARD's width, not the column's — at half width they stack instead of
+ * squeezing four controls into two cramped cells.
  */
 export function OpportunityPlanningSection({
   control,
@@ -48,9 +54,9 @@ export function OpportunityPlanningSection({
       collapsible={collapsible}
       open={open}
       onOpenChange={onOpenChange}
-      className={className}
+      className={cn('@container', className)}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @sm:grid-cols-2">
         <MetaField control={control} name="start_date" metaKey="start_date" label={t('opportunities.form.startDate')}>
           {({ field, disabled, readOnly }) => (
             <FormControl>
@@ -91,7 +97,7 @@ export function OpportunityPlanningSection({
         </MetaField>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @sm:grid-cols-2">
         <MetaField
           control={control}
           name="estimated_value"

@@ -5,6 +5,7 @@ import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormSection } from '@/components/form-section'
+import { ReporterRewardsField } from '@/components/record-form/reporter-rewards-field'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { useAbilities } from '@/features/auth/use-abilities'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -12,8 +13,7 @@ import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-si
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
-import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/features/request-management/request-form-layout'
-import { RequestRewardsField } from '@/features/request-management/request-rewards-field'
+import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/layout'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
@@ -205,7 +205,7 @@ export function RequestCreateAttributionSection({ form, rewardsError }: RequestC
               </FormItem>
             )}
           />
-          <RequestRewardsField
+          <ReporterRewardsField
             labelPrefix={REWARDS_LABEL_PREFIX}
             reporterId={reporterId}
             value={rewardsValue}

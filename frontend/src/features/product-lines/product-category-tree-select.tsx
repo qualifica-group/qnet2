@@ -6,17 +6,11 @@ import {
   pruneToPickable,
 } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import {
-  categoryManagementMetaFor,
-  pickableCategoryIdsFor,
-  subtreeOf,
-} from '@/features/product-lines/category-tree-scope'
-import type { CategoryManagementMeta } from '@/features/product-lines/management-mode'
+import { pickableCategoryIdsFor, subtreeOf } from '@/features/product-lines/category-tree-scope'
 
 export interface ProductCategoryTreeSelectProps {
   value: number | null
-  /** Fired with the picked id and the meta resolved from the tree (spec 0077: branch root + management mode). */
-  onChange: (categoryId: number, meta: CategoryManagementMeta | null) => void
+  onChange: (categoryId: number) => void
   /**
    * The row's business function: only the categories whose EFFECTIVE one
    * matches are pickable. `null` (no function chosen yet) offers nothing and
@@ -44,8 +38,8 @@ export interface ProductCategoryTreeSelectProps {
  * to read. The scoping the endpoint did (effective business function, spec
  * 0077 root subtree) is resolved client-side against the same cached tree the
  * product form and the category tree view already share — see
- * `category-tree-scope.ts` — and so is the picked item's `meta`, which the
- * caller feeds back into the management-mode resolution.
+ * `category-tree-scope.ts`, which resolves the card's management mode off the
+ * very same tree.
  *
  * Branches offering nothing pickable are pruned: disabled ancestors are
  * context for what hangs underneath them, an entirely dead branch is noise.
@@ -86,7 +80,7 @@ export function ProductCategoryTreeSelect({
   return (
     <SearchableSelect
       value={value}
-      onChange={(id) => onChange(id, tree ? categoryManagementMetaFor(tree, id) : null)}
+      onChange={onChange}
       options={options}
       isPending={treeQuery.isPending}
       isError={treeQuery.isError}

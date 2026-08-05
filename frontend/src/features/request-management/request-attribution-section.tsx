@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Info, Route } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
+import { ReporterRewardsField } from '@/components/record-form/reporter-rewards-field'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -11,8 +12,7 @@ import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { InterceptedRelationSelectField } from '@/features/request-management/intercepted-relation-select-field'
-import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/features/request-management/request-form-layout'
-import { RequestRewardsField } from '@/features/request-management/request-rewards-field'
+import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/layout'
 import { OPERATOR_MANAGER_LABEL_POSITION, REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { ManagerLabels, RequestRelationRef } from '@/features/request-management/types'
@@ -184,7 +184,7 @@ export function RequestAttributionSection({
             selected={reporter}
             {...selectLabels}
           />
-          <RequestRewardsField
+          <ReporterRewardsField
             labelPrefix={REWARDS_LABEL_PREFIX}
             reporterId={reporterId}
             value={rewardsValue}

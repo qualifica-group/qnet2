@@ -353,6 +353,14 @@
     <criterion id="AC-044">Dato un record storico non conforme aperto nel pannello di lavorazione, quando
       si modifica solo un campo fuori dalle righe e si salva, allora il salvataggio riesce senza errori
       di validazione sulle righe (specularmente ad AC-016).</criterion>
+    <criterion id="AC-045">Dato un'opportunità in modifica o una richiesta aperta nel pannello di
+      lavorazione, le cui righe sono CARICATE dal server e non ripescate a mano, quando la loro
+      Categoria Prodotto risolve a `single`, allora il pulsante di aggiunta riga non è disponibile e,
+      in `multiple`, la Funzione aziendale delle righe successive resta vincolata alla prima
+      (AC-041/AC-042 valgono identici in modifica e in creazione — direttiva utente 2026-08-05).
+      La modalità si risolve dall'albero categorie già in cache, non dal `meta` dell'item scelto
+      nella sessione. Il grandfathering D-5 resta lato server: un record storico non conforme si salva
+      finché non ne vengono reinviate le righe (AC-016/AC-044 invariati).</criterion>
 
   </acceptance_criteria>
 

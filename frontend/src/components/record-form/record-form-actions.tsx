@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-interface RequestFormActionsProps {
+interface RecordFormActionsProps {
   /** id of the RHF `<form>` the submit attaches to via the HTML `form=` attribute, exactly as the identity bar does. */
   formId: string
   isSubmitting: boolean
@@ -18,25 +18,24 @@ interface RequestFormActionsProps {
   /**
    * Extra action(s) rendered right before Save (spec 0079 addendum, user
    * directive: the "Trasferisci contatto" button repeated at the foot of the
-   * form). Omitted by every other caller — the create form never passes it
-   * and stays byte-for-byte unchanged.
+   * form). Omitted by every other caller.
    */
   leadingActions?: ReactNode
 }
 
 /**
- * Action bar repeated at the FOOT of the request forms (user directive
- * 2026-08-03): both screens are long enough that the operator finishes typing
+ * Action bar repeated at the FOOT of the record forms (user directive
+ * 2026-08-03): these screens are long enough that the operator finishes typing
  * far from the identity bar, so the same actions close the form where the
- * reading ends. Shared by the create form and the work panel so the two can
- * never offer a different footer.
+ * reading ends. Shared by every record form so none of them can offer a
+ * different footer.
  *
  * It duplicates the header's actions, it does not replace them: the bar stays
  * sticky and keeps reporting a refused submit, which is why no error is
  * rendered here — the message would land off-screen for whoever pressed this
  * button, while the sticky bar is visible at every scroll position.
  */
-export function RequestFormActions({
+export function RecordFormActions({
   formId,
   isSubmitting,
   submitLabel,
@@ -44,7 +43,7 @@ export function RequestFormActions({
   isSubmitDisabled = false,
   cancel,
   leadingActions,
-}: RequestFormActionsProps) {
+}: RecordFormActionsProps) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
       {cancel && (

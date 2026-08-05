@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowRightLeft, CalendarClock, Loader2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
+import { StatusBadge } from '@/components/record-form/status-badge'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
-import { WorkflowStatusSwatch } from '@/features/request-management/request-workflow-status-field'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 
@@ -28,25 +28,6 @@ interface RequestWorkHeaderProps {
    */
   canTransfer: boolean
   onTransfer: () => void
-}
-
-/**
- * Sticky identity bar shared by the panel and the create form (user directive
- * 2026-07-31): same height, same paddings, same backdrop — exported so the two
- * headers can never drift into two different bars.
- */
-export const REQUEST_HEADER_CLASS =
-  'sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80'
-
-/** A compact status pill: micro-label + swatch + name, so state never reads from color alone. Exported: the create form shows the SAME pill for the status being chosen. */
-export function StatusBadge({ label, color, children }: { label: string; color: string | null; children: ReactNode }) {
-  return (
-    <Badge variant="secondary" className="h-5 min-h-5 max-w-full gap-1.5">
-      <span className="text-muted-foreground">{label}</span>
-      <WorkflowStatusSwatch color={color} />
-      <span className="truncate">{children}</span>
-    </Badge>
-  )
 }
 
 /**
@@ -78,7 +59,7 @@ export function RequestWorkHeader({
   const nextCallback = formatDateTimeOptionalTime(panel.next_callback_at)
 
   return (
-    <header className={REQUEST_HEADER_CLASS}>
+    <header className={RECORD_HEADER_CLASS}>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <h1 className="min-w-0 max-w-full truncate text-base font-semibold">
           {t('requestManagement.workPanel.header.title', { defaultValue: 'Preliminary information' })}

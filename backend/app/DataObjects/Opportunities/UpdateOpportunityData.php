@@ -93,6 +93,15 @@ final readonly class UpdateOpportunityData
         public ?array $rewards = null,
         public ?string $generalNotes = null,
         public bool $generalNotesSubmitted = false,
+        /**
+         * User directive 2026-08-05: the dynamic-field map, `null` when the
+         * key was absent. Sparse like every other key here — and sparse
+         * WITHIN itself too: a code the map leaves out keeps its persisted
+         * value (RequestAttributeValueWriter owns that merge).
+         *
+         * @var array<string, mixed>|null
+         */
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -137,6 +146,9 @@ final readonly class UpdateOpportunityData
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
             generalNotes: array_key_exists('general_notes', $data) ? $data['general_notes'] : null,
             generalNotesSubmitted: array_key_exists('general_notes', $data),
+            attributeValues: array_key_exists('attribute_values', $data)
+                ? (array) $data['attribute_values']
+                : null,
         );
     }
 

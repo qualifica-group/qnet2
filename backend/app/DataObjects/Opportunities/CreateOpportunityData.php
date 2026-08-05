@@ -55,6 +55,14 @@ namespace App\DataObjects\Opportunities;
  * RewardAssignmentWriter — follows the SAME null-means-untouched/out-of-
  * attributes() convention as `productsOfInterest` (D-3: the beneficiary is
  * always the opportunity's `reporterId`, never part of this collection).
+ *
+ * User directive 2026-08-05 ("informazioni aggiuntive anche sul form
+ * opportunita', come in gestione richieste"): `attributeValues` is the
+ * submitted dynamic-field map, `null` when the key was absent. Out of
+ * attributes() like every collection above — the column is not fillable and
+ * the map is validated/merged by RequestAttributeValueWriter AFTER the
+ * product lines are synced, i.e. against the applicable set those lines
+ * produce (the same set the form rendered its fields from).
  */
 final readonly class CreateOpportunityData
 {
@@ -84,6 +92,8 @@ final readonly class CreateOpportunityData
         public ?int $operationalSiteId = null,
         public ?array $rewards = null,
         public ?string $generalNotes = null,
+        /** @var array<string, mixed>|null */
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -115,6 +125,9 @@ final readonly class CreateOpportunityData
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
             generalNotes: $data['general_notes'] ?? null,
+            attributeValues: array_key_exists('attribute_values', $data)
+                ? (array) $data['attribute_values']
+                : null,
         );
     }
 

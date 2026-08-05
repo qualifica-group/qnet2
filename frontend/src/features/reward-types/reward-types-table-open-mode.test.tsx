@@ -8,7 +8,6 @@ import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { createRowActionsRenderer, type RowActionHandler } from '@/features/table/row-actions'
 import { RewardTypesTable } from '@/features/reward-types/reward-types-table'
-import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
 import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { User } from '@/features/auth/types'
@@ -37,6 +36,13 @@ vi.mock('@/features/auth/use-abilities', () => ({
   }),
 }))
 
+/**
+ * The module's native mount (`defaultMode`) only applies in `custom` mode with
+ * no override — the app-wide default is `page` since 2026-08-05, so the sheet
+ * cases pin this preference explicitly instead of relying on the default.
+ */
+const NATIVE_MODE_PREFERENCES: ModuleOpenPreferences = { mode: 'custom', overrides: {} }
+
 const currentUser: User = {
   id: 1,
   name: 'Current User',
@@ -45,7 +51,7 @@ const currentUser: User = {
   roles: [],
   avatar_url: null,
   created_at: null,
-  module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,
+  module_open_preferences: NATIVE_MODE_PREFERENCES,
   ui_scale: 40,
   date_format: 'dmy',
   time_format: '24h',
@@ -146,13 +152,13 @@ beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
   navigateMock.mockReset()
-  currentUser.module_open_preferences = DEFAULT_MODULE_OPEN_PREFERENCES
+  currentUser.module_open_preferences = NATIVE_MODE_PREFERENCES
 })
 
 /** The registered `reward-types` entry's `defaultMode` is `modal` (D-4). */
 describe('RewardTypesTable — open mode preference (AC-021)', () => {
   it('opens the sheet (no navigation) when the user has no override, using the module default', () => {
-    currentUser.module_open_preferences = DEFAULT_MODULE_OPEN_PREFERENCES
+    currentUser.module_open_preferences = NATIVE_MODE_PREFERENCES
 
     renderTable()
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))

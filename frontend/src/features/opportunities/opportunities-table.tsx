@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Paperclip, Plus } from 'lucide-react'
+import { MessageSquare, Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -13,6 +13,8 @@ import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
+import { NotesDialog } from '@/features/notes/notes-dialog'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -25,13 +27,16 @@ import {
 } from '@/features/opportunities/api'
 
 /**
- * Domain icon override for the 'documents' row action (spec: attachments row
- * action): the backend action catalog fixes the icon key as 'paperclip',
+ * Domain icon overrides for the 'documents'/'notes' row actions: the backend
+ * action catalog fixes their icon keys as 'paperclip'/'message-square',
  * absent from the shared defaults in `action-icon-map.ts`. Hoisted at module
- * level (not inline in JSX), mirroring `LEADS_ACTION_ICONS`, so its identity
- * stays stable across renders.
+ * level (not inline in JSX), mirroring `REQUEST_MANAGEMENT_ACTION_ICONS`, so
+ * its identity stays stable across renders.
  */
-const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = { paperclip: Paperclip }
+const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = {
+  paperclip: Paperclip,
+  'message-square': MessageSquare,
+}
 
 /**
  * Thin Opportunities adapter over the generic table (spec 0040, mirrors
@@ -42,6 +47,15 @@ const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = { paperclip: Paperclip }
  * (confirm + toast + grid refresh) and refreshes the SSRM grid after every
  * mutation. Permission gating is an affordance only; the backend re-authorizes
  * each call.
+ *
+ * Row actions mirror Gestione Richieste exactly (user directive 2026-08-05):
+ * `view`, `documents`, `notes` inline, `delete`/`activity` in the overflow —
+ * `edit` is NOT among them, the detail surface owns the Edit button
+ * (`detailOwnsEditAction`, still gated by `opportunities.update`). The `notes`
+ * action opens the agnostic `NotesDialog` on the SAME thread the detail view
+ * mounts: the notes registry maps the Opportunity record under the
+ * `request-management` entity_type, so that slug — not `opportunities` — is
+ * what the dialog must pass.
  */
 export function OpportunitiesTable() {
   const { t } = useTranslation()
@@ -54,6 +68,7 @@ export function OpportunitiesTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
+  const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query is
@@ -63,7 +78,7 @@ export function OpportunitiesTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(OPPORTUNITIES_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(OPPORTUNITIES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -93,9 +108,6 @@ export function OpportunitiesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -105,11 +117,14 @@ export function OpportunitiesTable() {
         case 'documents':
           setDocumentsRowId(row.id)
           break
+        case 'notes':
+          setNotesRowId(row.id)
+          break
         default:
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   // Documents are edited from inside the dialog (upload/delete); refresh the
@@ -118,6 +133,18 @@ export function OpportunitiesTable() {
     (open: boolean) => {
       if (!open) {
         setDocumentsRowId(null)
+        refreshGrid()
+      }
+    },
+    [refreshGrid],
+  )
+
+  // Notes are added/deleted from inside the dialog; refresh the grid on close
+  // so the row's `notes_count` badge reflects the change (mirrors documents).
+  const handleNotesOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setNotesRowId(null)
         refreshGrid()
       }
     },
@@ -173,6 +200,12 @@ export function OpportunitiesTable() {
         resource={OPPORTUNITY_ATTACHABLE_ALIAS}
         id={documentsRowId}
         onOpenChange={handleDocumentsOpenChange}
+      />
+
+      <NotesDialog
+        entityType={REQUEST_MANAGEMENT_DOMAIN}
+        entityId={notesRowId}
+        onOpenChange={handleNotesOpenChange}
       />
     </div>
   )

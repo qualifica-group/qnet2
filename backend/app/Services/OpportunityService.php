@@ -17,6 +17,7 @@ use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
+use App\Services\RequestManagement\RequestAttributeValueWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -76,6 +77,11 @@ class OpportunityService
         private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
+        // User directive 2026-08-05: the same writer the request-management
+        // channels use — it is already typed on Opportunity (the dynamic
+        // values ARE an opportunity-level concept, spec 0049 D-4), so the two
+        // forms can never validate or merge the map differently.
+        private readonly RequestAttributeValueWriter $attributeValueWriter,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -227,6 +233,19 @@ class OpportunityService
                 $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
             }
 
+            // "Informazioni aggiuntive" (user directive 2026-08-05): written
+            // AFTER the product lines, so the applicable set validated
+            // against is the one those lines produce — exactly the set the
+            // create form rendered its fields from. Discarded audit buffers:
+            // the row's own `created` entry is the trail on create (same
+            // reasoning as RequestCreationService::applyOperativeFields).
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($opportunity, $data->attributeValues, $changed, $old);
+                $opportunity->save();
+            }
+
             // spec 0047 (AC-015/017): an explicit, already-validated override
             // wins; otherwise the resolver derives the 'open' row of the
             // resolved set — product lines are already synced above, so
@@ -274,6 +293,19 @@ class OpportunityService
             // and reset wasChanged()'s diff.
             if ($data->reporterIdSubmitted && $opportunity->wasChanged('reporter_id')) {
                 $this->rewardAssignmentWriter->retarget($opportunity);
+            }
+
+            // "Informazioni aggiuntive" (user directive 2026-08-05):
+            // validated against the applicable set as it is BEFORE the
+            // product lines below replace it — i.e. the set the form rendered
+            // its fields from — then merged sparsely (a code the map leaves
+            // out keeps its persisted value). Same ordering the work panel
+            // applies (RequestManagementService::updateWork, Step 1).
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($opportunity, $data->attributeValues, $changed, $old);
+                $opportunity->save();
             }
 
             $attachedManagers = [];

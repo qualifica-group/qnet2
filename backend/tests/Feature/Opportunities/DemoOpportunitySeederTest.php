@@ -122,6 +122,31 @@ it('picks products that belong to the opportunity own product lines', function (
     }
 });
 
+it('keeps every line of a deal on one business function and one branch root (spec 0077 INV-1/INV-2)', function (): void {
+    // The demo catalogue has TWO roots under TWO different business
+    // functions: a draw that rotated freely across them produced cards the
+    // form refuses (all rows must share both).
+    seedOpportunityDependencies();
+
+    test()->seed(DemoOpportunitySeeder::class);
+
+    $hierarchy = app(CategoryHierarchy::class);
+    $multiLine = 0;
+
+    foreach (Opportunity::query()->with('productLines')->get() as $opportunity) {
+        $categoryIds = $opportunity->productLines->pluck('product_category_id')->all();
+        $roots = $hierarchy->rootManagementModesFor($categoryIds);
+
+        $multiLine += count($categoryIds) > 1 ? 1 : 0;
+
+        expect($opportunity->productLines->pluck('business_function_id')->unique())->toHaveCount(1, $opportunity->name)
+            ->and(collect($roots)->pluck('root_id')->unique())->toHaveCount(1, $opportunity->name);
+    }
+
+    // The multi-line path is exercised: the assertions above are not vacuous.
+    expect($multiLine)->toBeGreaterThan(0);
+});
+
 it('seeds nothing when no category pairs a business function with a product', function (): void {
     Registry::factory()->count(2)->create();
     User::factory()->count(3)->create();

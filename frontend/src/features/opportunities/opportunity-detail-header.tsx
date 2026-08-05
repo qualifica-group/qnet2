@@ -17,7 +17,7 @@ import { formatDate } from '@/lib/formatting/date-display'
 /**
  * Identity band and KPI strip of the opportunity record card. Kept in one
  * file: both pieces read the same handful of top-level fields (status,
- * working status, region, planning) and are always mounted together.
+ * working status, planning) and are always mounted together.
  */
 
 interface OpportunityDetailHeaderProps {
@@ -26,7 +26,11 @@ interface OpportunityDetailHeaderProps {
   onEdit?: () => void
 }
 
-/** Identity band: monogram, name, registry subtitle, pipeline/working-status/region badges, edit action. */
+/**
+ * Identity band: monogram, name, registry subtitle, pipeline/working-status
+ * badges, edit action. The Regione badge is hidden with the rest of the
+ * Regione/Sede surface (user directive 2026-08-05).
+ */
 export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDetailHeaderProps) {
   const { t } = useTranslation()
   const canEdit = Boolean(onEdit) && opportunity.permissions.resource.update
@@ -59,11 +63,6 @@ export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDeta
               </Badge>
               <StatusDescriptionHint description={opportunity.workflow_status.description} />
             </span>
-          ) : null}
-          {opportunity.state ? (
-            <Badge variant="outline" className="h-5 min-h-5">
-              {opportunity.state.name}
-            </Badge>
           ) : null}
         </>
       }

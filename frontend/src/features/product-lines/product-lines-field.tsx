@@ -123,7 +123,7 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                       in order, as before. */}
                   <ProductCategoryTreeSelect
                     value={row.product_category_id}
-                    onChange={(id, meta) => setRowProductCategory(index, id, meta)}
+                    onChange={(id) => setRowProductCategory(index, id)}
                     businessFunctionId={row.business_function_id}
                     rootCategoryId={businessFunctionLocked ? managementModeRootCategoryId : null}
                     disabled={disabled}

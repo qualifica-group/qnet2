@@ -17,6 +17,7 @@
  */
 import type { CategoryManagementMeta } from '@/features/product-lines/management-mode'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
  * The ids a row whose business function is `businessFunctionId` may actually
@@ -77,6 +78,34 @@ export function categoryManagementMetaFor(
     const found = findNode([root], categoryId)
     if (found !== null) {
       return { rootCategoryId: root.id, managementMode: found.management_mode }
+    }
+  }
+
+  return null
+}
+
+/**
+ * The row set's resolved policy: the meta of the first row (in order) whose
+ * category is found in the tree. `null` only while the tree has not loaded or
+ * no row carries a category yet — the indeterminate case, left unconstrained.
+ *
+ * Resolved from the tree and NOT from what the operator picked in this
+ * session (user directive 2026-08-05): a row hydrated on edit — the
+ * opportunity form, the request work panel — carries the same policy as one
+ * just picked, so the mode is enforced there exactly as in the create forms.
+ * Server-side D-5 grandfathering is untouched: a historic non-conforming
+ * record still saves as long as its rows are not resubmitted.
+ */
+export function resolveRowSetManagementMode(
+  rows: ProductLineRow[],
+  nodes: ProductCategoryTreeNode[],
+): CategoryManagementMeta | null {
+  for (const row of rows) {
+    if (row.product_category_id !== null) {
+      const meta = categoryManagementMetaFor(nodes, row.product_category_id)
+      if (meta !== null) {
+        return meta
+      }
     }
   }
 

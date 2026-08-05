@@ -120,7 +120,11 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             ])
             // Per-row count for the `documents` action badge (HasAttachments),
             // scoped to the 'documents' collection only — never other collections.
-            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')]);
+            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')])
+            // Per-row count for the `notes` action badge (HasNotes): roots AND
+            // replies, soft-deleted excluded — same projection Gestione
+            // Richieste carries.
+            ->withCount('notes');
     }
 
     /**
@@ -202,6 +206,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'expected_close_date' => $row->expected_close_date,
             'created_at' => $row->created_at,
             'documents_count' => (int) ($row->documents_count ?? 0),
+            'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }
 
@@ -251,7 +256,13 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via OpportunityPolicy.
+     * Allowed action keys for a single row, via OpportunityPolicy — except
+     * `notes`, whose thread is registered under the `request-management`
+     * entity_type (RequestManagementNotable): its gate is that module's own
+     * permission set, never OpportunityPolicy. `edit` is gone as a row action
+     * (user directive 2026-08-05): editing starts from the detail surface,
+     * gated there by `opportunities.update`, which the update endpoint
+     * re-checks.
      *
      * @return array<int, string>
      */
@@ -263,8 +274,9 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'view';
         }
 
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
+        /** @var Opportunity $row */
+        if ($this->allowsNotes($actor, $row)) {
+            $allowed[] = 'notes';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {
@@ -280,6 +292,27 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * The SAME rule RequestManagementNotable::authorizeRead applies when the
+     * note endpoints re-check the thread: `request-management.view` AND either
+     * `request-management.viewAll` or being that opportunity's GA2 Operatore.
+     * The full rule is evaluated here — unlike the request-management table,
+     * this list is NOT already scoped to the actor's own opportunities, so
+     * checking only `request-management.view` would offer the action on rows
+     * whose thread the actor cannot read (a 403 inside the dialog). Reads the
+     * eager-loaded `managers` collection via `operatorManager()`, the single
+     * expression of the "position 2 = operator" rule: no per-row query.
+     */
+    private function allowsNotes(User $actor, Opportunity $row): bool
+    {
+        if (! $actor->can('request-management.view')) {
+            return false;
+        }
+
+        return $actor->can('request-management.viewAll')
+            || $row->operatorManager()?->id === $actor->id;
     }
 
     /**

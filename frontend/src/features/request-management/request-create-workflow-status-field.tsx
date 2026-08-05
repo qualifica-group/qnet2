@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { WorkflowStatusOption } from '@/features/opportunity-workflows/workflow-status-option'
 import { RequiresNoteBadge } from '@/features/opportunity-workflows/requires-note-badge'
-import { WorkflowStatusSwatch } from '@/features/request-management/request-workflow-status-field'
+import { WorkflowStatusSwatch } from '@/features/opportunity-workflows/workflow-status-swatch'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import type { RequestWorkflowStatusRef } from '@/features/request-management/types'
 

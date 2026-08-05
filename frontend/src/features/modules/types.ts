@@ -28,9 +28,14 @@ export interface ModuleOpenPreferences {
   overrides: Record<string, OpenMode>
 }
 
-/** Server contract: a null column serializes to this (never `null` on the wire). */
+/**
+ * Server contract: a null column serializes to this (never `null` on the wire).
+ * Default is `'page'` (user decision 2026-08-05): every module opens as a full
+ * dedicated page until the user picks another mode. Kept in sync with
+ * `UserResource::DEFAULT_MODULE_OPEN_PREFERENCES`.
+ */
 export const DEFAULT_MODULE_OPEN_PREFERENCES: ModuleOpenPreferences = {
-  mode: PREFERENCE_MODE_CUSTOM,
+  mode: PREFERENCE_MODE_PAGE,
   overrides: {},
 }
 

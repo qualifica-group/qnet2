@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Boxes } from 'lucide-react'
+import { Boxes, PackageSearch } from 'lucide-react'
 import { useWatch, type Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -16,14 +16,13 @@ interface OpportunityProductLinesSectionProps {
   knownProductLines: OpportunityProductLine[]
   /** Products already on the loaded opportunity (edit), for badge-label hydration. */
   knownProductsOfInterest: OpportunityProductOfInterest[]
-  className?: string
 }
 
 /**
- * Standalone section (spec 0040 amendment rev.3, AC-106) for the opportunity's
- * function+category product-line rows: its own titled card, separate from the
- * site/classification relations, as the pairs are the module's primary
- * classification axis. Wrapped in `MetaField` (mirrors `manager_slots` in
+ * The opportunity's classification axis, as the TWO cards the Gestione
+ * Richieste screens split it into (user directive 2026-08-05): the
+ * function+category rows (spec 0040 amendment rev.3, AC-106), then the
+ * products of interest they scope. Wrapped in `MetaField` (mirrors `manager_slots` in
  * `OpportunityTeamSection`) so a future server-driven field permission and the
  * row-completeness error (`superRefine` in `opportunity-schema.ts`) both
  * surface through the same mechanism as every other field. The row editor
@@ -34,7 +33,6 @@ export function OpportunityProductLinesSection({
   control,
   knownProductLines,
   knownProductsOfInterest,
-  className,
 }: OpportunityProductLinesSectionProps) {
   const { t } = useTranslation()
 
@@ -63,47 +61,54 @@ export function OpportunityProductLinesSection({
   )
 
   return (
-    <FormSection
-      icon={Boxes}
-      title={t('opportunities.form.sections.productLines.title')}
-      description={t('opportunities.form.sections.productLines.description')}
-      className={className}
-    >
-      <MetaField
-        control={control}
-        name="product_lines"
-        metaKey="product_lines"
-        label={t('opportunities.form.productLines.fieldLabel')}
+    <>
+      <FormSection
+        icon={Boxes}
+        title={t('opportunities.form.sections.productLines.title')}
+        description={t('opportunities.form.sections.productLines.description')}
       >
-        {({ field, disabled }) => (
-          <ProductLinesField
-            value={field.value}
-            onChange={field.onChange}
-            knownLines={knownProductLines}
-            disabled={disabled}
-          />
-        )}
-      </MetaField>
+        <MetaField
+          control={control}
+          name="product_lines"
+          metaKey="product_lines"
+          label={t('opportunities.form.productLines.fieldLabel')}
+        >
+          {({ field, disabled }) => (
+            <ProductLinesField
+              value={field.value}
+              onChange={field.onChange}
+              knownLines={knownProductLines}
+              disabled={disabled}
+            />
+          )}
+        </MetaField>
+      </FormSection>
 
-      {/* Same card as the rows above: the products of interest belong to the
-          opportunity's classification, and the picker is scoped by the very
-          categories edited right above it (user directive 2026-07-22). */}
-      <MetaField
-        control={control}
-        name="products_of_interest"
-        metaKey="products_of_interest"
-        label={t('products.ofInterest.fieldLabel')}
+      {/* Its own card right after the rows that scope it, exactly as in the
+          Gestione Richieste screens (user directive 2026-08-05): the picker
+          only offers the categories edited above it. */}
+      <FormSection
+        icon={PackageSearch}
+        title={t('products.ofInterest.sectionTitle')}
+        description={t('products.ofInterest.sectionDescription')}
       >
-        {({ field, disabled }) => (
-          <ProductsOfInterestField
-            value={field.value}
-            onChange={field.onChange}
-            categoryIds={selectedCategoryIds}
-            selectedItems={knownProducts}
-            disabled={disabled}
-          />
-        )}
-      </MetaField>
-    </FormSection>
+        <MetaField
+          control={control}
+          name="products_of_interest"
+          metaKey="products_of_interest"
+          label={t('products.ofInterest.fieldLabel')}
+        >
+          {({ field, disabled }) => (
+            <ProductsOfInterestField
+              value={field.value}
+              onChange={field.onChange}
+              categoryIds={selectedCategoryIds}
+              selectedItems={knownProducts}
+              disabled={disabled}
+            />
+          )}
+        </MetaField>
+      </FormSection>
+    </>
   )
 }

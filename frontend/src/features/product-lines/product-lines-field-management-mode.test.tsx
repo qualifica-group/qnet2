@@ -11,8 +11,11 @@ import type { ProductLineRow } from '@/features/product-lines/types'
  * `management_mode` in the shared row editor. AC-041 (single: "Add" stops
  * being available) and AC-042 (multiple: the second row's function is bound
  * to the first, its category subtree-filtered). The mode is resolved from the
- * category TREE the row's picker renders (user directive 2026-08-03) and
- * handed to `setRowProductCategory` with the pick — never a separate request.
+ * category TREE the row's picker renders (user directive 2026-08-03) — never
+ * a separate request — for the rows LOADED on an existing record as well as
+ * for those picked in this session (user directive 2026-08-05): the
+ * opportunity edit form and the request work panel enforce it exactly as the
+ * create forms do.
  */
 
 const BUSINESS_FUNCTION_A = 1
@@ -225,6 +228,30 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
       expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(MULTI_CATEGORY_B)),
     )
     // "Add" stays available: multiple mode allows further rows.
+    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+  })
+
+  it('AC-041 on edit: a row LOADED on a single-mode category disables "Add" without being re-picked', async () => {
+    renderHarness({
+      defaultValue: [{ business_function_id: BUSINESS_FUNCTION_A, product_category_id: SINGLE_CATEGORY_ID }],
+    })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
+  })
+
+  it('AC-042 on edit: rows LOADED on a multiple-mode category keep the function bound to the first row', async () => {
+    renderHarness({
+      defaultValue: [
+        { business_function_id: BUSINESS_FUNCTION_A, product_category_id: MULTI_CATEGORY_A },
+        { business_function_id: BUSINESS_FUNCTION_A, product_category_id: MULTI_CATEGORY_B },
+      ],
+    })
+
+    await waitFor(() => expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('true'))
+    // INV-1: the loaded second row is confined to the resolved branch too.
+    expect(screen.getByTestId('options-Product category 2')).toHaveTextContent(
+      `${MULTI_ROOT_ID}:disabled,${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`,
+    )
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
   })
 

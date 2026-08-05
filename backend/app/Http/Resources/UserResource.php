@@ -15,13 +15,12 @@ class UserResource extends JsonResource
 {
     /**
      * Default preference when the column is null (spec 0042): every module
-     * opens exactly as it does today (custom mode with no override falls back
-     * to each module's native defaultMode, resolved client-side). Never null
-     * in the response.
+     * opens as a full dedicated page (user decision 2026-08-05) until the user
+     * picks another mode. Never null in the response.
      *
      * @var array{mode: string, overrides: array<string, string>}
      */
-    private const array DEFAULT_MODULE_OPEN_PREFERENCES = ['mode' => 'custom', 'overrides' => []];
+    private const array DEFAULT_MODULE_OPEN_PREFERENCES = ['mode' => 'page', 'overrides' => []];
 
     /**
      * Default UI scale when the column is null: 40 on the 0..100 slider, which

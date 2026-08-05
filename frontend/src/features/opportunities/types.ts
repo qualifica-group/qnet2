@@ -6,6 +6,8 @@
  * nullable on stored opportunities and in edit mode.
  */
 
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { WorkflowStatusGroupValue } from '@/features/opportunity-workflows/types'
 import type { ProductLine } from '@/features/product-lines/types'
@@ -117,6 +119,19 @@ export interface ApplicableAttributeSummary {
   is_required: boolean
   sort_order: number
   options: AttributeOptionRef[]
+}
+
+/**
+ * Wire shape of POST /api/opportunities/form-context (user directive
+ * 2026-08-05): the dynamic fields the criteria typed so far resolve to, for
+ * the CREATE form — the same endpoint/response request-management already
+ * exposes. `workflow_statuses` also travels but is deliberately NOT modeled
+ * here: this module never offers the working-state select on create (the
+ * server resolves the initial row on its own).
+ */
+export interface OpportunityFormContext {
+  applicable_attributes: ApplicableAttributeSummary[]
+  attribute_layout: LayoutBlob | null
 }
 
 /**
@@ -245,10 +260,17 @@ export interface OpportunityDetail {
   /**
    * Spec 0049 (D-8): the union (dedup per `code`) of the effective Attributes
    * of every product-category row, feeding `attribute_values`'s labels in the
-   * read-only "Collected information" section (`opportunity-detail.tsx`).
+   * read-only "Informazioni aggiuntive" section (`opportunity-detail.tsx`).
    * Optional for the same fixture-compatibility reason; treat missing as `[]`.
    */
   applicable_attributes?: ApplicableAttributeSummary[]
+  /**
+   * Spec 0062: the merged, multi-category layout the dynamic fields are
+   * rendered through (`FormMode::Edit`), `null` when no contributing category
+   * configures one — the renderer reads that as "flat". Optional for the same
+   * fixture-compatibility reason as the two keys above.
+   */
+  attribute_layout?: LayoutBlob | null
   /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
    * `reward_type.name`. Optional for the same fixture-compatibility reason
@@ -271,6 +293,16 @@ export interface OpportunityDetail {
    * as `state`/`workflow_status` above — treat a missing key the same as `{}`.
    */
   manager_labels?: Record<string, string>
+  /**
+   * User directive 2026-08-05: whether this opportunity's products can proceed
+   * to an offer — true when any product-line category carries the root-owned
+   * `requires_quote`. `false` removes the Offerte panel entirely (no list, no
+   * create affordance). Optional for the same fixture-compatibility reason as
+   * `state`/`workflow_status` above; a MISSING key keeps the panel visible
+   * (only an explicit `false` hides it), so an older cached payload never
+   * silently swallows the module.
+   */
+  requires_quote?: boolean
 }
 
 /**
@@ -315,6 +347,14 @@ export interface CreateOpportunityPayload {
   success_probability?: number | null
   /** "Note generali" (user directive 2026-07-27): free text, never lead-locked — always sent as-is. */
   general_notes?: string | null
+  /**
+   * User directive 2026-08-05: the dynamic "Informazioni aggiuntive" map,
+   * keyed by Attribute `code` — the same key both request-management channels
+   * send. Included only when there is something to send: on create when the
+   * chosen categories resolve at least one attribute, on update only when a
+   * value actually changed (the server merges sparsely either way).
+   */
+  attribute_values?: Record<string, CustomFieldValue>
   /**
    * Amendment rev.3 (AC-099): the server REPLACES the entire row collection
    * on every write. Always sent in full on create (even empty); the update

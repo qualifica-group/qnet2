@@ -3,11 +3,7 @@ import { Info } from 'lucide-react'
 import { useWatch, type Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
-import {
-  EMPTY_VALUE,
-  SUMMARY_LIST_CLASS,
-  SummaryRow,
-} from '@/features/request-management/request-work-summary'
+import { EMPTY_VALUE, SUMMARY_LIST_CLASS, SummaryRow } from '@/components/record-form/record-summary'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import type { ProductLineRow } from '@/features/product-lines/types'

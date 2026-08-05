@@ -28,6 +28,9 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
     product_lines: [],
     products_of_interest: [],
     rewards: [],
+    // "Informazioni aggiuntive" (user directive 2026-08-05): empty unless a
+    // case is specifically about the dynamic map.
+    attribute_values: {},
     manager_slots: [],
     start_date: null,
     expected_close_date: null,

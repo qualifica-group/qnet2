@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  MAIN_COLUMN_CLASS,
+  PANEL_GRID_CLASS,
+  SIDE_COLUMN_CLASS,
+} from '@/components/record-form/layout'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { useOpportunityFormMeta } from '@/features/opportunities/use-opportunity-form-meta'
 import { OpportunityFormBody } from '@/features/opportunities/opportunity-form-body'
@@ -15,31 +20,34 @@ interface OpportunityFormProps {
 }
 
 /**
- * Loading placeholder mirroring the form's real layout (section cards with
- * header chip, title and field rows), so the swap to the loaded form does not
- * shift the page. Shared with `OpportunityFormPage`'s edit-fetch state.
+ * Loading placeholder mirroring the form's real layout — identity bar plus the
+ * two-column body — so the swap to the loaded form does not shift the page.
+ * Shared with `OpportunityFormPage`'s edit-fetch state.
  */
 export function OpportunityFormSkeleton() {
   return (
-    <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-      {[0, 1, 2].map((section) => (
-        <div key={section} className="rounded-xl border bg-card shadow-sm">
-          <div className="flex items-center gap-3 border-b px-4 py-3.5">
-            <Skeleton className="size-9 rounded-lg" />
-            <div className="flex flex-col gap-1.5">
+    <div className="@container flex flex-1 flex-col bg-surface" aria-hidden="true">
+      <div className="flex items-center gap-3 border-b bg-card px-4 py-3">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="ml-auto h-8 w-20" />
+      </div>
+      <div className={PANEL_GRID_CLASS}>
+        <div className={MAIN_COLUMN_CLASS}>
+          {[0, 1, 2].map((section) => (
+            <div key={section} className="rounded-xl border bg-card p-4 shadow-sm">
               <Skeleton className="h-3.5 w-40" />
-              <Skeleton className="h-3 w-56" />
+              <Skeleton className="mt-4 h-9 w-full" />
             </div>
-          </div>
-          <div className="flex flex-col gap-4 p-4">
-            <Skeleton className="h-9 w-full" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
+          ))}
+        </div>
+        <div className={SIDE_COLUMN_CLASS}>
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="mt-4 h-24 w-full" />
           </div>
         </div>
-      ))}
+      </div>
     </div>
   )
 }

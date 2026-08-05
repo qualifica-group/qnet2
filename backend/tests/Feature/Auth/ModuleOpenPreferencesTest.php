@@ -16,13 +16,13 @@ uses(RefreshDatabase::class);
 // GET /auth/me — default when unset (AC-002)
 // ---------------------------------------------------------------------------
 
-it('GET /auth/me defaults module_open_preferences to custom with no overrides when unset', function () {
+it('GET /auth/me defaults module_open_preferences to page with no overrides when unset', function () {
     $user = User::factory()->create(['module_open_preferences' => null]);
     Sanctum::actingAs($user);
 
     $this->getJson('/api/auth/me')
         ->assertOk()
-        ->assertJsonPath('data.module_open_preferences', ['mode' => 'custom', 'overrides' => []]);
+        ->assertJsonPath('data.module_open_preferences', ['mode' => 'page', 'overrides' => []]);
 });
 
 // ---------------------------------------------------------------------------

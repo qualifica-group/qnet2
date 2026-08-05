@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { History, MessagesSquare, Paperclip } from 'lucide-react'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -34,6 +35,34 @@ interface OpportunityDetailCollaborationProps {
   opportunity: OpportunityDetailData
 }
 
+interface CollaborationGates {
+  canViewNotes: boolean
+  canViewDocuments: boolean
+  canViewActivity: boolean
+  /** False = the whole card is absent, so the layout must not reserve a side column for it. */
+  hasAny: boolean
+}
+
+/**
+ * Per-tab authorization of the collaboration card, each from its OWN source.
+ * Read both by the card itself and by the layout above it, which cannot ask
+ * the card whether it rendered.
+ */
+function useCollaborationGates(opportunity: OpportunityDetailData): CollaborationGates {
+  const { can } = useAbilities()
+
+  const canViewNotes = can('request-management.view')
+  const canViewDocuments = opportunity.permissions.actions.view_documents
+  const canViewActivity = opportunity.permissions.actions.view_activity
+
+  return {
+    canViewNotes,
+    canViewDocuments,
+    canViewActivity,
+    hasAny: canViewNotes || canViewDocuments || canViewActivity,
+  }
+}
+
 /**
  * The record's collaboration surface, mirroring `RequestWorkCollaboration`
  * (the user explicitly wants the same treatment here): one card, a compact
@@ -44,12 +73,10 @@ interface OpportunityDetailCollaborationProps {
 function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollaborationProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
+  const { canViewNotes, canViewDocuments, canViewActivity, hasAny } =
+    useCollaborationGates(opportunity)
 
-  const canViewNotes = can('request-management.view')
-  const canViewDocuments = opportunity.permissions.actions.view_documents
-  const canViewActivity = opportunity.permissions.actions.view_activity
-
-  if (!canViewNotes && !canViewDocuments && !canViewActivity) {
+  if (!hasAny) {
     return null
   }
 
@@ -124,27 +151,55 @@ function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollab
 }
 
 /**
+ * Two-column body (user directive 2026-08-05): the record itself on the left,
+ * the collaboration surface on the right, stacked in that order while narrow.
+ * The side column is only laid out when the actor can actually see one of its
+ * tabs — otherwise the record keeps the full width instead of leaving a third
+ * of the canvas empty.
+ */
+const BODY_GRID_CLASS = 'grid grid-cols-1 items-start gap-4'
+const BODY_GRID_WITH_SIDE_CLASS = '@5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
+
+/**
+ * Each column is its OWN `@container` so the section/field grids inside break
+ * on the COLUMN's width, not the canvas' — without this the left card would
+ * still go two-column at the exact width where it just lost a third of its
+ * space to the side column.
+ */
+const COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4'
+
+/**
  * Read-only detail of a single opportunity, rendered as an enterprise-CRM
- * record (spec 0040 AC-077): one identity/KPI/sections card, a collaboration
- * card (notes/documents/activity, spec 0049 AC-064's collected-information
- * lives in the sections card), and a metadata footer. Container-query driven
+ * record (spec 0040 AC-077): the identity/KPI/sections card on the left, the
+ * collaboration card (notes/documents/activity, spec 0049 AC-064's
+ * collected-information lives in the sections card) on the right, the Offerte
+ * panel full width below both, and a metadata footer. Container-query driven
  * (`RecordCanvas`) so the same tree renders correctly both inside a
  * resizable Sheet and on the full-bleed `/opportunities/:id` page.
  */
 export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetailViewProps) {
   const { t } = useTranslation()
+  const { hasAny: hasCollaboration } = useCollaborationGates(opportunity)
   const createdAt = formatDateTime(opportunity.created_at)
   const updatedAt = formatDateTime(opportunity.updated_at)
 
   return (
     <RecordCanvas>
-      <RecordCard>
-        <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
-        <OpportunityDetailStats opportunity={opportunity} />
-        <OpportunityDetailSections opportunity={opportunity} />
-      </RecordCard>
+      <div className={cn(BODY_GRID_CLASS, hasCollaboration && BODY_GRID_WITH_SIDE_CLASS)}>
+        <div className={COLUMN_CLASS}>
+          <RecordCard>
+            <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
+            <OpportunityDetailStats opportunity={opportunity} />
+            <OpportunityDetailSections opportunity={opportunity} />
+          </RecordCard>
+        </div>
 
-      <OpportunityDetailCollaboration opportunity={opportunity} />
+        {hasCollaboration ? (
+          <div className={COLUMN_CLASS}>
+            <OpportunityDetailCollaboration opportunity={opportunity} />
+          </div>
+        ) : null}
+      </div>
 
       {/*
        * Keyed by id (spec 0067 D-2): the detail route/Sheet does not remount

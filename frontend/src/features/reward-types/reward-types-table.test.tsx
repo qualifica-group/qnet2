@@ -11,7 +11,7 @@ import { createRowActionsRenderer, type RowActionHandler } from '@/features/tabl
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { rewardTypeColumnRenderers } from '@/features/reward-types/column-renderers'
 import { RewardTypesTable } from '@/features/reward-types/reward-types-table'
-import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
+import type { ModuleOpenPreferences } from '@/features/modules/types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { User } from '@/features/auth/types'
 
@@ -41,6 +41,13 @@ vi.mock('@/features/auth/use-abilities', () => ({
   }),
 }))
 
+/**
+ * The module's native mount (`defaultMode: modal`) only applies in `custom`
+ * mode with no override — the app-wide default is `page` since 2026-08-05, so
+ * the sheet cases pin this preference explicitly.
+ */
+const NATIVE_MODE_PREFERENCES: ModuleOpenPreferences = { mode: 'custom', overrides: {} }
+
 const currentUser: User = {
   id: 1,
   name: 'Current User',
@@ -49,7 +56,7 @@ const currentUser: User = {
   roles: [],
   avatar_url: null,
   created_at: null,
-  module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,
+  module_open_preferences: NATIVE_MODE_PREFERENCES,
   ui_scale: 40,
   date_format: 'dmy',
   time_format: '24h',
@@ -159,7 +166,7 @@ beforeEach(() => {
   refreshMock.mockReset()
   confirmMock.mockReset()
   confirmMock.mockResolvedValue(true)
-  currentUser.module_open_preferences = DEFAULT_MODULE_OPEN_PREFERENCES
+  currentUser.module_open_preferences = NATIVE_MODE_PREFERENCES
 })
 
 describe('rewardTypeColumnRenderers — cell renderers (AC-018)', () => {

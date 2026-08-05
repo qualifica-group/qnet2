@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryManagementMode;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
@@ -86,6 +87,33 @@ it('never lines a deal up with an unselectable category', function (): void {
 
     expect(Opportunity::query()->count())->toBe(10)
         ->and($lineCategoryIds)->toBe([$target->getKey()]);
+});
+
+it('gives a single-mode card exactly one product line (spec 0077 INV-3)', function (): void {
+    // Two sibling targets under a `single` root, both carrying a product:
+    // the draw must still stop at one line per deal, as the form does.
+    $root = ProductCategory::factory()->create([
+        'business_function_id' => BusinessFunction::factory(),
+        'is_selectable' => false,
+        'management_mode' => CategoryManagementMode::Single,
+    ]);
+
+    foreach (['first', 'second'] as $ignored) {
+        $target = ProductCategory::factory()->childOf($root)->create([
+            'is_selectable' => true,
+            'management_mode' => CategoryManagementMode::Single,
+        ]);
+        Product::factory()->create(['category_id' => $target->getKey()]);
+    }
+
+    Registry::factory()->create();
+
+    test()->seed(QualificaSampleOpportunitySeeder::class);
+
+    $lineCounts = Opportunity::query()->withCount('productLines')->pluck('product_lines_count')->unique()->values()->all();
+
+    expect(Opportunity::query()->count())->toBe(10)
+        ->and($lineCounts)->toBe([1]);
 });
 
 it('is idempotent: a second run adds nothing', function () use ($seedOffer): void {
