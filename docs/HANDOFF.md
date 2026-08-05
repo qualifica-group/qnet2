@@ -68,8 +68,12 @@ un MP gia' preso fallivano ("code already migrated under a different external id
 precedenti, hanno `code` derivato dal vecchio algoritmo e `payment_method_code` NULL. L'import le
 salta per `old_id`: per rigenerarle vanno prima cancellate le righe con `old_id NOT NULL`.
 
-**Verde:** `pest tests/Feature/{PaymentMethods,Migration,Quotes,Contracts,Authorization}` 616/616 ·
-`vitest run` 3613/3613 · `tsc -b --force` pulito · Pint pulito.
+Aggiornato anche `tests/Unit/Migrations/MigrationRegistryTest.php`, che congela la mappa
+`config('migrations.definitions')` e il numero di source: `payment-methods` va dichiarata anche li'
+(18 source), altrimenti il full-suite e' rosso pur essendo verdi le `tests/Feature`.
+
+**Verde:** `pest` full suite **5301/5302** (1 skip preesistente) · `vitest run` 3613/3613 ·
+`tsc -b --force` pulito · Pint pulito.
 
 ## NOTIFICHE DI ASSEGNAZIONE E TRASFERIMENTO — spec 0081 (2026-08-04) — VERDE, NON COMMITTATO
 
