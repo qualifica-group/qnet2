@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -81,11 +80,10 @@ class QualificaSampleOpportunitySeeder extends Seeder
             'sites' => OperationalSite::query()->orderBy('id')->get(),
             'managers' => User::query()->orderBy('id')->get(),
         ];
-        $statusIds = OpportunityStatus::query()->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
 
         // Step 3: the batch itself.
         for ($index = 0; $index < self::OPPORTUNITIES; $index++) {
-            $this->seedOpportunity($faker, $index, $registries, $lookups, $statusIds);
+            $this->seedOpportunity($faker, $index, $registries, $lookups);
         }
 
         $this->command?->info(sprintf('%d sample opportunities seeded with no lead behind them.', self::OPPORTUNITIES));
@@ -94,14 +92,12 @@ class QualificaSampleOpportunitySeeder extends Seeder
     /**
      * @param  Collection<int, Registry>  $registries
      * @param  array{sources: Collection<int, Source>, sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
-     * @param  array<int, int>  $statusIds
      */
     private function seedOpportunity(
         Generator $faker,
         int $index,
         Collection $registries,
         array $lookups,
-        array $statusIds,
     ): void {
         $offer = $this->pickOffer($faker, $index);
         $startDate = $faker->dateTimeBetween('-6 months', 'now');
@@ -116,7 +112,6 @@ class QualificaSampleOpportunitySeeder extends Seeder
             // The whole point of this batch: no lead behind the deal, so
             // nothing is BR-1-derived and nothing is locked.
             leadId: null,
-            opportunityStatusId: $this->rotateStatusId($statusIds, $index),
             managerSlots: $this->managerSlots($lookups['managers'], $index),
             productLines: $offer['product_lines'],
             startDate: $startDate->format('Y-m-d'),
@@ -127,18 +122,6 @@ class QualificaSampleOpportunitySeeder extends Seeder
             operationalSiteId: $this->pick($lookups['sites'], $index)?->id,
             generalNotes: $faker->boolean(60) ? $faker->sentence(12) : null,
         ));
-    }
-
-    /**
-     * The status is MANDATORY (spec 0043, D-3): rotated over the catalogue so
-     * the grid shows more than a column of "Nuova". Null only when the lookup
-     * is empty — OpportunityService then falls back to the system 'new' row.
-     *
-     * @param  array<int, int>  $statusIds
-     */
-    private function rotateStatusId(array $statusIds, int $index): ?int
-    {
-        return $statusIds === [] ? null : $statusIds[$index % count($statusIds)];
     }
 
     /**

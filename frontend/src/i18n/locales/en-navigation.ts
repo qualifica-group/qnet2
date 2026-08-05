@@ -28,7 +28,6 @@ export const navigation = {
   campaigns: 'Campaigns',
   leads: 'Leads',
   opportunities: 'Opportunities',
-  opportunityStatuses: 'Opportunity Statuses',
   opportunityWorkflows: 'Workflow Configurator',
   quoteStatuses: 'Quote Statuses',
   quotes: 'Quotes',

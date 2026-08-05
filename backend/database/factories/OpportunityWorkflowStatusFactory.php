@@ -37,7 +37,7 @@ class OpportunityWorkflowStatusFactory extends Factory
     /**
      * Marks the row as one of the four mandatory system rows ('open'/
      * 'validated'/'closed_won'/'closed_lost', spec 0047 AC-004), mirroring
-     * OpportunityStatusFactory::system().
+     * QuoteStatusFactory::system().
      */
     public function system(string $key): static
     {

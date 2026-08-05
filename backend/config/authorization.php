@@ -13,7 +13,6 @@ use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
-use App\Authorization\OpportunityStatusesAuthorization;
 use App\Authorization\OpportunityWorkflowsAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
@@ -84,7 +83,6 @@ return [
         'campaigns' => CampaignsAuthorization::class,
         'leads' => LeadsAuthorization::class,
         'opportunities' => OpportunitiesAuthorization::class,
-        'opportunity-statuses' => OpportunityStatusesAuthorization::class,
         'opportunity-workflows' => OpportunityWorkflowsAuthorization::class,
         'payment-methods' => PaymentMethodsAuthorization::class,
         'quote-statuses' => QuoteStatusesAuthorization::class,

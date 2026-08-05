@@ -45,7 +45,7 @@ class QuoteStatusFactory extends Factory
      * Marks the row as one of the three mandatory system statuses ('new',
      * 'won' or 'lost' — spec 0065 D-2). Takes the literal system_key string
      * rather than the App\Enums\StatusSystemKey case, for symmetry with
-     * OpportunityStatusFactory::system().
+     * RewardStatusFactory::system().
      */
     public function system(string $key): static
     {

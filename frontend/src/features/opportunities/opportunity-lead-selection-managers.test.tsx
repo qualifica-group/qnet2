@@ -48,7 +48,6 @@ const TEST_REGISTRY_ID = 10
 const TEST_LEAD_ID = 900
 /** A lead with no Operator — `manager_slots`/`manager_refs` both empty. */
 const TEST_LEAD_NO_OPERATOR_ID = 902
-const TEST_OPPORTUNITY_STATUS_ID = 5
 /** Directive 2026-07-21: the Operator derived onto `TEST_LEAD_ID`, seeding the first Gestore Account slot. */
 const TEST_OPERATOR_ID = 300
 /** Directive 2026-07-23: the Sede operativa inherited from `TEST_LEAD_ID` on conversion. */
@@ -145,7 +144,6 @@ beforeEach(() => {
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
 
   fetchSystemStatusIdMock.mockReset()
-  fetchSystemStatusIdMock.mockResolvedValue(TEST_OPPORTUNITY_STATUS_ID)
 
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)

@@ -69,7 +69,6 @@ const TEST_LEAD_ID = 900
 const TEST_LEAD_ALREADY_LINKED_ID = 901
 /** A lead with no Operator — `manager_slots`/`manager_refs` both empty. */
 const TEST_LEAD_NO_OPERATOR_ID = 902
-const TEST_OPPORTUNITY_STATUS_ID = 5
 /** Directive 2026-07-21: the Operator derived onto `TEST_LEAD_ID`, seeding the first Gestore Account slot. */
 const TEST_OPERATOR_ID = 300
 /** Directive 2026-07-23: the Sede operativa inherited from `TEST_LEAD_ID` on conversion. */
@@ -194,8 +193,7 @@ function editOpportunity(
     supervisor: null,
     source_id: 20,
     source: { id: 20, name: 'Web' },
-    opportunity_status_id: TEST_OPPORTUNITY_STATUS_ID,
-    opportunity_status: { id: TEST_OPPORTUNITY_STATUS_ID, name: 'Nuova', color: 'slate' },
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     product_lines: [
       {
         id: 500,
@@ -229,7 +227,6 @@ beforeEach(() => {
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
 
   fetchSystemStatusIdMock.mockReset()
-  fetchSystemStatusIdMock.mockResolvedValue(TEST_OPPORTUNITY_STATUS_ID)
 
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
@@ -379,13 +376,6 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
     screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
     await waitFor(() => expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('true'))
-    // Spec 0043 D-3: wait for the preselected system "Nuova" status so the
-    // mandatory field is non-null before Save.
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Opportunity Status')).toHaveTextContent(
-        String(TEST_OPPORTUNITY_STATUS_ID),
-      ),
-    )
     fireEvent.click(screen.getByRole('button', { name: 'select Supervisor 1' }))
     // Mandatory since the user directive 2026-07-23: without a product the
     // form would not submit at all.
@@ -396,7 +386,6 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     await waitFor(() => expect(createOpportunityMock).toHaveBeenCalledTimes(1))
     const payload = createOpportunityMock.mock.calls[0][0]
     expect(payload.lead_id).toBe(TEST_LEAD_ID)
-    expect(payload.opportunity_status_id).toBe(TEST_OPPORTUNITY_STATUS_ID)
     expect(payload).not.toHaveProperty('registry_id')
     // AC-051: referent_id is no longer among the locked fields — it is sent
     // like any other free field (here still unset by the user).

@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\ContractStatuses\ContractStatusController;
 use App\Http\Controllers\ContractStatuses\ContractStatusForSelectController;
-use App\Http\Controllers\OpportunityStatuses\OpportunityStatusController;
-use App\Http\Controllers\OpportunityStatuses\OpportunityStatusForSelectController;
 use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodForSelectController;
@@ -87,31 +85,8 @@ Route::post('sectors', [SectorController::class, 'store']);
 Route::match(['put', 'patch'], 'sectors/{sector}', [SectorController::class, 'update']);
 Route::delete('sectors/{sector}', [SectorController::class, 'destroy']);
 
-// Opportunity statuses CRUD (spec 0043): the Opportunity working-state
-// pick-list (BR-2 delete-guard lives in OpportunityStatusService).
-// Authorization (opportunity-statuses.view/create/update/delete) is
-// enforced server-side in OpportunityStatusController via
-// OpportunityStatusPolicy.
-// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
-// Declared ABOVE opportunity-statuses/{opportunityStatus} so the literal
-// `for-select` segment wins over the bound wildcard. The only gate is
-// auth:sanctum (ADR 0011, amended 2026-07-31).
-Route::get('opportunity-statuses/for-select', OpportunityStatusForSelectController::class);
-
-// Custom-row resequencing (spec 0039, D-5): `sort_order` is server-managed,
-// this is the only way to change it. Declared ABOVE the bound wildcard for
-// the same literal-segment reason as `for-select`. Gated on
-// opportunity-statuses.update directly in OpportunityStatusController::reorder.
-Route::post('opportunity-statuses/reorder', [OpportunityStatusController::class, 'reorder']);
-
-Route::get('opportunity-statuses/{opportunityStatus}', [OpportunityStatusController::class, 'show']);
-Route::post('opportunity-statuses', [OpportunityStatusController::class, 'store']);
-Route::match(['put', 'patch'], 'opportunity-statuses/{opportunityStatus}', [OpportunityStatusController::class, 'update']);
-Route::delete('opportunity-statuses/{opportunityStatus}', [OpportunityStatusController::class, 'destroy']);
-
 // Opportunity workflow configurator CRUD (spec 0047, Lane A): the working-
-// state "stati di lavorazione" dimension, distinct from opportunity-statuses
-// (sales pipeline). Authorization (opportunity-workflows.view/create/update/
+// state "stati di lavorazione" dimension. Authorization (opportunity-workflows.view/create/update/
 // delete) is enforced server-side in OpportunityWorkflowController via
 // OpportunityWorkflowPolicy. `criterion-fields`/`default-statuses` are
 // declared ABOVE opportunity-workflows/{opportunityWorkflow} so their literal
@@ -126,7 +101,7 @@ Route::match(['put', 'patch'], 'opportunity-workflows/{opportunityWorkflow}', [O
 Route::delete('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'destroy']);
 
 // Quote statuses CRUD (spec 0065): the Quote working-state pick-list, a
-// plain clone of opportunity-statuses (delete-guard lives in
+// plain clone of the quote-statuses shape (delete-guard lives in
 // QuoteStatusService). Authorization (quote-statuses.view/create/update/
 // delete) is enforced server-side in QuoteStatusController via
 // QuoteStatusPolicy.

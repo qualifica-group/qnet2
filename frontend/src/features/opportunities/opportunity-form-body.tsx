@@ -229,6 +229,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
             selectedItems={selectedItems}
             lockedFields={lockedFields}
             workflowStatuses={workflowStatuses}
+            status={mode.type === 'edit' ? mode.opportunity.status : null}
             className={sectionRevealClassName(1)}
           />
 

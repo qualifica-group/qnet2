@@ -3,7 +3,6 @@
 use App\Models\BusinessFunction;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Referent;
@@ -40,7 +39,7 @@ if (! function_exists('opportunityUserWith')) {
 if (! function_exists('mandatoryOpportunityFks')) {
     /**
      * The mandatory create payload beyond `name`: `registry_id` (D-4),
-     * `opportunity_status_id` (spec 0043, D-3), `supervisor_id`, plus a valid
+     * `supervisor_id`, plus a valid
      * one-row `product_lines` collection (user directive 2026-07-17: at least
      * one row is required to create) and a one-product `products_of_interest`
      * collection FROM THAT ROW'S CATEGORY (user directive 2026-07-23: at least
@@ -53,7 +52,7 @@ if (! function_exists('mandatoryOpportunityFks')) {
      * (spec 0056) is reintroduced but stays OPTIONAL, so it is still not part
      * of this mandatory payload.
      *
-     * @return array{registry_id: int, opportunity_status_id: int, supervisor_id: int, product_lines: array<int, array{business_function_id: int, product_category_id: int}>, products_of_interest: array<int, int>}
+     * @return array{registry_id: int, supervisor_id: int, product_lines: array<int, array{business_function_id: int, product_category_id: int}>, products_of_interest: array<int, int>}
      */
     function mandatoryOpportunityFks(): array
     {
@@ -62,7 +61,6 @@ if (! function_exists('mandatoryOpportunityFks')) {
 
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'supervisor_id' => User::factory()->create()->id,
             'product_lines' => [
                 ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
@@ -74,8 +72,7 @@ if (! function_exists('mandatoryOpportunityFks')) {
 
 // ---------------------------------------------------------------------------
 // create (AC-012/AC-013/AC-014/AC-016/AC-017/AC-082 — mandatory fields are
-// name + registry_id + opportunity_status_id (spec 0043, D-3) + supervisor_id +
-// product_lines; company_id/company_site_id were removed by user directive
+// name + registry_id + supervisor_id + product_lines; company_id/company_site_id were removed by user directive
 // 2026-07-17; operational_site_id (spec 0056) is reintroduced, optional)
 // ---------------------------------------------------------------------------
 

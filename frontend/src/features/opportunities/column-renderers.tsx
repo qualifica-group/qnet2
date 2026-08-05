@@ -9,8 +9,8 @@ import {
   DateCell,
   RefNamesCell,
   RelationCell,
-  StatusBadgeCell,
 } from '@/features/table/rich-cells'
+import { OpportunityStatusCell } from '@/features/opportunities/opportunity-status-cell'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -85,9 +85,10 @@ function ProbabilityCell({ value }: ICellRendererParams) {
 }
 
 /**
- * Custom cell renderers keyed by the backend column `id` (spec 0040, 0043),
+ * Custom cell renderers keyed by the backend column `id` (spec 0040, 0082),
  * built from the shared cross-module cell library so relations, the status
- * pill, people and money match the leads/campaigns/projects grids. Relations
+ * pill, people and money match the leads/campaigns/projects grids. `status`
+ * (spec 0082) is the COMPUTED summary, not a relation: it has its own cell. Relations
  * carry a leading kind icon; `supervisor` is one person (avatar + name),
  * `managers` an avatar stack; `success_probability` a progress bar. `name`
  * falls back to the AG Grid default cell; `created_at` reuses the shared
@@ -95,7 +96,7 @@ function ProbabilityCell({ value }: ICellRendererParams) {
  */
 export const opportunityColumnRenderers: TableRendererMap = {
   registry: (params) => <RelationCell {...params} icon={Building2} />,
-  opportunity_status: (params) => <StatusBadgeCell {...params} />,
+  status: (params) => <OpportunityStatusCell {...params} />,
   referent: (params) => <RelationCell {...params} icon={UserRound} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   supervisor: (params) => <UserCell {...params} />,

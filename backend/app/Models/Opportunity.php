@@ -28,9 +28,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * `productLines()`, a one-to-many collection (see OpportunityProductLine).
  * User directive 2026-07-17: `company_id`/`company_site_id`/
  * `operational_site_id` and their relations are REMOVED entirely.
- * `opportunity_status_id` (spec 0043, D-3): the mandatory working-state FK,
- * NOT NULL at schema level, defaulted server-side to the system 'new' status
- * when omitted (see OpportunityService).
+ * Spec 0082: the former `opportunity_status_id` FK is GONE — an Opportunity's
+ * status is COMPUTED from its `quotes()` (falling back to `workflowStatus()`
+ * when it has none) by App\Services\Opportunities\OpportunityStatusResolver.
  *
  * `general_notes` (user directive 2026-07-27): the "Note generali" free text,
  * inherited from the originating Lead's `notes` at conversion. Named
@@ -53,7 +53,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'source_id',
     'operational_site_id',
     'lead_id',
-    'opportunity_status_id',
     'state_id',
     'start_date',
     'estimated_value',
@@ -146,15 +145,6 @@ class Opportunity extends BaseModel
     }
 
     /**
-     * The Opportunity's working-state classification (spec 0043, D-3):
-     * mandatory (NOT NULL at schema level), restrictOnDelete.
-     */
-    public function opportunityStatus(): BelongsTo
-    {
-        return $this->belongsTo(OpportunityStatus::class);
-    }
-
-    /**
      * The Regione (spec 0047, D1): inherited from the originating Lead at
      * conversion (LeadOpportunityDefaultsResolver) or editable on a
      * standalone Opportunity.
@@ -165,10 +155,10 @@ class Opportunity extends BaseModel
     }
 
     /**
-     * The currently resolved working-state row (spec 0047 — the NEW workflow
-     * dimension, distinct from `opportunityStatus()`/pipeline). Always
-     * written by OpportunityWorkflowResolver, never directly
-     * mass-assignable.
+     * The currently resolved working-state row (spec 0047). Always written by
+     * OpportunityWorkflowResolver, never directly mass-assignable. Spec 0082:
+     * it is also the fallback the computed status reads when the opportunity
+     * has no quote at all.
      */
     public function workflowStatus(): BelongsTo
     {

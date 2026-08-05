@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,14 +27,11 @@ import {
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
 import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
-import { OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE } from '@/features/opportunity-statuses/for-select-api'
-import { useDefaultSystemStatusId } from '@/features/status-reorder/use-default-system-status'
 import type { OpportunityDetail, OpportunityFormMode, OpportunityProductLine } from '@/features/opportunities/types'
 
 /** Server-side field names mapped onto the form for 422 handling. `lead_id` is never an RHF field (spec 0040 MT-6 handles it separately). */
 const SERVER_ERROR_FIELDS = [
   'registry_id',
-  'opportunity_status_id',
   'referent_id',
   'commercial_id',
   'reporter_id',
@@ -136,7 +133,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       const { opportunity } = mode
       return {
         registry_id: opportunity.registry_id,
-        opportunity_status_id: opportunity.opportunity_status_id,
         referent_id: opportunity.referent_id,
         commercial_id: opportunity.commercial_id,
         reporter_id: opportunity.reporter_id,
@@ -160,7 +156,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
     }
     const empty: OpportunityFormValues = {
       registry_id: null,
-      opportunity_status_id: null,
       referent_id: null,
       commercial_id: null,
       reporter_id: null,
@@ -211,25 +206,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
     resolver: zodResolver(schema),
     defaultValues,
   })
-
-  // Spec 0043 D-3: preselect the system "Nuova" status on create, once the
-  // for-select resolves, but only if the field is still untouched — the
-  // user always wins. Guarded to apply at most once: an effect is the
-  // correct tool here, since RHF's `defaultValues` are fixed at mount and
-  // this value only becomes known asynchronously (mirrors `useLeadForm`).
-  const defaultStatus = useDefaultSystemStatusId(OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE, 'new', !isEdit)
-  const appliedDefaultStatus = useRef(false)
-  useEffect(() => {
-    if (isEdit || appliedDefaultStatus.current || defaultStatus.data == null) {
-      return
-    }
-    if (form.getFieldState('opportunity_status_id').isDirty) {
-      appliedDefaultStatus.current = true
-      return
-    }
-    form.setValue('opportunity_status_id', defaultStatus.data)
-    appliedDefaultStatus.current = true
-  }, [isEdit, defaultStatus.data, form])
 
   return { form, isEdit }
 }

@@ -13,7 +13,6 @@ use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoCategoryWorkflowSeeder;
 use Database\Seeders\DemoOpportunityLifecycleSeeder;
 use Database\Seeders\DemoOpportunitySeeder;
-use Database\Seeders\DemoOpportunityStatusSeeder;
 use Database\Seeders\DemoProductCategorySeeder;
 use Database\Seeders\DemoProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,7 +38,6 @@ function seedDemoLifecycle(): void
 
     test()->seed(DemoProductCategorySeeder::class);
     test()->seed(DemoProductSeeder::class);
-    test()->seed(DemoOpportunityStatusSeeder::class);
     test()->seed(DemoCategoryWorkflowSeeder::class);
     test()->seed(DemoOpportunitySeeder::class);
     test()->seed(DemoOpportunityLifecycleSeeder::class);

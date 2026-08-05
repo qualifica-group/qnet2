@@ -29,7 +29,6 @@ export const navigation = {
   campaigns: 'Campagne',
   leads: 'Lead',
   opportunities: 'Opportunità',
-  opportunityStatuses: 'Stati Opportunità',
   opportunityWorkflows: 'Configuratore Stati Lavorazione',
   quoteStatuses: 'Stati Offerta',
   quotes: 'Offerte',

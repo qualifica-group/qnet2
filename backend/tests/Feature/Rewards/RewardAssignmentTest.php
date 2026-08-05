@@ -2,7 +2,6 @@
 
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Referent;
@@ -58,7 +57,7 @@ if (! function_exists('rewardAssignmentCategory')) {
 if (! function_exists('rewardAssignmentBasePayload')) {
     /**
      * The opportunities CRUD's own mandatory fields (registry_id,
-     * opportunity_status_id, product_lines, products_of_interest) — none of
+     * product_lines, products_of_interest) — none of
      * them relevant to `rewards` itself, just what StoreOpportunityRequest
      * requires to accept the request at all.
      *
@@ -71,7 +70,6 @@ if (! function_exists('rewardAssignmentBasePayload')) {
 
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'product_lines' => [
                 ['business_function_id' => $category->business_function_id, 'product_category_id' => $category->id],
             ],

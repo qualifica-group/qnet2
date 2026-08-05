@@ -7,11 +7,9 @@ namespace App\Actions\Leads;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\OpportunityService;
-use App\Services\Statuses\SystemStatusGuard;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -32,7 +30,6 @@ final class ConvertLeadToOpportunity
 {
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
-        private readonly SystemStatusGuard $systemStatusGuard,
         private readonly OpportunityService $opportunityService,
     ) {}
 
@@ -72,7 +69,6 @@ final class ConvertLeadToOpportunity
             supervisorId: null,
             sourceId: $defaults->values['source_id'],
             leadId: $lead->id,
-            opportunityStatusId: $this->systemStatusGuard->resolveNewStatusId(OpportunityStatus::class),
             // User directive 2026-07-22: the Operator becomes G.A. 2; G.A. 1 is
             // still materialized, but empty (a null leading slot, gap-aware).
             managerSlots: $lead->operator_id === null ? null : [null, $lead->operator_id],

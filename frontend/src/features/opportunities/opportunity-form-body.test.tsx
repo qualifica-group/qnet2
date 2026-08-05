@@ -73,8 +73,6 @@ function editOpportunity(): OpportunityDetailWithPermissions {
     name: 'Enterprise deal',
     registry_id: TEST_REGISTRY_WITH_DEFAULTS,
     registry: { id: TEST_REGISTRY_WITH_DEFAULTS, name: 'Acme S.p.A.' },
-    opportunity_status_id: 5,
-    opportunity_status: { id: 5, name: 'New', color: 'slate' },
     referent_id: null,
     referent: null,
     commercial_id: null,
@@ -89,6 +87,7 @@ function editOpportunity(): OpportunityDetailWithPermissions {
     operational_site: null,
     state_id: null,
     state: null,
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     opportunity_workflow_status_id: 100,
     workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', group: 'open', description: null, requires_note: false },
     workflow_statuses: [
@@ -258,7 +257,10 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
 
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
     expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('select-Opportunity Status')).toBeInTheDocument()
+    // Spec 0082: the status is COMPUTED, so the form shows a read-only badge
+    // (here the create-mode placeholder), never a select.
+    expect(screen.queryByTestId('select-Opportunity Status')).not.toBeInTheDocument()
+    expect(screen.getByText('No status')).toBeInTheDocument()
     expect(screen.getByTestId('select-Contact')).toBeInTheDocument()
     expect(screen.getByTestId('select-Sales rep')).toBeInTheDocument()
     expect(screen.getByTestId('select-Reporter')).toBeInTheDocument()
@@ -295,18 +297,6 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
 
     expect(labelFor('Supervisor')).toHaveTextContent('Supervisor')
     expect(labelFor('Supervisor')).not.toHaveTextContent('*')
-  })
-})
-
-describe('OpportunityFormBody — default status preselection (spec 0043 D-3)', () => {
-  it('preselects the resolved "Nuova" status id on create once it resolves', async () => {
-    fetchSystemStatusIdMock.mockResolvedValue(42)
-
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('value-Opportunity Status')).toHaveTextContent('42'))
   })
 })
 

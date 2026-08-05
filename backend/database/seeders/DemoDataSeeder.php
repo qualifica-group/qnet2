@@ -75,7 +75,6 @@ class DemoDataSeeder extends Seeder
         // plus DemoOperationalSiteSeeder/DemoSourceSeeder/
         // DemoUsersSeeder (optional) — must run after all of them.
         $this->call(DemoLeadSeeder::class);
-        $this->call(DemoOpportunityStatusSeeder::class);
         // Standalone anagraphic (spec 0058): no dependency on anything above,
         // no producer referencing it yet (BR-3) — order here is arbitrary.
         $this->call(DemoRewardTypeSeeder::class);
@@ -99,10 +98,8 @@ class DemoDataSeeder extends Seeder
         $this->call(DemoCategoryWorkflowSeeder::class);
         // Depends on DemoRegistrySeeder (mandatory) plus every optional lookup
         // above (company/company-sites/operational-sites/business-functions/
-        // referents/users/sources/product-categories), DemoLeadSeeder (for
-        // the BR-1 from-lead batch) and DemoOpportunityStatusSeeder (spec
-        // 0043, opportunity_status_id is mandatory) — must run after all of
-        // them.
+        // referents/users/sources/product-categories) and DemoLeadSeeder (for
+        // the BR-1 from-lead batch) — must run after all of them.
         $this->call(DemoOpportunitySeeder::class);
         // Walks those opportunities through their working statuses and fills
         // the opportunity-context attributes: needs the rows, the pick lists

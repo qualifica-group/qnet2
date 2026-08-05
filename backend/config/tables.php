@@ -15,7 +15,6 @@ use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
 use App\Tables\OpportunitiesTableDefinition;
-use App\Tables\OpportunityStatusesTableDefinition;
 use App\Tables\OpportunityWorkflowsTableDefinition;
 use App\Tables\PaymentMethodsTableDefinition;
 use App\Tables\PipelineStatusesTableDefinition;
@@ -91,7 +90,6 @@ return [
         'leads' => LeadsTableDefinition::class,
         'import-runs' => LeadImportsTableDefinition::class,
         'opportunities' => OpportunitiesTableDefinition::class,
-        'opportunity-statuses' => OpportunityStatusesTableDefinition::class,
         'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
         'payment-methods' => PaymentMethodsTableDefinition::class,
         'quote-statuses' => QuoteStatusesTableDefinition::class,

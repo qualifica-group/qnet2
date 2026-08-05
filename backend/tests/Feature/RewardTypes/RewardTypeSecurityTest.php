@@ -128,7 +128,7 @@ it('a 403 (no base write ability) takes precedence over a field-level 422', func
  * ::fieldPermissions() is `final` (spec 0008) and unconditionally bypasses
  * the DB role_field_permissions matrix for ANY mandatory field ("the DB
  * matrix may never narrow them, so they bypass the intersect and keep the
- * full ceiling") — the exact mechanism OpportunityStatusSecurityTest
+ * full ceiling") — the exact mechanism RewardStatusSecurityTest
  * documents for `name`. Because D-5 makes `color` mandatory too, a
  * restrictive DB row on `color` is bypassed the same way: the write below
  * returns 200, by design — not a security hole, the server-side twin of the

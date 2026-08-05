@@ -22,9 +22,8 @@ namespace App\DataObjects\Opportunities;
  *
  * Amendment rev.3: `businessFunctionId`/`productCategoryId` are REPLACED by
  * `productLines`. User directive 2026-07-17: `companyId`/`companySiteId`
- * are REMOVED entirely. `opportunityStatusId` (spec 0043, D-3) follows the
- * same `*Submitted` convention — legitimately never null once submitted
- * (UpdateOpportunityRequest rejects a null value).
+ * are REMOVED entirely. Spec 0082: `opportunityStatusId` is REMOVED too — the
+ * status is computed from the quotes, never stored nor submitted.
  *
  * Spec 0056: `operationalSiteId` is reintroduced as a plain, optional scalar,
  * following the SAME `*Submitted` convention as every other unlocked FK
@@ -74,8 +73,6 @@ final readonly class UpdateOpportunityData
         public bool $supervisorIdSubmitted = false,
         public ?int $sourceId = null,
         public bool $sourceIdSubmitted = false,
-        public ?int $opportunityStatusId = null,
-        public bool $opportunityStatusIdSubmitted = false,
         public ?array $managerSlots = null,
         public ?array $productLines = null,
         public ?string $startDate = null,
@@ -118,8 +115,6 @@ final readonly class UpdateOpportunityData
             supervisorIdSubmitted: array_key_exists('supervisor_id', $data),
             sourceId: self::nullableInt($data, 'source_id'),
             sourceIdSubmitted: array_key_exists('source_id', $data),
-            opportunityStatusId: self::nullableInt($data, 'opportunity_status_id'),
-            opportunityStatusIdSubmitted: array_key_exists('opportunity_status_id', $data),
             managerSlots: array_key_exists('manager_slots', $data)
                 ? array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $data['manager_slots'])
                 : null,
@@ -235,10 +230,6 @@ final readonly class UpdateOpportunityData
 
         if ($this->operationalSiteIdSubmitted) {
             $attributes['operational_site_id'] = $this->operationalSiteId;
-        }
-
-        if ($this->opportunityStatusIdSubmitted) {
-            $attributes['opportunity_status_id'] = $this->opportunityStatusId;
         }
 
         if ($this->startDateSubmitted) {

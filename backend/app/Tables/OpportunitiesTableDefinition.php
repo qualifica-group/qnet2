@@ -5,9 +5,11 @@ namespace App\Tables;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
+use App\Tables\Opportunities\OpportunityStatusColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,10 +23,15 @@ use Illuminate\Support\Facades\Gate;
  * `name`/`estimated_value`/`success_probability`/`start_date`/
  * `expected_close_date`/`created_at` are real columns handled entirely by the
  * generic engine. `registry`/`referent`/`commercial`/`supervisor`/`source`/
- * `opportunity_status`/`managers`/`product_category`/`business_function` are
+ * `managers`/`product_category`/`business_function` are
  * all relation-derived columns delegated to OpportunityRelationColumns (file-
  * size split, engineering.md §6): own-FK simple relations, the `managers`
  * pivot and the 2 AGGREGATED (to-many, via `productLines`) columns.
+ *
+ * Spec 0082: `status` is COMPUTED from the row's quotes (or its working state
+ * when it has none) by OpportunityStatusResolver — backed by no column at all,
+ * so its filter and distinct values live in OpportunityStatusColumn and it is
+ * never sortable.
  *
  * Spec 0056: `operational_site` is a SPECIALLY-derived column (the site has
  * no own name — the generic name-based whereIn/subquery machinery above
@@ -46,6 +53,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly OpportunityRelationColumns $relationColumns,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
+        private readonly OpportunityStatusResolver $statusResolver,
     ) {}
 
     /**
@@ -97,8 +105,11 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // project the inline avatar (data URI) without a per-row query.
         return Opportunity::query()
             ->with([
-                'registry', 'referent', 'commercial', 'supervisor.avatar', 'source', 'opportunityStatus',
+                'registry', 'referent', 'commercial', 'supervisor.avatar', 'source',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
+                // Spec 0082: the computed `status` cell — eager-loaded so the
+                // resolver stays query-free across the page (AC-007).
+                ...OpportunityStatusResolver::EAGER_LOADS,
                 // User directive 2026-07-23: the "Prodotti di interesse"
                 // column projects its own `{id, name}` refs (the cell AND the
                 // multiselect editor's current selection).
@@ -181,7 +192,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'source' => $this->summarize($row->source),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
-            'opportunity_status' => $this->summarize($row->opportunityStatus),
+            OpportunityStatusColumn::COLUMN_ID => $this->statusResolver->resolve($row),
             'product_category' => $this->summarizeNames($row->productLines->pluck('productCategory')),
             'business_function' => $this->summarizeNames($row->productLines->pluck('businessFunction')),
             ...ProductsOfInterestColumn::project($row),
@@ -318,6 +329,12 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
+            OpportunityStatusColumn::applyFilter($query, $this->filterValues($filter));
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
@@ -370,6 +387,10 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
 
         if ($columnId === ProductsOfInterestColumn::COLUMN_ID) {
             return ProductsOfInterestColumn::distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === OpportunityStatusColumn::COLUMN_ID) {
+            return OpportunityStatusColumn::distinctValues($query, $search, $limit);
         }
 
         return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);

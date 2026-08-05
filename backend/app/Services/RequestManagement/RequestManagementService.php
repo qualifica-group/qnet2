@@ -86,7 +86,7 @@ final class RequestManagementService
         // — eager-loaded so RequestManagementResource never lazy-loads it
         // (Model::preventLazyLoading() outside production).
         'transferredFromOperationalSite.addresses.city',
-        'opportunityStatus',
+        'quotes.quoteStatus',
         'workflowStatus',
         'productLines.businessFunction',
         'productLines.productCategory',

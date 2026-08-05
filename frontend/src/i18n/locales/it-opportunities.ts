@@ -10,7 +10,7 @@ export const opportunities = {
   columns: {
     name: 'Nome',
     registry: 'Anagrafica',
-    opportunityStatus: 'Stato',
+    status: 'Stato',
     referent: 'Referente',
     commercial: 'Commerciale',
     supervisor: 'Supervisore',
@@ -26,6 +26,11 @@ export const opportunities = {
     expectedCloseDate: 'Data chiusura prevista',
     createdAt: 'Creato il',
     updatedAt: 'Aggiornato il',
+  },
+  status: {
+    multiple_one: '{{count}} stato',
+    multiple_other: '{{count}} stati',
+    empty: 'Nessuno stato',
   },
   advancedFilters: {
     registry: 'Anagrafica',
@@ -89,9 +94,7 @@ export const opportunities = {
     registry: 'Anagrafica',
     registrySearch: 'Cerca anagrafiche…',
     registryRequired: "L'anagrafica è obbligatoria.",
-    opportunityStatus: 'Stato Opportunità',
-    opportunityStatusSearch: 'Cerca stati opportunità…',
-    opportunityStatusRequired: 'Lo stato opportunità è obbligatorio.',
+    opportunityStatus: 'Stato',
     referent: 'Referente',
     referentSearch: 'Cerca referenti…',
     commercial: 'Commerciale',

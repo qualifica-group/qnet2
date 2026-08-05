@@ -12,7 +12,6 @@ use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\PaymentMethod;
@@ -115,9 +114,6 @@ return [
         ],
         'opportunities' => [
             'model' => Opportunity::class,
-        ],
-        'opportunity-statuses' => [
-            'model' => OpportunityStatus::class,
         ],
         'opportunity-workflows' => [
             'model' => OpportunityWorkflow::class,

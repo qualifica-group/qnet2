@@ -1,12 +1,10 @@
 <?php
 
-use App\Enums\StatusSystemKey;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\ProductCategory;
 use App\Models\Registry;
 use App\Models\Source;
@@ -184,19 +182,6 @@ it('AC-005: the created Opportunity name is derived as OPP_{id}', function () {
 
     $opportunity = Opportunity::where('lead_id', $response->json('data.id'))->firstOrFail();
     expect($opportunity->name)->toBe('OPP_'.$opportunity->id);
-});
-
-it('AC-006: the created Opportunity has the system "new" opportunity_status_id', function () {
-    $actor = leadConversionActor(['create'], ['create']);
-    $fixture = convertibleLeadFixture();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/leads', $fixture['payload'])->assertCreated();
-
-    $opportunity = Opportunity::where('lead_id', $response->json('data.id'))->firstOrFail();
-    $newStatusId = OpportunityStatus::query()->where('system_key', StatusSystemKey::New->value)->value('id');
-
-    expect($opportunity->opportunity_status_id)->toBe($newStatusId);
 });
 
 it('AC-007: the response exposes data.opportunity {id,name} and lead_status converted_to_opportunity', function () {

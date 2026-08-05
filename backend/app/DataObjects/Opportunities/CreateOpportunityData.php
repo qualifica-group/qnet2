@@ -22,8 +22,9 @@ namespace App\DataObjects\Opportunities;
  * separately by OpportunityService (like `managerSlots`), so it also stays
  * out of attributes(). User directive 2026-07-17: `companyId`/
  * `companySiteId` are REMOVED entirely.
- * `opportunityStatusId` (spec 0043, D-3) is REQUIRED at the FormRequest
- * layer — never null once validated.
+ * Spec 0082: `opportunityStatusId` is REMOVED — the Opportunity's status is
+ * computed from its quotes (App\Services\Opportunities\OpportunityStatusResolver),
+ * never stored nor submitted.
  *
  * Spec 0056: `operationalSiteId` is reintroduced as a plain, optional scalar
  * — appended AT THE END with a default (never inserted positionally: this
@@ -71,7 +72,6 @@ final readonly class CreateOpportunityData
         public ?int $supervisorId,
         public ?int $sourceId,
         public ?int $leadId,
-        public ?int $opportunityStatusId,
         public ?array $managerSlots,
         public ?array $productLines,
         public ?string $startDate,
@@ -101,7 +101,6 @@ final readonly class CreateOpportunityData
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
             leadId: isset($data['lead_id']) ? (int) $data['lead_id'] : null,
-            opportunityStatusId: isset($data['opportunity_status_id']) ? (int) $data['opportunity_status_id'] : null,
             managerSlots: array_key_exists('manager_slots', $data)
                 ? array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $data['manager_slots'])
                 : null,
@@ -192,7 +191,6 @@ final readonly class CreateOpportunityData
             'source_id' => $this->sourceId,
             'operational_site_id' => $this->operationalSiteId,
             'lead_id' => $this->leadId,
-            'opportunity_status_id' => $this->opportunityStatusId,
             'start_date' => $this->startDate,
             'estimated_value' => $this->estimatedValue,
             'expected_close_date' => $this->expectedCloseDate,

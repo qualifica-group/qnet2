@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Registry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -36,12 +35,10 @@ it('attribute_values is NOT mass-assignable (absent from Fillable)', function ()
     // runs inside Model::unguarded(), bypassing mass-assignment guarding by
     // design. Use the real Model::create()/fill() path instead.
     $registry = Registry::factory()->create();
-    $status = OpportunityStatus::factory()->create();
 
     $opportunity = Opportunity::create([
         'name' => 'Test deal',
         'registry_id' => $registry->id,
-        'opportunity_status_id' => $status->id,
         'attribute_values' => ['warehouse_size' => 120],
     ]);
 

@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
+use App\Models\Quote;
+use App\Models\QuoteStatus;
 use App\Models\Referent;
 use App\Models\Reward;
 use App\Models\User;
@@ -93,22 +94,23 @@ it('rows: a referent with 4 rewards yields ONE row with rewards_count = 4 (AC-00
 });
 
 // ---------------------------------------------------------------------------
-// AC-007 — active/completed counters derived from opportunity_statuses.group (D-2)
+// AC-007 — active/completed counters derived from the origin's COMPUTED status
+// group (spec 0082: the quotes' statuses, working state as fallback)
 // ---------------------------------------------------------------------------
 
 it('rows: active_rewards_count/completed_rewards_count are derived from the origin status group (AC-007)', function () {
     $actor = rewardedReferentUserWith(['viewAny']);
     $referent = Referent::factory()->create();
 
-    rewardForOpportunity($referent, Opportunity::factory()->create([
-        'opportunity_status_id' => OpportunityStatus::factory()->group(StatusGroup::Open)->create()->id,
-    ]));
-    rewardForOpportunity($referent, Opportunity::factory()->create([
-        'opportunity_status_id' => OpportunityStatus::factory()->group(StatusGroup::Pending)->create()->id,
-    ]));
-    rewardForOpportunity($referent, Opportunity::factory()->create([
-        'opportunity_status_id' => OpportunityStatus::factory()->group(StatusGroup::Closed)->create()->id,
-    ]));
+    $openStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Open]);
+    $pendingStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Pending]);
+    $closedStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::ClosedLost]);
+
+    foreach ([$openStatus, $pendingStatus, $closedStatus] as $quoteStatus) {
+        $opportunity = Opportunity::factory()->create();
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $quoteStatus->id]);
+        rewardForOpportunity($referent, $opportunity);
+    }
 
     Sanctum::actingAs($actor);
 
@@ -214,7 +216,7 @@ if (! function_exists('countTableQueries')) {
     {
         $count = 0;
         $listener = function ($query) use (&$count): void {
-            if (preg_match('/from ["`]?(referents|personal_data|contacts|referent_registry|registries|rewards|opportunities|opportunity_statuses)["`]?/i', $query->sql) === 1) {
+            if (preg_match('/from ["`]?(referents|personal_data|contacts|referent_registry|registries|rewards|opportunities|quotes|quote_statuses)["`]?/i', $query->sql) === 1) {
                 $count++;
             }
         };

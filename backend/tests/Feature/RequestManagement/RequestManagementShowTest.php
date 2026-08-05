@@ -102,7 +102,9 @@ it('GET as the opportunity manager returns the full work-panel shape (AC-020)', 
         ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => $registry->name])
         ->assertJsonPath('data.referent', ['id' => $referent->id, 'name' => $referent->name])
         ->assertJsonPath('data.commercial', null)
-        ->assertJsonPath('data.opportunity_status.id', $opportunity->opportunity_status_id)
+        // Spec 0082: no quote on this request -> the computed status falls
+        // back to the working state, which this fixture leaves unset.
+        ->assertJsonPath('data.status', ['source' => 'workflow', 'distinct_count' => 0, 'entries' => []])
         ->assertJsonPath('data.client_contacts.owner', ['type' => 'personal_data', 'id' => $registryCard->id])
         ->assertJsonPath('data.client_contacts.items.0.value', 'client@example.com')
         ->assertJsonPath('data.client_contacts.items.0.is_primary', true)

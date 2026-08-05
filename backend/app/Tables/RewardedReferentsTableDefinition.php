@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Enums\StatusGroup;
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\User;
+use App\Services\Opportunities\OpportunityStatusScope;
 use App\Tables\RewardedReferents\RewardedReferentAdvancedFilterApplier;
 use App\Tables\RewardedReferents\RewardedReferentAdvancedFilterCatalog;
 use App\Tables\RewardedReferents\RewardedReferentColumnCatalog;
@@ -92,23 +92,21 @@ class RewardedReferentsTableDefinition extends AbstractTableDefinition
                 $rewards->whereHasMorph(
                     'source',
                     [Opportunity::class],
-                    static fn (Builder $source) => $source->whereHas(
-                        'opportunityStatus',
-                        static fn (Builder $status) => $status->whereIn('group', [
-                            StatusGroup::Open->value,
-                            StatusGroup::Pending->value,
-                        ]),
-                    ),
+                    // Spec 0082: the opportunity's status is COMPUTED from its
+                    // quotes (working state as fallback) — "attive" is every
+                    // displayed status still outside a terminal outcome.
+                    static function (Builder $source): void {
+                        OpportunityStatusScope::whereGroupIn($source, OpportunityStatusScope::ACTIVE_GROUPS);
+                    },
                 );
             }])
             ->withCount(['rewards as completed_rewards_count' => function (Builder $rewards): void {
                 $rewards->whereHasMorph(
                     'source',
                     [Opportunity::class],
-                    static fn (Builder $source) => $source->whereHas(
-                        'opportunityStatus',
-                        static fn (Builder $status) => $status->where('group', StatusGroup::Closed->value),
-                    ),
+                    static function (Builder $source): void {
+                        OpportunityStatusScope::whereGroupIn($source, OpportunityStatusScope::CLOSED_GROUPS);
+                    },
                 );
             }])
             ->withMax(['rewards as last_assigned_at'], 'assigned_at');

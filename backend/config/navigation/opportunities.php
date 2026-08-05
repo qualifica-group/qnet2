@@ -2,8 +2,9 @@
 
 // "Opportunita' e Commesse" (spec 0043, D-4): Opportunities (spec 0040,
 // a commercial deal against an Anagrafica, created manually or
-// generated from a Lead) gathered under one collapsible parent with
-// their own working-state pick-list (opportunity statuses). No
+// generated from a Lead) gathered under one collapsible parent. Spec
+// 0082 removed the opportunity-statuses pick-list from this group: an
+// Opportunity's status is computed from its Quotes' statuses. No
 // "Commesse" module exists yet in this iteration — only the group's
 // name anticipates it. A route-less parent with children renders as a
 // collapsible group; it is dropped automatically when the actor can
@@ -23,19 +24,9 @@ return [
             'permission' => 'opportunities.view',
         ],
         [
-            // Opportunity statuses (spec 0043): the Opportunity
-            // working-state pick-list, delete-guarded (BR-2).
-            'key' => 'opportunity-statuses',
-            'label' => 'navigation.opportunityStatuses',
-            'icon' => 'tag',
-            'route' => '/opportunity-statuses',
-            'permission' => 'opportunity-statuses.view',
-        ],
-        [
-            // Opportunity workflow configurator (spec 0047): a NEW,
-            // separate "stato di lavorazione" dimension (distinct
-            // from the pipeline opportunity-statuses above),
-            // criteria-matched per Opportunity.
+            // Opportunity workflow configurator (spec 0047): the
+            // "stato di lavorazione" dimension, criteria-matched per
+            // Opportunity.
             'key' => 'opportunity-workflows',
             'label' => 'navigation.opportunityWorkflows',
             'icon' => 'workflow',
@@ -44,7 +35,8 @@ return [
         ],
         [
             // Quote statuses (spec 0065): the Quote working-state
-            // pick-list, a plain clone of opportunity-statuses.
+            // pick-list — since spec 0082 also the source of the
+            // Opportunity's own computed status.
             'key' => 'quote-statuses',
             'label' => 'navigation.quoteStatuses',
             'icon' => 'tag',

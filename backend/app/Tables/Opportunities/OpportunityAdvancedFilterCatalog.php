@@ -42,19 +42,6 @@ final class OpportunityAdvancedFilterCatalog
                 'target' => 'registry',
             ],
             [
-                // spec 0043, D-3: the mandatory working-state classification.
-                'name' => 'opportunity_status',
-                'label' => 'opportunities.advancedFilters.opportunityStatus',
-                'type' => AdvancedFilterType::Relation,
-                'order' => 2,
-                'required' => false,
-                'visible' => true,
-                'width' => 'md',
-                'multiple' => true,
-                'source' => ['resource' => 'opportunity-statuses'],
-                'target' => 'opportunityStatus',
-            ],
-            [
                 'name' => 'referent',
                 'label' => 'opportunities.advancedFilters.referent',
                 'type' => AdvancedFilterType::Relation,

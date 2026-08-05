@@ -58,13 +58,13 @@ it('GET /api/tables/opportunities/columns: 200 with the declared columns, 403 wi
         ->and($data['defaultSort'])->toBe([['columnId' => 'created_at', 'direction' => 'desc']]);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    // requirement changed (spec 0043, D-3): `opportunity_status` is a new
-    // relation-derived column, right after `source`. `managers` (opportunity_user
+    // requirement changed (spec 0082): `status` is a COMPUTED column (from the
+    // row's quotes), right after `operational_site`. `managers` (opportunity_user
     // pivot, avatar stack) sits next to `supervisor`. Requirement changed (user
     // directive 2026-07-23): `products_of_interest` follows the two aggregated
     // classification columns.
     expect($ids)->toBe([
-        'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'source', 'operational_site', 'opportunity_status',
+        'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'source', 'operational_site', 'status',
         'product_category', 'business_function', 'products_of_interest', 'estimated_value', 'success_probability', 'start_date',
         'expected_close_date', 'created_at',
     ]);

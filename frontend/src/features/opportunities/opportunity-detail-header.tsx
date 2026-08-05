@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
-import { badgeColorClass } from '@/features/table/cell-renderers'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { StatusDescriptionHint } from '@/features/opportunity-workflows/status-description-hint'
 import { probabilityToneClass } from '@/features/opportunities/column-renderers'
+import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
 import { formatDate } from '@/lib/formatting/date-display'
 
@@ -44,12 +44,7 @@ export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDeta
       subtitle={opportunity.registry?.name}
       badges={
         <>
-          <Badge
-            variant="secondary"
-            className={cn('h-5 min-h-5', badgeColorClass(opportunity.opportunity_status.color))}
-          >
-            {opportunity.opportunity_status.name}
-          </Badge>
+          <OpportunityStatusBadge summary={opportunity.status} />
           {opportunity.workflow_status ? (
             <span className="flex min-w-0 items-center gap-1">
               <Badge variant="secondary" className="h-5 min-h-5 gap-1.5">

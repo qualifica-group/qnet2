@@ -14,7 +14,6 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
   return {
     registry_id: 1,
     // Spec 0043 D-3: mandatory FK, mirrors registry_id.
-    opportunity_status_id: 5,
     referent_id: null,
     commercial_id: null,
     reporter_id: null,
@@ -50,8 +49,7 @@ export function original(overrides: Partial<OpportunityDetail> = {}): Opportunit
     name: 'Enterprise deal',
     registry_id: 1,
     registry: { id: 1, name: 'Acme S.p.A.' },
-    opportunity_status_id: 5,
-    opportunity_status: { id: 5, name: 'New', color: 'slate' },
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     referent_id: null,
     referent: null,
     commercial_id: null,

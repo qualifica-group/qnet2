@@ -104,8 +104,6 @@ function editOpportunity(
     name: 'Enterprise deal',
     registry_id: 10,
     registry: { id: 10, name: 'Acme S.p.A.' },
-    opportunity_status_id: 5,
-    opportunity_status: { id: 5, name: 'New', color: 'slate' },
     referent_id: null,
     referent: null,
     commercial_id: null,
@@ -118,6 +116,7 @@ function editOpportunity(
     source: null,
     state_id: null,
     state: null,
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     opportunity_workflow_status_id: 100,
     workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', group: 'open', description: null, requires_note: false },
     workflow_statuses: [

@@ -10,7 +10,7 @@ export const opportunities = {
   columns: {
     name: 'Name',
     registry: 'Registry',
-    opportunityStatus: 'Status',
+    status: 'Status',
     referent: 'Contact',
     commercial: 'Sales rep',
     supervisor: 'Supervisor',
@@ -26,6 +26,11 @@ export const opportunities = {
     expectedCloseDate: 'Expected close date',
     createdAt: 'Created at',
     updatedAt: 'Updated at',
+  },
+  status: {
+    multiple_one: '{{count}} status',
+    multiple_other: '{{count}} statuses',
+    empty: 'No status',
   },
   advancedFilters: {
     registry: 'Registry',
@@ -89,9 +94,7 @@ export const opportunities = {
     registry: 'Registry',
     registrySearch: 'Search registries…',
     registryRequired: 'Registry is required.',
-    opportunityStatus: 'Opportunity Status',
-    opportunityStatusSearch: 'Search opportunity statuses…',
-    opportunityStatusRequired: 'Opportunity status is required.',
+    opportunityStatus: 'Status',
     referent: 'Contact',
     referentSearch: 'Search contacts…',
     commercial: 'Sales rep',

@@ -39,7 +39,8 @@ use Illuminate\Validation\Rule;
  * `company_id`/`company_site_id` are REMOVED entirely. Spec 0056: unlike
  * those two, `operational_site_id` is reintroduced as a plain, optional FK —
  * never BR-1-derivable/locked, no forcing from any other entity.
- * `opportunity_status_id` (spec 0043, D-3) is REQUIRED. `supervisor_id` is
+ * `opportunity_status_id` (spec 0082) is `prohibited`: the Opportunity's
+ * status is COMPUTED from its quotes, never submitted. `supervisor_id` is
  * NULLABLE (directive 2026-07-21, relaxing spec 0044): it derives from the
  * lead's Operatore, which may be empty, so an opportunity created from a lead
  * without one carries no supervisor — the DB column has always been nullable.
@@ -81,7 +82,7 @@ class StoreOpportunityRequest extends FormRequest
             'source_id' => $this->derivableRule($locked, 'source_id', required: false, table: 'sources'),
             // Spec 0056: a plain, optional relation — never derivable/locked.
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
-            'opportunity_status_id' => ['required', 'integer', Rule::exists('opportunity_statuses', 'id')],
+            'opportunity_status_id' => ['prohibited'],
             'lead_id' => ['nullable', 'integer', Rule::exists('leads', 'id'), Rule::unique('opportunities', 'lead_id')],
             'start_date' => ['nullable', 'date'],
             'estimated_value' => ['nullable', 'numeric', 'min:0', 'max:9999999999999.99'],

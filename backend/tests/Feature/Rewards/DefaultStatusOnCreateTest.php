@@ -3,7 +3,6 @@
 use App\Enums\StatusSystemKey;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Referent;
@@ -51,7 +50,6 @@ if (! function_exists('defaultStatusBasePayload')) {
 
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'product_lines' => [
                 ['business_function_id' => $category->business_function_id, 'product_category_id' => $category->id],
             ],

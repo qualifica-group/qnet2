@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { badgeColorClass } from '@/features/table/cell-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
+import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 import { RewardChip } from '@/features/rewards/reward-chip'
 import type { RewardDetailItem } from '@/features/rewards/types'
 
@@ -166,7 +167,8 @@ export function RewardCard({
   const context = reward.context
   const categories = context?.product_categories ?? []
   const categoriesLabel = categories.map((category) => category.name).join(', ')
-  const hasStatus = Boolean(context?.opportunity_status ?? context?.workflow_status)
+  const hasComputedStatus = (context?.status?.entries.length ?? 0) > 0
+  const hasStatus = hasComputedStatus || Boolean(context?.workflow_status)
   const hasMeta = Boolean(context?.registry) || categories.length > 0 || Boolean(context?.operator)
   const hasOwnStatus = canEditStatus || Boolean(reward.reward_status)
 
@@ -211,9 +213,9 @@ export function RewardCard({
 
         {hasStatus ? (
           <div className="flex flex-wrap gap-3">
-            {context?.opportunity_status ? (
+            {hasComputedStatus ? (
               <Field term={labels.commercialStatus}>
-                <StatusBadge name={context.opportunity_status.name} color={context.opportunity_status.color} />
+                <OpportunityStatusBadge summary={context?.status} />
               </Field>
             ) : null}
             {context?.workflow_status ? (

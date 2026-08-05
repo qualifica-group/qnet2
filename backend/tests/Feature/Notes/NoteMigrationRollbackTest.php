@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 |
 | Not using RefreshDatabase: this test drives the two note migration FILES
 | directly (down()/up()), independent of migration order or of whatever else
-| the suite migrates — mirrors OpportunityStatusMigrationTest's own
+| the suite migrates — mirrors RewardStatusReshapeMigrationTest's own
 | precedent. Ends with migrate:fresh so it leaves no trace for the rest of
 | the suite.
 |

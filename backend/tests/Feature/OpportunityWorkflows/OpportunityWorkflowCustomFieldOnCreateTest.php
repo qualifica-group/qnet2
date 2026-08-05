@@ -3,7 +3,6 @@
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CustomFieldDefinition;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\Product;
@@ -49,7 +48,6 @@ if (! function_exists('mandatoryOpportunityCreatePayload')) {
 
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'supervisor_id' => User::factory()->create()->id,
             'product_lines' => [
                 ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],

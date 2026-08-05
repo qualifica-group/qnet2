@@ -60,7 +60,6 @@ function TeamSectionHarness({
   const form = useForm<OpportunityFormValues>({
     defaultValues: {
       registry_id: null,
-      opportunity_status_id: null,
       referent_id: null,
       commercial_id: null,
       reporter_id: null,

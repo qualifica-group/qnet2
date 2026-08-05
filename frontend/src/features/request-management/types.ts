@@ -9,6 +9,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { Address, GeoRef, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
+import type { OpportunityStatusSummary } from '@/features/opportunities/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -53,13 +54,6 @@ export interface TransferRequestsPayload {
 /** Response of the same endpoint: how many requests were actually written. */
 export interface TransferRequestsResult {
   transferred: number
-}
-
-/** The linked opportunity status's identity, read-only in this module. */
-export interface RequestOpportunityStatusRef {
-  id: number
-  name: string
-  color: string | null
 }
 
 /**
@@ -217,8 +211,8 @@ export interface RequestWorkPanel {
    */
   is_transferred: boolean
   transferred_from: RequestOperationalSiteRef | null
-  /** Sales-pipeline status: read-only in this module. */
-  opportunity_status: RequestOpportunityStatusRef | null
+  /** Spec 0082: the COMPUTED status of the request's opportunity, read-only. */
+  status: OpportunityStatusSummary
   workflow_status: RequestWorkflowStatusRef | null
   /** The resolved set the workflow-status select is limited to. */
   workflow_statuses: RequestWorkflowStatusRef[]

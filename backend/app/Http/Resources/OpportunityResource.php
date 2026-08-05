@@ -8,6 +8,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -30,8 +31,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * (one row per funzione-aziendale + categoria-prodotto pair). User directive
  * 2026-07-17: `company_id`/`company`/`company_site_id`/`company_site` are
  * REMOVED entirely.
- * `opportunity_status_id`/`opportunity_status` (spec 0043, D-3) is the
- * mandatory working-state FK — NEVER null.
+ * Spec 0082: `opportunity_status_id`/`opportunity_status` are REMOVED and
+ * replaced by `status`, the COMPUTED summary
+ * (App\Services\Opportunities\OpportunityStatusResolver) read off the
+ * opportunity's quotes, falling back to its working state when it has none.
  *
  * Spec 0056: `operational_site_id`/`operational_site` are reintroduced — the
  * site has no own `name` (only `id`/`old_id`/`alias`), so `operational_site`
@@ -42,7 +45,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Spec 0047: `state`/`state_id` is the Regione (D1); `workflow_status`/
  * `opportunity_workflow_status_id` is the currently resolved working-state
- * row (the NEW dimension, distinct from `opportunity_status`);
+ * row (the fallback `status` reads when the opportunity has no quote);
  * `workflow_statuses` is the full ordered set OpportunityWorkflowResolver
  * resolves for THIS opportunity right now (for the FE's status select,
  * limited to that set). Resolving the set re-runs the resolver (a bounded,
@@ -103,8 +106,7 @@ class OpportunityResource extends JsonResource
             'source' => $this->summarizeByName($this->source),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
-            'opportunity_status_id' => $this->opportunity_status_id,
-            'opportunity_status' => $this->summarizeStatus($this->opportunityStatus),
+            'status' => app(OpportunityStatusResolver::class)->resolve($this->resource),
             'state_id' => $this->state_id,
             'state' => $this->summarizeByName($this->state),
             'opportunity_workflow_status_id' => $this->opportunity_workflow_status_id,
@@ -137,17 +139,6 @@ class OpportunityResource extends JsonResource
     private function summarizeByName(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * The opportunity_status summary (spec 0043, D-3, mandatory: NEVER null
-     * on a persisted opportunity), including `color` for the FE badge.
-     *
-     * @return array{id: int, name: string, color: string|null}|null
-     */
-    private function summarizeStatus(?Model $status): ?array
-    {
-        return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
 
     /**

@@ -3,7 +3,6 @@
 use App\Models\BusinessFunction;
 use App\Models\Country;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -182,7 +181,6 @@ it('opportunities create: an unselectable category on a product line is rejected
     $this->postJson('/api/opportunities', [
         'name' => 'Rejected lines',
         'registry_id' => Registry::factory()->create()->id,
-        'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
         'supervisor_id' => User::factory()->create()->id,
         'product_lines' => [
             ['business_function_id' => $businessFunction->id, 'product_category_id' => $container->id],
@@ -203,7 +201,6 @@ it('opportunities update: resubmitting the OWN lines unchanged passes (AC-011)',
     $opportunityId = $this->postJson('/api/opportunities', [
         'name' => 'Kept lines',
         'registry_id' => Registry::factory()->create()->id,
-        'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
         'supervisor_id' => User::factory()->create()->id,
         'product_lines' => $lines,
         'products_of_interest' => [Product::factory()->create(['category_id' => $category->id])->id],

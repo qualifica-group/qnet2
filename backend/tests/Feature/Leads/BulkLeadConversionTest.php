@@ -1,11 +1,9 @@
 <?php
 
-use App\Enums\StatusSystemKey;
 use App\Exceptions\Leads\BulkConversionBlockedException;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,9 +101,6 @@ it('AC-003: derives each Opportunity exactly like the contextual conversion does
 
     expect($opportunity->registry_id)->toBe($lead->registry_id);
     expect($opportunity->source_id)->toBe($lead->source_id);
-    expect($opportunity->opportunity_status_id)->toBe(
-        OpportunityStatus::query()->where('system_key', StatusSystemKey::New->value)->value('id'),
-    );
     expect($opportunity->productLines)->toHaveCount(1);
     expect($opportunity->productLines->first()->business_function_id)->toBe($campaign->business_function_id);
     expect($opportunity->productLines->first()->product_category_id)->toBe($campaign->product_category_id);

@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Opportunity;
 use App\Models\Reward;
 use App\Models\User;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Relies on the caller having eager-loaded `eagerLoad()`'s relations
  * (`rewardType`/`rewardStatus`/`source` with the Opportunity's own
- * `registry`/`productLines.productCategory`/`opportunityStatus`/
+ * `registry`/`productLines.productCategory`/`quotes.quoteStatus`/
  * `workflowStatus`/`managers.avatar` chain) so resolving any of this never
  * N+1s (AC-017) — the single source of truth shared by
  * `ReferentRewardsController` and `RewardController::updateStatus` so their
@@ -75,7 +76,9 @@ class RewardResource extends JsonResource
                     Opportunity::class => [
                         'registry',
                         'productLines.productCategory',
-                        'opportunityStatus',
+                        // Spec 0082: the computed status reads the quotes'
+                        // statuses (falling back to `workflowStatus`).
+                        'quotes.quoteStatus',
                         'workflowStatus',
                         'managers.avatar',
                     ],
@@ -131,7 +134,7 @@ class RewardResource extends JsonResource
     }
 
     /**
-     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, opportunity_status: array{id: int, name: string, color: string|null, group: string}|null, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}|null
+     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}|null
      */
     private function buildContext(?Model $source): ?array
     {
@@ -146,14 +149,14 @@ class RewardResource extends JsonResource
     }
 
     /**
-     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, opportunity_status: array{id: int, name: string, color: string|null, group: string}|null, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}
+     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}
      */
     private function contextForOpportunity(Opportunity $opportunity): array
     {
         return [
             'registry' => $this->summarizeByName($opportunity->registry),
             'product_categories' => $this->summarizeProductCategories($opportunity->productLines),
-            'opportunity_status' => $this->summarizeOpportunityStatus($opportunity->opportunityStatus),
+            'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
             'workflow_status' => $this->summarizeWorkflowStatus($opportunity->workflowStatus),
             'operator' => $this->summarizeOperator($opportunity->operatorManager()),
         ];
@@ -182,19 +185,6 @@ class RewardResource extends JsonResource
             ->map(fn (Model $category): array => ['id' => $category->id, 'name' => $category->name])
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array{id: int, name: string, color: string|null, group: string}|null
-     */
-    private function summarizeOpportunityStatus(?Model $status): ?array
-    {
-        return $status === null ? null : [
-            'id' => $status->id,
-            'name' => $status->name,
-            'color' => $status->color,
-            'group' => $status->group->value,
-        ];
     }
 
     /**

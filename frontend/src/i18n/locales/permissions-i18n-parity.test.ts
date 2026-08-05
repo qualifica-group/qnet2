@@ -50,7 +50,6 @@ const ASSIGNABLE_RESOURCES = [
   'notes',
   'operational-sites',
   'opportunities',
-  'opportunity-statuses',
   'opportunity-workflows',
   'payment-methods',
   'pipeline-statuses',

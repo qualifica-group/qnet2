@@ -68,7 +68,6 @@ export const permissions = {
     leads: 'Leads',
     'operational-sites': 'Operational Sites',
     opportunities: 'Opportunities',
-    'opportunity-statuses': 'Opportunity Statuses',
     'opportunity-workflows': 'Workflow Configurator',
     'payment-methods': 'Payment Methods',
     'pipeline-statuses': 'Project/Campaign Statuses',

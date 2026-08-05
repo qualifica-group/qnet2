@@ -47,7 +47,6 @@ final class QuoteDocumentGenerator
         'opportunity.registry.personalData.addresses.country',
         'opportunity.referent.personalData.contacts',
         'opportunity.referent.referentType',
-        'opportunity.opportunityStatus',
         'commercial.personalData.contacts',
         'reporter.personalData.contacts',
         'supervisor',

@@ -80,18 +80,6 @@ final class RequestAdvancedFilterCatalog
                 'target' => 'workflow_status',
             ],
             [
-                'name' => 'opportunity_status',
-                'label' => 'requestManagement.advancedFilters.opportunityStatus',
-                'type' => AdvancedFilterType::Relation,
-                'order' => 4,
-                'required' => false,
-                'visible' => true,
-                'width' => 'md',
-                'multiple' => true,
-                'source' => ['resource' => 'opportunity-statuses'],
-                'target' => 'opportunityStatus',
-            ],
-            [
                 'name' => 'operational_site',
                 'label' => 'requestManagement.advancedFilters.operationalSite',
                 'type' => AdvancedFilterType::Relation,

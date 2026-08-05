@@ -84,7 +84,7 @@ const REWARD: RewardDetailItem = {
   context: {
     registry: { id: 5, name: 'Acme S.p.A.' },
     product_categories: [{ id: 1, name: 'Elettronica' }],
-    opportunity_status: { id: 2, name: 'In corso', color: 'blue', group: 'open' },
+    status: { source: 'quotes', distinct_count: 1, entries: [{ id: 1, name: 'In corso', color: 'blue', group: 'open', count: 1 }] },
     workflow_status: { id: 3, name: 'In lavorazione', color: 'amber' },
     operator: { id: 7, name: 'Mario Rossi', avatar_url: null },
   },

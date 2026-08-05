@@ -7,6 +7,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -95,7 +96,7 @@ class RequestManagementResource extends JsonResource
             // rietichettare "Operatore (GA2)" with the level-2 label when the
             // category defines one. `{}` when not resolvable.
             'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($opportunity),
-            'opportunity_status' => $this->summarizeStatus($opportunity->opportunityStatus),
+            'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
             'workflow_status' => $this->summarizeWorkflowStatus($opportunity->workflowStatus),
             'workflow_statuses' => $this->summarizeWorkflowStatuses($this->resource['workflow_statuses']),
             'product_lines' => $this->summarizeProductLines($opportunity->productLines),
@@ -128,16 +129,6 @@ class RequestManagementResource extends JsonResource
     private function summarizeByName(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * `opportunity_status` (pipeline, read-only in this module — D-5).
-     *
-     * @return array{id: int, name: string, color: string|null}|null
-     */
-    private function summarizeStatus(?Model $status): ?array
-    {
-        return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
 
     /**

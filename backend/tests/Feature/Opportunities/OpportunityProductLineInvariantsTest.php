@@ -4,7 +4,6 @@ use App\Enums\CategoryManagementMode;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
-use App\Models\OpportunityStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
@@ -38,13 +37,12 @@ if (! function_exists('invariantsOpportunityActor')) {
 
 if (! function_exists('invariantsMandatoryOpportunityFks')) {
     /**
-     * @return array{registry_id: int, opportunity_status_id: int, supervisor_id: int}
+     * @return array{registry_id: int, supervisor_id: int}
      */
     function invariantsMandatoryOpportunityFks(): array
     {
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'supervisor_id' => User::factory()->create()->id,
         ];
     }

@@ -23,9 +23,9 @@ use Illuminate\Database\Eloquent\Model;
  * per user directive 2026-07-17, is itself mandatory (at least one row to
  * create; never clearable to empty), so it joins the non-restrictable set.
  * User directive 2026-07-17: `company_id`/`company_site_id` are REMOVED
- * entirely. `opportunity_status_id` (spec 0043, D-3) joins `name`/
- * `registry_id` as a mandatory field — the working-state FK is NOT NULL at
- * schema level, never hidable.
+ * entirely. Spec 0082: `opportunity_status_id` is REMOVED too — the status is
+ * COMPUTED from the quotes, never written, so it carries no field permission
+ * at all.
  *
  * Spec 0056, ONE contextual exception to "no contextual rules": unlike
  * `company_id`/`company_site_id`, `operational_site_id` is reintroduced, and
@@ -66,7 +66,6 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('supervisor_id', 'select'),
             new FieldDefinition('source_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
-            new FieldDefinition('opportunity_status_id', 'select', mandatory: true),
             new FieldDefinition('product_lines', 'multiselect', mandatory: true),
             // "Prodotti di interesse" (user directive 2026-07-23): MANDATORY —
             // an opportunity must carry at least one product, on every write
@@ -106,7 +105,6 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (see class docblock) — never `required`.
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'opportunity_status_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

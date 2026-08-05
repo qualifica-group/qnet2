@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
-use Database\Seeders\DemoOpportunityStatusSeeder;
 use Database\Seeders\DemoProductCategorySeeder;
 use Database\Seeders\DemoProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,7 +36,6 @@ function seedOpportunityDependencies(int $registryCount = 3): void
 
     test()->seed(DemoProductCategorySeeder::class);
     test()->seed(DemoProductSeeder::class);
-    test()->seed(DemoOpportunityStatusSeeder::class);
 }
 
 it('seeds standalone opportunities, some carrying more than one ordered manager', function (): void {
@@ -93,7 +91,6 @@ it('fills every field the create form makes mandatory', function (): void {
 
     foreach ($opportunities as $opportunity) {
         expect($opportunity->registry_id)->not->toBeNull($opportunity->name)
-            ->and($opportunity->opportunity_status_id)->not->toBeNull($opportunity->name)
             // Both collections are `required|min:1` on StoreOpportunityRequest.
             ->and($opportunity->productLines)->not->toBeEmpty($opportunity->name)
             ->and($opportunity->productsOfInterest)->not->toBeEmpty($opportunity->name);
@@ -123,14 +120,6 @@ it('picks products that belong to the opportunity own product lines', function (
             expect($product->category_id)->toBeIn($coveredCategoryIds, $opportunity->name);
         }
     }
-});
-
-it('spreads the opportunities over the whole status catalogue', function (): void {
-    seedOpportunityDependencies();
-
-    test()->seed(DemoOpportunitySeeder::class);
-
-    expect(Opportunity::query()->distinct()->count('opportunity_status_id'))->toBeGreaterThan(1);
 });
 
 it('seeds nothing when no category pairs a business function with a product', function (): void {

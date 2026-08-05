@@ -53,8 +53,6 @@ function opportunityFixture(): OpportunityDetailWithPermissions {
     name: 'OPP_55',
     registry_id: 1,
     registry: { id: 1, name: 'ACME' },
-    opportunity_status_id: 1,
-    opportunity_status: { id: 1, name: 'Nuova', color: null, group: 'open' },
     referent_id: null,
     referent: null,
     commercial_id: null,

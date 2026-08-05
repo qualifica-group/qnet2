@@ -31,7 +31,6 @@ import { campaigns } from './en-campaigns'
 import { leads } from './en-leads'
 import { opportunities } from './en-opportunities'
 import { productLines } from './en-product-lines'
-import { opportunityStatuses } from './en-opportunity-statuses'
 import { opportunityWorkflows } from './en-opportunity-workflows'
 import { quoteStatuses } from './en-quote-statuses'
 import { quotes } from './en-quotes'
@@ -390,7 +389,6 @@ export const en = {
   leads: { ...leads, stats: moduleStats.leads },
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
-  opportunityStatuses,
   opportunityWorkflows,
   quoteStatuses,
   quotes,

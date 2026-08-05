@@ -79,7 +79,7 @@ final class OpportunityColumnCatalog
             ],
             self::derivedColumn('source', 'opportunities.columns.source'),
             self::derivedColumn('operational_site', 'opportunities.columns.operationalSite'),
-            self::derivedColumn('opportunity_status', 'opportunities.columns.opportunityStatus'),
+            OpportunityStatusColumn::declaration('opportunities.columns.status'),
             self::aggregatedColumn('product_category', 'opportunities.columns.productCategory'),
             self::aggregatedColumn('business_function', 'opportunities.columns.businessFunction'),
             ProductsOfInterestColumn::declaration('opportunities.columns.productsOfInterest'),

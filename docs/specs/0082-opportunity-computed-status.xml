@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0082 — Stato dell'Opportunita' CALCOLATO dagli stati delle Offerte.
+  Contract-first: la shape sotto e' congelata PRIMA del dispatch.
+  Nomi/righe verificati nel repo il 2026-08-05, non ipotizzati.
+  Sostituisce ed ELIMINA la spec 0043 (modulo "Stati opportunita'").
+-->
+<spec id="0082-opportunity-computed-status" status="draft" owner="utente" date="2026-08-05">
+
+  <goal>
+    L'Opportunita' non ha piu' uno stato scelto a mano: il suo stato e' CALCOLATO a sistema dagli
+    stati delle Offerte collegate. Con un solo stato distinto fra i preventivi si mostra quello
+    stato; con piu' stati distinti si mostra "N stati" con un tooltip che elenca il conteggio per
+    stato; senza preventivi si mostra lo stato di lavorazione dell'Opportunita'. Il modulo
+    configuratore "Stati opportunita'" (spec 0043) viene rimosso per intero.
+  </goal>
+
+  <context>
+    <item>Oggi `opportunities.opportunity_status_id` e' NOT NULL, FK `restrictOnDelete` verso
+      `opportunity_statuses` (`2026_07_16_140000_create_opportunities_table.php:46`), `required` in
+      `StoreOpportunityRequest:84`, defaultato server-side allo status di sistema 'new'
+      (`OpportunityService:196-197`, `ConvertLeadToOpportunity:75`).</item>
+    <item>Lo "stato di lavorazione" e' una dimensione GIA' esistente e distinta:
+      `opportunities.opportunity_workflow_status_id` (nullable, `nullOnDelete`,
+      `create_opportunities_table.php:55`) -> `App\Models\OpportunityWorkflowStatus` (spec 0047),
+      scritto da `OpportunityWorkflowResolver`. E' questa la fonte del fallback (decisione utente
+      2026-08-05).</item>
+    <item>Le Offerte sono `App\Models\Quote` (spec 0065), `quotes.opportunity_id` NOT NULL
+      `restrictOnDelete`, relazione inversa `Opportunity::quotes()` gia' presente
+      (`Opportunity.php`). Ogni Quote ha `quote_status_id` NOT NULL ->
+      `App\Models\QuoteStatus` (`name`, `color`, `group` = `App\Enums\QuoteStatusGroup`).</item>
+    <item>Consumatori attuali di `opportunity_status` FUORI dal modulo Opportunita', tutti da
+      riallineare: `RequestManagementResource:98` + `RequestAdvancedFilterCatalog:83`,
+      `RewardResource:156`, `RewardedReferentAdvancedFilterCatalog:74` +
+      `RewardedReferentAdvancedFilterApplier:122-137`, `RewardedReferentsTableDefinition:96,109`,
+      `App\Support\Notifications\RecordDetails:48,102`.</item>
+    <item>Il modulo da rimuovere e' registrato in: `config/tables.php:94`,
+      `config/authorization.php:87`, `config/activity-log.php:119`,
+      `config/navigation/opportunities.php` (voce `opportunity-statuses`),
+      `AppServiceProvider:148` (morph map), `routes/api/lookups.php:92-110`.</item>
+    <item>`permissions:sync` (`App\Console\Commands\SyncPermissions`) e' ADDITIVO: non pota mai le
+      permission obsolete. Le righe `opportunity-statuses.*` e le righe
+      `role_field_permissions` del modulo vanno cancellate da una migration dedicata.</item>
+    <item>Le stringhe UI passano SEMPRE da i18next (`frontend.md §8`): il backend non produce mai
+      l'etichetta "2 stati", restituisce solo dati strutturati.</item>
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo resolver server-side che calcola lo stato dell'Opportunita' dagli stati delle sue
+        Offerte, con fallback sullo stato di lavorazione.</item>
+      <item>Nuova chiave `status` in `OpportunityResource`, nella riga della tabella Opportunita',
+        in `RequestManagementResource` e in `RewardResource`, al posto di `opportunity_status`.</item>
+      <item>Colonna tabellare `status` (filtrabile a set, NON ordinabile) + rimozione della colonna
+        e del filtro avanzato `opportunity_status` in Opportunita', Gestione Richieste e
+        Referenti Premiati.</item>
+      <item>Form Opportunita' (create + edit): il select "Stato" diventa un badge read-only
+        calcolato; nessun `opportunity_status_id` inviato al backend.</item>
+      <item>Rimozione integrale del modulo "Stati opportunita'": model, policy, service,
+        controller, request, resource, DataObject, authorization, TableDefinition + cataloghi,
+        factory, seeder demo, rotte, voci di config, feature frontend, pagina, rotte FE,
+        breadcrumb, i18n, quick-create.</item>
+      <item>Migration distruttive: drop della colonna `opportunities.opportunity_status_id`, drop
+        della tabella `opportunity_statuses`, pulizia delle permission e delle
+        `role_field_permissions` orfane.</item>
+    </in>
+    <out>
+      <item>Il configuratore "Stati offerta" (`quote-statuses`, spec 0065): resta invariato, e'
+        la nuova fonte di verita'.</item>
+      <item>Il configuratore "Workflow opportunita'" (`opportunity-workflows`, spec 0047) e il
+        campo `opportunity_workflow_status_id`: restano invariati.</item>
+      <item>`pipeline_statuses`, `reward_statuses`, `contract_statuses` e i servizi generici
+        `StatusOrderManager`/`SystemStatusGuard`/`StatusSystemKey`: restano, si aggiornano SOLO i
+        riferimenti a `OpportunityStatus` nelle firme/docblock.</item>
+      <item>Nessuna colonna denormalizzata persistita, nessun listener di ricalcolo: lo stato e'
+        calcolato in lettura (decisione utente 2026-08-05).</item>
+      <item>Nessun ordinamento sulla nuova colonna `status` (valore aggregato, nessuna chiave
+        d'ordine singola — stesso trattamento di `product_category`/`business_function`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- SHAPE CONGELATA — la stessa in ogni consumatore (`OpportunityResource`, riga tabella
+         Opportunita', `RequestManagementResource`, `RewardResource`). -->
+    <type name="OpportunityStatusSummary">
+      {
+        "source": "quotes" | "workflow",   // "quotes" se >= 1 preventivo, altrimenti "workflow"
+        "distinct_count": 2,               // n. di stati DISTINTI (0 se workflow status assente)
+        "entries": [                       // ordinate per `sort_order` dello status
+          { "id": 3, "name": "In lavorazione", "color": "blue", "group": "open",  "count": 1 },
+          { "id": 5, "name": "In corso",       "color": "amber","group": "pending","count": 1 }
+        ]
+      }
+      <!-- source="workflow": `entries` ha 0 o 1 elemento (`count` sempre 1), `group` e' un
+           valore di App\Enums\WorkflowStatusGroup; source="quotes": `group` e' un valore di
+           App\Enums\QuoteStatusGroup. `entries` e' [] SOLO con source="workflow" e nessuno
+           stato di lavorazione risolto. -->
+    </type>
+
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <response status="200">
+        data.status: OpportunityStatusSummary   <!-- NUOVA -->
+        data.opportunity_status_id: RIMOSSA
+        data.opportunity_status: RIMOSSA
+      </response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/opportunities[/{opportunity}]">
+      <request>
+        opportunity_status_id: NON PIU' ACCETTATO -> 422 `prohibited`
+      </request>
+      <errors>422 se il client invia ancora `opportunity_status_id`</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/opportunities/rows">
+      <response status="200">
+        data.rows[].status: OpportunityStatusSummary   <!-- NUOVA, colonna id `status` -->
+        data.rows[].opportunity_status: RIMOSSA
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/opportunities/values">
+      <request>columnId: "status"</request>
+      <response status="200">
+        <!-- Il set filter unisce i due vocabolari mostrati in colonna: i nomi degli stati
+             offerta e i nomi degli stati di lavorazione, deduplicati e ordinati. -->
+        data.values: string[]   // es. ["Bozza","In lavorazione","Accettata","OK_Da Caricare"]
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/opportunity-statuses/**">
+      <response status="404">Rotta RIMOSSA (modulo eliminato)</response>
+    </endpoint>
+  </data_contract>
+
+  <business_rules>
+    <rule id="BR-1">Con >= 1 Offerta: `source="quotes"`, `entries` = uno per ogni QuoteStatus
+      DISTINTO usato dalle Offerte dell'Opportunita', con `count` = numero di Offerte in quello
+      stato, ordinate per `quote_statuses.sort_order`.</rule>
+    <rule id="BR-2">Con esattamente 1 stato distinto (anche se le Offerte sono N):
+      `distinct_count = 1` -> la UI mostra il badge singolo, MAI il doppio stato.</rule>
+    <rule id="BR-3">Con >= 2 stati distinti: la UI mostra il badge neutro "N stati" e il tooltip
+      elenca "count x nome" per ogni entry.</rule>
+    <rule id="BR-4">Con 0 Offerte: `source="workflow"`, `entries` = lo stato di lavorazione
+      (`opportunity_workflow_status_id`) o [] se non risolto; la UI mostra il badge singolo o il
+      placeholder vuoto.</rule>
+    <rule id="BR-5">Il filtro a set su `status` seleziona le Opportunita' il cui stato MOSTRATO e'
+      fra i selezionati: (ha >= 1 Offerta il cui stato ha quel nome) OPPURE (non ha Offerte E il
+      suo stato di lavorazione ha quel nome).</rule>
+    <rule id="BR-6">Lo stato non e' mai scrivibile dal client: nessun campo in input, nessuna
+      colonna editabile inline, nessuna permission di campo.</rule>
+  </business_rules>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un'Opportunita' con 3 Offerte tutte in "Bozza", quando leggo
+      GET /api/opportunities/{id}, allora `status.source="quotes"`, `distinct_count=1`,
+      `entries=[{name:"Bozza",count:3,...}]`.</criterion>
+    <criterion id="AC-002">Dato un'Opportunita' con 1 Offerta "In lavorazione" e 1 "In corso",
+      allora `distinct_count=2` ed `entries` contiene le due voci con `count=1`, ordinate per
+      `sort_order`.</criterion>
+    <criterion id="AC-003">Dato un'Opportunita' senza Offerte e con stato di lavorazione X,
+      allora `status.source="workflow"` ed `entries=[{name:"X",count:1,...}]`.</criterion>
+    <criterion id="AC-004">Dato un'Opportunita' senza Offerte e senza stato di lavorazione,
+      allora `status.source="workflow"`, `distinct_count=0`, `entries=[]`.</criterion>
+    <criterion id="AC-005">Quando POSTo /api/opportunities con `opportunity_status_id`, allora
+      ricevo 422 (`prohibited`); la creazione senza quel campo va a buon fine.</criterion>
+    <criterion id="AC-006">La risposta di GET /api/opportunities/{id} non contiene piu' le chiavi
+      `opportunity_status_id`/`opportunity_status`.</criterion>
+    <criterion id="AC-007">POST /api/tables/opportunities/rows su una pagina di N Opportunita' con
+      Offerte esegue un numero di query COSTANTE rispetto a N (eager load, nessun N+1: il test gira
+      con `Model::preventLazyLoading()` attivo).</criterion>
+    <criterion id="AC-008">Il filtro a set `status` = ["Bozza"] restituisce le Opportunita' con
+      almeno un'Offerta in "Bozza" ed esclude quelle senza Offerte; il filtro = [nome di uno stato
+      di lavorazione] restituisce le Opportunita' SENZA Offerte in quello stato (BR-5).</criterion>
+    <criterion id="AC-009">La colonna `status` e' dichiarata `sortable: false`,
+      `filterable: true`, `filterType: 'set'`, `editable` assente/false.</criterion>
+    <criterion id="AC-010">Ogni rotta `/api/opportunity-statuses/*` risponde 404; la tabella
+      `opportunity_statuses` e la colonna `opportunities.opportunity_status_id` non esistono piu'
+      dopo `migrate:fresh`.</criterion>
+    <criterion id="AC-011">Dopo la migration di pulizia, non esiste alcuna permission
+      `opportunity-statuses.*` ne' alcuna riga `role_field_permissions` con
+      `resource='opportunity-statuses'` o (`resource='opportunities'` e
+      `field='opportunity_status_id'`).</criterion>
+    <criterion id="AC-012">La navigation restituita da GET /api/navigation non contiene piu' la
+      voce `opportunity-statuses`; il catalogo campi di `opportunities` non contiene piu'
+      `opportunity_status_id`.</criterion>
+    <criterion id="AC-013">(FE) La cella `status` con `distinct_count>=2` mostra "2 stati" e il
+      tooltip elenca "1 In lavorazione" e "1 In corso"; con `distinct_count=1` mostra il nome
+      dello stato col suo colore e nessun conteggio.</criterion>
+    <criterion id="AC-014">(FE) Il form Opportunita' non espone piu' un select "Stato": in edit
+      mostra il badge calcolato read-only, in create mostra il placeholder vuoto; il payload
+      inviato non contiene `opportunity_status_id`.</criterion>
+    <criterion id="AC-015">(FE) La rotta `/opportunity-statuses` non esiste piu' nel router e la
+      voce non compare nel quick-create; nessun import residuo da
+      `@/features/opportunity-statuses`.</criterion>
+    <criterion id="AC-016">Una preferenza tabellare o una vista salvata che referenzia ancora la
+      colonna/filtro `opportunity_status` non rompe la griglia: la voce sconosciuta viene
+      ignorata.</criterion>
+    <criterion id="AC-017">Il test di parita' i18n delle permission resta verde dopo la rimozione
+      delle chiavi `opportunityStatuses.*`.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (CLAUDE.md §0).</item>
+    <item>Il calcolo vive in un service dedicato
+      (`App\Services\Opportunities\OpportunityStatusResolver`), non nelle Resource ne' nelle
+      TableDefinition: un solo punto di verita' per BR-1..BR-4.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` sull'input del filtro: il set filter passa da una
+      allow-list di nomi (`backend.md §8`).</item>
+    <item>Le migration sono DISTRUTTIVE e i dati di `opportunity_statuses` non sono recuperabili:
+      il `down()` ricrea la STRUTTURA (tabella + colonna nullable), non i dati. Da eseguire solo
+      dopo backup in produzione.</item>
+    <item>Frontend: badge e tooltip riusano `components/ui/badge` + `components/ui/tooltip` e i
+      token esistenti (`badgeColorClass`), nessuno stile duplicato (`ui-design.md §1`).</item>
+    <item>Un solo componente condiviso per il badge calcolato, consumato da tabella, dettaglio,
+      form, Gestione Richieste e reward card (`ui-design.md §6.2`).</item>
+  </constraints>
+
+</spec>

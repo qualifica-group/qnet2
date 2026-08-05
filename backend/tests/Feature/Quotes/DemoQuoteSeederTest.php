@@ -11,7 +11,6 @@ use App\Models\Registry;
 use App\Models\User;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
-use Database\Seeders\DemoOpportunityStatusSeeder;
 use Database\Seeders\DemoProductCategorySeeder;
 use Database\Seeders\DemoProductSeeder;
 use Database\Seeders\DemoQuoteSeeder;
@@ -38,7 +37,6 @@ function seedQuoteDependencies(): void
 
     test()->seed(DemoProductCategorySeeder::class);
     test()->seed(DemoProductSeeder::class);
-    test()->seed(DemoOpportunityStatusSeeder::class);
     test()->seed(DemoOpportunitySeeder::class);
 }
 

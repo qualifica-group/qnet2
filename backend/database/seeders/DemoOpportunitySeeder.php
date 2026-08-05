@@ -6,7 +6,6 @@ use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\RewardType;
@@ -34,15 +33,15 @@ use Illuminate\Support\Collection;
  * references an Opportunity, restrictOnDelete only runs the OTHER way).
  *
  * EVERY SEEDED ROW SATISFIES THE FORM'S MANDATORY FIELDS (StoreOpportunityRequest
- * / opportunity-schema.ts): `registry_id`, `opportunity_status_id`,
- * `product_lines` (min:1) and `products_of_interest` (min:1). The seeder used
+ * / opportunity-schema.ts): `registry_id`, `product_lines` (min:1) and
+ * `products_of_interest` (min:1). The seeder used
  * to leave the last two empty most of the time, which produced demo rows the
  * edit form itself refused to submit — they are drawn together by
  * PicksDemoOffers so a line's category always owns the products picked with it.
  *
  * Depends on DemoRegistrySeeder (mandatory relation), DemoProductCategorySeeder
- * + DemoProductSeeder (the mandatory collections above) and
- * DemoOpportunityStatusSeeder, plus DemoBusinessFunctionSeeder/
+ * + DemoProductSeeder (the mandatory collections above), plus
+ * DemoBusinessFunctionSeeder/
  * DemoReferentSeeder/DemoUsersSeeder/DemoSourceSeeder/DemoOperationalSiteSeeder/
  * DemoRewardTypeSeeder/DemoLeadSeeder for the optional lookups. A no-op when
  * registries or offers are missing: without them no VALID opportunity can be
@@ -87,20 +86,18 @@ class DemoOpportunitySeeder extends Seeder
             'sites' => OperationalSite::query()->orderBy('id')->get(),
         ];
 
-        $statusIds = OpportunityStatus::query()->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
         $rewardTypeIds = RewardType::query()->orderBy('id')->pluck('id')->all();
 
         for ($index = 0; $index < self::STANDALONE_OPPORTUNITIES; $index++) {
-            $this->createStandalone($faker, $index, $registries, $lookups, $statusIds, $rewardTypeIds);
+            $this->createStandalone($faker, $index, $registries, $lookups, $rewardTypeIds);
         }
 
-        $this->createFromLeads($faker, $lookups, $statusIds);
+        $this->createFromLeads($faker, $lookups);
     }
 
     /**
      * @param  Collection<int, Registry>  $registries
      * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
-     * @param  array<int, int>  $statusIds
      * @param  array<int, int>  $rewardTypeIds
      */
     private function createStandalone(
@@ -108,7 +105,6 @@ class DemoOpportunitySeeder extends Seeder
         int $index,
         Collection $registries,
         array $lookups,
-        array $statusIds,
         array $rewardTypeIds,
     ): void {
         $offer = $this->pickOffer($faker, $index);
@@ -122,7 +118,6 @@ class DemoOpportunitySeeder extends Seeder
             supervisorId: $this->maybePick($lookups['supervisors'], $index + 7, $faker, 60)?->id,
             sourceId: $this->maybePick($lookups['sources'], $index + 8, $faker, 50)?->id,
             leadId: null,
-            opportunityStatusId: $this->rotateStatusId($statusIds, $index),
             managerSlots: $this->maybeManagerSlots($lookups['supervisors'], $faker),
             productLines: $offer['product_lines'],
             startDate: $faker->optional()->date(),
@@ -149,9 +144,8 @@ class DemoOpportunitySeeder extends Seeder
      * collections do NOT derive from it and are drawn here like everywhere else.
      *
      * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
-     * @param  array<int, int>  $statusIds
      */
-    private function createFromLeads(Generator $faker, array $lookups, array $statusIds): void
+    private function createFromLeads(Generator $faker, array $lookups): void
     {
         $leads = Lead::query()->doesntHave('opportunity')->orderBy('id')->limit(self::FROM_LEAD_OPPORTUNITIES)->get();
 
@@ -166,7 +160,6 @@ class DemoOpportunitySeeder extends Seeder
                 supervisorId: $this->maybePick($lookups['supervisors'], $index, $faker, 50)?->id,
                 sourceId: null,
                 leadId: $lead->id,
-                opportunityStatusId: $this->rotateStatusId($statusIds, $index),
                 managerSlots: $this->maybeManagerSlots($lookups['supervisors'], $faker),
                 productLines: $offer['product_lines'],
                 startDate: $faker->optional()->date(),
@@ -179,19 +172,6 @@ class DemoOpportunitySeeder extends Seeder
 
             $this->opportunities->create($data);
         }
-    }
-
-    /**
-     * The status is MANDATORY (spec 0043, D-3): rotated over the whole
-     * catalogue so the demo grid shows every badge instead of a column of
-     * "Nuova". Null only when the lookup is empty — OpportunityService then
-     * falls back to the system 'new' row.
-     *
-     * @param  array<int, int>  $statusIds
-     */
-    private function rotateStatusId(array $statusIds, int $index): ?int
-    {
-        return $statusIds === [] ? null : $statusIds[$index % count($statusIds)];
     }
 
     /**

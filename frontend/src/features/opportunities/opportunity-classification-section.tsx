@@ -5,12 +5,13 @@ import { FormSection } from '@/components/form-section'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
-import { OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE } from '@/features/opportunity-statuses/for-select-api'
 import { STATES_FOR_SELECT_RESOURCE } from '@/features/geo/state-for-select-api'
 import { OpportunityWorkflowStatusField } from '@/features/opportunities/opportunity-workflow-status-field'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { OpportunitySelectedItems } from '@/features/opportunities/use-opportunity-selected-items'
-import type { OpportunityWorkflowStatusRef } from '@/features/opportunities/types'
+import { Label } from '@/components/ui/label'
+import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
+import type { OpportunityStatusSummary, OpportunityWorkflowStatusRef } from '@/features/opportunities/types'
 
 interface OpportunityClassificationSectionProps {
   control: Control<OpportunityFormValues>
@@ -19,11 +20,14 @@ interface OpportunityClassificationSectionProps {
   lockedFields: ReadonlySet<string>
   /** Spec 0047 (AC-026): the resolved working-state set, or `null` in create mode (not yet known). */
   workflowStatuses: OpportunityWorkflowStatusRef[] | null
+  /** Spec 0082: the COMPUTED status, shown read-only. `null` in create mode (no quote exists yet). */
+  status: OpportunityStatusSummary | null
   className?: string
 }
 
 /**
- * The opportunity's classification relation: source. Split out of
+ * The opportunity's classification block: the read-only computed status
+ * (spec 0082) plus the source/site/state relations. Split out of
  * `OpportunityFormBody` to stay within the engineering size limits (mirrors
  * `CampaignPlanningSection`).
  */
@@ -32,6 +36,7 @@ export function OpportunityClassificationSection({
   selectedItems,
   lockedFields,
   workflowStatuses,
+  status,
   className,
 }: OpportunityClassificationSectionProps) {
   const { t } = useTranslation()
@@ -52,17 +57,21 @@ export function OpportunityClassificationSection({
       className={className}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <RelationSelectField
-          control={control}
-          name="opportunity_status_id"
-          metaKey="opportunity_status_id"
-          label={t('opportunities.form.opportunityStatus')}
-          resource={OPPORTUNITY_STATUSES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('opportunities.form.opportunityStatusSearch')}
-          selected={selectedItems.opportunityStatus}
-          required
-          {...selectLabels}
-        />
+        {/*
+          Spec 0082: the status is COMPUTED from the opportunity's quotes and is
+          never submitted — a read-only badge, not a field. In create mode there
+          is no quote yet, so the placeholder stands in for it.
+        */}
+        <div className="space-y-2">
+          <Label>{t('opportunities.form.opportunityStatus')}</Label>
+          <div className="flex min-h-9 items-center">
+            {status && status.entries.length > 0 ? (
+              <OpportunityStatusBadge summary={status} />
+            ) : (
+              <span className="text-sm text-muted-foreground">{t('opportunities.status.empty')}</span>
+            )}
+          </div>
+        </div>
 
         <RelationSelectField
           control={control}

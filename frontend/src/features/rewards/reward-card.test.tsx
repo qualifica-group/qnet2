@@ -65,7 +65,7 @@ const FULL_REWARD: RewardDetailItem = {
       { id: 1, name: 'Software' },
       { id: 2, name: 'Hardware' },
     ],
-    opportunity_status: { id: 1, name: 'Won', color: 'green', group: 'closed' },
+    status: { source: 'quotes', distinct_count: 1, entries: [{ id: 1, name: 'Won', color: 'green', group: 'open', count: 1 }] },
     workflow_status: { id: 2, name: 'Delivered', color: 'teal' },
     operator: { id: 7, name: 'Mario Rossi', avatar_url: null },
   },

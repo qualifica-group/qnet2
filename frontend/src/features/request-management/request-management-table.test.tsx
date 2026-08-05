@@ -117,7 +117,7 @@ function panel(): RequestWorkPanelWithPermissions {
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    opportunity_status: { id: 5, name: 'New', color: 'slate' },
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false },
     workflow_statuses: [{ id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false }],
     product_lines: [],

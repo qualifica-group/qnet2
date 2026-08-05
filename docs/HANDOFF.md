@@ -3,6 +3,60 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STATO OPPORTUNITA' CALCOLATO — spec 0082 (2026-08-05) — VERDE, NON COMMITTATO
+
+L'Opportunita' non ha piu' uno stato scelto a mano: lo stato e' **calcolato** dagli stati delle
+sue Offerte (`quotes.quote_status_id`), con fallback sullo **stato di lavorazione**
+(`opportunity_workflow_status_id`, spec 0047) quando non ci sono preventivi. Il modulo
+configuratore "Stati opportunita'" (spec 0043) e' **rimosso per intero**. Spec:
+`docs/specs/0082-opportunity-computed-status.xml`.
+
+**Contratto congelato** (identico in `OpportunityResource.status`, riga tabella `status`,
+`RequestManagementResource.status`, `RewardResource.context.status`):
+`{ source: 'quotes'|'workflow', distinct_count: int, entries: [{id,name,color,group,count}] }`.
+Il backend non produce mai l'etichetta "2 stati": la UI la costruisce da `distinct_count`
+(i18n `opportunities.status.multiple_one/_other`, `opportunities.status.empty`).
+
+**Regole:** >=1 offerta -> una entry per stato distinto, ordinate per `quote_statuses.sort_order`,
+`count` = n. offerte in quello stato; 1 solo stato distinto -> badge singolo anche con N offerte;
+>=2 -> badge neutro "N stati" + tooltip "count x nome"; 0 offerte -> `source='workflow'`.
+
+**Backend — nuovi:** `App\Services\Opportunities\OpportunityStatusResolver` (unica fonte di verita'
+del calcolo, `EAGER_LOADS = ['quotes.quoteStatus','workflowStatus']`),
+`App\Services\Opportunities\OpportunityStatusScope` (predicato "lo stato MOSTRATO e' in ..." —
+`whereNameIn`/`whereGroupIn`, `ACTIVE_GROUPS`/`CLOSED_GROUPS`), `App\Tables\Opportunities\OpportunityStatusColumn`
+(colonna `status`: filtrabile `set`, MAI ordinabile). 3 migration distruttive
+(`2026_08_05_110000/110100/110200`): drop `opportunities.opportunity_status_id`, drop tabella
+`opportunity_statuses`, prune delle permission `opportunity-statuses.*` + righe
+`role_field_permissions` orfane (`permissions:sync` e' additivo, non pota).
+
+**Backend — rimossi:** model/policy/service/controller/request/resource/DataObject/authorization/
+TableDefinition+cataloghi di `opportunity-statuses`, factory, `DemoOpportunityStatusSeeder`, rotte,
+voci in `config/{tables,authorization,activity-log,navigation}`, morph map. `opportunity_status_id`
+e' ora `prohibited` in `Store/UpdateOpportunityRequest` (422). Rimossi i filtri avanzati
+`opportunity_status` in opportunities / request-management / rewarded-referents (il set filter
+sulla colonna `status` copre il caso). I contatori `active_rewards_count`/`completed_rewards_count`
+di `RewardedReferentsTableDefinition` ora passano da `OpportunityStatusScope::whereGroupIn`.
+
+**Frontend — nuovi:** `features/opportunities/opportunity-status-badge.tsx` (UNICO componente del
+badge, consumato da tabella, dettaglio, form, pannello Gestione Richieste, reward card),
+`opportunity-status-cell.tsx`. Rimossa la feature `features/opportunity-statuses/`, la pagina, la
+rotta, il breadcrumb, la voce quick-create e i bundle i18n `it/en-opportunity-statuses.ts`.
+Nel form la Classificazione mostra un **badge read-only** (in create il placeholder "Nessuno stato"),
+nessun `opportunity_status_id` nel payload.
+
+**Naming da rispettare:** colonna/chiave = `status` (NON `opportunity_status`); tipi FE
+`OpportunityStatusSummary`/`OpportunityStatusEntry`.
+
+**Verificato (eseguito):** Pest 5257 test (1 skipped) verde, Pint verde; frontend `tsc -b --force`
+pulito, Vitest 3584/3584 verde, ESLint pulito sui file toccati.
+**Nota fuori scope (pre-esistente):** `npx eslint src` segnala 2 errori `no-unused-vars` in
+`referent-form-metadata.test.tsx` e `registry-form-metadata.test.tsx` — file non toccati da questa
+spec.
+
+**Da verificare in prod:** le migration sono DISTRUTTIVE (stati custom e assegnazioni non
+recuperabili) — backup prima del deploy.
+
 ## MIGRAZIONE `payment-methods` — spec 0013 su 0068 (2026-08-04) — VERDE, NON COMMITTATO
 
 Nuova migration source per il modulo `/migrations` (import da sistema esterno): i **metodi di

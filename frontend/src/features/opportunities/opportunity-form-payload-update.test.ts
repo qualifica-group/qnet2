@@ -17,12 +17,6 @@ describe('buildUpdatePayload', () => {
     expect(buildUpdatePayload(values({ registry_id: 2 }), original())).toEqual({ registry_id: 2 })
   })
 
-  it('includes only the changed opportunity_status_id', () => {
-    expect(buildUpdatePayload(values({ opportunity_status_id: 6 }), original())).toEqual({
-      opportunity_status_id: 6,
-    })
-  })
-
   it('allows an existing supervisor to be cleared back to null', () => {
     const payload = buildUpdatePayload(
       values({ supervisor_id: null }),

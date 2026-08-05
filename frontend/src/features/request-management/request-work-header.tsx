@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
 import { WorkflowStatusSwatch } from '@/features/request-management/request-workflow-status-field'
 import type { RequestWorkPanel } from '@/features/request-management/types'
+import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 
 interface RequestWorkHeaderProps {
   panel: RequestWorkPanel
@@ -84,13 +85,13 @@ export function RequestWorkHeader({
         </h1>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">#{panel.id}</span>
 
-        {panel.opportunity_status && (
-          <StatusBadge
-            label={t('requestManagement.workPanel.header.salesStatus', { defaultValue: 'Sales' })}
-            color={panel.opportunity_status.color}
-          >
-            {panel.opportunity_status.name}
-          </StatusBadge>
+        {panel.status.entries.length > 0 && (
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="shrink-0 text-[0.6875rem] uppercase text-muted-foreground">
+              {t('requestManagement.workPanel.header.salesStatus', { defaultValue: 'Sales' })}
+            </span>
+            <OpportunityStatusBadge summary={panel.status} />
+          </span>
         )}
         {panel.workflow_status && (
           <StatusBadge

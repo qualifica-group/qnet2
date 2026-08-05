@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\Referent;
 use App\Models\RewardType;
@@ -50,25 +49,6 @@ it('opportunity advanced filter restricts to referents rewarded from that specif
 
     $response = $this->postJson('/api/tables/rewarded-referents/rows', [
         'startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['opportunity' => $wantedOpportunity->id],
-    ])->assertOk();
-
-    expect(collect($response->json('items'))->pluck('id')->all())->toBe([$matching->id]);
-});
-
-it('opportunity_status advanced filter restricts to referents whose reward origin has that status (AC-011)', function () {
-    $actor = rewardedReferentUserWith(['viewAny']);
-    $wantedStatus = OpportunityStatus::factory()->create();
-    $otherStatus = OpportunityStatus::factory()->create();
-
-    $matching = Referent::factory()->create();
-    rewardForOpportunity($matching, Opportunity::factory()->create(['opportunity_status_id' => $wantedStatus->id]));
-    $nonMatching = Referent::factory()->create();
-    rewardForOpportunity($nonMatching, Opportunity::factory()->create(['opportunity_status_id' => $otherStatus->id]));
-
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/rewarded-referents/rows', [
-        'startRow' => 0, 'endRow' => 25, 'advancedFilters' => ['opportunity_status' => [$wantedStatus->id]],
     ])->assertOk();
 
     expect(collect($response->json('items'))->pluck('id')->all())->toBe([$matching->id]);

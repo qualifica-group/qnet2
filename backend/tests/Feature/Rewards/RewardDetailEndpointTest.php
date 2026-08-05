@@ -1,12 +1,13 @@
 <?php
 
-use App\Enums\StatusGroup;
+use App\Enums\QuoteStatusGroup;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
+use App\Models\Quote;
+use App\Models\QuoteStatus;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Reward;
@@ -46,16 +47,17 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
     $referent = Referent::factory()->create();
     $rewardType = RewardType::factory()->create(['name' => 'Buono Amazon 50€', 'color' => 'emerald']);
     $registry = Registry::factory()->create(['name' => 'Acme Srl']);
-    $status = OpportunityStatus::factory()->create(['name' => 'In corso', 'color' => 'blue', 'group' => StatusGroup::Open]);
+    $quoteStatus = QuoteStatus::factory()->create(['name' => 'In corso', 'color' => 'blue', 'group' => QuoteStatusGroup::Open]);
     $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'In lavorazione', 'color' => 'amber']);
     $category = ProductCategory::factory()->create(['name' => 'Software']);
     $manager = User::factory()->create(['name' => 'Mario Rossi']);
 
     $opportunity = Opportunity::factory()->create([
         'registry_id' => $registry->id,
-        'opportunity_status_id' => $status->id,
         'opportunity_workflow_status_id' => $workflowStatus->id,
     ]);
+    // Spec 0082: the context status is computed from the opportunity's quotes.
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $quoteStatus->id]);
     OpportunityProductLine::query()->create([
         'opportunity_id' => $opportunity->id,
         'business_function_id' => BusinessFunction::factory()->create()->id,
@@ -92,7 +94,7 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
                 'context' => [
                     'registry' => ['id', 'name'],
                     'product_categories' => [['id', 'name']],
-                    'opportunity_status' => ['id', 'name', 'color', 'group'],
+                    'status' => ['source', 'distinct_count', 'entries'],
                     'workflow_status' => ['id', 'name', 'color'],
                     'operator' => ['id', 'name', 'avatar_url'],
                 ],
@@ -115,7 +117,11 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
         ])
         ->and($item['context']['registry'])->toBe(['id' => $registry->id, 'name' => 'Acme Srl'])
         ->and($item['context']['product_categories'])->toBe([['id' => $category->id, 'name' => 'Software']])
-        ->and($item['context']['opportunity_status'])->toBe(['id' => $status->id, 'name' => 'In corso', 'color' => 'blue', 'group' => 'open'])
+        ->and($item['context']['status'])->toBe([
+            'source' => 'quotes',
+            'distinct_count' => 1,
+            'entries' => [['id' => $quoteStatus->id, 'name' => 'In corso', 'color' => 'blue', 'group' => 'open', 'count' => 1]],
+        ])
         ->and($item['context']['workflow_status'])->toBe(['id' => $workflowStatus->id, 'name' => 'In lavorazione', 'color' => 'amber'])
         ->and($item['context']['operator'])->toMatchArray(['id' => $manager->id, 'name' => 'Mario Rossi']);
 });
@@ -133,23 +139,24 @@ it('exposes null workflow_status when the FK is null and null operator when ther
         ->and($item['context']['operator'])->toBeNull();
 });
 
-it('reflects the opportunity\'s CURRENT status without writing to rewards (AC-016)', function () {
+it('reflects the opportunity\'s CURRENT computed status without writing to rewards (AC-016)', function () {
     $referent = Referent::factory()->create();
-    $openStatus = OpportunityStatus::factory()->create(['group' => StatusGroup::Open]);
-    $closedStatus = OpportunityStatus::factory()->create(['group' => StatusGroup::Closed]);
-    $opportunity = Opportunity::factory()->create(['opportunity_status_id' => $openStatus->id]);
+    $openStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Open]);
+    $closedStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::ClosedWon]);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $openStatus->id]);
     $reward = Reward::factory()->for($referent)->create(['source_type' => 'opportunity', 'source_id' => $opportunity->id]);
     $rewardUpdatedAt = $reward->fresh()->updated_at;
 
     Sanctum::actingAs(rewardsViewerActor());
 
-    $before = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.opportunity_status.group');
+    $before = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.status.entries.0.group');
     expect($before)->toBe('open');
 
-    $opportunity->update(['opportunity_status_id' => $closedStatus->id]);
+    $quote->update(['quote_status_id' => $closedStatus->id]);
 
-    $after = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.opportunity_status.group');
-    expect($after)->toBe('closed')
+    $after = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.status.entries.0.group');
+    expect($after)->toBe('closed_won')
         ->and($reward->fresh()->updated_at->equalTo($rewardUpdatedAt))->toBeTrue();
 });
 

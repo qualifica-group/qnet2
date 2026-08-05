@@ -8,6 +8,7 @@ use App\Enums\AssignmentTargetEnum;
 use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -45,7 +46,7 @@ final class RecordDetails
      */
     private const array OPPORTUNITY_RELATIONS = [
         'registry', 'source', 'supervisor', 'managers',
-        'opportunityStatus', 'workflowStatus',
+        'quotes.quoteStatus', 'workflowStatus',
         'operationalSite.addresses.city',
     ];
 
@@ -99,12 +100,24 @@ final class RecordDetails
             'notifications.fields.title' => $opportunity->name,
             'notifications.fields.client' => $opportunity->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
-            'notifications.fields.status' => $opportunity->opportunityStatus?->name,
+            'notifications.fields.status' => self::statusLabel($opportunity),
             'notifications.fields.working_status' => $opportunity->workflowStatus?->name,
             'notifications.fields.source' => $opportunity->source?->name,
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
             'notifications.fields.operator' => $opportunity->operatorManager()?->name,
         ]);
+    }
+
+    /**
+     * The COMPUTED status (spec 0082) as plain text: the single status name,
+     * or every distinct one comma-joined when the quotes disagree — a
+     * notification body has no room for the badge's tooltip.
+     */
+    private static function statusLabel(Opportunity $opportunity): ?string
+    {
+        $names = array_column(app(OpportunityStatusResolver::class)->resolve($opportunity)['entries'], 'name');
+
+        return $names === [] ? null : implode(', ', $names);
     }
 
     /**

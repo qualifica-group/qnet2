@@ -7,6 +7,8 @@
  * Source of truth: spec 0059 `data_contract`.
  */
 
+import type { OpportunityStatusSummary } from '@/features/opportunities/types'
+
 /** A reward type's identity as embedded in a reward: name + palette token color. */
 export interface RewardTypeRef {
   id: number
@@ -47,12 +49,8 @@ export interface RewardSourceRef {
 export interface RewardContext {
   registry: { id: number; name: string } | null
   product_categories: { id: number; name: string }[]
-  opportunity_status: {
-    id: number
-    name: string
-    color: string | null
-    group: 'open' | 'pending' | 'closed'
-  } | null
+  /** Spec 0082: the origin Opportunity's COMPUTED status (its quotes' statuses). */
+  status: OpportunityStatusSummary
   workflow_status: { id: number; name: string; color: string | null } | null
   operator: { id: number; name: string; avatar_url: string | null } | null
 }

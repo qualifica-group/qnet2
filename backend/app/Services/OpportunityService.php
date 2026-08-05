@@ -10,7 +10,6 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
@@ -18,7 +17,6 @@ use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
-use App\Services\Statuses\SystemStatusGuard;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -30,10 +28,9 @@ use Illuminate\Support\Facades\DB;
  * sync mirrors RegistryService::syncPivots/managerSyncMap verbatim (the
  * pivot shape is identical, `opportunity_user` mirroring `registry_user`).
  *
- * `opportunity_status_id` (spec 0043, D-3) is mandatory at the FormRequest
- * layer, so the SystemStatusGuard fallback below only ever fires for a
- * caller that bypasses validation (e.g. a seeder passing null) — defense in
- * depth, mirroring the Lead/Project 'new'-status fallback precedent.
+ * Spec 0082: the Opportunity carries NO status FK any more — its status is
+ * computed from its quotes by App\Services\Opportunities\OpportunityStatusResolver,
+ * so nothing is defaulted, validated or synced here for it.
  */
 class OpportunityService
 {
@@ -55,7 +52,6 @@ class OpportunityService
         // Spec 0056: the site has no own name, its label is composed
         // server-side from its primary address' `line1`+city.
         'operationalSite.addresses.city',
-        'opportunityStatus',
         'productLines.businessFunction',
         'productLines.productCategory',
         'productsOfInterest.category',
@@ -75,7 +71,6 @@ class OpportunityService
 
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
-        private readonly SystemStatusGuard $systemStatusGuard,
         private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly OpportunityProductLineWriter $productLineWriter,
@@ -87,7 +82,9 @@ class OpportunityService
     {
         // Spec 0067, AC-020/021: quotes_count feeds the panel's initial
         // counter — loadCount(), never load('quotes'), so the read stays a
-        // single aggregate query with no quote rows materialized.
+        // single aggregate query with no quote rows materialized. Spec 0082's
+        // computed status keeps that property: OpportunityStatusResolver runs
+        // its own 3-column aggregate query on this un-loaded relation.
         return $opportunity->load(self::DETAIL_RELATIONS)->loadCount('quotes');
     }
 
@@ -191,10 +188,6 @@ class OpportunityService
 
             if ($data->leadId !== null) {
                 $attributes = $this->applyLeadDefaults($attributes, $data->leadId);
-            }
-
-            if ($attributes['opportunity_status_id'] === null) {
-                $attributes['opportunity_status_id'] = $this->systemStatusGuard->resolveNewStatusId(OpportunityStatus::class);
             }
 
             // `opportunities.name` is NOT NULL but the authoritative value

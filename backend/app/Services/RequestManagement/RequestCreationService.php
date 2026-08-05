@@ -31,8 +31,7 @@ use Illuminate\Support\Facades\DB;
  * Registry's anagrafica, that stays the work panel's own competence. The
  * Opportunity itself is created through the SAME OpportunityService the
  * opportunities form uses, so the `OPP_{id}` name derivation (spec 0057,
- * D-5), the status fallback (SystemStatusGuard) and the product-lines sync
- * are never duplicated here.
+ * D-5) and the product-lines sync are never duplicated here.
  */
 final class RequestCreationService
 {
@@ -81,7 +80,6 @@ final class RequestCreationService
                 supervisorId: null,
                 sourceId: $data->sourceId,
                 leadId: null,
-                opportunityStatusId: null,
                 managerSlots: $this->operatorManagerSlots($data->operatorId ?? $actor->id),
                 operationalSiteId: $data->operationalSiteId ?? $this->actorOperationalSiteId($actor),
                 productLines: $data->productLines,

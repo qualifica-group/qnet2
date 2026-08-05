@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
  * The GENERIC relation-derived column machinery for the `opportunities`
  * domain (spec 0040, amendment rev.3), extracted out of
  * OpportunitiesTableDefinition (file-size split, engineering.md §6):
- * `registry`/`referent`/`commercial`/`supervisor`/`source`/
- * `opportunity_status` (own-FK, simple relation-name columns), `managers`
+ * `registry`/`referent`/`commercial`/`supervisor`/`source` (own-FK, simple
+ * relation-name columns), `managers`
  * (opportunity_user pivot, to-many) and `product_category`/
  * `business_function` (AGGREGATED to-many via `productLines`) — a
  * `whereHas` set filter (allow-listed columns only, never orderByRaw/
@@ -22,7 +22,9 @@ use Illuminate\Support\Facades\DB;
  * `operational_site` (spec 0056) is deliberately NOT handled here: the site
  * has no own name (its identity is its primary address), so it is delegated
  * directly by the table definition to the shared
- * App\Tables\Shared\OperationalSiteColumn instead.
+ * App\Tables\Shared\OperationalSiteColumn instead. `status` (spec 0082) is
+ * likewise delegated, to OpportunityStatusColumn: it is COMPUTED from the
+ * row's quotes, backed by no FK at all.
  */
 final class OpportunityRelationColumns
 {
@@ -46,8 +48,6 @@ final class OpportunityRelationColumns
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
         'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
-        // spec 0043: the mandatory working-state classification.
-        'opportunity_status' => ['relation' => 'opportunityStatus', 'table' => 'opportunity_statuses', 'fk' => 'opportunity_status_id'],
     ];
 
     /**
@@ -65,8 +65,8 @@ final class OpportunityRelationColumns
     ];
 
     /**
-     * Handle the `registry`/`referent`/`commercial`/`supervisor`/`source`/
-     * `opportunity_status` simple-relation set filters, the `managers`
+     * Handle the `registry`/`referent`/`commercial`/`supervisor`/`source`
+     * simple-relation set filters, the `managers`
      * (opportunity_user pivot, to-many) set filter, AND the
      * `product_category`/`business_function` AGGREGATED (to-many) set
      * filters, all via `whereHas` on the related row's name (nested dot-path
@@ -110,7 +110,7 @@ final class OpportunityRelationColumns
 
     /**
      * ORDER BY the related row's name via a correlated subquery for every one
-     * of the 6 simple-relation derived columns. `managers` and the 2
+     * of the 5 simple-relation derived columns. `managers` and the 2
      * AGGREGATED (to-many) columns are NOT sortable (returns false — no
      * single related row to order by).
      *
@@ -136,7 +136,7 @@ final class OpportunityRelationColumns
 
     /**
      * Excel-like distinct values (spec 0004/0005): the related row's name for
-     * each of the 6 simple-relation derived columns, the `managers` pivot's
+     * each of the 5 simple-relation derived columns, the `managers` pivot's
      * user names, plus the 2 AGGREGATED (to-many) columns via a join through
      * `opportunity_product_lines` — scoped to the rows matching $query.
      *

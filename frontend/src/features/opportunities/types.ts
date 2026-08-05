@@ -18,15 +18,29 @@ export interface OpportunityRelationRef {
 }
 
 /**
- * The linked opportunity status's identity, as exposed by
- * `OpportunityResource.opportunity_status` (spec 0043). Unlike the other
- * relations, this one is NEVER null: the FK is NOT NULL, every opportunity
- * always has a status.
+ * One distinct status inside an `OpportunityStatusSummary` (spec 0082), with
+ * how many quotes sit in it (always 1 on the working-state fallback).
  */
-export interface OpportunityStatusRef {
+export interface OpportunityStatusEntry {
   id: number
   name: string
   color: string | null
+  group: string
+  count: number
+}
+
+/**
+ * The COMPUTED status (spec 0082), as exposed by `OpportunityResource.status`,
+ * the `status` grid cell, the request-management panel and the reward card.
+ * `source` says which vocabulary `entries` speaks: `'quotes'` when the
+ * opportunity has at least one quote, `'workflow'` when it falls back to its
+ * working state. `entries` is empty ONLY in the fallback case with no working
+ * state resolved; `distinct_count > 1` is the "N stati" case.
+ */
+export interface OpportunityStatusSummary {
+  source: 'quotes' | 'workflow'
+  distinct_count: number
+  entries: OpportunityStatusEntry[]
 }
 
 /** The linked lead's identity, as exposed by `OpportunityResource.lead` (the lead's referent name, BR-1). */
@@ -49,8 +63,9 @@ export interface OpportunityOperationalSiteRef {
 }
 
 /**
- * A resolved working-state row (spec 0047): the NEW "stato di lavorazione"
- * dimension, distinct from `opportunity_status` (sales pipeline). `system_key`
+ * A resolved working-state row (spec 0047): the "stato di lavorazione"
+ * dimension — since spec 0082 also the fallback the computed status reads
+ * when the opportunity has no quote. `system_key`
  * is `'open'|'closed_won'|'closed_lost'|null` (a pinned system row vs a custom
  * one); `group` is one of the 4 fixed `WorkflowStatusGroupValue`s.
  */
@@ -148,9 +163,8 @@ export interface OpportunityDetail {
   name: string
   registry_id: number
   registry: OpportunityRelationRef | null
-  /** Spec 0043 D-3: the opportunity's status. FK is NOT NULL, always present. */
-  opportunity_status_id: number
-  opportunity_status: OpportunityStatusRef
+  /** Spec 0082: the status COMPUTED from the quotes (working state as fallback). Read-only. */
+  status: OpportunityStatusSummary
   referent_id: number | null
   referent: OpportunityRelationRef | null
   commercial_id: number | null
@@ -283,8 +297,6 @@ export interface CreateOpportunityPayload {
    * the single place that decides whether to include it.
    */
   registry_id?: number
-  /** Spec 0043 D-3: required by the Zod schema before submit, always sent on create. */
-  opportunity_status_id?: number | null
   referent_id?: number | null
   commercial_id?: number | null
   reporter_id?: number | null

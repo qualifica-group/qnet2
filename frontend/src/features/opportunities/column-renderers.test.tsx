@@ -39,15 +39,32 @@ describe('opportunityColumnRenderers relation columns', () => {
   })
 })
 
-describe('opportunityColumnRenderers.opportunity_status', () => {
-  it('renders the status as a colored badge', () => {
-    const { container } = renderCell('opportunity_status', { id: 1, name: 'Nuova', color: 'green' })
-    expect(screen.getByText('Nuova')).toBeInTheDocument()
+describe('opportunityColumnRenderers.status (spec 0082)', () => {
+  it('renders a single computed status as a colored badge', () => {
+    const { container } = renderCell('status', {
+      source: 'quotes',
+      distinct_count: 1,
+      entries: [{ id: 1, name: 'Bozza', color: 'green', group: 'open', count: 3 }],
+    })
+    expect(screen.getByText('Bozza')).toBeInTheDocument()
     expect(container.querySelector('.bg-green-100')).not.toBeNull()
   })
 
-  it('renders an em dash when unset', () => {
-    renderCell('opportunity_status', null)
+  it('renders "N stati" with the per-status breakdown as its accessible name', () => {
+    renderCell('status', {
+      source: 'quotes',
+      distinct_count: 2,
+      entries: [
+        { id: 1, name: 'In lavorazione', color: 'blue', group: 'open', count: 1 },
+        { id: 2, name: 'In corso', color: 'amber', group: 'pending', count: 1 },
+      ],
+    })
+    expect(screen.getByText('2 statuses')).toBeInTheDocument()
+    expect(screen.getByLabelText('1 In lavorazione, 1 In corso')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when no status resolves', () => {
+    renderCell('status', { source: 'workflow', distinct_count: 0, entries: [] })
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

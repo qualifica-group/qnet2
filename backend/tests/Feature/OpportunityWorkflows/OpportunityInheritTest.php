@@ -5,7 +5,6 @@ use App\Models\Campaign;
 use App\Models\City;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflow;
 use App\Models\OpportunityWorkflowStatus;
 use App\Models\Product;
@@ -52,7 +51,7 @@ if (! function_exists('baseOpportunityWorkflowFks')) {
      * mandatoryOpportunityFks, redeclared here to keep this file self-contained
      * and independent of that file's load order).
      *
-     * @return array{registry_id: int, opportunity_status_id: int, supervisor_id: int, product_lines: array<int, array{business_function_id: int, product_category_id: int}>, products_of_interest: array<int, int>}
+     * @return array{registry_id: int, supervisor_id: int, product_lines: array<int, array{business_function_id: int, product_category_id: int}>, products_of_interest: array<int, int>}
      */
     function baseOpportunityWorkflowFks(): array
     {
@@ -61,7 +60,6 @@ if (! function_exists('baseOpportunityWorkflowFks')) {
 
         return [
             'registry_id' => Registry::factory()->create()->id,
-            'opportunity_status_id' => OpportunityStatus::factory()->create()->id,
             'supervisor_id' => User::factory()->create()->id,
             'product_lines' => [
                 ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],

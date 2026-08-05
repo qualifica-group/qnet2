@@ -108,7 +108,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    opportunity_status: { id: 5, name: 'New', color: 'slate' },
+    status: { source: 'workflow', distinct_count: 0, entries: [] },
     workflow_status: WORKFLOW_OPEN,
     workflow_statuses: [WORKFLOW_OPEN],
     product_lines: [],

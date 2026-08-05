@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tables\RewardedReferents;
 
 use App\Enums\AdvancedFilterType;
-use App\Models\OpportunityStatus;
 use App\Models\OpportunityWorkflowStatus;
 
 /**
@@ -71,18 +70,6 @@ final class RewardedReferentAdvancedFilterCatalog
                 'target' => 'source_id',
             ],
             [
-                'name' => 'opportunity_status',
-                'label' => 'rewardedReferents.advancedFilters.opportunityStatus',
-                'type' => AdvancedFilterType::Multiselect,
-                'order' => 3,
-                'required' => false,
-                'visible' => true,
-                'width' => 'md',
-                'multiple' => true,
-                'options' => self::opportunityStatusOptions(),
-                'target' => 'opportunity_status_id',
-            ],
-            [
                 'name' => 'workflow_status',
                 'label' => 'rewardedReferents.advancedFilters.workflowStatus',
                 'type' => AdvancedFilterType::Multiselect,
@@ -130,21 +117,6 @@ final class RewardedReferentAdvancedFilterCatalog
                 'target' => 'reward_status_id',
             ],
         ];
-    }
-
-    /**
-     * The full opportunity-statuses set, id-based (a single flat pipeline,
-     * no per-workflow replication).
-     *
-     * @return array<int, array{value: int, label: string}>
-     */
-    private static function opportunityStatusOptions(): array
-    {
-        return OpportunityStatus::query()
-            ->orderBy('sort_order')
-            ->get(['id', 'name'])
-            ->map(static fn (OpportunityStatus $status): array => ['value' => $status->id, 'label' => $status->name])
-            ->all();
     }
 
     /**

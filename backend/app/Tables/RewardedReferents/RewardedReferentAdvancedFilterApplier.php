@@ -47,7 +47,6 @@ final class RewardedReferentAdvancedFilterApplier
             'reward_type' => $this->applyRewardType($query, $value),
             'reward_status' => $this->applyRewardStatus($query, $value),
             'opportunity' => $this->applyOpportunity($query, $value),
-            'opportunity_status' => $this->applyOpportunityStatus($query, $value),
             'workflow_status' => $this->applyWorkflowStatus($query, $value),
             'operator' => $this->applyOperator($query, $value),
             'assigned_at' => $this->applyAssignedAt($query, $descriptor, $value),
@@ -114,30 +113,6 @@ final class RewardedReferentAdvancedFilterApplier
         $query->whereHas('rewards', static function (Builder $rewards) use ($alias, $opportunityId): void {
             $rewards->where('source_type', $alias)->where('source_id', $opportunityId);
         });
-
-        return true;
-    }
-
-    /**
-     * `opportunity_status` — id-based set filter on the source Opportunity's
-     * own `opportunity_status_id`, crossing the polymorphic `source` so only
-     * Opportunity-origin rewards ever match (D-2).
-     *
-     * @param  Builder<Referent>  $query
-     */
-    private function applyOpportunityStatus(Builder $query, mixed $value): bool
-    {
-        $ids = $this->intIds($value);
-
-        if ($ids !== []) {
-            $query->whereHas('rewards', static function (Builder $rewards) use ($ids): void {
-                $rewards->whereHasMorph(
-                    'source',
-                    [Opportunity::class],
-                    static fn (Builder $source) => $source->whereIn('opportunity_status_id', $ids),
-                );
-            });
-        }
 
         return true;
     }

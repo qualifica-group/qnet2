@@ -83,7 +83,6 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
     // name is no longer a form input, it is derived server-side as `OPP_{id}`.
     registry_id: requiredRelationId(t('opportunities.form.registryRequired')),
     // Spec 0043 D-3: the opportunity status is a mandatory FK, mirrors registry_id.
-    opportunity_status_id: requiredRelationId(t('opportunities.form.opportunityStatusRequired')),
     referent_id: z.number().nullable(),
     commercial_id: z.number().nullable(),
     reporter_id: z.number().nullable(),

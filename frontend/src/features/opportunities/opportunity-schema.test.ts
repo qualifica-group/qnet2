@@ -16,7 +16,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
   return {
     registry_id: 1,
     // Spec 0043 D-3: opportunity_status_id is mandatory, mirrors registry_id.
-    opportunity_status_id: 5,
     referent_id: null,
     commercial_id: null,
     reporter_id: null,
@@ -64,18 +63,6 @@ describe('buildCreateOpportunitySchema', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.path.join('.') === 'registry_id')).toBe(true)
-    }
-  })
-
-  /** Spec 0043 D-3: opportunity_status_id is a mandatory FK, mirrors registry_id. */
-  it('rejects a missing opportunity_status_id', () => {
-    const schema = buildCreateOpportunitySchema(i18n.t)
-    const result = schema.safeParse(baseValues({ opportunity_status_id: null }))
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(
-        result.error.issues.some((issue) => issue.path.join('.') === 'opportunity_status_id'),
-      ).toBe(true)
     }
   })
 
