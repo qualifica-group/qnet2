@@ -15,6 +15,7 @@ export const paymentMethods = {
   columns: {
     name: 'Name',
     code: 'Code',
+    payment_method_code: 'Payment method code',
     description: 'Description',
     payment_days: 'Payment days',
     sort_order: 'Order',
@@ -30,6 +31,7 @@ export const paymentMethods = {
     title: 'Payment method details',
     subtitle: 'Read-only view of the selected payment method.',
     loadError: 'Unable to load the payment method. Please try again.',
+    payment_method_code: 'Payment method code',
     description: 'Description',
     payment_instructions: 'Payment instructions',
     payment_days: 'Payment days',
@@ -46,6 +48,7 @@ export const paymentMethods = {
     editSubtitle: 'Update the selected payment method.',
     name: 'Name',
     code: 'Code',
+    paymentMethodCode: 'Payment method code',
     description: 'Description',
     paymentInstructions: 'Payment instructions',
     paymentDays: 'Payment days',
@@ -59,6 +62,7 @@ export const paymentMethods = {
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
     codeRequired: 'Code is required.',
+    paymentMethodCodeMax: 'Payment method code must be at most 32 characters.',
     codeMax: 'Code must be at most 64 characters.',
     codeInvalid:
       'Code must start with a lowercase letter and contain only lowercase letters, digits and underscores.',
@@ -78,6 +82,7 @@ export const paymentMethods = {
     },
     hints: {
       codeLocked: 'The code cannot be changed after creation.',
+      paymentMethodCode: 'Fiscal code of the modality (e.g. MP01); several methods may share it.',
     },
   },
   reorder: {

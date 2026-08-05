@@ -57,6 +57,12 @@ class QualificaLegacyImportSeeder extends Seeder
         'tags',
         'sectors',
         'vat-rates',
+        'payment-methods',
+        // Phase 2 — company sites ("Societa Sedi") resolve their owning
+        // company through the phase-1 `companies` old_id, so they can only run
+        // once that anchor is in. The rest of phase 2 (users, referents) stays
+        // out: operational data, not template data.
+        'company-sites',
         // Phase 4 — product anchors: the attribute catalogue and the category
         // tree, neither of which carries the pivot between them.
         'attributes',

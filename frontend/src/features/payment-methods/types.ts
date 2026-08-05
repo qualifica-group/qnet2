@@ -18,8 +18,10 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 export interface PaymentMethodDetail {
   id: number
   name: string
-  /** Snake_case identifier, unique, immutable after create (D-3). */
+  /** Snake_case identifier, the ONLY unique field, immutable after create (D-3). */
   code: string
+  /** Fiscal/legacy classification code (e.g. "MP01"), non-unique. */
+  payment_method_code: string | null
   description: string | null
   payment_instructions: string | null
   payment_days: number | null
@@ -46,6 +48,7 @@ export interface PaymentMethodDetailWithPermissions extends PaymentMethodDetail 
 export interface CreatePaymentMethodPayload {
   name: string
   code: string
+  payment_method_code?: string | null
   description?: string | null
   payment_instructions?: string | null
   payment_days?: number | null

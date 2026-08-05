@@ -31,6 +31,7 @@ function paymentMethod(
     id: 4,
     name: 'Bank transfer',
     code: 'bank_transfer',
+    payment_method_code: 'MP05',
     description: 'Standard bank transfer',
     payment_instructions: 'Use the company IBAN',
     payment_days: 30,

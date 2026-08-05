@@ -26,6 +26,7 @@ class PaymentMethodFactory extends Factory
         return [
             'name' => fake()->unique()->words(2, true),
             'code' => 'method_'.self::$nextCodeSuffix++,
+            'payment_method_code' => fake()->optional()->numerify('MP##'),
             'description' => fake()->optional()->sentence(),
             'payment_instructions' => fake()->optional()->paragraph(),
             'payment_days' => fake()->optional()->numberBetween(0, 90),

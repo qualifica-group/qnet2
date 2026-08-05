@@ -9,6 +9,7 @@ import type { PaymentMethodFormValues } from '@/features/payment-methods/use-pay
 const formValues: PaymentMethodFormValues = {
   name: 'Bank transfer',
   code: 'bank_transfer',
+  payment_method_code: 'MP05',
   description: 'Standard bank transfer',
   payment_instructions: 'Use IBAN IT00X0000000000000000000000',
   payment_days: 30,
@@ -22,6 +23,7 @@ function original(
     id: 7,
     name: 'Bank transfer',
     code: 'bank_transfer',
+    payment_method_code: 'MP05',
     description: 'Standard bank transfer',
     payment_instructions: 'Use IBAN IT00X0000000000000000000000',
     payment_days: 30,
@@ -43,6 +45,7 @@ describe('buildCreatePayload (spec 0068, AC-101)', () => {
     expect(buildCreatePayload(formValues)).toEqual({
       name: 'Bank transfer',
       code: 'bank_transfer',
+      payment_method_code: 'MP05',
       description: 'Standard bank transfer',
       payment_instructions: 'Use IBAN IT00X0000000000000000000000',
       payment_days: 30,
@@ -64,6 +67,16 @@ describe('buildUpdatePayload (spec 0068, AC-101/AC-105)', () => {
     expect(buildUpdatePayload({ ...formValues, name: 'Wire transfer' }, original())).toEqual({
       name: 'Wire transfer',
     })
+  })
+
+  it('includes only the changed payment_method_code, and clears it to null', () => {
+    expect(
+      buildUpdatePayload({ ...formValues, payment_method_code: 'MP08' }, original()),
+    ).toEqual({ payment_method_code: 'MP08' })
+
+    expect(
+      buildUpdatePayload({ ...formValues, payment_method_code: null }, original()),
+    ).toEqual({ payment_method_code: null })
   })
 
   it('includes only the changed description', () => {

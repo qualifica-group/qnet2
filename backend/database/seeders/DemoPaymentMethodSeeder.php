@@ -16,15 +16,15 @@ use Illuminate\Database\Seeder;
 class DemoPaymentMethodSeeder extends Seeder
 {
     /**
-     * @var array<int, array{name: string, code: string, description: string, payment_instructions: string, payment_days: int|null, sort_order: int, is_active: bool}>
+     * @var array<int, array{name: string, code: string, payment_method_code: string, description: string, payment_instructions: string, payment_days: int|null, sort_order: int, is_active: bool}>
      */
     private const array METHODS = [
-        ['name' => 'Bonifico bancario', 'code' => 'bank_transfer', 'description' => 'Pagamento tramite bonifico bancario ordinario.', 'payment_instructions' => 'IBAN da comunicare in fattura, causale con numero ordine.', 'payment_days' => 30, 'sort_order' => 10, 'is_active' => true],
-        ['name' => 'Carta di credito', 'code' => 'credit_card', 'description' => 'Pagamento con carta di credito tramite POS o link di pagamento.', 'payment_instructions' => 'Addebito immediato al momento della conferma.', 'payment_days' => 0, 'sort_order' => 20, 'is_active' => true],
-        ['name' => 'Contanti', 'code' => 'cash', 'description' => 'Pagamento in contanti alla consegna o presso la sede.', 'payment_instructions' => 'Rilasciare ricevuta fiscale al momento del pagamento.', 'payment_days' => 0, 'sort_order' => 30, 'is_active' => true],
-        ['name' => 'Assegno', 'code' => 'check', 'description' => 'Pagamento tramite assegno bancario o circolare.', 'payment_instructions' => 'Assegno non trasferibile intestato alla ragione sociale.', 'payment_days' => 15, 'sort_order' => 40, 'is_active' => true],
-        ['name' => 'Addebito diretto', 'code' => 'direct_debit', 'description' => 'Addebito diretto SEPA (SDD) sul conto corrente del cliente.', 'payment_instructions' => 'Richiede mandato SDD firmato dal cliente.', 'payment_days' => 30, 'sort_order' => 50, 'is_active' => true],
-        ['name' => 'Pagamento rateale', 'code' => 'installments', 'description' => 'Pagamento dilazionato in rate mensili.', 'payment_instructions' => 'Piano rate concordato in fase di offerta.', 'payment_days' => 90, 'sort_order' => 60, 'is_active' => false],
+        ['name' => 'Bonifico bancario', 'code' => 'bank_transfer', 'payment_method_code' => 'MP05', 'description' => 'Pagamento tramite bonifico bancario ordinario.', 'payment_instructions' => 'IBAN da comunicare in fattura, causale con numero ordine.', 'payment_days' => 30, 'sort_order' => 10, 'is_active' => true],
+        ['name' => 'Carta di credito', 'code' => 'credit_card', 'payment_method_code' => 'MP08', 'description' => 'Pagamento con carta di credito tramite POS o link di pagamento.', 'payment_instructions' => 'Addebito immediato al momento della conferma.', 'payment_days' => 0, 'sort_order' => 20, 'is_active' => true],
+        ['name' => 'Contanti', 'code' => 'cash', 'payment_method_code' => 'MP01', 'description' => 'Pagamento in contanti alla consegna o presso la sede.', 'payment_instructions' => 'Rilasciare ricevuta fiscale al momento del pagamento.', 'payment_days' => 0, 'sort_order' => 30, 'is_active' => true],
+        ['name' => 'Assegno', 'code' => 'check', 'payment_method_code' => 'MP02', 'description' => 'Pagamento tramite assegno bancario o circolare.', 'payment_instructions' => 'Assegno non trasferibile intestato alla ragione sociale.', 'payment_days' => 15, 'sort_order' => 40, 'is_active' => true],
+        ['name' => 'Addebito diretto', 'code' => 'direct_debit', 'payment_method_code' => 'MP19', 'description' => 'Addebito diretto SEPA (SDD) sul conto corrente del cliente.', 'payment_instructions' => 'Richiede mandato SDD firmato dal cliente.', 'payment_days' => 30, 'sort_order' => 50, 'is_active' => true],
+        ['name' => 'Pagamento rateale', 'code' => 'installments', 'payment_method_code' => 'MP05', 'description' => 'Pagamento dilazionato in rate mensili.', 'payment_instructions' => 'Piano rate concordato in fase di offerta.', 'payment_days' => 90, 'sort_order' => 60, 'is_active' => false],
     ];
 
     public function run(): void
@@ -34,6 +34,7 @@ class DemoPaymentMethodSeeder extends Seeder
                 ['code' => $method['code']],
                 [
                     'name' => $method['name'],
+                    'payment_method_code' => $method['payment_method_code'],
                     'description' => $method['description'],
                     'payment_instructions' => $method['payment_instructions'],
                     'payment_days' => $method['payment_days'],

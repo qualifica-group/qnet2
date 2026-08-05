@@ -2,8 +2,11 @@
 
 use App\Enums\MigrationStatus;
 use App\Models\Attribute;
+use App\Models\Company;
+use App\Models\CompanySite;
 use App\Models\MassMigrationRun;
 use App\Models\MigrationRun;
+use App\Models\PaymentMethod;
 use App\Models\ProductCategory;
 use App\Models\Role;
 use App\Models\Source;
@@ -59,8 +62,10 @@ if (! function_exists('migrationsSuperAdminActor')) {
  * legacy-only row), `vat-rates` (a plain settings lookup), `sources` (one name
  * the static catalogue already ships + one it does not), `attributes` and
  * `product-categories` (a legacy root, its child, and the attribute links the
- * phase-5 pass back-fills off the SAME endpoint). Specific patterns first:
- * Http::fake matches in declaration order.
+ * phase-5 pass back-fills off the SAME endpoint), plus `payment-methods` and
+ * the `companies`/`company-sites` pair that proves the phase-2 remap runs
+ * inside this seed. Specific patterns first: Http::fake matches in declaration
+ * order, so the catch-all stays last.
  */
 function fakeLegacyCatalogues(): void
 {
@@ -79,6 +84,18 @@ function fakeLegacyCatalogues(): void
                 ['id' => 82, 'name' => 'Fiera'],
             ],
             'pagination' => ['total' => 2],
+        ]),
+        fakeMigrationsBaseUrl().'/payment-methods*' => Http::response([
+            'items' => [['id' => 41, 'name' => 'Bonifico bancario', 'code' => 'bank_transfer', 'payment_days' => 30]],
+            'pagination' => ['total' => 1],
+        ]),
+        fakeMigrationsBaseUrl().'/company-sites*' => Http::response([
+            'items' => [['id' => 31, 'company_id' => 21, 'name' => 'Sede di Melfi']],
+            'pagination' => ['total' => 1],
+        ]),
+        fakeMigrationsBaseUrl().'/companies*' => Http::response([
+            'items' => [['id' => 21, 'denomination' => 'Lucania Srl']],
+            'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/attributes*' => Http::response([
             'items' => [['id' => 91, 'code' => 'durata', 'name' => 'Durata', 'type' => 'decimal']],
@@ -138,6 +155,37 @@ it('imports the legacy vat rates as part of the fixed source list', function () 
         ->and(VatRate::query()->where('old_id', 61)->count())->toBe(1)
         ->and(VatRate::query()->where('old_id', 61)->value('name'))->toBe('IVA 22%')
         ->and((float) VatRate::query()->where('old_id', 61)->value('rate'))->toBe(22.0);
+});
+
+it('imports the legacy payment methods as part of the fixed source list', function () {
+    seedMigrationsConfig();
+    migrationsSuperAdminActor();
+    fakeLegacyCatalogues();
+
+    seedCatalogThenLegacy();
+    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated.
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('payment-methods')
+        ->and(PaymentMethod::query()->where('old_id', 41)->count())->toBe(1)
+        ->and(PaymentMethod::query()->where('old_id', 41)->value('name'))->toBe('Bonifico bancario')
+        ->and(PaymentMethod::query()->where('old_id', 41)->value('payment_days'))->toBe(30);
+});
+
+it('imports the legacy company sites linked to their imported company', function () {
+    seedMigrationsConfig();
+    migrationsSuperAdminActor();
+    fakeLegacyCatalogues();
+
+    seedCatalogThenLegacy();
+    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated.
+
+    $site = CompanySite::query()->where('old_id', 31)->sole();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('company-sites')
+        ->and($site->name)->toBe('Sede di Melfi')
+        // Phase 2 runs after phase 1 in this seed: the company_id is remapped
+        // onto the company the SAME run imported, not left unlinked.
+        ->and($site->company_id)->toBe(Company::query()->where('old_id', 21)->value('id'));
 });
 
 it('adopts a catalogue source instead of duplicating it, and imports the legacy-only one', function () {

@@ -6,8 +6,9 @@ namespace App\Tables\PaymentMethods;
  * Declarative column/filter/action catalogue for the `payment-methods`
  * domain (spec 0068). Extracted out of PaymentMethodsTableDefinition
  * (file-size split, engineering.md §6): pure data (no logic). Every column
- * (name/code/description/payment_days/sort_order/is_active/created_at/
- * updated_at) is a real DB column handled entirely by the generic engine.
+ * (name/code/payment_method_code/description/payment_days/sort_order/
+ * is_active/created_at/updated_at) is a real DB column handled entirely by
+ * the generic engine.
  * `is_active` is the ONLY inline-editable column (D-4, spec 0068): a real,
  * fillable, non-nullable boolean column, the first `type: 'boolean'` +
  * `editable: true` pairing in this codebase.
@@ -34,6 +35,16 @@ final class PaymentMethodColumnCatalog
             [
                 'id' => 'code',
                 'label' => 'paymentMethods.columns.code',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+                'searchable' => true,
+            ],
+            [
+                'id' => 'payment_method_code',
+                'label' => 'paymentMethods.columns.payment_method_code',
                 'type' => 'text',
                 'visible' => true,
                 'sortable' => true,
@@ -109,6 +120,7 @@ final class PaymentMethodColumnCatalog
         return [
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'code', 'type' => 'text'],
+            ['columnId' => 'payment_method_code', 'type' => 'text'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'payment_days', 'type' => 'number'],
             ['columnId' => 'sort_order', 'type' => 'number'],

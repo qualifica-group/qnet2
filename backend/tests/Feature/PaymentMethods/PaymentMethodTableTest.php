@@ -38,7 +38,7 @@ if (! function_exists('paymentMethodUserWith')) {
 // AC-050 — columns config, frozen order + flags
 // ---------------------------------------------------------------------------
 
-it('GET /api/tables/payment-methods/columns: 403 without viewAny, 200 with the 8 frozen columns (AC-050)', function () {
+it('GET /api/tables/payment-methods/columns: 403 without viewAny, 200 with the 9 frozen columns (AC-050)', function () {
     $actor = paymentMethodUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/payment-methods/columns')->assertForbidden();
@@ -56,10 +56,10 @@ it('GET /api/tables/payment-methods/columns: 403 without viewAny, 200 with the 8
         // `searchable` is a top-level allow-list of column ids (spec 0009),
         // not a per-column flag: no `searchable` key is ever emitted inside
         // an individual resolved column.
-        ->and($data['searchable'])->toBe(['name', 'code']);
+        ->and($data['searchable'])->toBe(['name', 'code', 'payment_method_code']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'code', 'description', 'payment_days', 'sort_order', 'is_active', 'created_at', 'updated_at']);
+    expect($ids)->toBe(['id', 'name', 'code', 'payment_method_code', 'description', 'payment_days', 'sort_order', 'is_active', 'created_at', 'updated_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['sortable'])->toBeTrue()

@@ -40,6 +40,13 @@ export function PaymentMethodDetailView({ paymentMethod }: PaymentMethodDetailVi
 
       <DetailSection>
         <DetailGrid>
+          <DetailField label={t('paymentMethods.detail.payment_method_code')}>
+            {paymentMethod.payment_method_code ? (
+              paymentMethod.payment_method_code
+            ) : (
+              <DetailEmpty />
+            )}
+          </DetailField>
           <DetailField label={t('paymentMethods.detail.description')}>
             {paymentMethod.description ? paymentMethod.description : <DetailEmpty />}
           </DetailField>

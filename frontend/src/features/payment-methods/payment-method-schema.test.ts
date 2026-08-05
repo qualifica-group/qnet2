@@ -12,6 +12,7 @@ beforeAll(async () => {
 const VALID_PAYLOAD = {
   name: 'Bank transfer',
   code: 'bank_transfer',
+  payment_method_code: null,
   description: null,
   payment_instructions: null,
   payment_days: null,

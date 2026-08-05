@@ -13,6 +13,7 @@ export function buildCreatePayload(values: PaymentMethodFormValues): CreatePayme
   return {
     name: values.name,
     code: values.code,
+    payment_method_code: values.payment_method_code,
     description: values.description,
     payment_instructions: values.payment_instructions,
     payment_days: values.payment_days,
@@ -34,6 +35,9 @@ export function buildUpdatePayload(
 
   if (values.name !== original.name) {
     payload.name = values.name
+  }
+  if (values.payment_method_code !== original.payment_method_code) {
+    payload.payment_method_code = values.payment_method_code
   }
   if (values.description !== original.description) {
     payload.description = values.description

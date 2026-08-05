@@ -18,6 +18,8 @@ const NAME_MAX_LENGTH = 191
 const CODE_MAX_LENGTH = 64
 /** Backend `code` shape: snake_case identifier (spec engineering.md §1.2). */
 const CODE_PATTERN = /^[a-z][a-z0-9_]*$/
+/** Backend `payment_method_code` column limit (`max:32`). */
+const PAYMENT_METHOD_CODE_MAX_LENGTH = 32
 /** Backend `description` column limit (`max:500`). */
 const DESCRIPTION_MAX_LENGTH = 500
 /** Backend `payment_instructions` column limit (`max:5000`). */
@@ -38,6 +40,10 @@ function baseFields(t: TFunction) {
       .min(1, t('paymentMethods.form.codeRequired'))
       .max(CODE_MAX_LENGTH, t('paymentMethods.form.codeMax'))
       .regex(CODE_PATTERN, t('paymentMethods.form.codeInvalid')),
+    payment_method_code: z
+      .string()
+      .max(PAYMENT_METHOD_CODE_MAX_LENGTH, t('paymentMethods.form.paymentMethodCodeMax'))
+      .nullable(),
     description: z
       .string()
       .max(DESCRIPTION_MAX_LENGTH, t('paymentMethods.form.descriptionMax'))

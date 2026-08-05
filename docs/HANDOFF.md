@@ -20,21 +20,56 @@ frontend** (il picker delle source e il pannello del piano sono registry-driven:
 - `backend/app/Migrations/MigrationOrder.php` — aggiunta alla **fase 1** (lookup indipendente: e' il
   consumer, `quotes`, a referenziarla, non il contrario).
 - `backend/tests/Feature/Migration/PaymentMethodsSourceImportTest.php` — NUOVO, 9 test.
+- `backend/database/seeders/QualificaLegacyImportSeeder.php` — `SOURCES` ora include anche
+  **`payment-methods`** (fase 1, dopo `vat-rates`) e **`company-sites`** ("Societa Sedi", fase 2,
+  dopo `companies` di cui remappa il `company_id` via `old_id`). Restano fuori dal seed le altre
+  source di fase 2 (`users`, `referents`) e `products`: dati operativi, non dati template.
+- `backend/tests/Feature/Migration/QualificaLegacyImportSeederTest.php` — 2 test nuovi + i fake
+  `payment-methods` / `companies` / `company-sites` in `fakeLegacyCatalogues()`.
 
 **Decisioni da rispettare (non re-inventare):**
-- **Idempotenza**: skip per `old_id`; una riga gia' presente con lo stesso `code` e `old_id` NULL
-  (catalogo seedato da `DemoPaymentMethodSeeder`) viene **ADOTTATA**, non duplicata — `code` e `name`
-  hanno entrambi unique index. `code` gia' migrato sotto un altro `old_id` = errore fatale di riga.
-- **`code` derivato** dal `name` quando l'esterno non lo manda: lowercase, non-alfanumerici collassati
-  in `_`, prefisso `pm_` se non inizia per lettera (vincolo `^[a-z][a-z0-9_]*$`, D-3 spec 0068).
+- **Idempotenza**: skip per `old_id`; una riga gia' presente con lo stesso `code` derivato e `old_id`
+  NULL (catalogo seedato) viene **ADOTTATA**, non duplicata.
 - `payment_days` fuori da [0, 3650] → null + **warning** nel report (non clamp, non errore);
   `is_active` assente → true; testi vuoti → null.
 
-**Da verificare quando l'API esterna sara' disponibile:** la shape reale di `GET {base}/payment-methods`
-(qui assunta `id, name, code, description, payment_instructions, payment_days, is_active`, cioe' il
-mirror dei campi locali). Se differisce, cambia solo `mapNativeRow()`/`processRow()`.
+**Shape reale dell'API esterna (verificata su `http://qnet.test/api/v2/migration/payment-methods`,
+100 record):** `id, name, code, description, payment_instructions, payment_days, is_active`. Il
+`code` esterno e' il **codice fiscale/e-fattura** (MP01, MP05, ...): **23 codici distinti su 100
+record**, cioe' NON e' un'identita'.
 
-**Verde:** `pest tests/Feature/Migration` 201/201 · `pest --filter=PaymentMethod` 113/113 · Pint pulito.
+## `payment_method_code` + unicita' solo su `code` — 2026-08-05 — VERDE, NON COMMITTATO
+
+Correzione di rotta su richiesta utente, nata da un import che caricava solo 23 metodi su 100:
+la prima versione usava il `code` esterno come identita' unica, e i 77 record che condividevano
+un MP gia' preso fallivano ("code already migrated under a different external id").
+
+**Regole nuove (vincolanti):**
+- **`code` e' l'UNICO campo unico.** `name` ha perso l'unique index (migration
+  `2026_08_05_100100_drop_name_unique_from_payment_methods_table.php`, resta un indice semplice):
+  nel legacy esistono modalita' omonime legittime. Rimosse le regole `unique` su `name` da
+  Store/UpdatePaymentMethodRequest; AC-013/AC-022/AC-001 nei test sono stati **invertiti** (requisito
+  cambiato, non test adattati al codice).
+- **Nuova colonna `payment_method_code`** (string 32, nullable, indicizzata, NON unica) —
+  migration `2026_08_05_100000_add_payment_method_code_to_payment_methods_table.php`. Ci finisce il
+  codice fiscale legacy as-is. Presente in: model `$fillable`, Create/UpdatePaymentMethodData,
+  Store/UpdatePaymentMethodRequest (`max:32`), `PaymentMethodResource`,
+  `PaymentMethodsAuthorization` (fields + ceiling), `PaymentMethodColumnCatalog` (colonna
+  searchable + filtro text) e `PaymentMethodsTableDefinition::mapRow()`, factory, DemoPaymentMethodSeeder.
+- **`PaymentMethodsSource`**: `code` esterno → `payment_method_code`; il `code` qnet e' lo **slug del
+  name** (`^[a-z][a-z0-9_]*$`, prefisso `pm_` se non inizia per lettera, cap 64). Due nomi che
+  slugificano uguale → il secondo prende il suffisso `_{old_id}` (deterministico). Niente piu'
+  errore fatale sul codice condiviso.
+- **Frontend**: `payment_method_code` in `types.ts`, schema Zod (max 32, nullable), payload
+  create/update, `PaymentMethodFormBody` (campo editabile anche in edit, a differenza di `code`),
+  `PaymentMethodDetailView`, i18n it/en (`columns`/`detail`/`form`/`hints`).
+
+**ATTENZIONE — dati gia' importati:** le 100 righe presenti nel DB di sviluppo vengono da run
+precedenti, hanno `code` derivato dal vecchio algoritmo e `payment_method_code` NULL. L'import le
+salta per `old_id`: per rigenerarle vanno prima cancellate le righe con `old_id NOT NULL`.
+
+**Verde:** `pest tests/Feature/{PaymentMethods,Migration,Quotes,Contracts,Authorization}` 616/616 ·
+`vitest run` 3613/3613 · `tsc -b --force` pulito · Pint pulito.
 
 ## NOTIFICHE DI ASSEGNAZIONE E TRASFERIMENTO — spec 0081 (2026-08-04) — VERDE, NON COMMITTATO
 

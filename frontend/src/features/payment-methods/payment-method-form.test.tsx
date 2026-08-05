@@ -49,6 +49,7 @@ const EDIT_PERMISSIONS: ResourcePermissions = {
   fields: {
     name: EDITABLE,
     code: READONLY,
+    payment_method_code: EDITABLE,
     description: EDITABLE,
     payment_instructions: EDITABLE,
     payment_days: EDITABLE,
@@ -77,6 +78,7 @@ function paymentMethod(
     id: 9,
     name: 'Bank transfer',
     code: 'bank_transfer',
+    payment_method_code: 'MP05',
     description: 'Standard bank transfer',
     payment_instructions: 'Use the company IBAN',
     payment_days: 30,
@@ -100,7 +102,7 @@ beforeEach(() => {
 })
 
 describe('PaymentMethodForm — create (spec 0068, AC-102/AC-103/AC-104)', () => {
-  it('renders name, code, description, payment_instructions, payment_days and is_active, with no order input', () => {
+  it('renders name, code, payment_method_code, description, payment_instructions, payment_days and is_active, with no order input', () => {
     render(
       <PaymentMethodForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
@@ -108,6 +110,7 @@ describe('PaymentMethodForm — create (spec 0068, AC-102/AC-103/AC-104)', () =>
 
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Code/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Payment method code/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Description/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Payment instructions/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Payment days/)).toBeInTheDocument()
@@ -152,6 +155,7 @@ describe('PaymentMethodForm — create (spec 0068, AC-102/AC-103/AC-104)', () =>
     expect(createPaymentMethodMock).toHaveBeenCalledWith({
       name: 'Bank transfer',
       code: 'bank_transfer',
+      payment_method_code: null,
       description: null,
       payment_instructions: null,
       payment_days: 30,
@@ -177,6 +181,9 @@ describe('PaymentMethodForm — edit (spec 0068, AC-105/AC-106)', () => {
     expect(screen.getByLabelText(/^Name/)).toHaveValue('Bank transfer')
     expect(screen.getByLabelText(/^Code/)).toHaveValue('bank_transfer')
     expect(screen.getByLabelText(/^Code/)).toBeDisabled()
+    // The fiscal code stays editable after create, unlike `code` (D-3).
+    expect(screen.getByLabelText(/^Payment method code/)).toHaveValue('MP05')
+    expect(screen.getByLabelText(/^Payment method code/)).not.toBeDisabled()
     expect(screen.getByLabelText(/^Description/)).toHaveValue('Standard bank transfer')
     expect(screen.getByLabelText(/^Payment days/)).toHaveValue(30)
   })

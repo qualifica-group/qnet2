@@ -16,6 +16,7 @@ export const paymentMethods = {
   columns: {
     name: 'Nome',
     code: 'Codice',
+    payment_method_code: 'Codice modalità di pagamento',
     description: 'Descrizione',
     payment_days: 'Giorni di pagamento',
     sort_order: 'Ordine',
@@ -31,6 +32,7 @@ export const paymentMethods = {
     title: 'Dettaglio modalità di pagamento',
     subtitle: 'Visualizzazione in sola lettura della modalità di pagamento selezionata.',
     loadError: 'Impossibile caricare la modalità di pagamento. Riprova.',
+    payment_method_code: 'Codice modalità di pagamento',
     description: 'Descrizione',
     payment_instructions: 'Istruzioni di pagamento',
     payment_days: 'Giorni di pagamento',
@@ -47,6 +49,7 @@ export const paymentMethods = {
     editSubtitle: 'Aggiorna la modalità di pagamento selezionata.',
     name: 'Nome',
     code: 'Codice',
+    paymentMethodCode: 'Codice modalità di pagamento',
     description: 'Descrizione',
     paymentInstructions: 'Istruzioni di pagamento',
     paymentDays: 'Giorni di pagamento',
@@ -60,6 +63,8 @@ export const paymentMethods = {
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     codeRequired: 'Il codice è obbligatorio.',
+    paymentMethodCodeMax:
+      'Il codice modalità di pagamento può contenere al massimo 32 caratteri.',
     codeMax: 'Il codice può contenere al massimo 64 caratteri.',
     codeInvalid:
       'Il codice deve iniziare con una lettera minuscola e contenere solo lettere minuscole, cifre e underscore.',
@@ -79,6 +84,7 @@ export const paymentMethods = {
     },
     hints: {
       codeLocked: 'Il codice non può essere modificato dopo la creazione.',
+      paymentMethodCode: 'Codice fiscale della modalità (es. MP01): può ripetersi su più modalità.',
     },
   },
   reorder: {

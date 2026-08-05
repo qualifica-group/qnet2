@@ -13,13 +13,16 @@ namespace App\DataObjects\PaymentMethods;
  * PaymentMethodService::create(), never accepted from the client. `code` is
  * REQUIRED here (create-only, D-3): immutable for the rest of the record's
  * life, enforced by UpdatePaymentMethodRequest, never exposed on
- * UpdatePaymentMethodData.
+ * UpdatePaymentMethodData. `payment_method_code` — the fiscal/legacy
+ * classification code, non-unique — is a plain optional value, editable like
+ * any other field.
  */
 final readonly class CreatePaymentMethodData
 {
     public function __construct(
         public string $name,
         public string $code,
+        public ?string $paymentMethodCode,
         public ?string $description,
         public ?string $paymentInstructions,
         public ?int $paymentDays,
@@ -36,6 +39,7 @@ final readonly class CreatePaymentMethodData
         return new self(
             name: (string) $data['name'],
             code: (string) $data['code'],
+            paymentMethodCode: array_key_exists('payment_method_code', $data) ? $data['payment_method_code'] : null,
             description: array_key_exists('description', $data) ? $data['description'] : null,
             paymentInstructions: array_key_exists('payment_instructions', $data) ? $data['payment_instructions'] : null,
             paymentDays: array_key_exists('payment_days', $data) && $data['payment_days'] !== null ? (int) $data['payment_days'] : null,
@@ -51,6 +55,7 @@ final readonly class CreatePaymentMethodData
         return [
             'name' => $this->name,
             'code' => $this->code,
+            'payment_method_code' => $this->paymentMethodCode,
             'description' => $this->description,
             'payment_instructions' => $this->paymentInstructions,
             'payment_days' => $this->paymentDays,

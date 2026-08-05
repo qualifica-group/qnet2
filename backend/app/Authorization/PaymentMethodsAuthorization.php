@@ -37,6 +37,7 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('code', 'text', mandatory: true),
+            new FieldDefinition('payment_method_code', 'text'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('payment_instructions', 'textarea'),
             new FieldDefinition('payment_days', 'number'),
@@ -66,6 +67,7 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             // immutability guard is enforced ahead of this ceiling by
             // UpdatePaymentMethodRequest's own `prohibited` rule.
             'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'payment_method_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_instructions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_days' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

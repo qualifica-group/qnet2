@@ -34,7 +34,7 @@ it('403 without payment-methods.viewAny', function () {
     $this->getJson('/api/meta/payment-methods')->assertForbidden();
 });
 
-it('200: field catalogue is [name, code, description, payment_instructions, payment_days, is_active], in this frozen order (AC-040)', function () {
+it('200: field catalogue is [name, code, payment_method_code, description, payment_instructions, payment_days, is_active], in this frozen order (AC-040)', function () {
     $actor = paymentMethodUserWith(['viewAny', 'create']);
     Sanctum::actingAs($actor);
 
@@ -43,13 +43,15 @@ it('200: field catalogue is [name, code, description, payment_instructions, paym
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['name', 'code', 'description', 'payment_instructions', 'payment_days', 'is_active']);
+    expect($keys)->toBe(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'is_active']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['name']['mandatory'])->toBeTrue()
         ->and($fields['name']['type'])->toBe('text')
         ->and($fields['code']['mandatory'])->toBeTrue()
         ->and($fields['code']['type'])->toBe('text')
+        ->and($fields['payment_method_code']['mandatory'])->toBeFalse()
+        ->and($fields['payment_method_code']['type'])->toBe('text')
         ->and($fields['description']['mandatory'])->toBeFalse()
         ->and($fields['description']['type'])->toBe('textarea')
         ->and($fields['payment_instructions']['mandatory'])->toBeFalse()

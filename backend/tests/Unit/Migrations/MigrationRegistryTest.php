@@ -7,6 +7,7 @@ use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\OperationalSitesSource;
+use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
@@ -55,6 +56,7 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
         'vat-rates' => VatRatesSource::class,
+        'payment-methods' => PaymentMethodsSource::class,
         'attributes' => AttributesSource::class,
         'product-categories' => ProductCategoriesSource::class,
         'product-category-attributes' => ProductCategoryAttributesSource::class,
@@ -65,11 +67,11 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(17)
+    expect($sources)->toHaveCount(18)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
-            'sources', 'tags', 'sectors', 'vat-rates', 'attributes', 'product-categories',
+            'sources', 'tags', 'sectors', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'products',
         ]);
 });

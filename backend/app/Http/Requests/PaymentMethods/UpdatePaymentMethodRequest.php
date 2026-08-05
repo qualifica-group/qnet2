@@ -8,7 +8,6 @@ use App\Models\PaymentMethod;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for PUT/PATCH /api/payment-methods/{paymentMethod}
@@ -17,7 +16,9 @@ use Illuminate\Validation\Rule;
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('update', $paymentMethod)). EnforcesFieldPermissions (spec
  * 0004) additionally rejects any submitted field the actor cannot edit on
- * this specific model. `name` is unique ignoring self.
+ * this specific model. `name` carries no uniqueness rule (user directive
+ * 2026-08-05: `code` is the only unique field); `payment_method_code` is the
+ * optional, non-unique fiscal/legacy classification code.
  *
  * `code` (D-3): `prohibited`, UNCONDITIONALLY — the key must not even be
  * present in the payload, regardless of its value (identical or different
@@ -33,6 +34,8 @@ class UpdatePaymentMethodRequest extends FormRequest
     use EnforcesFieldPermissions;
 
     private const int NAME_MAX = 191;
+
+    private const int PAYMENT_METHOD_CODE_MAX = 32;
 
     private const int DESCRIPTION_MAX = 500;
 
@@ -51,12 +54,10 @@ class UpdatePaymentMethodRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var PaymentMethod $paymentMethod */
-        $paymentMethod = $this->route('paymentMethod');
-
         return [
-            'name' => ['sometimes', 'required', 'string', 'max:'.self::NAME_MAX, Rule::unique('payment_methods', 'name')->ignore($paymentMethod->id)],
+            'name' => ['sometimes', 'required', 'string', 'max:'.self::NAME_MAX],
             'code' => ['prohibited'],
+            'payment_method_code' => ['sometimes', 'nullable', 'string', 'max:'.self::PAYMENT_METHOD_CODE_MAX],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
             'payment_instructions' => ['sometimes', 'nullable', 'string', 'max:'.self::INSTRUCTIONS_MAX],
             'payment_days' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::PAYMENT_DAYS_MAX],

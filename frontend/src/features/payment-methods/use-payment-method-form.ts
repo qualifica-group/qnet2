@@ -26,6 +26,7 @@ import type {
 const SERVER_ERROR_FIELDS = [
   'name',
   'code',
+  'payment_method_code',
   'description',
   'payment_instructions',
   'payment_days',
@@ -62,6 +63,7 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
       return {
         name: mode.paymentMethod.name,
         code: mode.paymentMethod.code,
+        payment_method_code: mode.paymentMethod.payment_method_code,
         description: mode.paymentMethod.description,
         payment_instructions: mode.paymentMethod.payment_instructions,
         payment_days: mode.paymentMethod.payment_days,
@@ -71,6 +73,7 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
     return {
       name: '',
       code: '',
+      payment_method_code: null,
       description: null,
       payment_instructions: null,
       payment_days: null,

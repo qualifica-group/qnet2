@@ -26,8 +26,9 @@ function numberInputValue(value: number | null): string {
 }
 
 /**
- * The payment method create/edit form UI. `name`, `code`, `description`,
- * `payment_instructions`, `payment_days` and `is_active` are each wrapped in
+ * The payment method create/edit form UI. `name`, `code`,
+ * `payment_method_code`, `description`, `payment_instructions`,
+ * `payment_days` and `is_active` are each wrapped in
  * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
  * `required` comes from the resolved `ResourcePermissions` — no hardcoded
  * permission logic lives here. `code`'s immutability after create (D-3) is
@@ -46,6 +47,7 @@ export function PaymentMethodFormBody({ mode, onSuccess, onCancel }: PaymentMeth
   const identityVisible =
     fieldPermission('name').visible ||
     fieldPermission('code').visible ||
+    fieldPermission('payment_method_code').visible ||
     fieldPermission('description').visible ||
     fieldPermission('payment_instructions').visible ||
     fieldPermission('payment_days').visible ||
@@ -88,6 +90,29 @@ export function PaymentMethodFormBody({ mode, onSuccess, onCancel }: PaymentMeth
                 {({ field, disabled, readOnly }) => (
                   <FormControl>
                     <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+                  </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="payment_method_code"
+                metaKey="payment_method_code"
+                label={t('paymentMethods.form.paymentMethodCode')}
+                hint={t('paymentMethods.form.hints.paymentMethodCode')}
+              >
+                {({ field, disabled, readOnly }) => (
+                  <FormControl>
+                    <Input
+                      autoComplete="off"
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      value={field.value ?? ''}
+                      onChange={(event) => field.onChange(event.target.value || null)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                    />
                   </FormControl>
                 )}
               </MetaField>

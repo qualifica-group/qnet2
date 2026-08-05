@@ -35,14 +35,28 @@ it('schema: the 9 contract columns exist with the right defaults, no system_key/
         ->and((bool) $row->is_active)->toBeTrue();
 });
 
-it('schema: name and code are unique at the DB level (AC-001)', function () {
+// Requirement changed (user directive 2026-08-05): `code` is the ONLY unique
+// column — the name is a plain label, and homonymous modalities are legal.
+it('schema: code is unique at the DB level, name is not (AC-001)', function () {
     DB::table('payment_methods')->insert(['name' => 'Unique Name', 'code' => 'unique_name', 'created_at' => now(), 'updated_at' => now()]);
 
-    expect(fn () => DB::table('payment_methods')->insert(['name' => 'Unique Name', 'code' => 'other_code', 'created_at' => now(), 'updated_at' => now()]))
-        ->toThrow(QueryException::class);
+    DB::table('payment_methods')->insert(['name' => 'Unique Name', 'code' => 'other_code', 'created_at' => now(), 'updated_at' => now()]);
 
-    expect(fn () => DB::table('payment_methods')->insert(['name' => 'Other Name', 'code' => 'unique_name', 'created_at' => now(), 'updated_at' => now()]))
+    expect(DB::table('payment_methods')->where('name', 'Unique Name')->count())->toBe(2)
+        ->and(fn () => DB::table('payment_methods')->insert(['name' => 'Other Name', 'code' => 'unique_name', 'created_at' => now(), 'updated_at' => now()]))
         ->toThrow(QueryException::class);
+});
+
+it('schema: payment_method_code is a nullable, non-unique column', function () {
+    DB::table('payment_methods')->insert([
+        ['name' => 'Cash', 'code' => 'cash_a', 'payment_method_code' => 'MP01', 'created_at' => now(), 'updated_at' => now()],
+        ['name' => 'Cash on delivery', 'code' => 'cash_b', 'payment_method_code' => 'MP01', 'created_at' => now(), 'updated_at' => now()],
+        ['name' => 'No fiscal code', 'code' => 'cash_c', 'payment_method_code' => null, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    expect(Schema::hasColumn('payment_methods', 'payment_method_code'))->toBeTrue()
+        ->and(DB::table('payment_methods')->where('payment_method_code', 'MP01')->count())->toBe(2)
+        ->and(DB::table('payment_methods')->whereNull('payment_method_code')->count())->toBe(1);
 });
 
 it('migration: down() drops the table cleanly, up() recreates it (AC-002)', function () {

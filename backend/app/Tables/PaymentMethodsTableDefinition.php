@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Gate;
 /**
  * Table definition for the `payment-methods` domain (spec 0068).
  *
- * Every column (name, code, description, payment_days, sort_order,
- * is_active, created_at, updated_at) is a real DB column handled entirely by
- * the generic engine.
+ * Every column (name, code, payment_method_code, description, payment_days,
+ * sort_order, is_active, created_at, updated_at) is a real DB column handled
+ * entirely by the generic engine.
  */
 class PaymentMethodsTableDefinition extends AbstractTableDefinition
 {
@@ -110,6 +110,7 @@ class PaymentMethodsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'code' => $row->code,
+            'payment_method_code' => $row->payment_method_code,
             'description' => $row->description,
             'payment_instructions' => $row->payment_instructions,
             'payment_days' => $row->payment_days,

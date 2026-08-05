@@ -76,15 +76,20 @@ it('create: a submitted sort_order is ignored, the server sequence wins (AC-012)
     expect($response->json('data.sort_order'))->not->toBe(999);
 });
 
-it('create: 422 when name already exists, no row created (AC-013)', function () {
+// Requirement changed (user directive 2026-08-05): `code` is the ONLY unique
+// field. AC-013 read "422 when name already exists"; a homonymous method is
+// now legal — the legacy catalogues carry same-named modalities with different
+// terms — so the assertion is inverted to lock the new rule in.
+it('create: a duplicate name is accepted, only the code is unique (AC-013)', function () {
     $actor = paymentMethodUserWith(['create']);
     PaymentMethod::factory()->create(['name' => 'Taken Name']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/payment-methods', ['name' => 'Taken Name', 'code' => 'fresh_code'])
-        ->assertStatus(422)->assertJsonValidationErrors('name');
+        ->assertCreated()
+        ->assertJsonPath('data.name', 'Taken Name');
 
-    expect(PaymentMethod::where('name', 'Taken Name')->count())->toBe(1);
+    expect(PaymentMethod::where('name', 'Taken Name')->count())->toBe(2);
 });
 
 it('create: 422 when code already exists, no row created (AC-014)', function () {
@@ -187,18 +192,21 @@ it('update: PATCH {is_active: false} deactivates the record (AC-021)', function 
         ->assertJsonPath('data.is_active', false);
 });
 
-it('update: 422 when name duplicates ANOTHER record, 200 when re-submitting its own unchanged name (AC-022)', function () {
+// Same requirement change as AC-013: renaming onto another record's name is
+// allowed now that `name` carries no uniqueness rule.
+it('update: accepts a name that duplicates ANOTHER record, and its own unchanged name (AC-022)', function () {
     $actor = paymentMethodUserWith(['update']);
     PaymentMethod::factory()->create(['name' => 'Other']);
     $target = PaymentMethod::factory()->create(['name' => 'Mine']);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/payment-methods/{$target->id}", ['name' => 'Other'])
-        ->assertStatus(422)->assertJsonValidationErrors('name');
-
-    $this->patchJson("/api/payment-methods/{$target->id}", ['name' => 'Mine'])
         ->assertOk()
-        ->assertJsonPath('data.name', 'Mine');
+        ->assertJsonPath('data.name', 'Other');
+
+    $this->patchJson("/api/payment-methods/{$target->id}", ['name' => 'Other'])
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Other');
 });
 
 it('update: 422 when code is submitted with a DIFFERENT value, code unchanged at DB (AC-023)', function () {
