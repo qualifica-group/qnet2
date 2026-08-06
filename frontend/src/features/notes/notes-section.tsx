@@ -30,6 +30,15 @@ interface NotesSectionProps {
    * nota scritta appartiene a quella. `null` = vista Opportunita', filtrabile.
    */
   lockedQuoteId?: number | null
+  /**
+   * Chiamata quando il thread cambia di dimensione — nota creata (root o reply)
+   * o eliminata. Serve agli host che mostrano un conteggio proprio (il badge
+   * `notes_count` di una riga SSRM): la lista si aggiorna da sola via React
+   * Query, quel conteggio no, ed e' un valore del server che va rifetchato
+   * subito, non alla chiusura del dialog. La modifica di una nota non la
+   * chiama: cambia il testo, non il conteggio.
+   */
+  onThreadChanged?: () => void
 }
 
 const SKELETON_ROWS = 3
@@ -46,6 +55,7 @@ export function NotesSection({
   entityId,
   showHeader = true,
   lockedQuoteId = null,
+  onThreadChanged,
 }: NotesSectionProps) {
   const { t } = useTranslation()
   // Spec 0085: lo scope e' stato LOCALE della sezione, non del server — cambiare
@@ -90,6 +100,7 @@ export function NotesSection({
         // di un'Offerta, la nota che scrivo appartiene quasi certamente a quella.
         defaultQuoteId={lockedQuoteId ?? (typeof quoteScope === 'number' ? quoteScope : null)}
         lockQuote={lockedQuoteId !== null}
+        onDone={onThreadChanged}
       />
 
       {isLoading ? (
@@ -125,6 +136,7 @@ export function NotesSection({
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          onThreadChanged={onThreadChanged}
           // Solo quando il contesto NON e' gia' dato: con un filtro attivo o
           // sul dettaglio Offerta, l'etichetta ripeterebbe cio' che si sa gia'.
           showQuoteBadge={lockedQuoteId === null && quoteScope === 'all' && quotes.length > 0}

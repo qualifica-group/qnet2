@@ -11,8 +11,9 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 /**
  * The "notes" row action (user directive 2026-08-05: same actions as Gestione
  * Richieste): clicking it opens the agnostic `NotesDialog` on the row's
- * thread, and closing it refreshes the grid so the `notes_count` badge stays
- * current. The thread is registered under the `request-management`
+ * thread; the grid refreshes on every write inside it (`onThreadChanged`) and
+ * again on close, so the `notes_count` badge stays current without waiting for
+ * the dialog to be dismissed. The thread is registered under the `request-management`
  * entity_type (the notes registry maps the Opportunity record there), so that
  * is the slug the dialog must receive — passing `opportunities` would 422 the
  * note endpoints. The generic `<TableView>` is stubbed (its own behavior is
@@ -67,7 +68,7 @@ function action(key: string): TableActionDefinition {
   return {
     key,
     label: `actions.${key}`,
-    icon: key === 'notes' ? 'message-square' : 'eye',
+    icon: key === 'notes' ? 'messages-square' : 'eye',
     type: 'action',
     confirm: false,
     count_field: key === 'notes' ? 'notes_count' : null,
@@ -143,6 +144,23 @@ describe('OpportunitiesTable — "notes" row action', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes the grid as soon as the thread changes, without closing the dialog', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
+
+    const props = notesSectionMock.mock.calls.at(-1)?.[0] as {
+      onThreadChanged?: () => void
+    }
+    expect(props.onThreadChanged).toBeTypeOf('function')
+
+    props.onThreadChanged?.()
+
+    // The badge follows the write itself: no close needed, and the dialog stays open.
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('ignores an "edit" action: the detail surface owns the Edit button', () => {

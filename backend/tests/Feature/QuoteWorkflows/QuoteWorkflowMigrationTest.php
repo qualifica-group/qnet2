@@ -22,13 +22,14 @@ use Illuminate\Support\Facades\Schema;
 uses(DatabaseMigrations::class);
 
 it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', function () {
-    // Spec 0084 added one more migration on top of these 7 (the newest one
-    // at the time, `2026_08_06_100000_add_quote_attribute_context_columns`),
-    // and spec 0085 added a 9th (`2026_08_06_110000_add_quote_id_to_notes_
-    // table`) — `--step` rolls back the N most-recent migrations regardless
-    // of which spec they belong to, so it must cover both of those on top
-    // for this AC's own 7 to be reached at all.
-    Artisan::call('migrate:rollback', ['--step' => 9]);
+    // `--step` rolls back the N most-recent migrations regardless of which
+    // spec they belong to, so the count must cover everything stacked ON TOP
+    // of this AC's own 7 for them to be reached at all: spec 0084's
+    // `2026_08_06_100000_add_quote_attribute_context_columns` (8th), spec
+    // 0085's `2026_08_06_110000_add_quote_id_to_notes_table` (9th) and
+    // `2026_08_06_120000_drop_opportunity_attribute_context` (10th). Adding a
+    // migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 10]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -38,9 +39,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         ->and(Schema::hasColumn('opportunities', 'opportunity_workflow_status_id'))->toBeTrue()
         ->and(Schema::hasColumn('product_categories', 'inherits_quote_attributes'))->toBeFalse()
         ->and(Schema::hasColumn('quotes', 'attribute_values'))->toBeFalse()
-        ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeTrue();
+        ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeTrue()
+        // The retired opportunity context's barrier comes back with its
+        // migration's down(): structure is reversible, its rows are not.
+        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue();
 
-    Artisan::call('migrate', ['--step' => 9]);
+    Artisan::call('migrate', ['--step' => 10]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()
@@ -50,7 +54,8 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         ->and(Schema::hasColumn('opportunities', 'opportunity_workflow_status_id'))->toBeFalse()
         ->and(Schema::hasColumn('product_categories', 'inherits_quote_attributes'))->toBeTrue()
         ->and(Schema::hasColumn('quotes', 'attribute_values'))->toBeTrue()
-        ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeFalse();
+        ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeFalse()
+        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeFalse();
 });
 
 it('renames opportunity-workflows.* permissions and prunes quote-statuses.* ones in place', function () {

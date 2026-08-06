@@ -85,7 +85,7 @@ it('creates root and child categories, remapping parent_id via old_id', function
         // The external system has ONE inheritance flag; it seeds both qnet
         // per-context barriers identically.
         ->and($root->inherits_product_attributes)->toBeTrue()
-        ->and($root->inherits_opportunity_attributes)->toBeTrue()
+        ->and($root->inherits_quote_attributes)->toBeTrue()
         // A root authors its own quote flag; `is_selectable` defaults to true
         // when the external record omits it.
         ->and($root->requires_quote)->toBeTrue()
@@ -93,7 +93,7 @@ it('creates root and child categories, remapping parent_id via old_id', function
         ->and($child->name)->toBe('Laptops')
         ->and($child->parent_id)->toBe($root->id)
         ->and($child->inherits_product_attributes)->toBeFalse()
-        ->and($child->inherits_opportunity_attributes)->toBeFalse()
+        ->and($child->inherits_quote_attributes)->toBeFalse()
         // `is_selectable` is per-node (no inheritance), `requires_quote` is
         // taken from the branch root.
         ->and($child->is_selectable)->toBeFalse()

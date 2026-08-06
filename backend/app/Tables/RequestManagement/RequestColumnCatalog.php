@@ -392,7 +392,7 @@ final class RequestColumnCatalog
             [
                 'key' => 'notes',
                 'label' => 'actions.notes',
-                'icon' => 'message-square',
+                'icon' => 'messages-square',
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'request-management.view',

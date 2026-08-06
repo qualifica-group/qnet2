@@ -7,6 +7,7 @@ use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
+use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
 use Illuminate\Contracts\Validation\Validator;
@@ -29,6 +30,7 @@ class StoreRegistryRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
+    use ValidatesPhoneUniqueness;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -58,9 +60,9 @@ class StoreRegistryRequest extends FormRequest
     }
 
     /**
-     * Codice fiscale and partita IVA are unique among ANAGRAFICHE (user
-     * directive 2026-08-03) — not globally: the same person may also exist as
-     * a referent, which is a different role, not a duplicate.
+     * Codice fiscale, partita IVA and phone numbers must be free across users,
+     * anagrafiche and referenti (user directive 2026-08-06); nothing to exclude
+     * on create, the anagrafica does not exist yet.
      *
      * @return class-string<Registry>
      */
@@ -103,6 +105,7 @@ class StoreRegistryRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
             $this->enforceFieldPermissions($validator);
         });

@@ -85,7 +85,7 @@ it('rows expose id/name/parent{id,name}|null/description/counts/created_at + per
     $root = ProductCategory::factory()->create(['name' => 'Root']);
     $child = ProductCategory::factory()->childOf($root)->create(['name' => 'Child']);
     $attribute = Attribute::factory()->create(['name' => 'Color']);
-    $child->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0]);
+    $child->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     $product = Product::factory()->create(['name' => 'Widget', 'category_id' => $child->id]);
     Sanctum::actingAs($actor);
 
@@ -273,7 +273,7 @@ it('values: attributes_count → distinct counts, search-narrowed', function () 
     $actor = productCategoryUserWith(['viewAny']);
     $category = ProductCategory::factory()->create();
     Attribute::factory()->count(2)->create()->each(
-        fn (Attribute $attribute) => $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0]),
+        fn (Attribute $attribute) => $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']),
     );
     ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
@@ -289,7 +289,7 @@ it('filter: attributes_count inRange/lessThan/notEqual number conditions', funct
     $actor = productCategoryUserWith(['viewAny']);
     $none = ProductCategory::factory()->create(['name' => 'None']);
     $one = ProductCategory::factory()->create(['name' => 'One']);
-    $one->attributes()->attach(Attribute::factory()->create()->id, ['is_required' => false, 'sort_order' => 0]);
+    $one->attributes()->attach(Attribute::factory()->create()->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $inRange = $this->postJson('/api/tables/product-categories/rows', [

@@ -97,7 +97,11 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
             'operationalSite.addresses.city',
-        ]);
+        ])
+            // Per-row count for the `notes` action badge: the notes SCOPED to
+            // this Offerta (`notes.quote_id`), not the parent Opportunity's
+            // whole thread — the dialog this action opens shows exactly these.
+            ->withCount(['scopedNotes as notes_count']);
     }
 
     /**
@@ -175,6 +179,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'company' => $this->summarizeCompany($row->company),
             'company_site' => $this->summarize($row->companySite),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
+            'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }
 

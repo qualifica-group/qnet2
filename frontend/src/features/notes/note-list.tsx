@@ -16,6 +16,8 @@ export interface NoteListProps {
   hasNextPage: boolean
   isFetchingNextPage: boolean
   onLoadMore: () => void
+  /** Fired quando una reply viene creata o una nota eliminata (conteggio host). */
+  onThreadChanged?: () => void
 }
 
 /**
@@ -24,7 +26,7 @@ export interface NoteListProps {
  * Owns which root currently shows its inline reply composer; edit-in-place is
  * owned by `NoteItem` itself.
  */
-export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore, showQuoteBadge = false }: NoteListProps) {
+export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore, onThreadChanged, showQuoteBadge = false }: NoteListProps) {
   const { t } = useTranslation()
   const [replyingRootId, setReplyingRootId] = useState<number | null>(null)
 
@@ -45,6 +47,7 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
             onToggleReply={() =>
               setReplyingRootId((current) => (current === root.id ? null : root.id))
             }
+            onThreadChanged={onThreadChanged}
             showQuoteBadge={showQuoteBadge}
           />
           {(root.replies ?? []).length > 0 ? (
@@ -63,6 +66,7 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
                   entityId={entityId}
                   isRoot={false}
                   isReplying={false}
+                  onThreadChanged={onThreadChanged}
                 />
               ))}
             </div>
@@ -73,7 +77,10 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
                 entityType={entityType}
                 entityId={entityId}
                 parentId={root.id}
-                onDone={() => setReplyingRootId(null)}
+                onDone={() => {
+                  setReplyingRootId(null)
+                  onThreadChanged?.()
+                }}
                 onCancel={() => setReplyingRootId(null)}
                 autoFocus
               />

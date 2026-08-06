@@ -114,7 +114,7 @@ it('links attributes resolved by external id and by code, honouring the declared
     fakeProductCategoryAttributes([
         ['id' => 1, 'name' => 'Electronics', 'attributes' => [
             ['attribute_id' => 7, 'context' => 'product', 'is_required' => true, 'sort_order' => 3],
-            ['attribute_code' => 'size', 'context' => 'opportunity'],
+            ['attribute_code' => 'size', 'context' => 'quote'],
         ]],
     ]);
 
@@ -128,7 +128,7 @@ it('links attributes resolved by external id and by code, honouring the declared
         ->and((bool) $links[0]->is_required)->toBeTrue()
         ->and($links[0]->sort_order)->toBe(3)
         ->and($links[1]->attribute_id)->toBe($byCode->id)
-        ->and($links[1]->context)->toBe('opportunity')
+        ->and($links[1]->context)->toBe('quote')
         ->and((bool) $links[1]->is_required)->toBeFalse();
 
     expect($fresh->status)->toBe(MigrationStatus::Completed)
@@ -144,7 +144,7 @@ it('links the same attribute to both contexts as two separate pivot rows', funct
     fakeProductCategoryAttributes([
         ['id' => 1, 'attributes' => [
             ['attribute_id' => 7, 'context' => 'product'],
-            ['attribute_id' => 7, 'context' => 'opportunity'],
+            ['attribute_id' => 7, 'context' => 'quote'],
         ]],
     ]);
 
@@ -153,7 +153,7 @@ it('links the same attribute to both contexts as two separate pivot rows', funct
     $links = categoryAttributeLinks($category);
 
     expect($links)->toHaveCount(2)
-        ->and(array_map(fn (object $link): string => $link->context, $links))->toBe(['opportunity', 'product'])
+        ->and(array_map(fn (object $link): string => $link->context, $links))->toBe(['product', 'quote'])
         ->and(array_unique(array_map(fn (object $link): int => $link->attribute_id, $links)))->toBe([$attribute->id]);
 });
 

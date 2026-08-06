@@ -75,7 +75,6 @@ function category(
     parent_id: null,
     parent: null,
     inherits_product_attributes: true,
-    inherits_opportunity_attributes: true,
     inherits_quote_attributes: true,
     description: null,
     attributes: [],
@@ -178,14 +177,14 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
     await screen.findByRole('button', { name: 'Save' })
 
     const productSwitch = within(attributeSection('Product attributes')).getByRole('switch')
-    const opportunitySwitch = within(attributeSection('Opportunity attributes')).getByRole('switch')
+    const quoteSwitch = within(attributeSection('Quote attributes')).getByRole('switch')
     expect(productSwitch).toBeChecked()
-    expect(opportunitySwitch).toBeChecked()
+    expect(quoteSwitch).toBeChecked()
 
     fireEvent.click(productSwitch)
 
     await waitFor(() => expect(productSwitch).not.toBeChecked())
-    expect(opportunitySwitch).toBeChecked()
+    expect(quoteSwitch).toBeChecked()
   })
 
   it('root category: no inheritance switch at all (no ancestry to inherit from)', async () => {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
@@ -55,11 +56,45 @@ it('declares the notes action in the quotes catalogue only for request-managemen
 
     $notes = collect($actions)->firstWhere('key', 'notes');
     expect($notes)->not->toBeNull()
-        ->and($notes['icon'])->toBe('message-square')
+        ->and($notes['icon'])->toBe('messages-square')
         ->and($notes['label'])->toBe('actions.notes')
-        // Spec 0085 <out>: no per-Offerta counter, the badge stays on the Opportunity.
-        ->and($notes)->not->toHaveKey('count_field')
+        // Amendment 2026-08-06: the badge counts the notes of THIS Offerta —
+        // the very thread the action opens, already filtered on `quote_id`.
+        ->and($notes['count_field'])->toBe('notes_count')
         ->and($notes)->not->toHaveKey('permission'); // stripped server-side after the gate check
+});
+
+it('counts on each row only the notes scoped to that Offerta, not the parent thread', function () {
+    $actor = quoteNotesActionUserWith(['viewAny', 'view'], ['view', 'viewAll']);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $sibling = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    Note::factory()->count(2)->create([
+        'notable_type' => $opportunity->getMorphClass(),
+        'notable_id' => $opportunity->id,
+        'quote_id' => $quote->id,
+    ]);
+    // Una nota generale dell'Opportunita' e una dell'altra offerta: nessuna
+    // delle due appartiene al thread che l'azione di questa riga apre.
+    Note::factory()->create([
+        'notable_type' => $opportunity->getMorphClass(),
+        'notable_id' => $opportunity->id,
+        'quote_id' => null,
+    ]);
+    Note::factory()->create([
+        'notable_type' => $opportunity->getMorphClass(),
+        'notable_id' => $opportunity->id,
+        'quote_id' => $sibling->id,
+    ]);
+
+    Sanctum::actingAs($actor);
+
+    $items = collect($this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'));
+
+    expect($items->firstWhere('id', $quote->id)['notes_count'])->toBe(2)
+        ->and($items->firstWhere('id', $sibling->id)['notes_count'])->toBe(1);
 });
 
 it('row.actions contains notes for an actor holding request-management.view + viewAll', function () {

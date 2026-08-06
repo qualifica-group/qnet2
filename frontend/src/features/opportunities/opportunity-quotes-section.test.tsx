@@ -58,7 +58,26 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   ),
 }))
 
-const ROW: TableRow = { id: 9, actions: ['view', 'edit', 'delete', 'activity'], title: 'Offerta Acme' }
+const notesSectionMock = vi.fn()
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: (props: { entityType: string; entityId: number; lockedQuoteId?: number | null }) => {
+    notesSectionMock(props)
+    return <div>{`notes-section:${props.entityType}:${props.entityId}:${props.lockedQuoteId}`}</div>
+  },
+}))
+
+const generateQuoteDocumentMock = vi.fn()
+vi.mock('@/features/quotes/quote-document-api', () => ({
+  generateQuoteDocument: (...args: unknown[]) => generateQuoteDocumentMock(...args),
+}))
+
+const ROW: TableRow = {
+  id: 9,
+  actions: ['view', 'edit', 'delete', 'activity', 'notes', 'generate_document'],
+  title: 'Offerta Acme',
+  code: 'QUO-0009',
+  opportunity: { id: 42, name: 'Opportunita Acme' },
+}
 const refreshMock = vi.fn()
 // Captured on every stub render so a test can simulate the grid re-reporting
 // its live total AFTER an imperative `refresh()` (AC-062: the real
@@ -72,18 +91,23 @@ interface TableViewStubProps {
   rowScope?: TableRowScope
   onAction?: (action: TableActionDefinition, row: TableRow) => void
   onRowCountChanged?: (count: number | null) => void
+  iconMap?: Record<string, unknown>
 }
+
+/** Captured so a test can assert the panel advertises the Quotes icon overrides. */
+let capturedIconMap: Record<string, unknown> | undefined
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<{ refresh: () => void }, TableViewStubProps>(function TableViewStub(
-    { domain, rowScope, onAction, onRowCountChanged },
+    { domain, rowScope, onAction, onRowCountChanged, iconMap },
     ref,
   ) {
     useImperativeHandle(ref, () => ({ refresh: refreshMock }))
     capturedOnRowCountChanged = onRowCountChanged
+    capturedIconMap = iconMap
     return (
       <div role="region" aria-label={`table-${domain}-${rowScope?.opportunityId ?? 'none'}`}>
-        {(['view', 'edit', 'delete', 'activity'] as const).map((key) => (
+        {(['view', 'edit', 'delete', 'activity', 'notes', 'generate_document'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -133,7 +157,10 @@ beforeEach(() => {
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
   refreshMock.mockReset()
+  notesSectionMock.mockReset()
+  generateQuoteDocumentMock.mockReset()
   capturedOnRowCountChanged = undefined
+  capturedIconMap = undefined
 })
 
 describe('OpportunityQuotesSection — permission gating (AC-040/041)', () => {
@@ -260,6 +287,34 @@ describe('OpportunityQuotesSection — row actions (AC-060/061/065)', () => {
     act(() => screen.getByRole('button', { name: 'activity row' }).click())
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText(`activity:quotes:${ROW.id}`)).toBeInTheDocument()
+  })
+
+  // Senza queste tre, il pannello del dettaglio divergeva dalle altre due
+  // superfici Offerte: `notes`/`generate_document` erano affordance morte e le
+  // loro icone cadevano sul fallback `MoreHorizontal`.
+  it('advertises the Quotes icon overrides, so notes/generate_document are not the fallback icon', () => {
+    renderPanel(3)
+    expect(capturedIconMap).toHaveProperty('messages-square')
+    expect(capturedIconMap).toHaveProperty('file-text')
+  })
+
+  it("opens the notes dialog on the parent Opportunity's thread, locked to the Offerta", () => {
+    renderPanel(3)
+    act(() => screen.getByRole('button', { name: 'notes row' }).click())
+
+    expect(screen.getByRole('dialog', { name: 'QUO-0009' })).toBeInTheDocument()
+    expect(notesSectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ entityType: 'request-management', entityId: 42, lockedQuoteId: 9 }),
+    )
+  })
+
+  it('delegates generate_document to the shared document generation', async () => {
+    generateQuoteDocumentMock.mockResolvedValue({ blob: new Blob(), filename: 'QUO-0009.docx' })
+    renderPanel(3)
+
+    await act(async () => screen.getByRole('button', { name: 'generate_document row' }).click())
+
+    expect(generateQuoteDocumentMock).toHaveBeenCalledWith(ROW.id, ROW.code)
   })
 })
 

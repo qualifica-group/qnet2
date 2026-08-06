@@ -84,14 +84,14 @@ it('AC-001: attribute_layouts table exists with the contracted columns and uniqu
 
     AttributeLayout::query()->create([
         'product_category_id' => $category->id,
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => null,
     ]);
 
     expect(fn () => AttributeLayout::query()->create([
         'product_category_id' => $category->id,
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => null,
     ]))->toThrow(QueryException::class);
@@ -114,11 +114,11 @@ it('AC-002: PUT with a valid layout upserts, GET returns the same normalized blo
     $actor = productCategoryUserWith(['view', 'update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material', 'type' => 'text']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $payload = [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => attributeLayoutBlob(['material']),
     ];
@@ -126,7 +126,7 @@ it('AC-002: PUT with a valid layout upserts, GET returns the same normalized blo
     $first = $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", $payload)->assertOk();
     $first->assertJsonPath('data.layout.sections.0.rows.0.items.0.attribute_code', 'material');
 
-    $get = $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=opportunity&form_mode=create")->assertOk();
+    $get = $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=quote&form_mode=create")->assertOk();
     expect($get->json('data.layout'))->toBe($first->json('data.layout'));
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", $payload)->assertOk();
@@ -144,7 +144,7 @@ it('AC-003: PUT with an attribute_code outside the category effective set -> 422
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => attributeLayoutBlob(['not_a_real_code']),
     ])->assertStatus(422)->assertJsonValidationErrors('attribute_layout');
@@ -152,7 +152,7 @@ it('AC-003: PUT with an attribute_code outside the category effective set -> 422
     expect(AttributeLayout::query()->count())->toBe(0);
 });
 
-it('AC-003: a Product-context-only code is rejected for an Opportunity-context PUT (per-context allow-list)', function () {
+it('AC-003: a Product-context-only code is rejected for an Offerta-context PUT (per-context allow-list)', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'product_only']);
@@ -160,7 +160,7 @@ it('AC-003: a Product-context-only code is rejected for an Opportunity-context P
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => attributeLayoutBlob(['product_only']),
     ])->assertStatus(422)->assertJsonValidationErrors('attribute_layout');
@@ -174,11 +174,11 @@ it('AC-004: PUT with the same attribute_code placed twice -> 422', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => attributeLayoutBlob(['material', 'material']),
     ])->assertStatus(422)->assertJsonValidationErrors('attribute_layout');
@@ -188,14 +188,14 @@ it('AC-004: PUT with an out-of-enum section variant -> 422', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $blob = attributeLayoutBlob(['material']);
     $blob['sections'][0]['variant'] = 'bogus';
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => $blob,
     ])->assertStatus(422);
@@ -205,14 +205,14 @@ it('AC-004: PUT with an out-of-enum item width -> 422', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $blob = attributeLayoutBlob(['material']);
     $blob['sections'][0]['rows'][0]['items'][0]['width'] = 'bogus';
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => $blob,
     ])->assertStatus(422);
@@ -222,14 +222,14 @@ it('AC-004: PUT with columns outside {1,2,3,4} -> 422', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $blob = attributeLayoutBlob(['material']);
     $blob['sections'][0]['columns'] = 5;
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => $blob,
     ])->assertStatus(422);
@@ -245,7 +245,7 @@ it('AC-005: PUT without product-categories.update -> 403', function () {
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => null,
     ])->assertStatus(403);
@@ -256,7 +256,7 @@ it('AC-005: GET without product-categories.view -> 403', function () {
     $category = ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts")->assertStatus(403);
+    $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=quote&form_mode=create")->assertStatus(403);
 });
 
 it('AC-005: an inexistent category -> 404 on GET and PUT', function () {
@@ -265,7 +265,7 @@ it('AC-005: an inexistent category -> 404 on GET and PUT', function () {
 
     $this->getJson('/api/product-categories/999999/attribute-layouts')->assertStatus(404);
     $this->putJson('/api/product-categories/999999/attribute-layouts', [
-        'context' => 'opportunity', 'form_mode' => 'create', 'layout' => null,
+        'context' => 'quote', 'form_mode' => 'create', 'layout' => null,
     ])->assertStatus(404);
 });
 
@@ -276,21 +276,21 @@ it('AC-005: an inexistent category -> 404 on GET and PUT', function () {
 it('AC-006: GET on a category with no layout -> data.layout is null, data.attributes is the effective set', function () {
     $actor = productCategoryUserWith(['view']);
     $category = ProductCategory::factory()->create();
-    $attribute = Attribute::factory()->create(['code' => 'opp_field']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $attribute = Attribute::factory()->create(['code' => 'quote_field']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson("/api/product-categories/{$category->id}/attribute-layouts")->assertOk();
+    $response = $this->getJson("/api/product-categories/{$category->id}/attribute-layouts?context=quote&form_mode=create")->assertOk();
 
     expect($response->json('data.layout'))->toBeNull();
-    expect(collect($response->json('data.attributes'))->pluck('code')->all())->toBe(['opp_field']);
+    expect(collect($response->json('data.attributes'))->pluck('code')->all())->toBe(['quote_field']);
 });
 
 it('accepts the quarter item width (single cell of a 4-column section) and round-trips it', function () {
     $actor = productCategoryUserWith(['view', 'update']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'material']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $blob = attributeLayoutBlob(['material']);
@@ -298,7 +298,7 @@ it('accepts the quarter item width (single cell of a 4-column section) and round
     $blob['sections'][0]['rows'][0]['items'][0]['width'] = 'quarter';
 
     $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => $blob,
     ])->assertOk()->assertJsonPath('data.layout.sections.0.rows.0.items.0.width', 'quarter');
@@ -429,12 +429,12 @@ it('PUT with layout=null on a per-mode scope drops only that override, leaving t
 it('PUT with layout=null deletes an existing row, back to flat', function () {
     $actor = productCategoryUserWith(['update']);
     $category = ProductCategory::factory()->create();
-    AttributeLayout::factory()->for($category, 'productCategory')->create(['context' => 'opportunity', 'form_mode' => 'create']);
+    AttributeLayout::factory()->for($category, 'productCategory')->create(['context' => 'quote', 'form_mode' => 'create']);
 
     Sanctum::actingAs($actor);
 
     $response = $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
-        'context' => 'opportunity',
+        'context' => 'quote',
         'form_mode' => 'create',
         'layout' => null,
     ])->assertOk();

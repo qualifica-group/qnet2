@@ -45,7 +45,6 @@ function category(
     parent_id: 1,
     parent: { id: 1, name: 'Electronics' },
     inherits_product_attributes: true,
-    inherits_opportunity_attributes: true,
     inherits_quote_attributes: true,
     description: null,
     attributes: [],
@@ -95,21 +94,21 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
         category={category({
           attributes: [
             { attribute_id: 1, code: 'color', name: 'Color', type: 'enum', is_required: false, sort_order: 0, context: 'product' },
-            { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'opportunity' },
+            { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'quote' },
           ],
         })}
       />,
     )
 
     const productSection = screen.getByRole('heading', { name: 'Product attributes' }).closest('section') as HTMLElement
-    const opportunitySection = screen
-      .getByRole('heading', { name: 'Opportunity attributes' })
+    const quoteSection = screen
+      .getByRole('heading', { name: 'Quote attributes' })
       .closest('section') as HTMLElement
 
     expect(within(productSection).getByText('Color')).toBeInTheDocument()
     expect(within(productSection).queryByText('RAM (GB)')).not.toBeInTheDocument()
-    expect(within(opportunitySection).getByText('RAM (GB)')).toBeInTheDocument()
-    expect(within(opportunitySection).queryByText('Color')).not.toBeInTheDocument()
+    expect(within(quoteSection).getByText('RAM (GB)')).toBeInTheDocument()
+    expect(within(quoteSection).queryByText('Color')).not.toBeInTheDocument()
   })
 
   it('shows an inherited attribute only under its own context section, under the "inherited" heading', () => {
@@ -127,14 +126,14 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
 
     expect(within(productSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
     expect(within(productSection).getByText('Weight (kg)')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Opportunity attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
   })
 
   it('renders neither section when the category has no attribute in either context', () => {
     render(<ProductCategoryDetailView category={category()} />)
 
     expect(screen.queryByRole('heading', { name: 'Product attributes' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Opportunity attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
   })
 
   it('marks a required own attribute with the "Required" badge', () => {
@@ -142,16 +141,16 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
       <ProductCategoryDetailView
         category={category({
           attributes: [
-            { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'opportunity' },
+            { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'quote' },
           ],
         })}
       />,
     )
 
-    const opportunitySection = screen
-      .getByRole('heading', { name: 'Opportunity attributes' })
+    const quoteSection = screen
+      .getByRole('heading', { name: 'Quote attributes' })
       .closest('section') as HTMLElement
-    expect(within(opportunitySection).getByText('Required')).toBeInTheDocument()
+    expect(within(quoteSection).getByText('Required')).toBeInTheDocument()
   })
 })
 

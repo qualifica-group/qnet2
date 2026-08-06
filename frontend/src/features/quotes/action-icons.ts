@@ -1,9 +1,9 @@
-import { FileText, MessageSquare } from 'lucide-react'
+import { FileText, MessagesSquare } from 'lucide-react'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 
 /**
  * Domain icon overrides for the Quotes action catalog: the backend fixes the
- * 'generate_document'/'notes' icon keys as 'file-text'/'message-square', both
+ * 'generate_document'/'notes' icon keys as 'file-text'/'messages-square', both
  * absent from the shared defaults in `action-icon-map.ts`. Lives in its own
  * module (not inside `quotes-table.tsx`) because every surface that renders
  * the Quotes actions needs it — the standalone Offerte grid AND the
@@ -12,5 +12,5 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
  */
 export const QUOTES_ACTION_ICONS: ActionIconMap = {
   'file-text': FileText,
-  'message-square': MessageSquare,
+  'messages-square': MessagesSquare,
 }

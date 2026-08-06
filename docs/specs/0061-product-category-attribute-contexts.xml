@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec id="0061" title="Product Category Attributes — Product/Opportunity contexts">
 
+  <amendment date="2026-08-06" status="applied">
+    IL CONTESTO `opportunity` E' RIMOSSO (decisione utente 2026-08-06). La spec 0084 (D-1) aveva
+    gia' spostato le "Informazioni aggiuntive" dall'Opportunita' all'Offerta: da allora nessun
+    resolver di produzione chiedeva piu' quel contesto — `ProductAttributeResolver` usa Product,
+    `QuoteAttributeResolver` usa Quote — ma la superficie di CONFIGURAZIONE era rimasta viva
+    (sezione "Attributi Opportunita'" nel form categoria, tab nel configuratore di layout,
+    barriera di ereditarieta' persistita), producendo dati che nessuno leggeva. Questa modifica
+    la elimina.
+
+    Effetti:
+    - `App\Enums\AttributeContext` ha due soli case: `Product` e `Quote`.
+    - Migrazione `2026_08_06_120000_drop_opportunity_attribute_context`: cancella le righe
+      `attribute_category` e `attribute_layouts` con `context = 'opportunity'`, droppa
+      `product_categories.inherits_opportunity_attributes`, e TOGLIE il default `'opportunity'`
+      da `attribute_category.context`. `down()` ripristina struttura e default, NON i dati.
+    - `context` diventa OBBLIGATORIO su `GET .../effective-attributes` e
+      `GET .../attribute-layouts` (422 se assente): non esiste piu' una fetta di default.
+      Era proprio quel default implicito a rendere invisibile il contesto morto.
+    - L'HARD INVARIANT qui sotto e' storico e non e' piu' applicabile: il percorso Opportunity
+      che doveva restare "behaviorally identical" non esiste piu'. L'invariante equivalente oggi
+      e' che Product e Quote si risolvono, ereditano e si salvano in modo indipendente.
+    - Collaterale sistemato: la lista read-only degli attributi EREDITATI del contesto Offerta
+      non veniva mai popolata (`toInheritedAttributes` taggava solo product+opportunity).
+  </amendment>
+
   <goal>
     Extend the existing Product Category attribute system so the same attribute catalogue
     can be surfaced in TWO distinct usage contexts, configured as two separate sections in

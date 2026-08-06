@@ -23,6 +23,12 @@ export interface NotesDialogProps {
    * selettori. `null` = thread completo dell'Opportunita', filtrabile.
    */
   lockedQuoteId?: number | null
+  /**
+   * Inoltrata a `NotesSection`: l'host la usa per rinfrescare il proprio
+   * conteggio (badge `notes_count` della riga) appena una nota viene creata o
+   * eliminata, senza aspettare la chiusura del dialog.
+   */
+  onThreadChanged?: () => void
 }
 
 /**
@@ -42,6 +48,7 @@ export function NotesDialog({
   onOpenChange,
   title,
   lockedQuoteId = null,
+  onThreadChanged,
 }: NotesDialogProps) {
   const { t } = useTranslation()
 
@@ -70,6 +77,7 @@ export function NotesDialog({
               entityId={entityId}
               showHeader={false}
               lockedQuoteId={lockedQuoteId}
+              onThreadChanged={onThreadChanged}
             />
           </div>
         ) : null}

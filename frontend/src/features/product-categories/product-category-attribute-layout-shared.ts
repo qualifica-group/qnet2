@@ -16,7 +16,7 @@ import type { AttributeContext } from '@/features/product-categories/types'
  * `quote` joined them with spec 0084: le "Informazioni aggiuntive" appartengono
  * al preventivo, non all'opportunita'.
  */
-export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'opportunity', 'quote']
+export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'quote']
 
 /**
  * Mirrors backend `App\Enums\LayoutFormScope` (spec 0062 D3 revised): the

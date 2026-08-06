@@ -28,11 +28,11 @@ export async function fetchProductCategoryTree(): Promise<ProductCategoryTreeNod
  * Fetches a category's effective attributes (own + every ancestor's) for a
  * single usage context, the source for both the category form's read-only
  * inherited lists and the product form's dynamic attribute fields (spec 0061).
- * Defaults to `'opportunity'` — every pre-existing caller keeps its behavior.
+ * `context` is required: the endpoint has no default slice.
  */
 export async function fetchEffectiveAttributes(
   categoryId: number,
-  context: AttributeContext = 'opportunity',
+  context: AttributeContext,
 ): Promise<EffectiveAttribute[]> {
   const { data } = await apiClient.get<ApiResponse<EffectiveAttribute[]>>(
     `/product-categories/${categoryId}/effective-attributes`,

@@ -33,7 +33,7 @@
     "The VAT number is not valid.": "La partita IVA non è valida.",
     "The tax code is already assigned to another record.": "Il codice fiscale è già associato a un'altra scheda.",
     "The VAT number is already assigned to another record.": "La partita IVA è già associata a un'altra scheda.",
-    "The phone number is already assigned to another referent.": "Il numero di telefono è già associato a un altro referente.",
+    "The phone number is already assigned to another record.": "Il numero di telefono è già associato a un'altra scheda.",
     "The phone number is repeated on this card.": "Il numero di telefono è ripetuto nella stessa scheda.",
     "These products of interest belong to a product category the opportunity does not carry: :products. Add that product category to the opportunity, or remove the product.": "Questi prodotti di interesse appartengono a una categoria prodotto che l'opportunità non ha: :products. Aggiungi quella categoria prodotto all'opportunità, oppure rimuovi il prodotto.",
     "These products of interest belong to a product category the request does not carry: :products. Add that product category to the request, or remove the product.": "Questi prodotti di interesse appartengono a una categoria prodotto che la richiesta non ha: :products. Aggiungi quella categoria prodotto alla richiesta, oppure rimuovi il prodotto.",

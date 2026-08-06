@@ -165,14 +165,19 @@ export function useQuoteRowActions({
     }
   }, [])
 
-  // Nessun refresh alla chiusura (a differenza della griglia Opportunita'):
-  // le Offerte non portano un badge `notes_count`, quindi nessuna cella della
-  // riga dipende da cio' che e' stato scritto nel dialog.
-  const closeNotes = useCallback((open: boolean) => {
-    if (!open) {
-      setNotesTarget(null)
-    }
-  }, [])
+  // La riga porta ora il badge `notes_count` dell'offerta, quindi dipende da
+  // cio' che si scrive nel dialog: la chiusura aggiorna la superficie ospite,
+  // esattamente come la griglia Opportunita' (che si aggiorna anche a ogni
+  // scrittura via `onThreadChanged`, passato dai due call-site).
+  const closeNotes = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setNotesTarget(null)
+        onMutated()
+      }
+    },
+    [onMutated],
+  )
 
   return {
     handleAction,

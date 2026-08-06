@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button'
 import { RecordCard, RecordCardHeader } from '@/components/detail/record-panel'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { NotesDialog } from '@/features/notes/notes-dialog'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TableView } from '@/features/table/table-view'
+import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
 import { useOpportunityQuotesPanel } from '@/features/opportunities/use-opportunity-quotes-panel'
@@ -57,6 +60,9 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
     handleCreate,
     activityRow,
     closeActivity,
+    notesTarget,
+    closeNotes,
+    refreshRows,
     sheet,
   } = useOpportunityQuotesPanel(opportunity.id, opportunity.quotes_count ?? 0)
 
@@ -111,6 +117,7 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
             renderers={quoteColumnRenderers}
             onAction={handleAction}
             isBusy={isBusy}
+            iconMap={QUOTES_ACTION_ICONS}
             onRowCountChanged={handleRowCountChanged}
           />
         )}
@@ -119,6 +126,19 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
       {sheet}
 
       <ResourceActivityDialog resource={QUOTES_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
+
+      {/*
+       * Spec 0085: la nota dell'Offerta vive sul thread dell'Opportunita'
+       * padre — che qui e' il record ospite stesso — filtrata su quell'Offerta.
+       */}
+      <NotesDialog
+        entityType={REQUEST_MANAGEMENT_DOMAIN}
+        entityId={notesTarget?.opportunityId ?? null}
+        lockedQuoteId={notesTarget?.quoteId ?? null}
+        title={notesTarget?.code}
+        onOpenChange={closeNotes}
+        onThreadChanged={refreshRows}
+      />
     </RecordCard>
   )
 }

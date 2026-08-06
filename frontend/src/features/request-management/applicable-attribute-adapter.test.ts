@@ -25,7 +25,7 @@ function attribute(overrides: Partial<ApplicableAttribute> = {}): ApplicableAttr
 
 describe('toEffectiveAttribute', () => {
   it('maps every scalar field 1:1, defaulting inherited to false', () => {
-    const result = toEffectiveAttribute(attribute())
+    const result = toEffectiveAttribute(attribute(), 'quote')
 
     expect(result).toMatchObject({
       id: 7,
@@ -35,14 +35,14 @@ describe('toEffectiveAttribute', () => {
       is_required: true,
       sort_order: 3,
       inherited: false,
-      context: 'opportunity',
+      context: 'quote',
     })
     expect(result.options).toEqual([
       { value: 'low', label: 'Low', color: null, icon: null, sort_order: 0, is_default: false },
     ])
   })
 
-  it('accepts an explicit context override (products detail, spec 0062)', () => {
+  it('carries the caller-named context (products detail, spec 0062)', () => {
     const result = toEffectiveAttribute(attribute(), 'product')
     expect(result.context).toBe('product')
   })
@@ -50,6 +50,7 @@ describe('toEffectiveAttribute', () => {
   it('resolves a well-formed relation_target', () => {
     const result = toEffectiveAttribute(
       attribute({ relation_target: { for_select_resource: 'registries', cardinality: 'many' } }),
+      'quote',
     )
     expect(result.relation_target).toEqual({
       entity_type: '',
@@ -59,7 +60,7 @@ describe('toEffectiveAttribute', () => {
   })
 
   it('drops a malformed relation_target instead of crashing', () => {
-    const result = toEffectiveAttribute(attribute({ relation_target: { cardinality: 'one' } }))
+    const result = toEffectiveAttribute(attribute({ relation_target: { cardinality: 'one' } }), 'quote')
     expect(result.relation_target).toBeNull()
   })
 })

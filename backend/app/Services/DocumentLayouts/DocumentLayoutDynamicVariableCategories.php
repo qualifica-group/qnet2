@@ -18,11 +18,12 @@ use Illuminate\Support\Facades\DB;
  * variable per catalogue Attribute assigned to at least one product
  * category's Offerta section, spec 0061/0084's AttributeContext::Quote —
  * module-independent since attributes are never scoped to a document-layouts
- * module). Spec 0084: this category used to be `opportunity_attributes`
- * (AttributeContext::Opportunity) — renamed and re-sourced together with the
- * dynamic "Informazioni aggiuntive" section's move from the Opportunity to
- * the Offerta (D-1); DynamicFieldResolver now resolves it straight off
- * `Quote::attribute_values`, never the (now-gone) Opportunity column.
+ * module). Spec 0084: this category used to be `opportunity_attributes`,
+ * sourced from an `opportunity` context that no longer exists as an enum case
+ * — renamed and re-sourced together with the dynamic "Informazioni aggiuntive"
+ * section's move from the Opportunity to the Offerta (D-1); DynamicFieldResolver
+ * now resolves it straight off `Quote::attribute_values`, never the (now-gone)
+ * Opportunity column.
  *
  * Neither category carries PII (D-6 only ever masks `client.*`, see
  * DocumentLayoutVariableCatalog's class docblock), so no actor/field-permission

@@ -68,6 +68,23 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     ]);
 });
 
+it('columns: the action catalogue leads with view/generate_document/notes, the three inline slots', function () {
+    // L'ordine del catalogo DECIDE cosa e' inline: il frontend rende le prime
+    // INLINE_ACTION_LIMIT (3) azioni permesse e manda le altre nell'overflow
+    // (direttiva utente 2026-08-06). Un riordino accidentale sposterebbe le
+    // icone sotto i tre puntini senza che nulla fallisca, da qui questo test.
+    $actor = quoteTableUserWith(['viewAny', 'view', 'update', 'delete', 'viewActivity']);
+    Permission::findOrCreate('request-management.view');
+    $actor->givePermissionTo('request-management.view');
+    Sanctum::actingAs($actor);
+
+    $keys = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.actions'))
+        ->pluck('key')
+        ->all();
+
+    expect($keys)->toBe(['view', 'generate_document', 'notes', 'edit', 'delete', 'activity']);
+});
+
 it('rows: view/edit/delete/activity actions gated by QuotePolicy', function () {
     $fullActor = quoteTableUserWith(['viewAny', 'view', 'update', 'delete', 'viewActivity']);
     $opportunity = Opportunity::factory()->create();

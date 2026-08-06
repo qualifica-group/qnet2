@@ -294,6 +294,7 @@ export function OpportunityQuotesDetailRenderer({
         lockedQuoteId={notesTarget?.quoteId ?? null}
         title={notesTarget?.code}
         onOpenChange={closeNotes}
+        onThreadChanged={handleMutated}
       />
     </div>
   )

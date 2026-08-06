@@ -31,7 +31,6 @@ const SERVER_ERROR_FIELDS = [
   'name',
   'parent_id',
   'inherits_product_attributes',
-  'inherits_opportunity_attributes',
   'inherits_quote_attributes',
   'description',
   'attributes',
@@ -105,7 +104,6 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         name: category.name,
         parent_id: category.parent_id,
         inherits_product_attributes: category.inherits_product_attributes,
-        inherits_opportunity_attributes: category.inherits_opportunity_attributes,
         inherits_quote_attributes: category.inherits_quote_attributes,
         description: category.description,
         attributes: category.attributes.map((assignment) => ({
@@ -127,7 +125,6 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       name: '',
       parent_id: mode.parentId,
       inherits_product_attributes: true,
-      inherits_opportunity_attributes: true,
       inherits_quote_attributes: true,
       description: null,
       attributes: [],

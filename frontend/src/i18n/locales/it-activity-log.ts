@@ -101,7 +101,7 @@ export const activityLog = {
     price: 'Prezzo',
     product_type: 'Tipo',
     inherits_product_attributes: 'Eredita attributi prodotto',
-    inherits_opportunity_attributes: 'Eredita attributi opportunità',
+    inherits_quote_attributes: 'Eredita attributi offerta',
     referent_type_id: 'Tipo referente',
     contact_scope: 'Ambito contatto',
     vat_group: 'Gruppo IVA',

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { MessageSquare, Paperclip, Plus } from 'lucide-react'
+import { MessagesSquare, Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -30,14 +30,16 @@ import {
 
 /**
  * Domain icon overrides for the 'documents'/'notes' row actions: the backend
- * action catalog fixes their icon keys as 'paperclip'/'message-square',
+ * action catalog fixes their icon keys as 'paperclip'/'messages-square',
  * absent from the shared defaults in `action-icon-map.ts`. Hoisted at module
  * level (not inline in JSX), mirroring `REQUEST_MANAGEMENT_ACTION_ICONS`, so
- * its identity stays stable across renders.
+ * its identity stays stable across renders. `messages-square` is the SAME
+ * `MessagesSquare` the notes surfaces themselves use (`NotesSection`,
+ * `NotesDialog`, the detail tab): one visual identity for the feature.
  */
 const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = {
   paperclip: Paperclip,
-  'message-square': MessageSquare,
+  'messages-square': MessagesSquare,
 }
 
 /**
@@ -146,8 +148,10 @@ export function OpportunitiesTable() {
     [refreshGrid],
   )
 
-  // Notes are added/deleted from inside the dialog; refresh the grid on close
-  // so the row's `notes_count` badge reflects the change (mirrors documents).
+  // Notes are added/deleted from inside the dialog: the badge follows each
+  // write immediately (`onThreadChanged`), not only the close — chi scrive una
+  // nota si aspetta di vedere il conteggio salire subito. La chiusura resta il
+  // secondo giro, per le scritture che il dialog non riporta (edit di terzi).
   const handleNotesOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
@@ -215,6 +219,7 @@ export function OpportunitiesTable() {
       <NotesDialog
         entityType={REQUEST_MANAGEMENT_DOMAIN}
         entityId={notesRowId}
+        onThreadChanged={refreshGrid}
         onOpenChange={handleNotesOpenChange}
       />
     </div>

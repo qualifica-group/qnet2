@@ -110,7 +110,6 @@ function category(
     parent_id: 1,
     parent: { id: 1, name: 'Electronics' },
     inherits_product_attributes: true,
-    inherits_opportunity_attributes: true,
     inherits_quote_attributes: true,
     description: null,
     attributes: [],

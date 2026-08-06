@@ -243,4 +243,18 @@ class Quote extends BaseModel
             ->where('line_type', QuoteLineType::Cost)
             ->orderBy('sort_order');
     }
+
+    /**
+     * The notes SCOPED to this Offerta (spec 0085, D-1). Deliberately NOT
+     * `HasNotes`: the Offerta is not a notable entity — the note hangs off the
+     * parent Opportunity's thread and this FK only narrows it. Exists to count
+     * them per row (`withCount`); the thread itself is always read through the
+     * Opportunity. Soft-deleted notes are excluded by `Note`'s own global scope.
+     *
+     * @return HasMany<Note, $this>
+     */
+    public function scopedNotes(): HasMany
+    {
+        return $this->hasMany(Note::class);
+    }
 }

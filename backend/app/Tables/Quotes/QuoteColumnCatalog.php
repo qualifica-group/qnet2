@@ -134,6 +134,14 @@ final class QuoteColumnCatalog
     }
 
     /**
+     * L'ORDINE E' PORTANTE, non estetico: il frontend rende inline le prime
+     * INLINE_ACTION_LIMIT (3, `row-actions.tsx`) azioni permesse alla riga e
+     * manda tutte le altre nel menu di overflow. Le tre in testa —
+     * `view`, `generate_document`, `notes` (direttiva utente 2026-08-06) —
+     * sono quelle a un click; `edit`/`delete`/`activity` seguono nei tre
+     * puntini. Chi inserisce un'azione in mezzo cambia cio' che l'utente vede
+     * inline: si accoda in fondo salvo richiesta esplicita.
+     *
      * @return array<int, array<string, mixed>>
      */
     public static function actions(): array
@@ -146,6 +154,32 @@ final class QuoteColumnCatalog
                 'type' => 'link',
                 'confirm' => false,
                 'permission' => 'quotes.view',
+            ],
+            // spec 0070: generates the quote's `.docx` in-request (D-2), a
+            // pure read — gated by the same `quotes.view` as the `view`
+            // action above, not `update`.
+            [
+                'key' => 'generate_document',
+                'label' => 'actions.generatePdf',
+                'icon' => 'file-text',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'quotes.view',
+            ],
+            // Spec 0085: le note dell'Offerta vivono sul thread dell'Opportunita'
+            // padre, filtrate su `quote_id` — quindi il gate e' quello del modulo
+            // ospite (`request-management.view`, come sulla griglia Opportunita'),
+            // mai una permission `quotes.*`. Il `count_field` conta le note di
+            // QUESTA offerta (emendamento 2026-08-06): il badge deve descrivere
+            // cio' che il dialog mostra, cioe' il thread gia' filtrato.
+            [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'messages-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'request-management.view',
+                'count_field' => 'notes_count',
             ],
             [
                 'key' => 'edit',
@@ -170,30 +204,6 @@ final class QuoteColumnCatalog
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'quotes.viewActivity',
-            ],
-            // spec 0070: generates the quote's `.docx` in-request (D-2), a
-            // pure read — gated by the same `quotes.view` as the `view`
-            // action above, not `update`.
-            [
-                'key' => 'generate_document',
-                'label' => 'actions.generatePdf',
-                'icon' => 'file-text',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'quotes.view',
-            ],
-            // Spec 0085: le note dell'Offerta vivono sul thread dell'Opportunita'
-            // padre, filtrate su `quote_id` — quindi il gate e' quello del modulo
-            // ospite (`request-management.view`, come sulla griglia Opportunita'),
-            // mai una permission `quotes.*`. Nessun `count_field`: un contatore
-            // per-offerta e' esplicitamente fuori scope (spec 0085 <out>).
-            [
-                'key' => 'notes',
-                'label' => 'actions.notes',
-                'icon' => 'message-square',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'request-management.view',
             ],
         ];
     }

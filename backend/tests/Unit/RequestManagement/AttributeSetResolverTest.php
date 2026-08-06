@@ -19,7 +19,7 @@ use Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 it('returns an empty set for an empty category id list', function (): void {
-    $resolved = app(AttributeSetResolver::class)->resolve([], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([], AttributeContext::Quote);
 
     expect($resolved)->toBeEmpty();
 });
@@ -27,7 +27,7 @@ it('returns an empty set for an empty category id list', function (): void {
 it('returns an empty set for categories that carry no attributes', function (): void {
     $category = ProductCategory::factory()->create();
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Quote);
 
     expect($resolved)->toBeEmpty();
 });
@@ -40,12 +40,12 @@ it('unions and dedups attributes by code across several categories', function ()
     $onlyA = Attribute::factory()->create(['code' => 'only_a']);
     $onlyB = Attribute::factory()->create(['code' => 'only_b']);
 
-    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'opportunity']);
-    $categoryA->attributes()->attach($onlyA->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
-    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
-    $categoryB->attributes()->attach($onlyB->id, ['is_required' => false, 'sort_order' => 2, 'context' => 'opportunity']);
+    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'quote']);
+    $categoryA->attributes()->attach($onlyA->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $categoryB->attributes()->attach($onlyB->id, ['is_required' => false, 'sort_order' => 2, 'context' => 'quote']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Quote);
 
     expect($resolved)->toHaveCount(3)
         ->and($resolved->pluck('code')->all())->toEqualCanonicalizing(['shared_field', 'only_a', 'only_b']);
@@ -57,10 +57,10 @@ it('propagates is_required when the same code is required by at least one catego
 
     $sharedAttribute = Attribute::factory()->create(['code' => 'shared_required']);
 
-    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
-    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => true, 'sort_order' => 0, 'context' => 'opportunity']);
+    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => true, 'sort_order' => 0, 'context' => 'quote']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Quote);
 
     expect($resolved)->toHaveCount(1)
         ->and($resolved->first()->isRequired)->toBeTrue();
@@ -72,10 +72,10 @@ it('keeps a code non-required when no category requires it', function (): void {
 
     $sharedAttribute = Attribute::factory()->create(['code' => 'shared_optional']);
 
-    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
-    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $categoryA->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $categoryB->attributes()->attach($sharedAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Quote);
 
     expect($resolved->first()->isRequired)->toBeFalse();
 });
@@ -87,11 +87,11 @@ it('orders the merged set by sort_order then code', function (): void {
     $a = Attribute::factory()->create(['code' => 'a_field']);
     $c = Attribute::factory()->create(['code' => 'c_field']);
 
-    $category->attributes()->attach($b->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'opportunity']);
-    $category->attributes()->attach($a->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'opportunity']);
-    $category->attributes()->attach($c->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($b->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'quote']);
+    $category->attributes()->attach($a->id, ['is_required' => false, 'sort_order' => 1, 'context' => 'quote']);
+    $category->attributes()->attach($c->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Quote);
 
     expect($resolved->pluck('code')->all())->toBe(['c_field', 'a_field', 'b_field']);
 });
@@ -99,9 +99,9 @@ it('orders the merged set by sort_order then code', function (): void {
 it('does not resolve the same shared category twice when its id repeats (N+1-free)', function (): void {
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'once_only']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$category->id, $category->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$category->id, $category->id], AttributeContext::Quote);
 
     expect($resolved)->toHaveCount(1)
         ->and($resolved->first()->code)->toBe('once_only');
@@ -109,10 +109,10 @@ it('does not resolve the same shared category twice when its id repeats (N+1-fre
 
 it('never sees an attribute assigned in a different context', function (): void {
     $category = ProductCategory::factory()->create();
-    $quoteOnly = Attribute::factory()->create(['code' => 'quote_only']);
-    $category->attributes()->attach($quoteOnly->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $productOnly = Attribute::factory()->create(['code' => 'product_only']);
+    $category->attributes()->attach($productOnly->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
 
-    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Quote);
 
     expect($resolved)->toBeEmpty();
 });

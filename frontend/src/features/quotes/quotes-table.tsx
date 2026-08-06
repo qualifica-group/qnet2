@@ -70,6 +70,7 @@ export function QuotesTable() {
         lockedQuoteId={notesTarget?.quoteId ?? null}
         title={notesTarget?.code}
         onOpenChange={closeNotes}
+        onThreadChanged={refreshGrid}
       />
     </div>
   )

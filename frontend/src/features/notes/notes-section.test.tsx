@@ -47,7 +47,10 @@ function makeNote(overrides: Partial<Note> = {}): Note {
   }
 }
 
-function renderSection(entityId = 7, props: { lockedQuoteId?: number | null } = {}) {
+function renderSection(
+  entityId = 7,
+  props: { lockedQuoteId?: number | null; onThreadChanged?: () => void } = {},
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -270,6 +273,89 @@ describe('NotesSection — reply flow (AC-071, D-7)', () => {
         }),
       ),
     )
+  })
+})
+
+/**
+ * `onThreadChanged` esiste per un conteggio che vive FUORI dalla sezione (il
+ * badge `notes_count` della riga SSRM): la lista si aggiorna da sola via React
+ * Query, quel numero no. Va quindi chiamata sulle scritture che cambiano la
+ * dimensione del thread — creazione (root o reply) ed eliminazione — e NON
+ * sulla modifica, che cambia il testo di una nota gia' contata.
+ */
+describe('NotesSection — onThreadChanged (host notes_count)', () => {
+  it('fires after a new root note is created', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [],
+      meta: { next_cursor: null, has_more: false },
+    })
+    createNoteMock.mockResolvedValue(makeNote({ id: 21, body: 'Fresh root' }))
+    const onThreadChanged = vi.fn()
+
+    renderSection(7, { onThreadChanged })
+    await screen.findByText(/No notes yet/)
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Fresh root' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => expect(onThreadChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('fires after a reply is created', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ id: 5, body: 'Thread root', replies: [] })],
+      meta: { next_cursor: null, has_more: false },
+    })
+    createNoteMock.mockResolvedValue(makeNote({ id: 6, parent_id: 5, body: 'A reply text' }))
+    const onThreadChanged = vi.fn()
+
+    renderSection(7, { onThreadChanged })
+    await screen.findByText('Thread root')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }))
+    const fields = screen.getAllByRole('combobox')
+    fireEvent.change(fields[1] as HTMLTextAreaElement, { target: { value: 'A reply text' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[1] as HTMLElement)
+
+    await waitFor(() => expect(onThreadChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('fires after a note is deleted', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ id: 9, body: 'Deletable root', can: { update: false, delete: true } })],
+      meta: { next_cursor: null, has_more: false },
+    })
+    deleteNoteMock.mockResolvedValue(undefined)
+    const onThreadChanged = vi.fn()
+
+    renderSection(7, { onThreadChanged })
+    await screen.findByText('Deletable root')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete note' }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete note' }))
+
+    await waitFor(() => expect(onThreadChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('does not fire when a note is only edited: the count is unchanged', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ id: 4, body: 'Editable root', can: { update: true, delete: false } })],
+      meta: { next_cursor: null, has_more: false },
+    })
+    updateNoteMock.mockResolvedValue(makeNote({ id: 4, body: 'Edited body' }))
+    const onThreadChanged = vi.fn()
+
+    renderSection(7, { onThreadChanged })
+    await screen.findByText('Editable root')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit note' }))
+    const fields = screen.getAllByRole('combobox')
+    fireEvent.change(fields[1] as HTMLTextAreaElement, { target: { value: 'Edited body' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateNoteMock).toHaveBeenCalled())
+    expect(onThreadChanged).not.toHaveBeenCalled()
   })
 })
 

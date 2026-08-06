@@ -43,11 +43,15 @@ export type CategoryManagementMode = 'single' | 'multiple'
 
 /**
  * The two attribute-catalogue usage contexts (spec 0061): the same catalogue
- * attribute can be assigned to a category for Product, for Opportunity, or
- * both (two separate pivot rows). Default everywhere is `'opportunity'`
- * (backward compatible with every assignment that predates this spec).
+ * attribute can be assigned to a category for Product, for Offerta, or both
+ * (two separate pivot rows). There is no default — every caller names its
+ * context, and the endpoints 422 without one.
+ *
+ * Spec 0084 retired the `'opportunity'` context: its dynamic section moved to
+ * the Offerta, leaving the category-side configuration unread. Do not add it
+ * back.
  */
-export type AttributeContext = 'product' | 'opportunity' | 'quote'
+export type AttributeContext = 'product' | 'quote'
 
 /**
  * A category's manager-label overrides (spec 0080): position ("1".."4",
@@ -107,9 +111,7 @@ export interface ProductCategoryDetail {
   parent: { id: number; name: string } | null
   /** When false the category ignores its ancestry for PRODUCT attributes (barrier): none inherited by it or its descendants. */
   inherits_product_attributes: boolean
-  /** Same barrier for OPPORTUNITY attributes — fully independent of the product one. */
-  inherits_opportunity_attributes: boolean
-  /** Spec 0084: barriera del contesto `quote`, indipendente dalle altre due. */
+  /** Spec 0084: same barrier for OFFERTA attributes — fully independent of the product one. */
   inherits_quote_attributes: boolean
   description: string | null
   attributes: ProductCategoryAttributeAssignment[]
@@ -207,7 +209,6 @@ export interface CreateProductCategoryPayload {
   name: string
   parent_id?: number | null
   inherits_product_attributes?: boolean
-  inherits_opportunity_attributes?: boolean
   inherits_quote_attributes?: boolean
   description?: string | null
   attributes?: AttributeAssignmentInput[]

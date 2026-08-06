@@ -23,18 +23,16 @@ interface AttributeAssignmentEditorProps {
   disabled?: boolean
   /** The Product section's "inherit from parent" switch, owned by the form (RHF + field permissions); null on a root category. */
   productInheritToggle?: ReactNode
-  /** Same, for the Opportunity section — the two barriers are independent. */
-  opportunityInheritToggle?: ReactNode
-  /** Spec 0084: la barriera di ereditarieta' del contesto `quote`, indipendente dalle altre due. */
+  /** Spec 0084: same, for the Offerta section — the two barriers are independent. */
   quoteInheritToggle?: ReactNode
 }
 
 /**
  * The category form's attribute-assignment editor (spec 0061): TWO clearly
  * separated, graphically distinct sections — "Attributi Prodotto" (loaded in
- * the Product card) and "Attributi Opportunità" (loaded in the Opportunity
- * preliminary info) — each its own picker/list/inherited-list, filtered from
- * the same flat `value`/`inherited` arrays by `context`. The same catalogue
+ * the Product card) and "Attributi Offerta" (the Offerta's "Informazioni
+ * aggiuntive", spec 0084) — each its own picker/list/inherited-list, filtered
+ * from the same flat `value`/`inherited` arrays by `context`. The same catalogue
  * attribute may be assigned to either section, or both (two independent rows
  * in `value`, distinguished by `context`). Each section also hosts its OWN
  * "inherit from parent" switch, injected by the form as a slot so the RHF and
@@ -47,7 +45,6 @@ export function AttributeAssignmentEditor({
   inherited,
   disabled,
   productInheritToggle,
-  opportunityInheritToggle,
   quoteInheritToggle,
 }: AttributeAssignmentEditorProps) {
   const { t } = useTranslation()
@@ -94,19 +91,6 @@ export function AttributeAssignmentEditor({
           onAdd={(attributeId) => addAssignment('product', attributeId)}
           onUpdate={(attributeId, patch) => updateAssignment('product', attributeId, patch)}
           onRemove={(attributeId) => removeAssignment('product', attributeId)}
-        />
-
-        <AttributeAssignmentSection
-          title={t('productCategories.form.sections.opportunityAttributes.title')}
-          description={t('productCategories.form.sections.opportunityAttributes.description')}
-          assignments={byContext('opportunity')}
-          known={known}
-          inherited={inheritedByContext('opportunity')}
-          inheritToggle={opportunityInheritToggle}
-          disabled={disabled}
-          onAdd={(attributeId) => addAssignment('opportunity', attributeId)}
-          onUpdate={(attributeId, patch) => updateAssignment('opportunity', attributeId, patch)}
-          onRemove={(attributeId) => removeAssignment('opportunity', attributeId)}
         />
 
         <AttributeAssignmentSection

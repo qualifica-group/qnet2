@@ -177,13 +177,6 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
       />
 
       <CategoryAttributesContextSection
-        title={t('productCategories.form.sections.opportunityAttributes.title')}
-        description={t('productCategories.form.sections.opportunityAttributes.description')}
-        own={category.attributes.filter((attribute) => attribute.context === 'opportunity')}
-        inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'opportunity')}
-      />
-
-      <CategoryAttributesContextSection
         title={t('productCategories.form.sections.quoteAttributes.title')}
         description={t('productCategories.form.sections.quoteAttributes.description')}
         own={category.attributes.filter((attribute) => attribute.context === 'quote')}

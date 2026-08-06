@@ -43,7 +43,7 @@ function toRelationTarget(relationTarget: Record<string, unknown> | null): Custo
 
 export function toEffectiveAttribute(
   attribute: ApplicableAttribute,
-  context: AttributeContext = 'opportunity',
+  context: AttributeContext,
 ): EffectiveAttribute {
   return {
     id: attribute.id,

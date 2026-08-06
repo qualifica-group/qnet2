@@ -21,6 +21,8 @@ export interface NoteItemProps {
   isReplying: boolean
   /** Toggles the inline reply composer. Omitted for replies. */
   onToggleReply?: () => void
+  /** Fired after a delete: il conteggio note dell'host e' cambiato. */
+  onThreadChanged?: () => void
   /**
    * Spec 0085: mostra l'etichetta di contesto (codice Offerta o "Generale").
    * Vera solo nella vista AGGREGATA: con un filtro attivo, o sul dettaglio
@@ -43,6 +45,7 @@ export function NoteItem({
   isRoot,
   isReplying,
   onToggleReply,
+  onThreadChanged,
   showQuoteBadge = false,
 }: NoteItemProps) {
   const { t } = useTranslation()
@@ -63,6 +66,7 @@ export function NoteItem({
       return
     }
     await deleteNote.mutateAsync(note.id)
+    onThreadChanged?.()
   }
 
   if (isEditing) {

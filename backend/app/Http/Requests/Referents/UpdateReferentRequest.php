@@ -5,7 +5,7 @@ namespace App\Http\Requests\Referents;
 use App\DataObjects\Referents\UpdateReferentData;
 use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
-use App\Http\Requests\Concerns\ValidatesReferentContactUniqueness;
+use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Referent;
 use Illuminate\Contracts\Validation\Validator;
@@ -27,7 +27,7 @@ use Illuminate\Validation\Rule;
 class UpdateReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
-    use ValidatesReferentContactUniqueness;
+    use ValidatesPhoneUniqueness;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -37,9 +37,10 @@ class UpdateReferentRequest extends FormRequest
     }
 
     /**
-     * Codice fiscale, partita IVA (among referenti) and phone/mobile numbers
-     * are unique (user directive 2026-08-03), the referent under edit excluded
-     * — keeping its own values must stay a no-op, not a self-collision.
+     * Codice fiscale, partita IVA and phone numbers must be free across users,
+     * anagrafiche and referenti (user directive 2026-08-06), the referent under
+     * edit excluded — keeping its own values must stay a no-op, not a
+     * self-collision.
      *
      * @return class-string<Referent>
      */
@@ -49,11 +50,6 @@ class UpdateReferentRequest extends FormRequest
     }
 
     protected function identityUniquenessOwnerId(): ?int
-    {
-        return $this->routeReferent()?->id;
-    }
-
-    protected function contactUniquenessIgnoreId(): ?int
     {
         return $this->routeReferent()?->id;
     }
@@ -78,7 +74,7 @@ class UpdateReferentRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
-            $this->validateContactUniqueness($validator);
+            $this->validatePhoneUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

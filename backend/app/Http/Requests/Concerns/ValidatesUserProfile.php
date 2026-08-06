@@ -79,13 +79,19 @@ trait ValidatesUserProfile
     }
 
     /**
-     * The entity class whose personal-data cards the submitted fiscal
-     * identifiers must be unique among, or null when this surface enforces no
-     * uniqueness at all (user directive 2026-08-03).
+     * The entity owning the card this surface writes, or null when the surface
+     * enforces no identity uniqueness at all.
      *
-     * Null by default so the USER endpoints are untouched: an account is not an
-     * anagraphic record, and two accounts of the same person are a legitimate
-     * (if rare) configuration. The referent/registry requests override it.
+     * Non-null turns the constraint on: the submitted fiscal identifiers (and,
+     * where the host also composes ValidatesPhoneUniqueness, the phone rows)
+     * must be free across the whole `IdentityUniquenessScope` namespace — users,
+     * anagrafiche and referenti (user directive 2026-08-06) — with this owner's
+     * own card excluded from the lookup.
+     *
+     * Null by default so the USER write endpoints stay unconstrained: the
+     * directive blocks the creation of an anagrafica or a referente on a value
+     * an account already holds, not the other way round. The four
+     * referent/registry requests override it.
      *
      * @return class-string<Model>|null
      */

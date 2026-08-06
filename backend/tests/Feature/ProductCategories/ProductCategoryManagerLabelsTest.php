@@ -184,11 +184,11 @@ it('AC-006: saving manager_labels does not alter attributes, inherits_*_attribut
     $attribute = Attribute::factory()->create();
     $category = ProductCategory::factory()->create([
         'inherits_product_attributes' => false,
-        'inherits_opportunity_attributes' => false,
+        'inherits_quote_attributes' => false,
         'requires_quote' => true,
         'is_selectable' => false,
     ]);
-    $category->attributes()->attach($attribute->id, ['is_required' => true, 'sort_order' => 3, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => true, 'sort_order' => 3, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/product-categories/{$category->id}", [
@@ -197,7 +197,7 @@ it('AC-006: saving manager_labels does not alter attributes, inherits_*_attribut
 
     $fresh = $category->fresh();
     expect($fresh->inherits_product_attributes)->toBeFalse()
-        ->and($fresh->inherits_opportunity_attributes)->toBeFalse()
+        ->and($fresh->inherits_quote_attributes)->toBeFalse()
         ->and($fresh->requires_quote)->toBeTrue()
         ->and($fresh->management_mode->value)->toBe('multiple')
         ->and($fresh->is_selectable)->toBeFalse();

@@ -201,10 +201,6 @@ export const productCategories = {
         title: 'Product attributes',
         description: 'Loaded in the Product card (create/edit) for products in this category.',
       },
-      opportunityAttributes: {
-        title: 'Opportunity attributes',
-        description: 'Loaded in the Opportunity preliminary info for requests in this category.',
-      },
       quoteAttributes: {
         title: 'Quote attributes',
         description:

@@ -54,7 +54,6 @@ export function buildCreatePayload(
     name: values.name,
     parent_id: values.parent_id,
     inherits_product_attributes: values.inherits_product_attributes,
-    inherits_opportunity_attributes: values.inherits_opportunity_attributes,
     inherits_quote_attributes: values.inherits_quote_attributes,
     description: values.description,
     attributes: values.attributes,
@@ -92,9 +91,6 @@ export function buildUpdatePayload(
   // The two inheritance barriers are independent: each is diffed and sent on its own.
   if (values.inherits_product_attributes !== original.inherits_product_attributes) {
     payload.inherits_product_attributes = values.inherits_product_attributes
-  }
-  if (values.inherits_opportunity_attributes !== original.inherits_opportunity_attributes) {
-    payload.inherits_opportunity_attributes = values.inherits_opportunity_attributes
   }
   if (values.inherits_quote_attributes !== original.inherits_quote_attributes) {
     payload.inherits_quote_attributes = values.inherits_quote_attributes

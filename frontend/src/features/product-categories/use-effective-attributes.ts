@@ -11,10 +11,7 @@ import type { AttributeContext } from '@/features/product-categories/types'
  * and the context, so switching either re-fetches and the caller regenerates
  * the fields.
  */
-export function useEffectiveAttributes(
-  categoryId: number | null,
-  context: AttributeContext = 'opportunity',
-) {
+export function useEffectiveAttributes(categoryId: number | null, context: AttributeContext) {
   return useQuery({
     queryKey: productCategoryKeys.effectiveAttributes(categoryId ?? 0, context),
     queryFn: () => fetchEffectiveAttributes(categoryId as number, context),

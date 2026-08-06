@@ -203,10 +203,6 @@ export const productCategories = {
         title: 'Attributi Prodotto',
         description: 'Caricati nella scheda Prodotto (creazione/modifica) per i prodotti di questa categoria.',
       },
-      opportunityAttributes: {
-        title: 'Attributi Opportunità',
-        description: 'Caricati nelle informazioni preliminari della richiesta per questa categoria.',
-      },
       quoteAttributes: {
         title: 'Attributi Offerta',
         description:

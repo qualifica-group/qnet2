@@ -7,6 +7,35 @@
 <spec id="0085-quote-scoped-notes" status="draft" owner="nicola" date="2026-08-05">
 
   <amendment date="2026-08-06" status="applied">
+    ICONA UNICA DELLE NOTE E CONTATORE PER-OFFERTA (richiesta utente 2026-08-06: "c'e' una
+    differenza tra l'icona delle note nella pagina Opportunita' e nella tabella Opportunita'
+    quando c'e' il dropdown, e non conteggia il numero delle note filtrate").
+
+    1. ICONA. Le superfici della feature note (tab del dettaglio Opportunita', `NotesDialog`,
+       `NotesSection`) usavano `MessagesSquare` (fumetti sovrapposti), le azioni di riga di
+       Opportunita'/Gestione Richieste/Offerte `MessageSquare` (fumetto singolo): stessa funzione,
+       due segni diversi. La chiave del catalogo azioni diventa `messages-square` in tutti e tre i
+       cataloghi backend e mappa su `MessagesSquare` nei tre icon-map di dominio. Chiave rinominata,
+       non ri-mappata: un `message-square` che rende `MessagesSquare` sarebbe naming drift.
+
+    2. CONTATORE. L'azione `notes` delle Offerte non aveva `count_field` (dichiarato `<out>` sopra),
+       quindi il badge non esisteva proprio — ne' nel dropdown, ne' sulla griglia Offerte. Il badge
+       deve descrivere il thread che l'azione APRE, che e' gia' filtrato su quell'Offerta: il conteggio
+       e' quindi per-Offerta (`notes.quote_id`), non il thread intero dell'Opportunita'.
+       `Quote::scopedNotes()` (HasMany su `quote_id`, NON `HasNotes`: l'Offerta non e' un'entita'
+       notable) + `withCount(['scopedNotes as notes_count'])` in `QuotesTableDefinition`, proiettato
+       da `mapRow`. Il badge dell'Opportunita' resta invariato: TUTTE le sue note (AC-031).
+       Conseguenza: `useQuoteRowActions::closeNotes` ora aggiorna la superficie ospite alla chiusura
+       e i due call-site passano `onThreadChanged` — la riga dipende da cio' che si scrive nel dialog.
+       Questo REVOCA la voce `<out>` "Un contatore `notes_count` separato per offerta" e la riga
+       "Nessun refresh alla chiusura" dell'emendamento sull'azione di riga.
+
+    Copertura: `QuoteNotesActionTest` (icona, `count_field`, conteggio per-Offerta che esclude le note
+    generali e quelle di un'altra Offerta) e `quotes-table-notes.test.tsx` (refresh alla chiusura e a
+    ogni scrittura).
+  </amendment>
+
+  <amendment date="2026-08-06" status="applied">
     I SELETTORI DI OFFERTA VIAGGIANO CON IL THREAD, NON CON L'HOST (richiesta utente 2026-08-06:
     "sulla tabella Opportunita' e su Gestione Richieste, quando scrivi una nota non c'e' la
     possibilita' di filtrare per quale offerta ne' di scegliere per quale offerta scrivere").

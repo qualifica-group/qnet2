@@ -3,7 +3,219 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SELETTORI OFFERTA DELLE NOTE SU TUTTE LE SUPERFICI (2026-08-06) — VERDE, NON COMMITTATO
+## IDENTITA' UNIVOCA FRA UTENTI + ANAGRAFICHE + REFERENTI (2026-08-06) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Quando c'e' un utente con telefono o codice fiscale o partita IVA, anagrafica
+o referente non puo' essere creato." Due decisioni prese esplicitamente con l'utente, che
+**SOSTITUISCONO** quelle del 2026-08-03 (voce "UNIVOCITA' ANAGRAFICA / REFERENTE", piu' in basso: e'
+storia, non piu' il comportamento corrente):
+
+1. **Ambito = utenti + anagrafiche + referenti**, non piu' per-modulo. Un CF, una P.IVA o un telefono
+   gia' presente su una scheda di uno qualsiasi dei tre blocca la scrittura di anagrafica/referente.
+   Cade quindi la vecchia regola "lo stesso soggetto puo' essere sia referente sia cliente".
+2. **Telefono e cellulare sono UN unico spazio** (prima erano canali separati): lo stesso numero non
+   puo' stare come `phone` su una scheda e come `mobile` su un'altra. Vale anche fra referenti.
+
+Invarianti che restano dal 2026-08-03: blocco a **422**, distinto dal pannello duplicati NON
+bloccante dei referenti (spec 0037, `ReferentDuplicateFinder`, invariato); CF e P.IVA per campo,
+nessun controllo incrociato fra i due; confronto **normalizzato** via `ContactValueNormalizer`, mai
+uguaglianza esatta (le righe da factory/migrazione non passano da `InputFormat`).
+
+**Chi e' DENTRO e chi e' FUORI.** `CompanySite` possiede anch'esso schede via il morph `personable`
+ed e' deliberatamente **fuori**: una sede e' un luogo dell'azienda che la sua anagrafica gia'
+rappresenta, il suo centralino non e' una seconda persona. Gli **endpoint utenti restano non
+vincolati**: la direttiva blocca la nascita di un'anagrafica/referente su un valore che un account
+gia' possiede, non il contrario.
+
+**Implementazione** — tutto al confine FormRequest, nessuna migrazione (un unique index non e'
+esprimibile su una tabella morph condivisa).
+
+- `app/Support/IdentityUniquenessScope.php` (NUOVO) — unica fonte di verita' dell'insieme
+  `{User, Registry, Referent}`. `cards($ignoreOwnerClass, $ignoreOwnerId)` restituisce le schede
+  dello spazio nomi meno quella del record in modifica. L'esclusione e' sulla **coppia (tipo, id)**,
+  mai sull'id da solo: i tre morph hanno PK indipendenti, referente #5 e anagrafica #5 coesistono e
+  scartare "personable_id = 5" acceccherebbe il controllo sull'altro. Test dedicato in
+  `ReferentUniquenessTest` ("excluded by (owner type, id), never by id alone").
+- `app/Rules/UniquePersonalDataIdentifier.php` — non costruisce piu' la query da se': interroga lo
+  scope. La colonna resta **allow-listata** (finisce interpolata in `whereRaw`; il valore e' bindato).
+- `app/Http/Requests/Concerns/ValidatesPhoneUniqueness.php` — **RINOMINATO** da
+  `ValidatesReferentContactUniqueness` (il vincolo non e' piu' dei soli referenti; il vecchio file e'
+  cancellato, non affiancato). Canali unificati, hook `validatePhoneUniqueness()`. Legge la coppia da
+  escludere dagli hook `identityUniquenessOwner()`/`identityUniquenessOwnerId()` di
+  `ValidatesUserProfile`: `contactUniquenessIgnoreId()` e' **rimosso**, l'esclusione si dichiara una
+  volta sola per request.
+- Le 4 request Store/Update di `Referents/` e `Registries/` compongono ora **entrambi** i trait: le
+  due request Anagrafica prima non controllavano il telefono affatto.
+- `StoreReferentRequest` — la sua costante `PHONE_CONTACT_TYPES` e' stata **eliminata** in favore di
+  quella del trait. Non e' cosmesi: una costante omonima in classe e trait e' un **fatal a
+  compile-time** ("define the same constant ... considered incompatible"), e il processo pest muore
+  senza stampare nulla (exit 1, output vuoto) — sintomo da riconoscere, non e' un segfault.
+- `lang/it.json` — "already assigned to another referent" -> "to another record" (chiave rinominata,
+  il messaggio non puo' piu' nominare i referenti).
+
+**Frontend: nessuna modifica.** `use-registry-form.ts` e `use-referent-form.ts` filtrano gia' ogni
+chiave `personal_data.*` di un 422 nel banner del form, quindi anche la nuova
+`personal_data.contacts.N.value` sull'Anagrafica.
+
+**Test.** 3 asserzioni preesistenti **invertite** perche' il requisito e' cambiato (non per far
+passare il codice): stesso numero su MOBILE di un altro referente, stesso numero su un'anagrafica,
+stesso CF su un referente — tutte da 201 a 422. Aggiunti i casi utente/anagrafica/referente
+incrociati, il telefono sull'Anagrafica (prima scoperto) e i due casi di confine COMPANY SITE (201,
+fuori spazio nomi).
+
+**Superficie ANCORA scoperta** (invariante aggirabile, decisione dell'utente se chiuderla): il blocco
+`client_identity` di **Gestione Richieste** (`StoreRequestRequest`/`UpdateRequestRequest`) crea e
+aggiorna `Registry` senza passare da queste request, e l'editor di cella inline della colonna
+`tax_code` (`RequestColumnCatalog::clientColumn`) scrive il CF direttamente. Erano gia' segnalate il
+2026-08-03 e restano aperte.
+
+**Verifica eseguita.** `pest tests/Feature/Referents tests/Feature/Registries` **184/184**; suite
+completa `php -d xdebug.mode=off vendor/bin/pest` **5214 test, 5213 passed + 1 skipped, EXIT=0**
+(il rosso preesistente su `AssignablePermissionCatalogueTest` non si presenta piu'). `pint --dirty`
+pulito. Nessuna modifica frontend, quindi nessun `tsc`/`vitest` in questo lavoro.
+
+## ICONA NOTE UNIFICATA + BADGE PER-OFFERTA (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "C'e' una differenza tra l'icona delle note nella pagina Opportunita' e nella
+tabella Opportunita' quando c'e' il dropdown, e non conteggia il numero delle note filtrate."
+
+**Difetto 1 — due icone.** Le superfici note (`NotesSection`, `NotesDialog`, tab del dettaglio)
+usano `MessagesSquare`; le azioni di riga usavano `MessageSquare`. La chiave del catalogo azioni e'
+ora `messages-square` (backend: `OpportunityColumnCatalog`, `RequestColumnCatalog`,
+`QuoteColumnCatalog`) e mappa su `MessagesSquare` nei tre icon-map di dominio
+(`opportunities-table.tsx`, `request-management-table.tsx`, `quotes/action-icons.ts`). Chiave
+RINOMINATA, non ri-mappata: `message-square -> MessagesSquare` sarebbe naming drift. La voce
+`'message-square'` di `custom-fields/icon-catalog.ts` e' un catalogo diverso, intatta.
+
+**Difetto 2 — nessun conteggio nel dropdown.** L'azione `notes` delle Offerte non aveva
+`count_field` (spec 0085 lo dichiarava `<out>`), quindi nessun badge ne' nel pannello Offerte
+espanso ne' sulla griglia Offerte. Ora conta le note di QUELL'Offerta — cioe' esattamente il thread
+gia' filtrato che il dialog apre: `Quote::scopedNotes()` (HasMany su `notes.quote_id`; NON
+`HasNotes`, l'Offerta non e' notable) + `withCount(['scopedNotes as notes_count'])` in
+`QuotesTableDefinition` + proiezione in `mapRow`. Il badge dell'Opportunita' resta TUTTE le sue note
+(AC-031, invariato).
+
+**Conseguenza sul refresh.** La riga Offerta ora dipende dal dialog: `closeNotes` aggiorna la
+superficie ospite e i due call-site (`quotes-table.tsx`, `opportunity-quotes-detail-renderer.tsx`)
+passano `onThreadChanged`, come gia' fa `OpportunitiesTable`.
+
+**Verificato.** `php artisan test` 1097/1097 verde; Vitest su `quotes`/`request-management`/`table`/
+`notes` 548+61 verdi; `tsc -b --force` EXIT=0; Pint pulito. Spec 0085 emendata (l'`<out>` "contatore
+per offerta" e' revocato esplicitamente).
+
+**Difetto 3 — la TERZA superficie Offerte era rimasta indietro.** Nel dettaglio Opportunita'
+(`/opportunities/{id}`) il pannello Offerte montava `TableView` SENZA `iconMap`: `messages-square` e
+`file-text` cadevano sul fallback `MoreHorizontal` (icona a tre puntini) — da qui "l'icona della
+nota non e' allineata alle altre" e "anche scarica preventivo l'icona e' sbagliata". Peggio: quel
+pannello aveva una COPIA parziale dello switch delle azioni (solo view/edit/delete/activity), quindi
+`notes` e `generate_document` erano affordance morte. `useOpportunityQuotesPanel` ora delega a
+`useQuoteRowActions` (lo stesso hook delle altre due superfici, direttiva utente 2026-08-06) e tiene
+solo cio' che e' suo: contatore, empty state, creazione. Il pannello passa `QUOTES_ACTION_ICONS` e
+monta `NotesDialog`.
+
+**Regola che ne discende.** Chi monta `TableView` per il dominio `quotes` passa SEMPRE
+`QUOTES_ACTION_ICONS` e usa `useQuoteRowActions`: le superfici sono tre, non due.
+
+**Ordine delle azioni Offerta (richiesta utente 2026-08-06).** `QuoteColumnCatalog::actions()` e' ora
+`view, generate_document, notes, edit, delete, activity`: il frontend rende inline le prime
+`INLINE_ACTION_LIMIT` (3) azioni PERMESSE alla riga e manda le altre nei tre puntini, quindi
+l'ordine del catalogo e' portante, non estetico. Chi aggiunge un'azione la accoda in fondo.
+Bloccato da un test in `QuoteTableTest` ("the action catalogue leads with view/generate_document/
+notes"): un riordino accidentale sposterebbe le icone nell'overflow senza rompere nulla.
+`QuotesTableDefinition::actionsFor()` mantiene il suo ordine: e' una whitelist, il frontend ne fa un
+Set: l'ordine mostrato viene solo dal catalogo.
+
+**Resta aperto (invariato da prima).** `RequestManagementTable` non passa ancora
+`onThreadChanged={refreshGrid}` pur avendo `notes_count` sulle righe.
+
+**Nota ambiente (non causata da questo lavoro).** `php artisan test` SENZA filtro muore con
+SIGSEGV: il worker PHP crasha su `tests/Unit/Migrations/ExternalApiClientTest.php` e su
+`tests/Feature/Migration/`. Entrambi i file sono intatti nel working tree (nessuna modifica di
+sessione) e riguardano il client API esterno. Tutte le altre directory girano verdi una per una;
+la verifica si fa per directory o con `--filter` finche' non si indaga quel crash.
+
+## BADGE `notes_count` AGGIORNATO A OGNI SCRITTURA (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Note di opportunita': quando crei una nota non ri-renderizza e ricarica
+(la tabella)." Il badge del conteggio note sulla riga della griglia Opportunita' si aggiornava
+SOLO alla chiusura del dialog (`handleNotesOpenChange` -> `refreshGrid`): scrivere una nota
+lasciava la riga dietro col numero vecchio.
+
+**Causa.** `notes_count` e' un valore del server (`withCount('notes')` in
+`OpportunitiesTableDefinition`), non una query React: le mutation delle note invalidano solo
+`notesKeys.list(...)`, che aggiorna la lista dentro il dialog e nient'altro. La griglia SSRM si
+ricarica per via imperativa (`TableViewHandle.refresh()`), quindi serviva una notifica esplicita
+dalla sezione note verso l'host.
+
+**Soluzione.** Nuova prop opzionale `onThreadChanged` su `NotesSection` -> `NotesDialog`, inoltrata
+a `NoteList`/`NoteItem`. Si chiama SOLO sulle scritture che cambiano la dimensione del thread —
+creazione di root e di reply, eliminazione — e NON sulla modifica, che cambia il testo di una nota
+gia' contata. `OpportunitiesTable` la collega a `refreshGrid`; il refresh alla chiusura resta come
+secondo giro. Le altre superfici (dettaglio Opportunita', pannello di lavorazione, dettaglio
+Offerta) non passano nulla: non hanno un conteggio proprio da rinfrescare — le griglie Offerte non
+portano un badge `notes_count` (vedi il commento in `use-quote-row-actions.ts`).
+
+**Non fatto (fuori scope, stesso difetto).** `RequestManagementTable` monta lo stesso `NotesDialog`
+su righe che PORTANO `notes_count`: le manca solo `onThreadChanged={refreshGrid}`. Chiedere
+all'utente prima di allinearla.
+
+**File toccati.** `frontend/src/features/notes/{notes-section,notes-dialog,note-list,note-item}.tsx`,
+`frontend/src/features/opportunities/opportunities-table.tsx`, piu' i test
+`notes-section.test.tsx` (4 casi nuovi: root, reply, delete, edit-non-chiama) e
+`opportunities-table-notes.test.tsx` (refresh senza chiusura).
+
+**Verifiche eseguite.** `npx vitest run src/features/notes src/features/opportunities/opportunities-table-notes.test.tsx src/features/request-management` -> 38 file, 243 test verdi.
+`npx tsc -b --force --pretty false` -> EXIT 0. ESLint sui file toccati -> pulito.
+
+## RIMOSSO IL CONTESTO ATTRIBUTI `opportunity` (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "In categorie prodotto form la sezione attributi, c'e' attributi opportunita'.
+Ma questo e' un pezzo morto o e' funzionante?" -> era MORTO: configurabile e persistito, senza un
+solo lettore a runtime. Confermata la rimozione completa (schema + righe, non solo UI).
+
+**Perche' era morto.** La spec 0084 (D-1) aveva spostato le "Informazioni aggiuntive"
+dall'Opportunita' all'Offerta e rimosso il trio `attribute_values`/`applicable_attributes`/
+`attribute_layout` da `OpportunityResource` e `RequestManagementResource`. Da allora i due soli
+resolver di produzione chiedevano `AttributeContext::Product` (`ProductAttributeResolver`) e
+`AttributeContext::Quote` (`QuoteAttributeResolver`). Il contesto `opportunity` sopravviveva solo
+come **default implicito** — colonna DB, parametri di FormRequest, parametri di funzione TS — ed e'
+proprio quel default che lo rendeva invisibile.
+
+**La decisione di design che conta: niente default.** `context` e' ora OBBLIGATORIO ovunque —
+`GET .../effective-attributes` e `GET .../attribute-layouts` rispondono 422 se manca,
+`attribute_category.context` non ha piu' un DEFAULT SQL, e `CategoryHierarchy::effectiveAttributes`/
+`ancestorAttributes`, `fetchEffectiveAttributes`, `useEffectiveAttributes`, `toEffectiveAttribute`
+non hanno piu' un parametro con valore di default. Chi aggiunge un contesto non ne reintroduca uno:
+un default silenzioso e' il motivo per cui questo codice e' campato una release intera senza lettori.
+
+**Migrazione DISTRUTTIVA** `2026_08_06_120000_drop_opportunity_attribute_context`: cancella le righe
+`attribute_category` e `attribute_layouts` con `context='opportunity'`, droppa
+`product_categories.inherits_opportunity_attributes`, toglie il default dalla colonna. La `down()`
+ripristina struttura e default, MAI i dati. Nota: la migrazione gia' committata `2026_07_07_110300`
+e' stata disaccoppiata dall'enum (default `'opportunity'` scritto come letterale) — senza,
+`migrate:fresh` andrebbe in fatal error sul case rimosso. Le migrazioni non referenzino enum vivi.
+
+**`QuoteWorkflowMigrationTest` conta le migrazioni** con `--step`: portato da 9 a 10. Chi aggiunge
+una migrazione deve incrementarlo, altrimenti il test fallisce in modo opaco ("true is not false").
+
+**Collaterale sistemato:** `toInheritedAttributes` (form categoria) taggava solo product+opportunity,
+quindi la lista read-only degli EREDITATI del contesto Offerta non si popolava mai. Ora e' corretta.
+
+**File.** BE: `Enums/AttributeContext` (2 case), migrazione nuova, `Models/ProductCategory`,
+`ProductCategoryResource`, `Store/UpdateProductCategoryRequest`, `EffectiveAttributesRequest`,
+`AttributeLayoutQueryRequest`, `Create/UpdateProductCategoryData`, `ProductCategoryService`,
+`CategoryHierarchy`, `ProductCategoriesAuthorization`, `ProductCategoriesStatsDefinition`,
+`ProductCategoriesSource`, `ProductCategoryAttributesSource`, factory `ProductCategory`/`AttributeLayout`.
+FE: `product-categories/{types,api,use-effective-attributes,product-category-schema,
+product-category-form-payload,use-product-category-form,attribute-assignment-editor,
+product-category-form-body,product-category-detail,product-category-attribute-layout-shared}`,
+`request-management/applicable-attribute-adapter`, i18n it/en (products, attribute-layout, activity-log
+— aggiunta `inherits_quote_attributes`, che mancava). Spec 0061 con `<amendment>`.
+
+**Verificato (eseguito).** Pest backend, Vitest 3538/3538, `tsc -b --force` pulito, ESLint pulito,
+Pint pulito, `migrate:fresh` + ispezione schema (colonna droppata, default rimosso, unique intatto).
+
+## SELETTORI OFFERTA DELLE NOTE SU TUTTE LE SUPERFICI (2026-08-06) — VERDE, DENTRO `9f16d8e`
 
 **Richiesta utente.** Sulla tabella Opportunita' e su Gestione Richieste, scrivendo una nota
 mancavano il filtro "per quale Offerta leggere" e la scelta "per quale Offerta scrivere": doveva
@@ -41,9 +253,30 @@ continua a caricare la relazione — serve a `OpportunityStatusResolver`, non al
 ha un concetto di scoping): e' l'unico punto da cui i selettori si alimentano. Non reintrodurre una
 seconda proiezione delle Offerte lato host.
 
-**Verificato:** `NoteQuoteScopeMetaTest` 6/6; backend Notes 128/128; Opportunities+RequestManagement
-+Quotes 720/720; Pint pulito; FE `src/features/notes` 48/48, opportunities+request-management+quotes
-574/574; `tsc -b --force` EXIT=0. Spec `0085` aggiornata con `<amendment>`.
+**Verificato:** `NoteQuoteScopeMetaTest` 6/6; backend full suite 5200 test, 5199 passati, 1 skipped,
+EXIT=0; Pint pulito; FE `src/features/notes` 48/48, opportunities+request-management+quotes 574/574,
+suite completa 3538/3538. Spec `0085` aggiornata con `<amendment>`. Questi file sono finiti dentro
+il commit `9f16d8e` fatto da un'altra sessione attiva sul repo, non da questa.
+
+**AMBIENTE, DA SAPERE PRIMA DI LANCIARE I TEST.** `php artisan test` sull'INTERA suite va in
+**segfault (signal 11)** con Xdebug attivo, prima ancora di emettere un test — non e' un problema di
+concorrenza (fallisce anche isolato). Il comando che arriva in fondo e':
+`XDEBUG_MODE=off php artisan test` (~290-330s). Le suite mirate per directory/filtro passano in
+entrambe le modalita', ed e' il motivo per cui il problema non si vede quasi mai.
+
+**Rosso NON di questo lavoro, aperto al momento del passaggio di consegne.** `tsc -b --force` e'
+ROSSO con 45 errori, tutti della rimozione del contesto `opportunity` (spec 0084, commit `5a14cf7`/
+`9f16d8e`): 44 in `frontend/src/features/product-categories/**` (`AttributeContext` non ha piu' il
+case `opportunity`; `inherits_opportunity_attributes` non esiste piu' nel tipo) e 1 in
+`frontend/src/features/request-management/applicable-attribute-adapter.ts:46`, che emette ancora
+`'opportunity'`. Zero errori in `features/notes`, `features/opportunities`, `features/quotes`,
+`request-work-collaboration.tsx`. Decisione utente 2026-08-06: **li sistema la sessione che sta
+lavorando su quell'area**, non questa (quando ho verificato, quella sessione aveva
+`QuoteWorkflowMigrationTest.php` aperto nel working tree).
+
+`QuoteWorkflowMigrationTest` AC-004 e' fallito UNA volta nel full run (`migrate:rollback --step`
+hard-coded a 10, "Adding a migration means bumping this number") e al secondo giro e' verde:
+order-dependent, da tenere d'occhio quando si aggiunge una migrazione.
 
 ## AZIONE NOTE SULL'OFFERTA (2026-08-06) — VERDE, NON COMMITTATO
 
@@ -2557,7 +2790,12 @@ FE `vitest` **3267 passed (462 file)**, EXIT=0; `eslint` pulito sui file toccati
 CONCORRENTE su `is_selectable` presente nel working tree (altra sessione) — nessun errore nei file di
 questa feature. NOTA: `pest` senza `XDEBUG_MODE=off` va in segfault (exit 139) sulla suite completa.
 
-## UNIVOCITA' ANAGRAFICA / REFERENTE (2026-08-03) — VERDE, NON COMMITTATO
+## UNIVOCITA' ANAGRAFICA / REFERENTE (2026-08-03) — SUPERATA IL 2026-08-06
+
+> **STORIA, non comportamento corrente.** L'ambito per-modulo e i canali telefonici separati descritti
+> qui sono stati sostituiti dalla voce "IDENTITA' UNIVOCA FRA UTENTI + ANAGRAFICHE + REFERENTI"
+> (2026-08-06) in cima al file. Resta valida la parte su blocco 422 vs pannello duplicati e sul
+> confronto normalizzato.
 
 **Direttiva utente**: univocita' BLOCCANTE (422) su codice fiscale e partita IVA per le anagrafiche,
 e su telefono/cellulare per i referenti. Quattro decisioni prese con l'utente e da NON reinterpretare:

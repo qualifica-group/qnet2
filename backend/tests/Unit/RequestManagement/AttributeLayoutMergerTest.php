@@ -20,7 +20,7 @@ use Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 it('returns null for an empty category id list', function (): void {
-    $resolved = app(AttributeLayoutMerger::class)->resolve([], AttributeContext::Opportunity, FormMode::Edit);
+    $resolved = app(AttributeLayoutMerger::class)->resolve([], AttributeContext::Quote, FormMode::Edit);
 
     expect($resolved)->toBeNull();
 });
@@ -28,9 +28,9 @@ it('returns null for an empty category id list', function (): void {
 it('returns null when no contributing category has a configured layout (flat fallback)', function (): void {
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'field_a']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
 
-    $resolved = app(AttributeLayoutMerger::class)->resolve([$category->id], AttributeContext::Opportunity, FormMode::Edit);
+    $resolved = app(AttributeLayoutMerger::class)->resolve([$category->id], AttributeContext::Quote, FormMode::Edit);
 
     expect($resolved)->toBeNull();
 });
@@ -45,25 +45,25 @@ it('concatenates two categories\' sections in the caller\'s own order, dedups fi
     $unplaced = Attribute::factory()->create(['code' => 'unplaced_field']);
 
     foreach ([$shared, $onlyA, $unplaced] as $index => $attribute) {
-        $categoryA->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => $index, 'context' => 'opportunity']);
+        $categoryA->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => $index, 'context' => 'quote']);
     }
     foreach ([$shared, $onlyB] as $index => $attribute) {
-        $categoryB->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => $index, 'context' => 'opportunity']);
+        $categoryB->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => $index, 'context' => 'quote']);
     }
 
     // Category A places `shared_field` and `only_a` — `unplaced_field` is
     // applicable (attached above) but deliberately left OUT of every layout.
     AttributeLayout::factory()->for($categoryA, 'productCategory')
         ->withCodes(['shared_field', 'only_a'], title: 'Section A')
-        ->create(['context' => 'opportunity', 'form_mode' => 'edit']);
+        ->create(['context' => 'quote', 'form_mode' => 'edit']);
 
     // Category B ALSO places `shared_field` (must be dropped, A already won)
     // plus `only_b`.
     AttributeLayout::factory()->for($categoryB, 'productCategory')
         ->withCodes(['shared_field', 'only_b'], title: 'Section B')
-        ->create(['context' => 'opportunity', 'form_mode' => 'edit']);
+        ->create(['context' => 'quote', 'form_mode' => 'edit']);
 
-    $resolved = app(AttributeLayoutMerger::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Opportunity, FormMode::Edit);
+    $resolved = app(AttributeLayoutMerger::class)->resolve([$categoryA->id, $categoryB->id], AttributeContext::Quote, FormMode::Edit);
 
     expect($resolved)->not->toBeNull();
     $sections = $resolved['sections'];
@@ -99,29 +99,29 @@ it('concatenates two categories\' sections in the caller\'s own order, dedups fi
 it('resolves independently per form_mode — a layout configured for Create does not leak into Edit', function (): void {
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'field_a']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
-
-    AttributeLayout::factory()->for($category, 'productCategory')
-        ->withCodes(['field_a'])
-        ->create(['context' => 'opportunity', 'form_mode' => 'create']);
-
-    $resolver = app(AttributeLayoutMerger::class);
-
-    expect($resolver->resolve([$category->id], AttributeContext::Opportunity, FormMode::Create))->not->toBeNull();
-    expect($resolver->resolve([$category->id], AttributeContext::Opportunity, FormMode::Edit))->toBeNull();
-});
-
-it('resolves independently per context — a layout configured for Quote does not leak into Opportunity', function (): void {
-    $category = ProductCategory::factory()->create();
-    $attribute = Attribute::factory()->create(['code' => 'field_a']);
     $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
 
     AttributeLayout::factory()->for($category, 'productCategory')
         ->withCodes(['field_a'])
-        ->create(['context' => 'quote', 'form_mode' => 'edit']);
+        ->create(['context' => 'quote', 'form_mode' => 'create']);
 
     $resolver = app(AttributeLayoutMerger::class);
 
-    expect($resolver->resolve([$category->id], AttributeContext::Quote, FormMode::Edit))->not->toBeNull();
-    expect($resolver->resolve([$category->id], AttributeContext::Opportunity, FormMode::Edit))->toBeNull();
+    expect($resolver->resolve([$category->id], AttributeContext::Quote, FormMode::Create))->not->toBeNull();
+    expect($resolver->resolve([$category->id], AttributeContext::Quote, FormMode::Edit))->toBeNull();
+});
+
+it('resolves independently per context — a layout configured for Product does not leak into Offerta', function (): void {
+    $category = ProductCategory::factory()->create();
+    $attribute = Attribute::factory()->create(['code' => 'field_a']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
+
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['field_a'])
+        ->create(['context' => 'product', 'form_mode' => 'edit']);
+
+    $resolver = app(AttributeLayoutMerger::class);
+
+    expect($resolver->resolve([$category->id], AttributeContext::Product, FormMode::Edit))->not->toBeNull();
+    expect($resolver->resolve([$category->id], AttributeContext::Quote, FormMode::Edit))->toBeNull();
 });

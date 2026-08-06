@@ -66,9 +66,10 @@ vi.mock('@/features/notes/notes-section', () => ({
 const NOTES_ACTION: TableActionDefinition = {
   key: 'notes',
   label: 'actions.notes',
-  icon: 'message-square',
+  icon: 'messages-square',
   type: 'action',
   confirm: false,
+  count_field: 'notes_count',
 }
 
 const ROW: TableRow = {
@@ -76,6 +77,7 @@ const ROW: TableRow = {
   actions: ['view', 'notes'],
   code: 'QUO-0003',
   opportunity: { id: 42, name: 'Opportunita Acme' },
+  notes_count: 2,
 }
 
 /** An Offerta row whose parent relation column is hidden for the actor. */
@@ -147,14 +149,30 @@ describe('QuotesTable — "notes" row action (spec 0085)', () => {
     expect(screen.getByRole('dialog', { name: 'QUO-0003' })).toBeInTheDocument()
   })
 
-  it('closes without refreshing the grid: no Offerta cell derives from the thread', () => {
+  // Requisito cambiato (2026-08-06): l'azione porta ora il badge `notes_count`
+  // dell'offerta, quindi la riga DIPENDE da cio' che si scrive nel dialog.
+  it('refreshes the grid on close, so the per-Offerta notes_count badge stays current', () => {
     renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(refreshMock).not.toHaveBeenCalled()
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes the grid as soon as the thread changes, without closing the dialog', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-notes' }))
+
+    const props = notesSectionMock.mock.calls.at(-1)?.[0] as { onThreadChanged?: () => void }
+    expect(props.onThreadChanged).toBeTypeOf('function')
+
+    props.onThreadChanged?.()
+
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('does nothing on a row without its parent Opportunity: there is no thread to open', () => {

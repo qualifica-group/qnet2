@@ -37,7 +37,7 @@ interface CategoryAttributesContextSectionProps {
  * own assignments for that context, then what it inherits — same own/inherited
  * distinction the editor keeps, split by `context` instead of merged into one
  * flat list. Renders nothing when the context has neither (zero-code for a
- * category with no product, or no opportunity, attributes assigned).
+ * category with no product, or no quote, attributes assigned).
  */
 export function CategoryAttributesContextSection({
   title,

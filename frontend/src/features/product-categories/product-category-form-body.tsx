@@ -48,7 +48,7 @@ interface ProductCategoryFormBodyProps {
 /** Tags each effective-attributes result with the context it was fetched for, into the flat shape `AttributeAssignmentEditor` splits (spec 0061). */
 function toInheritedAttributes(
   product: EffectiveAttribute[] | undefined,
-  opportunity: EffectiveAttribute[] | undefined,
+  quote: EffectiveAttribute[] | undefined,
 ): ProductCategoryInheritedAttribute[] {
   const tag = (attributes: EffectiveAttribute[] | undefined, context: AttributeContext) =>
     (attributes ?? []).map((attribute) => ({
@@ -59,7 +59,7 @@ function toInheritedAttributes(
       is_required: attribute.is_required,
       context,
     }))
-  return [...tag(product, 'product'), ...tag(opportunity, 'opportunity')]
+  return [...tag(product, 'product'), ...tag(quote, 'quote')]
 }
 
 /** Hoisted so an opted-out context feeds a stable reference to `toInheritedAttributes`. */
@@ -92,7 +92,6 @@ function toKnownAttributes(mode: ProductCategoryFormMode): AttributeCatalogEntry
 /** The `inherits_*_attributes` field names, one per usage context — RHF path and authorization metadata key alike. */
 const INHERITANCE_FIELD = {
   product: 'inherits_product_attributes',
-  opportunity: 'inherits_opportunity_attributes',
   quote: 'inherits_quote_attributes',
 } as const
 
@@ -104,7 +103,7 @@ interface InheritanceToggleProps {
 /**
  * The per-context "inherit from parent" switch, rendered INSIDE the section it
  * governs (spec 0061 follow-up): each usage context carries its own barrier,
- * so the Product list can ignore the ancestry while the Opportunity one keeps
+ * so the Product list can ignore the ancestry while the Offerta one keeps
  * inheriting. Defined at module level — never inside the form component.
  */
 function InheritanceToggle({ control, context }: InheritanceToggleProps) {
@@ -141,10 +140,10 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
 
   const parentId = form.watch('parent_id')
   const inheritsProductAttributes = form.watch('inherits_product_attributes')
-  const inheritsOpportunityAttributes = form.watch('inherits_opportunity_attributes')
+  const inheritsQuoteAttributes = form.watch('inherits_quote_attributes')
   const knownAttributes = useMemo(() => toKnownAttributes(mode), [mode])
   const inheritedProductQuery = useEffectiveAttributes(parentId, 'product')
-  const inheritedOpportunityQuery = useEffectiveAttributes(parentId, 'opportunity')
+  const inheritedQuoteQuery = useEffectiveAttributes(parentId, 'quote')
   // Opting out is a barrier: that context inherits nothing, so the read-only
   // inherited list must reflect it immediately (not just after save) — and only
   // for the context whose switch moved, the other side is untouched.
@@ -153,13 +152,13 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
     () =>
       toInheritedAttributes(
         inheritsProductAttributes ? inheritedProductQuery.data : EMPTY_ATTRIBUTES,
-        inheritsOpportunityAttributes ? inheritedOpportunityQuery.data : EMPTY_ATTRIBUTES,
+        inheritsQuoteAttributes ? inheritedQuoteQuery.data : EMPTY_ATTRIBUTES,
       ),
     [
       inheritedProductQuery.data,
-      inheritedOpportunityQuery.data,
+      inheritedQuoteQuery.data,
       inheritsProductAttributes,
-      inheritsOpportunityAttributes,
+      inheritsQuoteAttributes,
     ],
   )
 
@@ -319,9 +318,6 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                     // A root category has no ancestry to inherit from: no switch to show.
                     productInheritToggle={
                       parentId !== null ? <InheritanceToggle control={form.control} context="product" /> : null
-                    }
-                    opportunityInheritToggle={
-                      parentId !== null ? <InheritanceToggle control={form.control} context="opportunity" /> : null
                     }
                     quoteInheritToggle={
                       parentId !== null ? <InheritanceToggle control={form.control} context="quote" /> : null

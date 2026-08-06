@@ -228,7 +228,7 @@ it('delete: 409 when assigned to a category', function () {
     $actor = attributeUserWith(['delete']);
     $target = Attribute::factory()->create();
     $category = ProductCategory::factory()->create();
-    $category->attributes()->attach($target->id, ['is_required' => false, 'sort_order' => 0]);
+    $category->attributes()->attach($target->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/attributes/{$target->id}")->assertStatus(409);

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchEffectiveAttributes, fetchEffectiveManagerLabels } from '@/features/product-categories/api'
 import { apiClient } from '@/api/client'
 
-/** Spec 0061: the effective-attributes endpoint is context-scoped (`?context=product|opportunity`). */
+/** Spec 0061/0084: the effective-attributes endpoint is context-scoped (`?context=product|quote`), with no default slice. */
 
 vi.mock('@/api/client', () => ({
   apiClient: { get: vi.fn() },
@@ -16,14 +16,6 @@ beforeEach(() => {
 })
 
 describe('fetchEffectiveAttributes context wiring (spec 0061)', () => {
-  it('defaults to the opportunity context when none is given (backward compatible)', async () => {
-    await fetchEffectiveAttributes(7)
-
-    expect(getMock).toHaveBeenCalledWith('/product-categories/7/effective-attributes', {
-      params: { context: 'opportunity' },
-    })
-  })
-
   it('sends the product context when requested', async () => {
     await fetchEffectiveAttributes(7, 'product')
 
@@ -32,11 +24,11 @@ describe('fetchEffectiveAttributes context wiring (spec 0061)', () => {
     })
   })
 
-  it('sends the opportunity context explicitly', async () => {
-    await fetchEffectiveAttributes(7, 'opportunity')
+  it('sends the quote context when requested', async () => {
+    await fetchEffectiveAttributes(7, 'quote')
 
     expect(getMock).toHaveBeenCalledWith('/product-categories/7/effective-attributes', {
-      params: { context: 'opportunity' },
+      params: { context: 'quote' },
     })
   })
 })

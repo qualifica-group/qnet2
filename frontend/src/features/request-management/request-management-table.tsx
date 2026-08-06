@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import axios from 'axios'
-import { ArrowRightLeft, MessageSquare, Paperclip, Plus, UserCog } from 'lucide-react'
+import { ArrowRightLeft, MessagesSquare, Paperclip, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -32,13 +32,13 @@ import { REQUEST_MANAGEMENT_DOMAIN, type TransferRequestsPayload } from '@/featu
 /**
  * Domain icon overrides for the `documents`/`notes`/`transfer-contact` row
  * actions: the backend action catalog fixes their icon keys as
- * 'paperclip'/'message-square'/'arrow-right-left', absent from the shared
+ * 'paperclip'/'messages-square'/'arrow-right-left', absent from the shared
  * defaults in `action-icon-map.ts` (spec 0079). Hoisted at module level (not
  * inline in JSX) so its identity stays stable across renders.
  */
 const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
   paperclip: Paperclip,
-  'message-square': MessageSquare,
+  'messages-square': MessagesSquare,
   'arrow-right-left': ArrowRightLeft,
 }
 

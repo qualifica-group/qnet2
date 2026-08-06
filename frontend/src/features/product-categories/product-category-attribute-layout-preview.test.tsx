@@ -77,12 +77,12 @@ describe('ProductCategoryAttributeLayoutPreview', () => {
     render(<ProductCategoryAttributeLayoutPreview categoryId={7} />, { wrapper: wrapper() })
     await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all'))
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Opportunity' }))
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'opportunity', 'all'))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Quote' }))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'quote', 'all'))
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Form mode' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Edit' }))
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'opportunity', 'edit'))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'quote', 'edit'))
   })
 
   it('never renders a Save action — no editing/authoring in the detail preview', async () => {

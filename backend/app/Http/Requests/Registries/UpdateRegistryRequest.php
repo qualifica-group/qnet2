@@ -7,6 +7,7 @@ use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
+use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
 use Illuminate\Contracts\Validation\Validator;
@@ -29,6 +30,7 @@ class UpdateRegistryRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
+    use ValidatesPhoneUniqueness;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -38,9 +40,10 @@ class UpdateRegistryRequest extends FormRequest
     }
 
     /**
-     * Codice fiscale and partita IVA are unique among ANAGRAFICHE (user
-     * directive 2026-08-03), the registry under edit excluded — keeping its own
-     * code must stay a no-op, not a collision with itself.
+     * Codice fiscale, partita IVA and phone numbers must be free across users,
+     * anagrafiche and referenti (user directive 2026-08-06), the registry under
+     * edit excluded — keeping its own values must stay a no-op, not a collision
+     * with itself.
      *
      * @return class-string<Registry>
      */
@@ -91,6 +94,7 @@ class UpdateRegistryRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
+            $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
             $this->enforceFieldPermissions($validator);
         });

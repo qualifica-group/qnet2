@@ -47,7 +47,7 @@ it('tree: nested roots→children with attributes_count/products_count', functio
     $root = ProductCategory::factory()->create(['name' => 'Root']);
     $child = ProductCategory::factory()->childOf($root)->create(['name' => 'Child']);
     $attribute = Attribute::factory()->create();
-    $root->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0]);
+    $root->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Product::factory()->create(['category_id' => $child->id]);
     Sanctum::actingAs($actor);
 
@@ -99,12 +99,12 @@ it('effective-attributes: A→B→C inherits a1,a2,a3 ancestors-first with corre
     $a1 = Attribute::factory()->create(['code' => 'a1']);
     $a2 = Attribute::factory()->create(['code' => 'a2']);
     $a3 = Attribute::factory()->create(['code' => 'a3']);
-    $a->attributes()->attach($a1->id, ['is_required' => true, 'sort_order' => 0]);
-    $b->attributes()->attach($a2->id, ['is_required' => false, 'sort_order' => 0]);
-    $c->attributes()->attach($a3->id, ['is_required' => false, 'sort_order' => 0]);
+    $a->attributes()->attach($a1->id, ['is_required' => true, 'sort_order' => 0, 'context' => 'quote']);
+    $b->attributes()->attach($a2->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $c->attributes()->attach($a3->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson("/api/product-categories/{$c->id}/effective-attributes")->assertOk();
+    $response = $this->getJson("/api/product-categories/{$c->id}/effective-attributes?context=quote")->assertOk();
     $data = $response->json('data');
 
     expect(collect($data)->pluck('code')->all())->toBe(['a1', 'a2', 'a3']);
@@ -118,11 +118,11 @@ it('effective-attributes: a category opting out inherits nothing — only its ow
     $child = ProductCategory::factory()->childOf($root)->notInheriting()->create(['name' => 'Child']);
     $rootAttr = Attribute::factory()->create(['code' => 'root_attr']);
     $childAttr = Attribute::factory()->create(['code' => 'child_attr']);
-    $root->attributes()->attach($rootAttr->id, ['is_required' => false, 'sort_order' => 0]);
-    $child->attributes()->attach($childAttr->id, ['is_required' => false, 'sort_order' => 0]);
+    $root->attributes()->attach($rootAttr->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $child->attributes()->attach($childAttr->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
-    $data = $this->getJson("/api/product-categories/{$child->id}/effective-attributes")->assertOk()->json('data');
+    $data = $this->getJson("/api/product-categories/{$child->id}/effective-attributes?context=quote")->assertOk()->json('data');
 
     expect(collect($data)->pluck('code')->all())->toBe(['child_attr']);
 });
@@ -136,12 +136,12 @@ it('effective-attributes: barrier cuts a descendant off from everything above th
     $a = Attribute::factory()->create(['code' => 'a']);
     $b = Attribute::factory()->create(['code' => 'b']);
     $c = Attribute::factory()->create(['code' => 'c']);
-    $root->attributes()->attach($a->id, ['is_required' => false, 'sort_order' => 0]);
-    $child->attributes()->attach($b->id, ['is_required' => false, 'sort_order' => 0]);
-    $grandchild->attributes()->attach($c->id, ['is_required' => false, 'sort_order' => 0]);
+    $root->attributes()->attach($a->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $child->attributes()->attach($b->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $grandchild->attributes()->attach($c->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
-    $data = $this->getJson("/api/product-categories/{$grandchild->id}/effective-attributes")->assertOk()->json('data');
+    $data = $this->getJson("/api/product-categories/{$grandchild->id}/effective-attributes?context=quote")->assertOk()->json('data');
 
     expect(collect($data)->pluck('code')->all())->toBe(['b', 'c']);
     expect(collect($data)->pluck('inherited')->all())->toBe([true, false]);
@@ -151,10 +151,10 @@ it('effective-attributes: ENUM attribute carries its options', function () {
     $actor = productCategoryUserWith(['view']);
     $category = ProductCategory::factory()->create();
     $enum = Attribute::factory()->enum(2)->create();
-    $category->attributes()->attach($enum->id, ['is_required' => false, 'sort_order' => 0]);
+    $category->attributes()->attach($enum->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson("/api/product-categories/{$category->id}/effective-attributes")->assertOk();
+    $response = $this->getJson("/api/product-categories/{$category->id}/effective-attributes?context=quote")->assertOk();
 
     expect($response->json('data.0.options'))->toHaveCount(2);
 });
@@ -164,7 +164,7 @@ it('effective-attributes: 403 for an actor with no product-categories/products a
     $category = ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/product-categories/{$category->id}/effective-attributes")->assertForbidden();
+    $this->getJson("/api/product-categories/{$category->id}/effective-attributes?context=quote")->assertForbidden();
 });
 
 it('effective-attributes: allowed for an actor with only products.create (no product-categories access)', function () {
@@ -174,12 +174,12 @@ it('effective-attributes: allowed for an actor with only products.create (no pro
     $category = ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/product-categories/{$category->id}/effective-attributes")->assertOk();
+    $this->getJson("/api/product-categories/{$category->id}/effective-attributes?context=quote")->assertOk();
 });
 
 it('effective-attributes: 404 for a non-existent category', function () {
     $actor = productCategoryUserWith(['view']);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/product-categories/999999/effective-attributes')->assertNotFound();
+    $this->getJson('/api/product-categories/999999/effective-attributes?context=quote')->assertNotFound();
 });

@@ -118,9 +118,9 @@ describe('ProductCategoryAttributeLayoutEditor', () => {
     await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'product', 'all'))
 
     // Radix `Tabs.Trigger` switches on `mousedown`, not `click` (see @radix-ui/react-tabs).
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Opportunity' }))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Quote' }))
 
-    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'opportunity', 'all'))
+    await waitFor(() => expect(fetchAttributeLayoutMock).toHaveBeenCalledWith(7, 'quote', 'all'))
   })
 
   it('switching form mode re-fetches that mode’s layout', async () => {

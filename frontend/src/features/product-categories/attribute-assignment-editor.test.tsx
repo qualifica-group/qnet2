@@ -7,7 +7,7 @@ import type { AttributeAssignmentInput, ProductCategoryInheritedAttribute } from
 
 /**
  * Spec 0061: the editor renders TWO independent, context-scoped sections
- * ("Product attributes" / "Opportunity attributes"), each with its own
+ * ("Product attributes" / "Quote attributes"), each with its own
  * picker/list/inherited list. Task #19 (self-explanatory row: helper text +
  * info tooltips) still holds per section.
  */
@@ -53,30 +53,32 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     renderEditor()
 
     expect(screen.getByRole('heading', { name: 'Product attributes' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Opportunity attributes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Quote attributes' })).toBeInTheDocument()
     expect(
       screen.getByText('Loaded in the Product card (create/edit) for products in this category.'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Loaded in the Opportunity preliminary info for requests in this category.'),
+      screen.getByText(
+        'Loaded in the Quote additional information, when a line uses a product from this category.',
+      ),
     ).toBeInTheDocument()
   })
 
   it('shows each assignment only under its own context section', () => {
     renderEditor([
       { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
-      { attribute_id: 2, context: 'opportunity', is_required: false, sort_order: 0 },
+      { attribute_id: 2, context: 'quote', is_required: false, sort_order: 0 },
     ])
 
     const productHeading = screen.getByRole('heading', { name: 'Product attributes' })
     const productSection = productHeading.closest('div')?.parentElement as HTMLElement
-    const opportunityHeading = screen.getByRole('heading', { name: 'Opportunity attributes' })
-    const opportunitySection = opportunityHeading.closest('div')?.parentElement as HTMLElement
+    const quoteHeading = screen.getByRole('heading', { name: 'Quote attributes' })
+    const quoteSection = quoteHeading.closest('div')?.parentElement as HTMLElement
 
     expect(within(productSection).getByText('Color')).toBeInTheDocument()
     expect(within(productSection).queryByText('RAM (GB)')).not.toBeInTheDocument()
-    expect(within(opportunitySection).getByText('RAM (GB)')).toBeInTheDocument()
-    expect(within(opportunitySection).queryByText('Color')).not.toBeInTheDocument()
+    expect(within(quoteSection).getByText('RAM (GB)')).toBeInTheDocument()
+    expect(within(quoteSection).queryByText('Color')).not.toBeInTheDocument()
   })
 
   it('adding an attribute from the product picker tags it with context "product"', () => {
@@ -97,20 +99,20 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     ]
     const { onChange } = renderEditor(value)
 
-    const [, opportunityPicker] = screen.getAllByRole('combobox')
-    fireEvent.click(opportunityPicker)
+    const [, quotePicker] = screen.getAllByRole('combobox')
+    fireEvent.click(quotePicker)
     fireEvent.click(screen.getByRole('option', { name: 'Color' }))
 
     expect(onChange).toHaveBeenCalledWith([
       { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
-      { attribute_id: 1, context: 'opportunity', is_required: false, sort_order: 0 },
+      { attribute_id: 1, context: 'quote', is_required: false, sort_order: 0 },
     ])
   })
 
   it('removing a row only affects its own context, not the sibling assignment of the same attribute', () => {
     const value: AttributeAssignmentInput[] = [
       { attribute_id: 1, context: 'product', is_required: false, sort_order: 0 },
-      { attribute_id: 1, context: 'opportunity', is_required: true, sort_order: 2 },
+      { attribute_id: 1, context: 'quote', is_required: true, sort_order: 2 },
     ]
     const { onChange } = renderEditor(value)
 
@@ -118,24 +120,24 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     fireEvent.click(removeButton)
 
     expect(onChange).toHaveBeenCalledWith([
-      { attribute_id: 1, context: 'opportunity', is_required: true, sort_order: 2 },
+      { attribute_id: 1, context: 'quote', is_required: true, sort_order: 2 },
     ])
   })
 
   it('splits the read-only inherited list by context', () => {
     const inherited: ProductCategoryInheritedAttribute[] = [
       { attribute_id: 1, code: 'color', name: 'Color', type: 'enum', is_required: false, context: 'product' },
-      { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, context: 'opportunity' },
+      { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, context: 'quote' },
     ]
     renderEditor([], inherited)
 
     const productHeading = screen.getByRole('heading', { name: 'Product attributes' })
     const productSection = productHeading.closest('div')?.parentElement as HTMLElement
-    const opportunityHeading = screen.getByRole('heading', { name: 'Opportunity attributes' })
-    const opportunitySection = opportunityHeading.closest('div')?.parentElement as HTMLElement
+    const quoteHeading = screen.getByRole('heading', { name: 'Quote attributes' })
+    const quoteSection = quoteHeading.closest('div')?.parentElement as HTMLElement
 
     expect(within(productSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
-    expect(within(opportunitySection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
+    expect(within(quoteSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
   })
 
   it('shows a visible "Order" label next to the sort_order input', () => {

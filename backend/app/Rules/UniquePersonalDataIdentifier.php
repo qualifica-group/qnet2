@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
-use App\Models\PersonalData;
 use App\Support\ContactValueNormalizer;
+use App\Support\IdentityUniquenessScope;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Model;
@@ -13,12 +13,12 @@ use InvalidArgumentException;
 
 /**
  * A fiscal identifier (`tax_code`/`vat_number`) may sit on at most one card of
- * a given owner entity (user directive 2026-08-03): two anagrafiche cannot
- * share a codice fiscale or a partita IVA, and neither can two referenti.
+ * the shared identity namespace (user directive 2026-08-06): a codice fiscale
+ * or a partita IVA already held by a user, an anagrafica or a referente blocks
+ * the write, whichever of the three carries it.
  *
- * Scoped PER OWNER TYPE, never globally: `personal_data` is shared by users,
- * referents and registries through the `personable` morph, and the same person
- * legitimately exists both as a referent and as a client anagraphic record.
+ * The namespace itself lives in `IdentityUniquenessScope` — this rule only
+ * decides WHICH column it interrogates.
  *
  * The comparison is normalized (upper + trim, ContactValueNormalizer::taxCode)
  * rather than a plain equality: `InputFormat` canonicalizes only what enters
@@ -42,7 +42,7 @@ final class UniquePersonalDataIdentifier implements ValidationRule
 
     /**
      * @param  string  $column  one of the allow-listed identifier columns
-     * @param  class-string<Model>  $ownerClass  the entity owning the cards the value must be unique among
+     * @param  class-string<Model>  $ownerClass  the entity owning the card being written
      * @param  int|null  $ignoreOwnerId  the owner being updated — its own card never collides with itself
      */
     public function __construct(
@@ -71,16 +71,8 @@ final class UniquePersonalDataIdentifier implements ValidationRule
 
     private function isTaken(string $normalized): bool
     {
-        /** @var Model $owner */
-        $owner = new $this->ownerClass;
-
-        return PersonalData::query()
-            ->where('personable_type', $owner->getMorphClass())
+        return IdentityUniquenessScope::cards($this->ownerClass, $this->ignoreOwnerId)
             ->whereNotNull($this->column)
-            ->when(
-                $this->ignoreOwnerId !== null,
-                fn ($query) => $query->where('personable_id', '!=', $this->ignoreOwnerId),
-            )
             ->whereRaw("UPPER(TRIM({$this->column})) = ?", [$normalized])
             ->exists();
     }

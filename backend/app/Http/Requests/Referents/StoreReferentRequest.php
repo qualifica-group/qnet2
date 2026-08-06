@@ -3,10 +3,9 @@
 namespace App\Http\Requests\Referents;
 
 use App\DataObjects\Referents\CreateReferentData;
-use App\Enums\ContactTypeEnum;
 use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
-use App\Http\Requests\Concerns\ValidatesReferentContactUniqueness;
+use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Referent;
 use App\Models\User;
@@ -28,25 +27,14 @@ use Illuminate\Validation\Rule;
  *
  * On top of those, two domain rules of its own: the nested card must carry at
  * least one phone number (see validatePhoneContact), and that number must not
- * already belong to another referent (ValidatesReferentContactUniqueness).
+ * already belong to a user, an anagrafica or another referente
+ * (ValidatesPhoneUniqueness).
  */
 class StoreReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
-    use ValidatesReferentContactUniqueness;
+    use ValidatesPhoneUniqueness;
     use ValidatesUserProfile;
-
-    /**
-     * Contact types that satisfy the create-time phone requirement (user
-     * directive 2026-07-31). Mobile counts: it is a telephone number, and a
-     * referent reachable only on a mobile is no less reachable.
-     *
-     * @var list<string>
-     */
-    private const array PHONE_CONTACT_TYPES = [
-        ContactTypeEnum::Phone->value,
-        ContactTypeEnum::Mobile->value,
-    ];
 
     public function authorize(): bool
     {
@@ -75,9 +63,9 @@ class StoreReferentRequest extends FormRequest
     }
 
     /**
-     * Codice fiscale and partita IVA are unique among REFERENTI (user directive
-     * 2026-08-03) — not globally: the same person may also exist as an
-     * anagraphic record, which is a different role, not a duplicate.
+     * Codice fiscale, partita IVA and phone numbers must be free across users,
+     * anagrafiche and referenti (user directive 2026-08-06); nothing to exclude
+     * on create, the referent does not exist yet.
      *
      * @return class-string<Referent>
      */
@@ -108,7 +96,7 @@ class StoreReferentRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
             $this->validatePhoneContact($validator);
-            $this->validateContactUniqueness($validator);
+            $this->validatePhoneUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }
@@ -120,6 +108,10 @@ class StoreReferentRequest extends FormRequest
      *
      * Create-only, by design: this is a gate on how a referent enters the
      * system, not an invariant the update path re-asserts.
+     *
+     * "A phone number" means the same channels the uniqueness gate pools
+     * (ValidatesPhoneUniqueness::PHONE_CONTACT_TYPES): a referent reachable
+     * only on a mobile is no less reachable (user directive 2026-07-31).
      */
     private function validatePhoneContact(Validator $validator): void
     {
