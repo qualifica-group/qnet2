@@ -6,6 +6,13 @@
  */
 
 export const notes = {
+  scope: {
+    all: 'Tutte le note',
+    general: 'Note generali',
+    filterLabel: 'Filtra le note per offerta',
+    targetLabel: 'Destinazione della nota',
+    generalBadge: 'Generale',
+  },
   section: {
     title: 'Note',
     description: 'Discuti il record con i colleghi: usa @ per menzionarli.',

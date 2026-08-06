@@ -21,6 +21,12 @@ export interface NoteItemProps {
   isReplying: boolean
   /** Toggles the inline reply composer. Omitted for replies. */
   onToggleReply?: () => void
+  /**
+   * Spec 0085: mostra l'etichetta di contesto (codice Offerta o "Generale").
+   * Vera solo nella vista AGGREGATA: con un filtro attivo, o sul dettaglio
+   * Offerta, il contesto e' gia' dato e ripeterlo su ogni riga e' rumore.
+   */
+  showQuoteBadge?: boolean
 }
 
 /**
@@ -30,7 +36,15 @@ export interface NoteItemProps {
  * via the app-wide `useConfirm` (requires `ConfirmDialogProvider`, already
  * mounted at the app root in `App.tsx`).
  */
-export function NoteItem({ note, entityType, entityId, isRoot, isReplying, onToggleReply }: NoteItemProps) {
+export function NoteItem({
+  note,
+  entityType,
+  entityId,
+  isRoot,
+  isReplying,
+  onToggleReply,
+  showQuoteBadge = false,
+}: NoteItemProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const deleteNote = useDeleteNote(entityType, entityId)
@@ -91,6 +105,15 @@ export function NoteItem({ note, entityType, entityId, isRoot, isReplying, onTog
             {note.edited_at ? (
               <span className="rounded-sm bg-muted px-1 py-px text-[10px] text-muted-foreground">
                 {t('notes.item.edited', { defaultValue: '(modificato)' })}
+              </span>
+            ) : null}
+            {/* Spec 0085: il contesto e' sempre visibile nella vista aggregata,
+                cosi' non si confonde una nota di offerta con una generale. Non
+                sulle reply: ereditano quello della root, ripeterlo sarebbe
+                rumore su ogni riga del thread. */}
+            {showQuoteBadge ? (
+              <span className="rounded-sm bg-muted px-1 py-px text-[10px] text-muted-foreground">
+                {note.quote ? note.quote.code : t('notes.scope.generalBadge')}
               </span>
             ) : null}
           </div>

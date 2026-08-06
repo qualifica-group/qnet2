@@ -23,6 +23,8 @@ const ROOT_NOTE: Note = {
   author: { id: 1, name: 'Mario Rossi', avatar_url: null },
   mentions: [],
   parent_id: null,
+  quote_id: null,
+  quote: null,
   created_at: '2026-07-20T10:00:00Z',
   edited_at: null,
   can: { update: true, delete: true },

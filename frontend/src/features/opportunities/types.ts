@@ -10,6 +10,17 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
+/**
+ * Proiezione compatta di un'Offerta (spec 0085). Stessa shape dell'oggetto
+ * `quote` dentro `NoteResource`: e' la stessa cosa vista da due endpoint, e
+ * due tipi diversi si sfaserebbero al primo cambiamento.
+ */
+export interface OpportunityQuoteRef {
+  id: number
+  code: string
+  title: string
+}
+
 /** A hydrated `{id, name}` relation projection, shared by every plain single-relation field. */
 export interface OpportunityRelationRef {
   id: number
@@ -190,6 +201,13 @@ export interface OpportunityDetail {
    * missing key the same as `0`.
    */
   quotes_count?: number
+  /**
+   * Spec 0085: l'elenco compatto delle Offerte, per il filtro della lista note
+   * e per il selettore di destinazione del composer. Presente solo sul
+   * DETTAGLIO (`whenLoaded` server-side): assente sulle collection, quindi
+   * opzionale.
+   */
+  quotes?: OpportunityQuoteRef[]
   /**
    * Spec 0080: G.A. labels resolved from this opportunity's product-line
    * categories (position, as a string key "1".."4" -> label), additive. `{}`

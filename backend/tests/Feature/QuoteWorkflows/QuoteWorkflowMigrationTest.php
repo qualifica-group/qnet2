@@ -22,12 +22,13 @@ use Illuminate\Support\Facades\Schema;
 uses(DatabaseMigrations::class);
 
 it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', function () {
-    // Spec 0084 added one more migration on top of these 7 (the newest one,
-    // `2026_08_06_100000_add_quote_attribute_context_columns`) — `--step`
-    // rolls back the N most-recent migrations regardless of which spec they
-    // belong to, so it must cover that 8th one too for this AC's own 7 to be
-    // reached at all.
-    Artisan::call('migrate:rollback', ['--step' => 8]);
+    // Spec 0084 added one more migration on top of these 7 (the newest one
+    // at the time, `2026_08_06_100000_add_quote_attribute_context_columns`),
+    // and spec 0085 added a 9th (`2026_08_06_110000_add_quote_id_to_notes_
+    // table`) — `--step` rolls back the N most-recent migrations regardless
+    // of which spec they belong to, so it must cover both of those on top
+    // for this AC's own 7 to be reached at all.
+    Artisan::call('migrate:rollback', ['--step' => 9]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -39,7 +40,7 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         ->and(Schema::hasColumn('quotes', 'attribute_values'))->toBeFalse()
         ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeTrue();
 
-    Artisan::call('migrate', ['--step' => 8]);
+    Artisan::call('migrate', ['--step' => 9]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()

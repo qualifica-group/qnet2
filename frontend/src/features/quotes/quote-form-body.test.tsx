@@ -166,6 +166,10 @@ beforeEach(() => {
   // file e un'asserzione "non e' stato chiamato" fallisce per colpa del test
   // precedente, non del codice sotto esame.
   vi.mocked(fetchQuoteFormContext).mockReset()
+  // Idem per la mutation: senza azzerarla, un `toHaveBeenCalledTimes(1)` passa
+  // per merito della chiamata del test precedente e l'asserzione non verifica
+  // piu' nulla.
+  vi.mocked(updateQuote).mockReset()
 })
 
 describe('QuoteFormBody (spec 0065)', () => {
@@ -261,6 +265,36 @@ describe('QuoteFormBody (spec 0065)', () => {
 
     await screen.findByLabelText('colour')
 
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+  })
+
+  // Regressione 2026-08-06: un'offerta senza alcun valore dinamico salvato
+  // arriva con `attribute_values` serializzato come ARRAY vuoto (`[]`, la
+  // resa JSON di un array PHP vuoto), non come mappa. Lo Zod `z.object` lo
+  // rifiuta, l'errore cade su `attribute_values` — che nessun input rende — e
+  // `handleSubmit` aborta: il pulsante Salva non fa nulla. La seed non lo
+  // ripara, perche' con set applicabile vuoto produce `{}` e
+  // `setValue(name, {})` di RHF non ha chiavi su cui ricorrere.
+  it('saves in edit mode when the stored attribute map arrives as an empty array', async () => {
+    const quote = quoteFixture()
+    quote.offer_lines = [offerLineFixture()]
+    quote.attribute_values = [] as unknown as typeof quote.attribute_values
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [],
+      attribute_layout: null,
+    })
+    vi.mocked(updateQuote).mockResolvedValue(quote)
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Nuovo titolo' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))

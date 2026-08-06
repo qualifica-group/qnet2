@@ -6,6 +6,13 @@
  */
 
 export const notes = {
+  scope: {
+    all: 'All notes',
+    general: 'General notes',
+    filterLabel: 'Filter notes by quote',
+    targetLabel: 'Note destination',
+    generalBadge: 'General',
+  },
   section: {
     title: 'Notes',
     description: 'Discuss the record with colleagues: use @ to mention them.',

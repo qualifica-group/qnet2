@@ -22,6 +22,25 @@ import type { ApplicableAttribute } from '@/features/request-management/types'
  * the Offerta form and Gestione Richieste, and a helper this easy to remove by
  * accident should not sit in a folder that another module is free to gut.
  */
+/**
+ * The stored map as a plain object, whatever the API sent.
+ *
+ * An empty PHP map serializes as a JSON ARRAY (`[]`, not `{}`), so a record
+ * with no dynamic value stored hands the form an array where the Zod
+ * `z.object(shape)` demands an object — `handleSubmit` then aborts with an
+ * `attribute_values` error on no rendered field at all: the Save button does
+ * nothing. `seedAttributeValues` cannot repair it afterwards, because with an
+ * empty applicable set it produces `{}` and RHF's `setValue(name, {})` has no
+ * key to recurse over: the array survives untouched.
+ */
+export function toAttributeValuesMap(stored: unknown): Record<string, CustomFieldValue> {
+  if (stored === null || typeof stored !== 'object' || Array.isArray(stored)) {
+    return {}
+  }
+
+  return stored as Record<string, CustomFieldValue>
+}
+
 export function seedAttributeValues(
   attributes: ApplicableAttribute[],
   values: Record<string, unknown>,

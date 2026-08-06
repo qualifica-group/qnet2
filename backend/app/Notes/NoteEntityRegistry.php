@@ -59,6 +59,11 @@ final class NoteEntityRegistry
         return $this->entityFor($entityType)->mentionableUsersQuery($record);
     }
 
+    public function ownsQuote(string $entityType, Model $record, int $quoteId): bool
+    {
+        return $this->entityFor($entityType)->ownsQuote($record, $quoteId);
+    }
+
     public function labelFor(string $entityType, Model $record): string
     {
         return $this->entityFor($entityType)->label($record);

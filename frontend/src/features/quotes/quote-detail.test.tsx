@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
+import type { ReactElement } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
@@ -96,21 +98,31 @@ beforeEach(() => {
   toastErrorMock.mockReset()
 })
 
+/**
+ * Spec 0085: il dettaglio Offerta monta ora la sezione Note, che usa React
+ * Query. Un client NUOVO per ogni render (non uno condiviso a livello di file)
+ * cosi' la cache di un test non puo' influenzarne un altro.
+ */
+function renderDetail(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 describe('QuoteDetailView — Download quote button (AC-304)', () => {
   it('shows the button when permissions.actions.generate_document is true', () => {
-    render(<QuoteDetailView quote={quoteFixture()} />)
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
     expect(screen.getByRole('button', { name: 'Download quote' })).toBeInTheDocument()
   })
 
   it('hides the button when permissions.actions.generate_document is false', () => {
     const quote = quoteFixture({ permissions: { ...BASE_PERMISSIONS, actions: { generate_document: false } } })
-    render(<QuoteDetailView quote={quote} />)
+    renderDetail(<QuoteDetailView quote={quote} />)
     expect(screen.queryByRole('button', { name: 'Download quote' })).not.toBeInTheDocument()
   })
 
   it('generates the document and shows a success toast on click', async () => {
     generateQuoteDocumentMock.mockResolvedValue(undefined)
-    render(<QuoteDetailView quote={quoteFixture()} />)
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
 
     screen.getByRole('button', { name: 'Download quote' }).click()
 
@@ -124,7 +136,7 @@ describe('QuoteDetailView — Download quote button (AC-304)', () => {
       data: { success: false, message: 'No layout is available to generate this document.' },
     } as never)
     generateQuoteDocumentMock.mockRejectedValue(error)
-    render(<QuoteDetailView quote={quoteFixture()} />)
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
 
     screen.getByRole('button', { name: 'Download quote' }).click()
 
@@ -137,12 +149,12 @@ describe('QuoteDetailView — Download quote button (AC-304)', () => {
 describe('QuoteDetailView — Layout field (AC-314)', () => {
   it('shows the persisted layout name', () => {
     const quote = quoteFixture({ layout_id: 12, layout: { id: 12, name: 'Offerta economica' } })
-    render(<QuoteDetailView quote={quote} />)
+    renderDetail(<QuoteDetailView quote={quote} />)
     expect(detailValueFor('Layout')).toBe('Offerta economica')
   })
 
   it('shows the empty placeholder when no layout is set', () => {
-    render(<QuoteDetailView quote={quoteFixture()} />)
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
     expect(detailValueFor('Layout')).toBe('—')
   })
 })

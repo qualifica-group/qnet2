@@ -33,6 +33,7 @@ export const quotes = {
     createdRange: 'Created at',
   },
   detail: {
+    notes: 'Notes',
     additionalInformation: 'Additional information',
     loadError: 'Unable to load the quote. Please try again.',
     opportunity: 'Opportunity',

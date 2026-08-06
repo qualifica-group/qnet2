@@ -1,13 +1,19 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FormSection } from '@/components/form-section'
 import { NoteComposer } from '@/features/notes/note-composer'
+import { NoteQuoteScopeSelect } from '@/features/notes/note-quote-scope-select'
+import type { NoteQuoteRef, NoteQuoteScope } from '@/features/notes/types'
 import { NoteList } from '@/features/notes/note-list'
 import { useNotes } from '@/features/notes/use-notes'
 
-export interface NotesSectionProps {
+export /** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
+const NO_QUOTES: NoteQuoteRef[] = []
+
+interface NotesSectionProps {
   /** Domain slug registered in `config/notes.php` (D-9), owned entirely by the host module. */
   entityType: string
   /** Id of the host record within `entityType`. */
@@ -19,6 +25,13 @@ export interface NotesSectionProps {
    * `DialogTitle`), mirroring `ContactsManager`'s `showHeader` convention.
    */
   showHeader?: boolean
+  /** Le Offerte dell'Opportunita' ospite: senza, filtro e destinazione non si montano. */
+  quotes?: NoteQuoteRef[]
+  /**
+   * Blocca la sezione su UNA Offerta (dettaglio Offerta): niente filtro, e ogni
+   * nota scritta appartiene a quella. `null` = vista Opportunita', filtrabile.
+   */
+  lockedQuoteId?: number | null
 }
 
 const SKELETON_ROWS = 3
@@ -30,8 +43,17 @@ const SKELETON_ROWS = 3
  * entity props (D-9) — this feature never imports from a host module's own
  * `features/` folder.
  */
-export function NotesSection({ entityType, entityId, showHeader = true }: NotesSectionProps) {
+export function NotesSection({
+  entityType,
+  entityId,
+  showHeader = true,
+  quotes = NO_QUOTES,
+  lockedQuoteId = null,
+}: NotesSectionProps) {
   const { t } = useTranslation()
+  // Spec 0085: lo scope e' stato LOCALE della sezione, non del server — cambiare
+  // filtro e' una scelta di lettura, non una modifica del record.
+  const [quoteScope, setQuoteScope] = useState<NoteQuoteScope>(lockedQuoteId ?? 'all')
   const {
     data,
     isLoading,
@@ -40,13 +62,32 @@ export function NotesSection({ entityType, entityId, showHeader = true }: NotesS
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useNotes(entityType, entityId)
+  } = useNotes(entityType, entityId, true, quoteScope)
 
   const roots = data?.pages.flatMap((page) => page.data) ?? []
 
   const content = (
     <>
-      <NoteComposer entityType={entityType} entityId={entityId} />
+      {lockedQuoteId === null ? (
+        <NoteQuoteScopeSelect
+          value={quoteScope}
+          onChange={setQuoteScope}
+          quotes={quotes}
+          label={t('notes.scope.filterLabel')}
+          includeAll
+          className="h-8 w-auto min-w-40 self-end text-xs"
+        />
+      ) : null}
+
+      <NoteComposer
+        entityType={entityType}
+        entityId={entityId}
+        quotes={quotes}
+        // Il filtro attivo preseleziona la destinazione: se sto leggendo le note
+        // di un'Offerta, la nota che scrivo appartiene quasi certamente a quella.
+        defaultQuoteId={lockedQuoteId ?? (typeof quoteScope === 'number' ? quoteScope : null)}
+        lockQuote={lockedQuoteId !== null}
+      />
 
       {isLoading ? (
         <div className="flex flex-col gap-3">
@@ -81,6 +122,9 @@ export function NotesSection({ entityType, entityId, showHeader = true }: NotesS
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          // Solo quando il contesto NON e' gia' dato: con un filtro attivo o
+          // sul dettaglio Offerta, l'etichetta ripeterebbe cio' che si sa gia'.
+          showQuoteBadge={lockedQuoteId === null && quoteScope === 'all' && quotes.length > 0}
         />
       )}
     </>

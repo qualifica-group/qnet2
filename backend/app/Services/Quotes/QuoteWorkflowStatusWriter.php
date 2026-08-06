@@ -22,9 +22,8 @@ use Illuminate\Validation\ValidationException;
  *
  * The note a `requires_note` destination demands (AC-023/024/025) is created
  * on the PARENT Opportunity's collaborative-notes thread
- * (`entity_type = 'request-management'`, `entity_id = quote.opportunity_id`)
- * — spec 0085 will add a direct `quote_id` link on the note itself, not yet
- * here.
+ * (`entity_type = 'request-management'`, `entity_id = quote.opportunity_id`),
+ * scoped to THIS Offerta via `quote_id` (spec 0085, D-1, AC-030).
  */
 final class QuoteWorkflowStatusWriter
 {
@@ -98,6 +97,7 @@ final class QuoteWorkflowStatusWriter
             entityId: $quote->opportunity_id,
             body: $note,
             parentId: null,
+            quoteId: $quote->id,
             mentionIds: [],
         ));
     }

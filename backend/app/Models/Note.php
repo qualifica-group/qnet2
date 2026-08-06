@@ -28,6 +28,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * Mutability is tracked, not immutable (D-8): `edited_at` marks a body
  * change, deletion is soft (SoftDeletes) so history is preserved.
+ *
+ * `quote_id` (spec 0085, D-1) scopes the note to a single Offerta instead of
+ * the whole host record — null means a general note. It is a scoping
+ * column, not a second `notable`: DELIBERATELY absent from #[Fillable] and
+ * immutable after creation (D-3), written only by NoteService.
  */
 #[Fillable(['body'])]
 class Note extends BaseModel
@@ -58,6 +63,14 @@ class Note extends BaseModel
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * The Offerta this note is scoped to (D-1), null for a general note.
+     */
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class);
     }
 
     /**

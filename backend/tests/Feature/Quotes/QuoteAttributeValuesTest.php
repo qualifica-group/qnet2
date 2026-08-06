@@ -311,3 +311,27 @@ it('AC-024: a code not applicable to the quote is ignored, never persisted', fun
         'attribute_values' => ['not_applicable_here' => 'x'],
     ])->assertStatus(422)->assertJsonValidationErrors('attribute_values.not_applicable_here');
 });
+
+// ---------------------------------------------------------------------------
+// Serializzazione della mappa (regressione 2026-08-06)
+// ---------------------------------------------------------------------------
+
+it('serializes an empty attribute map as a JSON object, never as an array', function () {
+    ['product' => $product] = quoteAttributesCategory('optional_field');
+    $actor = quoteAttributesUserWith(['create', 'view']);
+    Sanctum::actingAs($actor);
+
+    // Nessun valore inviato: la colonna resta null. Con `?? []` la risposta
+    // portava `[]` — un ARRAY — dove il form legge una MAPPA, e il salvataggio
+    // dell'offerta si interrompeva in silenzio lato client.
+    $created = createQuoteWithOfferLine($actor, $product)->assertCreated();
+
+    $decoded = json_decode($created->getContent(), false, 512, JSON_THROW_ON_ERROR);
+
+    expect($decoded->data->attribute_values)->toBeObject();
+
+    $shown = $this->getJson("/api/quotes/{$created->json('data.id')}")->assertOk();
+
+    expect(json_decode($shown->getContent(), false, 512, JSON_THROW_ON_ERROR)->data->attribute_values)
+        ->toBeObject();
+});

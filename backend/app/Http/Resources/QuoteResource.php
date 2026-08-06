@@ -101,7 +101,11 @@ class QuoteResource extends JsonResource
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
-            'attribute_values' => $this->attribute_values ?? [],
+            // Cast to object, non array: un array PHP vuoto serializza come `[]`,
+            // e il form legge la chiave come una MAPPA (Zod `z.object`) — con `[]`
+            // la validazione fallisce su un campo che nessun input rende e il
+            // salvataggio si interrompe in silenzio.
+            'attribute_values' => (object) ($this->attribute_values ?? []),
             'applicable_attributes' => $this->resolveApplicableAttributes(),
             'attribute_layout' => app(QuoteAttributeResolver::class)->layout($this->resource, FormMode::Edit),
             'summary' => $this->summarizeTotals(

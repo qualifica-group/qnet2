@@ -7,6 +7,7 @@ import { ActivityLogSection } from '@/features/activity-log/activity-log-section
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
+import type { OpportunityQuoteRef } from '@/features/opportunities/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import {
   OpportunityDetailHeader,
@@ -17,6 +18,9 @@ import { OpportunityQuotesSection } from '@/features/opportunities/opportunity-q
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
+
+/** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
+const NO_QUOTES: OpportunityQuoteRef[] = []
 
 const NOTES_TAB = 'notes'
 const DOCUMENTS_TAB = 'documents'
@@ -126,6 +130,10 @@ function OpportunityDetailCollaboration({ opportunity }: OpportunityDetailCollab
                 entityType={REQUEST_MANAGEMENT_DOMAIN}
                 entityId={opportunity.id}
                 showHeader={false}
+                // Spec 0085: alimenta il filtro "Tutte / Generali / Offerta X"
+                // e il selettore di destinazione. Senza offerte la sezione si
+                // comporta esattamente come prima (nessun selettore montato).
+                quotes={opportunity.quotes ?? NO_QUOTES}
               />
             </TabsContent>
           ) : null}

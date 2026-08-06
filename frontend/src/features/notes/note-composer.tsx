@@ -6,13 +6,14 @@ import type { TFunction } from 'i18next'
 import { Loader2, Send, X } from 'lucide-react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
+import { NoteQuoteScopeSelect } from '@/features/notes/note-quote-scope-select'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { MentionBadge } from '@/features/notes/mention-badge'
 import { MentionTextarea } from '@/features/notes/mention-textarea'
 import { extractMentionIds, parseMentionRefs, removeMention } from '@/features/notes/mention-tokens'
 import { useCreateNote, useUpdateNote } from '@/features/notes/use-note-mutations'
-import type { Note } from '@/features/notes/types'
+import type { Note, NoteQuoteRef } from '@/features/notes/types'
 
 /** Mirrors the server-side `body: string (1..5000)` rule (D-12/data_contract). */
 const BODY_MAX_LENGTH = 5000
@@ -38,6 +39,9 @@ function buildNoteComposerSchema(t: TFunction) {
 
 type NoteComposerFormValues = z.infer<ReturnType<typeof buildNoteComposerSchema>>
 
+/** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
+const NO_QUOTES: NoteQuoteRef[] = []
+
 export interface NoteComposerProps {
   entityType: string
   entityId: number
@@ -50,6 +54,12 @@ export interface NoteComposerProps {
   /** Cancels an inline reply/edit composer. The root composer has none. */
   onCancel?: () => void
   autoFocus?: boolean
+  /** Le Offerte selezionabili come destinazione; vuoto = nessun selettore. */
+  quotes?: NoteQuoteRef[]
+  /** Destinazione preselezionata (il filtro attivo, o l'Offerta del dettaglio). */
+  defaultQuoteId?: number | null
+  /** Dettaglio Offerta: destinazione fissa, nessuna scelta da offrire. */
+  lockQuote?: boolean
 }
 
 /**
@@ -67,8 +77,14 @@ export function NoteComposer({
   onDone,
   onCancel,
   autoFocus,
+  quotes = NO_QUOTES,
+  defaultQuoteId = null,
+  lockQuote = false,
 }: NoteComposerProps) {
   const { t } = useTranslation()
+  // Spec 0085 D-4: una reply eredita SEMPRE il contesto della root, quindi qui
+  // non si sceglie nulla — il server ignorerebbe comunque un `quote_id` diverso.
+  const [quoteTarget, setQuoteTarget] = useState<number | 'general'>(defaultQuoteId ?? 'general')
   const [mentions, setMentions] = useState<number[]>(
     () => editingNote?.mentions.map((mention) => mention.id) ?? [],
   )
@@ -98,6 +114,12 @@ export function NoteComposer({
           body: values.body,
           parent_id: parentId,
           mentions,
+          // Spec 0085: la chiave viaggia SOLO quando c'e' davvero un'Offerta
+          // di destinazione. Su una reply il server la ignora comunque (eredita
+          // dalla root, D-4), e "generale" e' gia' il significato della sua
+          // assenza — mandare `null` esplicito direbbe la stessa cosa con una
+          // chiave in piu' su ogni nota di ogni opportunita' senza offerte.
+          ...(!parentId && quoteTarget !== 'general' ? { quote_id: quoteTarget } : {}),
         })
         form.reset({ body: '' })
         setMentions([])
@@ -155,6 +177,19 @@ export function NoteComposer({
           )}
         />
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* Destinazione: solo sulle root (una reply eredita, D-4) e solo se
+              c'e' davvero una scelta da fare (non sul dettaglio Offerta). */}
+          {!parentId && !editingNote && !lockQuote ? (
+            <NoteQuoteScopeSelect
+              value={quoteTarget}
+              // Il selettore parla il vocabolario completo (`all` incluso), la
+              // destinazione no: senza `includeAll` quel ramo non e' raggiungibile.
+              onChange={(scope) => setQuoteTarget(scope === 'all' ? 'general' : scope)}
+              quotes={quotes}
+              label={t('notes.scope.targetLabel')}
+              className="mr-auto h-8 w-auto min-w-40 text-xs"
+            />
+          ) : null}
           <p className="mr-auto text-[11px] text-muted-foreground">
             {remainingCharacters <= CHARACTER_COUNTER_THRESHOLD
               ? t('notes.composer.charactersLeft', {

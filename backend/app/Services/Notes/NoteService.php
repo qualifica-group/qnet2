@@ -5,6 +5,7 @@ namespace App\Services\Notes;
 use App\DataObjects\Notes\CreateNoteData;
 use App\DataObjects\Notes\NoteCursor;
 use App\DataObjects\Notes\NotePage;
+use App\DataObjects\Notes\NoteQuoteScope;
 use App\DataObjects\Notes\UpdateNoteData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
@@ -39,9 +40,11 @@ final class NoteService
 
     /**
      * GET /api/notes — a keyset page of ROOT notes (`created_at desc, id
-     * desc`, D-13), each with its full `replies` eager-loaded.
+     * desc`, D-13), each with its full `replies` eager-loaded. $scope (spec
+     * 0085, D-2) narrows the ROOT set only — a reply is always returned
+     * alongside its root regardless of its own `quote_id` (AC-016).
      */
-    public function listForEntity(User $user, string $entityType, int $entityId, ?NoteCursor $cursor, ?int $limit): NotePage
+    public function listForEntity(User $user, string $entityType, int $entityId, ?NoteCursor $cursor, ?int $limit, NoteQuoteScope $scope): NotePage
     {
         $record = $this->authorizedRecord($user, $entityType, $entityId);
         $limit ??= self::DEFAULT_LIMIT;
@@ -53,12 +56,14 @@ final class NoteService
             ->with([
                 'author',
                 'mentionedUsers',
+                'quote',
                 'replies' => fn (HasMany $replies) => $replies
                     ->orderBy('created_at')
                     ->orderBy('id')
-                    ->with(['author', 'mentionedUsers']),
+                    ->with(['author', 'mentionedUsers', 'quote']),
             ]);
 
+        $this->applyQuoteScope($query, $scope);
         $this->applyCursor($query, $cursor);
 
         $roots = $query->orderByDesc('created_at')->orderByDesc('id')->limit($limit + 1)->get();
@@ -80,18 +85,20 @@ final class NoteService
 
         $this->mentionValidator->validate($data->entityType, $record, $data->body, $data->mentionIds);
         $parentId = $this->threadResolver->resolveParentId($data->parentId, $record, $alias);
+        $quoteId = $this->resolveQuoteId($data->quoteId, $parentId);
 
-        return DB::transaction(function () use ($user, $record, $alias, $data, $parentId): Note {
+        return DB::transaction(function () use ($user, $record, $alias, $data, $parentId, $quoteId): Note {
             $note = new Note(['body' => $data->body]);
             $note->notable_type = $alias;
             $note->notable_id = $record->getKey();
             $note->parent_id = $parentId;
+            $note->quote_id = $quoteId;
             $note->user_id = $user->id;
             $note->save();
 
             $this->syncMentionsAndNotify($note, $user, $data->entityType, $record, $data->mentionIds);
 
-            return $note->load(['author', 'mentionedUsers']);
+            return $note->load(['author', 'mentionedUsers', 'quote']);
         });
     }
 
@@ -114,7 +121,7 @@ final class NoteService
 
             $this->syncMentionsAndNotify($note, $user, $entityType, $record, $data->mentionIds);
 
-            return $note->load(['author', 'mentionedUsers']);
+            return $note->load(['author', 'mentionedUsers', 'quote']);
         });
     }
 
@@ -211,6 +218,41 @@ final class NoteService
             $recipients = User::query()->whereIn('id', $newRecipientIds)->get();
             Notification::send($recipients, new NoteMentionNotification($note, $author, $label, $actionUrl));
         });
+    }
+
+    /**
+     * D-4: a reply always inherits its ROOT's `quote_id`, ignoring whatever
+     * $requestedQuoteId the client sent — a reply's context can never
+     * diverge from the message it answers. $parentId is already the
+     * resolved ROOT id (NoteThreadResolver re-parents a reply-to-a-reply to
+     * its own root), and every existing root/reply pair already shares the
+     * same `quote_id` by this same invariant, so reading it off that single
+     * row is exact.
+     */
+    private function resolveQuoteId(?int $requestedQuoteId, ?int $parentId): ?int
+    {
+        if ($parentId === null) {
+            return $requestedQuoteId;
+        }
+
+        /** @var int|null $inherited */
+        $inherited = Note::query()->whereKey($parentId)->value('quote_id');
+
+        return $inherited;
+    }
+
+    /**
+     * D-2, applied in QUERY (never after the fetch — the keyset pagination
+     * requires it): an allow-list of the three scope shapes, no interpolated
+     * input reaches the query.
+     */
+    private function applyQuoteScope(Builder $query, NoteQuoteScope $scope): void
+    {
+        match ($scope->type) {
+            'general' => $query->whereNull('quote_id'),
+            'quote' => $query->where('quote_id', $scope->quoteId),
+            default => null,
+        };
     }
 
     private function applyCursor(Builder $query, ?NoteCursor $cursor): void

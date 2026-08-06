@@ -17,6 +17,7 @@ final readonly class CreateNoteData
         public int $entityId,
         public string $body,
         public ?int $parentId,
+        public ?int $quoteId,
         public array $mentionIds,
     ) {}
 }

@@ -28,6 +28,20 @@ export interface NotePermissions {
  * A note: either a root (`parent_id: null`, carries `replies`) or a reply
  * (`parent_id` set, never carries `replies` — thread is a single level, D-7).
  */
+/** L'Offerta a cui una nota e' legata, come esposta da `NoteResource.quote`. */
+export interface NoteQuoteRef {
+  id: number
+  code: string
+  title: string
+}
+
+/**
+ * Il filtro della lista note (spec 0085, D-2): un solo parametro, tre forme.
+ * `'all'` = tutte, `'general'` = solo quelle non legate a un'Offerta, un id
+ * numerico = solo quelle di quell'Offerta.
+ */
+export type NoteQuoteScope = 'all' | 'general' | number
+
 export interface Note {
   id: number
   /** Raw body, with mention tokens `@[Name](user:12)` (D-12); resolved to chips by `note-body.tsx`. */
@@ -40,6 +54,14 @@ export interface Note {
   /** Set only once the body has been edited. */
   edited_at: string | null
   can: NotePermissions
+  /**
+   * Spec 0085: `null` = nota GENERALE dell'Opportunita', valorizzato = nota di
+   * quella singola Offerta. Immutabile dopo la creazione (D-3), e su una reply
+   * e' sempre quello della root (D-4).
+   */
+  quote_id: number | null
+  /** Proiezione compatta dell'Offerta per etichettare il contesto in lista; `null` sulle generali. */
+  quote: NoteQuoteRef | null
   /** Present only on roots returned by `GET /api/notes`, `created_at` ASC. */
   replies?: Note[]
 }
@@ -58,6 +80,8 @@ export interface NotesPage {
 
 /** `POST /api/notes` payload. */
 export interface CreateNotePayload {
+  /** Spec 0085: assente/null = nota generale. Su una reply e' ignorato: eredita dalla root. */
+  quote_id?: number | null
   entity_type: string
   entity_id: number
   body: string

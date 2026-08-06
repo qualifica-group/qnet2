@@ -33,6 +33,7 @@ export const quotes = {
     createdRange: 'Creato il',
   },
   detail: {
+    notes: 'Note',
     additionalInformation: 'Informazioni aggiuntive',
     loadError: "Impossibile caricare l'offerta. Riprova.",
     opportunity: 'Opportunità',

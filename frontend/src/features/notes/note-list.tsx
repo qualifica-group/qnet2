@@ -7,6 +7,8 @@ import { NoteItem } from '@/features/notes/note-item'
 import type { Note } from '@/features/notes/types'
 
 export interface NoteListProps {
+  /** Spec 0085: etichetta di contesto su ogni root — solo nella vista aggregata. */
+  showQuoteBadge?: boolean
   /** Root notes in server order (`created_at DESC`, D-13) — never re-sorted here. */
   roots: Note[]
   entityType: string
@@ -22,7 +24,7 @@ export interface NoteListProps {
  * Owns which root currently shows its inline reply composer; edit-in-place is
  * owned by `NoteItem` itself.
  */
-export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore }: NoteListProps) {
+export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingNextPage, onLoadMore, showQuoteBadge = false }: NoteListProps) {
   const { t } = useTranslation()
   const [replyingRootId, setReplyingRootId] = useState<number | null>(null)
 
@@ -43,6 +45,7 @@ export function NoteList({ roots, entityType, entityId, hasNextPage, isFetchingN
             onToggleReply={() =>
               setReplyingRootId((current) => (current === root.id ? null : root.id))
             }
+            showQuoteBadge={showQuoteBadge}
           />
           {(root.replies ?? []).length > 0 ? (
             <div className="ml-4 flex flex-col gap-2 border-l-2 border-muted-foreground/20 pl-3">

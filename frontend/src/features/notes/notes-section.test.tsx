@@ -38,6 +38,8 @@ function makeNote(overrides: Partial<Note> = {}): Note {
     author: author(1, 'Mario Rossi'),
     mentions: [],
     parent_id: null,
+    quote_id: null,
+    quote: null,
     created_at: '2026-07-20T09:00:00Z',
     edited_at: null,
     can: { update: false, delete: false },
@@ -75,6 +77,8 @@ describe('NotesSection — thread rendering (AC-070)', () => {
       body: 'A reply',
       author: author(2, 'Anna Bianchi'),
       parent_id: 2,
+      quote_id: null,
+      quote: null,
       created_at: '2026-07-21T09:30:00Z',
     })
     const newerRoot = makeNote({

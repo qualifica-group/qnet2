@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\RequestManagement;
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use App\Notes\Contracts\NotableEntity;
 use App\Services\RequestManagement\RequestManagementScope;
@@ -76,6 +77,17 @@ final class RequestManagementNotable implements NotableEntity
                             });
                     });
             });
+    }
+
+    /**
+     * D-1: an Offerta belongs to this Opportunity when its own
+     * `opportunity_id` matches — the same ownership the module already
+     * enforces everywhere else a Quote is scoped to its parent.
+     */
+    public function ownsQuote(Model $record, int $quoteId): bool
+    {
+        /** @var Opportunity $record */
+        return Quote::query()->whereKey($quoteId)->where('opportunity_id', $record->getKey())->exists();
     }
 
     public function label(Model $record): string

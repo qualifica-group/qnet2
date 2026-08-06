@@ -135,6 +135,25 @@ it('AC-025: advancing to a requires_note status WITH a valid note -> 200, status
         ->and($note->user_id)->toBe($actor->id);
 });
 
+it('AC-030 (spec 0085): the note created by a requires_note transition carries THIS offer\'s quote_id', function () {
+    $actor = requiresNoteActor(['quotes.update', 'notes.create', 'request-management.view', 'request-management.viewAll']);
+    $quote = requiresNoteQuote();
+    $target = requiresNoteGlobalStatus(true);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/quotes/{$quote->id}", [
+        'quote_workflow_status_id' => $target->id,
+        'note' => 'Client confirmed the new commercial terms.',
+    ])->assertOk();
+
+    $note = Note::query()
+        ->where('notable_type', Opportunity::make()->getMorphClass())
+        ->where('notable_id', $quote->opportunity_id)
+        ->sole();
+
+    expect($note->quote_id)->toBe($quote->id);
+});
+
 it('AC-026: resubmitting the SAME status requires no note, even when it requires_note', function () {
     $actor = requiresNoteActor(['quotes.update']);
     $quote = requiresNoteQuote();

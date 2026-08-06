@@ -41,6 +41,7 @@ class NoteController extends BaseApiController
                 $request->entityId(),
                 $request->cursor(),
                 $request->limit(),
+                $request->quoteScope(),
             );
 
             return response()->json([

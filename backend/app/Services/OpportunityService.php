@@ -15,6 +15,7 @@ use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Support\ManagerPositions;
@@ -84,12 +85,26 @@ class OpportunityService
 
     public function loadDetail(Opportunity $opportunity): Opportunity
     {
-        // Spec 0067, AC-020/021: quotes_count feeds the panel's initial
-        // counter — loadCount(), never load('quotes'), so the read stays a
-        // single aggregate query with no quote rows materialized. Spec 0082's
-        // computed status keeps that property: OpportunityStatusResolver runs
-        // its own 3-column aggregate query on this un-loaded relation.
-        return $opportunity->load(self::DETAIL_RELATIONS)->loadCount('quotes');
+        // Spec 0067, AC-020/021: `quotes_count` feeds the panel's initial
+        // counter via its own loadCount().
+        //
+        // Spec 0085: the detail read ALSO loads the quotes themselves — the
+        // notes `quote_scope` filter and the composer's destination selector
+        // need {id, code, title}. It loads them through
+        // OpportunityStatusResolver::EAGER_LOADS rather than a hand-rolled
+        // column select, and that is load-bearing: the resolver PREFERS an
+        // already-loaded relation (`relationLoaded('quotes')`) over its own
+        // aggregate query, so a projection missing `quote_workflow_status_id`
+        // silently collapses the computed status to the zero-quotes fallback
+        // even on an opportunity that has quotes. Reusing the constant is what
+        // stops the two from drifting apart again.
+        //
+        // Collection contexts (grid, notifications) never call loadDetail(),
+        // so OpportunityResource guards `quotes` with whenLoaded().
+        return $opportunity
+            ->load(self::DETAIL_RELATIONS)
+            ->load(OpportunityStatusResolver::EAGER_LOADS)
+            ->loadCount('quotes');
     }
 
     /**

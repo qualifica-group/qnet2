@@ -15,7 +15,7 @@ import {
   type QuoteLineFormValues,
 } from '@/features/quotes/quote-schema'
 import { useQuoteFormContext } from '@/features/quotes/use-quote-form-context'
-import { seedAttributeValues } from '@/features/attributes/attribute-values'
+import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   QuoteDetail,
@@ -135,7 +135,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         opportunity_id: quote.opportunity_id,
         quote_workflow_status_id: quote.quote_workflow_status_id,
         note: null,
-        attribute_values: quote.attribute_values ?? EMPTY_ATTRIBUTE_VALUES,
+        attribute_values: toAttributeValuesMap(quote.attribute_values),
         commercial_id: quote.commercial_id,
         reporter_id: quote.reporter_id,
         supervisor_id: quote.supervisor_id,

@@ -41,6 +41,15 @@ interface NotableEntity
     public function mentionableUsersQuery(Model $record): Builder;
 
     /**
+     * Whether $quoteId names a scoping unit that belongs to $record (spec
+     * 0085, D-1) — the boundary `quote_id` (POST) and the numeric
+     * `quote_scope` (GET) are validated against, delegated here so the
+     * agnostic notes core never queries a host module's own scoping entity
+     * directly. A host with no such concept simply returns false always.
+     */
+    public function ownsQuote(Model $record, int $quoteId): bool;
+
+    /**
      * Human label for $record, used in the mention notification message.
      */
     public function label(Model $record): string;

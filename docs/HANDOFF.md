@@ -3,6 +3,67 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX — FORM MODIFICA OFFERTA: "SALVA" NON FACEVA NULLA (2026-08-06) — VERDE, NON COMMITTATO
+
+**Sintomo.** In modifica offerta il click su Salva non produceva nulla: nessuna chiamata, nessun errore a
+schermo (reale in dev: offerta 46).
+
+**Root cause.** `QuoteResource` serializzava `attribute_values` come `[]` (resa JSON di un array PHP vuoto)
+quando l'offerta non ha valori dinamici salvati. Lo schema Zod del form legge quella chiave come MAPPA
+(`z.object`), quindi la validazione falliva su `attribute_values` — un path che NESSUN input rende — e
+`handleSubmit` abortiva in silenzio. La seed esistente (`seedAttributeValues`) non lo riparava: con set
+applicabile vuoto produce `{}`, e `setValue(name, {})` di RHF non ha chiavi su cui ricorrere, quindi
+l'array sopravviveva.
+
+**Fix (2 layer).**
+- Backend `app/Http/Resources/QuoteResource.php`: `(object) ($this->attribute_values ?? [])` — la mappa
+  vuota viaggia come `{}`, come gia' dichiarava il docblock.
+- Frontend `features/attributes/attribute-values.ts`: nuovo `toAttributeValuesMap()`, usato dai
+  `defaultValues` di `use-quote-form.ts` (ramo edit). Qualunque forma non-oggetto in arrivo non puo' piu'
+  bloccare il submit in silenzio.
+
+**Verificato.** Entrambi i test di regressione falliscono senza il rispettivo fix.
+`pest tests/Feature/Quotes tests/Unit/Models/QuoteAttributeValuesTest.php` → 198 passed / 1082 assertions.
+`vitest src/features/quotes/quote-form-body.test.tsx` → 9 passed. Pint pulito, `tsc -b --force` EXIT=0.
+
+**Nota su `quote-form-body.test.tsx`:** aggiunto `vi.mocked(updateQuote).mockReset()` al `beforeEach` —
+senza, un `toHaveBeenCalledTimes(1)` passava per merito della chiamata del test precedente (il nuovo test
+di regressione passava a vuoto).
+
+**Aperto / da sapere.**
+- Il DB di dev ha migrazioni PENDING (`2026_08_06_100000_add_quote_attribute_context_columns`, e quella
+  delle note in corso): serve `php artisan migrate`, altrimenti `quotes.attribute_values` non esiste.
+- `ProductResource` ha lo stesso `?? []`, ma il form Prodotto normalizza gia' nei `defaultValues` via
+  `seedAttributeValues` e un test asserisce `[]`: lasciato invariato, fuori scope.
+- `quote-detail.test.tsx` ha 6 test rossi PRE-ESISTENTI (`NotesSection` senza `QueryClientProvider`),
+  dal lavoro note in corso: non toccati da questo fix.
+
+## FIX — STATO OPPORTUNITA': OFFERTE CON LO STESSO STATO MOSTRAVANO "2 STATI" (2026-08-06) — VERDE, NON COMMITTATO
+
+Solo backend, un file di prod (`app/Services/Opportunities/OpportunityStatusResolver.php`) + il suo test.
+ZERO modifiche frontend: il badge gia' rende la entry singola come stato proprio e il caso multi-stato
+resta identico (badge "N stati" + tooltip "count nome").
+
+**Sintomo.** Un'opportunita' con 2 offerte entrambe in "Da qualificare" mostrava "2 stati" (reale in dev:
+opportunita' 89, quote_workflow_status 125 e 132).
+
+**Root cause.** `quoteEntries()` raggruppava per `quote_workflow_status_id`. Ogni workflow possiede le
+proprie righe di stato (D-6), quindi lo stesso stato in due workflow diversi ha id diversi: due offerte
+"Da qualificare" generavano due entry distinte.
+
+**Fix.** Raggruppamento per NOME dello stato (chiave `trim` + `mb_strtolower`), rappresentante del gruppo =
+riga con `sort_order` piu' basso (tie-break su `id`) per id/color/group stabili. E' la stessa identita' su cui
+gia' matchano `OpportunityStatusScope::whereNameIn` e `OpportunityStatusColumn::distinctValues`, quindi
+badge e set filter restano coerenti.
+
+**Verificato.** `pest tests/Feature/Opportunities tests/Unit/Services/Opportunities tests/Feature/RequestManagement
+tests/Feature/Rewards` → 549 passed / 2311 assertions. Pint pulito. Controllo sul dato reale (tinker, opp. 89):
+`distinct_count: 1`, entry unica "Da qualificare" con `count: 2`.
+
+**Aperto (non implementato, richiede decisione).** Con stati DIVERSI la ripartizione "1 aperto, 1 bozza" resta
+solo nel tooltip; il badge in griglia dice "2 stati". Se serve inline, e' una modifica a
+`frontend/src/features/opportunities/opportunity-status-badge.tsx`.
+
 ## FIX — SALVA INERTE SUL FORM OFFERTE IN UPDATE (2026-08-06) — VERDE, NON COMMITTATO
 
 Solo frontend, ZERO modifiche backend. Suite `src/features/quotes` verde (163 test), ESLint EXIT=0,

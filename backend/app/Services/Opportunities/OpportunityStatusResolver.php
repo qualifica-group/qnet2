@@ -83,8 +83,16 @@ final class OpportunityStatusResolver
     }
 
     /**
-     * One entry per DISTINCT quote workflow status (BR-1), carrying how many
-     * quotes sit in it, ordered by the status' own `sort_order`.
+     * One entry per DISTINCT quote status as DISPLAYED (BR-1), carrying how
+     * many quotes sit in it, ordered by the status' own `sort_order`.
+     *
+     * Grouping is by status NAME, not by `quote_workflow_status_id`: every
+     * workflow owns its own status rows (D-6), so two quotes of the same
+     * opportunity driven by different workflows carry different ids for the
+     * very same state. Grouping by id would show "2 stati" for two quotes both
+     * in "Da qualificare" — the badge names the status, so the name is its
+     * identity here too (the same key the set filter and OpportunityStatusScope
+     * already match on).
      *
      * @return array<int, array{id: int, name: string, color: string|null, group: string, count: int}>
      */
@@ -96,9 +104,9 @@ final class OpportunityStatusResolver
 
         return $quotes
             ->filter(static fn (Quote $quote): bool => $quote->quoteWorkflowStatus !== null)
-            ->groupBy(static fn (Quote $quote): int => (int) $quote->quote_workflow_status_id)
+            ->groupBy(static fn (Quote $quote): string => self::nameKey((string) $quote->quoteWorkflowStatus->name))
             ->map(static function (Collection $group): array {
-                $status = $group->first()->quoteWorkflowStatus;
+                $status = self::representativeStatus($group);
 
                 return [
                     'id' => (int) $status->id,
@@ -117,6 +125,28 @@ final class OpportunityStatusResolver
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * The row that represents a same-named group: the lowest `sort_order`
+     * (ties broken by id) so id/color/group stay stable whatever order the
+     * quotes come back in.
+     *
+     * @param  Collection<int, Quote>  $group
+     */
+    private static function representativeStatus(Collection $group): QuoteWorkflowStatus
+    {
+        return $group
+            ->map(static fn (Quote $quote): QuoteWorkflowStatus => $quote->quoteWorkflowStatus)
+            ->sortBy('id')
+            ->sortBy('sort_order')
+            ->first();
+    }
+
+    /** Case- and whitespace-insensitive identity of a displayed status name. */
+    private static function nameKey(string $name): string
+    {
+        return mb_strtolower(trim($name));
     }
 
     /**

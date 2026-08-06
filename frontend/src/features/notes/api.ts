@@ -4,6 +4,7 @@ import type { ForSelectItem, PaginatedResponse } from '@/features/for-select/typ
 import type {
   CreateNotePayload,
   Note,
+  NoteQuoteScope,
   NotesPage,
   NotesPageMeta,
   UpdateNotePayload,
@@ -20,6 +21,8 @@ interface FetchNotesParams {
   entityId: number
   cursor?: string | null
   limit?: number
+  /** Spec 0085 D-2: `'all'` (default) | `'general'` | id di un'Offerta. */
+  quoteScope?: NoteQuoteScope
 }
 
 /**
@@ -32,6 +35,7 @@ export async function fetchNotes({
   entityId,
   cursor = null,
   limit = NOTES_DEFAULT_PAGE_SIZE,
+  quoteScope = 'all',
 }: FetchNotesParams): Promise<NotesPage> {
   const { data } = await apiClient.get<ApiResponse<Note[]> & { meta: NotesPageMeta }>('/notes', {
     params: {
@@ -39,6 +43,10 @@ export async function fetchNotes({
       entity_id: entityId,
       cursor: cursor ?? undefined,
       limit,
+      // Spec 0085 D-2: un solo parametro. `'all'` e' il default anche
+      // server-side, quindi non lo si manda: tenere l'URL minimo evita che due
+      // chiamate equivalenti finiscano in cache HTTP diverse.
+      quote_scope: quoteScope === 'all' ? undefined : String(quoteScope),
     },
   })
   return { data: data.data, meta: data.meta }

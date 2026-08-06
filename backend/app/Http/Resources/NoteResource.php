@@ -18,6 +18,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * absent on a bare note (store/update) and never nested past one level
  * (each reply is rendered with $includeReplies = false, D-7).
  *
+ * `quote_id`/`quote` (spec 0085, D-1) label the note's scope: null for a
+ * general note. The `quote` relation is assumed eager-loaded by the caller
+ * (NoteService) — reading it here never triggers a lazy load.
+ *
  * @mixin Note
  */
 class NoteResource extends JsonResource
@@ -42,6 +46,8 @@ class NoteResource extends JsonResource
             'author' => new NoteAuthorResource($note->author),
             'mentions' => $this->mentions($note),
             'parent_id' => $note->parent_id,
+            'quote_id' => $note->quote_id,
+            'quote' => $this->quote($note),
             'created_at' => $note->created_at?->toIso8601String(),
             'edited_at' => $note->edited_at?->toIso8601String(),
             'can' => [
@@ -58,6 +64,20 @@ class NoteResource extends JsonResource
         }
 
         return $data;
+    }
+
+    /**
+     * @return array{id: int, code: string, title: string}|null
+     */
+    private function quote(Note $note): ?array
+    {
+        $quote = $note->quote;
+
+        if ($quote === null) {
+            return null;
+        }
+
+        return ['id' => $quote->id, 'code' => $quote->code, 'title' => $quote->title];
     }
 
     /**

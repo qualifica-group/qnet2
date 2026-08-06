@@ -2,6 +2,7 @@
 
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -161,4 +162,23 @@ it('rows: notes_count is 0 when the opportunity has no notes', function () {
         ->assertOk()->json('items'));
 
     expect($items->firstWhere('id', $opportunity->id)['notes_count'])->toBe(0);
+});
+
+// spec 0085, AC-031: `notes_count` counts EVERY note on the Opportunity's
+// thread, general AND quote-scoped alike — no separate per-Offerta counter.
+it('rows: notes_count counts general and quote-scoped notes together', function () {
+    $actor = opportunityActionsUserWith(['viewAny'], ['view']);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    createOpportunityTableNote($opportunity, $actor);
+    $quoteNote = createOpportunityTableNote($opportunity, $actor);
+    $quoteNote->forceFill(['quote_id' => $quote->id])->save();
+
+    Sanctum::actingAs($actor);
+
+    $items = collect($this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'));
+
+    expect($items->firstWhere('id', $opportunity->id)['notes_count'])->toBe(2);
 });

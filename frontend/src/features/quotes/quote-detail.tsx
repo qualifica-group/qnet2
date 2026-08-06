@@ -15,6 +15,8 @@ import {
   DetailSection,
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { NotesSection } from '@/features/notes/notes-section'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { QuoteDetailAttributes } from '@/features/quotes/quote-detail-attributes'
 import { QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
@@ -147,6 +149,19 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
             }}
           />
         </div>
+      </DetailSection>
+
+      {/* Spec 0085: le note dell'Offerta, pre-filtrate su di essa. Nessun
+          selettore: qui il contesto e' dato, e ogni nota scritta appartiene a
+          questa Offerta. Il thread resta quello dell'Opportunita' padre — la
+          nota e' scopata, non spostata su un'altra entita' (D-1). */}
+      <DetailSection title={t('quotes.detail.notes')} icon={<NotebookText />}>
+        <NotesSection
+          entityType={REQUEST_MANAGEMENT_DOMAIN}
+          entityId={quote.opportunity_id}
+          showHeader={false}
+          lockedQuoteId={quote.id}
+        />
       </DetailSection>
 
       <QuoteDetailAttributes

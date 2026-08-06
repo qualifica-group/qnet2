@@ -46,6 +46,26 @@ it('collapses quotes sharing one status into a single entry carrying the count',
     ]]);
 });
 
+it('collapses quotes whose statuses share the name across different workflows', function () {
+    $opportunity = Opportunity::factory()->create();
+    $first = QuoteWorkflowStatus::factory()->create(['name' => 'Da qualificare', 'color' => 'amber', 'sort_order' => 10]);
+    $second = QuoteWorkflowStatus::factory()->create(['name' => 'Da qualificare', 'color' => 'slate', 'sort_order' => 20]);
+
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $first->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $second->id]);
+
+    $summary = resolver()->resolve($opportunity->fresh());
+
+    expect($summary['distinct_count'])->toBe(1);
+    expect($summary['entries'])->toBe([[
+        'id' => $first->id,
+        'name' => 'Da qualificare',
+        'color' => 'amber',
+        'group' => $first->group->value,
+        'count' => 2,
+    ]]);
+});
+
 it('returns one entry per distinct quote workflow status, ordered by sort_order (AC-030)', function () {
     $opportunity = Opportunity::factory()->create();
     $inCorso = QuoteWorkflowStatus::factory()->create(['name' => 'In corso', 'sort_order' => 30]);
