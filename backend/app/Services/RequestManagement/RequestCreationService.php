@@ -9,7 +9,6 @@ use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\FormMode;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
@@ -40,11 +39,10 @@ final class RequestCreationService
         private readonly OpportunityService $opportunityService,
         private readonly RequestManagementService $panel,
         private readonly RequestAttributeValueWriter $attributeValueWriter,
-        private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
     public function create(User $actor, CreateRequestData $data): array
     {
@@ -98,11 +96,10 @@ final class RequestCreationService
 
             // Step 3: the operative fields the work panel edits, submitted at
             // creation too (user directive 2026-07-31). They run AFTER the
-            // insert on purpose: none of the three is mass-assignable (D-4
-            // guard), and both the working status and the dynamic values are
-            // validated against sets that only exist once the product lines
-            // are persisted.
-            $this->applyOperativeFields($opportunity, $actor, $data);
+            // insert on purpose: neither is mass-assignable (D-4 guard), and
+            // the dynamic values are validated against a set that only
+            // exists once the product lines are persisted.
+            $this->applyOperativeFields($opportunity, $data);
 
             // Spec 0062, D3: the distinct "new request" form, never the full
             // edit work panel's own layout.
@@ -111,16 +108,16 @@ final class RequestCreationService
     }
 
     /**
-     * The working status, the planned callback and the dynamic values, all
-     * optional (user directive 2026-07-31). Each goes through the SAME writer
-     * the panel's PATCH uses, so the two channels can never diverge on the
-     * rules attached to them — most notably the note a `requires_note` status
-     * demands (spec 0054 D-5), enforced here exactly as on an advance.
+     * The planned callback and the dynamic values, both optional (user
+     * directive 2026-07-31). Neither is mass-assignable (D-4 guard), and the
+     * dynamic values are validated through the SAME writer the panel's PATCH
+     * uses (RequestAttributeValueWriter), so the two channels can never
+     * diverge on the applicability rule.
      *
      * Nothing submitted means nothing to save: the early return keeps a plain
      * create at the single insert it has always been.
      */
-    private function applyOperativeFields(Opportunity $opportunity, User $actor, CreateRequestData $data): void
+    private function applyOperativeFields(Opportunity $opportunity, CreateRequestData $data): void
     {
         // Discarded: on create there is no previous state to diff against, and
         // the record's own `created` activity entry is the audit trail (the
@@ -128,14 +125,6 @@ final class RequestCreationService
         // non-fillable columns would otherwise leave no trace at all).
         $changed = [];
         $old = [];
-
-        if ($data->workflowStatusId !== null) {
-            $this->workflowStatusWriter->apply($opportunity, $data->workflowStatusId, $actor, $data->statusNote, $changed, $old);
-            // OpportunityService::create left the resolver's own status loaded
-            // on the relation; the panel below reads it through loadMissing(),
-            // which would keep serving that stale row.
-            $opportunity->unsetRelation('workflowStatus');
-        }
 
         if ($data->nextCallbackAt !== null) {
             $opportunity->next_callback_at = $data->nextCallbackAt;

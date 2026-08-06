@@ -56,21 +56,6 @@ export interface TransferRequestsResult {
   transferred: number
 }
 
-/**
- * A resolved working-state row (spec 0047), identical shape to
- * `OpportunityWorkflowStatusRef` minus `group` (not part of this contract).
- */
-export interface RequestWorkflowStatusRef {
-  id: number
-  name: string
-  /** Free-text explanation of the status, shown under the option in the working-status select. */
-  description: string | null
-  color: string | null
-  system_key: string | null
-  /** Marks the status as one requiring an explanatory note (configuration only). */
-  requires_note: boolean
-}
-
 /** A business-function + product-category pair of one of the opportunity's rows. */
 export interface RequestProductLine {
   id: number
@@ -213,9 +198,6 @@ export interface RequestWorkPanel {
   transferred_from: RequestOperationalSiteRef | null
   /** Spec 0082: the COMPUTED status of the request's opportunity, read-only. */
   status: OpportunityStatusSummary
-  workflow_status: RequestWorkflowStatusRef | null
-  /** The resolved set the workflow-status select is limited to. */
-  workflow_statuses: RequestWorkflowStatusRef[]
   product_lines: RequestProductLine[]
   /** Products of interest recorded for this request; `[]` when none (user directive 2026-07-22). */
   products_of_interest: RequestProductOfInterest[]
@@ -246,8 +228,8 @@ export interface RequestWorkPanel {
   /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
    * `reward_type.name`. Optional for the same fixture-compatibility reason
-   * as `operational_site`/`workflow_status` elsewhere in this resource —
-   * treat a missing key the same as `[]`.
+   * as `operational_site` elsewhere in this resource — treat a missing key
+   * the same as `[]`.
    */
   rewards?: RewardAssignmentRef[]
   /**
@@ -311,8 +293,6 @@ export interface RequestClientAddressPayload {
  * client's other addresses.
  */
 export interface UpdateRequestWorkPayload {
-  opportunity_workflow_status_id?: number | null
-  note?: string
   attribute_values?: Record<string, unknown>
   next_callback_at?: string | null
   /**
@@ -400,19 +380,12 @@ export interface CreateRequestPayload {
   /** Spec 0059: reward assignments for the reporter, sent only when at least one is picked. */
   rewards?: RequestRewardInput[]
   /**
-   * The five operative fields the work panel edits, available at creation too
+   * The operative fields the work panel edits, available at creation too
    * (user directive 2026-07-31, "la create il piu' simile possibile al
    * pannello"). All optional and, like the two blocks above, sent only when
    * they carry something: on create there is no persisted value a null could
    * clear, so an empty key would be pure noise on the wire.
-   *
-   * The working status must belong to the set resolved for the submitted
-   * `source_id`/`product_lines` — the set
-   * `POST /request-management/form-context` previewed; `note` is mandatory
-   * server-side when that status is flagged `requires_note` (spec 0054 D-5).
    */
-  opportunity_workflow_status_id?: number
-  note?: string
   /** `"Y-m-d\TH:i"` local format, same shape the panel PATCHes. */
   next_callback_at?: string
   general_notes?: string
@@ -431,7 +404,7 @@ export interface RequestFormContextPayload {
 }
 
 /**
- * Response of the same endpoint: the three blocks the create form needs before
+ * Response of the same endpoint: the two blocks the create form needs before
  * anything is persisted, resolved from the criteria above. Same keys and same
  * per-item shapes as the work panel's own — the two forms render the identical
  * sections from the identical types.
@@ -439,7 +412,6 @@ export interface RequestFormContextPayload {
 export interface RequestFormContext {
   applicable_attributes: ApplicableAttribute[]
   attribute_layout: LayoutBlob | null
-  workflow_statuses: RequestWorkflowStatusRef[]
 }
 
 /**

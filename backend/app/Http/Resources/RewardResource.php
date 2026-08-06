@@ -33,11 +33,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Relies on the caller having eager-loaded `eagerLoad()`'s relations
  * (`rewardType`/`rewardStatus`/`source` with the Opportunity's own
- * `registry`/`productLines.productCategory`/`quotes.quoteStatus`/
- * `workflowStatus`/`managers.avatar` chain) so resolving any of this never
- * N+1s (AC-017) — the single source of truth shared by
- * `ReferentRewardsController` and `RewardController::updateStatus` so their
- * eager-load specs can never drift apart.
+ * `registry`/`productLines.productCategory`/`quotes.quoteWorkflowStatus`/
+ * `managers.avatar` chain) so resolving any of this never N+1s (AC-017) —
+ * the single source of truth shared by `ReferentRewardsController` and
+ * `RewardController::updateStatus` so their eager-load specs can never drift
+ * apart. Spec 0083, D-2: `context.workflow_status` is GONE — the Opportunity
+ * carries no working-state row of its own any more.
  */
 class RewardResource extends JsonResource
 {
@@ -76,10 +77,10 @@ class RewardResource extends JsonResource
                     Opportunity::class => [
                         'registry',
                         'productLines.productCategory',
-                        // Spec 0082: the computed status reads the quotes'
-                        // statuses (falling back to `workflowStatus`).
-                        'quotes.quoteStatus',
-                        'workflowStatus',
+                        // Spec 0082/0083: the computed status reads the
+                        // quotes' own workflow statuses (falling back to the
+                        // global default `open` row when there are none).
+                        'quotes.quoteWorkflowStatus',
                         'managers.avatar',
                     ],
                 ]);
@@ -134,7 +135,7 @@ class RewardResource extends JsonResource
     }
 
     /**
-     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}|null
+     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, operator: array{id: int, name: string, avatar_url: string|null}|null}|null
      */
     private function buildContext(?Model $source): ?array
     {
@@ -149,7 +150,7 @@ class RewardResource extends JsonResource
     }
 
     /**
-     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}
+     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}, operator: array{id: int, name: string, avatar_url: string|null}|null}
      */
     private function contextForOpportunity(Opportunity $opportunity): array
     {
@@ -157,7 +158,6 @@ class RewardResource extends JsonResource
             'registry' => $this->summarizeByName($opportunity->registry),
             'product_categories' => $this->summarizeProductCategories($opportunity->productLines),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
-            'workflow_status' => $this->summarizeWorkflowStatus($opportunity->workflowStatus),
             'operator' => $this->summarizeOperator($opportunity->operatorManager()),
         ];
     }
@@ -185,18 +185,6 @@ class RewardResource extends JsonResource
             ->map(fn (Model $category): array => ['id' => $category->id, 'name' => $category->name])
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array{id: int, name: string, color: string|null}|null
-     */
-    private function summarizeWorkflowStatus(?Model $status): ?array
-    {
-        return $status === null ? null : [
-            'id' => $status->id,
-            'name' => $status->name,
-            'color' => $status->color,
-        ];
     }
 
     /**

@@ -14,14 +14,23 @@ import {
   type QuoteFormValues,
   type QuoteLineFormValues,
 } from '@/features/quotes/quote-schema'
-import type { QuoteDetail, QuoteFormMode, QuoteLine } from '@/features/quotes/types'
+import type {
+  QuoteDetail,
+  QuoteFormMode,
+  QuoteLine,
+  QuoteWorkflowStatusRef,
+} from '@/features/quotes/types'
+
+/** Hoisted so the schema memo keeps a stable dependency in create mode (no set resolved yet). */
+const EMPTY_STATUSES: QuoteWorkflowStatusRef[] = []
 
 /** Server-side field names mapped onto the form for 422 handling (mirrors `opportunities`/`projects`). */
 const SERVER_ERROR_FIELDS = [
   'code',
   'title',
   'opportunity_id',
-  'quote_status_id',
+  'quote_workflow_status_id',
+  'note',
   'commercial_id',
   'reporter_id',
   'supervisor_id',
@@ -92,7 +101,20 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   const [serverError, setServerError] = useState<string | null>(null)
   const isEdit = mode.type === 'edit'
 
-  const schema = useMemo(() => (isEdit ? buildUpdateQuoteSchema(t) : buildCreateQuoteSchema(t)), [isEdit, t])
+  // Spec 0083: the update schema needs the resolved set and the status the
+  // quote currently holds to decide whether the transition note is mandatory
+  // (AC-023/AC-026). Both are `null`/empty in create, where no transition
+  // happens: the backend assigns the `open` row itself (AC-020).
+  const workflowStatuses = mode.type === 'edit' ? (mode.quote.quote_workflow_statuses ?? EMPTY_STATUSES) : EMPTY_STATUSES
+  const originalStatusId = mode.type === 'edit' ? mode.quote.quote_workflow_status_id : null
+
+  const schema = useMemo(
+    () =>
+      isEdit
+        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId)
+        : buildCreateQuoteSchema(t),
+    [isEdit, t, workflowStatuses, originalStatusId],
+  )
 
   const defaultValues = useMemo<QuoteFormValues>(() => {
     if (mode.type === 'edit') {
@@ -101,7 +123,8 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         code: quote.code,
         title: quote.title,
         opportunity_id: quote.opportunity_id,
-        quote_status_id: quote.quote_status_id,
+        quote_workflow_status_id: quote.quote_workflow_status_id,
+        note: null,
         commercial_id: quote.commercial_id,
         reporter_id: quote.reporter_id,
         supervisor_id: quote.supervisor_id,
@@ -124,7 +147,8 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       code: initialCode ?? '',
       title: '',
       opportunity_id: forcedOpportunityId,
-      quote_status_id: null,
+      quote_workflow_status_id: null,
+      note: null,
       commercial_id: null,
       reporter_id: null,
       supervisor_id: null,

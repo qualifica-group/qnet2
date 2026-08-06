@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
+use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Models\Quote;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -17,17 +18,23 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the payload for PUT/PATCH /api/quotes/{quote} (spec 0065). Every
- * field is `sometimes` (partial PATCH). `opportunity_id` is `prohibited`
- * (AC-025: immutable). `code` is intentionally NOT a rule here: it is
- * writable only on create and permanently read-only afterwards (D-13,
- * mirrors UpdateProjectRequest) — an unsubmitted or unchanged `code` is
- * silently dropped by validated(); a CHANGED one is rejected with a 422 by
+ * Validates the payload for PUT/PATCH /api/quotes/{quote} (spec 0065; spec
+ * 0083 T-04 for `quote_workflow_status_id`/`note`). Every field is
+ * `sometimes` (partial PATCH). `opportunity_id` is `prohibited` (AC-025:
+ * immutable). `code` is intentionally NOT a rule here: it is writable only
+ * on create and permanently read-only afterwards (D-13, mirrors
+ * UpdateProjectRequest) — an unsubmitted or unchanged `code` is silently
+ * dropped by validated(); a CHANGED one is rejected with a 422 by
  * EnforcesFieldPermissions below (its ceiling is readonly once $model
  * exists).
  *
  * `offer_lines`/`cost_lines`, when submitted, full-replace the existing set
  * of that type (D-8); omitting the key leaves it untouched.
+ *
+ * `quote_workflow_status_id` is an OPTIONAL override (AC-021/022): its
+ * set-membership is checked in withValidator, against the RESOLVED
+ * (possibly changed by a submitted `offer_lines`) set. `note` (AC-023)
+ * accompanies an override whose destination `requires_note`.
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $quote)). EnforcesFieldPermissions
@@ -41,6 +48,7 @@ class UpdateQuoteRequest extends FormRequest
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
+    use ValidatesQuoteWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -56,7 +64,8 @@ class UpdateQuoteRequest extends FormRequest
         return array_merge([
             'opportunity_id' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:191'],
-            'quote_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_statuses', 'id')],
+            'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
+            'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
@@ -78,6 +87,7 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceCommissionRecipients($validator, $this->currentQuote());
             $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
             $this->enforceQuoteLayout($validator, $this->currentQuote());
+            $this->validateQuoteWorkflowStatus($validator, $this->currentQuote());
         });
     }
 

@@ -1,9 +1,9 @@
 <?php
 
-use App\Enums\QuoteStatusGroup;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Reward;
 use App\Models\User;
@@ -102,13 +102,13 @@ it('rows: active_rewards_count/completed_rewards_count are derived from the orig
     $actor = rewardedReferentUserWith(['viewAny']);
     $referent = Referent::factory()->create();
 
-    $openStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Open]);
-    $pendingStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Pending]);
-    $closedStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::ClosedLost]);
+    $openStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Open]);
+    $pendingStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Pending]);
+    $closedStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::ClosedLost]);
 
     foreach ([$openStatus, $pendingStatus, $closedStatus] as $quoteStatus) {
         $opportunity = Opportunity::factory()->create();
-        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $quoteStatus->id]);
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $quoteStatus->id]);
         rewardForOpportunity($referent, $opportunity);
     }
 
@@ -216,7 +216,7 @@ if (! function_exists('countTableQueries')) {
     {
         $count = 0;
         $listener = function ($query) use (&$count): void {
-            if (preg_match('/from ["`]?(referents|personal_data|contacts|referent_registry|registries|rewards|opportunities|quotes|quote_statuses)["`]?/i', $query->sql) === 1) {
+            if (preg_match('/from ["`]?(referents|personal_data|contacts|referent_registry|registries|rewards|opportunities|quotes|quote_workflow_statuses)["`]?/i', $query->sql) === 1) {
                 $count++;
             }
         };

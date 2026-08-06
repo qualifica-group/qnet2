@@ -132,9 +132,6 @@ export function buildUpdatePayload(
   if (values.state_id !== (original.state_id ?? null)) {
     payload.state_id = values.state_id
   }
-  if (values.opportunity_workflow_status_id !== (original.opportunity_workflow_status_id ?? null)) {
-    payload.opportunity_workflow_status_id = values.opportunity_workflow_status_id
-  }
   // Amendment rev.3: the server replaces the entire row SET (AC-099) — diff
   // as an unordered collection of pairs, never positionally (row order in
   // the form carries no meaning).

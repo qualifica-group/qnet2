@@ -2,13 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { Handshake, Pencil } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
 import { formatDecimal } from '@/features/products/column-renderers'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { StatusDescriptionHint } from '@/features/opportunity-workflows/status-description-hint'
 import { probabilityToneClass } from '@/features/opportunities/column-renderers'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
@@ -46,26 +42,7 @@ export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDeta
       }
       title={opportunity.name}
       subtitle={opportunity.registry?.name}
-      badges={
-        <>
-          <OpportunityStatusBadge summary={opportunity.status} />
-          {opportunity.workflow_status ? (
-            <span className="flex min-w-0 items-center gap-1">
-              <Badge variant="secondary" className="h-5 min-h-5 gap-1.5">
-                <span
-                  className={cn(
-                    'size-1.5 shrink-0 rounded-full',
-                    swatchClassFor(opportunity.workflow_status.color) ?? 'bg-transparent',
-                  )}
-                  aria-hidden="true"
-                />
-                {opportunity.workflow_status.name}
-              </Badge>
-              <StatusDescriptionHint description={opportunity.workflow_status.description} />
-            </span>
-          ) : null}
-        </>
-      }
+      badges={<OpportunityStatusBadge summary={opportunity.status} />}
       actions={
         canEdit ? (
           <Button size="sm" onClick={onEdit}>

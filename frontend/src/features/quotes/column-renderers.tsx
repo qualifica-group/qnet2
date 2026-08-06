@@ -24,7 +24,7 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
   opportunity: (params) => <RelationCell {...params} icon={Handshake} />,
-  quote_status: (params) => <StatusBadgeCell {...params} />,
+  quote_workflow_status: (params) => <StatusBadgeCell {...params} />,
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,
   supervisor: (params) => <UserCell {...params} />,

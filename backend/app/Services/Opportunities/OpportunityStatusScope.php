@@ -4,24 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use App\Enums\WorkflowStatusGroup;
+use App\Enums\WorkflowStatusSystemKey;
+use App\Models\QuoteWorkflowStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The QUERY side of the computed Opportunity status (spec 0082): the single
- * expression of "the status this row DISPLAYS matches ...", mirroring
+ * The QUERY side of the computed Opportunity status (spec 0082, re-targeted
+ * at the Quote workflow by spec 0083 D-2/D-8): the single expression of "the
+ * status this row DISPLAYS matches ...", mirroring
  * OpportunityStatusResolver's read-side rules so a filter can never disagree
  * with the badge next to it.
  *
  * The predicate is always the same OR: the row has a quote in a matching
- * status, or — only when it has NO quote at all — its working state matches.
- * `quote_statuses` and `opportunity_workflow_statuses` share both the `name`
- * and `group` column names and the same group vocabulary (`open`/`pending`/
- * `closed_won`/`closed_lost`, plus the workflow-only `validated`), which is
- * what lets one predicate span the two tables.
+ * workflow status, or — only when it has NO quote at all — the GLOBAL
+ * default workflow set's `open` row itself matches (D-8: every quote-less
+ * opportunity displays that SAME row, never a per-row lookup).
  *
- * Values are always bound through `whereIn` — never interpolated
- * (backend.md §8).
+ * Values are always bound through `whereIn`/parameter binding — never
+ * interpolated (backend.md §8).
  */
 final class OpportunityStatusScope
 {
@@ -69,16 +71,38 @@ final class OpportunityStatusScope
         }
 
         $opportunities->where(static function (Builder $outer) use ($column, $values): void {
-            $outer->whereHas('quotes.quoteStatus', static function (Builder $related) use ($column, $values): void {
+            $outer->whereHas('quotes.quoteWorkflowStatus', static function (Builder $related) use ($column, $values): void {
                 $related->whereIn($column, $values);
             });
 
-            $outer->orWhere(static function (Builder $fallback) use ($column, $values): void {
-                $fallback->whereDoesntHave('quotes')
-                    ->whereHas('workflowStatus', static function (Builder $related) use ($column, $values): void {
-                        $related->whereIn($column, $values);
-                    });
-            });
+            // D-8: a quote-less opportunity always displays the GLOBAL
+            // default set's `open` row — it matches the filter only when
+            // THAT row's own value is among $values, never per-row.
+            if (self::defaultOpenMatches($column, $values)) {
+                $outer->orWhereDoesntHave('quotes');
+            }
         });
+    }
+
+    /**
+     * @param  array<int, string>  $values
+     */
+    private static function defaultOpenMatches(string $column, array $values): bool
+    {
+        $value = QuoteWorkflowStatus::query()
+            ->whereNull('quote_workflow_id')
+            ->where('system_key', WorkflowStatusSystemKey::Open->value)
+            ->value($column);
+
+        if ($value === null) {
+            return false;
+        }
+
+        // `group` is cast to WorkflowStatusGroup on the model, so
+        // Builder::value() (which hydrates via first()) returns the enum,
+        // not the raw string, for that column — `name` stays a plain string.
+        $scalar = $value instanceof WorkflowStatusGroup ? $value->value : $value;
+
+        return in_array($scalar, $values, true);
     }
 }

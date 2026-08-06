@@ -15,14 +15,13 @@ use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\OperationalSitesTableDefinition;
 use App\Tables\OpportunitiesTableDefinition;
-use App\Tables\OpportunityWorkflowsTableDefinition;
 use App\Tables\PaymentMethodsTableDefinition;
 use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
 use App\Tables\QuotesTableDefinition;
-use App\Tables\QuoteStatusesTableDefinition;
+use App\Tables\QuoteWorkflowsTableDefinition;
 use App\Tables\ReferentsTableDefinition;
 use App\Tables\ReferentTypesTableDefinition;
 use App\Tables\RegistriesTableDefinition;
@@ -90,10 +89,9 @@ return [
         'leads' => LeadsTableDefinition::class,
         'import-runs' => LeadImportsTableDefinition::class,
         'opportunities' => OpportunitiesTableDefinition::class,
-        'opportunity-workflows' => OpportunityWorkflowsTableDefinition::class,
         'payment-methods' => PaymentMethodsTableDefinition::class,
-        'quote-statuses' => QuoteStatusesTableDefinition::class,
         'quotes' => QuotesTableDefinition::class,
+        'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
         'reward-types' => RewardTypesTableDefinition::class,
         'reward-statuses' => RewardStatusesTableDefinition::class,

@@ -24,7 +24,7 @@ const OPTIONS: SelectOption[] = [
 ]
 
 /** The note marker's own text, so the option lookups stay label-only. */
-const REQUIRES_NOTE_LABEL = () => i18n.t('opportunityWorkflows.form.statuses.requiresNoteBadge')
+const REQUIRES_NOTE_LABEL = () => i18n.t('quoteWorkflows.form.statuses.requiresNoteBadge')
 
 function renderEditor(
   props: Partial<CustomCellEditorProps<TableRow, SelectCellValue | null> & SelectCellEditorParams> = {},

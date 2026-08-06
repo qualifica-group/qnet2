@@ -46,7 +46,7 @@ final class RecordDetails
      */
     private const array OPPORTUNITY_RELATIONS = [
         'registry', 'source', 'supervisor', 'managers',
-        'quotes.quoteStatus', 'workflowStatus',
+        'quotes.quoteWorkflowStatus',
         'operationalSite.addresses.city',
     ];
 
@@ -101,7 +101,6 @@ final class RecordDetails
             'notifications.fields.client' => $opportunity->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
             'notifications.fields.status' => self::statusLabel($opportunity),
-            'notifications.fields.working_status' => $opportunity->workflowStatus?->name,
             'notifications.fields.source' => $opportunity->source?->name,
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
             'notifications.fields.operator' => $opportunity->operatorManager()?->name,

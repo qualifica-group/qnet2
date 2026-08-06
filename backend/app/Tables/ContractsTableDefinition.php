@@ -193,7 +193,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
     /**
      * The contract status projected WITH its `color` token, so the grid
      * renders the colored status badge; the generic summarize() would drop
-     * it — mirrors QuotesTableDefinition::summarizeQuoteStatus().
+     * it — mirrors QuotesTableDefinition::summarizeWorkflowStatus().
      *
      * @return array{id: int, name: string, color: string|null}|null
      */

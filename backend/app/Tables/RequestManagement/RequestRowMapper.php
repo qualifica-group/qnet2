@@ -8,7 +8,6 @@ use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
 use App\Models\User;
-use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -22,19 +21,15 @@ use Illuminate\Support\Collection;
  * single concern (query building: scoping, filters, sorts, distinct values)
  * and the per-row presentation lives here. Every value is resolved from
  * relations already loaded by the definition's baseQuery — this mapper never
- * queries, EXCEPT `workflow_status_options` (spec 0054, D-9 follow-up): the
- * valid-status set is resolved PER OPPORTUNITY (spec 0047 criteria), so
- * `GET /columns`'s domain-wide `options` alone cannot tell the frontend which
- * of them apply to THIS row — `$workflowResolver` is injected once per
- * request and MEMOIZES its own domain-wide queries (activeWorkflows()/
- * statusesFor()), so resolving a whole page of N rows costs at most 1 query
- * for the candidate workflows plus one per DISTINCT resolved workflow
- * encountered on the page — never N.
+ * queries.
+ *
+ * Spec 0083: the working-state columns (`workflow_status` and the per-row
+ * `workflow_status_options`) are gone from this domain — the operational
+ * status now lives on the Offerta, not on the Opportunita'. With them went the
+ * only reason this mapper had a constructor dependency at all.
  */
 final class RequestRowMapper
 {
-    public function __construct(private readonly OpportunityWorkflowResolver $workflowResolver) {}
-
     /**
      * @return array<string, mixed>
      */
@@ -56,15 +51,6 @@ final class RequestRowMapper
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own free text, projected raw — display-only in this module.
             'general_notes' => $row->general_notes,
-            // The only related-row column, always projected WITH its color
-            // token for the working-state badge.
-            'workflow_status' => $this->summarizeWithColor($row->workflowStatus),
-            // The ids this SPECIFIC opportunity may move to (spec 0047's
-            // resolved workflow), so the cell editor can filter the domain-wide
-            // `options` from GET /columns down to what is actually valid here
-            // — the 422 in TableCellUpdateService/RequestManagementService
-            // stays the security net, this is the UX improvement on top of it.
-            'workflow_status_options' => $this->allowedWorkflowStatusIds($row),
             // "Categoria prodotto": the request's own product lines (spec
             // 0075). Projected as the {funzione aziendale, categoria} PAIRS —
             // ids for the inline editor to commit, names for the cell to
@@ -91,16 +77,6 @@ final class RequestRowMapper
             // Hidden column, drives the default "most recently loaded first" sort only.
             'created_at' => $row->created_at,
         ];
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function allowedWorkflowStatusIds(Opportunity $row): array
-    {
-        $workflow = $this->workflowResolver->resolve($row);
-
-        return $this->workflowResolver->statusesFor($workflow)->pluck('id')->all();
     }
 
     /**
@@ -170,29 +146,6 @@ final class RequestRowMapper
         }
 
         return ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * A related row projected WITH its `color` token, so the grid renders the
-     * colored working-state badge — a generic summarize() would drop it
-     * (mirrors ProjectsTableDefinition::summarizePipelineStatus).
-     * `description` rides along so the badge can carry the status'
-     * explanation as its tooltip.
-     *
-     * @return array{id: int, name: string, color: ?string, description: ?string}|null
-     */
-    private function summarizeWithColor(?Model $related): ?array
-    {
-        if ($related === null) {
-            return null;
-        }
-
-        return [
-            'id' => $related->id,
-            'name' => $related->name,
-            'color' => $related->color,
-            'description' => $related->description,
-        ];
     }
 
     /**

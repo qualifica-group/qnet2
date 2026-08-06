@@ -7,7 +7,7 @@
 
 export const requestManagement = {
   title: 'Request Management',
-  subtitle: 'Work opportunities: verify contacts, complete dynamic fields and advance the working status.',
+  subtitle: 'Work opportunities: verify contacts and complete dynamic fields.',
   forbidden: "You don't have permission to view Request Management.",
   categoryTabs: {
     all: 'All',
@@ -20,7 +20,6 @@ export const requestManagement = {
     generalNotes: 'General notes',
     operator: 'Operator (GA2)',
     operationalSite: 'Operational site',
-    workflowStatus: 'Working status',
     firstName: 'First name',
     lastName: 'Last name',
     taxCode: 'Tax code',
@@ -36,7 +35,6 @@ export const requestManagement = {
   advancedFilters: {
     registry: 'Registry',
     referent: 'Contact',
-    workflowStatus: 'Working status',
     opportunityStatus: 'Sales status',
     operationalSite: 'Operational site',
     expectedCloseRange: 'Expected close date',
@@ -44,7 +42,7 @@ export const requestManagement = {
   },
   detail: {
     title: 'Request details',
-    subtitle: 'Work the selected opportunity: contacts, dynamic fields and working status.',
+    subtitle: 'Work the selected opportunity: contacts and dynamic fields.',
   },
   delete: {
     success: 'Request deleted.',
@@ -160,15 +158,6 @@ export const requestManagement = {
       title: 'Additional information',
       empty: 'No additional fields for this opportunity.',
     },
-    workflowStatus: {
-      title: 'Working status',
-      sectionDescription: 'Advance the working state of the request.',
-      label: 'Working status',
-      placeholder: 'Select a status',
-      awaitingCriteria: 'Pick a product category first',
-      noteLabel: 'Note',
-      notePlaceholder: 'Explain the reason for this change…',
-    },
     callback: {
       title: 'Next callback',
       description: 'Plan the next follow-up call with the client.',
@@ -212,7 +201,6 @@ export const requestManagement = {
       title: 'Preliminary information',
       unsavedChanges: 'Unsaved changes',
       salesStatus: 'Sales',
-      workingStatus: 'Working',
       nextCallback: 'Next callback',
     },
     summary: {
@@ -239,7 +227,6 @@ export const requestManagement = {
     validation: {
       enumInvalid: 'Select a valid option.',
       required: 'This field is required.',
-      noteRequired: 'A note is required to move to this status.',
       sourceRequired: 'Select a source.',
       productLinesRequired: 'Add at least one product line.',
       productLineIncomplete: 'Select a business function and a product category for every row.',

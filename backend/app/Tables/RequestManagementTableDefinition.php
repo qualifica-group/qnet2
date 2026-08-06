@@ -40,29 +40,16 @@ use Illuminate\Support\Facades\Auth;
  *    (authorizeViewAny runs first; a null id simply matches no rows via
  *    `whereHas`, never fail-open).
  *
- * `workflow_status`/`source`/`product_categories` are delegated to
- * RequestRelationColumns (file-size split, engineering.md §6). Spec 0056:
- * `operational_site` (the Sede operativa) has no relation-by-name equivalent
- * (the site has no own name) — delegated instead to the shared
- * App\Tables\Shared\OperationalSiteColumn.
+ * `source`/`product_categories` are delegated to RequestRelationColumns
+ * (file-size split, engineering.md §6). Spec 0056: `operational_site` (the
+ * Sede operativa) has no relation-by-name equivalent (the site has no own
+ * name) — delegated instead to the shared App\Tables\Shared\OperationalSiteColumn.
+ * Spec 0083, D-2: `workflow_status` is REMOVED — the Opportunity resolves no
+ * working state of its own any more.
  */
 class RequestManagementTableDefinition extends AbstractTableDefinition
 {
     use WritesInlineEditableCells;
-
-    /**
-     * Maximum number of names honoured in a derived-column set filter. Caps
-     * the WHERE IN cardinality (defence in depth); excess values ignored.
-     */
-    private const int MAX_FILTER_VALUES = 200;
-
-    /**
-     * The `workflow_status` advanced filter's name (RequestAdvancedFilterCatalog):
-     * a SET filter matched by the related row's `name`, not by id — no
-     * `opportunity-workflow-statuses/for-select` route exists to back an
-     * id-based Relation/AsyncSearch picker.
-     */
-    private const string WORKFLOW_STATUS_ADVANCED_FILTER = 'workflow_status';
 
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
 
@@ -118,11 +105,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `Gate::allows('update', $row)` → OpportunityPolicy → `opportunities.update`,
      * the WRONG permission for this domain. `baseQuery()`'s own D-3 scoping
      * already keeps an out-of-scope row a 404 before this is ever reached.
-     * The editable columns here today (spec 0054: `workflow_status` and
-     * `next_callback_at`; spec 0055: `operator_ga2` plus the four client
-     * anagraphic fields; user directives 2026-07-23/2026-07-31:
-     * `products_of_interest`, `operational_site` and `source`) are each gated
-     * per FIELD on top of this by the role_field_permissions matrix.
+     * The editable columns here today (spec 0054: `next_callback_at`; spec
+     * 0055: `operator_ga2` plus the four client anagraphic fields; user
+     * directives 2026-07-23/2026-07-31: `products_of_interest`,
+     * `operational_site` and `source`) are each gated per FIELD on top of
+     * this by the role_field_permissions matrix.
      */
     public function authorizeUpdate(User $actor, Model $row): bool
     {
@@ -155,14 +142,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // pair (funzione aziendale + categoria), so both relations are
             // eager-loaded — the cell renders the categories, the inline
             // editor reads the functions.
-            'workflowStatus', 'productLines.productCategory', 'productLines.businessFunction',
-            // Spec 0047 amendment 2026-07-27: RequestRowMapper::
-            // allowedWorkflowStatusIds() calls OpportunityWorkflowResolver::
-            // resolve() PER ROW, whose own step 1 loadMissing()s this
-            // relation for a custom relation criterion (AC-032) — eager-load
-            // it here so that loadMissing() stays a no-op across the whole
-            // page instead of one query per row.
-            'customFieldValueRow',
+            'productLines.productCategory', 'productLines.businessFunction',
             // User directive 2026-07-23: the "Prodotti di interesse" column's
             // own `{id, name}` refs (cell + multiselect editor selection).
             'productsOfInterest',
@@ -358,39 +338,6 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * `workflow_status`'s advanced filter (RequestAdvancedFilterCatalog) is a
-     * SET filter matched by the related row's `name` (see the constant's
-     * docblock) — the generic default (a plain `whereHas`-by-id for `type:
-     * relation`/`async_search`) cannot express it. `operational_site` needs no
-     * override: since it became an id-based picker (user directive
-     * 2026-07-31) it IS a standard relation-by-id, like every other advanced
-     * filter declared in the catalog — all handled by the generic default.
-     * The COLUMN filter (`filterModel`, set-by-`line1`) is a different
-     * surface and still goes through the shared OperationalSiteColumn, see
-     * applyDerivedFilter().
-     *
-     * @param  Builder<Opportunity>  $query
-     * @param  array<string, mixed>  $descriptor
-     */
-    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
-    {
-        if ($name === self::WORKFLOW_STATUS_ADVANCED_FILTER) {
-            $values = array_slice(array_values(array_filter(
-                is_array($value) ? $value : [$value],
-                static fn (mixed $item): bool => is_string($item) && $item !== '',
-            )), 0, self::MAX_FILTER_VALUES);
-
-            if ($values !== []) {
-                $this->relationColumns->applyNameWhereHas($query, 'workflowStatus', $values);
-            }
-
-            return true;
-        }
-
-        return parent::applyAdvancedFilter($query, $name, $descriptor, $value);
-    }
-
-    /**
      * @param  array<string, mixed>  $filter
      * @return array<int, string>
      */
@@ -408,7 +355,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `operational_site` (spec 0056) is delegated to the shared
      * OperationalSiteColumn; the four client anagraphic columns (user
      * directive 2026-08-03) to RequestClientColumns' own correlated subquery
-     * over the PersonalData card; `workflow_status` falls through to
+     * over the PersonalData card; `source` falls through to
      * RequestRelationColumns' correlated subquery sort. `product_categories`
      * (AGGREGATED to-many) is NOT sortable (no single related row to order
      * by).

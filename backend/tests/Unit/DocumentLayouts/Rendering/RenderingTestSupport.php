@@ -13,7 +13,7 @@ use App\Models\PersonalData;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
@@ -358,14 +358,14 @@ if (! function_exists('dlrDocConfig')) {
 
         $operationalSite = OperationalSite::factory()->create();
 
-        // NOT 'Bozza': the quote_statuses migration already seeds a system
-        // row of that exact name, and `name` is unique — a fixed literal
-        // here would collide with it.
-        $quoteStatus = QuoteStatus::factory()->create();
+        // NOT 'Aperta': the quote_workflow_statuses migration already seeds a
+        // global system row of that exact name, and `name` is unique — a
+        // fixed literal here would collide with it.
+        $quoteWorkflowStatus = QuoteWorkflowStatus::factory()->create();
 
         return Quote::factory()->create(array_replace([
             'opportunity_id' => $opportunity->id,
-            'quote_status_id' => $quoteStatus->id,
+            'quote_workflow_status_id' => $quoteWorkflowStatus->id,
             'commercial_id' => $commercial->id,
             'reporter_id' => $reporter->id,
             'supervisor_id' => $supervisor->id,

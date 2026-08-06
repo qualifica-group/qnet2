@@ -17,7 +17,8 @@ use Spatie\Permission\Models\Permission;
 // activates: the GA2 operator (relation editor) and the four CLIENT
 // anagraphic fields, which live on the Registry's PersonalData card and are
 // written one at a time through RequestManagementService::updateWork().
-// `workflow_status`/`next_callback_at` keep their own dedicated files.
+// `next_callback_at` keeps its own dedicated file. Spec 0083, D-2 removed
+// `workflow_status` from this grid entirely.
 
 uses(RefreshDatabase::class);
 
@@ -98,9 +99,7 @@ it('AC-001: every activated column advertises its own editor', function () {
 
     $columns = inlineEditorsColumns();
 
-    expect($columns['workflow_status']['editor'])->toBe('select')
-        ->and($columns['workflow_status']['editable'])->toBeTrue()
-        ->and($columns['next_callback_at']['editor'])->toBe('datetime')
+    expect($columns['next_callback_at']['editor'])->toBe('datetime')
         ->and($columns['operator_ga2']['editor'])->toBe('relation')
         ->and($columns['operator_ga2']['relation']['resource'])->toBe('users');
 
@@ -108,15 +107,6 @@ it('AC-001: every activated column advertises its own editor', function () {
         expect($columns[$id]['editable'])->toBeTrue()
             ->and($columns[$id])->not->toHaveKey('editor');
     }
-});
-
-it('AC-001: workflow_status options carry requires_note and color per entry', function () {
-    Sanctum::actingAs(inlineEditorsActor(['viewAny', 'update']));
-
-    $options = inlineEditorsColumns()['workflow_status']['options'];
-
-    expect($options)->toBeArray()->not->toBeEmpty()
-        ->and($options[0])->toHaveKeys(['value', 'label', 'color', 'requires_note']);
 });
 
 // Spec 0075 (AC-001) REVERSES spec 0055's AC-002 read-only decision: the
@@ -156,7 +146,7 @@ it('AC-003: without request-management.update every column is read-only and ever
 
     $columns = inlineEditorsColumns();
 
-    foreach (['workflow_status', 'next_callback_at', 'operator_ga2', 'first_name', 'last_name', 'tax_code', 'phone'] as $id) {
+    foreach (['next_callback_at', 'operator_ga2', 'first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeFalse();
 
         $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [

@@ -8,7 +8,6 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRewards;
-use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Lead;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use Illuminate\Contracts\Validation\Validator;
@@ -40,7 +39,10 @@ use Illuminate\Validation\Rule;
  * those two, `operational_site_id` is reintroduced as a plain, optional FK —
  * never BR-1-derivable/locked, no forcing from any other entity.
  * `opportunity_status_id` (spec 0082) is `prohibited`: the Opportunity's
- * status is COMPUTED from its quotes, never submitted. `supervisor_id` is
+ * status is COMPUTED from its quotes, never submitted (spec 0083, D-2: the
+ * Opportunity carries no working-state override any more either — its former
+ * workflow-status override field is GONE, the configurator having moved onto
+ * the Offerta). `supervisor_id` is
  * NULLABLE (directive 2026-07-21, relaxing spec 0044): it derives from the
  * lead's Operatore, which may be empty, so an opportunity created from a lead
  * without one carries no supervisor — the DB column has always been nullable.
@@ -54,7 +56,6 @@ class StoreOpportunityRequest extends FormRequest
     use ValidatesManagerSlots;
     use ValidatesProductLines;
     use ValidatesRewards;
-    use ValidatesWorkflowStatus;
 
     private ?LeadOpportunityDefaults $leadDefaultsCache = null;
 
@@ -101,10 +102,8 @@ class StoreOpportunityRequest extends FormRequest
             'attribute_values' => ['sometimes', 'array'],
             // spec 0047: state_id (Regione, D1) is editable on a standalone
             // create, overwritten by BR-1 derivation when lead_id derives
-            // one. opportunity_workflow_status_id is an OPTIONAL override
-            // (AC-015/017); its set-membership is checked in withValidator.
+            // one.
             'state_id' => ['nullable', 'integer', Rule::exists('states', 'id')],
-            'opportunity_workflow_status_id' => ['nullable', 'integer', Rule::exists('opportunity_workflow_statuses', 'id')],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines` — at least one product to create, and
             // the whole collection is replaced when submitted. A product
@@ -165,7 +164,6 @@ class StoreOpportunityRequest extends FormRequest
             $this->validateProductLines($validator);
             $this->validateRewards($validator, null);
             $this->enforceFieldPermissions($validator);
-            $this->validateWorkflowStatus($validator);
         });
     }
 

@@ -46,11 +46,18 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * modality, nullOnDelete. It has neither an Opportunity counterpart to
  * inherit from nor a module default to resolve: a plain optional FK, written
  * only when the client submits it.
+ *
+ * `quote_workflow_status_id` (spec 0083, D-1/D-8 — replaces the former flat
+ * quote-status pick) is DELIBERATELY absent from #[Fillable], mirroring the
+ * Opportunity's own former workflow-status-override precedent: mandatory,
+ * restrictOnDelete, always written by App\Services\QuoteService via
+ * App\Services\Quotes\QuoteWorkflowResolver — an explicit, already-validated
+ * client override is assigned verbatim, otherwise the resolver derives the
+ * `open` row of the criteria-resolved set (AC-020/021/022).
  */
 #[Fillable([
     'title',
     'opportunity_id',
-    'quote_status_id',
     'commercial_id',
     'reporter_id',
     'supervisor_id',
@@ -90,13 +97,14 @@ class Quote extends BaseModel
     }
 
     /**
-     * The quote's working-state classification (spec 0065, D-2): mandatory,
-     * restrictOnDelete, defaulted server-side to the system 'new' row when
-     * omitted (AC-023).
+     * The offer's working-state classification (spec 0047/0083, D-1/D-8):
+     * mandatory, restrictOnDelete, resolved server-side against the
+     * criteria-matched workflow set (or the global default) when omitted
+     * (AC-020).
      */
-    public function quoteStatus(): BelongsTo
+    public function quoteWorkflowStatus(): BelongsTo
     {
-        return $this->belongsTo(QuoteStatus::class);
+        return $this->belongsTo(QuoteWorkflowStatus::class);
     }
 
     /**

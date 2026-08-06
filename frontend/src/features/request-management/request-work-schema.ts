@@ -21,17 +21,16 @@ import type {
   ApplicableAttribute,
   RequestClientIdentity,
   RequestContact,
-  RequestWorkflowStatusRef,
 } from '@/features/request-management/types'
 
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
- * AC-062/063): the working-state select and the dynamic `attribute_values`
- * map, one entry per `applicable_attributes` row, keyed by `code`. The map's
- * per-type shape comes from the shared `buildAttributeValuesSchema` (the create
- * form builds the identical one); `is_required` is added by the refinement
- * below, which alone knows whether the map is going to be sent at all. MIRRORS
- * the backend's `AttributeValueValidator`, it does not replace it — the server
+ * AC-062/063): the dynamic `attribute_values` map, one entry per
+ * `applicable_attributes` row, keyed by `code`. The map's per-type shape
+ * comes from the shared `buildAttributeValuesSchema` (the create form builds
+ * the identical one); `is_required` is added by the refinement below, which
+ * alone knows whether the map is going to be sent at all. MIRRORS the
+ * backend's `AttributeValueValidator`, it does not replace it — the server
  * stays authoritative (406/422 still applies).
  */
 
@@ -169,7 +168,6 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
  * request went out.
  */
 export interface RequestWorkOriginalState {
-  workflow_status_id: number | null
   attribute_values: Record<string, unknown>
   products_of_interest: number[]
   /** The persisted funzione/categoria pairs, in the form's own row shape. */
@@ -180,16 +178,8 @@ export interface RequestWorkOriginalState {
   client_address: Address | null
 }
 
-/**
- * Server-side rule (spec 0054 D-5, `RequestManagementService::updateWork()`):
- * a note is mandatory when the working status CHANGES to one flagged
- * `requires_note`. Mirrored here so the panel never round-trips to the
- * server just to learn its own selection needs a note — the server stays
- * authoritative (this check is anticipatory, not a replacement).
- */
 export function buildRequestWorkSchema(
   attributes: ApplicableAttribute[],
-  statuses: RequestWorkflowStatusRef[],
   original: RequestWorkOriginalState,
   t: TFunction,
 ) {
@@ -198,9 +188,7 @@ export function buildRequestWorkSchema(
 
   return z
     .object({
-      opportunity_workflow_status_id: z.number().nullable(),
       next_callback_at: z.string().nullable(),
-      note: z.string(),
       // The three buffered client blocks carry no field-level rule: they are
       // checked by the refinement below, which alone knows whether they travel.
       client_identity: z.custom<PersonalDataDraft | null>(),
@@ -234,21 +222,7 @@ export function buildRequestWorkSchema(
       attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
     })
     .superRefine((values, ctx) => {
-      // Step 1: the note that accompanies an advance to a `requires_note` status
-      const statusChanged = values.opportunity_workflow_status_id !== original.workflow_status_id
-      const targetStatus = statuses.find((status) => status.id === values.opportunity_workflow_status_id)
-
-      if (statusChanged && targetStatus?.requires_note && values.note.trim() === '') {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['note'],
-          message: t('requestManagement.workPanel.validation.noteRequired', {
-            defaultValue: 'A note is required to move to this status.',
-          }),
-        })
-      }
-
-      // Step 2: the two mandatory rules, gated on the key being sent at all —
+      // Step 1: the two mandatory rules, gated on the key being sent at all —
       // the SAME predicates `buildRequestWorkPayload` uses to decide that, so
       // the two can never drift.
       if (attributeValuesChanged(values.attribute_values, original.attribute_values, codes)) {
@@ -291,7 +265,7 @@ export function buildRequestWorkSchema(
         })
       }
 
-      // Step 3: the buffered client blocks, on the same gate. A legacy card
+      // Step 2: the buffered client blocks, on the same gate. A legacy card
       // whose tax code or VAT number does not pass the fiscal rules would
       // otherwise block every unrelated edit of the panel — while the server,
       // never receiving the block, has nothing to complain about.

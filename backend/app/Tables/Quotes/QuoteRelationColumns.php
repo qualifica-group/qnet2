@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * The GENERIC relation-derived column machinery for the `quotes` domain
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
- * split, engineering.md §6): `opportunity`/`quote_status`/`commercial`/
- * `reporter`/`supervisor`/`company`/`company_site` (own-FK, simple
- * relation-label columns) — a
+ * split, engineering.md §6): `opportunity`/`quote_workflow_status`/
+ * `commercial`/`reporter`/`supervisor`/`company`/`company_site` (own-FK,
+ * simple relation-label columns) — a
  * `whereHas` set filter (allow-listed columns only, never orderByRaw/
  * whereRaw on raw input — backend.md §8), a correlated subquery sort, and
  * Excel-like distinct values (spec 0004/0005), mirroring
@@ -47,7 +47,7 @@ final class QuoteRelationColumns
      */
     private const array DERIVED_RELATIONS = [
         'opportunity' => ['relation' => 'opportunity', 'table' => 'opportunities', 'fk' => 'opportunity_id'],
-        'quote_status' => ['relation' => 'quoteStatus', 'table' => 'quote_statuses', 'fk' => 'quote_status_id'],
+        'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
         'reporter' => ['relation' => 'reporter', 'table' => 'referents', 'fk' => 'reporter_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
@@ -136,6 +136,21 @@ final class QuoteRelationColumns
             ->pluck($label)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+    }
+
+    /**
+     * `whereHas` on a relation's own `name`, bound and never raw — shared by
+     * a derived-column set filter (applyFilter) and its advanced-filter twin
+     * (QuotesTableDefinition::applyAdvancedFilter, `quote_workflow_status`).
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<int, string>  $values
+     */
+    public function applyNameWhereHas(Builder $query, string $relation, array $values): void
+    {
+        $query->whereHas($relation, static function (Builder $relatedQuery) use ($values): void {
+            $relatedQuery->whereIn('name', $values);
+        });
     }
 
     /**

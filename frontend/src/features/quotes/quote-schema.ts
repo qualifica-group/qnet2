@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
+import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**
  * Zod schema for the quote create/edit form, built as a factory so validation
@@ -156,7 +157,15 @@ function baseFields(t: TFunction) {
     // form always displays it (read-only in edit) and the create form must
     // block submit until it is set.
     opportunity_id: requiredRelationId(t('quotes.form.opportunityRequired')),
-    quote_status_id: z.number().nullable(),
+    // Spec 0083: the operational status of the quote, picked from the set the
+    // backend resolved for it. Nullable on create — omitted means "assign the
+    // `open` row of the resolved set" (AC-020).
+    quote_workflow_status_id: z.number().nullable(),
+    // Transition note. Never persisted on the quote: it becomes a note on the
+    // parent opportunity's thread, and is mandatory only when the TARGET status
+    // carries `requires_note` (AC-023). The requirement is a refine on the
+    // update schema, not a field-level rule, because it depends on the set.
+    note: z.string().max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.noteMax')).nullable(),
     commercial_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
@@ -191,9 +200,40 @@ export function buildCreateQuoteSchema(t: TFunction) {
   return z.object(baseFields(t))
 }
 
-/** Edit schema; partial PATCH is computed by the caller. Same shape as create (opportunity_id/code stay read-only, enforced by the form's field permissions, not the schema). */
-export function buildUpdateQuoteSchema(t: TFunction) {
-  return z.object(baseFields(t))
+/**
+ * Edit schema; partial PATCH is computed by the caller. Same shape as create
+ * (opportunity_id/code stay read-only, enforced by the form's field
+ * permissions, not the schema), plus the `requires_note` rule of spec 0083.
+ *
+ * The rule mirrors the server exactly (AC-023/AC-026) and therefore needs both
+ * the resolved set — to look the TARGET row up — and the status the quote
+ * currently holds: an unchanged status demands nothing, so re-saving a quote
+ * already sitting on a `requires_note` row never asks for a note again.
+ */
+export function buildUpdateQuoteSchema(
+  t: TFunction,
+  statuses: QuoteWorkflowStatusRef[],
+  originalStatusId: number | null,
+) {
+  return z.object(baseFields(t)).superRefine((values, ctx) => {
+    const targetId = values.quote_workflow_status_id
+
+    if (targetId === null || targetId === originalStatusId) {
+      return
+    }
+
+    const target = statuses.find((status) => status.id === targetId) ?? null
+
+    if (target?.requires_note !== true || (values.note ?? '').trim() !== '') {
+      return
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['note'],
+      message: t('quotes.form.noteRequired'),
+    })
+  })
 }
 
 export type CreateQuoteFormValues = z.infer<ReturnType<typeof buildCreateQuoteSchema>>

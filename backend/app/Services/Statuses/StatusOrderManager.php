@@ -3,9 +3,7 @@
 namespace App\Services\Statuses;
 
 use App\Models\ContractStatus;
-use App\Models\OpportunityStatus;
 use App\Models\PipelineStatus;
-use App\Models\QuoteStatus;
 use App\Models\RewardStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,17 +11,20 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * `sort_order` placement/resequencing for every status configurator (spec
- * 0039, D-5; extended to opportunity_statuses by spec 0043; extended to
- * reward_statuses by spec 0060; extended to quote_statuses by spec 0065;
- * extended to contract_statuses by spec 0072): server-managed since the
- * field left store/update. Generic on the sibling status models via a
- * class-string (no speculative interface — engineering.md §1.3): all five
- * share the exact same name/system_key/sort_order shape, differing only in
- * which system rows pin to the HEAD (`$modelClass::SYSTEM_HEAD_KEYS` — one
- * row each: `[New]` for four of them, `[Pending]` for RewardStatus) and
- * which pin to the TAIL (`$modelClass::SYSTEM_TAIL_KEYS` — PipelineStatus:
- * `[Closed]`; OpportunityStatus/QuoteStatus/RewardStatus: `[Won, Lost]`;
- * ContractStatus: `[Suspended, Cancelled, Terminated]`, spec 0072 D-2).
+ * 0039, D-5; extended to reward_statuses by spec 0060; extended to
+ * contract_statuses by spec 0072): server-managed since the field left
+ * store/update. Generic on the sibling status models via a class-string (no
+ * speculative interface — engineering.md §1.3): PipelineStatus/RewardStatus/
+ * ContractStatus share the exact same name/system_key/sort_order shape,
+ * differing only in which system rows pin to the HEAD
+ * (`$modelClass::SYSTEM_HEAD_KEYS` — `[New]` for PipelineStatus/
+ * ContractStatus, `[Pending]` for RewardStatus) and which pin to the TAIL
+ * (`$modelClass::SYSTEM_TAIL_KEYS` — PipelineStatus: `[Closed]`;
+ * RewardStatus: `[Won, Lost]`; ContractStatus: `[Suspended, Cancelled,
+ * Terminated]`, spec 0072 D-2). The `opportunity_statuses`/`quote_statuses`
+ * configurators this class once also covered are gone (spec 0082/0083): an
+ * Opportunity's/Offerta's status is COMPUTED/criteria-resolved, no longer a
+ * flat configurable pick-list.
  *
  * Sequence invariant, maintained by every method here: each SYSTEM_HEAD_KEYS
  * row in declared order starting at 0 (+STEP apart), then custom, then each
@@ -42,7 +43,7 @@ class StatusOrderManager
      * in the same transaction so they always stay last, in their declared
      * order.
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      */
     public function placeNew(string $modelClass): int
     {
@@ -64,9 +65,9 @@ class StatusOrderManager
      * missing) — validated here so the guard holds regardless of caller
      * (defense in depth beyond the FormRequest's own `distinct` rule).
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
-     * @return Collection<int, PipelineStatus|OpportunityStatus|RewardStatus|QuoteStatus|ContractStatus>
+     * @return Collection<int, PipelineStatus|RewardStatus|ContractStatus>
      *
      * @throws HttpException 422
      */
@@ -94,7 +95,7 @@ class StatusOrderManager
      * STEP apart from 0, and returns the last one's sort_order — i.e. the
      * slot the first custom row sits STEP after.
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      */
     private function placeHead(string $modelClass): int
     {
@@ -114,7 +115,7 @@ class StatusOrderManager
      * length alone (placeHead() guarantees the rows sit exactly there) — read
      * by placeNew() when the table carries no custom row yet.
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      */
     private function headSequenceEnd(string $modelClass): int
     {
@@ -126,7 +127,7 @@ class StatusOrderManager
      * STEP apart, starting right after $lastCustomOrder (the last custom
      * row's sort_order, or the head sequence's end when there is none).
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      */
     private function bumpTail(string $modelClass, int $lastCustomOrder): void
     {
@@ -143,7 +144,7 @@ class StatusOrderManager
      * $orderedIds must be exactly the custom (non-system) id set: no
      * duplicates, no system-row id, none missing.
      *
-     * @param  class-string<PipelineStatus>|class-string<OpportunityStatus>|class-string<RewardStatus>|class-string<QuoteStatus>|class-string<ContractStatus>  $modelClass
+     * @param  class-string<PipelineStatus>|class-string<RewardStatus>|class-string<ContractStatus>  $modelClass
      * @param  array<int, int>  $orderedIds
      *
      * @throws HttpException 422

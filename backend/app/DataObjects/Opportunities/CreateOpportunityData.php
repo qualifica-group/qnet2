@@ -35,11 +35,9 @@ namespace App\DataObjects\Opportunities;
  * Spec 0047: `stateId` (Regione, D1) is a plain editable scalar — inherited
  * from the lead (LeadOpportunityDefaultsResolver/ConvertLeadToOpportunity)
  * or submitted directly on a standalone create — part of attributes().
- * `workflowStatusId` is the OPTIONAL, explicit `opportunity_workflow_status_id`
- * override (AC-017, validated by ValidatesWorkflowStatus to belong to the
- * resolved set); when null, OpportunityService resolves it via
- * OpportunityWorkflowResolver instead — it is NEVER part of attributes()
- * (never mass-assigned, always written by the resolver).
+ * Spec 0083, D-2: `workflowStatusId` is REMOVED — the Opportunity carries no
+ * working-state override any more, the configurator having moved onto the
+ * Offerta (-> Quote).
  *
  * Spec 0057, D-5: `name` is REMOVED entirely — it is no longer a client
  * input anywhere (form or request-management create). OpportunityService
@@ -87,7 +85,6 @@ final readonly class CreateOpportunityData
         public ?string $expectedCloseDate,
         public ?int $successProbability,
         public ?int $stateId = null,
-        public ?int $workflowStatusId = null,
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public ?array $rewards = null,
@@ -120,7 +117,6 @@ final readonly class CreateOpportunityData
             expectedCloseDate: $data['expected_close_date'] ?? null,
             successProbability: isset($data['success_probability']) ? (int) $data['success_probability'] : null,
             stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
-            workflowStatusId: isset($data['opportunity_workflow_status_id']) ? (int) $data['opportunity_workflow_status_id'] : null,
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,

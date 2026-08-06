@@ -35,11 +35,6 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     is_transferred: false,
     transferred_from: null,
     status: { source: 'quotes', distinct_count: 1, entries: [{ id: 1, name: 'New', color: 'slate', group: 'open', count: 1 }] },
-    workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false },
-    workflow_statuses: [
-      { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false },
-      { id: 101, name: 'In progress', color: 'amber', system_key: null, description: null, requires_note: false },
-    ],
     product_lines: [{ id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 500, name: 'Consulting' } }],
     // Mandatory since the user directive 2026-07-23: the panel starts with one.
     products_of_interest: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],

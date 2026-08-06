@@ -6,14 +6,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
 import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
-import { StatusBadge } from '@/components/record-form/status-badge'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
-import type { RequestWorkflowStatusRef } from '@/features/request-management/types'
 
 interface RequestCreateHeaderProps {
   control: Control<RequestCreateFormValues>
-  /** The set resolved for the criteria typed so far — the badge names the picked row from it. */
-  statuses: RequestWorkflowStatusRef[]
   /** id of the RHF `<form>` the save button attaches to via the HTML `form=` attribute. */
   formId: string
   isSubmitting: boolean
@@ -23,10 +19,9 @@ interface RequestCreateHeaderProps {
 
 /**
  * Identity bar of the create form — the same bar as the work panel's
- * (`RequestWorkHeader`), down to the shared `RECORD_HEADER_CLASS` and the
- * shared `StatusBadge`: heading and live status/callback pills on the left,
- * the actions on the right, a refused submit reported right under the button
- * that was pressed.
+ * (`RequestWorkHeader`), down to the shared `RECORD_HEADER_CLASS`: heading
+ * and the live callback pill on the left, the actions on the right, a
+ * refused submit reported right under the button that was pressed.
  *
  * This bar is the form's ONE heading (user directive 2026-08-03): the module
  * is registered `formOwnsHeader`, so the dedicated page drops its own
@@ -37,23 +32,19 @@ interface RequestCreateHeaderProps {
  *
  * Two pills of the panel are missing here for a reason, not by omission: `#id`
  * and the "Commerciale" (sales pipeline) status do not exist until the record
- * does. The two that CAN be known while filling the form — the working status
- * and the planned callback — render live, exactly as the panel renders its
- * persisted ones.
+ * does. The one that CAN be known while filling the form — the planned
+ * callback — renders live, exactly as the panel renders its persisted one.
  */
 export function RequestCreateHeader({
   control,
-  statuses,
   formId,
   isSubmitting,
   submitError,
   onCancel,
 }: RequestCreateHeaderProps) {
   const { t } = useTranslation()
-  const statusId = useWatch({ control, name: 'opportunity_workflow_status_id' })
   const nextCallbackAt = useWatch({ control, name: 'next_callback_at' })
 
-  const status = statuses.find((candidate) => candidate.id === statusId) ?? null
   const nextCallback = formatDateTimeOptionalTime(nextCallbackAt)
 
   return (
@@ -68,14 +59,6 @@ export function RequestCreateHeader({
           </p>
         </div>
 
-        {status && (
-          <StatusBadge
-            label={t('requestManagement.workPanel.header.workingStatus', { defaultValue: 'Working' })}
-            color={status.color}
-          >
-            {status.name}
-          </StatusBadge>
-        )}
         {nextCallback && (
           <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
             <CalendarClock className="size-3" aria-hidden="true" />

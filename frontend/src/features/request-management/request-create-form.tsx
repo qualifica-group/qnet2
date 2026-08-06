@@ -19,7 +19,6 @@ import { RequestCreateGeneralNotes } from '@/features/request-management/request
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
-import { RequestCreateWorkflowStatusField } from '@/features/request-management/request-create-workflow-status-field'
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 
@@ -45,29 +44,29 @@ interface RequestCreateFormProps {
  * il piu' simile possibile a quella di gestione"). Not a resemblance: the
  * layout primitives are literally the same objects
  * (`@/components/record-form`: `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/
- * `MAIN_COLUMN_CLASS`, `RECORD_HEADER_CLASS`, `StatusBadge`, `SummaryRow`,
+ * `MAIN_COLUMN_CLASS`, `RECORD_HEADER_CLASS`, `SummaryRow`,
  * `RecordFormActions`, the general-notes callout chrome), so the screens
  * sharing them cannot drift apart with a later edit to one of them.
  *
  * Same skeleton as the panel:
- *  - `@container` + `bg-surface`, sticky identity bar with the live status /
- *    callback pills and the save/cancel actions, repeated at the foot of the
+ *  - `@container` + `bg-surface`, sticky identity bar with the live
+ *    callback pill and the save/cancel actions, repeated at the foot of the
  *    form (user directive 2026-08-03) as the panel repeats its own;
  *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
  *    (narrow containers read it before the long form), reordered to the right;
  *  - side column = "Note generali" callout on top, then the summary card;
  *  - main column = the same sections in the same order: product lines and
  *    products of interest FIRST (user directive 2026-08-03 — they are the
- *    record's headline information), then working state and next callback,
- *    attribution, dynamic fields, anagrafica.
+ *    record's headline information), then the next callback, attribution,
+ *    dynamic fields, anagrafica.
  *
  * The two differences are structural, not cosmetic: the panel's collaboration
  * block (note/documenti/storico) needs a record to hang off, and its summary
  * lists a commercial context that does not exist before the first save — this
  * one recaps what is about to be created instead.
  *
- * The status select and the dynamic fields stay hidden until a categoria
- * prodotto is picked: both are resolved FROM it.
+ * The dynamic fields stay hidden until a categoria prodotto is picked: they
+ * are resolved FROM it.
  */
 export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProps) {
   const { t } = useTranslation()
@@ -108,7 +107,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <RequestCreateHeader
         control={form.control}
-        statuses={context.workflow_statuses}
         formId={REQUEST_CREATE_FORM_ID}
         isSubmitting={isSubmitting}
         submitError={serverError}
@@ -170,14 +168,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               {/* Right after the product lines, which scope its options. */}
               <RequestCreateProductsOfInterest control={form.control} />
 
-              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
-                <RequestCreateWorkflowStatusField
-                  control={form.control}
-                  statuses={context.workflow_statuses}
-                />
-
-                <RequestCreateCallbackSection control={form.control} />
-              </div>
+              <RequestCreateCallbackSection control={form.control} />
 
               <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
 

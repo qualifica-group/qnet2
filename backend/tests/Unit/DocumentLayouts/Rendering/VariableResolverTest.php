@@ -28,7 +28,7 @@ it('resolves {quote.code} and {quote.created_at} embedded in one run, leaving no
         dlrTextBlock([dlrRun(['text' => 'Offerta {quote.code} del {quote.created_at}'])]),
     ]]]);
 
-    $zip = dlrOpenZip(dlrRender($config, $quote->fresh(['opportunity', 'quoteStatus'])));
+    $zip = dlrOpenZip(dlrRender($config, $quote->fresh(['opportunity', 'quoteWorkflowStatus'])));
     $text = dlrDocumentText($zip);
 
     expect($text)->toContain("Offerta {$quote->code} del 05/03/2026")

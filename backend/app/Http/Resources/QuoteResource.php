@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Quote;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -17,8 +18,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @mixin Quote
  *
  * Shape frozen by spec 0065's data_contract (GET/POST/PATCH /api/quotes...,
- * MT-05). Relies on QuoteService::loadDetail()/DETAIL_RELATIONS having
- * eager-loaded `opportunity`, `quoteStatus`, `commercial`, `reporter`,
+ * MT-05), amended by spec 0083 (T-04) for the working status. Relies on
+ * QuoteService::loadDetail()/DETAIL_RELATIONS having eager-loaded
+ * `opportunity`, `quoteWorkflowStatus`, `commercial`, `reporter`,
  * `supervisor`, `offerLines.product.category`, `offerLines.vatRate`,
  * `costLines.product.category`, `costLines.vatRate`, so resolving any of them
  * here never N+1s (per-line product/category/business-function resolution is
@@ -33,6 +35,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `layout`/`layout_id` (spec 0070) and `payment_method`/`payment_method_id`
  * (user directive 2026-07-30) follow the standard `{id, name}` ref shape
  * (`summarizeByName`), additive alongside every pre-existing key.
+ *
+ * Spec 0083, D-1/D-8: the former flat quote-status pick is REMOVED and
+ * replaced by `quote_workflow_status_id`/`quote_workflow_status` (the
+ * currently resolved working-state row) and `quote_workflow_statuses` (the
+ * full ordered set QuoteWorkflowResolver resolves for THIS offer right now,
+ * for the FE's status select). Resolving the set re-runs the resolver (a
+ * bounded, controlled query), relying on `offerLines.product.category`/
+ * `opportunity.customFieldValueRow` already being eager-loaded so it never
+ * N+1s beyond that one query.
  *
  * `summary.*.gross` is DERIVED here (net + vat) at request time — NEVER
  * persisted (D-9): the 5 persisted aggregates (`revenue_net`, `revenue_vat`,
@@ -55,8 +66,9 @@ class QuoteResource extends JsonResource
             'title' => $this->title,
             'opportunity_id' => $this->opportunity_id,
             'opportunity' => $this->summarizeByName($this->opportunity),
-            'quote_status_id' => $this->quote_status_id,
-            'quote_status' => $this->summarizeStatus($this->quoteStatus),
+            'quote_workflow_status_id' => $this->quote_workflow_status_id,
+            'quote_workflow_status' => $this->summarizeWorkflowStatus($this->quoteWorkflowStatus),
+            'quote_workflow_statuses' => $this->resolveWorkflowStatuses(),
             'commercial_id' => $this->commercial_id,
             'commercial' => $this->summarizeByName($this->commercial),
             'reporter_id' => $this->reporter_id,
@@ -107,16 +119,39 @@ class QuoteResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, name: string, color: string|null, group: string}|null
+     * The currently resolved working-state row (spec 0083, D-1/D-8).
+     *
+     * @return array{id: int, name: string, color: string|null, group: string, requires_note: bool}|null
      */
-    private function summarizeStatus(?Model $status): ?array
+    private function summarizeWorkflowStatus(?Model $status): ?array
     {
         return $status === null ? null : [
             'id' => $status->id,
             'name' => $status->name,
             'color' => $status->color,
             'group' => $status->group->value,
+            'requires_note' => $status->requires_note,
         ];
+    }
+
+    /**
+     * The full ordered set QuoteWorkflowResolver resolves for this offer
+     * RIGHT NOW (spec 0083) — feeds the FE's status select, limited to that
+     * set (AC-050). Carries `sort_order` (data contract), unlike the single
+     * `quote_workflow_status` above.
+     *
+     * @return array<int, array{id: int, name: string, color: string|null, group: string, requires_note: bool, sort_order: int}>
+     */
+    private function resolveWorkflowStatuses(): array
+    {
+        $resolver = app(QuoteWorkflowResolver::class);
+
+        return $resolver->statusesFor($resolver->resolve($this->resource))
+            ->map(fn (Model $status): array => [
+                ...$this->summarizeWorkflowStatus($status),
+                'sort_order' => $status->sort_order,
+            ])
+            ->all();
     }
 
     /**

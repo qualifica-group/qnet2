@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -71,8 +72,9 @@ function quoteFixture(): QuoteDetailWithPermissions {
     title: 'Sample quote',
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
-    quote_status_id: 1,
-    quote_status: { id: 1, name: 'Bozza', color: 'slate', group: 'open' },
+    quote_workflow_status_id: 1,
+    quote_workflow_status: WORKFLOW_STATUS_OPEN,
+    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
     commercial_id: null,
     commercial: null,
     reporter_id: null,

@@ -131,7 +131,7 @@ class ContractResource extends JsonResource
     /**
      * A `ContractStatus` row (either `contract_status` or
      * `status_before_suspension`), same `{id, name, color, group}` shape
-     * QuoteResource uses for `quote_status`.
+     * QuoteResource uses for `quote_workflow_status`.
      *
      * @return array{id: int, name: string, color: string|null, group: string}|null
      */

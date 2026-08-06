@@ -67,9 +67,8 @@ class TableCellUpdateService
         $fieldKey = $column['editableField'] ?? $columnId;
 
         // Step 3.5 (spec 0054, D-5): `note` is only accepted on a column that
-        // explicitly opts in (`notable` => true, e.g. request-management's
-        // `workflow_status`) — anywhere else, a submitted note is rejected so
-        // it never becomes a side-channel write.
+        // explicitly opts in (`notable` => true) — anywhere else, a submitted
+        // note is rejected so it never becomes a side-channel write.
         if ($note !== null && ($column['notable'] ?? false) !== true) {
             throw ValidationException::withMessages([
                 'note' => [__('A note is not accepted on this column.')],

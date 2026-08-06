@@ -2,11 +2,10 @@
 
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\UserTableFilter;
@@ -20,6 +19,12 @@ use Spatie\Permission\Models\Permission;
  * "Stati opportunita'" module is gone. Covers AC-005/006/008/009/010/011/012;
  * the resolver's own rules (AC-001..AC-004/AC-007) live in
  * tests/Unit/Services/Opportunities/OpportunityStatusResolverTest.php.
+ *
+ * Spec 0083 (D-2/D-8) re-targets the fallback source: the Opportunity no
+ * longer carries its own working-state FK at all — a quote-less opportunity
+ * displays the GLOBAL default quote-workflow set's `open` row, a real,
+ * user-configurable QuoteWorkflowStatus row (`quote_workflow_id IS NULL`),
+ * never a per-opportunity override.
  */
 uses(RefreshDatabase::class);
 
@@ -90,8 +95,8 @@ it('update: submitting opportunity_status_id -> 422 prohibited (AC-005)', functi
 
 it('detail: exposes `status` and no longer exposes opportunity_status (AC-006)', function () {
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create(['name' => 'Da approvare', 'color' => 'blue']);
-    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $status->id]);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare', 'color' => 'blue']);
+    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id]);
     Sanctum::actingAs(computedStatusActor());
 
     $data = $this->getJson("/api/opportunities/{$opportunity->id}")->assertOk()->json('data');
@@ -111,10 +116,10 @@ it('detail: exposes `status` and no longer exposes opportunity_status (AC-006)',
 
 it('rows: the `status` cell carries the computed summary', function () {
     $opportunity = Opportunity::factory()->create();
-    $first = QuoteStatus::factory()->create(['name' => 'In lavorazione', 'sort_order' => 20]);
-    $second = QuoteStatus::factory()->create(['name' => 'In corso', 'sort_order' => 30]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $first->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $second->id]);
+    $first = QuoteWorkflowStatus::factory()->create(['name' => 'In lavorazione', 'sort_order' => 20]);
+    $second = QuoteWorkflowStatus::factory()->create(['name' => 'In corso', 'sort_order' => 30]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $first->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $second->id]);
     Sanctum::actingAs(computedStatusActor());
 
     $row = collect($this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25])
@@ -140,14 +145,14 @@ it('columns: `status` is filterable via `set` but never sortable or editable (AC
 });
 
 it('rows: the `status` set filter matches the DISPLAYED status, quotes branch (AC-008)', function () {
-    $wanted = QuoteStatus::factory()->create(['name' => 'Da approvare']);
-    $other = QuoteStatus::factory()->create(['name' => 'Da firmare']);
+    $wanted = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
+    $other = QuoteWorkflowStatus::factory()->create(['name' => 'Da firmare']);
 
     $matching = Opportunity::factory()->create();
-    Quote::factory()->create(['opportunity_id' => $matching->id, 'quote_status_id' => $wanted->id]);
+    Quote::factory()->create(['opportunity_id' => $matching->id, 'quote_workflow_status_id' => $wanted->id]);
 
     $nonMatching = Opportunity::factory()->create();
-    Quote::factory()->create(['opportunity_id' => $nonMatching->id, 'quote_status_id' => $other->id]);
+    Quote::factory()->create(['opportunity_id' => $nonMatching->id, 'quote_workflow_status_id' => $other->id]);
 
     $quoteless = Opportunity::factory()->create();
 
@@ -163,19 +168,22 @@ it('rows: the `status` set filter matches the DISPLAYED status, quotes branch (A
         ->and($ids)->not->toContain($quoteless->id);
 });
 
-it('rows: the `status` set filter matches the working state ONLY for quote-less rows (AC-008)', function () {
-    $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'Da lavorare']);
+it('rows: the `status` set filter matches the GLOBAL default open row ONLY for quote-less rows (AC-008, spec 0083 D-8)', function () {
+    $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    $globalOpen->update(['name' => 'Da lavorare']);
 
+    // Every quote-less opportunity displays the SAME global default `open`
+    // row (D-8) — there is no per-opportunity working-state override any
+    // more (the Opportunity's own working-state column no longer exists).
     $quoteless = Opportunity::factory()->create();
-    $quoteless->forceFill(['opportunity_workflow_status_id' => $workflowStatus->id])->save();
 
-    // Same working state, but it HAS a quote -> the quote's status is what it
-    // displays, so the working-state filter must not match it.
+    // Has a quote -> the quote's own status is what it displays, so the
+    // global default's name must not match it even though it shares no
+    // status with it at all.
     $withQuote = Opportunity::factory()->create();
-    $withQuote->forceFill(['opportunity_workflow_status_id' => $workflowStatus->id])->save();
     Quote::factory()->create([
         'opportunity_id' => $withQuote->id,
-        'quote_status_id' => QuoteStatus::factory()->create(['name' => 'Da approvare'])->id,
+        'quote_workflow_status_id' => QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare'])->id,
     ]);
 
     Sanctum::actingAs(computedStatusActor());
@@ -188,15 +196,17 @@ it('rows: the `status` set filter matches the working state ONLY for quote-less 
     expect($ids)->toBe([$quoteless->id]);
 });
 
-it('values: the `status` option list unions both vocabularies', function () {
-    $quoteStatus = QuoteStatus::factory()->create(['name' => 'Da approvare']);
-    $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'Da lavorare']);
+it('values: the `status` option list unions quote statuses and the global default open row (spec 0083 D-8)', function () {
+    $quoteStatus = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
+    $globalOpen = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    $globalOpen->update(['name' => 'Da lavorare']);
 
     $withQuote = Opportunity::factory()->create();
-    Quote::factory()->create(['opportunity_id' => $withQuote->id, 'quote_status_id' => $quoteStatus->id]);
+    Quote::factory()->create(['opportunity_id' => $withQuote->id, 'quote_workflow_status_id' => $quoteStatus->id]);
 
-    $quoteless = Opportunity::factory()->create();
-    $quoteless->forceFill(['opportunity_workflow_status_id' => $workflowStatus->id])->save();
+    // A quote-less opportunity is what pulls the global default's name into
+    // the union (D-8) — without one, only quote statuses in use would appear.
+    Opportunity::factory()->create();
 
     Sanctum::actingAs(computedStatusActor());
 

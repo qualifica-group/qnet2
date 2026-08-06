@@ -105,15 +105,15 @@ vi.mock('@/features/table/table-view', () => ({
   }),
 }))
 
-function opportunity(quotesCount: number, requiresQuote?: boolean) {
-  return { id: 42, quotes_count: quotesCount, requires_quote: requiresQuote }
+function opportunity(quotesCount: number) {
+  return { id: 42, quotes_count: quotesCount }
 }
 
-function renderPanel(quotesCount: number, requiresQuote?: boolean) {
+function renderPanel(quotesCount: number) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <OpportunityQuotesSection opportunity={opportunity(quotesCount, requiresQuote)} />
+      <OpportunityQuotesSection opportunity={opportunity(quotesCount)} />
     </QueryClientProvider>,
   )
 }
@@ -156,33 +156,12 @@ describe('OpportunityQuotesSection — permission gating (AC-040/041)', () => {
 })
 
 /**
- * User directive 2026-08-05: an opportunity whose products cannot proceed to
- * an offer (`requires_quote: false`) must show neither the offers nor any way
- * to create one.
+ * Spec 0083 (D-5, AC-053): the gate that used to hide the panel on an
+ * opportunity whose products could not proceed to an offer is removed — the
+ * panel is visible on any opportunity with `quotes.viewAny`.
  */
-describe('OpportunityQuotesSection — quote eligibility gating', () => {
-  it('renders nothing when requires_quote is false, even with existing quotes', () => {
-    renderPanel(3, false)
-
-    expect(screen.queryByText('Quotes')).not.toBeInTheDocument()
-    expect(screen.queryByRole('region')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'New quote' })).not.toBeInTheDocument()
-  })
-
-  it('renders nothing when requires_quote is false and there is no quote yet', () => {
-    renderPanel(0, false)
-
-    expect(screen.queryByText('No quotes yet')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'New quote' })).not.toBeInTheDocument()
-  })
-
-  it('renders the panel when requires_quote is true', () => {
-    renderPanel(3, true)
-
-    expect(screen.getByRole('region', { name: 'table-quotes-42' })).toBeInTheDocument()
-  })
-
-  it('renders the panel when requires_quote is absent (older payload)', () => {
+describe('OpportunityQuotesSection — visible on any opportunity (AC-053)', () => {
+  it('renders the panel regardless of the opportunity', () => {
     renderPanel(3)
 
     expect(screen.getByRole('region', { name: 'table-quotes-42' })).toBeInTheDocument()

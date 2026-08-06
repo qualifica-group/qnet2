@@ -4,7 +4,7 @@ namespace App\Tables;
 
 use App\Models\Company;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\QuoteService;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Gate;
  *
  * `code`/`title`/`created_at` and the 3 persisted header aggregates
  * (`revenue_net`/`cost_net`/`margin_net`, D-9) are real DB columns handled
- * entirely by the generic engine. `opportunity`/`quote_status`/`commercial`/
- * `reporter`/`supervisor` are relation-derived columns delegated to
+ * entirely by the generic engine. `opportunity`/`quote_workflow_status`/
+ * `commercial`/`reporter`/`supervisor` are relation-derived columns delegated to
  * QuoteRelationColumns (file-size split, engineering.md §6): own-FK simple
  * relations, mirroring OpportunitiesTableDefinition.
  *
@@ -41,6 +41,17 @@ class QuotesTableDefinition extends AbstractTableDefinition
     private const string OPERATIONAL_SITE_FK = 'operational_site_id';
 
     private const string QUOTES_TABLE = 'quotes';
+
+    /**
+     * The `quote_workflow_status` advanced filter's name
+     * (QuoteAdvancedFilterCatalog): a SET filter matched by the related
+     * row's `name`, not by id — no `quote-workflow-statuses/for-select`
+     * route exists to back an id-based Relation/AsyncSearch picker.
+     */
+    private const string WORKFLOW_STATUS_ADVANCED_FILTER = 'quote_workflow_status';
+
+    /** Maximum number of names honoured in the advanced filter (caps the WHERE IN cardinality, defence in depth). */
+    private const int MAX_FILTER_VALUES = 200;
 
     public function __construct(
         private readonly QuoteRelationColumns $relationColumns,
@@ -75,7 +86,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // inline avatar (data URI) without a per-row query — mirrors
         // OpportunitiesTableDefinition's own supervisor.avatar eager-load.
         return Quote::query()->with([
-            'opportunity', 'quoteStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
             'company', 'companySite',
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
@@ -147,7 +158,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'code' => $row->code,
             'title' => $row->title,
             'opportunity' => $this->summarize($row->opportunity),
-            'quote_status' => $this->summarizeQuoteStatus($row->quoteStatus),
+            'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
             'commercial' => $this->summarize($row->commercial),
             'reporter' => $this->summarize($row->reporter),
             'supervisor' => $this->userSummary($row->supervisor),
@@ -182,12 +193,13 @@ class QuotesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * The quote status projected WITH its `color` token, so the grid renders
-     * the colored status badge; the generic summarize() would drop it.
+     * The workflow status projected WITH its `color` token, so the grid
+     * renders the colored status badge; the generic summarize() would drop
+     * it.
      *
      * @return array{id: int, name: string, color: string|null}|null
      */
-    private function summarizeQuoteStatus(?QuoteStatus $status): ?array
+    private function summarizeWorkflowStatus(?QuoteWorkflowStatus $status): ?array
     {
         return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
@@ -258,6 +270,33 @@ class QuotesTableDefinition extends AbstractTableDefinition
         }
 
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
+    }
+
+    /**
+     * `quote_workflow_status`'s advanced filter (QuoteAdvancedFilterCatalog)
+     * is a SET filter matched by the related row's `name` (see the
+     * constant's docblock) — the generic default (a plain `whereHas`-by-id
+     * for `type: relation`/`async_search`) cannot express it.
+     *
+     * @param  Builder<Quote>  $query
+     * @param  array<string, mixed>  $descriptor
+     */
+    public function applyAdvancedFilter(Builder $query, string $name, array $descriptor, mixed $value): bool
+    {
+        if ($name === self::WORKFLOW_STATUS_ADVANCED_FILTER) {
+            $values = array_slice(array_values(array_filter(
+                is_array($value) ? $value : [$value],
+                static fn (mixed $item): bool => is_string($item) && $item !== '',
+            )), 0, self::MAX_FILTER_VALUES);
+
+            if ($values !== []) {
+                $this->relationColumns->applyNameWhereHas($query, 'quoteWorkflowStatus', $values);
+            }
+
+            return true;
+        }
+
+        return parent::applyAdvancedFilter($query, $name, $descriptor, $value);
     }
 
     /**

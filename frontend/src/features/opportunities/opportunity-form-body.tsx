@@ -16,7 +16,6 @@ import { OpportunityLeadSection } from '@/features/opportunities/opportunity-lea
 import { OpportunityPlanningSection } from '@/features/opportunities/opportunity-planning-section'
 import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
 import { OpportunityTeamSection } from '@/features/opportunities/opportunity-team-section'
-import { OpportunityWorkflowStatusField } from '@/features/opportunities/opportunity-workflow-status-field'
 import {
   NO_LEAD_SUBMISSION,
   useOpportunityForm,
@@ -137,9 +136,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
 
   const { isSubmitting } = form.formState
 
-  // Spec 0047 (D1): the working-state select is limited to the resolved set
-  // exposed on the loaded instance; `null` in create mode (set not yet known).
-  const workflowStatuses = mode.type === 'edit' ? (mode.opportunity.workflow_statuses ?? []) : null
   const initialRewards = mode.type === 'edit' ? (mode.opportunity.rewards ?? EMPTY_REWARDS) : EMPTY_REWARDS
 
   return (
@@ -152,7 +148,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
           control={form.control}
           isEdit={mode.type === 'edit'}
           status={mode.type === 'edit' ? mode.opportunity.status : null}
-          workflowStatuses={workflowStatuses}
           formId={OPPORTUNITY_FORM_ID}
           isSubmitting={isSubmitting}
           isSubmitDisabled={leadIsBlocked}
@@ -189,16 +184,11 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
                 knownProductsOfInterest={knownProductsOfInterest}
               />
 
-              {/* Stato di lavorazione + pianificazione side by side. The
-                  computed status is NOT repeated here (user directive
-                  2026-08-05): the identity bar carries it, merged the way the
-                  table merges it. On create the working-state set is unknown,
-                  so that cell renders nothing and planning takes the row. */}
-              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
-                <OpportunityWorkflowStatusField control={form.control} statuses={workflowStatuses} />
-
-                <OpportunityPlanningSection control={form.control} />
-              </div>
+              {/* Spec 0083: l'Opportunita' non ha piu' uno stato di lavorazione
+                  proprio (lo stato vive sull'Offerta), quindi la pianificazione
+                  prende l'intera riga. Lo stato calcolato non si ripete qui: lo
+                  porta la barra di identita'. */}
+              <OpportunityPlanningSection control={form.control} />
 
               <OpportunityAttributionSection
                 control={form.control}

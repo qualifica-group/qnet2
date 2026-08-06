@@ -22,7 +22,7 @@ function opportunity(overrides: Partial<OpportunityDetailWithPermissions> = {}):
     name: 'Enterprise deal',
     registry_id: 10,
     registry: { id: 10, name: 'Acme S.p.A.' },
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
+    status: { source: 'default', distinct_count: 0, entries: [] },
     referent_id: null,
     referent: null,
     commercial_id: null,

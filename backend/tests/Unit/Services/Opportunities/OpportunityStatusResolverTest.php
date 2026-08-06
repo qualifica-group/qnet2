@@ -1,9 +1,8 @@
 <?php
 
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,7 +12,9 @@ use Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 /**
- * Spec 0082, BR-1..BR-4: the computed Opportunity status.
+ * Spec 0083, D-2/D-8: the Opportunity carries no status of its own anymore —
+ * COMPUTED off its Quotes' `quote_workflow_status`, falling back to the
+ * GLOBAL default quote-workflow set's `open` row when it has no Quote.
  */
 function resolver(): OpportunityStatusResolver
 {
@@ -21,15 +22,15 @@ function resolver(): OpportunityStatusResolver
 }
 
 // ---------------------------------------------------------------------------
-// BR-1/BR-2 — quotes drive the status
+// AC-030 — the quotes' own statuses drive the summary
 // ---------------------------------------------------------------------------
 
-it('collapses quotes sharing one status into a single entry carrying the count (AC-001)', function () {
+it('collapses quotes sharing one status into a single entry carrying the count', function () {
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create(['name' => 'Da approvare', 'color' => 'slate']);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare', 'color' => 'slate']);
     Quote::factory()->count(3)->create([
         'opportunity_id' => $opportunity->id,
-        'quote_status_id' => $status->id,
+        'quote_workflow_status_id' => $status->id,
     ]);
 
     $summary = resolver()->resolve($opportunity->fresh());
@@ -45,13 +46,13 @@ it('collapses quotes sharing one status into a single entry carrying the count (
     ]]);
 });
 
-it('returns one entry per distinct quote status, ordered by sort_order (AC-002)', function () {
+it('returns one entry per distinct quote workflow status, ordered by sort_order (AC-030)', function () {
     $opportunity = Opportunity::factory()->create();
-    $inCorso = QuoteStatus::factory()->create(['name' => 'In corso', 'sort_order' => 30]);
-    $inLavorazione = QuoteStatus::factory()->create(['name' => 'In lavorazione', 'sort_order' => 20]);
+    $inCorso = QuoteWorkflowStatus::factory()->create(['name' => 'In corso', 'sort_order' => 30]);
+    $inLavorazione = QuoteWorkflowStatus::factory()->create(['name' => 'In lavorazione', 'sort_order' => 20]);
 
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $inCorso->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $inLavorazione->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $inCorso->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $inLavorazione->id]);
 
     $summary = resolver()->resolve($opportunity->fresh());
 
@@ -62,11 +63,11 @@ it('returns one entry per distinct quote status, ordered by sort_order (AC-002)'
 
 it('counts quotes per status independently when the distribution is uneven', function () {
     $opportunity = Opportunity::factory()->create();
-    $draft = QuoteStatus::factory()->create(['name' => 'Da approvare', 'sort_order' => 0]);
-    $accepted = QuoteStatus::factory()->create(['name' => 'Da firmare', 'sort_order' => 10]);
+    $draft = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare', 'sort_order' => 0]);
+    $accepted = QuoteWorkflowStatus::factory()->create(['name' => 'Da firmare', 'sort_order' => 10]);
 
-    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $draft->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $accepted->id]);
+    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $draft->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $accepted->id]);
 
     $summary = resolver()->resolve($opportunity->fresh());
 
@@ -74,45 +75,36 @@ it('counts quotes per status independently when the distribution is uneven', fun
 });
 
 // ---------------------------------------------------------------------------
-// BR-4 — the workflow-status fallback
+// AC-031 — the global default fallback, zero quotes
 // ---------------------------------------------------------------------------
 
-it('falls back to the working state when the opportunity has no quote (AC-003)', function () {
-    $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'Da lavorare', 'color' => 'blue']);
+it("falls back to the global default set's open row when the opportunity has no quote (AC-031)", function () {
     $opportunity = Opportunity::factory()->create();
-    $opportunity->forceFill(['opportunity_workflow_status_id' => $workflowStatus->id])->save();
 
-    $summary = resolver()->resolve($opportunity->fresh());
-
-    expect($summary['source'])->toBe(OpportunityStatusResolver::SOURCE_WORKFLOW);
-    expect($summary['distinct_count'])->toBe(1);
-    expect($summary['entries'])->toBe([[
-        'id' => $workflowStatus->id,
-        'name' => 'Da lavorare',
-        'color' => 'blue',
-        'group' => $workflowStatus->group->value,
-        'count' => 1,
-    ]]);
-});
-
-it('returns an empty summary with no quote and no working state (AC-004)', function () {
-    $opportunity = Opportunity::factory()->create();
+    $globalOpen = QuoteWorkflowStatus::query()
+        ->whereNull('quote_workflow_id')
+        ->where('system_key', 'open')
+        ->sole();
 
     $summary = resolver()->resolve($opportunity->fresh());
 
     expect($summary)->toBe([
-        'source' => OpportunityStatusResolver::SOURCE_WORKFLOW,
-        'distinct_count' => 0,
-        'entries' => [],
+        'source' => OpportunityStatusResolver::SOURCE_DEFAULT,
+        'distinct_count' => 1,
+        'entries' => [[
+            'id' => $globalOpen->id,
+            'name' => $globalOpen->name,
+            'color' => $globalOpen->color,
+            'group' => $globalOpen->group->value,
+            'count' => 0,
+        ]],
     ]);
 });
 
-it('ignores the working state as soon as one quote exists', function () {
-    $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'Da lavorare']);
+it("prefers the quotes' own statuses over the default fallback as soon as one quote exists", function () {
     $opportunity = Opportunity::factory()->create();
-    $opportunity->forceFill(['opportunity_workflow_status_id' => $workflowStatus->id])->save();
-    $quoteStatus = QuoteStatus::factory()->create(['name' => 'Da approvare']);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $quoteStatus->id]);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id]);
 
     $summary = resolver()->resolve($opportunity->fresh());
 
@@ -126,8 +118,8 @@ it('ignores the working state as soon as one quote exists', function () {
 
 it('produces the same summary from an eager-loaded model as from a bare one', function () {
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create(['name' => 'Da approvare']);
-    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $status->id]);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
+    Quote::factory()->count(2)->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id]);
 
     $bare = resolver()->resolve(Opportunity::query()->findOrFail($opportunity->id));
     $eager = resolver()->resolve(
@@ -137,11 +129,11 @@ it('produces the same summary from an eager-loaded model as from a bare one', fu
     expect($eager)->toBe($bare);
 });
 
-it('resolves an eager-loaded page without lazy loading (AC-007)', function () {
-    $status = QuoteStatus::factory()->create(['name' => 'Da approvare']);
+it('resolves an eager-loaded page without lazy loading', function () {
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'Da approvare']);
     $opportunities = Opportunity::factory()->count(3)->create();
     foreach ($opportunities as $opportunity) {
-        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $status->id]);
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $status->id]);
     }
 
     Opportunity::preventLazyLoading();

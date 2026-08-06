@@ -23,9 +23,9 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  *    sortable (no single related row to order by), and inline-editable
  *    (spec 0075) through the `product_lines` collection it projects.
  *  - `operator_ga2` ("Operatore") — the Account Manager at pivot position 2
- *    (GA2), display-only.
- *  - `workflow_status` ("Stato di lavorazione") — the related working-state
- *    row's name + color token for the badge, sortable + set-filterable.
+ *    (GA2), display-only. Spec 0083, D-2: the inline-editable `workflow_status`
+ *    column is REMOVED — the Opportunity resolves no working state of its
+ *    own any more.
  *  - `first_name`/`last_name`/`tax_code`/`phone` — the CLIENT's anagraphic
  *    fields, read from the Registry's PersonalData card (phone = its primary
  *    phone/mobile contact), inline-editable, and — user directive 2026-08-03
@@ -186,37 +186,6 @@ final class RequestColumnCatalog
                     'scope' => ['operational_site_id' => 'operational_site'],
                 ],
                 'nullable' => true,
-            ],
-            [
-                // Inline cell-editing (spec 0054, D-4/D-5/D-6): the DISPLAYED
-                // id ('workflow_status') differs from the WRITTEN field
-                // ('opportunity_workflow_status_id', the only key present in
-                // RequestManagementAuthorization), hence `editableField`. The
-                // write goes through RequestManagementTableDefinition's
-                // updateCell() override into
-                // RequestManagementService::updateWork(), the single choke
-                // point that enforces set-membership (AC-011) AND the
-                // mandatory-note rule for a `requires_note` target status
-                // (D-5) — never a plain `$row->update()`. `notable: true`
-                // is this engine's ONLY column allowing a `note` in the PATCH
-                // payload (D-5/AC-012). Not nullable: updateWork() has no
-                // "clear the status" semantics, so `value: null` 422s rather
-                // than silently no-op-ing.
-                'id' => 'workflow_status',
-                'label' => 'requestManagement.columns.workflowStatus',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-                'editable' => true,
-                // Spec 0055, D-1/D-3: a SELECT over the options optionsFor()
-                // resolves, not the text editor the `type` would imply — and
-                // it is `editor`, not `editableField`, that tells the
-                // validator this cell's value is an id.
-                'editor' => 'select',
-                'editableField' => 'opportunity_workflow_status_id',
-                'notable' => true,
             ],
             // `format` (user directive 2026-07-23): an inline edit stores the
             // value in the SAME canonical shape the card form does — the

@@ -2,7 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -130,18 +130,18 @@ it('AC-007: a user without quotes.viewAny is denied even with opportunityId set'
     ])->assertForbidden();
 });
 
-it('AC-008: values for quote_status scoped to opportunity A excludes statuses only present on B', function () {
+it('AC-008: values for quote_workflow_status scoped to opportunity A excludes statuses only present on B', function () {
     $actor = quoteTableUserWith(['viewAny']);
     $opportunityA = Opportunity::factory()->create();
     $opportunityB = Opportunity::factory()->create();
-    $statusOnA = QuoteStatus::factory()->create(['name' => 'In revisione']);
-    $statusOnlyOnB = QuoteStatus::factory()->create(['name' => 'Solo su B']);
-    Quote::factory()->create(['opportunity_id' => $opportunityA->id, 'quote_status_id' => $statusOnA->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunityB->id, 'quote_status_id' => $statusOnlyOnB->id]);
+    $statusOnA = QuoteWorkflowStatus::factory()->create(['name' => 'In revisione']);
+    $statusOnlyOnB = QuoteWorkflowStatus::factory()->create(['name' => 'Solo su B']);
+    Quote::factory()->create(['opportunity_id' => $opportunityA->id, 'quote_workflow_status_id' => $statusOnA->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunityB->id, 'quote_workflow_status_id' => $statusOnlyOnB->id]);
     Sanctum::actingAs($actor);
 
     $values = $this->postJson('/api/tables/quotes/values', [
-        'columnId' => 'quote_status', 'opportunityId' => $opportunityA->id,
+        'columnId' => 'quote_workflow_status', 'opportunityId' => $opportunityA->id,
     ])->assertOk()->json('data.values');
 
     expect($values)->toContain('In revisione')

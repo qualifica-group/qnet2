@@ -8,7 +8,6 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
-use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Opportunity;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -16,19 +15,15 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * PATCH /api/request-management/{opportunity} (spec 0049 data_contract):
- * sparse payload, only the submitted keys are ever touched.
+ * sparse payload, only the submitted keys are ever touched. Spec 0083, D-2:
+ * this panel no longer advances any working status of its own — the former
+ * workflow-status override field and its accompanying `note` are GONE.
  *
  * `authorize()` is a pass-through: the resource authorization
  * (`request-management.update`) AND the D-3 manager-scoping guard
  * (RequestManagementScope) both need the resolved {opportunity} route
  * parameter, so they run in the controller (mirrors OpportunityController's
  * own thin-controller pattern), not here.
- *
- * `opportunity_workflow_status_id` reuses ValidatesWorkflowStatus verbatim
- * (spec 0047): membership is checked against the set resolved for the
- * SUBMITTED source_id/product_lines when they travel (both are editable from
- * the panel), falling back to the route's persisted opportunity for whichever
- * of the trait's three criteria this payload left untouched.
  *
  * `product_lines` (user directive 2026-07-31: funzione aziendale + categoria
  * prodotto editable by the commercials from the panel, not only at creation)
@@ -58,7 +53,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesRequestClientProfile, ValidatesRewards, ValidatesWorkflowStatus;
+    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesRequestClientProfile, ValidatesRewards;
 
     public function authorize(): bool
     {
@@ -71,13 +66,6 @@ class UpdateRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'opportunity_workflow_status_id' => ['sometimes', 'nullable', 'integer', 'exists:opportunity_workflow_statuses,id'],
-            // Spec 0054 D-5: the note that accompanies an advance to a
-            // `requires_note` working status. Without a rule here it would be
-            // stripped by validated()/safe() and updateWork() would reject
-            // every such advance as note-less, even with the note filled in.
-            // Same bound as StoreNoteRequest's `body`: it becomes one.
-            'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'attribute_values' => ['sometimes', 'array'],
             'next_callback_at' => ['sometimes', 'nullable', 'date'],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
@@ -127,7 +115,6 @@ class UpdateRequestRequest extends FormRequest
             /** @var Opportunity $opportunity */
             $opportunity = $this->route('opportunity');
 
-            $this->validateWorkflowStatus($validator, $opportunity);
             $this->validateProductLines($validator);
             $this->validateRewards($validator, $opportunity);
             $this->validateClientProfile($validator);

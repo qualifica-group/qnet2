@@ -90,7 +90,7 @@ class DemoDataSeeder extends Seeder
         // seeded above. MUST run before DemoOpportunitySeeder so opportunities
         // whose source matches a workflow resolve to that workflow's own
         // statuses at creation time (the "reference opportunities").
-        $this->call(DemoOpportunityWorkflowSeeder::class);
+        $this->call(DemoQuoteWorkflowSeeder::class);
         // The per-category "stati di lavorazione": MUST run after the seeder
         // above (which clears every workflow before seeding its own) and
         // before DemoOpportunitySeeder, whose rows resolve their working-state

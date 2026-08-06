@@ -80,7 +80,7 @@ class QuoteController extends BaseApiController
         try {
             $this->authorize('create', Quote::class);
 
-            $quote = $this->service->create($request->toData());
+            $quote = $this->service->create($request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new QuoteResource($quote),
@@ -101,7 +101,7 @@ class QuoteController extends BaseApiController
         try {
             $this->authorize('update', $quote);
 
-            $quote = $this->service->update($quote, $request->toData());
+            $quote = $this->service->update($quote, $request->toData(), $request->user());
 
             return $this->okWithPermissions(
                 new QuoteResource($quote),

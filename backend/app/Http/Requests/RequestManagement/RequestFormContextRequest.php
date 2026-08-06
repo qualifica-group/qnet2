@@ -9,8 +9,10 @@ use Illuminate\Validation\Rule;
 
 /**
  * POST /api/request-management/form-context (user directive 2026-07-31): the
- * create form's live preview of the working-status set, the applicable
- * dynamic attributes and their layout, for the criteria typed so far.
+ * create form's live preview of the applicable dynamic attributes and their
+ * layout, for the criteria typed so far. Spec 0083, D-2: the working-status
+ * set this endpoint used to preview is GONE — the Opportunity created by this
+ * form resolves no working-state dimension of its own any more.
  *
  * READ-ONLY despite the verb: the criteria are a collection of objects, which
  * has no sane query-string encoding — the same reason the bulk endpoints of
@@ -40,18 +42,10 @@ class RequestFormContextRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
             'product_lines' => ['sometimes', 'array'],
             'product_lines.*.business_function_id' => ['nullable', 'integer', Rule::exists('business_functions', 'id')],
             'product_lines.*.product_category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')],
         ];
-    }
-
-    public function sourceId(): ?int
-    {
-        $value = $this->validated('source_id');
-
-        return $value === null ? null : (int) $value;
     }
 
     /**

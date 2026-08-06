@@ -25,7 +25,6 @@ export const TEST_SOURCE_ID = 7
 export const EMPTY_FORM_CONTEXT: RequestFormContext = {
   applicable_attributes: [],
   attribute_layout: null,
-  workflow_statuses: [],
 }
 
 export function completeIdentity(): PersonalDataDraft {

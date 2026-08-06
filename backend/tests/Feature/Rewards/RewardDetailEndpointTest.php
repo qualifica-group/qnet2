@@ -1,18 +1,18 @@
 <?php
 
-use App\Enums\QuoteStatusGroup;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Reward;
 use App\Models\RewardType;
 use App\Models\User;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -47,17 +47,13 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
     $referent = Referent::factory()->create();
     $rewardType = RewardType::factory()->create(['name' => 'Buono Amazon 50€', 'color' => 'emerald']);
     $registry = Registry::factory()->create(['name' => 'Acme Srl']);
-    $quoteStatus = QuoteStatus::factory()->create(['name' => 'In corso', 'color' => 'blue', 'group' => QuoteStatusGroup::Open]);
-    $workflowStatus = OpportunityWorkflowStatus::factory()->create(['name' => 'In lavorazione', 'color' => 'amber']);
+    $quoteStatus = QuoteWorkflowStatus::factory()->create(['name' => 'In corso', 'color' => 'blue', 'group' => WorkflowStatusGroup::Open]);
     $category = ProductCategory::factory()->create(['name' => 'Software']);
     $manager = User::factory()->create(['name' => 'Mario Rossi']);
 
-    $opportunity = Opportunity::factory()->create([
-        'registry_id' => $registry->id,
-        'opportunity_workflow_status_id' => $workflowStatus->id,
-    ]);
-    // Spec 0082: the context status is computed from the opportunity's quotes.
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $quoteStatus->id]);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    // Spec 0082/0083: the context status is computed from the opportunity's quotes.
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $quoteStatus->id]);
     OpportunityProductLine::query()->create([
         'opportunity_id' => $opportunity->id,
         'business_function_id' => BusinessFunction::factory()->create()->id,
@@ -95,7 +91,6 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
                     'registry' => ['id', 'name'],
                     'product_categories' => [['id', 'name']],
                     'status' => ['source', 'distinct_count', 'entries'],
-                    'workflow_status' => ['id', 'name', 'color'],
                     'operator' => ['id', 'name', 'avatar_url'],
                 ],
             ]]],
@@ -122,29 +117,29 @@ it('returns the envelope with the exact item shape, ordered by assigned_at desc 
             'distinct_count' => 1,
             'entries' => [['id' => $quoteStatus->id, 'name' => 'In corso', 'color' => 'blue', 'group' => 'open', 'count' => 1]],
         ])
-        ->and($item['context']['workflow_status'])->toBe(['id' => $workflowStatus->id, 'name' => 'In lavorazione', 'color' => 'amber'])
+        ->and($item['context'])->not->toHaveKey('workflow_status')
         ->and($item['context']['operator'])->toMatchArray(['id' => $manager->id, 'name' => 'Mario Rossi']);
 });
 
-it('exposes null workflow_status when the FK is null and null operator when there is no position-2 manager (AC-015)', function () {
+it('exposes no workflow_status key (spec 0083, D-2) and null operator when there is no position-2 manager (AC-015)', function () {
     $referent = Referent::factory()->create();
-    $opportunity = Opportunity::factory()->create(['opportunity_workflow_status_id' => null]);
+    $opportunity = Opportunity::factory()->create();
     Reward::factory()->for($referent)->create(['source_type' => 'opportunity', 'source_id' => $opportunity->id]);
 
     Sanctum::actingAs(rewardsViewerActor());
 
     $item = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0');
 
-    expect($item['context']['workflow_status'])->toBeNull()
+    expect($item['context'])->not->toHaveKey('workflow_status')
         ->and($item['context']['operator'])->toBeNull();
 });
 
 it('reflects the opportunity\'s CURRENT computed status without writing to rewards (AC-016)', function () {
     $referent = Referent::factory()->create();
-    $openStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::Open]);
-    $closedStatus = QuoteStatus::factory()->create(['group' => QuoteStatusGroup::ClosedWon]);
+    $openStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Open]);
+    $closedStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::ClosedWon]);
     $opportunity = Opportunity::factory()->create();
-    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_status_id' => $openStatus->id]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $openStatus->id]);
     $reward = Reward::factory()->for($referent)->create(['source_type' => 'opportunity', 'source_id' => $opportunity->id]);
     $rewardUpdatedAt = $reward->fresh()->updated_at;
 
@@ -153,7 +148,9 @@ it('reflects the opportunity\'s CURRENT computed status without writing to rewar
     $before = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.status.entries.0.group');
     expect($before)->toBe('open');
 
-    $quote->update(['quote_status_id' => $closedStatus->id]);
+    // `quote_workflow_status_id` is deliberately absent from Quote's
+    // #[Fillable] (spec 0083) — a plain update() would silently drop it.
+    $quote->forceFill(['quote_workflow_status_id' => $closedStatus->id])->save();
 
     $after = $this->getJson("/api/referents/{$referent->id}/rewards")->assertOk()->json('data.items.0.context.status.entries.0.group');
     expect($after)->toBe('closed_won')
@@ -175,6 +172,15 @@ it('costs the SAME number of queries for 2 rewards and for 10 rewards (AC-017)',
     // count as one extra, size-UNRELATED query on whichever call runs
     // first — a test artifact, not an N+1 in the endpoint itself.
     $actor->can('rewarded-referents.view');
+
+    // Warm OpportunityStatusResolver's own `defaultEntry()` query BEFORE
+    // measuring too: it is bound `scoped` in the container (one instance per
+    // request/test), so its FIRST call anywhere pays one extra, size-UNRELATED
+    // query for the GLOBAL default `open` row — the exact same kind of
+    // artifact as the permission-cache warm-up above, not an N+1 in the
+    // endpoint itself (a quote-less Opportunity resolves it once, then every
+    // other quote-less row in the SAME request reuses the memoized result).
+    app(OpportunityStatusResolver::class)->resolve(Opportunity::factory()->create());
 
     DB::enableQueryLog();
     $this->getJson("/api/referents/{$small->id}/rewards")->assertOk()->assertJsonCount(2, 'data.items');

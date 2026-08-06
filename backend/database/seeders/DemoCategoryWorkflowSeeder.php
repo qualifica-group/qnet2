@@ -2,18 +2,18 @@
 
 namespace Database\Seeders;
 
-use App\DataObjects\OpportunityWorkflows\CreateOpportunityWorkflowData;
+use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
 use App\Enums\WorkflowStatusGroup;
 use App\Enums\WorkflowStatusSystemKey;
-use App\Models\OpportunityWorkflow;
 use App\Models\ProductCategory;
-use App\Services\OpportunityWorkflowService;
+use App\Models\QuoteWorkflow;
+use App\Services\QuoteWorkflowService;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoCatalog\DemoWorkflowStatusCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
- * The demo "stati di lavorazione" (spec 0047): one OpportunityWorkflow per
+ * The demo "stati di lavorazione" (spec 0047): one QuoteWorkflow per
  * category of the demo tree, matched on that category (criterion
  * `product_category_id`) and carrying its branch's own working-state pick
  * list — so a demo request can be walked from "da contattare" to a closure,
@@ -24,12 +24,12 @@ use Illuminate\Database\Seeder;
  * EXACT category of a product line (CriterionFieldRegistry walks no ancestor),
  * and the demo opportunities pair against roots and leaves alike.
  *
- * Created through OpportunityWorkflowService::create() — the same path POST
- * /api/opportunity-workflows uses — so the real write path runs (signature
+ * Created through QuoteWorkflowService::create() — the same path POST
+ * /api/quote-workflows uses — so the real write path runs (signature
  * uniqueness, criteria sync, the 4 pinned system rows added by
  * WorkflowStatusWriter around the custom ones).
  *
- * MUST run after DemoOpportunityWorkflowSeeder, which clears every workflow
+ * MUST run after DemoQuoteWorkflowSeeder, which clears every workflow
  * before seeding its own source-matched ones, and before DemoOpportunitySeeder,
  * whose rows resolve their working-state at creation time.
  *
@@ -39,7 +39,7 @@ use Illuminate\Database\Seeder;
  */
 class DemoCategoryWorkflowSeeder extends Seeder
 {
-    public function __construct(private readonly OpportunityWorkflowService $workflows) {}
+    public function __construct(private readonly QuoteWorkflowService $workflows) {}
 
     public function run(): void
     {
@@ -59,9 +59,9 @@ class DemoCategoryWorkflowSeeder extends Seeder
     {
         $criteria = [['field' => DemoWorkflowStatusCatalogue::CRITERION_FIELD, 'value_id' => $category->id]];
 
-        $exists = OpportunityWorkflow::query()
+        $exists = QuoteWorkflow::query()
             ->where('name', $category->name)
-            ->orWhere('criteria_signature', CreateOpportunityWorkflowData::computeSignature($criteria))
+            ->orWhere('criteria_signature', CreateQuoteWorkflowData::computeSignature($criteria))
             ->exists();
 
         if ($exists) {
@@ -71,7 +71,7 @@ class DemoCategoryWorkflowSeeder extends Seeder
         $branch = DemoCategoryCatalogue::branchOf($category->name);
         $pinned = DemoWorkflowStatusCatalogue::PINNED[$branch];
 
-        $this->workflows->create(new CreateOpportunityWorkflowData(
+        $this->workflows->create(new CreateQuoteWorkflowData(
             name: $category->name,
             isActive: true,
             criteria: $criteria,

@@ -87,14 +87,7 @@ function editOpportunity(): OpportunityDetailWithPermissions {
     operational_site: null,
     state_id: null,
     state: null,
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
-    opportunity_workflow_status_id: 100,
-    workflow_status: { id: 100, name: 'Open', color: 'blue', system_key: 'open', group: 'open', description: null, requires_note: false },
-    workflow_statuses: [
-      { id: 100, name: 'Open', color: 'blue', system_key: 'open', group: 'open', description: null, requires_note: false },
-      { id: 101, name: 'In progress', color: 'amber', system_key: null, group: 'open', description: null, requires_note: false },
-      { id: 102, name: 'Closed', color: 'green', system_key: 'closed_won', group: 'closed_won', description: null, requires_note: false },
-    ],
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [
       {
         id: 1,
@@ -268,8 +261,8 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
     expect(screen.getByTestId('select-Source')).toBeInTheDocument()
     // User directive 2026-08-05: Sede operativa and Regione are hidden here —
     // they are Gestione Richieste' business. The VALUES survive untouched
-    // (covered in `opportunity-lead-selection.test.tsx` /
-    // `opportunity-workflow-status-field.test.tsx`), only the pickers are gone.
+    // (covered in `opportunity-lead-selection.test.tsx`), only the pickers
+    // are gone.
     expect(screen.queryByTestId('select-Operational site')).not.toBeInTheDocument()
     expect(screen.queryByTestId('select-Region')).not.toBeInTheDocument()
     expect(screen.getByTestId('select-Supervisor')).toBeInTheDocument()

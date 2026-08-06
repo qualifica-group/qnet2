@@ -67,7 +67,7 @@ class OpportunityController extends BaseApiController
             abort_unless($request->user()->can('opportunities.create'), 403);
 
             return $this->ok(new RequestFormContextResource(
-                $this->formContextResolver->resolve($request->sourceId(), $request->productLines()),
+                $this->formContextResolver->resolve($request->productLines()),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

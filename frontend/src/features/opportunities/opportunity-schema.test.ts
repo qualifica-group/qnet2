@@ -23,10 +23,8 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     source_id: null,
     // Spec 0056: facoltativa, never submit-blocking.
     operational_site_id: null,
-    // Spec 0047: Regione (never submit-blocking) and the working-state
-    // manual override (edit-only in the UI, but shared by both schemas).
+    // Spec 0047: Regione, never submit-blocking.
     state_id: null,
-    opportunity_workflow_status_id: null,
     // product_lines is mandatory (>=1 row, user directive 2026-07-17): the base
     // happy-path carries one valid row; the empty-collection case overrides it.
     product_lines: [{ business_function_id: 1, product_category_id: 11 }],
@@ -258,18 +256,16 @@ describe('operational_site_id (spec 0056)', () => {
   })
 })
 
-/** Spec 0047 (AC-026): both fields are optional, non-blocking. */
-describe('state_id / opportunity_workflow_status_id (spec 0047)', () => {
-  it('accepts both left null', () => {
+/** Spec 0047 (AC-026): the field is optional, non-blocking. */
+describe('state_id (spec 0047)', () => {
+  it('accepts it left null', () => {
     const schema = buildCreateOpportunitySchema(i18n.t)
     expect(schema.safeParse(baseValues()).success).toBe(true)
   })
 
-  it('accepts both set', () => {
+  it('accepts it set', () => {
     const schema = buildCreateOpportunitySchema(i18n.t)
-    const result = schema.safeParse(
-      baseValues({ state_id: 3, opportunity_workflow_status_id: 12 }),
-    )
+    const result = schema.safeParse(baseValues({ state_id: 3 }))
     expect(result.success).toBe(true)
   })
 })

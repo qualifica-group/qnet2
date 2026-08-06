@@ -79,7 +79,6 @@ final class ConvertLeadToOpportunity
             successProbability: null,
             // spec 0047 (AC-002, D1): the Regione inherited from the lead.
             stateId: $defaults->values['state_id'],
-            workflowStatusId: null,
             // User directive 2026-07-23: the opportunity inherits the lead's
             // Sede operativa (plain default, never BR-2-locked).
             operationalSiteId: $defaults->values['operational_site_id'],

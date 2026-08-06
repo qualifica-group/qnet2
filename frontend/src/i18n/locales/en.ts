@@ -31,8 +31,7 @@ import { campaigns } from './en-campaigns'
 import { leads } from './en-leads'
 import { opportunities } from './en-opportunities'
 import { productLines } from './en-product-lines'
-import { opportunityWorkflows } from './en-opportunity-workflows'
-import { quoteStatuses } from './en-quote-statuses'
+import { quoteWorkflows } from './en-quote-workflows'
 import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
@@ -389,8 +388,7 @@ export const en = {
   leads: { ...leads, stats: moduleStats.leads },
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
-  opportunityWorkflows,
-  quoteStatuses,
+  quoteWorkflows,
   quotes,
   contractStatuses,
   contracts,

@@ -125,7 +125,7 @@ class ContractStatusController extends BaseApiController
      * POST /api/contract-statuses/reorder — resequence the custom rows.
      * Gated on `contract-statuses.update` directly (no single Model instance
      * exists for a bulk reorder, so there is no Policy `update($user,
-     * $model)` to delegate to — mirrors QuoteStatusController::reorder).
+     * $model)` to delegate to — mirrors RewardStatusController::reorder).
      */
     public function reorder(ReorderStatusesRequest $request): JsonResponse
     {

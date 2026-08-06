@@ -24,24 +24,16 @@ return [
             'permission' => 'opportunities.view',
         ],
         [
-            // Opportunity workflow configurator (spec 0047): the
-            // "stato di lavorazione" dimension, criteria-matched per
-            // Opportunity.
-            'key' => 'opportunity-workflows',
-            'label' => 'navigation.opportunityWorkflows',
+            // Quote workflow configurator (spec 0047, moved onto the
+            // Offerta by spec 0083 D-6): "Configuratore Stati Offerta"
+            // — the Offerta's own working-state dimension, criteria-
+            // matched per Quote, and (D-8) the source of the
+            // Opportunity's own computed status when it has no Offerta.
+            'key' => 'quote-workflows',
+            'label' => 'navigation.quoteWorkflows',
             'icon' => 'workflow',
-            'route' => '/opportunity-workflows',
-            'permission' => 'opportunity-workflows.viewAny',
-        ],
-        [
-            // Quote statuses (spec 0065): the Quote working-state
-            // pick-list — since spec 0082 also the source of the
-            // Opportunity's own computed status.
-            'key' => 'quote-statuses',
-            'label' => 'navigation.quoteStatuses',
-            'icon' => 'tag',
-            'route' => '/quote-statuses',
-            'permission' => 'quote-statuses.view',
+            'route' => '/quote-workflows',
+            'permission' => 'quote-workflows.viewAny',
         ],
         [
             // Quotes/Offers (spec 0065, MT-05): quotes against an
@@ -55,7 +47,7 @@ return [
         [
             // Contract statuses (spec 0072): the Contract working-state
             // pick-list (BR-5 exclusive default), same
-            // status-before-its-entity placement as quote-statuses
+            // status-before-its-entity placement as quote-workflows
             // above quotes.
             'key' => 'contract-statuses',
             'label' => 'navigation.contractStatuses',

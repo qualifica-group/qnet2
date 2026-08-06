@@ -33,7 +33,7 @@ interface UseAttributeLayoutArgs {
  * effective attributes; mirrors the effective layout into a locally editable
  * `draft` the configurator controls; validates + `PUT`s on an explicit Save —
  * mirrors `useDefaultStatuses`'s "fresh load, local draft, explicit save"
- * shape (`features/opportunity-workflows`). Switching context or scope
+ * shape (`features/quote-workflows`). Switching context or scope
  * changes the query key, so the draft always resyncs to the newly loaded
  * combination rather than carrying edits across it.
  *

@@ -8,7 +8,7 @@
 
 export const requestManagement = {
   title: 'Gestione Richieste',
-  subtitle: "Lavora le opportunità: verifica i contatti, completa i campi dinamici e avanza lo stato di lavorazione.",
+  subtitle: "Lavora le opportunità: verifica i contatti e completa i campi dinamici.",
   forbidden: 'Non hai il permesso di visualizzare Gestione Richieste.',
   categoryTabs: {
     all: 'Tutte',
@@ -21,7 +21,6 @@ export const requestManagement = {
     generalNotes: 'Note generali',
     operator: 'Operatore (GA2)',
     operationalSite: 'Sede operativa',
-    workflowStatus: 'Stato di lavorazione',
     firstName: 'Nome',
     lastName: 'Cognome',
     taxCode: 'Codice fiscale',
@@ -37,7 +36,6 @@ export const requestManagement = {
   advancedFilters: {
     registry: 'Anagrafica',
     referent: 'Referente',
-    workflowStatus: 'Stato di lavorazione',
     opportunityStatus: 'Stato commerciale',
     operationalSite: 'Sede operativa',
     expectedCloseRange: 'Data chiusura prevista',
@@ -45,7 +43,7 @@ export const requestManagement = {
   },
   detail: {
     title: 'Dettagli richiesta',
-    subtitle: "Lavora l'opportunità selezionata: contatti, campi dinamici e stato di lavorazione.",
+    subtitle: "Lavora l'opportunità selezionata: contatti e campi dinamici.",
   },
   delete: {
     success: 'Richiesta eliminata.',
@@ -160,15 +158,6 @@ export const requestManagement = {
       title: 'Informazioni aggiuntive',
       empty: 'Nessun campo aggiuntivo per questa opportunità.',
     },
-    workflowStatus: {
-      title: 'Stato di lavorazione',
-      sectionDescription: 'Fai avanzare lo stato di lavorazione della richiesta.',
-      label: 'Stato di lavorazione',
-      placeholder: 'Seleziona uno stato',
-      awaitingCriteria: 'Seleziona prima una categoria prodotto',
-      noteLabel: 'Nota',
-      notePlaceholder: 'Spiega il motivo di questo cambio…',
-    },
     callback: {
       title: 'Prossimo richiamo',
       description: 'Pianifica la prossima chiamata di follow-up con il cliente.',
@@ -212,7 +201,6 @@ export const requestManagement = {
       title: 'Informazioni preliminari',
       unsavedChanges: 'Modifiche non salvate',
       salesStatus: 'Commerciale',
-      workingStatus: 'Lavorazione',
       nextCallback: 'Prossimo richiamo',
     },
     summary: {
@@ -239,7 +227,6 @@ export const requestManagement = {
     validation: {
       enumInvalid: 'Seleziona un valore valido.',
       required: 'Questo campo è obbligatorio.',
-      noteRequired: 'È obbligatoria una nota per passare a questo stato.',
       sourceRequired: 'Seleziona una fonte.',
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
       productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',

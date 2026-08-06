@@ -2,17 +2,17 @@
 
 namespace Database\Seeders;
 
-use App\DataObjects\OpportunityWorkflows\CreateOpportunityWorkflowData;
+use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
 use App\Enums\WorkflowStatusGroup;
 use App\Enums\WorkflowStatusSystemKey;
-use App\Models\OpportunityWorkflow;
 use App\Models\ProductCategory;
-use App\Services\OpportunityWorkflowService;
+use App\Models\QuoteWorkflow;
+use App\Services\QuoteWorkflowService;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
- * The client's "stati di lavorazione" (spec 0047): one OpportunityWorkflow per
+ * The client's "stati di lavorazione" (spec 0047): one QuoteWorkflow per
  * product category of WorkflowStatusCatalogue::WORKFLOWS, each matched on that
  * category (criterion `product_category_id`) and carrying that category's own
  * working-state pick list.
@@ -23,8 +23,8 @@ use Illuminate\Database\Seeder;
  * after QualificaCatalogSeeder::seedCatalog(): the criterion value is the
  * category's id, so the tree has to exist first.
  *
- * Every workflow is created through OpportunityWorkflowService::create() — the
- * same path POST /api/opportunity-workflows uses — so the real write path runs
+ * Every workflow is created through QuoteWorkflowService::create() — the
+ * same path POST /api/quote-workflows uses — so the real write path runs
  * (signature uniqueness, criteria sync, the pinned system rows added by
  * WorkflowStatusWriter around the custom ones), never a raw insert.
  *
@@ -44,7 +44,7 @@ class QualificaWorkflowSeeder extends Seeder
 {
     public function run(): void
     {
-        $service = app(OpportunityWorkflowService::class);
+        $service = app(QuoteWorkflowService::class);
 
         foreach (array_keys(WorkflowStatusCatalogue::WORKFLOWS) as $categoryName) {
             // Created by QualificaCatalogSeeder::seedCatalog(): a miss means
@@ -62,13 +62,13 @@ class QualificaWorkflowSeeder extends Seeder
      * single-criterion signature, so either one already taken means this set
      * is seeded.
      */
-    private function seedWorkflow(OpportunityWorkflowService $service, ProductCategory $category): void
+    private function seedWorkflow(QuoteWorkflowService $service, ProductCategory $category): void
     {
         $criteria = [['field' => WorkflowStatusCatalogue::CRITERION_FIELD, 'value_id' => $category->id]];
 
-        $exists = OpportunityWorkflow::query()
+        $exists = QuoteWorkflow::query()
             ->where('name', $category->name)
-            ->orWhere('criteria_signature', CreateOpportunityWorkflowData::computeSignature($criteria))
+            ->orWhere('criteria_signature', CreateQuoteWorkflowData::computeSignature($criteria))
             ->exists();
 
         if ($exists) {
@@ -80,7 +80,7 @@ class QualificaWorkflowSeeder extends Seeder
         // over are dropped from the custom list, never seeded twice.
         $pinned = WorkflowStatusCatalogue::pinnedStatusesFor($category->name);
 
-        $service->create(new CreateOpportunityWorkflowData(
+        $service->create(new CreateQuoteWorkflowData(
             name: $category->name,
             isActive: true,
             criteria: $criteria,

@@ -5,9 +5,7 @@ declare(strict_types=1);
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
-use App\Models\Note;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
 use App\Models\Registry;
 use App\Models\Source;
@@ -17,11 +15,12 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // User directive 2026-07-31 ("la create il piu' simile possibile al pannello"):
-// the create form now carries the five operative fields the work panel edits —
-// working status (+ its mandatory note), next callback, note generali and the
-// dynamic attribute values — plus the POST /api/request-management/form-context
-// preview that lets it render the status select and the dynamic fields BEFORE
-// anything is persisted.
+// the create form now carries the operative fields the work panel edits — next
+// callback, note generali and the dynamic attribute values — plus the POST
+// /api/request-management/form-context preview that lets it render the
+// dynamic fields BEFORE anything is persisted. Spec 0083, D-2: the working
+// status (+ its mandatory note) is GONE from this channel entirely — the
+// Opportunity resolves no working state of its own any more.
 
 uses(RefreshDatabase::class);
 
@@ -86,7 +85,7 @@ it('form-context: without request-management.create -> 403', function () {
         ->assertForbidden();
 });
 
-it('form-context: returns the resolved workflow statuses, the applicable attributes and the create layout', function () {
+it('form-context: returns the applicable attributes and the create layout, no workflow_statuses key (spec 0083 D-2)', function () {
     $actor = requestCreateOperativeActor();
     ['line' => $line, 'category' => $category] = categoryWithAttribute('material');
     AttributeLayout::factory()->for($category, 'productCategory')
@@ -100,11 +99,8 @@ it('form-context: returns the resolved workflow statuses, the applicable attribu
     ])->assertOk();
 
     expect(collect($response->json('data.applicable_attributes'))->pluck('code')->all())->toBe(['material']);
-    // The global default set (no workflow matches these criteria), same rows
-    // the work panel would offer for the same request.
-    expect(collect($response->json('data.workflow_statuses'))->pluck('system_key')->all())
-        ->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
     expect($response->json('data.attribute_layout.sections'))->not->toBeEmpty();
+    expect($response->json('data'))->not->toHaveKey('workflow_statuses');
 });
 
 it('form-context: a half-filled product line is dropped, not rejected', function () {
@@ -186,100 +182,6 @@ it('create: an attribute_value whose code is not applicable -> 422, nothing crea
     expect(Opportunity::count())->toBe(0);
 });
 
-it('create: a working status outside the resolved set -> 422', function () {
-    $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
-    // Belongs to a workflow's OWN set, never to the global default one the
-    // submitted criteria resolve to.
-    $foreign = OpportunityWorkflowStatus::factory()->create(['sort_order' => 99]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => Registry::factory()->create()->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-        'opportunity_workflow_status_id' => $foreign->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('opportunity_workflow_status_id');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-it('create: a working status of the resolved set is persisted', function () {
-    $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
-    $target = OpportunityWorkflowStatus::query()
-        ->whereNull('opportunity_workflow_id')
-        ->where('system_key', 'validated')
-        ->sole();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => Registry::factory()->create()->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-        'opportunity_workflow_status_id' => $target->id,
-    ])->assertCreated();
-
-    expect($response->json('data.workflow_status.id'))->toBe($target->id);
-    expect(Opportunity::query()->sole()->opportunity_workflow_status_id)->toBe($target->id);
-});
-
-it('create: a requires_note working status without a note -> 422, nothing created', function () {
-    // The status-change note is created through the SAME collaborative-notes
-    // mechanism the panel uses, which authorizes READ access to its host: the
-    // creator must also be able to view the request they just opened.
-    $actor = requestCreateOperativeActor(['create', 'view', 'viewAll'], canCreateNotes: true);
-    ['line' => $line] = categoryWithAttribute('material');
-    $target = OpportunityWorkflowStatus::factory()->create([
-        'opportunity_workflow_id' => null,
-        'requires_note' => true,
-        'sort_order' => 99,
-    ]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => Registry::factory()->create()->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-        'opportunity_workflow_status_id' => $target->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('note');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-it('create: a requires_note working status WITH a note -> 201, status set and note created', function () {
-    // The status-change note is created through the SAME collaborative-notes
-    // mechanism the panel uses, which authorizes READ access to its host: the
-    // creator must also be able to view the request they just opened.
-    $actor = requestCreateOperativeActor(['create', 'view', 'viewAll'], canCreateNotes: true);
-    ['line' => $line] = categoryWithAttribute('material');
-    $target = OpportunityWorkflowStatus::factory()->create([
-        'opportunity_workflow_id' => null,
-        'requires_note' => true,
-        'sort_order' => 99,
-    ]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => Registry::factory()->create()->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-        'opportunity_workflow_status_id' => $target->id,
-        'note' => 'Gia validata al primo contatto.',
-    ])->assertCreated();
-
-    $opportunity = Opportunity::query()->sole();
-    expect($opportunity->opportunity_workflow_status_id)->toBe($target->id);
-
-    $note = Note::query()
-        ->where('notable_type', $opportunity->getMorphClass())
-        ->where('notable_id', $opportunity->id)
-        ->sole();
-
-    expect($note->body)->toBe('Gia validata al primo contatto.')
-        ->and($note->user_id)->toBe($actor->id);
-});
-
 it('create: none of the operative fields submitted leaves the record exactly as before', function () {
     $actor = requestCreateOperativeActor();
     ['line' => $line] = categoryWithAttribute('material');
@@ -294,7 +196,5 @@ it('create: none of the operative fields submitted leaves the record exactly as 
     $opportunity = Opportunity::query()->sole();
     expect($opportunity->next_callback_at)->toBeNull()
         ->and($opportunity->general_notes)->toBeNull()
-        ->and($opportunity->attribute_values ?? [])->toBe([])
-        // Still the resolver's own choice (the initial `open` row), untouched.
-        ->and($opportunity->workflowStatus->system_key)->toBe('open');
+        ->and($opportunity->attribute_values ?? [])->toBe([]);
 });

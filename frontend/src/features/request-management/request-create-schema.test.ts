@@ -19,8 +19,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     operational_site_id: null,
     products_of_interest: [],
     rewards: [],
-    opportunity_workflow_status_id: null,
-    note: '',
     next_callback_at: null,
     general_notes: '',
     attribute_values: {},

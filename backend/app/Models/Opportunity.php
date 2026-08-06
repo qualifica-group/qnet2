@@ -29,8 +29,12 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * User directive 2026-07-17: `company_id`/`company_site_id`/
  * `operational_site_id` and their relations are REMOVED entirely.
  * Spec 0082: the former `opportunity_status_id` FK is GONE — an Opportunity's
- * status is COMPUTED from its `quotes()` (falling back to `workflowStatus()`
- * when it has none) by App\Services\Opportunities\OpportunityStatusResolver.
+ * status is COMPUTED from its `quotes()` (falling back to the global default
+ * quote-workflow `open` row when it has none, spec 0083 D-8) by
+ * App\Services\Opportunities\OpportunityStatusResolver. Spec 0083, D-2: the
+ * Opportunity no longer carries any working-state FK of its own either — its
+ * former workflow-status override column and `workflowStatus()` relation are
+ * GONE, the configurator having moved onto the Offerta (spec 0047 -> Quote).
  *
  * `general_notes` (user directive 2026-07-27): the "Note generali" free text,
  * inherited from the originating Lead's `notes` at conversion. Named
@@ -152,17 +156,6 @@ class Opportunity extends BaseModel
     public function state(): BelongsTo
     {
         return $this->belongsTo(State::class, 'state_id');
-    }
-
-    /**
-     * The currently resolved working-state row (spec 0047). Always written by
-     * OpportunityWorkflowResolver, never directly mass-assignable. Spec 0082:
-     * it is also the fallback the computed status reads when the opportunity
-     * has no quote at all.
-     */
-    public function workflowStatus(): BelongsTo
-    {
-        return $this->belongsTo(OpportunityWorkflowStatus::class, 'opportunity_workflow_status_id');
     }
 
     /**

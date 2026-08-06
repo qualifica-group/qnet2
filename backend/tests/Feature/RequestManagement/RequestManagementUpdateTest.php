@@ -4,10 +4,7 @@ use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
-use App\Models\OpportunityWorkflow;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
-use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -50,60 +47,11 @@ if (! function_exists('managedOpportunity')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-030 / AC-031 — working-state advance, in/out of the resolved set
-// ---------------------------------------------------------------------------
-
-it('PATCH with a workflow status in the resolved (global) set -> 200, persisted (AC-030)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
-    $target = OpportunityWorkflowStatus::query()
-        ->whereNull('opportunity_workflow_id')
-        ->where('system_key', 'closed_won')
-        ->sole();
-    Sanctum::actingAs($actor);
-
-    $response = $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $target->id,
-    ])->assertOk();
-
-    $response->assertJsonPath('message', 'Updated')
-        ->assertJsonPath('data.workflow_status.id', $target->id);
-    expect($opportunity->fresh()->opportunity_workflow_status_id)->toBe($target->id);
-});
-
-it('PATCH without opportunity_workflow_status_id leaves the current status untouched (AC-031)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
-    $originalStatusId = $opportunity->opportunity_workflow_status_id;
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [])->assertOk();
-
-    expect($opportunity->fresh()->opportunity_workflow_status_id)->toBe($originalStatusId);
-});
-
-it('PATCH with a workflow status outside the resolved set -> 422 (AC-031)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
-    $source = Source::factory()->create();
-
-    $foreignWorkflow = OpportunityWorkflow::factory()->create(['is_active' => true]);
-    $foreignWorkflow->criteria()->create(['field' => 'source_id', 'value_id' => $source->id]);
-    $foreignStatus = OpportunityWorkflowStatus::factory()->create([
-        'opportunity_workflow_id' => $foreignWorkflow->id,
-        'system_key' => null,
-    ]);
-    Sanctum::actingAs($actor);
-
-    // The opportunity has no source_id -> resolves to the GLOBAL set, not $foreignWorkflow's.
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $foreignStatus->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('opportunity_workflow_status_id');
-
-    expect($opportunity->fresh()->opportunity_workflow_status_id)->not->toBe($foreignStatus->id);
-});
-
-// ---------------------------------------------------------------------------
+// AC-030/031 (spec 0049) are GONE: spec 0083, D-2 removed the Opportunity's
+// own working-state field entirely — the PATCH payload no longer accepts a
+// working-state override at all. That rule now lives on the Offerta
+// (tests/Feature/Quotes/QuoteRequiresNoteTest.php, AC-021/023..026).
+//
 // AC-032 — authz + scope + 404
 // ---------------------------------------------------------------------------
 
@@ -237,18 +185,15 @@ it('PATCH with a non-required attribute simply absent -> ok (AC-042)', function 
 // AC-043 — operative changes are recorded on the Opportunity's activity log
 // ---------------------------------------------------------------------------
 
-it('PATCH workflow status + attribute_values writes an activity entry on the Opportunity (AC-043)', function () {
+it('PATCH next_callback_at + attribute_values writes an activity entry on the Opportunity (AC-043)', function () {
     $actor = requestManagementUpdaterWith(['update']);
     ['opportunity' => $opportunity] = opportunityWithApplicableAttribute(['code' => 'contract_length', 'type' => 'integer']);
     $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    $target = OpportunityWorkflowStatus::query()
-        ->whereNull('opportunity_workflow_id')
-        ->where('system_key', 'closed_won')
-        ->sole();
+    $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $target->id,
+        'next_callback_at' => $callbackAt,
         'attribute_values' => ['contract_length' => 6],
     ])->assertOk();
 
@@ -261,10 +206,10 @@ it('PATCH workflow status + attribute_values writes an activity entry on the Opp
 
     expect($activity)->not->toBeNull();
     expect($activity->causer_id)->toBe($actor->id);
-    expect($activity->properties->get('attributes'))->toMatchArray([
-        'opportunity_workflow_status_id' => $target->id,
-        'attribute_values' => ['contract_length' => 6],
-    ]);
+    expect($activity->properties->get('attributes'))->toHaveKey('next_callback_at')
+        ->and($activity->properties->get('attributes'))->toMatchArray([
+            'attribute_values' => ['contract_length' => 6],
+        ]);
 
     // The module exposes no separately-gated activity endpoint (lead
     // decision): the generic ActivityLogController resolves its Policy by
@@ -286,7 +231,7 @@ it('PATCH with no actual change writes no activity entry', function () {
         ->count();
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $opportunity->opportunity_workflow_status_id,
+        'general_notes' => $opportunity->general_notes,
     ])->assertOk();
 
     $after = Activity::query()

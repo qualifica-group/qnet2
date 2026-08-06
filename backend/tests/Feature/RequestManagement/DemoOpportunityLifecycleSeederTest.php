@@ -1,13 +1,10 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\Note;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\RoleAssignmentGuard;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoCategoryWorkflowSeeder;
@@ -18,9 +15,12 @@ use Database\Seeders\DemoProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 
-// The demo lifecycle pass: walks the seeded requests through their working
-// statuses (spec 0047) and fills the opportunity-context attributes (spec
-// 0061) through the real RequestManagementService write path.
+// The demo lifecycle pass: fills the opportunity-context attributes (spec
+// 0061) and plans callbacks through the real RequestManagementService write
+// path. Spec 0083 (D-2) removed the "stato di lavorazione" from the
+// Opportunity — the seeder no longer walks a working-status set nor creates
+// a requires_note note on this channel (see the seeder's own docblock); that
+// coverage moved to the Offerta (tests/Feature/Quotes/QuoteRequiresNoteTest.php).
 uses(RefreshDatabase::class);
 
 function seedDemoLifecycle(): void
@@ -43,43 +43,6 @@ function seedDemoLifecycle(): void
     test()->seed(DemoOpportunityLifecycleSeeder::class);
 }
 
-it('spreads the requests over their own workflow statuses, not only the open one', function (): void {
-    seedDemoLifecycle();
-
-    $opportunities = Opportunity::query()->with('workflowStatus')->get();
-
-    expect($opportunities)->not->toBeEmpty();
-
-    $reachedGroups = $opportunities
-        ->pluck('workflowStatus')
-        ->filter()
-        ->pluck('group')
-        ->map(static fn ($group): string => $group->value)
-        ->unique();
-
-    // The whole cycle is represented, not just the state creation assigns.
-    expect($reachedGroups)->toContain('open')
-        ->toContain('pending')
-        ->toContain('closed_won')
-        ->toContain('closed_lost');
-});
-
-it('keeps every advance inside the resolved workflow status set', function (): void {
-    seedDemoLifecycle();
-
-    foreach (Opportunity::query()->with('productLines')->get() as $opportunity) {
-        $workflow = app(OpportunityWorkflowResolver::class)->resolve($opportunity);
-        $allowedIds = OpportunityWorkflowStatus::query()
-            ->where(fn ($query) => $workflow === null
-                ? $query->whereNull('opportunity_workflow_id')
-                : $query->where('opportunity_workflow_id', $workflow->id))
-            ->pluck('id')
-            ->all();
-
-        expect($opportunity->opportunity_workflow_status_id)->toBeIn($allowedIds, $opportunity->name);
-    }
-});
-
 it('fills the opportunity-context attribute values of the categories it works', function (): void {
     seedDemoLifecycle();
 
@@ -95,19 +58,6 @@ it('fills the opportunity-context attribute values of the categories it works', 
         ->and($codes)->not->toContain('demo_course_hours');
 });
 
-it('creates the mandatory note whenever it advances to a requires_note status', function (): void {
-    seedDemoLifecycle();
-
-    $noteRequiringIds = OpportunityWorkflowStatus::query()->where('requires_note', true)->pluck('id')->all();
-    $advanced = Opportunity::query()->whereIn('opportunity_workflow_status_id', $noteRequiringIds)->get();
-
-    expect($advanced)->not->toBeEmpty();
-
-    foreach ($advanced as $opportunity) {
-        expect(Note::query()->where('notable_id', $opportunity->id)->exists())->toBeTrue($opportunity->name);
-    }
-});
-
 it('is a no-op without an actor allowed to write notes', function (): void {
     Registry::factory()->count(2)->create();
     User::factory()->count(3)->create();
@@ -121,9 +71,9 @@ it('is a no-op without an actor allowed to write notes', function (): void {
     test()->seed(DemoCategoryWorkflowSeeder::class);
     test()->seed(DemoOpportunitySeeder::class);
 
-    $before = Opportunity::query()->pluck('opportunity_workflow_status_id', 'id');
+    $before = Opportunity::query()->pluck('attribute_values', 'id');
 
     test()->seed(DemoOpportunityLifecycleSeeder::class);
 
-    expect(Opportunity::query()->pluck('opportunity_workflow_status_id', 'id')->all())->toBe($before->all());
+    expect(Opportunity::query()->pluck('attribute_values', 'id')->all())->toBe($before->all());
 });

@@ -13,14 +13,13 @@ use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
-use App\Authorization\OpportunityWorkflowsAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProjectsAuthorization;
 use App\Authorization\QuotesAuthorization;
-use App\Authorization\QuoteStatusesAuthorization;
+use App\Authorization\QuoteWorkflowsAuthorization;
 use App\Authorization\ReferentsAuthorization;
 use App\Authorization\ReferentTypesAuthorization;
 use App\Authorization\RegistriesAuthorization;
@@ -83,10 +82,9 @@ return [
         'campaigns' => CampaignsAuthorization::class,
         'leads' => LeadsAuthorization::class,
         'opportunities' => OpportunitiesAuthorization::class,
-        'opportunity-workflows' => OpportunityWorkflowsAuthorization::class,
         'payment-methods' => PaymentMethodsAuthorization::class,
-        'quote-statuses' => QuoteStatusesAuthorization::class,
         'quotes' => QuotesAuthorization::class,
+        'quote-workflows' => QuoteWorkflowsAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

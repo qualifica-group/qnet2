@@ -156,34 +156,24 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
     ])
   })
 
-  /**
-   * Both are resolved FROM the chosen categoria prodotto. The dynamic fields
-   * have nothing to render with none picked (an empty card would read as "this
-   * request has no additional fields"); the working status instead KEEPS its
-   * slot and shows up disabled (user directive 2026-08-04).
-   */
-  it('mostra stato di lavorazione disabilitato e nasconde i campi dinamici finche non ci sono criteri', async () => {
+  /** The dynamic fields have nothing to render with no categoria prodotto picked (an empty card would read as "this request has no additional fields"). */
+  it('nasconde i campi dinamici finche non ci sono criteri', async () => {
     renderCreateForm()
 
     await waitFor(() => expect(fetchRequestFormContextMock).not.toHaveBeenCalled())
-
-    const statusSelect = screen.getByRole('combobox', { name: 'Stato di lavorazione' })
-    expect(statusSelect).toBeDisabled()
-    expect(statusSelect).toHaveTextContent('Seleziona prima una categoria prodotto')
 
     expect(screen.queryByText('Informazioni aggiuntive')).not.toBeInTheDocument()
   })
 
   /**
    * The panel's identity bar carries the record's pills; with nothing chosen
-   * yet there is none to carry — they appear as the operator picks a status or
-   * plans a callback (their resolution is covered by the hook suites).
+   * yet there is none to carry — they appear as the operator plans a callback
+   * (their resolution is covered by the hook suites).
    */
   it('non mostra pillole nella barra finche non c\'e nulla da mostrare', () => {
     const { container } = renderCreateForm()
 
     const header = container.querySelector('header')
-    expect(within(header!).queryByText('Lavorazione')).not.toBeInTheDocument()
     expect(within(header!).queryByText('Prossimo richiamo')).not.toBeInTheDocument()
   })
 })

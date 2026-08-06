@@ -11,9 +11,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The GENERIC relation-derived column machinery for the `request-management`
  * domain (spec 0049), extracted out of RequestManagementTableDefinition
- * (file-size split, engineering.md §6): `workflow_status`/`source` (own-FK
- * simple relations) and `product_categories` (AGGREGATED to-many via
- * `productLines`)
+ * (file-size split, engineering.md §6): `source` (own-FK simple relation)
+ * and `product_categories` (AGGREGATED to-many via `productLines`)
  * — a `whereHas` set filter on the related row's name (allow-listed columns
  * only, never orderByRaw/whereRaw on raw input — backend.md §8), a
  * correlated subquery sort for the simple relation, and Excel-like distinct
@@ -22,7 +21,9 @@ use Illuminate\Support\Facades\DB;
  *
  * `operational_site` (spec 0056) is deliberately NOT handled here: the site
  * has no own name, so it is delegated directly by the table definition to
- * the shared App\Tables\Shared\OperationalSiteColumn instead.
+ * the shared App\Tables\Shared\OperationalSiteColumn instead. Spec 0083,
+ * D-2: `workflow_status` is REMOVED — the Opportunity resolves no working
+ * state of its own any more.
  */
 final class RequestRelationColumns
 {
@@ -36,7 +37,6 @@ final class RequestRelationColumns
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
     private const array DERIVED_RELATIONS = [
-        'workflow_status' => ['relation' => 'workflowStatus', 'table' => 'opportunity_workflow_statuses', 'fk' => 'opportunity_workflow_status_id'],
         'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
     ];
 

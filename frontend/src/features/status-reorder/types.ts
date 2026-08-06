@@ -29,23 +29,10 @@ export const STATUS_GROUPS = ['open', 'pending', 'closed'] as const
 export type StatusGroupValue = (typeof STATUS_GROUPS)[number]
 
 /**
- * Quote statuses classify on their own enum (backend `App\Enums\
- * QuoteStatusGroup`): the terminal phase is split into its two OUTCOMES —
- * `closed_won` (chiuso positivo, the "Accettata" system row) and
- * `closed_lost` (chiuso negativo, "Rifiutata"). The flat `closed` value is
- * NOT accepted by that module.
- */
-export const QUOTE_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
-
-/** One of the four fixed quote status group values. */
-export type QuoteStatusGroupValue = (typeof QUOTE_STATUS_GROUPS)[number]
-
-/**
  * Contract statuses classify on their OWN enum (backend `App\Enums\
- * ContractStatusGroup`, spec 0072 D-5): a dedicated vocabulary, not a reuse of
- * `QuoteStatusGroup`, even though it shares the same four string values today
- * — coupling the two modules' enums together was rejected for the same
- * reason `QuoteStatusGroup` was split off `StatusGroup`/`WorkflowStatusGroup`.
+ * ContractStatusGroup`, spec 0072 D-5): a dedicated vocabulary — coupling it
+ * to another module's enum was rejected for the same reason
+ * `WorkflowStatusGroup` was split off the shared `StatusGroup`.
  */
 export const CONTRACT_STATUS_GROUPS = ['open', 'pending', 'closed_won', 'closed_lost'] as const
 

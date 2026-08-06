@@ -73,15 +73,6 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-const WORKFLOW_OPEN = {
-  id: 100,
-  name: 'Open',
-  color: 'blue',
-  system_key: 'open',
-  description: null,
-  requires_note: false,
-}
-
 const READONLY_SOURCE_PERMISSION = {
   visible: true,
   hidden: false,
@@ -108,9 +99,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
-    workflow_status: WORKFLOW_OPEN,
-    workflow_statuses: [WORKFLOW_OPEN],
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
     products_of_interest: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
     client_identity: null,

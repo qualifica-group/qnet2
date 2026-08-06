@@ -2,9 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Http\Resources\Concerns\SummarizesWorkflowStatuses;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -20,12 +18,15 @@ use Illuminate\Support\Collection;
 /**
  * Wire shape for the request-management work panel (spec 0049,
  * data_contract GET/PATCH /api/request-management/{opportunity}). Consumes
- * the {opportunity, applicable_attributes, workflow_statuses} array
+ * the {opportunity, applicable_attributes, attribute_layout} array
  * RequestManagementService::loadWorkPanel()/updateWork() build — never a raw
  * Opportunity/OpportunityResource: this is a DEDICATED, purpose-built shape
  * for the operative panel (contacts owners, applicable_attributes,
  * read-only context), independent from the opportunities CRUD resource
  * (D-1/constraints: no change to OpportunityResource's own contract here).
+ * Spec 0083, D-2: this panel no longer advances any working status of its
+ * own — `workflow_status`/`workflow_statuses` are GONE, `status` stays the
+ * COMPUTED, read-only summary (OpportunityStatusResolver) it already was.
  *
  * `client_contacts`/`referent_contacts` expose an `owner` OwnerRef
  * (`{type: 'personal_data', id}`) alongside the contact `items`, so the
@@ -48,10 +49,8 @@ use Illuminate\Support\Collection;
 #[PreserveKeys]
 class RequestManagementResource extends JsonResource
 {
-    use SummarizesWorkflowStatuses;
-
     /**
-     * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}  $resource
+     * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}  $resource
      */
     public function __construct(array $resource)
     {
@@ -97,8 +96,6 @@ class RequestManagementResource extends JsonResource
             // category defines one. `{}` when not resolvable.
             'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($opportunity),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
-            'workflow_status' => $this->summarizeWorkflowStatus($opportunity->workflowStatus),
-            'workflow_statuses' => $this->summarizeWorkflowStatuses($this->resource['workflow_statuses']),
             'product_lines' => $this->summarizeProductLines($opportunity->productLines),
             'products_of_interest' => $this->summarizeProductsOfInterest($opportunity->productsOfInterest),
             'client_identity' => $this->summarizeClientIdentity($opportunity->registry),

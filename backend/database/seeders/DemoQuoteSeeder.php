@@ -7,9 +7,10 @@ use App\DataObjects\Quotes\QuoteLineData;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\QuoteService;
+use App\Services\RoleAssignmentGuard;
 use Database\Seeders\Concerns\PicksDemoOffers;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
@@ -31,8 +32,11 @@ use Illuminate\Database\Seeder;
  * `unit_price` starts from the product's `price`, the cost line's from its
  * `cost`; the VAT rate on both is the product's own `vat_rate_id`.
  *
- * `quote_status_id` rotates over the WHOLE `quote_statuses` catalogue,
- * including the 3 system rows (no custom status is seeded elsewhere).
+ * Spec 0083 (AC-061): the status is NOT picked here. The seeder leaves
+ * `workflowStatusId` null and lets QuoteService resolve the `open` row of the
+ * set applicable to THAT quote (AC-020) — rotating over a catalogue, as this
+ * seeder did against the old `quote_statuses`, would hand a quote a status
+ * belonging to a workflow set that does not govern it.
  *
  * Idempotent: clears its own quotes before reseeding. DemoDataSeeder ALSO
  * clears quotes at its own top, before it re-clears Opportunity — a Quote
@@ -71,28 +75,56 @@ class DemoQuoteSeeder extends Seeder
             return;
         }
 
+        $actor = $this->resolveActor();
+
+        if ($actor === null) {
+            // QuoteService::create richiede un attore (audit/provvigioni): senza
+            // un utente non c'e' nulla di valido da seminare.
+            return;
+        }
+
         $costProductIds = Product::query()->orderBy('id')->pluck('id')->all();
-        $statusIds = QuoteStatus::query()->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
 
         $faker = FakerFactory::create('it_IT');
         $faker->seed(20260729);
 
         foreach ($opportunities as $index => $opportunity) {
-            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds, $statusIds));
+            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds), $actor);
         }
     }
 
     /**
-     * @param  array<int, int>  $costProductIds
-     * @param  array<int, int>  $statusIds
+     * L'attore per conto del quale il seeder scrive: il primo utente
+     * privilegiato, con fallback sul primo utente esistente. Stessa convenzione
+     * di DemoOpportunityLifecycleSeeder::resolveActor(); `whereHas` e non lo
+     * scope `role()` di spatie, che esplode se il ruolo non esiste ancora
+     * (run parziale) — proprio il caso che questo metodo deve sopravvivere.
      */
-    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds, array $statusIds): CreateQuoteData
+    private function resolveActor(): ?User
+    {
+        return User::query()
+            ->whereHas('roles', static fn ($query) => $query->where('name', RoleAssignmentGuard::PRIVILEGED_ROLE))
+            ->orderBy('id')
+            ->first()
+            ?? User::query()->orderBy('id')->first();
+    }
+
+    /**
+     * @param  array<int, int>  $costProductIds
+     */
+    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds): CreateQuoteData
     {
         return new CreateQuoteData(
             code: null,
             title: sprintf('Offerta %d - %s', $opportunity->id, $faker->company()),
             opportunityId: $opportunity->id,
-            quoteStatusId: $statusIds === [] ? null : $statusIds[$index % count($statusIds)],
+            // Spec 0083 AC-061: lo stato NON si pesca dal catalogo, lo risolve il
+            // service sul set applicabile a QUESTA offerta (riga `open`, AC-020).
+            workflowStatusId: null,
+            // Nessuna transizione di stato qui: l'offerta nasce sulla riga
+            // `open`, e la nota e' richiesta solo dal CAMBIO verso uno stato
+            // `requires_note` (AC-026), mai dalla creazione.
+            note: null,
             commercialId: null,
             commercialIdSubmitted: false,
             reporterId: null,

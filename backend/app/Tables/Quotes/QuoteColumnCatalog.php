@@ -11,7 +11,7 @@ namespace App\Tables\Quotes;
  * generic engine. `revenue_net`/`cost_net`/`margin_net` are ALSO real DB
  * columns (the persisted header aggregates, D-9) — sortable/filterable by
  * the generic engine, no derived-column handling needed. `opportunity`/
- * `quote_status`/`commercial`/`reporter`/`supervisor` are STANDARD
+ * `quote_workflow_status`/`commercial`/`reporter`/`supervisor` are STANDARD
  * relation-name derived columns (own FK on the quote), resolved by
  * QuotesTableDefinition/QuoteRelationColumns — all 5 sortable (a correlated
  * subquery), mirroring OpportunityColumnCatalog. `company`/`company_site`
@@ -50,7 +50,7 @@ final class QuoteColumnCatalog
                 'searchable' => true,
             ],
             self::derivedColumn('opportunity', 'quotes.columns.opportunity'),
-            self::derivedColumn('quote_status', 'quotes.columns.quoteStatus'),
+            self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
             self::derivedColumn('commercial', 'quotes.columns.commercial'),
             self::derivedColumn('reporter', 'quotes.columns.reporter'),
             self::derivedColumn('supervisor', 'quotes.columns.supervisor'),

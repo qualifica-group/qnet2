@@ -9,7 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteLine;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Role;
@@ -35,7 +35,7 @@ function quoteCommissionActor(array $abilities): User
 }
 
 it('initializes only recipient-backed revenue commissions and summarizes authoritative amounts', function () {
-    QuoteStatus::where('system_key', 'new')->sole();
+    QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     $commercial = Referent::factory()->create();
     $supplier = Registry::factory()->create();
     $category = ProductCategory::factory()->create([

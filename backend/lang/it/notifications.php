@@ -33,7 +33,6 @@ return [
         'client' => 'Cliente',
         'operational_site' => 'Sede operativa',
         'status' => 'Stato',
-        'working_status' => 'Stato di lavorazione',
         'operator' => 'Operatore',
 
         // Comuni

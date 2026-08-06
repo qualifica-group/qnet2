@@ -7,7 +7,6 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRewards;
-use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
@@ -21,7 +20,9 @@ use Illuminate\Validation\Rule;
  * Validates the payload for PUT/PATCH /api/opportunities/{opportunity}
  * (spec 0040). Every field is `sometimes` (partial PATCH) —
  * `opportunity_status_id` (spec 0082) is ALWAYS `prohibited`: the status is
- * COMPUTED from the quotes, never submitted.
+ * COMPUTED from the quotes, never submitted (spec 0083, D-2: the former
+ * workflow-status override field is GONE too — no working-state override
+ * exists any more on the Opportunity).
  * `lead_id` is ALWAYS `prohibited` (BR-2,
  * immutable once set). When $opportunity carries a `lead_id`, its 2
  * BR-1-derivable fields are re-resolved against the CURRENT lead/campaign
@@ -58,7 +59,6 @@ class UpdateOpportunityRequest extends FormRequest
     use ValidatesManagerSlots;
     use ValidatesProductLines;
     use ValidatesRewards;
-    use ValidatesWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -102,11 +102,8 @@ class UpdateOpportunityRequest extends FormRequest
             // 422 keyed `attribute_values.<code>`.
             'attribute_values' => ['sometimes', 'array'],
             // spec 0047: state_id (Regione, D1) is freely editable on the
-            // standalone opportunity. opportunity_workflow_status_id is an
-            // OPTIONAL override (AC-016/017); its set-membership is checked
-            // in withValidator, against the RESOLVED (possibly changed) set.
+            // standalone opportunity.
             'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],
-            'opportunity_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunity_workflow_statuses', 'id')],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines`' own partial-PATCH shape — the key may
             // be omitted (untouched), but never cleared to `[]`. A product
@@ -174,7 +171,6 @@ class UpdateOpportunityRequest extends FormRequest
             $this->validateProductLines($validator);
             $this->validateRewards($validator, $opportunity);
             $this->enforceFieldPermissions($validator);
-            $this->validateWorkflowStatus($validator, $opportunity);
         });
     }
 

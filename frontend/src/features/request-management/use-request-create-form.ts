@@ -39,8 +39,6 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   // The operative block (user directive 2026-07-31): each maps 1:1 onto its
   // own control, so a server 422 lands inline. `attribute_values.<code>` is
   // appended per applicable attribute at submit time (the set is dynamic).
-  'opportunity_workflow_status_id',
-  'note',
   'next_callback_at',
   'general_notes',
 ]
@@ -120,8 +118,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       operational_site_id: null,
       products_of_interest: [],
       rewards: [],
-      opportunity_workflow_status_id: null,
-      note: '',
       next_callback_at: null,
       general_notes: '',
       attribute_values: {},
@@ -137,17 +133,17 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   useRequestActorAttributionDefaults(form)
 
   // The create form's live equivalent of what the panel receives already
-  // resolved (user directive 2026-07-31): which working statuses may be
-  // picked, which dynamic fields the chosen categories carry, how they are laid
-  // out. Watched — not read once — because the categories are being edited in
-  // the very form these blocks belong to.
+  // resolved (user directive 2026-07-31): which dynamic fields the chosen
+  // categories carry, how they are laid out. Watched — not read once —
+  // because the categories are being edited in the very form these blocks
+  // belong to.
   const sourceId = useWatch({ control: form.control, name: 'source_id' })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })
   const { context, isLoading: isContextLoading } = useRequestFormContext(sourceId, productLines)
 
   const schema = useMemo(
-    () => buildRequestCreateSchema(t, context.applicable_attributes, context.workflow_statuses),
-    [t, context.applicable_attributes, context.workflow_statuses],
+    () => buildRequestCreateSchema(t, context.applicable_attributes),
+    [t, context.applicable_attributes],
   )
 
   useEffect(() => {
@@ -164,33 +160,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       seedAttributeValues(context.applicable_attributes, form.getValues('attribute_values')),
     )
   }, [context.applicable_attributes, form])
-
-  // The first status of the resolved set is the default (user directive
-  // 2026-08-04): as soon as the criteria enable the select it carries a value
-  // instead of an empty placeholder. The set arrives ordered by `sort_order`
-  // from `statusesFor()`, so "first" is the configured first.
-  //
-  // The same effect covers the selection that LEFT the set (the categories
-  // changed under it): it falls back to the new set's default rather than to
-  // null, since submitting an out-of-set id would 422.
-  useEffect(() => {
-    const statuses = context.workflow_statuses
-    const selected = form.getValues('opportunity_workflow_status_id')
-
-    if (selected !== null && statuses.some((status) => status.id === selected)) {
-      return
-    }
-
-    if (statuses.length === 0) {
-      if (selected !== null) {
-        form.setValue('opportunity_workflow_status_id', null)
-      }
-
-      return
-    }
-
-    form.setValue('opportunity_workflow_status_id', statuses[0].id)
-  }, [context.workflow_statuses, form])
 
   // The card is mandatory only on the "new client" branch (D-2): block the
   // save until its required-by-type fields validate, mirroring the
@@ -243,8 +212,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       operationalSiteId: values.operational_site_id,
       productsOfInterest: values.products_of_interest,
       rewards: values.rewards,
-      workflowStatusId: values.opportunity_workflow_status_id,
-      statusNote: values.note,
       nextCallbackAt: values.next_callback_at,
       generalNotes: values.general_notes,
       attributeValues: values.attribute_values,

@@ -4,14 +4,12 @@ namespace App\Http\Resources;
 
 use App\Enums\FormMode;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
-use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -33,10 +31,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * (one row per funzione-aziendale + categoria-prodotto pair). User directive
  * 2026-07-17: `company_id`/`company`/`company_site_id`/`company_site` are
  * REMOVED entirely.
- * Spec 0082: `opportunity_status_id`/`opportunity_status` are REMOVED and
- * replaced by `status`, the COMPUTED summary
+ * Spec 0082/0083: `opportunity_status_id`/`opportunity_status` are REMOVED
+ * and replaced by `status`, the COMPUTED summary
  * (App\Services\Opportunities\OpportunityStatusResolver) read off the
- * opportunity's quotes, falling back to its working state when it has none.
+ * opportunity's quotes, falling back to the GLOBAL default quote-workflow
+ * `open` row when it has none (D-8). Spec 0083, D-2: the Opportunity carries
+ * no working-state FK of its own any more — the former workflow-status
+ * override column, `workflow_status` and `workflow_statuses` (spec 0047) are
+ * REMOVED outright, the configurator having moved onto the Offerta (->
+ * Quote).
  *
  * Spec 0056: `operational_site_id`/`operational_site` are reintroduced — the
  * site has no own `name` (only `id`/`old_id`/`alias`), so `operational_site`
@@ -45,14 +48,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * OpportunityService::DETAIL_RELATIONS eager-loading
  * `operationalSite.addresses.city`.
  *
- * Spec 0047: `state`/`state_id` is the Regione (D1); `workflow_status`/
- * `opportunity_workflow_status_id` is the currently resolved working-state
- * row (the fallback `status` reads when the opportunity has no quote);
- * `workflow_statuses` is the full ordered set OpportunityWorkflowResolver
- * resolves for THIS opportunity right now (for the FE's status select,
- * limited to that set). Resolving the set re-runs the resolver (a bounded,
- * controlled query), relying on `productLines` already being eager-loaded by
- * OpportunityService::loadDetail() so it never N+1s beyond that one query.
+ * Spec 0047: `state`/`state_id` is the Regione (D1), freely editable — it no
+ * longer resolves any working-state dimension of the Opportunity itself
+ * (spec 0083), but stays a criterion the Quote's own workflow resolver
+ * inherits from it (D-7).
  *
  * Spec 0049, D-8/AC-050 (additive, retrocompatible): `attribute_values` is the
  * raw opportunity-level values map (`{}` when null) and `applicable_attributes`
@@ -78,11 +77,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * reports `pagination.total`. Relies on OpportunityService::loadDetail()
  * always calling `loadCount('quotes')`, so it is never missing here.
  *
- * User directive 2026-08-05: `requires_quote` is ADDITIVE — the derived
- * "this opportunity's products can proceed to an offer" flag (true when any
- * product line's category carries the root-owned `requires_quote`). It gates
- * the Offerte panel client-side; the quotes endpoints keep their own
- * authorization untouched.
+ * Spec 0083, D-5: `requires_quote` is REMOVED — the Offerte panel's gate on
+ * it is dropped, every Opportunity may carry offers.
  *
  * Spec 0080: `manager_labels` is ADDITIVE — the per-position "Gestore
  * Account" denomination overrides resolved from the product line(s)' product
@@ -124,9 +120,6 @@ class OpportunityResource extends JsonResource
             'status' => app(OpportunityStatusResolver::class)->resolve($this->resource),
             'state_id' => $this->state_id,
             'state' => $this->summarizeByName($this->state),
-            'opportunity_workflow_status_id' => $this->opportunity_workflow_status_id,
-            'workflow_status' => $this->summarizeWorkflowStatus($this->workflowStatus),
-            'workflow_statuses' => $this->resolveWorkflowStatuses(),
             'product_lines' => $this->summarizeProductLines($this->productLines),
             'products_of_interest' => $this->summarizeProductsOfInterest($this->productsOfInterest),
             'rewards' => $this->summarizeRewards($this->rewards),
@@ -140,7 +133,6 @@ class OpportunityResource extends JsonResource
             'success_probability' => $this->success_probability,
             'general_notes' => $this->general_notes,
             'quotes_count' => (int) ($this->quotes_count ?? 0),
-            'requires_quote' => $this->resolveRequiresQuote(),
             'locked_fields' => $this->resolveLockedFields(),
             'attribute_values' => $this->attribute_values ?? [],
             'applicable_attributes' => $this->resolveApplicableAttributes(),
@@ -236,61 +228,6 @@ class OpportunityResource extends JsonResource
                 'position' => (int) $manager->pivot->position,
             ])
             ->all();
-    }
-
-    /**
-     * The currently resolved working-state row (spec 0047), including
-     * `system_key`/`group` so the FE can tell a pinned system row apart from
-     * a custom one.
-     *
-     * @return array{id: int, name: string, description: string|null, color: string|null, system_key: string|null, group: string, requires_note: bool}|null
-     */
-    private function summarizeWorkflowStatus(?OpportunityWorkflowStatus $status): ?array
-    {
-        return $status === null ? null : [
-            'id' => $status->id,
-            'name' => $status->name,
-            'description' => $status->description,
-            'color' => $status->color,
-            'system_key' => $status->system_key,
-            'group' => $status->group->value,
-            'requires_note' => $status->requires_note,
-        ];
-    }
-
-    /**
-     * The full ordered set OpportunityWorkflowResolver resolves for this
-     * opportunity RIGHT NOW (spec 0047) — feeds the FE's "stato di
-     * lavorazione" select, limited to that set (AC-017).
-     *
-     * @return array<int, array{id: int, name: string, description: string|null, color: string|null, system_key: string|null, group: string, requires_note: bool}>
-     */
-    private function resolveWorkflowStatuses(): array
-    {
-        $resolver = app(OpportunityWorkflowResolver::class);
-
-        return $resolver->statusesFor($resolver->resolve($this->resource))
-            ->map(fn (OpportunityWorkflowStatus $status): array => $this->summarizeWorkflowStatus($status))
-            ->all();
-    }
-
-    /**
-     * Whether this opportunity's products can proceed to an offer (user
-     * directive 2026-08-05): true when AT LEAST ONE of its product lines'
-     * categories carries `requires_quote` — the branch-root-owned flag
-     * denormalised onto every node (spec 0070), so the row's own column is
-     * authoritative and no hierarchy walk is needed here. An opportunity with
-     * no product line has nothing quotable, hence false.
-     *
-     * Reads the already eager-loaded `productLines.productCategory`
-     * (OpportunityService::DETAIL_RELATIONS), so it never lazy-loads.
-     */
-    private function resolveRequiresQuote(): bool
-    {
-        return $this->productLines
-            ->pluck('productCategory')
-            ->filter()
-            ->contains(fn (Model $category): bool => (bool) $category->requires_quote);
     }
 
     /**

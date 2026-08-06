@@ -5,7 +5,7 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,9 +41,9 @@ if (! function_exists('quoteHttpUserWith')) {
 }
 
 if (! function_exists('quoteHttpNewStatus')) {
-    function quoteHttpNewStatus(): QuoteStatus
+    function quoteHttpNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     }
 }
 
@@ -105,7 +105,7 @@ it('AC-021: an explicitly submitted commercial_id wins over the opportunity snap
         ->assertJsonPath('data.commercial_id', $explicit->id);
 });
 
-it('AC-023: POST without quote_status_id assigns the system new row', function () {
+it('AC-023: POST without quote_workflow_status_id assigns the system open row', function () {
     $newStatus = quoteHttpNewStatus();
     $opportunity = Opportunity::factory()->create();
     $actor = quoteHttpUserWith(['create']);
@@ -113,8 +113,8 @@ it('AC-023: POST without quote_status_id assigns the system new row', function (
 
     $this->postJson('/api/quotes', ['title' => 'Offerta', 'opportunity_id' => $opportunity->id])
         ->assertCreated()
-        ->assertJsonPath('data.quote_status_id', $newStatus->id)
-        ->assertJsonPath('data.quote_status.name', $newStatus->name);
+        ->assertJsonPath('data.quote_workflow_status_id', $newStatus->id)
+        ->assertJsonPath('data.quote_workflow_status.name', $newStatus->name);
 });
 
 it('AC-024: an opportunity accepts multiple quotes, all readable', function () {

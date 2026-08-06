@@ -48,15 +48,15 @@ describe('quoteColumnRenderers relation columns', () => {
   })
 })
 
-describe('quoteColumnRenderers.quote_status', () => {
+describe('quoteColumnRenderers.quote_workflow_status', () => {
   it('renders the status as a colored badge', () => {
-    const { container } = renderCell('quote_status', { id: 1, name: 'Bozza', color: 'slate' })
+    const { container } = renderCell('quote_workflow_status', { id: 1, name: 'Bozza', color: 'slate' })
     expect(screen.getByText('Bozza')).toBeInTheDocument()
     expect(container.querySelector('.bg-slate-100')).not.toBeNull()
   })
 
   it('renders an em dash when unset', () => {
-    renderCell('quote_status', null)
+    renderCell('quote_workflow_status', null)
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

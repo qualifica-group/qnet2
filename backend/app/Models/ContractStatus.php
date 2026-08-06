@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * describing a Contract's working state (`contracts.contract_status_id`).
  * Combines RewardStatus' `description`/`is_active` addition with
  * DocumentLayout's exclusive `is_default` (BR-5, same invariant as
- * `DocumentLayoutDefaultManager`) and QuoteStatus' `group` classification
+ * `DocumentLayoutDefaultManager`) and a `group` classification
  * (`App\Enums\ContractStatusGroup` — a module-specific enum, D-5, not a reuse
- * of `QuoteStatusGroup`). `name` is unique; `system_key` (nullable, the FOUR
+ * of `App\Enums\WorkflowStatusGroup`). `name` is unique; `system_key` (nullable, the FOUR
  * mandatory rows of D-2 — "Da validare"/"Sospeso"/"Annullato"/"Disdetto") is
  * DELIBERATELY absent from #[Fillable] — never mass-assignable, written only
  * by the create migration and

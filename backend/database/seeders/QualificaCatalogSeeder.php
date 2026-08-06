@@ -52,7 +52,7 @@ use Illuminate\Database\Seeder;
  *     an enum attribute assigned to that subcategory alone). No other product
  *     is seeded;
  *   - the "stati di lavorazione" (spec 0047), delegated to
- *     QualificaWorkflowSeeder as the last step: one OpportunityWorkflow per
+ *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
  *   - the "Formazione" root's business function link (spec 0023), delegated to

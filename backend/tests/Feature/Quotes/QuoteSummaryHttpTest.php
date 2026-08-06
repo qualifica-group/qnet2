@@ -4,7 +4,7 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,9 +42,9 @@ if (! function_exists('quoteSummaryUserWith')) {
 }
 
 if (! function_exists('quoteSummaryNewStatus')) {
-    function quoteSummaryNewStatus(): QuoteStatus
+    function quoteSummaryNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     }
 }
 

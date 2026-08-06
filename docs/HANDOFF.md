@@ -3,6 +3,151 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0083 — IL WORKFLOW PASSA DALL'OPPORTUNITA' ALL'OFFERTA (2026-08-05) — VERDE, NON COMMITTATO
+
+Backend 5206/5206 (1 skip preesistente `FilterApplierTest`, estraneo). Frontend 3542/3542,
+`tsc -b --force` EXIT=0, Pint `passed`. Spec: `docs/specs/0083-quote-workflow-statuses.xml`.
+Restano da fare le spec 0084 (attributi sull'Offerta) e 0085 (note per Offerta), gia' scritte.
+
+**Cosa e' cambiato.** Il configuratore `opportunity-workflows` e' diventato `quote-workflows` e
+governa l'OFFERTA. Il modulo `quote-statuses` e' eliminato per intero. L'Opportunita' non ha piu'
+uno stato di lavorazione proprio: `opportunities.opportunity_workflow_status_id` e' droppata.
+
+**Nomi nuovi da rispettare:** tabelle `quote_workflows` / `quote_workflow_criteria` /
+`quote_workflow_statuses` (colonna `quote_workflow_id`, NULL = set globale di default);
+`quotes.quote_workflow_status_id` NOT NULL `restrictOnDelete`; permessi `quote-workflows.*`;
+rotte `/api/quote-workflows/*`; i18n `quotes.columns.quoteWorkflowStatus` e
+`quotes.advancedFilters.quoteWorkflowStatus`; morph slug `quote_workflow` / `quote_workflow_status`;
+FE `frontend/src/features/quote-workflows/`.
+
+**Decisioni vincolanti (dall'utente, 2026-08-05):** D-2 l'Opportunita' senza offerte mostra la riga
+`open` del SET GLOBALE (dato reale configurabile, mai una stringa hardcoded) — `source: 'default'`,
+il valore `'workflow'` non esiste piu'. D-7 i criteri si risolvono sull'OFFERTA
+(`business_function_id`/`product_category_id` dalle sue `offerLines`), mentre `state_id`/`source_id`
+e i custom field sono EREDITATI da `quote.opportunity` (flag `inherited: true` nel catalogo).
+D-4 nessuna migrazione dati. D-5 rimosso il gate `requires_quote`: ogni Opportunita' puo' avere offerte.
+
+**Trappole verificate sul campo — non ripercorrerle:**
+- `XDEBUG_MODE=off` obbligatorio: con Xdebug la suite Pest va in **segfault** (exit 139).
+- L'output leggibile di Pest e' inghiottito da un wrapper: usare `--log-junit` e leggere l'XML.
+  Per i fatal nascosti `PAO_DISABLE=1`. `vendor/bin/phpunit` non funziona (Pest lo blocca).
+- **`.env.testing` NON ESISTE**: `--env=testing` non isola nulla e ricade su `.env` (mysql/`qnet2`).
+  L'unico canale sicuro e' `./vendor/bin/pest` (phpunit.xml -> sqlite `:memory:`). Le migrazioni 0083
+  sono finite su `qnet2` proprio per questo, rompendo l'app all'utente.
+- Il seed pulito NON gira su SQLite: `AddLocations` usa SQL grezzo MySQL-only (preesistente).
+
+**Sei bug di PRODUZIONE da rinomina a vista, tutti corretti** (i due peggiori erano silenziosi):
+1. `StoreOpportunityRequest:59` trait orfano `use ValidatesWorkflowStatus;` -> 500 su ogni POST
+   /api/opportunities (creazione Opportunita' impossibile).
+2. `QuoteDocumentGenerator` relazione `quoteStatus` in `DETAIL_RELATIONS` -> 500 su ogni documento.
+3. `QuoteFieldResolver` stessa relazione: **NON lanciava** — placeholder `status_name` sempre VUOTO
+   nel Word consegnato al cliente.
+4. `OpportunityController::formContext()` chiamava il resolver con 2 argomenti invece di 1 -> 500
+   sui campi dinamici del form. Il gemello in RequestManagementController era gia' corretto.
+5. `QuoteWorkflowService::delete()` cancellava PRIMA di riassegnare, violando `restrictOnDelete`.
+   Ora: disattiva -> `resolver->forgetCaches()` -> riassegna -> cancella. Nota: sull'Opportunita' la
+   FK era `nullOnDelete`, sull'Offerta e' NOT NULL — la stessa sequenza non poteva funzionare.
+6. `OpportunityStatusResolver` istanziato con `app()` PER RIGA da 4 resource -> N+1. Risolto con
+   `$this->app->scoped(...)` in `AppServiceProvider`, che chiude tutti e quattro i consumatori.
+
+**Comportamento non ovvio da preservare:** cancellando un workflow, un'Offerta `closed_won` ricade
+sulla riga `closed_won` del set globale (non su `open`), perche' la riassegnazione ora precede la
+delete e il `system_key` e' ancora leggibile — AC-022. Far tornare "Aperta" un'offerta accettata
+sarebbe perdita di dato.
+
+## UI — DENOMINAZIONI G.A. VISIBILI NEL FORM OPPORTUNITA' (2026-08-05) — VERDE, NON COMMITTATO
+
+La risoluzione delle label G.A. per categoria (spec 0080) era gia' completa e corretta
+lato dati: `OpportunityManagerLabelResolver` (BE) e `useOpportunityManagerLabels` (FE,
+live dai `product_lines` del form) — categoria unica -> le sue label effettive,
+categorie multiple con set diversi -> `{}` = denominazioni di default. Verificato su
+opportunita' 89 (categoria 5 "Consulenza HR" -> `{1:operatore,2:commerciale,3:lol,4:lil}`).
+Mancava solo la **visibilita'**: `ManagerSlotsField` mostrava il numero di slot con la
+denominazione nel solo `title`/`aria-label`, quindi a schermo si leggeva "1 2 3".
+
+Modificato `frontend/src/components/form/manager-slots-field.tsx`: quando il chiamante
+passa `labels` non vuote, ogni riga mostra `slotLabel(index)` come TESTO visibile
+(colonna `w-24 sm:w-32`, `truncate`, `title` invariato); le posizioni non configurate
+restano sul default "Gestore account n". Scelta all-or-nothing per campo, non per riga
+(colonna altrimenti frastagliata). Registries non passa `labels` -> badge numerico
+invariato (non-regressione AC-043).
+
+Verde: `vitest` su `manager-slots-field`/`opportunity-team-section`/
+`use-opportunity-manager-labels` (24 test), `tsc -b --force` EXIT=0, eslint pulito.
+
+## FRONTEND SPEC 0083 — CONFIGURATORE WORKFLOW SPOSTATO SULL'OFFERTA (2026-08-05) — VERDE, NON COMMITTATO (parte FE; verificare in coppia col backend prima del commit)
+
+Lavoro `frontend` su `docs/specs/0083-quote-workflow-statuses.xml`, T-07/T-08/T-09.
+Backend (`be-0083`)/database (`db-0083`) lavorano in parallelo sullo stesso spec — questo
+verde copre SOLO `frontend/src/**`, contro il contratto congelato, non ancora integrato E2E.
+
+**T-07 — rinomina modulo:** `features/opportunity-workflows/` -> `features/quote-workflows/`
+(tutti i file interni rinominati, identificatori `OpportunityWorkflow*` -> `QuoteWorkflow*`,
+endpoint `/api/opportunity-workflows/*` -> `/api/quote-workflows/*`). `CriterionFieldOption` ha
+il nuovo campo `inherited: boolean` (AC-016), mostrato come hint testuale discreto
+(`quoteWorkflows.criterionFields.inheritedHint`) nell'editor criteri
+(`quote-workflow-criteria-editor.tsx` — a dire il vero l'hint UI vero e proprio va verificato,
+il campo tipo/i18n c'e' ma non ho ri-letto se il rendering nel form e' gia' cablato: **verificare**).
+Pagina `pages/quote-workflows-page.tsx`, rotta `/quote-workflows`, breadcrumb aggiornato, nav
+`navigation.quoteWorkflows` = "Configuratore Stati Offerta"/"Offer status configurator".
+Modulo `quote-statuses` ELIMINATO per intero (feature folder, pagina, rotta, breadcrumb, bundle
+i18n, `QUOTE_STATUS_GROUPS`/`QuoteStatusGroupValue` rimossi da `features/status-reorder/types.ts`
+e da `features/table/rich-cells.tsx`'s `GroupCell`).
+
+**T-08 — Offerta:** `features/quotes/` usa `quote_workflow_status_id`/`quote_workflow_status`/
+`quote_workflow_statuses` (mai piu' `quote_status_id`). Select di stato popolato SOLO da
+`quote.quote_workflow_statuses` (mai un endpoint for-select), nuovo
+`quote-workflow-status-field.tsx`: campo nota condizionale quando lo stato scelto ha
+`requires_note = true`, Zod `superRefine` in `buildUpdateQuoteSchema` speculare al 422 server
+(pattern copiato da `request-workflow-status-field.tsx`/`request-work-schema.ts`, non reinventato).
+`quote-detail.tsx`/`column-renderers.tsx` (renderer chiave `quote_workflow_status`) aggiornati.
+
+**T-09 — rimozione dal resto dello stack:**
+- Opportunita': niente piu' campo "Stato di lavorazione" nel form (`opportunity-workflow-status-field.tsx`
+  ELIMINATO) ne' nel dettaglio (`opportunity-detail-header.tsx` non mostra piu' il badge
+  `workflow_status`). `OpportunityStatusSummary.source` ora `'quotes' | 'default'` (era
+  `'quotes' | 'workflow'`, AC-033). `opportunity-status-badge.tsx`/`-cell.tsx` erano gia'
+  source-agnostici (consumano solo `entries`), NESSUNA modifica li' oltre al tipo.
+  `opportunity-quotes-section.tsx`: gate `requires_quote` rimosso (D-5/AC-053), il pannello Offerte
+  e' visibile col solo permesso `quotes.viewAny`. Rimosso `requires_quote` da `OpportunityDetail`.
+- Gestione Richieste: `request-workflow-status-field.tsx` e
+  `request-create-workflow-status-field.tsx` ELIMINATI, con tutte le catene
+  schema/payload/hook/panel/create-form ripulite di `opportunity_workflow_status_id`/`note`/
+  `workflow_status`/`workflow_statuses`/`RequestWorkflowStatusRef`. Colonna griglia
+  `workflow_status` (inline-editable) rimossa da `column-renderers.tsx` (AC-055) — la rimozione
+  della COLONNA vera e propria e' lato backend (`TableDefinition`), qui solo il renderer.
+- `components/record-form/status-badge.tsx` ELIMINATO (era usato solo dai due field rimossi,
+  diventato dead code).
+
+**Naming da rispettare (nuovo):** `QuoteWorkflowStatusRef` (in `features/quotes/types.ts`),
+`quoteWorkflows.*` namespace i18n (`it/en-quote-workflows.ts`), permessi `quote-workflows.*`
+(rinominati in `it/en-permissions.ts` + `permissions-i18n-parity.test.ts`), activity-log
+`quote_workflow`/`quote_workflow_status`/`quote_workflow_status_id` (rinominati da
+`opportunity_workflow*` in `it/en-activity-log.ts`).
+
+**Coordinamento richiesto col backend (`be-0083`):** l'i18n key delle colonne griglia Offerte
+(`quotes.columns.quoteWorkflowStatus`/`quotes.advancedFilters.quoteWorkflowStatus`) e' stata
+scelta per convenzione (camelCase del column id `quote_workflow_status` che presumo il backend
+userà) — **il backend deve confermare l'esatta stringa `label` che invia**, altrimenti la colonna
+mostra la chiave grezza. Verificare anche che l'attivita' (`quote_workflow`/`quote_workflow_status`
+morph map slugs) coincida con quanto assegnato in `config/activity-log.php`.
+
+### Verifica eseguita
+
+`cd frontend && npx tsc -b --force --pretty false` EXIT=0. `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+npx vitest run`: **497 file / 3540 test verdi** (0 falliti). `npx eslint src`: solo i 2 errori
+PREESISTENTI gia' noti (`referent-form-metadata.test.tsx`/`registry-form-metadata.test.tsx`,
+file non toccati da questa spec, vedi voce spec 0082 piu' sotto). Grep AC-042 (solo lato
+frontend): zero occorrenze di `quote_status_id`, `QuoteStatus`, `opportunity_workflow_status_id`,
+`OpportunityWorkflow` fuori da commenti storici in moduli non toccati (`contract-statuses`, che
+cita `quote-statuses` come modulo-sorella nei propri commenti — fuori scope, non FE di 0083).
+
+**Non fatto / fuori dal mio scope (frontend):** endpoint backend, migrazioni, seeder demo, e la
+colonna griglia `workflow_status` lato `TableDefinition` (solo il renderer FE e' stato rimosso).
+Non ho verificato end-to-end contro un backend reale (le API non sono ancora disponibili nello
+stesso stato): i test unitari mockano axios/il client, quindi il verde qui non garantisce
+l'integrazione — serve un giro E2E/manuale una volta che be-0083 chiude.
+
 ## DETTAGLIO OPPORTUNITA' RIDISEGNATO (2026-08-05) — VERDE, NON COMMITTATO
 
 Direttiva utente su `/opportunities/21`: record a sinistra, note/documenti/cronologia a destra,

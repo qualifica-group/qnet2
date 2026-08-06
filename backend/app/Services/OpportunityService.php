@@ -15,7 +15,6 @@ use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
-use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\RequestManagement\RequestAttributeValueWriter;
@@ -67,14 +66,12 @@ class OpportunityService
         'lead.campaign.productCategory',
         'lead.campaign.project.businessFunction',
         'lead.campaign.project.productCategory',
-        // spec 0047 (AC-003): Regione + resolved working-state row.
+        // spec 0047 (AC-003): Regione.
         'state',
-        'workflowStatus',
     ];
 
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
-        private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly OpportunityProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
@@ -253,13 +250,6 @@ class OpportunityService
                 $opportunity->save();
             }
 
-            // spec 0047 (AC-015/017): an explicit, already-validated override
-            // wins; otherwise the resolver derives the 'open' row of the
-            // resolved set — product lines are already synced above, so
-            // business_function_id/product_category_id criteria see their
-            // final values.
-            $this->resolveWorkflowStatus($opportunity, $data->workflowStatusId);
-
             // spec 0081: dispatched last, when `name` is already the derived
             // `OPP_{id}` and the manager slots are final.
             $this->assignmentNotifier->notify(
@@ -289,15 +279,15 @@ class OpportunityService
             // (spec 0021) persists a custom-fields-only edit.
             $opportunity->fill($data->submittedAttributes())->save();
 
-            // spec 0081: same reason as the reporter_id check right below —
-            // resolveWorkflowStatus() saves again and resets the diff.
+            // spec 0081: captured right after the ONLY save() before it, so a
+            // later save() in this method (the attribute-values block below)
+            // never resets this diff out from under it.
             $newSupervisorId = $opportunity->wasChanged('supervisor_id') ? $opportunity->supervisor_id : null;
 
             // spec 0059, D-3/AC-022: a genuine `reporter_id` change retargets
             // EVERY existing reward row, independent of whether `rewards`
             // itself was submitted in this same request. Checked right after
-            // THIS save() — resolveWorkflowStatus() below may save() again
-            // and reset wasChanged()'s diff.
+            // THIS save(), for the same reason as $newSupervisorId above.
             if ($data->reporterIdSubmitted && $opportunity->wasChanged('reporter_id')) {
                 $this->rewardAssignmentWriter->retarget($opportunity);
             }
@@ -341,14 +331,6 @@ class OpportunityService
             if ($data->hasRewards()) {
                 $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
             }
-
-            // spec 0047 (AC-016/017): re-resolve after any change to the
-            // resolving criteria (source_id/state_id/product lines) unless
-            // the client explicitly (and already-validated) chose a status.
-            $this->resolveWorkflowStatus(
-                $opportunity,
-                $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null,
-            );
 
             $this->assignmentNotifier->notify(
                 $opportunity,
@@ -401,26 +383,6 @@ class OpportunityService
         }
 
         $opportunity->delete();
-    }
-
-    /**
-     * The single write-side entry point for `opportunity_workflow_status_id`
-     * (spec 0047): an explicit, non-null $submittedStatusId (already
-     * validated by ValidatesWorkflowStatus to belong to the resolved set) is
-     * written verbatim; otherwise OpportunityWorkflowResolver derives and
-     * persists it — the SAME resolver Lane A's delete-reassign flow calls,
-     * never duplicated here.
-     */
-    private function resolveWorkflowStatus(Opportunity $opportunity, ?int $submittedStatusId): void
-    {
-        if ($submittedStatusId !== null) {
-            $opportunity->opportunity_workflow_status_id = $submittedStatusId;
-            $opportunity->save();
-
-            return;
-        }
-
-        $this->workflowResolver->resolveAndAssign($opportunity);
     }
 
     /**

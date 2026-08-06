@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * No contextual rules: every field's ceiling is simply visible+editable when
  * the actor may write (create/update), else visible+readonly, mirroring
- * RewardStatusesAuthorization/QuoteStatusesAuthorization. `color` is
+ * RewardStatusesAuthorization. `color` is
  * mandatory (BR-5's precedent, RewardStatusesAuthorization). `sort_order` is
  * server-managed, no longer writable via the API. `group`
  * (App\Enums\ContractStatusGroup) is the fixed classification

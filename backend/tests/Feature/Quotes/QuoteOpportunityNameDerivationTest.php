@@ -6,7 +6,7 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -29,10 +29,17 @@ if (! function_exists('nameDerivationQuoteService')) {
     }
 }
 
-if (! function_exists('nameDerivationNewQuoteStatus')) {
-    function nameDerivationNewQuoteStatus(): QuoteStatus
+if (! function_exists('nameDerivationNewQuoteWorkflowStatus')) {
+    function nameDerivationNewQuoteWorkflowStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    }
+}
+
+if (! function_exists('nameDerivationActor')) {
+    function nameDerivationActor(): User
+    {
+        return User::factory()->create();
     }
 }
 
@@ -62,7 +69,8 @@ if (! function_exists('nameDerivationCreateQuoteData')) {
             code: null,
             title: 'Offerta di test',
             opportunityId: $opportunityId,
-            quoteStatusId: null,
+            workflowStatusId: null,
+            note: null,
             commercialId: null,
             commercialIdSubmitted: false,
             reporterId: null,
@@ -130,7 +138,7 @@ it('AC-030: an opportunity created with no offer at all gets the OPP_{id} fallba
 // ---------------------------------------------------------------------------
 
 it('AC-031: creating an offer with 3 revenue lines derives "ISO 9001 + SOA + Attestati HACCP"', function () {
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $opportunity = Opportunity::factory()->create();
     $iso = nameDerivationRevenueProduct('ISO 9001');
     $soa = nameDerivationRevenueProduct('SOA');
@@ -140,7 +148,7 @@ it('AC-031: creating an offer with 3 revenue lines derives "ISO 9001 + SOA + Att
         nameDerivationRevenueLine($iso),
         nameDerivationRevenueLine($soa),
         nameDerivationRevenueLine($haccp),
-    ]));
+    ]), nameDerivationActor());
 
     expect($opportunity->fresh()->name)->toBe('ISO 9001 + SOA + Attestati HACCP');
 });
@@ -150,13 +158,14 @@ it('AC-031: creating an offer with 3 revenue lines derives "ISO 9001 + SOA + Att
 // ---------------------------------------------------------------------------
 
 it('AC-032: the same product on two different quotes appears only once', function () {
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $opportunity = Opportunity::factory()->create();
     $iso = nameDerivationRevenueProduct('ISO 9001');
     $service = nameDerivationQuoteService();
+    $actor = nameDerivationActor();
 
-    $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($iso)]));
-    $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($iso)]));
+    $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($iso)]), $actor);
+    $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($iso)]), $actor);
 
     $name = $opportunity->fresh()->name;
 
@@ -168,7 +177,7 @@ it('AC-032: the same product on two different quotes appears only once', functio
 // ---------------------------------------------------------------------------
 
 it('AC-033: a cost line\'s product never appears in the derived name', function () {
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $opportunity = Opportunity::factory()->create();
     $revenueProduct = nameDerivationRevenueProduct('ISO 9001');
     $costProduct = Product::factory()->create(['name' => 'Materiale di consumo']);
@@ -177,7 +186,7 @@ it('AC-033: a cost line\'s product never appears in the derived name', function 
         $opportunity->id,
         offerLines: [nameDerivationRevenueLine($revenueProduct)],
         costLines: [new QuoteLineData(productId: $costProduct->id, quantity: 1.0, unitPrice: 3.0, vatRateId: null, sortOrder: null)],
-    ));
+    ), nameDerivationActor());
 
     expect($opportunity->fresh()->name)
         ->toBe('ISO 9001')
@@ -189,12 +198,12 @@ it('AC-033: a cost line\'s product never appears in the derived name', function 
 // ---------------------------------------------------------------------------
 
 it('AC-034: deleting the only offer reverts the name to OPP_{id}', function () {
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $opportunity = Opportunity::factory()->create();
     $product = nameDerivationRevenueProduct('ISO 9001');
     $service = nameDerivationQuoteService();
 
-    $quote = $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]));
+    $quote = $service->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]), nameDerivationActor());
 
     expect($opportunity->fresh()->name)->toBe('ISO 9001');
 
@@ -208,7 +217,7 @@ it('AC-034: deleting the only offer reverts the name to OPP_{id}', function () {
 // ---------------------------------------------------------------------------
 
 it('AC-035: an over-length concatenation is capped at 191 chars, never splitting a name', function () {
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $opportunity = Opportunity::factory()->create();
     $first = nameDerivationRevenueProduct(str_repeat('A', 100));
     $second = nameDerivationRevenueProduct(str_repeat('B', 100));
@@ -218,7 +227,7 @@ it('AC-035: an over-length concatenation is capped at 191 chars, never splitting
         nameDerivationRevenueLine($first),
         nameDerivationRevenueLine($second),
         nameDerivationRevenueLine($third),
-    ]));
+    ]), nameDerivationActor());
 
     $name = $opportunity->fresh()->name;
 
@@ -252,9 +261,9 @@ it('AC-036: an opportunity created via Gestione Richieste derives its name the s
     $opportunity = Opportunity::findOrFail($response->json('data.id'));
     expect($opportunity->name)->toBe('OPP_'.$opportunity->id);
 
-    nameDerivationNewQuoteStatus();
+    nameDerivationNewQuoteWorkflowStatus();
     $product = nameDerivationRevenueProduct('ISO 9001');
-    nameDerivationQuoteService()->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]));
+    nameDerivationQuoteService()->create(nameDerivationCreateQuoteData($opportunity->id, [nameDerivationRevenueLine($product)]), nameDerivationActor());
 
     expect($opportunity->fresh()->name)->toBe('ISO 9001');
 });

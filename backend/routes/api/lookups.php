@@ -2,11 +2,9 @@
 
 use App\Http\Controllers\ContractStatuses\ContractStatusController;
 use App\Http\Controllers\ContractStatuses\ContractStatusForSelectController;
-use App\Http\Controllers\OpportunityWorkflows\OpportunityWorkflowController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodForSelectController;
-use App\Http\Controllers\QuoteStatuses\QuoteStatusController;
-use App\Http\Controllers\QuoteStatuses\QuoteStatusForSelectController;
+use App\Http\Controllers\QuoteWorkflows\QuoteWorkflowController;
 use App\Http\Controllers\RewardStatuses\RewardStatusController;
 use App\Http\Controllers\RewardStatuses\RewardStatusForSelectController;
 use App\Http\Controllers\RewardTypes\RewardTypeController;
@@ -85,42 +83,21 @@ Route::post('sectors', [SectorController::class, 'store']);
 Route::match(['put', 'patch'], 'sectors/{sector}', [SectorController::class, 'update']);
 Route::delete('sectors/{sector}', [SectorController::class, 'destroy']);
 
-// Opportunity workflow configurator CRUD (spec 0047, Lane A): the working-
-// state "stati di lavorazione" dimension. Authorization (opportunity-workflows.view/create/update/
-// delete) is enforced server-side in OpportunityWorkflowController via
-// OpportunityWorkflowPolicy. `criterion-fields`/`default-statuses` are
-// declared ABOVE opportunity-workflows/{opportunityWorkflow} so their literal
-// segments win over the bound wildcard.
-Route::get('opportunity-workflows/criterion-fields', [OpportunityWorkflowController::class, 'criterionFields']);
-Route::get('opportunity-workflows/default-statuses', [OpportunityWorkflowController::class, 'defaultStatuses']);
-Route::put('opportunity-workflows/default-statuses', [OpportunityWorkflowController::class, 'updateDefaultStatuses']);
+// Quote workflow configurator CRUD (spec 0047, moved onto the Offerta by
+// spec 0083 D-6): the working-state "stato dell'offerta" dimension.
+// Authorization (quote-workflows.view/create/update/delete) is enforced
+// server-side in QuoteWorkflowController via QuoteWorkflowPolicy.
+// `criterion-fields`/`default-statuses` are declared ABOVE
+// quote-workflows/{quoteWorkflow} so their literal segments win over the
+// bound wildcard.
+Route::get('quote-workflows/criterion-fields', [QuoteWorkflowController::class, 'criterionFields']);
+Route::get('quote-workflows/default-statuses', [QuoteWorkflowController::class, 'defaultStatuses']);
+Route::put('quote-workflows/default-statuses', [QuoteWorkflowController::class, 'updateDefaultStatuses']);
 
-Route::get('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'show']);
-Route::post('opportunity-workflows', [OpportunityWorkflowController::class, 'store']);
-Route::match(['put', 'patch'], 'opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'update']);
-Route::delete('opportunity-workflows/{opportunityWorkflow}', [OpportunityWorkflowController::class, 'destroy']);
-
-// Quote statuses CRUD (spec 0065): the Quote working-state pick-list, a
-// plain clone of the quote-statuses shape (delete-guard lives in
-// QuoteStatusService). Authorization (quote-statuses.view/create/update/
-// delete) is enforced server-side in QuoteStatusController via
-// QuoteStatusPolicy.
-// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
-// Declared ABOVE quote-statuses/{quoteStatus} so the literal `for-select`
-// segment wins over the bound wildcard. The only gate is auth:sanctum (ADR
-// 0011, amended 2026-07-31).
-Route::get('quote-statuses/for-select', QuoteStatusForSelectController::class);
-
-// Custom-row resequencing: `sort_order` is server-managed, this is the only
-// way to change it. Declared ABOVE the bound wildcard for the same
-// literal-segment reason as `for-select`. Gated on quote-statuses.update
-// directly in QuoteStatusController::reorder.
-Route::post('quote-statuses/reorder', [QuoteStatusController::class, 'reorder']);
-
-Route::get('quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'show']);
-Route::post('quote-statuses', [QuoteStatusController::class, 'store']);
-Route::match(['put', 'patch'], 'quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'update']);
-Route::delete('quote-statuses/{quoteStatus}', [QuoteStatusController::class, 'destroy']);
+Route::get('quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, 'show']);
+Route::post('quote-workflows', [QuoteWorkflowController::class, 'store']);
+Route::match(['put', 'patch'], 'quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, 'update']);
+Route::delete('quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, 'destroy']);
 
 // Reward types CRUD (spec 0058): a pure anagraphic (name/color) describing
 // the TYPES of voucher/reward/incentive usable in the CRM (BR-3: no

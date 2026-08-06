@@ -73,10 +73,11 @@ class CustomFieldRelationLabelResolver
     /**
      * The same display-column heuristic resolve() uses internally, exposed
      * for a consumer that already knows the target model class (spec 0047
-     * amendment 2026-07-27: App\Support\OpportunityWorkflows\
-     * CriterionFieldRegistry needs a custom relation field's label column to
-     * build a criterion's value_label, e.g. `companies.denomination`) —
-     * same per-model-class cache, same candidate list, no behavior change.
+     * amendment 2026-07-27: App\Support\QuoteWorkflows\
+     * QuoteCriterionFieldRegistry needs a custom relation field's label
+     * column to build a criterion's value_label, e.g.
+     * `companies.denomination`) — same per-model-class cache, same candidate
+     * list, no behavior change.
      *
      * @param  class-string<Model>  $modelClass
      */

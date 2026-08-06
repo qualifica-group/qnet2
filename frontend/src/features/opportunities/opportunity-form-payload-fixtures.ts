@@ -24,7 +24,6 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
     // Spec 0047: never submit-blocking; the payload-diff tests cover
     // each independently.
     state_id: null,
-    opportunity_workflow_status_id: null,
     product_lines: [],
     products_of_interest: [],
     rewards: [],
@@ -52,7 +51,7 @@ export function original(overrides: Partial<OpportunityDetail> = {}): Opportunit
     name: 'Enterprise deal',
     registry_id: 1,
     registry: { id: 1, name: 'Acme S.p.A.' },
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
+    status: { source: 'default', distinct_count: 0, entries: [] },
     referent_id: null,
     referent: null,
     commercial_id: null,
@@ -66,7 +65,6 @@ export function original(overrides: Partial<OpportunityDetail> = {}): Opportunit
     operational_site_id: null,
     operational_site: null,
     state_id: null,
-    opportunity_workflow_status_id: null,
     product_lines: [],
     lead_id: null,
     lead: null,

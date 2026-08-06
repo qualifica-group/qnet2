@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { render, screen, waitFor } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
@@ -42,8 +43,9 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     title: 'Sample quote',
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
-    quote_status_id: 1,
-    quote_status: { id: 1, name: 'Bozza', color: 'slate', group: 'open' },
+    quote_workflow_status_id: 1,
+    quote_workflow_status: WORKFLOW_STATUS_OPEN,
+    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
     commercial_id: null,
     commercial: null,
     reporter_id: null,

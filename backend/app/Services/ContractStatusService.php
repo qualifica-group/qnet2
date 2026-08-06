@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  * full-CRUD lookup entity (name/description/color/group) describing a
  * Contract's working state, combining RewardStatus' `description`/`is_active`
  * shape with DocumentLayout's exclusive `is_default` (BR-5, delegated to
- * ContractStatusDefaultManager) and QuoteStatus' `group` classification.
+ * ContractStatusDefaultManager) and its own `group` classification
+ * (App\Enums\ContractStatusGroup).
  *
  * `sort_order` is server-managed — placed by StatusOrderManager::placeNew()
  * on create, resequenced by reorder(); the four mandatory system rows

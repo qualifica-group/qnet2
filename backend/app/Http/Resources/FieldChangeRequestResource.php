@@ -18,7 +18,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `field_label`/`subject_path` are resolved via ProtectedFieldRegistry
  * (config-only, no query); `subject_label` goes through
  * FieldChangeRequestValueResolver — both container-resolved (app()), the
- * same convention OpportunityWorkflowResource already uses: a JsonResource
+ * same convention QuoteWorkflowResource already uses: a JsonResource
  * is instantiated directly (`new FieldChangeRequestResource(...)`), so
  * constructor injection is not available here.
  *

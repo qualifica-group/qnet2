@@ -50,17 +50,14 @@ it('GET opportunity with product lines and stored values -> attribute_values + a
     $response->assertJsonPath('data.applicable_attributes.0.type', 'integer');
     $response->assertJsonPath('data.applicable_attributes.0.is_required', true);
 
-    // No regression on the existing keys/shape.
+    // No regression on the existing keys/shape. Spec 0083, D-2: the
+    // Opportunity carries no working-state field of its own any more —
+    // `workflow_status` is gone, `status` is the COMPUTED summary instead.
     $response->assertJsonPath('data.id', $opportunity->id);
     $response->assertJsonPath('data.name', $opportunity->name);
     $response->assertJsonPath('data.registry', ['id' => $opportunity->registry_id, 'name' => $opportunity->registry->name]);
-    $response->assertJsonPath('data.workflow_status', $opportunity->workflowStatus === null ? null : [
-        'id' => $opportunity->workflowStatus->id,
-        'name' => $opportunity->workflowStatus->name,
-        'color' => $opportunity->workflowStatus->color,
-        'system_key' => $opportunity->workflowStatus->system_key,
-        'group' => $opportunity->workflowStatus->group->value,
-    ]);
+    expect($response->json('data'))->not->toHaveKey('workflow_status')
+        ->and($response->json('data'))->toHaveKey('status');
     expect($response->json('data.product_lines'))->toHaveCount(1);
 });
 

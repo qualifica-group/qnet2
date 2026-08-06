@@ -1,9 +1,9 @@
 <?php
 
 use App\Enums\WorkflowStatusGroup;
-use App\Models\OpportunityWorkflow;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,10 +24,10 @@ it('provisions one active workflow per catalogue category, idempotently', functi
 
     $expected = array_keys(WorkflowStatusCatalogue::WORKFLOWS);
 
-    expect(OpportunityWorkflow::query()->count())->toBe(count($expected));
+    expect(QuoteWorkflow::query()->count())->toBe(count($expected));
 
     foreach ($expected as $categoryName) {
-        $workflow = OpportunityWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
+        $workflow = QuoteWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
         expect($workflow)->not->toBeNull($categoryName)
@@ -42,9 +42,9 @@ it('provisions one active workflow per catalogue category, idempotently', functi
 it('seeds a GOL region column in the sheet order, between the pinned system rows', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    $workflow = OpportunityWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $statuses = OpportunityWorkflowStatus::query()
-        ->where('opportunity_workflow_id', $workflow->id)
+    $workflow = QuoteWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
         ->orderBy('sort_order')
         ->get();
 
@@ -74,10 +74,10 @@ it('labels the pinned system rows with the sheet states, never the generic defau
     test()->seed(QualificaCatalogSeeder::class);
 
     $pinned = function (string $workflowName): array {
-        $workflow = OpportunityWorkflow::query()->where('name', $workflowName)->firstOrFail();
+        $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
-        return OpportunityWorkflowStatus::query()
-            ->where('opportunity_workflow_id', $workflow->id)
+        return QuoteWorkflowStatus::query()
+            ->where('quote_workflow_id', $workflow->id)
             ->whereNotNull('system_key')
             ->pluck('name', 'system_key')
             ->sortKeys()
@@ -125,9 +125,9 @@ it('labels the pinned system rows with the sheet states, never the generic defau
 it('promotes a state onto a pinned row instead of duplicating it as a custom one', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    $workflow = OpportunityWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
-    $statuses = OpportunityWorkflowStatus::query()
-        ->where('opportunity_workflow_id', $workflow->id)
+    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
         ->get();
 
     // One row per name, and the promoted ones carry their sheet description
@@ -144,9 +144,9 @@ it('promotes a state onto a pinned row instead of duplicating it as a custom one
 it('classifies each status from the sheet legend', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    $workflow = OpportunityWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $statuses = OpportunityWorkflowStatus::query()
-        ->where('opportunity_workflow_id', $workflow->id)
+    $workflow = QuoteWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
         ->get()
         ->keyBy('name');
 
@@ -171,10 +171,10 @@ it('scopes the descriptions per block, so one name reads differently per categor
     test()->seed(QualificaCatalogSeeder::class);
 
     $descriptionOf = function (string $workflowName, string $statusName): string {
-        $workflow = OpportunityWorkflow::query()->where('name', $workflowName)->firstOrFail();
+        $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
-        return OpportunityWorkflowStatus::query()
-            ->where('opportunity_workflow_id', $workflow->id)
+        return QuoteWorkflowStatus::query()
+            ->where('quote_workflow_id', $workflow->id)
             ->where('name', $statusName)
             ->value('description');
     };
@@ -190,8 +190,8 @@ it('scopes the descriptions per block, so one name reads differently per categor
 it('gives the four regions sharing one column the same status list', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    $names = static fn (string $workflowName): array => OpportunityWorkflowStatus::query()
-        ->whereIn('opportunity_workflow_id', OpportunityWorkflow::query()->where('name', $workflowName)->select('id'))
+    $names = static fn (string $workflowName): array => QuoteWorkflowStatus::query()
+        ->whereIn('quote_workflow_id', QuoteWorkflow::query()->where('name', $workflowName)->select('id'))
         ->orderBy('sort_order')
         ->pluck('name')
         ->all();
@@ -210,8 +210,8 @@ it('leaves the categories absent from the sheet on the global default set', func
     test()->seed(QualificaCatalogSeeder::class);
 
     // No column in the sheet: no workflow, so their opportunities fall back to
-    // the global default set (OpportunityWorkflowResolver).
+    // the global default set (QuoteWorkflowResolver).
     foreach (['GOL - Abruzzo', 'DIL', 'Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
-        expect(OpportunityWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
+        expect(QuoteWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
     }
 });

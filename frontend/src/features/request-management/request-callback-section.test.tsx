@@ -61,9 +61,6 @@ const READ_ONLY_PERMISSIONS = {
   actions: {},
 }
 
-const WORKFLOW_OPEN = { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false }
-const WORKFLOW_IN_PROGRESS = { id: 101, name: 'In progress', color: 'amber', system_key: null, description: null, requires_note: false }
-
 function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): RequestWorkPanelWithPermissions {
   return {
     id: 1,
@@ -81,9 +78,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
-    workflow_status: WORKFLOW_OPEN,
-    workflow_statuses: [WORKFLOW_OPEN, WORKFLOW_IN_PROGRESS],
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
     products_of_interest: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
     client_identity: null,
@@ -192,25 +187,6 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
     const [, payload] = updateRequestWorkMock.mock.calls[0]
     expect(payload).toEqual({ next_callback_at: null })
     expect(payload.next_callback_at).not.toBe('')
-  })
-
-  it('omits next_callback_at entirely when it is left untouched, even though another field changed', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel({ next_callback_at: '2026-08-03T15:30' }))
-    updateRequestWorkMock.mockResolvedValue(
-      panel({ next_callback_at: '2026-08-03T15:30', workflow_status: WORKFLOW_IN_PROGRESS }),
-    )
-
-    renderPanel()
-    await screen.findByLabelText(DATE_FIELD)
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
-    fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateRequestWorkMock.mock.calls[0]
-    expect(payload).not.toHaveProperty('next_callback_at')
-    expect(payload).toEqual({ opportunity_workflow_status_id: 101 })
   })
 })
 

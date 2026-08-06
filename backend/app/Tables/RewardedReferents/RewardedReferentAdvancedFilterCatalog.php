@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\RewardedReferents;
 
 use App\Enums\AdvancedFilterType;
-use App\Models\OpportunityWorkflowStatus;
+use App\Models\QuoteWorkflowStatus;
 
 /**
  * Advanced-filter catalogue for the `rewarded-referents` domain (spec 0059,
@@ -20,11 +20,16 @@ use App\Models\OpportunityWorkflowStatus;
  * origins that possess a state" — none of that a plain relation-by-id can
  * express).
  *
- * `workflow_status` is a SET filter matched by the related row's NAME, not
- * id (mirroring RequestAdvancedFilterCatalog's own precedent): the same
- * status name is replicated across different Opportunity Workflows as
- * distinct rows/ids. `opportunity_status` stays id-based (the pipeline
- * statuses table is a single flat set, no per-workflow replication).
+ * `workflow_status` is a SET filter matched by the DISPLAYED status name
+ * (spec 0082/0083, D-2/D-8): the origin Opportunity's status is COMPUTED
+ * from its Quotes' own workflow statuses (falling back to the global default
+ * workflow's `open` row when it has none) — App\Services\Opportunities\
+ * OpportunityStatusScope is the single predicate every consumer of that
+ * computed status shares, reused here instead of a second copy. The same
+ * name is replicated across different Quote Workflows as distinct rows/ids,
+ * hence name-, not id-, based. `opportunity_status` stays id-based (the
+ * pipeline statuses table is a single flat set, no per-workflow
+ * replication).
  *
  * `opportunity`'s `source: {resource: 'opportunities'}` has NO backing
  * `opportunities/for-select` route today (spec 0040 left it out of scope) —
@@ -120,16 +125,15 @@ final class RewardedReferentAdvancedFilterCatalog
     }
 
     /**
-     * Distinct workflow-status NAMES across every workflow (global set +
-     * per-workflow overrides), mirroring RequestAdvancedFilterCatalog::
-     * workflowStatusOptions() exactly (same reason: the same name replicates
-     * across workflows as distinct ids).
+     * Distinct quote-workflow-status NAMES across every workflow (global set
+     * + per-workflow overrides) — same reason the name replicates across
+     * workflows as distinct ids.
      *
      * @return array<int, array{value: string, label: string}>
      */
     private static function workflowStatusOptions(): array
     {
-        return OpportunityWorkflowStatus::query()
+        return QuoteWorkflowStatus::query()
             ->select('name')
             ->distinct()
             ->orderBy('name')

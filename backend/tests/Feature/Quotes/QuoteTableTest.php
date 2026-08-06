@@ -2,7 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,7 +62,7 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // persisted column layout (spec 0001).
     $ids = $columns->pluck('id')->all();
     expect($ids)->toBe([
-        'id', 'code', 'title', 'opportunity', 'quote_status', 'commercial',
+        'id', 'code', 'title', 'opportunity', 'quote_workflow_status', 'commercial',
         'reporter', 'supervisor', 'revenue_net', 'cost_net', 'margin_net', 'created_at',
         'company', 'company_site', 'operational_site',
     ]);
@@ -90,16 +90,16 @@ it('rows: view/edit/delete/activity actions gated by QuotePolicy', function () {
         ->and($row['actions'])->not->toContain('edit', 'delete', 'activity');
 });
 
-it('rows: the quote_status column carries id/name/color for the badge', function () {
+it('rows: the quote_workflow_status column carries id/name/color for the badge', function () {
     $actor = quoteTableUserWith(['viewAny', 'view']);
-    $status = QuoteStatus::factory()->create(['name' => 'In revisione', 'color' => 'amber']);
-    Quote::factory()->create(['quote_status_id' => $status->id, 'title' => 'Badge test']);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'In revisione', 'color' => 'amber']);
+    Quote::factory()->create(['quote_workflow_status_id' => $status->id, 'title' => 'Badge test']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('title', 'Badge test');
 
-    expect($row['quote_status'])->toBe(['id' => $status->id, 'name' => 'In revisione', 'color' => 'amber']);
+    expect($row['quote_workflow_status'])->toBe(['id' => $status->id, 'name' => 'In revisione', 'color' => 'amber']);
 });
 
 /**
@@ -114,14 +114,14 @@ it('rows: the quote_status column carries id/name/color for the badge', function
 it('rows: a fully-populated quote projects the exact frontend-consumed shape (all relations set)', function () {
     $actor = quoteTableUserWith(['viewAny', 'view']);
     $opportunity = Opportunity::factory()->create(['name' => 'Rinnovo contratto']);
-    $status = QuoteStatus::factory()->create(['name' => 'In negoziazione', 'color' => 'green']);
+    $status = QuoteWorkflowStatus::factory()->create(['name' => 'In negoziazione', 'color' => 'green']);
     $commercial = Referent::factory()->create(['name' => 'Mario Rossi']);
     $reporter = Referent::factory()->create(['name' => 'Luca Bianchi']);
     $supervisor = User::factory()->create(['name' => 'Giulia Verdi']);
     $quote = Quote::factory()->create([
         'title' => 'Offerta completa',
         'opportunity_id' => $opportunity->id,
-        'quote_status_id' => $status->id,
+        'quote_workflow_status_id' => $status->id,
         'commercial_id' => $commercial->id,
         'reporter_id' => $reporter->id,
         'supervisor_id' => $supervisor->id,
@@ -133,7 +133,7 @@ it('rows: a fully-populated quote projects the exact frontend-consumed shape (al
 
     expect($row)->not->toBeNull()
         ->and($row['opportunity'])->toBe(['id' => $opportunity->id, 'name' => 'Rinnovo contratto'])
-        ->and($row['quote_status'])->toBe(['id' => $status->id, 'name' => 'In negoziazione', 'color' => 'green'])
+        ->and($row['quote_workflow_status'])->toBe(['id' => $status->id, 'name' => 'In negoziazione', 'color' => 'green'])
         ->and($row['commercial'])->toBe(['id' => $commercial->id, 'name' => 'Mario Rossi'])
         ->and($row['reporter'])->toBe(['id' => $reporter->id, 'name' => 'Luca Bianchi'])
         // `supervisor` is rendered by the SAME shared `UserCell` component as

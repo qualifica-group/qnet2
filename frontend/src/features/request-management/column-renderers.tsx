@@ -12,7 +12,7 @@ import {
   EmptyCell,
   badgeColorClass,
 } from '@/features/table/cell-renderers'
-import { BooleanBadgeCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, RefNamesCell, RelationCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -102,11 +102,9 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
  * `operator_ga2` renders as the shared `UserCell` (avatar + hover-card that
  * opens the user's profile Sheet — same component as the opportunities
  * `supervisor` column). `operational_site` (spec 0056) has no `name`, only the
- * server-composed `label`, which `RelationCell` reads. The working state the
- * operator advances (`workflow_status`) renders as a colored badge via the
- * shared `StatusBadgeCell`; the client's PersonalData anagraphic fields are
- * display-only text, while the product categories render their own pair
- * projection (spec 0075). `next_callback_at`
+ * server-composed `label`, which `RelationCell` reads. The client's
+ * PersonalData anagraphic fields are display-only text, while the product
+ * categories render their own pair projection (spec 0075). `next_callback_at`
  * (spec 0052) reuses the shared `DateTimeCell` in its `optionalTime` mode: the
  * hour is optional (user directive 2026-07-31), so a callback planned without
  * one shows as a plain date instead of a misleading "00:00".
@@ -123,7 +121,6 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   // (only `type: 'badge'`/`enum` are) — without this row the cell would show
   // the raw boolean instead of the Si/No badge (AC-022).
   is_transferred: (params) => <BooleanBadgeCell {...params} />,
-  workflow_status: (params) => <StatusBadgeCell {...params} />,
   first_name: (params) => <TextCell {...params} />,
   last_name: (params) => <TextCell {...params} />,
   tax_code: (params) => <TextCell {...params} />,

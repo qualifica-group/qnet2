@@ -7,8 +7,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
 // TestCase is already bound to the whole Feature directory (tests/Pest.php);
-// only RefreshDatabase needs adding here, mirroring RewardStatusCrudTest/
-// QuoteStatusCrudTest's own sibling.
+// only RefreshDatabase needs adding here, mirroring RewardStatusCrudTest's
+// own sibling.
 uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------

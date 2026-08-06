@@ -13,7 +13,7 @@ export const quotes = {
     code: 'Code',
     title: 'Title',
     opportunity: 'Opportunity',
-    quoteStatus: 'Quote status',
+    quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
@@ -27,7 +27,7 @@ export const quotes = {
   },
   advancedFilters: {
     opportunity: 'Opportunity',
-    quoteStatus: 'Quote status',
+    quoteWorkflowStatus: 'Status',
     commercial: 'Commercial',
     supervisor: 'Supervisor',
     createdRange: 'Created at',
@@ -35,7 +35,7 @@ export const quotes = {
   detail: {
     loadError: 'Unable to load the quote. Please try again.',
     opportunity: 'Opportunity',
-    quoteStatus: 'Quote status',
+    workflowStatus: 'Status',
     commercial: 'Commercial',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
@@ -68,8 +68,13 @@ export const quotes = {
     opportunity: 'Opportunity',
     opportunitySearch: 'Search opportunities…',
     opportunityRequired: 'Opportunity is required.',
-    quoteStatus: 'Quote status',
-    quoteStatusSearch: 'Search quote statuses…',
+    workflowStatus: 'Status',
+    workflowStatusHint: 'The operational status of the quote, picked from the set resolved for its criteria.',
+    note: 'Note',
+    noteHint: "The note is recorded on the linked opportunity's thread.",
+    notePlaceholder: 'Explain the reason for this status change…',
+    noteMax: 'Note must be at most 5000 characters.',
+    noteRequired: 'A note is required to move to this status.',
     commercial: 'Commercial',
     commercialSearch: 'Search commercials…',
     reporter: 'Reporter',
@@ -116,6 +121,10 @@ export const quotes = {
       layout: {
         title: 'Document layout',
         description: 'Word layout used to generate the quote document.',
+      },
+      workflowStatus: {
+        title: 'Status',
+        description: 'Advance the quote’s operational status.',
       },
       offer: {
         title: 'Offer',

@@ -32,13 +32,9 @@ namespace App\DataObjects\Opportunities;
  * ArgumentCountError reason as CreateOpportunityData.
  *
  * Spec 0047: `stateId` (Regione, D1) follows the same `*Submitted`
- * convention as every other plain scalar. `workflowStatusId` is the
- * OPTIONAL explicit `opportunity_workflow_status_id` override (AC-016/017):
- * submitted-and-non-null is validated (ValidatesWorkflowStatus) to belong to
- * the resolved set and written verbatim; NOT submitted, or submitted null,
- * both mean "let OpportunityWorkflowResolver decide" — it is NEVER part of
- * submittedAttributes() (never mass-assigned, always written by the
- * resolver).
+ * convention as every other plain scalar. Spec 0083, D-2: `workflowStatusId`
+ * is REMOVED — the Opportunity carries no working-state override any more,
+ * the configurator having moved onto the Offerta (-> Quote).
  *
  * Spec 0057, D-5: `name` is REMOVED entirely — it is immutable server-side
  * (derived once at create as `OPP_{id}`), never part of a PATCH payload.
@@ -85,8 +81,6 @@ final readonly class UpdateOpportunityData
         public bool $successProbabilitySubmitted = false,
         public ?int $stateId = null,
         public bool $stateIdSubmitted = false,
-        public ?int $workflowStatusId = null,
-        public bool $workflowStatusIdSubmitted = false,
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
@@ -138,8 +132,6 @@ final readonly class UpdateOpportunityData
             successProbabilitySubmitted: array_key_exists('success_probability', $data),
             stateId: self::nullableInt($data, 'state_id'),
             stateIdSubmitted: array_key_exists('state_id', $data),
-            workflowStatusId: self::nullableInt($data, 'opportunity_workflow_status_id'),
-            workflowStatusIdSubmitted: array_key_exists('opportunity_workflow_status_id', $data),
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),

@@ -1,7 +1,8 @@
 <?php
 
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
+use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\RewardType;
 use App\Models\User;
@@ -56,13 +57,21 @@ it('opportunity advanced filter restricts to referents rewarded from that specif
 
 it('workflow_status advanced filter matches by NAME across different workflows (AC-011)', function () {
     $actor = rewardedReferentUserWith(['viewAny']);
-    $wantedStatus = OpportunityWorkflowStatus::factory()->global()->create(['name' => 'In lavorazione']);
-    $otherStatus = OpportunityWorkflowStatus::factory()->global()->create(['name' => 'Completata']);
+    $wantedStatus = QuoteWorkflowStatus::factory()->create(['name' => 'In lavorazione']);
+    $otherStatus = QuoteWorkflowStatus::factory()->create(['name' => 'Completata']);
 
+    // Spec 0083, D-2/D-8: the origin Opportunity's status is COMPUTED from
+    // its Quotes' own workflow statuses — matched here via each origin's
+    // single Quote, never a per-opportunity working-state override any more.
+    $matchingOpportunity = Opportunity::factory()->create();
+    Quote::factory()->create(['opportunity_id' => $matchingOpportunity->id, 'quote_workflow_status_id' => $wantedStatus->id]);
     $matching = Referent::factory()->create();
-    rewardForOpportunity($matching, Opportunity::factory()->create(['opportunity_workflow_status_id' => $wantedStatus->id]));
+    rewardForOpportunity($matching, $matchingOpportunity);
+
+    $nonMatchingOpportunity = Opportunity::factory()->create();
+    Quote::factory()->create(['opportunity_id' => $nonMatchingOpportunity->id, 'quote_workflow_status_id' => $otherStatus->id]);
     $nonMatching = Referent::factory()->create();
-    rewardForOpportunity($nonMatching, Opportunity::factory()->create(['opportunity_workflow_status_id' => $otherStatus->id]));
+    rewardForOpportunity($nonMatching, $nonMatchingOpportunity);
 
     Sanctum::actingAs($actor);
 

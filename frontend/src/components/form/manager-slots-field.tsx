@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, Plus, Trash2, UserRound } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
@@ -48,6 +49,14 @@ export function ManagerSlotsField({
 
   const slotLabel = (index: number) => labels?.[index + 1] ?? t('registries.form.managerSlotLabel', { n: index + 1 })
 
+  // A caller that resolved ANY denomination (spec 0080) makes every row show
+  // its name as VISIBLE text instead of the bare position number — a
+  // `title`-only tooltip is invisible on touch, exactly the reasoning the
+  // read-only detail panel already applies. All-or-nothing per field, not
+  // per row: a mixed column would be ragged. Callers with no `labels` at all
+  // (Registries, decision 2) keep the compact number badge unchanged.
+  const hasResolvedLabels = labels !== undefined && Object.keys(labels).length > 0
+
   const setSlot = (index: number, id: number | null) =>
     onChange(value.map((slot, i) => (i === index ? id : slot)))
 
@@ -78,11 +87,14 @@ export function ManagerSlotsField({
           // The slot's identity IS its position, so the index is the correct key.
           <li key={index} className="flex items-center gap-2">
             <span
-              className="flex w-9 shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground"
+              className={cn(
+                'flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground',
+                hasResolvedLabels ? 'w-24 sm:w-32' : 'w-9',
+              )}
               title={slotLabel(index)}
             >
-              <UserRound aria-hidden="true" className="size-3.5" />
-              {index + 1}
+              <UserRound aria-hidden="true" className="size-3.5 shrink-0" />
+              {hasResolvedLabels ? <span className="truncate">{slotLabel(index)}</span> : index + 1}
             </span>
             <div className="min-w-0 flex-1">
               <AsyncPaginatedSelect

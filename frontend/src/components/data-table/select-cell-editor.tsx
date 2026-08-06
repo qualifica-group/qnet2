@@ -27,7 +27,7 @@ import type { CustomCellEditorProps } from 'ag-grid-react'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { RequiresNoteBadge } from '@/features/opportunity-workflows/requires-note-badge'
+import { RequiresNoteBadge } from '@/features/quote-workflows/requires-note-badge'
 import { cn } from '@/lib/utils'
 import type { SelectOption, TableRow } from '@/features/table/types'
 

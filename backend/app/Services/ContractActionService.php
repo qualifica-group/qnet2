@@ -8,8 +8,8 @@ use App\DataObjects\Contracts\ScheduleContractData;
 use App\DataObjects\Contracts\TerminateContractData;
 use App\DataObjects\Contracts\ValidateContractData;
 use App\Enums\ContractStatusGroup;
-use App\Enums\QuoteStatusGroup;
 use App\Enums\StatusSystemKey;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
@@ -207,9 +207,9 @@ class ContractActionService
 
     private function assertQuoteClosedWon(Contract $contract): void
     {
-        $contract->loadMissing('quote.quoteStatus');
+        $contract->loadMissing('quote.quoteWorkflowStatus');
 
-        if ($contract->quote->quoteStatus?->group !== QuoteStatusGroup::ClosedWon) {
+        if ($contract->quote->quoteWorkflowStatus?->group !== WorkflowStatusGroup::ClosedWon) {
             abort(422, 'The linked quote is not currently closed_won.');
         }
     }

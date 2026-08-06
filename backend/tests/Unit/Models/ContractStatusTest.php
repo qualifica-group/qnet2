@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 // Touches the database (migrations, factories), so bind the full TestCase +
-// RefreshDatabase explicitly, mirroring QuoteStatusTest's own sibling.
+// RefreshDatabase explicitly, mirroring QuoteTest's own sibling.
 uses(TestCase::class, RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------

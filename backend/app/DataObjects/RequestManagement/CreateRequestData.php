@@ -31,14 +31,13 @@ use App\DataObjects\Users\ProfileData;
  * default RequestCreationService applies — which is what covers an actor who
  * never sees the two fields at all.
  *
- * The last five (user directive 2026-07-31, "la create il piu' simile
- * possibile al pannello") are the operative fields the work panel edits, all
- * OPTIONAL at creation: `workflowStatusId` + its `statusNote` (the working
- * state and the note a `requires_note` status demands), `nextCallbackAt`
- * (the planned follow-up call), `generalNotes` and `attributeValues` (the
- * dynamic per-category fields). `null` means "not submitted" for each: the
- * status then stays whatever OpportunityWorkflowResolver derives, and the
- * other four simply stay unset.
+ * The last three (user directive 2026-07-31, "la create il piu' simile
+ * possibile al pannello") are operative fields the work panel edits, all
+ * OPTIONAL at creation: `nextCallbackAt` (the planned follow-up call),
+ * `generalNotes` and `attributeValues` (the dynamic per-category fields).
+ * `null` means "not submitted" for each. Spec 0083, D-2: the working-status
+ * pair (`workflowStatusId`/`statusNote`) is GONE — the Opportunity resolves
+ * no working state of its own any more.
  */
 final readonly class CreateRequestData
 {
@@ -58,8 +57,6 @@ final readonly class CreateRequestData
         public ?array $rewards = null,
         public ?int $operatorId = null,
         public ?int $operationalSiteId = null,
-        public ?int $workflowStatusId = null,
-        public ?string $statusNote = null,
         public ?string $nextCallbackAt = null,
         public ?string $generalNotes = null,
         public ?array $attributeValues = null,

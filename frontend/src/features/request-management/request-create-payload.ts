@@ -86,13 +86,11 @@ export interface BuildRequestCreatePayloadArgs {
   operationalSiteId: number | null
   rewards: RequestRewardInput[]
   /**
-   * The five operative fields the work panel edits (user directive
-   * 2026-07-31). Each is sent only when it carries something: on create there
-   * is no persisted value a null/empty could clear, so the key would carry no
+   * The operative fields the work panel edits (user directive 2026-07-31).
+   * Each is sent only when it carries something: on create there is no
+   * persisted value a null/empty could clear, so the key would carry no
    * information (the same rule `operator_id` and `rewards` already follow).
    */
-  workflowStatusId: number | null
-  statusNote: string
   nextCallbackAt: string | null
   generalNotes: string
   attributeValues: Record<string, unknown>
@@ -119,8 +117,6 @@ export function buildRequestCreatePayload({
   operatorId,
   operationalSiteId,
   rewards,
-  workflowStatusId,
-  statusNote,
   nextCallbackAt,
   generalNotes,
   attributeValues,
@@ -153,19 +149,11 @@ export function buildRequestCreatePayload({
     ...(productsOfInterest.length > 0 ? { products_of_interest: productsOfInterest } : {}),
   }
 
-  // The operative block (user directive 2026-07-31). `note` rides along ONLY
-  // with a status: on its own it would have no advance to explain, and the
-  // endpoint has nowhere to attach it. The dynamic map travels as a whole or
-  // not at all — the server's `is_required` check looks at submitted codes,
-  // so sending a map of empty values would demand every required attribute of
-  // a request nobody has worked yet.
+  // The operative block (user directive 2026-07-31). The dynamic map travels
+  // as a whole or not at all — the server's `is_required` check looks at
+  // submitted codes, so sending a map of empty values would demand every
+  // required attribute of a request nobody has worked yet.
   const operative = {
-    ...(workflowStatusId !== null
-      ? {
-          opportunity_workflow_status_id: workflowStatusId,
-          ...(statusNote.trim() !== '' ? { note: statusNote.trim() } : {}),
-        }
-      : {}),
     ...(nextCallbackAt !== null ? { next_callback_at: nextCallbackAt } : {}),
     ...(generalNotes.trim() !== '' ? { general_notes: generalNotes.trim() } : {}),
     ...(attributeValuesFilled(attributeValues, attributeCodes)

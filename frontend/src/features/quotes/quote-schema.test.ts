@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
+import { WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
 import i18n from '@/i18n'
 import { buildCreateQuoteSchema, buildUpdateQuoteSchema } from '@/features/quotes/quote-schema'
 
@@ -24,7 +25,8 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
     opportunity_id: 1,
-    quote_status_id: null,
+    quote_workflow_status_id: null,
+    note: null,
     commercial_id: null,
     reporter_id: null,
     supervisor_id: null,
@@ -163,9 +165,53 @@ describe('buildCreateQuoteSchema', () => {
 })
 
 describe('buildUpdateQuoteSchema', () => {
+  const STATUSES = [WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE]
+
   it('has the same shape as the create schema', () => {
-    const schema = buildUpdateQuoteSchema(i18n.t)
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id)
     const result = schema.safeParse(baseValues({ offer_lines: [validLine()] }))
+    expect(result.success).toBe(true)
+  })
+
+  // AC-051 / AC-023: the note is demanded by the TRANSITION, not by the row.
+  it('rejects a move onto a requires_note status with no note', () => {
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id)
+    const result = schema.safeParse(
+      baseValues({
+        offer_lines: [validLine()],
+        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        note: '   ',
+      }),
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.some((issue) => issue.path.join('.') === 'note')).toBe(true)
+  })
+
+  it('accepts the same move once a note is supplied', () => {
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_OPEN.id)
+    const result = schema.safeParse(
+      baseValues({
+        offer_lines: [validLine()],
+        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        note: 'Offerta accettata dal cliente',
+      }),
+    )
+
+    expect(result.success).toBe(true)
+  })
+
+  // AC-026: re-saving a quote ALREADY parked on that row demands nothing.
+  it('does not demand a note when the status is unchanged', () => {
+    const schema = buildUpdateQuoteSchema(i18n.t, STATUSES, WORKFLOW_STATUS_REQUIRES_NOTE.id)
+    const result = schema.safeParse(
+      baseValues({
+        offer_lines: [validLine()],
+        quote_workflow_status_id: WORKFLOW_STATUS_REQUIRES_NOTE.id,
+        note: null,
+      }),
+    )
+
     expect(result.success).toBe(true)
   })
 })

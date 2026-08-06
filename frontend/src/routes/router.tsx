@@ -40,8 +40,7 @@ const ProjectsPage = lazy(() => import('@/pages/projects-page'))
 const CampaignsPage = lazy(() => import('@/pages/campaigns-page'))
 const LeadsPage = lazy(() => import('@/pages/leads-page'))
 const OpportunitiesPage = lazy(() => import('@/pages/opportunities-page'))
-const OpportunityWorkflowsPage = lazy(() => import('@/pages/opportunity-workflows-page'))
-const QuoteStatusesPage = lazy(() => import('@/pages/quote-statuses-page'))
+const QuoteWorkflowsPage = lazy(() => import('@/pages/quote-workflows-page'))
 const QuotesPage = lazy(() => import('@/pages/quotes-page'))
 const ContractStatusesPage = lazy(() => import('@/pages/contract-statuses-page'))
 const ContractsPage = lazy(() => import('@/pages/contracts-page'))
@@ -213,12 +212,8 @@ export const router = createBrowserRouter([
             element: <OpportunitiesPage />,
           },
           {
-            path: 'opportunity-workflows',
-            element: <OpportunityWorkflowsPage />,
-          },
-          {
-            path: 'quote-statuses',
-            element: <QuoteStatusesPage />,
+            path: 'quote-workflows',
+            element: <QuoteWorkflowsPage />,
           },
           {
             path: 'quotes',

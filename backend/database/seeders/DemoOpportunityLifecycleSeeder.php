@@ -2,9 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\WorkflowStatusGroup;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\RequestManagement\RequestManagementService;
@@ -15,26 +13,24 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
 /**
- * Walks the seeded opportunities through their "stati di lavorazione" (spec
- * 0047) and fills the OPPORTUNITY-context attributes their categories carry
- * (spec 0061), so the demo shows the whole lifecycle — from the initial open
- * row to a validated/closed one — instead of a grid where every request sits
- * on its creation state with an empty work panel.
+ * Fills the OPPORTUNITY-context attributes the seeded requests' categories
+ * carry (spec 0061) and plans a callback on some of them (spec 0052), so the
+ * demo grid shows worked requests instead of rows with an empty work panel.
  *
- * Everything goes through RequestManagementService::updateWork(), the same
- * path PATCH /api/request-management/{opportunity} uses: set membership
- * against the RESOLVED workflow, the mandatory note on a `requires_note`
- * advance (created through the real collaborative-notes path), attribute-value
- * validation and the activity log all run exactly as they do for an operator.
+ * Spec 0083 (D-2) REMOVED the "stato di lavorazione" from the Opportunity —
+ * the operational status lives on the Offerta now, and the work panel exposes
+ * no status set at all. This seeder used to walk each request through that
+ * set (and to create the mandatory note on a `requires_note` advance); that
+ * half is gone, not ported: replaying it on the Offerta belongs to a quote
+ * lifecycle seeder, not to this one, and faking a status the record no longer
+ * has would seed data the product cannot represent.
  *
- * Each request is moved to the status at its own index in the resolved set
- * (modulo its size), so consecutive rows spread over the whole pick list and
- * every state of every seeded workflow ends up represented in the grid.
+ * What remains still goes through RequestManagementService::updateWork(), the
+ * same path PATCH /api/request-management/{opportunity} uses, so attribute
+ * validation and the activity log run exactly as they do for an operator.
  *
- * Depends on DemoOpportunitySeeder (the rows), DemoCategoryWorkflowSeeder (the
- * pick lists) and DemoProductCategorySeeder (the attributes) — must run after
- * all three. A no-op without a privileged actor: a `requires_note` advance
- * creates a note, which is permission-checked like any other write.
+ * Depends on DemoOpportunitySeeder (the rows) and DemoProductCategorySeeder
+ * (the attributes) — must run after both. A no-op without a privileged actor.
  */
 class DemoOpportunityLifecycleSeeder extends Seeder
 {
@@ -91,31 +87,23 @@ class DemoOpportunityLifecycleSeeder extends Seeder
     private function advance(Opportunity $opportunity, User $actor, Generator $faker, int $index): void
     {
         $panel = $this->requests->loadWorkPanel($opportunity);
-        /** @var Collection<int, OpportunityWorkflowStatus> $statuses */
-        $statuses = $panel['workflow_statuses'];
 
-        if ($statuses->isEmpty()) {
+        $payload = $this->payload($panel['applicable_attributes'], $faker, $index);
+
+        if ($payload === []) {
             return;
         }
 
-        /** @var OpportunityWorkflowStatus $target */
-        $target = $statuses->values()[$index % $statuses->count()];
-
-        $this->requests->updateWork($opportunity, $actor, $this->payload($target, $panel['applicable_attributes'], $faker));
+        $this->requests->updateWork($opportunity, $actor, $payload);
     }
 
     /**
      * @param  Collection<int, ApplicableAttribute>  $applicableAttributes
      * @return array<string, mixed>
      */
-    private function payload(OpportunityWorkflowStatus $target, Collection $applicableAttributes, Generator $faker): array
+    private function payload(Collection $applicableAttributes, Generator $faker, int $index): array
     {
-        $payload = ['opportunity_workflow_status_id' => $target->id];
-
-        if ($target->requires_note) {
-            // Spec 0054 D-5: the advance is rejected without it.
-            $payload['note'] = $faker->sentence(10);
-        }
+        $payload = [];
 
         $values = $this->attributeValues($applicableAttributes, $faker);
 
@@ -123,7 +111,7 @@ class DemoOpportunityLifecycleSeeder extends Seeder
             $payload['attribute_values'] = $values;
         }
 
-        $callbackAt = $this->maybeCallbackAt($target, $faker);
+        $callbackAt = $this->maybeCallbackAt($faker, $index);
 
         if ($callbackAt !== null) {
             $payload['next_callback_at'] = $callbackAt;
@@ -134,13 +122,16 @@ class DemoOpportunityLifecycleSeeder extends Seeder
 
     /**
      * A planned callback only makes sense while the request is still being
-     * worked: a closed/validated one is done (spec 0052, D-1).
+     * worked (spec 0052, D-1). Spec 0083 removed the working state from the
+     * Opportunity — it lives on the Offerta now — so "still being worked" can
+     * no longer be read off a status here. The seeder approximates it on the
+     * row index instead: the demo only needs SOME requests to carry a planned
+     * callback and others not, and inventing a status just to branch on it
+     * would put a value on the record that the product no longer has.
      */
-    private function maybeCallbackAt(OpportunityWorkflowStatus $target, Generator $faker): ?string
+    private function maybeCallbackAt(Generator $faker, int $index): ?string
     {
-        $isWorking = in_array($target->group, [WorkflowStatusGroup::Open, WorkflowStatusGroup::Pending], true);
-
-        if (! $isWorking || ! $faker->boolean(self::CALLBACK_PROBABILITY)) {
+        if ($index % 2 !== 0 || ! $faker->boolean(self::CALLBACK_PROBABILITY)) {
             return null;
         }
 

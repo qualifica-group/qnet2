@@ -9,7 +9,6 @@
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { WorkflowStatusGroupValue } from '@/features/opportunity-workflows/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
@@ -20,8 +19,8 @@ export interface OpportunityRelationRef {
 }
 
 /**
- * One distinct status inside an `OpportunityStatusSummary` (spec 0082), with
- * how many quotes sit in it (always 1 on the working-state fallback).
+ * One distinct status inside an `OpportunityStatusSummary` (spec 0083), with
+ * how many quotes sit in it (`count: 0` on the zero-quotes default fallback).
  */
 export interface OpportunityStatusEntry {
   id: number
@@ -32,15 +31,17 @@ export interface OpportunityStatusEntry {
 }
 
 /**
- * The COMPUTED status (spec 0082), as exposed by `OpportunityResource.status`,
- * the `status` grid cell, the request-management panel and the reward card.
- * `source` says which vocabulary `entries` speaks: `'quotes'` when the
- * opportunity has at least one quote, `'workflow'` when it falls back to its
- * working state. `entries` is empty ONLY in the fallback case with no working
- * state resolved; `distinct_count > 1` is the "N stati" case.
+ * The COMPUTED status (spec 0083, ex spec 0082), as exposed by
+ * `OpportunityResource.status`, the `status` grid cell, the
+ * request-management panel and the reward card. `source` says which
+ * vocabulary `entries` speaks: `'quotes'` when the opportunity has at least
+ * one quote (one entry per distinct `quote_workflow_status_id`), `'default'`
+ * when it falls back to the `open` row of the global default set. Zero
+ * quotes always resolves exactly one entry; `distinct_count > 1` is the
+ * "N stati" case.
  */
 export interface OpportunityStatusSummary {
-  source: 'quotes' | 'workflow'
+  source: 'quotes' | 'default'
   distinct_count: number
   entries: OpportunityStatusEntry[]
 }
@@ -62,25 +63,6 @@ export interface OpportunityLeadRef {
 export interface OpportunityOperationalSiteRef {
   id: number
   label: string
-}
-
-/**
- * A resolved working-state row (spec 0047): the "stato di lavorazione"
- * dimension — since spec 0082 also the fallback the computed status reads
- * when the opportunity has no quote. `system_key`
- * is `'open'|'closed_won'|'closed_lost'|null` (a pinned system row vs a custom
- * one); `group` is one of the 4 fixed `WorkflowStatusGroupValue`s.
- */
-export interface OpportunityWorkflowStatusRef {
-  id: number
-  name: string
-  /** Free-text explanation of the status, shown under the option in the working-status select. */
-  description: string | null
-  color: string | null
-  system_key: string | null
-  group: WorkflowStatusGroupValue
-  /** Marks the status as one requiring an explanatory note (configuration only). */
-  requires_note: boolean
 }
 
 /** A manager ref carrying its static "G.A. n" `position` (1-based) on top of the person ref. */
@@ -125,9 +107,7 @@ export interface ApplicableAttributeSummary {
  * Wire shape of POST /api/opportunities/form-context (user directive
  * 2026-08-05): the dynamic fields the criteria typed so far resolve to, for
  * the CREATE form — the same endpoint/response request-management already
- * exposes. `workflow_statuses` also travels but is deliberately NOT modeled
- * here: this module never offers the working-state select on create (the
- * server resolves the initial row on its own).
+ * exposes.
  */
 export interface OpportunityFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
@@ -178,7 +158,7 @@ export interface OpportunityDetail {
   name: string
   registry_id: number
   registry: OpportunityRelationRef | null
-  /** Spec 0082: the status COMPUTED from the quotes (working state as fallback). Read-only. */
+  /** Spec 0083: the status COMPUTED from the quotes (global default 'open' row as fallback). Read-only. */
   status: OpportunityStatusSummary
   referent_id: number | null
   referent: OpportunityRelationRef | null
@@ -193,8 +173,8 @@ export interface OpportunityDetail {
   /**
    * Spec 0056: the operational site, facoltativa, never lead-derived (no BR-1
    * inheritance, no `locked_fields` entry). Optional for the same
-   * fixture-compatibility reason as `state`/`workflow_status` below — treat a
-   * missing key the same as `null`.
+   * fixture-compatibility reason as `state` below — treat a missing key the
+   * same as `null`.
    */
   operational_site_id?: number | null
   operational_site?: OpportunityOperationalSiteRef | null
@@ -207,22 +187,13 @@ export interface OpportunityDetail {
    */
   state_id?: number | null
   state?: OpportunityRelationRef | null
-  /**
-   * Spec 0047: the currently resolved working-state row's id/summary, and
-   * `workflow_statuses` = the full set `OpportunityWorkflowResolver` resolves
-   * for THIS opportunity right now (feeds the FE's status select, limited to
-   * that set). Optional for the same fixture-compatibility reason as `state`.
-   */
-  opportunity_workflow_status_id?: number | null
-  workflow_status?: OpportunityWorkflowStatusRef | null
-  workflow_statuses?: OpportunityWorkflowStatusRef[]
   /** Amendment rev.3: replaces the former single `product_category`/`business_function` pair (AC-101). */
   product_lines: OpportunityProductLine[]
   /**
    * "Prodotti di interesse" (user directive 2026-07-22): the products
    * recorded for this opportunity, collected in Gestione Richieste and shown
    * here read-only + editable in the form. Optional for the same
-   * fixture-compatibility reason as `state`/`workflow_status` — treat a
+   * fixture-compatibility reason as `state` — treat a
    * missing key the same as `[]`.
    */
   products_of_interest?: OpportunityProductOfInterest[]
@@ -238,7 +209,7 @@ export interface OpportunityDetail {
   /**
    * "Note generali" (user directive 2026-07-27): free text, inherited from
    * the originating lead's `notes` at conversion but always editable. Optional
-   * for the same fixture-compatibility reason as `state`/`workflow_status`
+   * for the same fixture-compatibility reason as `state`
    * above — treat a missing key the same as `null`.
    */
   general_notes?: string | null
@@ -253,8 +224,8 @@ export interface OpportunityDetail {
   /**
    * Spec 0049 (D-8): opportunity-level dynamic field values collected by the
    * "Gestione Richieste" module, keyed by Attribute `code`; `{}` when none.
-   * Optional for the same fixture-compatibility reason as `state`/
-   * `workflow_status` above — treat a missing key the same as `{}`.
+   * Optional for the same fixture-compatibility reason as `state` above —
+   * treat a missing key the same as `{}`.
    */
   attribute_values?: Record<string, unknown>
   /**
@@ -274,14 +245,14 @@ export interface OpportunityDetail {
   /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
    * `reward_type.name`. Optional for the same fixture-compatibility reason
-   * as `state`/`workflow_status` above — treat a missing key the same as `[]`.
+   * as `state` above — treat a missing key the same as `[]`.
    */
   rewards?: RewardAssignmentRef[]
   /**
    * Spec 0067 AC-020: number of Quotes linked to this opportunity (`withCount`,
    * 0 when none). Seeds the Quotes panel's counter/empty-state before the
    * grid reports its own live total (D-9). Optional for the same
-   * fixture-compatibility reason as `state`/`workflow_status` above — treat a
+   * fixture-compatibility reason as `state` above — treat a
    * missing key the same as `0`.
    */
   quotes_count?: number
@@ -290,19 +261,9 @@ export interface OpportunityDetail {
    * categories (position, as a string key "1".."4" -> label), additive. `{}`
    * when not resolvable (no product line, or several product lines resolving
    * to different labels). Optional for the same fixture-compatibility reason
-   * as `state`/`workflow_status` above — treat a missing key the same as `{}`.
+   * as `state` above — treat a missing key the same as `{}`.
    */
   manager_labels?: Record<string, string>
-  /**
-   * User directive 2026-08-05: whether this opportunity's products can proceed
-   * to an offer — true when any product-line category carries the root-owned
-   * `requires_quote`. `false` removes the Offerte panel entirely (no list, no
-   * create affordance). Optional for the same fixture-compatibility reason as
-   * `state`/`workflow_status` above; a MISSING key keeps the panel visible
-   * (only an explicit `false` hides it), so an older cached payload never
-   * silently swallows the module.
-   */
-  requires_quote?: boolean
 }
 
 /**
@@ -386,13 +347,6 @@ export type UpdateOpportunityPayload = Partial<
 > & {
   /** Existing opportunities may keep or explicitly clear a nullable supervisor. */
   supervisor_id?: number | null
-  /**
-   * Spec 0047 (AC-016/017): an OPTIONAL manual override of the resolved
-   * working-state, limited server-side to the currently resolved set — 422
-   * when out of set. Never sent from create (the select is hidden there, the
-   * server always resolves the initial 'open' row on its own).
-   */
-  opportunity_workflow_status_id?: number | null
 }
 
 /**

@@ -3,7 +3,6 @@ import { ArrowRightLeft, CalendarClock, Loader2, TriangleAlert } from 'lucide-re
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
-import { StatusBadge } from '@/components/record-form/status-badge'
 import { formatDateTimeOptionalTime } from '@/features/table/cell-renderers'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
@@ -31,7 +30,7 @@ interface RequestWorkHeaderProps {
 }
 
 /**
- * Identity bar of the work panel: who the record is, its two statuses and the
+ * Identity bar of the work panel: who the record is, its status and the
  * scheduled callback on the left, the save action on the right. Sticky so the
  * primary action stays reachable while the operator scrolls the long editable
  * form below (a second copy closes the form at its foot, user directive
@@ -73,14 +72,6 @@ export function RequestWorkHeader({
             </span>
             <OpportunityStatusBadge summary={panel.status} />
           </span>
-        )}
-        {panel.workflow_status && (
-          <StatusBadge
-            label={t('requestManagement.workPanel.header.workingStatus', { defaultValue: 'Working' })}
-            color={panel.workflow_status.color}
-          >
-            {panel.workflow_status.name}
-          </StatusBadge>
         )}
         {nextCallback && (
           <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">

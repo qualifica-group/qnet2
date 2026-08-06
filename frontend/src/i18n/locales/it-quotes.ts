@@ -13,7 +13,7 @@ export const quotes = {
     code: 'Codice',
     title: 'Titolo',
     opportunity: 'Opportunità',
-    quoteStatus: 'Stato offerta',
+    quoteWorkflowStatus: 'Stato',
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
@@ -27,7 +27,7 @@ export const quotes = {
   },
   advancedFilters: {
     opportunity: 'Opportunità',
-    quoteStatus: 'Stato offerta',
+    quoteWorkflowStatus: 'Stato',
     commercial: 'Commerciale',
     supervisor: 'Supervisore',
     createdRange: 'Creato il',
@@ -35,7 +35,7 @@ export const quotes = {
   detail: {
     loadError: "Impossibile caricare l'offerta. Riprova.",
     opportunity: 'Opportunità',
-    quoteStatus: 'Stato offerta',
+    workflowStatus: 'Stato',
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
@@ -68,8 +68,13 @@ export const quotes = {
     opportunity: 'Opportunità',
     opportunitySearch: 'Cerca opportunità…',
     opportunityRequired: "L'opportunità è obbligatoria.",
-    quoteStatus: 'Stato offerta',
-    quoteStatusSearch: 'Cerca stati offerta…',
+    workflowStatus: 'Stato',
+    workflowStatusHint: "Lo stato operativo dell'offerta, scelto dal set risolto per i suoi criteri.",
+    note: 'Nota',
+    noteHint: "La nota viene registrata sul thread dell'opportunità collegata.",
+    notePlaceholder: 'Spiega il motivo di questo cambio di stato…',
+    noteMax: 'La nota può contenere al massimo 5000 caratteri.',
+    noteRequired: 'È obbligatoria una nota per passare a questo stato.',
     commercial: 'Commerciale',
     commercialSearch: 'Cerca commerciali…',
     reporter: 'Segnalatore',
@@ -116,6 +121,10 @@ export const quotes = {
       layout: {
         title: 'Layout documento',
         description: 'Layout Word usato per generare il documento dell\'offerta.',
+      },
+      workflowStatus: {
+        title: 'Stato',
+        description: "Avanza lo stato operativo dell'offerta.",
       },
       offer: {
         title: 'Offerta',

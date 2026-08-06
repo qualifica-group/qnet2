@@ -12,22 +12,21 @@ import { useOpportunityQuotesPanel } from '@/features/opportunities/use-opportun
 import type { OpportunityDetail } from '@/features/opportunities/types'
 
 export interface OpportunityQuotesSectionProps {
-  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count' | 'requires_quote'>
+  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count'>
 }
 
 /**
- * Eligibility + permission gate: absent entirely when this opportunity's
- * products cannot proceed to an offer (`requires_quote === false`, user
- * directive 2026-08-05 — neither the list nor the create affordance) or
- * without `quotes.viewAny` (AC-041). Kept as its own component, not an
- * early-return inside `OpportunityQuotesPanel`, so the panel — which mounts
- * `useModuleOpener` (and therefore `useNavigate`) unconditionally, per
- * rules-of-hooks — is never even instantiated in either case.
+ * Permission gate: absent entirely without `quotes.viewAny` (AC-041). Spec
+ * 0083 D-5 removed the `requires_quote` eligibility gate — every opportunity
+ * may have offers now. Kept as its own component, not an early-return inside
+ * `OpportunityQuotesPanel`, so the panel — which mounts `useModuleOpener`
+ * (and therefore `useNavigate`) unconditionally, per rules-of-hooks — is
+ * never even instantiated when the permission is missing.
  */
 export function OpportunityQuotesSection({ opportunity }: OpportunityQuotesSectionProps) {
   const { can } = useAbilities()
 
-  if (opportunity.requires_quote === false || !can('quotes.viewAny')) {
+  if (!can('quotes.viewAny')) {
     return null
   }
 
@@ -64,14 +63,18 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
   return (
     <RecordCard>
       <RecordCardHeader
-        title={t('opportunities.detail.quotes.title')}
-        badges={
-          <Badge
-            variant="secondary"
-            aria-label={t('opportunities.detail.quotes.countLabel', { count })}
-          >
-            {count}
-          </Badge>
+        title={
+          // Il conteggio sta sulla stessa riga del titolo, non nella fascia
+          // `badges` sotto: e' una qualificazione del titolo, non uno stato.
+          <span className="flex items-center gap-2">
+            <span className="truncate">{t('opportunities.detail.quotes.title')}</span>
+            <Badge
+              variant="secondary"
+              aria-label={t('opportunities.detail.quotes.countLabel', { count })}
+            >
+              {count}
+            </Badge>
+          </span>
         }
         actions={
           canCreate ? (

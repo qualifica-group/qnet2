@@ -7,7 +7,8 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
+use App\Models\User;
 use App\Services\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -31,14 +32,22 @@ if (! function_exists('quoteCoverageService')) {
 
 if (! function_exists('quoteCoverageNewStatus')) {
     /**
-     * The mandatory "Bozza" (`new`) row is seeded by the create_quote_statuses
-     * migration itself (spec 0065, D-2) — RefreshDatabase already leaves it in
-     * place, so tests fetch it rather than creating a second `system_key`
-     * row (unique).
+     * The mandatory "Aperta" (`open`) row of the GLOBAL default workflow set
+     * is seeded by the quote_workflow_statuses migration itself (spec
+     * 0047, moved onto the Offerta by spec 0083 D-8) — RefreshDatabase
+     * already leaves it in place, so tests fetch it rather than creating a
+     * second `system_key` row (unique per set).
      */
-    function quoteCoverageNewStatus(): QuoteStatus
+    function quoteCoverageNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    }
+}
+
+if (! function_exists('quoteCoverageActor')) {
+    function quoteCoverageActor(): User
+    {
+        return User::factory()->create();
     }
 }
 
@@ -52,7 +61,8 @@ if (! function_exists('quoteCoverageData')) {
             'code' => null,
             'title' => 'Offerta copertura',
             'opportunityId' => $opportunityId,
-            'quoteStatusId' => null,
+            'workflowStatusId' => null,
+            'note' => null,
             'commercialId' => null,
             'commercialIdSubmitted' => false,
             'reporterId' => null,
@@ -85,7 +95,7 @@ it('AC-050: a REVENUE line whose product category is not covered adds the pair t
 
     quoteCoverageService()->create(quoteCoverageData($opportunity->id, [
         'offerLines' => [new QuoteLineData(productId: $product->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null)],
-    ]));
+    ]), quoteCoverageActor());
 
     $this->assertDatabaseHas('opportunity_product_lines', [
         'opportunity_id' => $opportunity->id,
@@ -102,7 +112,7 @@ it('AC-051: a category with no effective business function is rejected, nothing 
 
     expect(fn () => quoteCoverageService()->create(quoteCoverageData($opportunity->id, [
         'offerLines' => [new QuoteLineData(productId: $product->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null)],
-    ])))->toThrow(ValidationException::class);
+    ]), quoteCoverageActor()))->toThrow(ValidationException::class);
 
     expect(Quote::count())->toBe(0);
     $this->assertDatabaseMissing('opportunity_product_lines', ['opportunity_id' => $opportunity->id]);
@@ -116,7 +126,7 @@ it('AC-052: the same outside-category product used in a COST line does not alter
 
     quoteCoverageService()->create(quoteCoverageData($opportunity->id, [
         'costLines' => [new QuoteLineData(productId: $product->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null)],
-    ]));
+    ]), quoteCoverageActor());
 
     $this->assertDatabaseMissing('opportunity_product_lines', [
         'opportunity_id' => $opportunity->id,
@@ -140,7 +150,7 @@ it('AC-053: a pair already present on the opportunity is not duplicated', functi
             new QuoteLineData(productId: $productA->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null),
             new QuoteLineData(productId: $productB->id, quantity: 1.0, unitPrice: 10.0, vatRateId: null, sortOrder: null),
         ],
-    ]));
+    ]), quoteCoverageActor());
 
     expect($opportunity->productLines()->where('product_category_id', $category->id)->count())->toBe(1);
 });

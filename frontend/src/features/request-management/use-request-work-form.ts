@@ -70,11 +70,7 @@ function toContactDraft(contact: RequestContact): ContactDraft {
 
 function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWorkFormValues {
   return {
-    opportunity_workflow_status_id: panel.workflow_status?.id ?? null,
     next_callback_at: panel.next_callback_at ?? null,
-    // The note (spec 0054 D-5) is transient: never loaded from the panel,
-    // always reset to blank after a save.
-    note: '',
     client_identity: panel.client_identity ? toIdentityDraft(panel.client_identity) : null,
     client_contacts: panel.client_contacts.items.map(toContactDraft),
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
@@ -94,9 +90,9 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
 /**
  * Owns the RHF/Zod wiring of the work panel's editable surface (spec 0049
  * AC-061/062): dynamic schema/defaults derived from the loaded panel, sparse
- * PATCH submit (`buildRequestWorkPayload`), 422 mapped onto the working-state
- * field and every `attribute_values.<code>` path (accessible triad via
- * `MetaField`/`FormMessage`, frontend.md §10).
+ * PATCH submit (`buildRequestWorkPayload`), 422 mapped onto every
+ * `attribute_values.<code>` path (accessible triad via `MetaField`/
+ * `FormMessage`, frontend.md §10).
  */
 export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const { t } = useTranslation()
@@ -107,9 +103,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     () =>
       buildRequestWorkSchema(
         panel.applicable_attributes,
-        panel.workflow_statuses,
         {
-          workflow_status_id: panel.workflow_status?.id ?? null,
           // Same normalization the defaults and the payload baseline use, or
           // the schema's "is this map travelling?" gate would disagree with
           // `buildRequestWorkPayload`'s.
@@ -124,8 +118,6 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
       ),
     [
       panel.applicable_attributes,
-      panel.workflow_statuses,
-      panel.workflow_status,
       panel.attribute_values,
       panel.products_of_interest,
       panel.product_lines,
@@ -141,9 +133,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const form = useForm<RequestWorkFormValues>({ resolver: zodResolver(schema), defaultValues })
 
   const errorFields: Path<RequestWorkFormValues>[] = [
-    'opportunity_workflow_status_id' as Path<RequestWorkFormValues>,
     'next_callback_at' as Path<RequestWorkFormValues>,
-    'note' as Path<RequestWorkFormValues>,
     // The client block is submitted as a whole: a per-row 422
     // (`client_contacts.0.value`) has no matching control here, so the block
     // root carries the message.

@@ -8,7 +8,8 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
+use App\Models\User;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,9 +25,16 @@ use Illuminate\Validation\ValidationException;
 uses(RefreshDatabase::class);
 
 if (! function_exists('managementModeNewStatus')) {
-    function managementModeNewStatus(): QuoteStatus
+    function managementModeNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
+    }
+}
+
+if (! function_exists('managementModeActor')) {
+    function managementModeActor(): User
+    {
+        return User::factory()->create();
     }
 }
 
@@ -47,7 +55,8 @@ if (! function_exists('managementModeQuoteData')) {
             code: null,
             title: 'Offerta modalita gestione',
             opportunityId: $opportunityId,
-            quoteStatusId: null,
+            workflowStatusId: null,
+            note: null,
             commercialId: null,
             commercialIdSubmitted: false,
             reporterId: null,
@@ -99,7 +108,7 @@ it('AC-020: single mode leaves the quote transaction clean, no quote and no row 
     $otherCategory = managementModeCategory(CategoryManagementMode::Multiple);
     $product = Product::factory()->create(['category_id' => $otherCategory->id]);
 
-    expect(fn () => app(QuoteService::class)->create(managementModeQuoteData($opportunity->id, $product)))
+    expect(fn () => app(QuoteService::class)->create(managementModeQuoteData($opportunity->id, $product), managementModeActor()))
         ->toThrow(ValidationException::class);
 
     expect(Quote::count())->toBe(0);
@@ -122,7 +131,7 @@ it('AC-021: multiple mode keeps auto-adding the missing coverage row, request su
     $otherCategory = managementModeCategory(CategoryManagementMode::Multiple);
     $product = Product::factory()->create(['category_id' => $otherCategory->id]);
 
-    app(QuoteService::class)->create(managementModeQuoteData($opportunity->id, $product));
+    app(QuoteService::class)->create(managementModeQuoteData($opportunity->id, $product), managementModeActor());
 
     expect(Quote::count())->toBe(1);
     $this->assertDatabaseHas('opportunity_product_lines', [

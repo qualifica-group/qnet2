@@ -61,8 +61,8 @@ interface ContractSuspendedBadgeProps {
 /**
  * "Sospeso" is the contract's STATE, not an alert (D-3): a destructive badge
  * with its own icon+text, plus a Tooltip carrying the reason/date — a local
- * copy of `StatusDescriptionHint`'s trigger pattern (opportunity-workflows is
- * a different domain, not imported cross-module).
+ * copy of `StatusDescriptionHint`'s trigger pattern (quote-workflows is a
+ * different domain, not imported cross-module).
  */
 export function ContractSuspendedBadge({ suspendedAt, previousStatus }: ContractSuspendedBadgeProps) {
   const { t } = useTranslation()

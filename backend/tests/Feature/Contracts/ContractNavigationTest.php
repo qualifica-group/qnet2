@@ -8,7 +8,7 @@ use Spatie\Permission\Models\Permission;
 /**
  * The `contracts`/`contract-statuses` navigation nodes (spec 0072, MT-05):
  * both gated server-side by their own view permission, same pattern as
- * QuoteStatusAuthorizationTest's AC-065. Uses the REAL config/navigation.php
+ * QuoteAuthorizationTest's AC-065. Uses the REAL config/navigation.php
  * (not overridden), so this also guards against the entries being removed or
  * mis-keyed by a future edit.
  */

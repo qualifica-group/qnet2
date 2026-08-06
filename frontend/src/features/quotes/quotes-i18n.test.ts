@@ -11,7 +11,7 @@ const COLUMN_KEYS = [
   'code',
   'title',
   'opportunity',
-  'quoteStatus',
+  'quoteWorkflowStatus',
   'commercial',
   'reporter',
   'supervisor',
@@ -23,7 +23,7 @@ const COLUMN_KEYS = [
 
 const ADVANCED_FILTER_KEYS = [
   'opportunity',
-  'quoteStatus',
+  'quoteWorkflowStatus',
   'commercial',
   'supervisor',
   'createdRange',
@@ -90,6 +90,39 @@ describe('quotes document generation i18n (spec 0070)', () => {
 // Directive 2026-07-30: the Note tab became "Note e pagamenti" and hosts the
 // payment method picker, so its field/search/detail labels must exist in both
 // locales and the tab label must no longer be the bare "Note"/"Notes".
+// Spec 0083 (AC-050/AC-051): the quote's own operational status select and
+// its conditional transition note must exist in both locales.
+describe('quotes workflow status i18n (spec 0083)', () => {
+  it('translates the status field, its hint and its form section', () => {
+    expect(en.quotes.form.workflowStatus).toBeTruthy()
+    expect(itLocale.quotes.form.workflowStatus).toBeTruthy()
+    expect(en.quotes.form.workflowStatusHint).toBeTruthy()
+    expect(itLocale.quotes.form.workflowStatusHint).toBeTruthy()
+    expect(en.quotes.form.sections.workflowStatus.title).toBeTruthy()
+    expect(itLocale.quotes.form.sections.workflowStatus.title).toBeTruthy()
+    expect(en.quotes.form.sections.workflowStatus.description).toBeTruthy()
+    expect(itLocale.quotes.form.sections.workflowStatus.description).toBeTruthy()
+  })
+
+  it('translates the transition note field and its validation messages', () => {
+    expect(en.quotes.form.note).toBeTruthy()
+    expect(itLocale.quotes.form.note).toBeTruthy()
+    expect(en.quotes.form.noteHint).toBeTruthy()
+    expect(itLocale.quotes.form.noteHint).toBeTruthy()
+    expect(en.quotes.form.notePlaceholder).toBeTruthy()
+    expect(itLocale.quotes.form.notePlaceholder).toBeTruthy()
+    expect(en.quotes.form.noteMax).toBeTruthy()
+    expect(itLocale.quotes.form.noteMax).toBeTruthy()
+    expect(en.quotes.form.noteRequired).toBeTruthy()
+    expect(itLocale.quotes.form.noteRequired).toBeTruthy()
+  })
+
+  it('translates the detail status field', () => {
+    expect(en.quotes.detail.workflowStatus).toBeTruthy()
+    expect(itLocale.quotes.detail.workflowStatus).toBeTruthy()
+  })
+})
+
 describe('quotes payment method i18n', () => {
   it('translates the payment method field and its search placeholder', () => {
     expect(en.quotes.form.paymentMethod).toBeTruthy()

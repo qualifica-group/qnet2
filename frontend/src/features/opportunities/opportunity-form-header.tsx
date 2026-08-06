@@ -7,39 +7,7 @@ import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
 import { formatDate } from '@/lib/formatting/date-display'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
-import type {
-  OpportunityStatusSummary,
-  OpportunityWorkflowStatusRef,
-} from '@/features/opportunities/types'
-
-/**
- * The computed summary with the working state the form currently holds
- * substituted in — but ONLY on the `workflow` source, where that state is
- * literally what the badge displays (spec 0082: no quote yet). On the `quotes`
- * source the summary is derived from the offers and the select below has no
- * say in it, so it is returned untouched.
- */
-function mergeWorkingStatus(
-  status: OpportunityStatusSummary | null,
-  statuses: OpportunityWorkflowStatusRef[] | null,
-  selectedId: number | null,
-): OpportunityStatusSummary | null {
-  if (status === null || status.source !== 'workflow') {
-    return status
-  }
-
-  const selected = statuses?.find((candidate) => candidate.id === selectedId) ?? null
-
-  if (selected === null) {
-    return status
-  }
-
-  return {
-    ...status,
-    distinct_count: 1,
-    entries: [{ id: selected.id, name: selected.name, color: selected.color, group: selected.group, count: 0 }],
-  }
-}
+import type { OpportunityStatusSummary } from '@/features/opportunities/types'
 
 interface OpportunityFormHeaderProps {
   control: Control<OpportunityFormValues>
@@ -47,8 +15,6 @@ interface OpportunityFormHeaderProps {
   isEdit: boolean
   /** Spec 0082: the COMPUTED status of the loaded opportunity; `null` in create (no quote exists yet). */
   status: OpportunityStatusSummary | null
-  /** The resolved working-state set, `null` in create mode (not yet known): the pill names the picked row from it. */
-  workflowStatuses: OpportunityWorkflowStatusRef[] | null
   /** id of the RHF `<form>` the save action attaches to via the HTML `form=` attribute. */
   formId: string
   isSubmitting: boolean
@@ -86,7 +52,6 @@ export function OpportunityFormHeader({
   control,
   isEdit,
   status,
-  workflowStatuses,
   formId,
   isSubmitting,
   isSubmitDisabled,
@@ -94,11 +59,9 @@ export function OpportunityFormHeader({
   onCancel,
 }: OpportunityFormHeaderProps) {
   const { t } = useTranslation()
-  const workflowStatusId = useWatch({ control, name: 'opportunity_workflow_status_id' })
   const expectedCloseDate = useWatch({ control, name: 'expected_close_date' })
 
   const closeDate = formatDate(expectedCloseDate)
-  const liveStatus = mergeWorkingStatus(status, workflowStatuses, workflowStatusId)
 
   return (
     <header className={RECORD_HEADER_CLASS}>
@@ -112,12 +75,12 @@ export function OpportunityFormHeader({
           </p>
         </div>
 
-        {liveStatus && liveStatus.entries.length > 0 && (
+        {status && status.entries.length > 0 && (
           <span className="flex min-w-0 items-center gap-1">
             <span className="shrink-0 text-[0.6875rem] uppercase text-muted-foreground">
               {t('opportunities.form.header.status')}
             </span>
-            <OpportunityStatusBadge summary={liveStatus} />
+            <OpportunityStatusBadge summary={status} />
           </span>
         )}
         {closeDate && (

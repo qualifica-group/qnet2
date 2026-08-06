@@ -22,12 +22,10 @@ use Illuminate\Validation\ValidationException;
  * `type: 'text'` for display/sort/filter, so the plain type-derived `string`
  * rule would wrongly reject the submitted integer id).
  *
- * A `editor: 'select'` column (spec 0055, D-3 — e.g. request-management's
- * `workflow_status`, whose real field is `opportunity_workflow_status_id` but
- * is not `/for-select`-backed) takes the SAME "value is an id" path minus the
- * for-select scope check: its own domain membership rule (e.g. 0054 AC-011's
- * resolved-workflow set) lives in the definition's `updateCell()` override,
- * not here.
+ * A `editor: 'select'` column (spec 0055, D-3 — e.g. a domain-specific status
+ * field whose real column is not `/for-select`-backed) takes the SAME "value
+ * is an id" path minus the for-select scope check: its own domain membership
+ * rule lives in the definition's `updateCell()` override, not here.
  *
  * That branch keys on `editor`, NOT on the mere presence of `editableField`
  * (spec 0055, D-3): `editableField` only remaps the permission/write key

@@ -6,10 +6,10 @@ namespace App\DataObjects\Quotes;
 
 /**
  * Validated payload for a partial (PATCH) quote update
- * (PUT/PATCH /api/quotes/{quote}, spec 0065). Every scalar is a legitimately
- * nullable VALUE, so the `*Submitted` flags carry the "was this key actually
- * present" distinction a plain property cannot express (mirrors
- * UpdateOpportunityData).
+ * (PUT/PATCH /api/quotes/{quote}, spec 0065; spec 0083 T-04 for
+ * `workflowStatusId`/`note`). Every scalar is a legitimately nullable VALUE,
+ * so the `*Submitted` flags carry the "was this key actually present"
+ * distinction a plain property cannot express (mirrors UpdateOpportunityData).
  *
  * `opportunityId` and `code` are deliberately ABSENT: `opportunity_id` is
  * `prohibited` (AC-025, immutable) and `code` is not even a rule at this
@@ -19,6 +19,15 @@ namespace App\DataObjects\Quotes;
  * `offerLines`/`costLines` follow the full-replace convention (D-8): null
  * means "not submitted, leave the existing set untouched"; an array
  * (including empty) authoritatively replaces it.
+ *
+ * `workflowStatusId` is the OPTIONAL explicit `quote_workflow_status_id`
+ * override (AC-021/022): submitted-and-non-null is validated
+ * (ValidatesQuoteWorkflowStatus) to belong to the resolved set and written
+ * verbatim (note-gated by QuoteWorkflowStatusWriter, AC-023/024/025); NOT
+ * submitted, or submitted null, both mean "let QuoteWorkflowResolver decide"
+ * — it is NEVER part of submittedAttributes() (never mass-assigned, always
+ * written by the resolver/writer). `note` (AC-023) accompanies an override
+ * whose destination `requires_note`.
  */
 final readonly class UpdateQuoteData
 {
@@ -29,8 +38,9 @@ final readonly class UpdateQuoteData
     public function __construct(
         public ?string $title = null,
         public bool $titleSubmitted = false,
-        public ?int $quoteStatusId = null,
-        public bool $quoteStatusIdSubmitted = false,
+        public ?int $workflowStatusId = null,
+        public bool $workflowStatusIdSubmitted = false,
+        public ?string $note = null,
         public ?int $commercialId = null,
         public bool $commercialIdSubmitted = false,
         public ?int $reporterId = null,
@@ -72,8 +82,9 @@ final readonly class UpdateQuoteData
         return new self(
             title: array_key_exists('title', $data) ? (string) $data['title'] : null,
             titleSubmitted: array_key_exists('title', $data),
-            quoteStatusId: self::nullableInt($data, 'quote_status_id'),
-            quoteStatusIdSubmitted: array_key_exists('quote_status_id', $data),
+            workflowStatusId: self::nullableInt($data, 'quote_workflow_status_id'),
+            workflowStatusIdSubmitted: array_key_exists('quote_workflow_status_id', $data),
+            note: array_key_exists('note', $data) ? $data['note'] : null,
             commercialId: self::nullableInt($data, 'commercial_id'),
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
             reporterId: self::nullableInt($data, 'reporter_id'),
@@ -130,10 +141,6 @@ final readonly class UpdateQuoteData
 
         if ($this->titleSubmitted) {
             $attributes['title'] = $this->title;
-        }
-
-        if ($this->quoteStatusIdSubmitted) {
-            $attributes['quote_status_id'] = $this->quoteStatusId;
         }
 
         if ($this->commercialIdSubmitted) {

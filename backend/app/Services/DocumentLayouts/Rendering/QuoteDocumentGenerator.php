@@ -60,7 +60,7 @@ final class QuoteDocumentGenerator
         'companySite.personalData.addresses.country',
         'companySite.banks',
         'operationalSite.addresses.city',
-        'quoteStatus',
+        'quoteWorkflowStatus',
         'offerLines.product',
         'offerLines.vatRate',
         'costLines.product',

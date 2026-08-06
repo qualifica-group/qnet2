@@ -3,15 +3,16 @@
 namespace App\Enums;
 
 /**
- * The classification every OpportunityWorkflowStatus row carries
- * (`opportunity_workflow_statuses.group`) — the "stato di lavorazione"
- * grouping. DELIBERATELY distinct from App\Enums\StatusGroup (pipeline /
- * opportunity statuses, still Open/Pending/Closed): here the working phase runs
- * Open -> Pending -> Validated (esito accertato, non ancora chiuso), then the
- * terminal "closed" phase is split into its two OUTCOMES — ClosedWon (esito
- * positivo) and ClosedLost (esito negativo). Never mass-assignable on a system
- * row (App\Services\OpportunityWorkflows\WorkflowStatusWriter rejects a group
- * change on a pinned row).
+ * The classification every QuoteWorkflowStatus row carries
+ * (`quote_workflow_statuses.group`) — the "stato dell'offerta" grouping
+ * (spec 0047, moved onto the Offerta by spec 0083 D-6). DELIBERATELY
+ * distinct from App\Enums\StatusGroup (pipeline / opportunity statuses,
+ * still Open/Pending/Closed): here the working phase runs Open -> Pending ->
+ * Validated (esito accertato, non ancora chiuso), then the terminal "closed"
+ * phase is split into its two OUTCOMES — ClosedWon (esito positivo) and
+ * ClosedLost (esito negativo). Never mass-assignable on a system row
+ * (App\Services\QuoteWorkflows\WorkflowStatusWriter rejects a group change
+ * on a pinned row).
  */
 enum WorkflowStatusGroup: string
 {

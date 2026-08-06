@@ -9,7 +9,6 @@ use App\DataObjects\Users\ProfileData;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
-use App\Http\Requests\Concerns\ValidatesWorkflowStatus;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,7 +43,6 @@ class StoreRequestRequest extends FormRequest
     use ValidatesProductLines;
     use ValidatesRequestClientProfile;
     use ValidatesRewards;
-    use ValidatesWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -99,21 +97,14 @@ class StoreRequestRequest extends FormRequest
                 // no extra ability on top (the per-field matrix governs the
                 // LATER edit through PATCH, see the class doc).
                 'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
-                // The five operative fields the work panel already edits, made
+                // The operative fields the work panel already edits, made
                 // available at creation too (user directive 2026-07-31: "la
                 // create il piu' simile possibile al pannello"). All OPTIONAL —
                 // a request can still be opened knowing nothing but its
-                // anagrafica and its product lines.
-                //
-                // The working status is checked for membership in the workflow
-                // resolved for the SUBMITTED source_id/product_lines
-                // (ValidatesWorkflowStatus, reused verbatim from the
-                // opportunities create): null/absent means "let the resolver
-                // decide", the behaviour every request had until now.
-                'opportunity_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunity_workflow_statuses', 'id')],
-                // The note a `requires_note` status demands (spec 0054 D-5).
-                // Same bound as StoreNoteRequest's `body`: it becomes one.
-                'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
+                // anagrafica and its product lines. Spec 0083, D-2: the
+                // working-status pair (the former workflow-status override
+                // field and its accompanying `note`) is GONE — the
+                // Opportunity resolves no working state of its own any more.
                 'next_callback_at' => ['sometimes', 'nullable', 'date'],
                 'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
                 // Deep validation (per-code applicability/type/required) runs
@@ -150,11 +141,6 @@ class StoreRequestRequest extends FormRequest
             // the D-3 guard can fire here (the "cannot clear a reporter that
             // still has rewards" half needs an existing record).
             $this->validateRewards($validator, null);
-            // null opportunity: nothing is persisted yet, so the set is
-            // resolved from the SUBMITTED source_id/product_lines alone —
-            // exactly what the create form previewed through
-            // POST /api/request-management/form-context.
-            $this->validateWorkflowStatus($validator);
             $this->validateProductCategoryCoherence($validator);
         });
     }
@@ -222,10 +208,6 @@ class StoreRequestRequest extends FormRequest
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
             operatorId: isset($validated['operator_id']) ? (int) $validated['operator_id'] : null,
             operationalSiteId: isset($validated['operational_site_id']) ? (int) $validated['operational_site_id'] : null,
-            workflowStatusId: isset($validated['opportunity_workflow_status_id'])
-                ? (int) $validated['opportunity_workflow_status_id']
-                : null,
-            statusNote: $validated['note'] ?? null,
             nextCallbackAt: $validated['next_callback_at'] ?? null,
             generalNotes: $validated['general_notes'] ?? null,
             attributeValues: array_key_exists('attribute_values', $validated)

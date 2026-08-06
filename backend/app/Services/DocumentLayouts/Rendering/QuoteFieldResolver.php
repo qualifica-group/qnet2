@@ -34,7 +34,7 @@ final class QuoteFieldResolver
             'code' => ValueFormatter::text($quote->code),
             'title' => ValueFormatter::text($quote->title),
             'internal_notes' => ValueFormatter::text($quote->internal_notes),
-            'status_name' => ValueFormatter::text($quote->quoteStatus?->name),
+            'status_name' => ValueFormatter::text($quote->quoteWorkflowStatus?->name),
             'created_at' => ValueFormatter::date($quote->created_at),
             'updated_at' => ValueFormatter::date($quote->updated_at),
             default => null,

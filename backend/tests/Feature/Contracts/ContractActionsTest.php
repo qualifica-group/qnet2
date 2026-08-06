@@ -1,10 +1,10 @@
 <?php
 
 use App\Enums\ContractStatusGroup;
-use App\Enums\QuoteStatusGroup;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -43,8 +43,8 @@ if (! function_exists('contractActionsUserWith')) {
 
 it('AC-006: reactivating a suspended contract whose quote is back in closed_won restores the prior status', function () {
     $contract = Contract::factory()->create();
-    $closedWonStatus = QuoteStatus::where('system_key', 'won')->sole();
-    $contract->quote()->update(['quote_status_id' => $closedWonStatus->id]);
+    $closedWonStatus = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    $contract->quote()->update(['quote_workflow_status_id' => $closedWonStatus->id]);
 
     $previousStatus = ContractStatus::where('name', 'Programmato')->sole();
     $contract->forceFill([
@@ -71,8 +71,8 @@ it('AC-006: reactivating a suspended contract whose quote is back in closed_won 
 
 it('AC-007: reactivating a suspended contract whose quote is NOT closed_won is 422, nothing changes', function () {
     $contract = Contract::factory()->create();
-    $openStatus = QuoteStatus::factory()->group(QuoteStatusGroup::Open)->create();
-    $contract->quote()->update(['quote_status_id' => $openStatus->id]);
+    $openStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Open]);
+    $contract->quote()->update(['quote_workflow_status_id' => $openStatus->id]);
 
     $previousStatus = ContractStatus::where('name', 'Programmato')->sole();
     $suspendedStatusId = ContractStatus::where('system_key', 'suspended')->sole()->id;

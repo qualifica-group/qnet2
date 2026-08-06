@@ -28,9 +28,7 @@ const BUFFERED_BLOCKS = new Set(['client_identity', 'client_contacts', 'client_a
  */
 function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined): Record<string, string> {
   return {
-    opportunity_workflow_status_id: t('requestManagement.workPanel.workflowStatus.label'),
     next_callback_at: t('requestManagement.workPanel.callback.label'),
-    note: t('requestManagement.workPanel.workflowStatus.noteLabel'),
     client_identity: t('requestManagement.workPanel.client.identityGroup'),
     client_contacts: t('requestManagement.workPanel.client.contactsGroup'),
     client_address: t('requestManagement.workPanel.client.addressGroup'),

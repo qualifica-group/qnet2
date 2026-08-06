@@ -194,7 +194,7 @@ function editOpportunity(
     supervisor: null,
     source_id: 20,
     source: { id: 20, name: 'Web' },
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [
       {
         id: 500,

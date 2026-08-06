@@ -17,7 +17,7 @@ use App\Enums\AdvancedFilterType;
  * filter). `group` is ALSO left out here: it is already reachable via the
  * basic `set` column filter, and no advanced-filter widget type in this
  * catalogue's repertoire (AdvancedFilterType) carries a static options list
- * end-to-end (mirrors QuoteStatusAdvancedFilterCatalog).
+ * end-to-end (mirrors PipelineStatusAdvancedFilterCatalog).
  */
 final class ContractStatusAdvancedFilterCatalog
 {

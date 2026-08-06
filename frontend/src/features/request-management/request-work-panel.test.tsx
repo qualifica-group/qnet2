@@ -164,9 +164,6 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('Some notes')
     expect(screen.getByRole('combobox', { name: 'Priority' })).toHaveTextContent('Low')
 
-    // Workflow status select, limited to the resolved set.
-    expect(screen.getByRole('combobox', { name: 'Working status' })).toHaveTextContent('Open')
-
     // Spec 0056: the operational site is exposed and editable from the attribution section.
     expect(screen.getByRole('combobox', { name: 'Operational site' })).toBeInTheDocument()
   })
@@ -258,26 +255,6 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
 })
 
 describe('RequestWorkPanelScreen — sparse submit (spec 0049 AC-062)', () => {
-  it('sends only the changed workflow status', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-    updateRequestWorkMock.mockResolvedValue(panel({ workflow_status: { id: 101, name: 'In progress', color: 'amber', system_key: null, description: null, requires_note: false } }))
-
-    renderPanel()
-
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Working status' })).toHaveTextContent('Open'),
-    )
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
-    fireEvent.click(screen.getByRole('option', { name: 'In progress' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateRequestWorkMock.mock.calls[0]
-    expect(id).toBe(1)
-    expect(payload).toEqual({ opportunity_workflow_status_id: 101 })
-  })
-
   it('maps a 422 on a dynamic field onto the field with the accessible-error triad', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
     updateRequestWorkMock.mockRejectedValue(
@@ -311,22 +288,6 @@ describe('RequestWorkPanelScreen — sparse submit (spec 0049 AC-062)', () => {
 })
 
 describe('RequestWorkPanelScreen — bounded controls (spec 0049 AC-063)', () => {
-  it('limits the workflow status select to the resolved set', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-
-    renderPanel()
-
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Working status' })).toHaveTextContent('Open'),
-    )
-    fireEvent.click(screen.getByRole('combobox', { name: 'Working status' }))
-
-    const listbox = screen.getByRole('listbox')
-    expect(within(listbox).getAllByRole('option')).toHaveLength(2)
-    expect(within(listbox).getByRole('option', { name: 'Open' })).toBeInTheDocument()
-    expect(within(listbox).getByRole('option', { name: 'In progress' })).toBeInTheDocument()
-  })
-
   it('limits the enum attribute select to its own options', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 

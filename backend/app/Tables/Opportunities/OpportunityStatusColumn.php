@@ -18,11 +18,12 @@ use Illuminate\Support\Facades\DB;
  * is NOT sortable (an aggregate has no single sort key — same treatment as
  * `product_category`/`business_function`).
  *
- * The set filter (BR-5) matches the status actually DISPLAYED, which spans two
- * vocabularies: an opportunity with quotes shows its quote statuses, one
- * without shows its working state. So the option list here is the union of
- * both names, and the matching itself is delegated to the shared
- * OpportunityStatusScope — the same predicate every other consumer uses.
+ * The set filter (BR-5) matches the status actually DISPLAYED: an opportunity
+ * with quotes shows its quotes' workflow statuses, one without shows the
+ * GLOBAL default workflow set's `open` row (D-8, spec 0083). So the option
+ * list here is the union of both, and the matching itself is delegated to
+ * the shared OpportunityStatusScope — the same predicate every other
+ * consumer uses.
  */
 final class OpportunityStatusColumn
 {
@@ -63,10 +64,10 @@ final class OpportunityStatusColumn
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005): every quote-status name in
-     * use among the matching rows, plus every working-state name in use among
-     * the QUOTE-LESS matching rows — the exact set of labels the column can
-     * draw, merged and sorted as one list.
+     * Excel-like distinct values (spec 0004/0005): every quote-workflow-
+     * status name in use among the matching rows' quotes, plus — when at
+     * least one matching row has no quote (D-8) — the GLOBAL default
+     * workflow set's `open` row name, the ONE value every such row displays.
      *
      * @param  Builder<Model>  $query
      * @return array<int, string>
@@ -76,37 +77,50 @@ final class OpportunityStatusColumn
         $opportunityIds = (clone $query)->select('opportunities.id');
 
         $quoteStatusNames = DB::table('quotes')
-            ->join('quote_statuses', 'quote_statuses.id', '=', 'quotes.quote_status_id')
+            ->join('quote_workflow_statuses', 'quote_workflow_statuses.id', '=', 'quotes.quote_workflow_status_id')
             ->whereIn('quotes.opportunity_id', $opportunityIds)
             ->when($search !== null && $search !== '', static function ($builder) use ($search): void {
-                $builder->where('quote_statuses.name', 'like', '%'.self::escapeLike($search).'%');
+                $builder->where('quote_workflow_statuses.name', 'like', '%'.self::escapeLike($search).'%');
             })
             ->distinct()
             ->limit($limit)
-            ->pluck('quote_statuses.name');
+            ->pluck('quote_workflow_statuses.name')
+            ->map(static fn (mixed $name): string => (string) $name);
 
-        $workflowStatusIds = (clone $query)
-            ->whereDoesntHave('quotes')
-            ->whereNotNull('opportunity_workflow_status_id')
-            ->select('opportunity_workflow_status_id');
-
-        $workflowStatusNames = DB::table('opportunity_workflow_statuses')
-            ->whereIn('id', $workflowStatusIds)
-            ->when($search !== null && $search !== '', static function ($builder) use ($search): void {
-                $builder->where('name', 'like', '%'.self::escapeLike($search).'%');
-            })
-            ->distinct()
-            ->limit($limit)
-            ->pluck('name');
+        $hasQuoteLessRow = (clone $query)->whereDoesntHave('quotes')->exists();
+        $defaultOpenName = $hasQuoteLessRow ? self::defaultOpenName($search) : null;
 
         return $quoteStatusNames
-            ->merge($workflowStatusNames)
-            ->map(static fn (mixed $name): string => (string) $name)
+            ->when($defaultOpenName !== null, static fn ($collection) => $collection->push($defaultOpenName))
             ->unique()
             ->sort()
             ->values()
             ->take($limit)
             ->all();
+    }
+
+    /**
+     * The GLOBAL default workflow set's `open` row name (D-8) — the ONE
+     * value every quote-less opportunity's status resolves to — or null when
+     * $search does not match it (or the row is somehow missing, defense in
+     * depth; never expected — AC-004/AC-005).
+     */
+    private static function defaultOpenName(?string $search): ?string
+    {
+        $name = DB::table('quote_workflow_statuses')
+            ->whereNull('quote_workflow_id')
+            ->where('system_key', 'open')
+            ->value('name');
+
+        if (! is_string($name)) {
+            return null;
+        }
+
+        if ($search !== null && $search !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($search))) {
+            return null;
+        }
+
+        return $name;
     }
 
     /** Escape LIKE wildcards in user input so they are treated literally. */

@@ -2,7 +2,7 @@
 
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -36,9 +36,9 @@ if (! function_exists('quoteCodeUserWith')) {
 }
 
 if (! function_exists('quoteCodeNewStatus')) {
-    function quoteCodeNewStatus(): QuoteStatus
+    function quoteCodeNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     }
 }
 

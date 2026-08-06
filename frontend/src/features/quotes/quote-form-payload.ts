@@ -53,7 +53,7 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     ...(code ? { code } : {}),
     title: values.title,
     opportunity_id: values.opportunity_id as number,
-    quote_status_id: values.quote_status_id,
+    quote_workflow_status_id: values.quote_workflow_status_id,
     commercial_id: values.commercial_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
@@ -135,8 +135,17 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   if (values.title !== original.title) {
     payload.title = values.title
   }
-  if (values.quote_status_id !== original.quote_status_id) {
-    payload.quote_status_id = values.quote_status_id
+  // Spec 0083: the transition note rides along ONLY when the status actually
+  // changes — the server demands it on the transition, not on the row (AC-026),
+  // so a quote already parked on a `requires_note` row saves without one.
+  if (values.quote_workflow_status_id !== original.quote_workflow_status_id) {
+    payload.quote_workflow_status_id = values.quote_workflow_status_id
+
+    const note = (values.note ?? '').trim()
+
+    if (note !== '') {
+      payload.note = note
+    }
   }
   if (values.commercial_id !== original.commercial_id) {
     payload.commercial_id = values.commercial_id

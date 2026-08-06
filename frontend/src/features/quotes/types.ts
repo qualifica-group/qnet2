@@ -85,14 +85,18 @@ export interface QuoteOperationalSiteRef {
 }
 
 /**
- * The linked quote status's identity, as exposed by `QuoteResource.quote_status`.
- * The FK is NOT NULL: every quote always has a status.
+ * A row of the workflow status set governing this quote (spec 0083), as exposed
+ * by `QuoteResource.quote_workflow_status` and `.quote_workflow_statuses`. The
+ * FK is NOT NULL: every quote always carries one of these. `requires_note`
+ * makes the note mandatory when this row is the transition TARGET.
  */
-export interface QuoteStatusRef {
+export interface QuoteWorkflowStatusRef {
   id: number
   name: string
   color: string | null
+  description: string | null
   group: string
+  requires_note: boolean
 }
 
 /** Minimal category/business-function projection hydrating a quote line's product (spec 0065 D-7). */
@@ -179,8 +183,10 @@ export interface QuoteDetail {
   title: string
   opportunity_id: number
   opportunity: QuoteRelationRef
-  quote_status_id: number
-  quote_status: QuoteStatusRef
+  quote_workflow_status_id: number
+  quote_workflow_status: QuoteWorkflowStatusRef
+  /** The set resolved by the backend for THIS quote: the select never offers anything outside it (AC-050). */
+  quote_workflow_statuses: QuoteWorkflowStatusRef[]
   commercial_id: number | null
   commercial: QuoteRelationRef | null
   reporter_id: number | null
@@ -254,7 +260,10 @@ export interface CreateQuotePayload {
   code?: string | null
   title: string
   opportunity_id: number
-  quote_status_id?: number | null
+  /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
+  quote_workflow_status_id?: number | null
+  /** Mandatory only when the TARGET status carries `requires_note` (AC-023); never persisted on the quote. */
+  note?: string | null
   commercial_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null

@@ -1,9 +1,9 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\OpportunityWorkflow;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\ProductCategory;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoCatalog\DemoWorkflowStatusCatalogue;
 use Database\Seeders\DemoCategoryWorkflowSeeder;
@@ -30,10 +30,10 @@ it('provisions one active workflow per demo category, idempotently', function ()
 
     $categoryNames = DemoCategoryCatalogue::categoryNames();
 
-    expect(OpportunityWorkflow::query()->count())->toBe(count($categoryNames));
+    expect(QuoteWorkflow::query()->count())->toBe(count($categoryNames));
 
     foreach ($categoryNames as $categoryName) {
-        $workflow = OpportunityWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
+        $workflow = QuoteWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
         expect($workflow)->not->toBeNull($categoryName)
@@ -47,9 +47,9 @@ it('provisions one active workflow per demo category, idempotently', function ()
 it('seeds the branch pick list between the four pinned system rows', function (): void {
     seedDemoWorkflows();
 
-    $workflow = OpportunityWorkflow::query()->where('name', 'Corsi Online')->firstOrFail();
-    $statuses = OpportunityWorkflowStatus::query()
-        ->where('opportunity_workflow_id', $workflow->id)
+    $workflow = QuoteWorkflow::query()->where('name', 'Corsi Online')->firstOrFail();
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
         ->orderBy('sort_order')
         ->get();
 
@@ -67,9 +67,9 @@ it('seeds the branch pick list between the four pinned system rows', function ()
 it('keeps the note requirement of the states that carry one', function (): void {
     seedDemoWorkflows();
 
-    $workflow = OpportunityWorkflow::query()->where('name', 'Consulenza IT')->firstOrFail();
-    $noteRequiring = OpportunityWorkflowStatus::query()
-        ->where('opportunity_workflow_id', $workflow->id)
+    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza IT')->firstOrFail();
+    $noteRequiring = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
         ->where('requires_note', true)
         ->pluck('name')
         ->all();
@@ -81,5 +81,5 @@ it('keeps the note requirement of the states that carry one', function (): void 
 it('is a no-op when the demo tree is not seeded', function (): void {
     test()->seed(DemoCategoryWorkflowSeeder::class);
 
-    expect(OpportunityWorkflow::query()->count())->toBe(0);
+    expect(QuoteWorkflow::query()->count())->toBe(0);
 });

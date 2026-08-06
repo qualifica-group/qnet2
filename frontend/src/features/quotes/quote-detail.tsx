@@ -72,7 +72,9 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           <DetailField label={t('quotes.detail.opportunity')} icon={<Handshake />}>
             {quote.opportunity.name}
           </DetailField>
-          <DetailField label={t('quotes.detail.quoteStatus')}>{quote.quote_status.name}</DetailField>
+          <DetailField label={t('quotes.detail.workflowStatus')}>
+            {quote.quote_workflow_status.name}
+          </DetailField>
           <DetailField label={t('quotes.detail.commercial')}>
             {quote.commercial ? quote.commercial.name : <DetailEmpty />}
           </DetailField>

@@ -3,7 +3,7 @@
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Role;
 use App\Models\User;
@@ -44,9 +44,9 @@ if (! function_exists('quoteLayoutUserWith')) {
 }
 
 if (! function_exists('quoteLayoutNewStatus')) {
-    function quoteLayoutNewStatus(): QuoteStatus
+    function quoteLayoutNewStatus(): QuoteWorkflowStatus
     {
-        return QuoteStatus::where('system_key', 'new')->sole();
+        return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     }
 }
 

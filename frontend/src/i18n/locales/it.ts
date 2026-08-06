@@ -26,8 +26,7 @@ import { campaigns } from './it-campaigns'
 import { leads } from './it-leads'
 import { opportunities } from './it-opportunities'
 import { productLines } from './it-product-lines'
-import { opportunityWorkflows } from './it-opportunity-workflows'
-import { quoteStatuses } from './it-quote-statuses'
+import { quoteWorkflows } from './it-quote-workflows'
 import { quotes } from './it-quotes'
 import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
@@ -375,8 +374,7 @@ export const it: TranslationResources = {
   leads: { ...leads, stats: moduleStats.leads },
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
-  opportunityWorkflows,
-  quoteStatuses,
+  quoteWorkflows,
   quotes,
   contractStatuses,
   contracts,

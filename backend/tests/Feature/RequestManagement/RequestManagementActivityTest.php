@@ -3,7 +3,6 @@
 use App\Models\Attachment;
 use App\Models\Note;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\PersonalData;
 use App\Models\Registry;
 use App\Models\User;
@@ -17,7 +16,8 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 // AC-043 — write side: RequestManagementService::updateWork() writes an
 // explicit activity() entry on the Opportunity for every operative PATCH
-// (workflow status, attribute_values, next_callback_at), which logFillable()
+// (attribute_values, next_callback_at — spec 0083 D-2 removed the former
+// working-status field from this channel entirely), which logFillable()
 // cannot capture (those columns are outside $fillable).
 //
 // Read side (D-7, AMENDED — user request 2026-07-22): the module DOES expose
@@ -54,15 +54,12 @@ if (! function_exists('requestManagementActivityUserWith')) {
 it('PATCH /api/request-management/{id} writes exactly one activity entry on the Opportunity (AC-043)', function () {
     $actor = requestManagementActivityUserWith(['viewAny', 'view', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
-    $target = OpportunityWorkflowStatus::query()
-        ->whereNull('opportunity_workflow_id')
-        ->where('system_key', 'closed_won')
-        ->sole();
+    $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $target->id,
+        'next_callback_at' => $callbackAt,
     ])->assertOk();
 
     $activities = Activity::query()
@@ -73,28 +70,24 @@ it('PATCH /api/request-management/{id} writes exactly one activity entry on the 
 
     expect($activities)->toHaveCount(1);
     expect($activities->first()->causer_id)->toBe($actor->id);
-    expect($activities->first()->properties->get('attributes'))
-        ->toMatchArray(['opportunity_workflow_status_id' => $target->id]);
+    expect($activities->first()->properties->get('attributes'))->toHaveKey('next_callback_at');
 });
 
 it('exposes the operative change through the request-management resource key, with NO opportunities.* permission', function () {
     $actor = requestManagementActivityUserWith(['viewAny', 'view', 'update', 'viewAll', 'viewActivity']);
     $opportunity = Opportunity::factory()->create();
-    $target = OpportunityWorkflowStatus::query()
-        ->whereNull('opportunity_workflow_id')
-        ->where('system_key', 'closed_won')
-        ->sole();
+    $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'opportunity_workflow_status_id' => $target->id,
+        'next_callback_at' => $callbackAt,
     ])->assertOk();
 
     $this->getJson("/api/activity-log/request-management/{$opportunity->id}")
         ->assertOk()
         ->assertJsonPath('data.items.0.module', $opportunity->getMorphClass())
-        ->assertJsonPath('data.items.0.changes.0.field', 'opportunity_workflow_status_id');
+        ->assertJsonPath('data.items.0.changes.0.field', 'next_callback_at');
 });
 
 it('denies the request-management activity log without request-management.viewActivity, even holding opportunities.viewActivity', function () {

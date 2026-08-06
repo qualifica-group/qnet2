@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Enums\AdvancedFilterType;
-use App\Models\OpportunityWorkflowStatus;
 
 /**
  * Advanced-filter catalogue for the `request-management` domain (spec 0049).
@@ -16,16 +15,8 @@ use App\Models\OpportunityWorkflowStatus;
  * relation accessor name (generic whereHas-by-id via AdvancedFilterApplier
  * for every `relation` entry) or the real DB column (`expected_close_date`).
  *
- * `workflow_status` is deliberately NOT a `relation` filter: no
- * `opportunity-workflow-statuses/for-select` route exists (unlike
- * `registries`/`referents`/`opportunity-statuses`, each backed by its own
- * for-select controller) to feed an id-based AsyncPaginatedSelect. Instead it
- * is a `multiselect` SET filter over the distinct workflow-status NAMES
- * (queried at catalog-build time, mirroring the same `distinctValues()`
- * source the column-level `set` filter already uses — see
- * RequestManagementTableDefinition::distinctValues()); the server-side apply
- * is overridden in RequestManagementTableDefinition::applyAdvancedFilter() to
- * `whereHas('workflowStatus', whereIn('name', ...))`, never id-based.
+ * Spec 0083, D-2: `workflow_status` is REMOVED — the Opportunity resolves no
+ * working state of its own any more.
  *
  * `operational_site` is a PICKER, not free text (user directive 2026-07-31):
  * an id-based `relation` filter over the `operational-sites/for-select` route
@@ -68,18 +59,6 @@ final class RequestAdvancedFilterCatalog
                 'target' => 'referent',
             ],
             [
-                'name' => 'workflow_status',
-                'label' => 'requestManagement.advancedFilters.workflowStatus',
-                'type' => AdvancedFilterType::Multiselect,
-                'order' => 3,
-                'required' => false,
-                'visible' => true,
-                'width' => 'md',
-                'multiple' => true,
-                'options' => self::workflowStatusOptions(),
-                'target' => 'workflow_status',
-            ],
-            [
                 'name' => 'operational_site',
                 'label' => 'requestManagement.advancedFilters.operationalSite',
                 'type' => AdvancedFilterType::Relation,
@@ -114,24 +93,5 @@ final class RequestAdvancedFilterCatalog
                 'target' => 'next_callback_at',
             ],
         ];
-    }
-
-    /**
-     * Distinct workflow-status names, across every workflow (global set +
-     * per-workflow overrides) — the same `{value, label}` shape a static
-     * enum-backed `multiselect` uses elsewhere in the codebase, but sourced
-     * from the DB since these are configured lookup rows, not a PHP enum.
-     *
-     * @return array<int, array{value: string, label: string}>
-     */
-    private static function workflowStatusOptions(): array
-    {
-        return OpportunityWorkflowStatus::query()
-            ->select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->pluck('name')
-            ->map(static fn (string $name): array => ['value' => $name, 'label' => $name])
-            ->all();
     }
 }

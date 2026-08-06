@@ -12,15 +12,14 @@ use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflow;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\PaymentMethod;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
@@ -115,12 +114,6 @@ return [
         'opportunities' => [
             'model' => Opportunity::class,
         ],
-        'opportunity-workflows' => [
-            'model' => OpportunityWorkflow::class,
-        ],
-        'opportunity-workflow-statuses' => [
-            'model' => OpportunityWorkflowStatus::class,
-        ],
         'payment-methods' => [
             'model' => PaymentMethod::class,
         ],
@@ -135,9 +128,6 @@ return [
         ],
         'projects' => [
             'model' => Project::class,
-        ],
-        'quote-statuses' => [
-            'model' => QuoteStatus::class,
         ],
         'quotes' => [
             'model' => Quote::class,
@@ -155,6 +145,12 @@ return [
                 ],
             ],
         ],
+        'quote-workflows' => [
+            'model' => QuoteWorkflow::class,
+        ],
+        'quote-workflow-statuses' => [
+            'model' => QuoteWorkflowStatus::class,
+        ],
         'referent-types' => [
             'model' => ReferentType::class,
         ],
@@ -167,8 +163,8 @@ return [
             'model' => Opportunity::class,
             'authorizer' => RequestManagementActivityAuthorizer::class,
             // Everything the operator can change from the work panel, in one
-            // timeline: the request itself (workflow status, dynamic values,
-            // next callback — explicit entries written by
+            // timeline: the request itself (dynamic values, next callback —
+            // explicit entries written by
             // RequestManagementService), the collaborative notes (soft-deleted
             // ones INCLUDED, so a removed note still leaves its trace), the
             // uploaded documents, and the client anagraphic block edited

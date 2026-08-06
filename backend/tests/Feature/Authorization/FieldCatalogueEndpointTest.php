@@ -70,17 +70,21 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
     // `sources`, `sectors` AND `company-sites`, spec 0019 `tags`, spec 0020
     // `registries`, spec 0021 `custom-fields`, spec 0023 `pipeline-statuses`,
     // `projects` AND `campaigns`, spec 0024 `leads`, spec 0040
-    // `opportunities`, spec 0047 `opportunity-workflows`,
+    // `opportunities`, spec 0047 registered the workflow configurator (since
+    // renamed, spec 0083 D-6, see below),
     // `vat-rates` (VAT-rate lookup for products), all in the same generic
     // registry (config/authorization.php), so this registry-driven catalogue
     // legitimately grows to include them. `import-runs` is NOT here: its meta
     // definition was removed (2026-07-17) when the module collapsed onto
-    // `leads.import` — an import run has no editable form.
+    // `leads.import` — an import run has no editable form. Spec 0083, D-6:
+    // the workflow configurator's resource moved onto the Offerta and is
+    // renamed `quote-workflows`; the former flat quote-status module is
+    // dropped entirely.
     expect($resources->keys()->all())->toEqualCanonicalizing([
         'users', 'roles', 'business-functions', 'companies', 'company-sites', 'operational-sites', 'referent-types',
         'referents', 'attributes', 'custom-fields', 'product-categories', 'products', 'sources', 'sectors', 'tags',
         'registries', 'pipeline-statuses', 'projects', 'campaigns', 'leads',
-        'opportunities', 'opportunity-workflows', 'vat-rates',
+        'opportunities', 'quote-workflows', 'vat-rates',
         // spec 0049 `request-management` (RequestManagementAuthorization registered in the generic
         // registry so GET /api/meta/request-management works; the module operates on Opportunity).
         'request-management',
@@ -94,9 +98,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0060 `reward-statuses` (RewardStatusesAuthorization: the "Stati Buoni Collegati"
         // lookup — name/color mandatory, description/is_active optional, D-4).
         'reward-statuses',
-        // spec 0065 `quote-statuses` AND `quotes` (QuoteStatusesAuthorization: the "Stati Offerta"
-        // lookup; QuotesAuthorization: the Quotes module resource).
-        'quote-statuses', 'quotes',
+        // spec 0065 `quotes` (QuotesAuthorization: the Quotes module resource).
+        'quotes',
         // spec 0066 `commission-configurations` (independent commission-rule
         // catalogue with field-level permissions).
         'commission-configurations',

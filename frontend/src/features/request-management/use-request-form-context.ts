@@ -12,12 +12,10 @@ import type { RequestFormContext, RequestProductLinePayload } from '@/features/r
  * schema) for nothing.
  */
 const NO_ATTRIBUTES: RequestFormContext['applicable_attributes'] = []
-const NO_STATUSES: RequestFormContext['workflow_statuses'] = []
 
 const EMPTY_CONTEXT: RequestFormContext = {
   applicable_attributes: NO_ATTRIBUTES,
   attribute_layout: null,
-  workflow_statuses: NO_STATUSES,
 }
 
 /**
@@ -36,15 +34,13 @@ function toCompleteLines(rows: ProductLineRow[]): RequestProductLinePayload[] {
 
 /**
  * The create form's live equivalent of what the work panel receives already
- * resolved: which working statuses may be picked, which dynamic fields the
- * chosen categories carry and how they are laid out (user directive
- * 2026-07-31).
+ * resolved: which dynamic fields the chosen categories carry and how they
+ * are laid out (user directive 2026-07-31).
  *
  * Resolution is SERVER-side (`POST /request-management/form-context`), never
  * re-derived here: the union-by-code of several categories' effective
- * attributes and the workflow-criteria matching are backend rules, and a
- * second implementation in the frontend would be free to disagree with the
- * POST that follows.
+ * attributes is a backend rule, and a second implementation in the frontend
+ * would be free to disagree with the POST that follows.
  *
  * Query key = the criteria themselves, so switching category and back re-reads
  * the cache. Fetching is gated on there being at least one complete product

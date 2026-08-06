@@ -35,7 +35,7 @@ use InvalidArgumentException;
  *     produce distinct statuses for one and the same state.
  *   - "GOL - Abruzzo" and "DIL" have no column in the sheet: no workflow is
  *     seeded for them, so their opportunities fall back to the GLOBAL default
- *     status set (OpportunityWorkflowResolver).
+ *     status set (QuoteWorkflowResolver).
  *   - Descriptions come from the sheet's second page and are scoped PER
  *     SECTION: the same name ("Da Richiamare", "Irreperibile", "Doppione")
  *     carries a different description in each block.
@@ -281,7 +281,7 @@ final class WorkflowStatusCatalogue
 
     /**
      * The sheet row promoted onto each system row of $categoryName's set,
-     * keyed by system key and shaped to the CreateOpportunityWorkflowData
+     * keyed by system key and shaped to the CreateQuoteWorkflowData
      * system-row contract (no `group`: a pinned row's group is fixed by its
      * system key). Null for a key the category's list never fills — the three
      * MANDATORY rows then keep the writer's default label, while a null
@@ -342,7 +342,7 @@ final class WorkflowStatusCatalogue
      * $categoryName's rows left as CUSTOM rows: the full list minus the ones
      * promoted onto a pinned system row above. Keeping a promoted row in both
      * places would duplicate its label inside one set — which the
-     * (opportunity_workflow_id, name) unique index rejects outright.
+     * (quote_workflow_id, name) unique index rejects outright.
      *
      * @return list<array{name: string, description: string, color: string, group: string, requires_note: bool}>
      */

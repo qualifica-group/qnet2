@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\DataObjects\Quotes;
 
 /**
- * Validated payload for creating a quote (POST /api/quotes, spec 0065).
- * `code` is a manual override (D-13, same pattern as
- * CreateProjectData/CreateProductData): null means "let QuoteService generate
- * QUO-0001..."; it is deliberately absent from attributes() since it is
- * never in Quote's #[Fillable] — the service assigns it directly.
+ * Validated payload for creating a quote (POST /api/quotes, spec 0065;
+ * spec 0083 T-04 for `workflowStatusId`/`note`). `code` is a manual override
+ * (D-13, same pattern as CreateProjectData/CreateProductData): null means
+ * "let QuoteService generate QUO-0001..."; it is deliberately absent from
+ * attributes() since it is never in Quote's #[Fillable] — the service
+ * assigns it directly.
  *
  * `commercialId`/`reporterId`/`supervisorId` are a SNAPSHOT (D-3): the
  * `*Submitted` flag distinguishes "the client omitted this field entirely"
@@ -29,6 +30,14 @@ namespace App\DataObjects\Quotes;
  * resolution lives entirely in QuoteService::create(), never inside
  * applySnapshotDefaults() (D-8).
  *
+ * `workflowStatusId` (spec 0083, D-1/D-8, AC-020/021) is the OPTIONAL,
+ * explicit `quote_workflow_status_id` override (validated by
+ * ValidatesQuoteWorkflowStatus to belong to the resolved set); when null,
+ * QuoteService resolves it via QuoteWorkflowResolver instead — it is NEVER
+ * part of attributes() (never mass-assigned, always written by the
+ * resolver/writer). `note` (AC-023) accompanies an override whose
+ * destination `requires_note`.
+ *
  * `offerLines`/`costLines` follow the CreateOpportunityData::$productLines
  * convention: null means "no rows submitted for this tab", an array
  * (including empty) is an authoritative full-replace set (D-8).
@@ -43,7 +52,8 @@ final readonly class CreateQuoteData
         public ?string $code,
         public string $title,
         public int $opportunityId,
-        public ?int $quoteStatusId,
+        public ?int $workflowStatusId,
+        public ?string $note,
         public ?int $commercialId,
         public bool $commercialIdSubmitted,
         public ?int $reporterId,
@@ -82,7 +92,8 @@ final readonly class CreateQuoteData
             code: self::nullIfEmpty($data['code'] ?? null),
             title: (string) $data['title'],
             opportunityId: (int) $data['opportunity_id'],
-            quoteStatusId: isset($data['quote_status_id']) ? (int) $data['quote_status_id'] : null,
+            workflowStatusId: isset($data['quote_workflow_status_id']) ? (int) $data['quote_workflow_status_id'] : null,
+            note: $data['note'] ?? null,
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
             commercialIdSubmitted: array_key_exists('commercial_id', $data),
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
@@ -147,7 +158,6 @@ final readonly class CreateQuoteData
         return [
             'title' => $this->title,
             'opportunity_id' => $this->opportunityId,
-            'quote_status_id' => $this->quoteStatusId,
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,
             'supervisor_id' => $this->supervisorId,

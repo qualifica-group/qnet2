@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use App\Enums\WorkflowStatusSystemKey;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use Illuminate\Support\Collection;
 
 /**
- * The Opportunity's status, COMPUTED (spec 0082): an Opportunity no longer
- * carries a hand-picked status FK — its state is read off the statuses of its
- * Quotes, falling back to its own "stato di lavorazione"
- * (`opportunity_workflow_status_id`, spec 0047) when it has no Quote yet.
+ * The Opportunity's status, COMPUTED (spec 0082, re-targeted at the Quote
+ * workflow by spec 0083 D-2/D-8): an Opportunity carries no status FK of its
+ * own — its state is read off the `quote_workflow_status` of its Quotes,
+ * falling back to the GLOBAL default quote-workflow set's `open` row when it
+ * has no Quote yet (a real, user-configurable row, never a hardcoded
+ * string).
  *
  * The single source of truth for BR-1..BR-4: every consumer (OpportunityResource,
  * OpportunitiesTableDefinition, RequestManagementResource, RewardResource,
@@ -22,15 +26,18 @@ use Illuminate\Support\Collection;
  * path is the only one that stays O(1) in queries across a table page. On a
  * bare, route-bound model the resolver falls back to ONE explicit aggregate
  * query (never a lazy relation access, so Model::preventLazyLoading() stays
- * satisfied).
+ * satisfied). The GLOBAL default `open` row itself is memoized per instance:
+ * identical for every quote-less Opportunity a caller resolves within the
+ * same request (e.g. a whole grid page via OpportunitiesTableDefinition's
+ * injected singleton-per-request instance).
  */
 final class OpportunityStatusResolver
 {
-    /** At least one Quote: the status is described by the quotes' own statuses. */
+    /** At least one Quote: the status is described by the quotes' own workflow statuses. */
     public const string SOURCE_QUOTES = 'quotes';
 
-    /** No Quote at all: the status falls back to the "stato di lavorazione". */
-    public const string SOURCE_WORKFLOW = 'workflow';
+    /** No Quote at all: the status falls back to the global default workflow's `open` row. */
+    public const string SOURCE_DEFAULT = 'default';
 
     /**
      * The relations resolve() reads. Eager-load these whenever the resolver
@@ -38,7 +45,12 @@ final class OpportunityStatusResolver
      *
      * @var array<int, string>
      */
-    public const array EAGER_LOADS = ['quotes.quoteStatus', 'workflowStatus'];
+    public const array EAGER_LOADS = ['quotes.quoteWorkflowStatus'];
+
+    /**
+     * @var array{id: int, name: string, color: string|null, group: string, count: int}|null
+     */
+    private ?array $defaultEntryCache = null;
 
     /**
      * @return array{source: string, distinct_count: int, entries: array<int, array{id: int, name: string, color: string|null, group: string, count: int}>}
@@ -52,8 +64,9 @@ final class OpportunityStatusResolver
             return $this->summary(self::SOURCE_QUOTES, $entries);
         }
 
-        // Step 2: no quote — fall back to the opportunity's own working state.
-        return $this->summary(self::SOURCE_WORKFLOW, $this->workflowEntries($opportunity));
+        // Step 2 (D-8): no quote — fall back to the global default set's
+        // `open` row, a single entry with count 0.
+        return $this->summary(self::SOURCE_DEFAULT, [$this->defaultEntry()]);
     }
 
     /**
@@ -70,8 +83,8 @@ final class OpportunityStatusResolver
     }
 
     /**
-     * One entry per DISTINCT quote status (BR-1), carrying how many quotes sit
-     * in it, ordered by the status' own `sort_order`.
+     * One entry per DISTINCT quote workflow status (BR-1), carrying how many
+     * quotes sit in it, ordered by the status' own `sort_order`.
      *
      * @return array<int, array{id: int, name: string, color: string|null, group: string, count: int}>
      */
@@ -82,10 +95,10 @@ final class OpportunityStatusResolver
             : $this->fetchQuotes($opportunity);
 
         return $quotes
-            ->filter(static fn (Quote $quote): bool => $quote->quoteStatus !== null)
-            ->groupBy(static fn (Quote $quote): int => (int) $quote->quote_status_id)
+            ->filter(static fn (Quote $quote): bool => $quote->quoteWorkflowStatus !== null)
+            ->groupBy(static fn (Quote $quote): int => (int) $quote->quote_workflow_status_id)
             ->map(static function (Collection $group): array {
-                $status = $group->first()->quoteStatus;
+                $status = $group->first()->quoteWorkflowStatus;
 
                 return [
                     'id' => (int) $status->id,
@@ -107,28 +120,37 @@ final class OpportunityStatusResolver
     }
 
     /**
-     * The fallback entry (BR-4): the resolved "stato di lavorazione", or an
-     * empty list when none was ever resolved (the FK is nullable).
+     * The fallback entry (D-8): the GLOBAL default quote-workflow set's
+     * `open` row, `count` always 0 (there is no quote to count). Memoized:
+     * the SAME row for every quote-less opportunity resolved by this
+     * instance.
      *
-     * @return array<int, array{id: int, name: string, color: string|null, group: string, count: int}>
+     * @return array{id: int, name: string, color: string|null, group: string, count: int}
      */
-    private function workflowEntries(Opportunity $opportunity): array
+    private function defaultEntry(): array
     {
-        $status = $opportunity->relationLoaded('workflowStatus')
-            ? $opportunity->workflowStatus
-            : $opportunity->workflowStatus()->first();
-
-        if ($status === null) {
-            return [];
+        if ($this->defaultEntryCache !== null) {
+            return $this->defaultEntryCache;
         }
 
-        return [[
+        $status = QuoteWorkflowStatus::query()
+            ->whereNull('quote_workflow_id')
+            ->where('system_key', WorkflowStatusSystemKey::Open->value)
+            ->first();
+
+        if ($status === null) {
+            // Defense in depth: the global set is always seeded with its
+            // `open` row (AC-004/AC-005) — should never happen.
+            abort(500, 'The global default quote workflow status set has no open system row.');
+        }
+
+        return $this->defaultEntryCache = [
             'id' => (int) $status->id,
             'name' => (string) $status->name,
             'color' => $status->color,
             'group' => $status->group->value,
-            'count' => 1,
-        ]];
+            'count' => 0,
+        ];
     }
 
     /**
@@ -140,8 +162,8 @@ final class OpportunityStatusResolver
     private function fetchQuotes(Opportunity $opportunity): Collection
     {
         return $opportunity->quotes()
-            ->select(['id', 'opportunity_id', 'quote_status_id'])
-            ->with('quoteStatus')
+            ->select(['id', 'opportunity_id', 'quote_workflow_status_id'])
+            ->with('quoteWorkflowStatus')
             ->get();
     }
 }

@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,7 +26,17 @@ class QuoteFactory extends Factory
         return [
             'title' => fake()->company().' quote',
             'opportunity_id' => Opportunity::factory(),
-            'quote_status_id' => QuoteStatus::factory(),
+            // Spec 0083 AC-020: a quote lands on the `open` row of the set
+            // resolved for it, and with no workflow matching, that set IS the
+            // global default one. Reusing the seeded row rather than minting a
+            // fresh status per quote keeps the fixtures on the same status the
+            // resolver would actually assign — a per-quote throwaway row would
+            // belong to no set and quietly diverge from production behaviour.
+            'quote_workflow_status_id' => fn (): int => QuoteWorkflowStatus::query()
+                ->whereNull('quote_workflow_id')
+                ->where('system_key', 'open')
+                ->value('id')
+                ?? QuoteWorkflowStatus::factory()->global()->system('open')->create()->id,
             'commercial_id' => null,
             'reporter_id' => null,
             'supervisor_id' => null,

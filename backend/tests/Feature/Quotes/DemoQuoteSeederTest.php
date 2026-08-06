@@ -6,9 +6,9 @@ use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
 use Database\Seeders\DemoProductCategorySeeder;
@@ -92,12 +92,18 @@ it('starts the offer unit price from the product price and the cost line from th
     }
 });
 
-it('spreads the quotes over the whole quote_statuses catalogue', function (): void {
+it('AC-061: every demo quote carries a quote_workflow_status_id belonging to its own resolved set', function (): void {
     seedQuoteDependencies();
 
     test()->seed(DemoQuoteSeeder::class);
 
-    expect(Quote::query()->distinct()->count('quote_status_id'))->toBe(QuoteStatus::count());
+    $resolver = app(QuoteWorkflowResolver::class);
+
+    foreach (Quote::query()->with('offerLines.product.category', 'opportunity')->get() as $quote) {
+        $allowedIds = $resolver->statusesFor($resolver->resolve($quote))->pluck('id');
+
+        expect($allowedIds->contains($quote->quote_workflow_status_id))->toBeTrue($quote->code);
+    }
 });
 
 it('is idempotent: re-running does not duplicate or orphan quotes', function (): void {

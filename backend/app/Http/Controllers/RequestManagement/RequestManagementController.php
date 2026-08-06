@@ -57,11 +57,10 @@ class RequestManagementController extends BaseApiController
 
     /**
      * POST /api/request-management/form-context (user directive 2026-07-31):
-     * the working-status set, the applicable dynamic attributes and their
-     * layout for the criteria the create form has collected so far. Read-only
-     * (nothing is persisted), gated by the SAME `request-management.create`
-     * that gates the form itself — it exposes exactly what a create is about
-     * to render.
+     * the applicable dynamic attributes and their layout for the criteria the
+     * create form has collected so far. Read-only (nothing is persisted),
+     * gated by the SAME `request-management.create` that gates the form
+     * itself — it exposes exactly what a create is about to render.
      */
     public function formContext(RequestFormContextRequest $request): JsonResponse
     {
@@ -69,7 +68,7 @@ class RequestManagementController extends BaseApiController
             abort_unless($request->user()->can('request-management.create'), 403);
 
             return $this->ok(new RequestFormContextResource(
-                $this->formContextResolver->resolve($request->sourceId(), $request->productLines()),
+                $this->formContextResolver->resolve($request->productLines()),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
@@ -139,8 +138,8 @@ class RequestManagementController extends BaseApiController
     }
 
     /**
-     * PUT/PATCH /api/request-management/{opportunity} — advance the working
-     * state and/or persist dynamic field values (sparse, D-4/D-5).
+     * PUT/PATCH /api/request-management/{opportunity} — persist dynamic
+     * field values and the other operative fields (sparse, D-4/D-5).
      */
     public function update(UpdateRequestRequest $request, Opportunity $opportunity): JsonResponse
     {
@@ -154,11 +153,6 @@ class RequestManagementController extends BaseApiController
                 $user,
                 [
                     ...$request->safe()->only([
-                        'opportunity_workflow_status_id',
-                        // Spec 0054 D-5: the note that makes the advance to a
-                        // `requires_note` status legal — dropped here means
-                        // updateWork() sees none and rejects every such advance.
-                        'note',
                         'attribute_values',
                         'next_callback_at',
                         'products_of_interest',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,11 +20,11 @@ import {
 } from '@/features/opportunities/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
-import { QUOTE_STATUSES_FOR_SELECT_RESOURCE } from '@/features/quote-statuses/for-select-api'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
 import { QuoteSitesSection } from '@/features/quotes/quote-sites-section'
+import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
@@ -64,6 +65,9 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
     initialCode,
   })
   const original = mode.type === 'edit' ? mode.quote : null
+  // Watched here rather than inside the field so that component stays
+  // presentational: it only decides whether the transition note is visible.
+  const selectedStatusId = useWatch({ control: form.control, name: 'quote_workflow_status_id' })
 
   // Directive 2026-07-29: Commerciale, Segnalatore and Supervisore are always
   // inherited from the picked Opportunita' — hydrated straight from its
@@ -204,17 +208,6 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
 
               <RelationSelectField
                 control={form.control}
-                name="quote_status_id"
-                metaKey="quote_status_id"
-                label={t('quotes.form.quoteStatus')}
-                resource={QUOTE_STATUSES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('quotes.form.quoteStatusSearch')}
-                selected={original ? { id: original.quote_status.id, name: original.quote_status.name } : null}
-                {...relationLabels}
-              />
-
-              <RelationSelectField
-                control={form.control}
                 name="commercial_id"
                 metaKey="commercial_id"
                 label={t('quotes.form.commercial')}
@@ -248,6 +241,13 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
               />
             </div>
           </FormSection>
+
+          <QuoteWorkflowStatusField
+            control={form.control}
+            statuses={original?.quote_workflow_statuses ?? null}
+            originalStatusId={original?.quote_workflow_status_id ?? null}
+            selectedStatusId={selectedStatusId}
+          />
 
           <QuoteSitesSection
             control={form.control}

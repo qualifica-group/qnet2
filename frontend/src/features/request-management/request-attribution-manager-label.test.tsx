@@ -44,15 +44,6 @@ const FULL_PERMISSIONS = {
   actions: {},
 }
 
-const WORKFLOW_OPEN = {
-  id: 100,
-  name: 'Open',
-  color: 'blue',
-  system_key: 'open',
-  description: null,
-  requires_note: false,
-}
-
 function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): RequestWorkPanelWithPermissions {
   return {
     id: 1,
@@ -70,9 +61,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
-    workflow_status: WORKFLOW_OPEN,
-    workflow_statuses: [WORKFLOW_OPEN],
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
     products_of_interest: [],
     client_identity: null,

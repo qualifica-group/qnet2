@@ -3,7 +3,6 @@
 use App\Models\Note;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,7 +103,7 @@ it('403 without request-management.viewAny on rows/columns/values (AC-012)', fun
 
     $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertForbidden();
     $this->getJson('/api/tables/request-management/columns')->assertForbidden();
-    $this->postJson('/api/tables/request-management/values', ['columnId' => 'workflow_status'])->assertForbidden();
+    $this->postJson('/api/tables/request-management/values', ['columnId' => 'source'])->assertForbidden();
 });
 
 it('the action catalogue never declares edit, and hides delete from an actor without request-management.delete (AC-012)', function () {
@@ -218,13 +217,14 @@ it('rows: a user managing nothing and without viewAll gets empty rows, not a 500
 });
 
 // ---------------------------------------------------------------------------
-// Row mapping: the operative columns surface with the expected shapes —
-// workflow_status color badge, the GA2 operator name, and the client's
-// anagraphic fields (nome/cognome/codice fiscale/telefono) read from the
-// Registry's PersonalData card.
+// Row mapping: the operative columns surface with the expected shapes — the
+// GA2 operator name, and the client's anagraphic fields (nome/cognome/codice
+// fiscale/telefono) read from the Registry's PersonalData card. Spec 0083,
+// D-2: `workflow_status` is REMOVED from this grid entirely — the
+// Opportunity resolves no working state of its own any more.
 // ---------------------------------------------------------------------------
 
-it('rows: workflow_status carries color; operator_ga2 + client anagraphic columns surface', function () {
+it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status key', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
 
     $registry = Registry::factory()->create();
@@ -236,14 +236,10 @@ it('rows: workflow_status carries color; operator_ga2 + client anagraphic column
     ]);
     $card->contacts()->create(['type' => 'phone', 'value' => '+39 02 1234567', 'is_primary' => true]);
 
-    $workflowStatus = OpportunityWorkflowStatus::factory()->global()->create(['name' => 'In lavorazione', 'color' => 'blue']);
     $ga1 = User::factory()->create(['name' => 'GA Uno']);
     $operator = User::factory()->create(['name' => 'Giulia Bianchi']);
 
-    $opportunity = Opportunity::factory()->create([
-        'registry_id' => $registry->id,
-        'opportunity_workflow_status_id' => $workflowStatus->id,
-    ]);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
     // GA1 = position 1, GA2 (the "Operatore") = position 2.
     $opportunity->managers()->attach($ga1->id, ['position' => 1]);
     $opportunity->managers()->attach($operator->id, ['position' => 2]);
@@ -253,7 +249,7 @@ it('rows: workflow_status carries color; operator_ga2 + client anagraphic column
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
 
-    expect($row['workflow_status'])->toMatchArray(['id' => $workflowStatus->id, 'name' => 'In lavorazione', 'color' => 'blue'])
+    expect($row)->not->toHaveKey('workflow_status')
         ->and($row['operator_ga2'])->toMatchArray(['id' => $operator->id, 'name' => 'Giulia Bianchi'])
         ->and($row['first_name'])->toBe('Mario')
         ->and($row['last_name'])->toBe('Rossi')

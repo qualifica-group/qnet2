@@ -445,7 +445,7 @@ it('AC-010: the 201 response is a full RequestManagementResource, matching the G
     $opportunityId = $created->json('data.id');
     $created->assertJsonStructure([
         'success', 'message', 'permissions',
-        'data' => ['id', 'name', 'registry', 'product_lines', 'workflow_status', 'workflow_statuses', 'client_identity', 'client_contacts', 'client_address'],
+        'data' => ['id', 'name', 'registry', 'product_lines', 'status', 'client_identity', 'client_contacts', 'client_address'],
     ]);
 
     $shown = $this->getJson("/api/request-management/{$opportunityId}")->assertOk();

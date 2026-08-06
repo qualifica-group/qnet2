@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
-use App\Enums\QuoteStatusGroup;
 use App\Enums\StatusSystemKey;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 
 /**
- * The Quote -> Contract lifecycle automation (spec 0072, BR-1), called
- * INSIDE QuoteService::create()/update()'s own transaction right after the
- * quote's status has been written, comparing its QuoteStatusGroup BEFORE and
+ * The Quote -> Contract lifecycle automation (spec 0072, BR-1; re-targeted
+ * at the offer's workflow status by spec 0083), called INSIDE
+ * QuoteService::create()/update()'s own transaction right after the quote's
+ * status has been written, comparing its WorkflowStatusGroup BEFORE and
  * AFTER that write:
  *
  *  - non-closed_won -> closed_won: creates the `contracts` row (idempotent —
@@ -34,29 +35,29 @@ class ContractLifecycleManager
     public function __construct(private readonly ContractStatusResolver $statusResolver) {}
 
     /**
-     * @param  int|null  $previousStatusId  the quote's `quote_status_id`
+     * @param  int|null  $previousStatusId  the quote's `quote_workflow_status_id`
      *                                      BEFORE this write — null on create (a fresh quote never had a prior
      *                                      group, AC-001/003).
      */
     public function syncOnStatusChange(Quote $quote, ?int $previousStatusId): void
     {
         $before = $this->groupOf($previousStatusId);
-        $after = $this->groupOf($quote->quote_status_id);
+        $after = $this->groupOf($quote->quote_workflow_status_id);
 
-        if ($before !== QuoteStatusGroup::ClosedWon && $after === QuoteStatusGroup::ClosedWon) {
+        if ($before !== WorkflowStatusGroup::ClosedWon && $after === WorkflowStatusGroup::ClosedWon) {
             $this->createContract($quote);
 
             return;
         }
 
-        if ($before === QuoteStatusGroup::ClosedWon && $after !== QuoteStatusGroup::ClosedWon) {
+        if ($before === WorkflowStatusGroup::ClosedWon && $after !== WorkflowStatusGroup::ClosedWon) {
             $this->suspendContract($quote);
         }
     }
 
-    private function groupOf(?int $quoteStatusId): ?QuoteStatusGroup
+    private function groupOf(?int $quoteWorkflowStatusId): ?WorkflowStatusGroup
     {
-        return $quoteStatusId === null ? null : QuoteStatus::find($quoteStatusId)?->group;
+        return $quoteWorkflowStatusId === null ? null : QuoteWorkflowStatus::find($quoteWorkflowStatusId)?->group;
     }
 
     private function createContract(Quote $quote): void

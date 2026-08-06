@@ -14,6 +14,11 @@ enum AttributeContext: string
 {
     case Product = 'product';
     case Opportunity = 'opportunity';
+    // Spec 0084: le "Informazioni aggiuntive" appartengono al singolo
+    // preventivo, non all'opportunita'. Il set applicabile si risolve dalle
+    // categorie dei prodotti delle righe OFFERTA (D-5), non dalle product line
+    // dell'opportunita' padre.
+    case Quote = 'quote';
 
     /**
      * The `product_categories` column carrying the inheritance barrier for
@@ -25,6 +30,7 @@ enum AttributeContext: string
         return match ($this) {
             self::Product => 'inherits_product_attributes',
             self::Opportunity => 'inherits_opportunity_attributes',
+            self::Quote => 'inherits_quote_attributes',
         };
     }
 }

@@ -10,19 +10,27 @@ use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
+use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the payload for POST /api/quotes (spec 0065). `code` is
- * optional: when absent, null or empty, QuoteService falls back to the
- * sequential QUO-0001 generator (D-13); when submitted, it must be unique
- * against `quotes.code`. `commercial_id`/`reporter_id`/`supervisor_id` are
- * plain nullable relations here — the D-3 "inherit from the opportunity
- * unless submitted" rule is a WRITE-side concern, resolved by QuoteService
- * from whether the key is present in $this->validated(), never here.
+ * Validates the payload for POST /api/quotes (spec 0065; spec 0083 T-04 for
+ * `quote_workflow_status_id`/`note`). `code` is optional: when absent, null
+ * or empty, QuoteService falls back to the sequential QUO-0001 generator
+ * (D-13); when submitted, it must be unique against `quotes.code`.
+ * `commercial_id`/`reporter_id`/`supervisor_id` are plain nullable relations
+ * here — the D-3 "inherit from the opportunity unless submitted" rule is a
+ * WRITE-side concern, resolved by QuoteService from whether the key is
+ * present in $this->validated(), never here.
+ *
+ * `quote_workflow_status_id` is an OPTIONAL override (AC-020/021): omitted
+ * lets QuoteWorkflowResolver derive the `open` row of the set resolved for
+ * the SUBMITTED `offer_lines`/`opportunity_id`; when submitted, its
+ * set-membership is checked in withValidator. `note` (AC-023) accompanies an
+ * override whose destination `requires_note`.
  *
  * `net_amount`/`vat_amount`/`total_amount` and the whole `summary` block are
  * `prohibited` (AC-033): server-computed, never client input.
@@ -39,6 +47,7 @@ class StoreQuoteRequest extends FormRequest
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
+    use ValidatesQuoteWorkflowStatus;
 
     public function authorize(): bool
     {
@@ -55,7 +64,10 @@ class StoreQuoteRequest extends FormRequest
             'code' => ['nullable', 'string', 'max:32', Rule::unique('quotes', 'code')],
             'title' => ['required', 'string', 'max:191'],
             'opportunity_id' => ['required', 'integer', Rule::exists('opportunities', 'id')],
-            'quote_status_id' => ['nullable', 'integer', Rule::exists('quote_statuses', 'id')],
+            'quote_workflow_status_id' => ['nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
+            // Spec 0083, T-04, AC-023: the note a `requires_note` destination
+            // demands. Same bound as StoreNoteRequest's `body`.
+            'note' => ['nullable', 'string', 'max:5000'],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
@@ -77,6 +89,7 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceCommissionRecipients($validator, null);
             $this->enforceCompanySiteBelongsToCompany($validator, null);
             $this->enforceQuoteLayout($validator, null);
+            $this->validateQuoteWorkflowStatus($validator);
         });
     }
 

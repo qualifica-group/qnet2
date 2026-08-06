@@ -46,7 +46,6 @@ const SERVER_ERROR_FIELDS = [
   'source_id',
   'operational_site_id',
   'state_id',
-  'opportunity_workflow_status_id',
   'product_lines',
   'products_of_interest',
   'rewards',
@@ -174,7 +173,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
         source_id: opportunity.source_id,
         operational_site_id: opportunity.operational_site_id ?? null,
         state_id: opportunity.state_id ?? null,
-        opportunity_workflow_status_id: opportunity.opportunity_workflow_status_id ?? null,
         product_lines: toProductLineRows(opportunity.product_lines),
         products_of_interest: (opportunity.products_of_interest ?? []).map((product) => product.id),
         rewards: (opportunity.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
@@ -204,7 +202,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       source_id: null,
       operational_site_id: null,
       state_id: null,
-      opportunity_workflow_status_id: null,
       // User directive 2026-07-29: the create form opens on ONE empty
       // product-line row (at least one is mandatory anyway) and on the four
       // G.A. slots, so the ranking is visible without pressing "Add" first.

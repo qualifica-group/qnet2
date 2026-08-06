@@ -31,7 +31,6 @@ import { RequestProductsOfInterest } from '@/features/request-management/request
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
-import { RequestWorkflowStatusField } from '@/features/request-management/request-workflow-status-field'
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
@@ -98,9 +97,9 @@ export function RequestWorkPanelSkeleton() {
  * `DetailScreen` (spec 0042 registry): fetches the panel fresh on every mount
  * (`useEntityDetail`, same fresh-on-open contract as every other entity
  * card/edit form), then renders the read-only context, the contact
- * verification blocks, the dynamic Attribute fields and the working-state
- * control, wrapped in the actor's `ResourcePermissions` so every field's
- * gating comes from the same server-derived source as everywhere else.
+ * verification blocks and the dynamic Attribute fields, wrapped in the
+ * actor's `ResourcePermissions` so every field's gating comes from the same
+ * server-derived source as everywhere else.
  */
 export function RequestWorkPanelScreen({ id }: RequestWorkPanelScreenProps) {
   const { t } = useTranslation()
@@ -245,11 +244,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 products={panel.products_of_interest}
               />
 
-              <div className="grid min-w-0 items-start gap-4 @2xl:grid-cols-2">
-                <RequestWorkflowStatusField control={form.control} statuses={panel.workflow_statuses} />
-
-                <RequestCallbackSection control={form.control} />
-              </div>
+              <RequestCallbackSection control={form.control} />
 
               {/* Provenance and ownership of the request (user directive
                   2026-07-22), right after the two levers acted on at every

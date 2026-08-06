@@ -7,6 +7,7 @@ namespace App\Tables\RewardedReferents;
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Reward;
+use App\Services\Opportunities\OpportunityStatusScope;
 use App\Services\Table\AdvancedFilterApplier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -120,7 +121,12 @@ final class RewardedReferentAdvancedFilterApplier
     /**
      * `workflow_status` — NAME-based set filter (catalogue docblock: the
      * same status name replicates across workflows as distinct ids),
-     * crossing the polymorphic `source`.
+     * crossing the polymorphic `source`. Spec 0082/0083, D-2/D-8: the origin
+     * Opportunity's status is COMPUTED off its Quotes (falling back to the
+     * global default workflow's `open` row) — delegated to the shared
+     * OpportunityStatusScope, the same predicate every other consumer of
+     * that computed status uses, never a second copy against the removed
+     * `Opportunity::workflowStatus()` relation.
      *
      * @param  Builder<Referent>  $query
      */
@@ -133,10 +139,7 @@ final class RewardedReferentAdvancedFilterApplier
                 $rewards->whereHasMorph(
                     'source',
                     [Opportunity::class],
-                    static fn (Builder $source) => $source->whereHas(
-                        'workflowStatus',
-                        static fn (Builder $status) => $status->whereIn('name', $names),
-                    ),
+                    static fn (Builder $source) => OpportunityStatusScope::whereNameIn($source, $names),
                 );
             });
         }

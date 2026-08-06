@@ -135,8 +135,8 @@ describe('buildUpdatePayload', () => {
     })
   })
 
-  /** Spec 0047 (D1, AC-016/017): both diff independently, like every other field. */
-  describe('state_id / opportunity_workflow_status_id (spec 0047)', () => {
+  /** Spec 0047 (D1, AC-016/017): diffs independently, like every other field. */
+  describe('state_id (spec 0047)', () => {
     it('includes state_id when changed', () => {
       const payload = buildUpdatePayload(values({ state_id: 3 }), original({ state_id: null }))
       expect(payload).toEqual({ state_id: 3 })
@@ -145,14 +145,6 @@ describe('buildUpdatePayload', () => {
     it('omits state_id when unchanged', () => {
       const payload = buildUpdatePayload(values({ state_id: 3 }), original({ state_id: 3 }))
       expect(payload).toEqual({})
-    })
-
-    it('includes opportunity_workflow_status_id when changed', () => {
-      const payload = buildUpdatePayload(
-        values({ opportunity_workflow_status_id: 12 }),
-        original({ opportunity_workflow_status_id: 11 }),
-      )
-      expect(payload).toEqual({ opportunity_workflow_status_id: 12 })
     })
   })
 

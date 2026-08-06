@@ -4,7 +4,7 @@ use App\Models\Concerns\LogsModelActivity;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,7 +26,7 @@ uses(TestCase::class, RefreshDatabase::class);
 it('creates the quotes table with the expected columns', function () {
     expect(Schema::hasTable('quotes'))->toBeTrue();
     expect(Schema::hasColumns('quotes', [
-        'id', 'code', 'title', 'opportunity_id', 'quote_status_id',
+        'id', 'code', 'title', 'opportunity_id', 'quote_workflow_status_id',
         'commercial_id', 'reporter_id', 'supervisor_id', 'internal_notes',
         'revenue_net', 'revenue_vat', 'cost_net', 'cost_vat', 'margin_net',
         'created_at', 'updated_at',
@@ -34,12 +34,12 @@ it('creates the quotes table with the expected columns', function () {
 });
 
 // ---------------------------------------------------------------------------
-// #[Fillable] / D-9 / D-13: code and the 5 aggregates are NEVER mass-assignable
+// #[Fillable] / D-9 / D-13 / spec 0083: code, the 5 aggregates and
+// quote_workflow_status_id are NEVER mass-assignable
 // ---------------------------------------------------------------------------
 
-it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/supervisor_id/internal_notes', function () {
+it('mass-assigns title/opportunity_id/commercial_id/reporter_id/supervisor_id/internal_notes', function () {
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create();
     $commercial = Referent::factory()->create();
     $reporter = Referent::factory()->create();
     $supervisor = User::factory()->create();
@@ -47,7 +47,6 @@ it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/
     $quote = Quote::factory()->make([
         'title' => 'Offerta mass-assignment',
         'opportunity_id' => $opportunity->id,
-        'quote_status_id' => $status->id,
         'commercial_id' => $commercial->id,
         'reporter_id' => $reporter->id,
         'supervisor_id' => $supervisor->id,
@@ -57,7 +56,6 @@ it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/
 
     expect($quote->title)->toBe('Offerta mass-assignment')
         ->and($quote->opportunity_id)->toBe($opportunity->id)
-        ->and($quote->quote_status_id)->toBe($status->id)
         ->and($quote->commercial_id)->toBe($commercial->id)
         ->and($quote->reporter_id)->toBe($reporter->id)
         ->and($quote->supervisor_id)->toBe($supervisor->id)
@@ -66,13 +64,23 @@ it('mass-assigns title/opportunity_id/quote_status_id/commercial_id/reporter_id/
 
 it('code is deliberately absent from #[Fillable]: mass-assigning it leaves the NOT NULL column unset (D-13)', function () {
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create();
 
     expect(fn () => Quote::create([
         'title' => 'Senza codice mass-assignato',
         'opportunity_id' => $opportunity->id,
-        'quote_status_id' => $status->id,
         'code' => 'HACKED-0001',
+    ]))->toThrow(QueryException::class);
+});
+
+it('quote_workflow_status_id is deliberately absent from #[Fillable] (spec 0083): mass-assigning it leaves the NOT NULL column unset', function () {
+    $opportunity = Opportunity::factory()->create();
+    $status = QuoteWorkflowStatus::factory()->create();
+
+    expect(fn () => Quote::create([
+        'title' => 'Senza stato mass-assignato',
+        'opportunity_id' => $opportunity->id,
+        'code' => 'QUO-9001',
+        'quote_workflow_status_id' => $status->id,
     ]))->toThrow(QueryException::class);
 });
 
@@ -82,16 +90,19 @@ it('the 5 aggregate columns are deliberately absent from #[Fillable] (D-9): mass
     // plain Eloquent mass assignment (Quote::create()), the actual guarded
     // path a FormRequest-driven controller write goes through.
     $opportunity = Opportunity::factory()->create();
-    $status = QuoteStatus::factory()->create();
+    $status = QuoteWorkflowStatus::factory()->create();
 
     $quote = new Quote([
         'title' => 'Aggregati non mass-assignabili',
         'opportunity_id' => $opportunity->id,
-        'quote_status_id' => $status->id,
         'revenue_net' => 999.99,
         'margin_net' => 500,
     ]);
     $quote->code = 'QUO-9002';
+    // quote_workflow_status_id is ALSO guarded (spec 0083): direct property
+    // assignment, same technique as `code` above, only to satisfy the NOT
+    // NULL column — not itself under test here.
+    $quote->quote_workflow_status_id = $status->id;
     $quote->save();
     $quote->refresh();
 
@@ -134,13 +145,13 @@ it('casts the 5 aggregate columns to decimal:2', function () {
 // relations
 // ---------------------------------------------------------------------------
 
-it('opportunity()/quoteStatus() are BelongsTo the expected model', function () {
+it('opportunity()/quoteWorkflowStatus() are BelongsTo the expected model', function () {
     $quote = new Quote;
 
     expect($quote->opportunity())->toBeInstanceOf(BelongsTo::class)
         ->and($quote->opportunity()->getRelated())->toBeInstanceOf(Opportunity::class)
-        ->and($quote->quoteStatus())->toBeInstanceOf(BelongsTo::class)
-        ->and($quote->quoteStatus()->getRelated())->toBeInstanceOf(QuoteStatus::class);
+        ->and($quote->quoteWorkflowStatus())->toBeInstanceOf(BelongsTo::class)
+        ->and($quote->quoteWorkflowStatus()->getRelated())->toBeInstanceOf(QuoteWorkflowStatus::class);
 });
 
 it('commercial()/reporter() are BelongsTo Referent via their own FK', function () {

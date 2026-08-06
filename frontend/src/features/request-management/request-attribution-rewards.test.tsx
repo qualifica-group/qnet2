@@ -59,8 +59,6 @@ const FULL_PERMISSIONS = {
   actions: {},
 }
 
-const WORKFLOW_OPEN = { id: 100, name: 'Open', color: 'blue', system_key: 'open', description: null, requires_note: false }
-
 const AMAZON = {
   id: 900,
   reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' },
@@ -85,9 +83,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     operational_site: null,
     is_transferred: false,
     transferred_from: null,
-    status: { source: 'workflow', distinct_count: 0, entries: [] },
-    workflow_status: WORKFLOW_OPEN,
-    workflow_statuses: [WORKFLOW_OPEN],
+    status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
     // Mandatory since the user directive 2026-07-23 (>=1 product) — not the
     // concern of this suite, kept non-empty so submit is never blocked by it.

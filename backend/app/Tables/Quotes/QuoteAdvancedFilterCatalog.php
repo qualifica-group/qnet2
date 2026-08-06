@@ -3,6 +3,7 @@
 namespace App\Tables\Quotes;
 
 use App\Enums\AdvancedFilterType;
+use App\Models\QuoteWorkflowStatus;
 
 /**
  * Advanced-filter catalogue for the `quotes` domain (spec 0065, MT-05).
@@ -12,6 +13,15 @@ use App\Enums\AdvancedFilterType;
  * whereHas-by-id via AdvancedFilterApplier for every `relation` entry) or the
  * real DB column. `reporter` is deliberately NOT an advanced filter (spec
  * 0065 data_contract): it stays a plain `set` column filter only.
+ *
+ * `quote_workflow_status` (spec 0083, D-1/D-6) is deliberately NOT a
+ * `relation` filter: no `quote-workflow-statuses/for-select` route exists
+ * (mirroring RequestAdvancedFilterCatalog's own `workflow_status`
+ * precedent) to feed an id-based AsyncPaginatedSelect. Instead it is a
+ * `multiselect` SET filter over the distinct workflow-status NAMES (queried
+ * at catalog-build time); the server-side apply is overridden in
+ * QuotesTableDefinition::applyAdvancedFilter() to
+ * `whereHas('quoteWorkflowStatus', whereIn('name', ...))`, never id-based.
  */
 final class QuoteAdvancedFilterCatalog
 {
@@ -34,16 +44,16 @@ final class QuoteAdvancedFilterCatalog
                 'target' => 'opportunity',
             ],
             [
-                'name' => 'quote_status',
-                'label' => 'quotes.advancedFilters.quoteStatus',
-                'type' => AdvancedFilterType::Relation,
+                'name' => 'quote_workflow_status',
+                'label' => 'quotes.advancedFilters.quoteWorkflowStatus',
+                'type' => AdvancedFilterType::Multiselect,
                 'order' => 2,
                 'required' => false,
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'source' => ['resource' => 'quote-statuses'],
-                'target' => 'quoteStatus',
+                'options' => self::workflowStatusOptions(),
+                'target' => 'quote_workflow_status',
             ],
             [
                 'name' => 'commercial',
@@ -81,5 +91,24 @@ final class QuoteAdvancedFilterCatalog
                 'target' => 'created_at',
             ],
         ];
+    }
+
+    /**
+     * Distinct workflow-status names, across every workflow (global set +
+     * per-workflow overrides) — the same `{value, label}` shape a static
+     * enum-backed `multiselect` uses elsewhere in the codebase, but sourced
+     * from the DB since these are configured lookup rows, not a PHP enum.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private static function workflowStatusOptions(): array
+    {
+        return QuoteWorkflowStatus::query()
+            ->select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(static fn (string $name): array => ['value' => $name, 'label' => $name])
+            ->all();
     }
 }

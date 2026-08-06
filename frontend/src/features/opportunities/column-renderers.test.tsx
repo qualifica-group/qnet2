@@ -64,7 +64,7 @@ describe('opportunityColumnRenderers.status (spec 0082)', () => {
   })
 
   it('renders an em dash when no status resolves', () => {
-    renderCell('status', { source: 'workflow', distinct_count: 0, entries: [] })
+    renderCell('status', { source: 'default', distinct_count: 0, entries: [] })
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

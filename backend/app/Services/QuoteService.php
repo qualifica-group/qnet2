@@ -9,11 +9,13 @@ use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Enums\DocumentLayoutModule;
 use App\Enums\QuoteLineType;
+use App\Enums\WorkflowStatusSystemKey;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflowStatus;
+use App\Models\User;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
@@ -21,7 +23,8 @@ use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\OpportunityTitleBuilder;
 use App\Services\Quotes\QuoteLineWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
-use App\Services\Statuses\SystemStatusGuard;
+use App\Services\Quotes\QuoteWorkflowResolver;
+use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -29,13 +32,14 @@ use Illuminate\Support\Facades\DB;
  * Business logic for the `quotes` resource (spec 0065): create/update (with
  * the server-generated QUO-0001 code, D-13; the Opportunity snapshot of the
  * 3 roles plus the sede operativa, D-3), the full-replace line sync per tab
- * (D-8), the REVENUE-only opportunity coverage (D-7), and the persisted,
- * always-recalculated economic aggregates (D-9).
+ * (D-8), the REVENUE-only opportunity coverage (D-7), the resolved working
+ * status (spec 0083, D-1/D-8), and the persisted, always-recalculated
+ * economic aggregates (D-9).
  *
  * Also hooks the Contract lifecycle automation (spec 0072, BR-1): every
  * create/update calls ContractLifecycleManager INSIDE this same transaction,
  * right after the quote's status is persisted, comparing its
- * QuoteStatusGroup before/after the write.
+ * WorkflowStatusGroup before/after the write.
  */
 class QuoteService
 {
@@ -62,7 +66,7 @@ class QuoteService
      */
     private const array DETAIL_RELATIONS = [
         'opportunity',
-        'quoteStatus',
+        'quoteWorkflowStatus',
         'commercial',
         'reporter',
         'supervisor',
@@ -84,13 +88,14 @@ class QuoteService
     ];
 
     public function __construct(
-        private readonly SystemStatusGuard $systemStatusGuard,
         private readonly QuoteLineWriter $lineWriter,
         private readonly QuoteTotalsCalculator $totalsCalculator,
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
         private readonly OpportunityTitleBuilder $titleBuilder,
+        private readonly QuoteWorkflowResolver $workflowResolver,
+        private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -113,27 +118,27 @@ class QuoteService
      * otherwise one is generated inside the transaction with a pessimistic
      * lock, so two concurrent creates never collide.
      */
-    public function create(CreateQuoteData $data): Quote
+    public function create(CreateQuoteData $data, User $actor): Quote
     {
-        $quote = DB::transaction(function () use ($data): Quote {
+        $quote = DB::transaction(function () use ($data, $actor): Quote {
             // Step 1: resolve the opportunity and snapshot its 3 commercial
             // roles (D-3) for every one of them the client did NOT submit.
             $opportunity = Opportunity::findOrFail($data->opportunityId);
             $attributes = $this->applySnapshotDefaults($data, $opportunity);
 
-            // Step 2: default the working status to the system 'new' row
-            // (AC-023) when the client omitted it.
-            $attributes['quote_status_id'] ??= $this->systemStatusGuard->resolveNewStatusId(QuoteStatus::class);
-
-            // Step 2b: resolve `layout_id` (D-3/D-8) — NOT an Opportunity
+            // Step 2: resolve `layout_id` (D-3/D-8) — NOT an Opportunity
             // snapshot, a separate mechanism (see resolveLayoutId()).
             $attributes['layout_id'] = $this->resolveLayoutId($data);
 
-            // Step 3: `code` is deliberately absent from Quote's #[Fillable]
-            // (D-13), so it is assigned directly AFTER the fillable
-            // attributes, mirroring ProjectService::create().
+            // Step 3: `code`/`quote_workflow_status_id` are deliberately
+            // absent from Quote's #[Fillable] (D-13 / spec 0083 D-1) — the
+            // status is bootstrapped with the GLOBAL default's `open` row so
+            // the NOT NULL insert succeeds; Step 6 below resolves the FINAL
+            // one, once the criteria it depends on (the REVENUE offer lines,
+            // D-7) are persisted.
             $quote = new Quote($attributes);
             $quote->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+            $quote->quote_workflow_status_id = $this->globalDefaultOpenStatusId();
             $quote->save();
 
             // Step 4: write the submitted line sets (full-replace, D-8) and
@@ -147,7 +152,14 @@ class QuoteService
             // revenue lines (spec 0077, D-3/D-4).
             $this->recalculateOpportunityName($opportunity->id);
 
-            // Step 6: Contract lifecycle automation (spec 0072, BR-1) — a
+            // Step 6 (spec 0083, AC-020/021/023-025): resolve the offer's
+            // working status now that its criteria are final; an explicit
+            // client choice advances FROM that resolved baseline, note-gated
+            // when its destination `requires_note`.
+            $this->assignWorkflowStatus($quote, $data->workflowStatusId, $data->note, $actor);
+            $quote->save();
+
+            // Step 7: Contract lifecycle automation (spec 0072, BR-1) — a
             // fresh quote never had a prior status group.
             $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
 
@@ -164,13 +176,13 @@ class QuoteService
      * ONLY when its own key was submitted (AC-036/037); the aggregates are
      * ALWAYS recalculated, even on a scalar-only PATCH (AC-041).
      */
-    public function update(Quote $quote, UpdateQuoteData $data): Quote
+    public function update(Quote $quote, UpdateQuoteData $data, User $actor): Quote
     {
-        DB::transaction(function () use ($quote, $data): void {
+        DB::transaction(function () use ($quote, $data, $actor): void {
             // Captured BEFORE the write (spec 0072, BR-1): the quote's
             // status group as persisted right now, needed to detect a
             // closed_won transition either way once this method has saved.
-            $previousStatusId = $quote->quote_status_id;
+            $previousStatusId = $quote->quote_workflow_status_id;
 
             // Unconditional save: mirrors OpportunityService/ProjectService's
             // own update() — a clean save runs no UPDATE query.
@@ -195,6 +207,12 @@ class QuoteService
             // mirroring persistAggregates(): even a scalar-only PATCH must see
             // the current line set (a prior write may have changed it).
             $this->recalculateOpportunityName($quote->opportunity_id);
+
+            // spec 0083 (AC-020..026): re-resolve the baseline against the
+            // (possibly changed by a submitted `offer_lines`) criteria, then
+            // apply an explicit client choice on top, note-gated.
+            $this->assignWorkflowStatus($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor);
+            $quote->save();
 
             // Contract lifecycle automation (spec 0072, BR-1).
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
@@ -270,6 +288,51 @@ class QuoteService
             ->where('is_active', true)
             ->where('is_default', true)
             ->value('id');
+    }
+
+    /**
+     * The single write-side entry point for `quote_workflow_status_id`
+     * (spec 0083, D-1/D-8): resolves the baseline the criteria-matched
+     * workflow set (or the global default) assigns THIS offer right now
+     * (AC-020/022, verbatim/system_key/open precedence — see
+     * QuoteWorkflowResolver::targetStatus()), then — when the client
+     * explicitly submitted a DIFFERENT status — advances onto it through
+     * QuoteWorkflowStatusWriter, the ONE choke point that enforces
+     * set-membership (AC-021) and the mandatory-note rule (AC-023/024/025).
+     */
+    private function assignWorkflowStatus(Quote $quote, ?int $submittedStatusId, ?string $note, User $actor): void
+    {
+        $workflow = $this->workflowResolver->resolve($quote);
+        $quote->quote_workflow_status_id = $this->workflowResolver->targetStatus($quote, $workflow)->id;
+
+        if ($submittedStatusId !== null && $submittedStatusId !== $quote->quote_workflow_status_id) {
+            $this->workflowStatusWriter->apply($quote, $submittedStatusId, $actor, $note);
+        }
+    }
+
+    /**
+     * The `open` row of the GLOBAL default set (`quote_workflow_id` null) —
+     * the bootstrap placeholder create() inserts a brand-new Quote with
+     * before its own criteria (the REVENUE offer lines) are persisted.
+     * Sharing this row's `system_key` is what lets
+     * QuoteWorkflowResolver::targetStatus() correctly remap it onto the
+     * FINAL resolved set right after (system_key match, never a hardcoded
+     * assumption).
+     */
+    private function globalDefaultOpenStatusId(): int
+    {
+        $id = QuoteWorkflowStatus::query()
+            ->whereNull('quote_workflow_id')
+            ->where('system_key', WorkflowStatusSystemKey::Open->value)
+            ->value('id');
+
+        if ($id === null) {
+            // Defense in depth: the global set is always seeded with its
+            // `open` row (AC-004/AC-005) — should never happen.
+            abort(500, 'The global default quote workflow status set has no open system row.');
+        }
+
+        return (int) $id;
     }
 
     /**

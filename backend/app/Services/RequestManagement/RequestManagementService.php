@@ -9,14 +9,12 @@ use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
 use App\Enums\FormMode;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\User;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\ApplicableAttributesResolver;
 use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
-use App\Services\Opportunities\OpportunityWorkflowResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use Illuminate\Support\Carbon;
@@ -32,14 +30,15 @@ use Illuminate\Validation\ValidationException;
  * and their own write rules (D-4/D-5).
  *
  * `loadWorkPanel()`/`updateWork()` both return the SAME shape —
- * {opportunity, applicable_attributes, workflow_statuses, attribute_layout} —
- * consumed directly by RequestManagementResource, so show/update render
- * identically (data contract: "Response identica alla GET").
+ * {opportunity, applicable_attributes, attribute_layout} — consumed
+ * directly by RequestManagementResource, so show/update render identically
+ * (data contract: "Response identica alla GET"). Spec 0083, D-2: this panel
+ * no longer advances any working status of its own — the Opportunity's
+ * `status` stays the COMPUTED, read-only summary it already was.
  *
- * Activity logging: `opportunity_workflow_status_id`, `attribute_values` and
- * (spec 0052 D-2) `next_callback_at` are ALL deliberately excluded from
- * `Opportunity::$fillable` (mass-assignment guard), and
- * `LogsModelActivity::getActivitylogOptions()` calls
+ * Activity logging: `attribute_values` and (spec 0052 D-2) `next_callback_at`
+ * are BOTH deliberately excluded from `Opportunity::$fillable` (mass-
+ * assignment guard), and `LogsModelActivity::getActivitylogOptions()` calls
  * `logFillable()` — Spatie's dirty-diff only ever inspects the model's
  * fillable attributes. A change to either column therefore never reaches the
  * automatic model-event log. `updateWork()` compensates with an EXPLICIT
@@ -47,12 +46,6 @@ use Illuminate\Validation\ValidationException;
  * automatic log would have produced, so GET /api/activity-log/request-
  * management/{id} (reading the Opportunity's own activity rows, D-7) still
  * sees the operative change (AC-043).
- *
- * Spec 0054, D-5: this is the ONE choke point for the working-status
- * advance, reached BOTH by the work panel (UpdateRequestRequest) and by the
- * inline-edit engine (RequestManagementTableDefinition::updateCell()) — the
- * rule itself lives in RequestWorkflowStatusWriter, which only this method
- * calls, so the two write channels can never diverge on it.
  */
 final class RequestManagementService
 {
@@ -87,8 +80,7 @@ final class RequestManagementService
         // — eager-loaded so RequestManagementResource never lazy-loads it
         // (Model::preventLazyLoading() outside production).
         'transferredFromOperationalSite.addresses.city',
-        'quotes.quoteStatus',
-        'workflowStatus',
+        'quotes.quoteWorkflowStatus',
         'productLines.businessFunction',
         'productLines.productCategory',
         'productsOfInterest.category',
@@ -98,20 +90,18 @@ final class RequestManagementService
     public function __construct(
         private readonly ApplicableAttributesResolver $attributesResolver,
         private readonly OpportunityAttributeLayoutResolver $attributeLayoutResolver,
-        private readonly OpportunityWorkflowResolver $workflowResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
         private readonly RequestAttributeValueWriter $attributeValueWriter,
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly ProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
-        private readonly RequestWorkflowStatusWriter $workflowStatusWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
     public function loadWorkPanel(Opportunity $opportunity, FormMode $formMode = FormMode::Edit): array
     {
@@ -120,7 +110,6 @@ final class RequestManagementService
         return [
             'opportunity' => $opportunity,
             'applicable_attributes' => $this->attributesResolver->resolve($opportunity),
-            'workflow_statuses' => $this->resolveWorkflowStatuses($opportunity),
             'attribute_layout' => $this->attributeLayoutResolver->resolve($opportunity, $formMode),
         ];
     }
@@ -130,8 +119,8 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{opportunity_workflow_status_id?: int|null, note?: string|null, attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, workflow_statuses: Collection<int, OpportunityWorkflowStatus>, attribute_layout: array<string, mixed>|null}
+     * @param  array{attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
+     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
      */
     public function updateWork(Opportunity $opportunity, User $actor, array $data): array
     {
@@ -143,13 +132,9 @@ final class RequestManagementService
             // change apart from an untouched/no-op submission.
             $previousReporterId = $opportunity->reporter_id;
 
-            // Step 0: attribution (user directive 2026-07-22) — applied
-            // BEFORE the working-state step on purpose: `source_id` is one of
-            // the criteria OpportunityWorkflowResolver resolves a workflow
-            // from (spec 0047), so a PATCH that changes fonte AND status in
-            // one shot must validate the status against the NEW set (the same
-            // ordering ValidatesWorkflowStatus already applies request-side).
-            $sourceChanged = $this->applyAttribution($opportunity, $data);
+            // Step 0: attribution (user directive 2026-07-22) — "Fonte",
+            // "Segnalatore", Sede operativa.
+            $this->applyAttribution($opportunity, $data);
 
             // Step 1: dynamic field values — validate against the applicable
             // set as it is BEFORE Step 2 replaces the product lines, i.e. the
@@ -161,15 +146,10 @@ final class RequestManagementService
             }
 
             // Step 2: funzione aziendale + categoria prodotto (user directive
-            // 2026-07-31) — applied BEFORE the working-state step, like the
-            // attribution above and for the same reason: the product lines are
-            // one of the criteria OpportunityWorkflowResolver resolves a
-            // workflow from (spec 0047), so a PATCH that changes them AND the
-            // status in one shot must validate the status against the NEW set
-            // (the ordering ValidatesWorkflowStatus already applies
-            // request-side).
-            $productLinesChanged = array_key_exists('product_lines', $data)
-                && $this->productLineWriter->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+            // 2026-07-31).
+            if (array_key_exists('product_lines', $data)) {
+                $this->productLineWriter->apply($opportunity, (array) $data['product_lines'], $changed, $old);
+            }
 
             // Step 2-bis: the coherence rule (user directive 2026-07-31) —
             // every product of interest THIS write leaves persisted must
@@ -179,14 +159,7 @@ final class RequestManagementService
             // otherwise silently add the missing line) finds nothing to add.
             $this->assertProductCategoryCoherence($opportunity, $data);
 
-            // Step 3: working-state advance — set-membership (AC-011) and the
-            // mandatory-note rule (spec 0054, D-5) both enforced by the
-            // dedicated writer, the one choke point both write channels reach.
-            if (array_key_exists('opportunity_workflow_status_id', $data) && $data['opportunity_workflow_status_id'] !== null) {
-                $this->workflowStatusWriter->apply($opportunity, (int) $data['opportunity_workflow_status_id'], $actor, $data['note'] ?? null, $changed, $old);
-            }
-
-            // Step 4: next planned callback (spec 0052 D-1/D-4) — sparse:
+            // Step 3: next planned callback (spec 0052 D-1/D-4) — sparse:
             // key absent leaves the persisted value untouched, `null` clears
             // it. A real value change also zeroes the reminder marker so a
             // rescheduled date is not skipped by the future reminder job.
@@ -196,24 +169,13 @@ final class RequestManagementService
 
             $opportunity->save();
 
-            // Step 5: the GA2 "Operatore" — a pivot row, so it is written
+            // Step 4: the GA2 "Operatore" — a pivot row, so it is written
             // after the model save like every other reference collection.
             if (array_key_exists('operator_id', $data)) {
                 $this->applyOperator($opportunity, $data['operator_id'], $actor, $changed, $old);
             }
 
-            // Step 6: a changed fonte — or a changed product line, same
-            // criterion family — can move the opportunity onto a different
-            // workflow (spec 0047). With no explicit status submitted the
-            // resolver re-derives it exactly as OpportunityService::update()
-            // does — targetStatus() keeps the current row when it still
-            // belongs to the new set, so this is a no-op whenever the two
-            // workflows share the status.
-            if (($sourceChanged || $productLinesChanged) && ($data['opportunity_workflow_status_id'] ?? null) === null) {
-                $this->workflowResolver->resolveAndAssign($opportunity);
-            }
-
-            // Step 7: "prodotti di interesse" (user directive 2026-07-22) —
+            // Step 5: "prodotti di interesse" (user directive 2026-07-22) —
             // a to-many reference, written after the model save like every
             // other collection. The writer re-checks the coherence Step 2-bis
             // has already asserted; the redundancy is what keeps every OTHER
@@ -223,7 +185,7 @@ final class RequestManagementService
                 $this->applyProductsOfInterest($opportunity, (array) $data['products_of_interest'], $changed, $old);
             }
 
-            // Step 8: reward assignments (spec 0059, AC-023) — identical
+            // Step 6: reward assignments (spec 0059, AC-023) — identical
             // semantics to the opportunities payload (D-3): the retarget half
             // runs whenever `reporter_id` genuinely changed, INDEPENDENT of
             // whether `rewards` itself was submitted; the sync half only when
@@ -231,7 +193,7 @@ final class RequestManagementService
             // OpportunityService, so the two channels can never diverge.
             $this->applyRewards($opportunity, $previousReporterId, $data, $changed, $old);
 
-            // Step 9: client anagraphic (spec 0049 amendment; spec 0055 D-7 for
+            // Step 7: client anagraphic (spec 0049 amendment; spec 0055 D-7 for
             // the inline channel's four sparse single-field keys) — identity,
             // contacts and address land on the Registry's PersonalData card,
             // not on the opportunity, so they are written outside the model
@@ -239,7 +201,7 @@ final class RequestManagementService
             // $changed/$old so the last step audits them (D-9).
             $this->clientProfileWriter->applyTo($opportunity, $data, $changed, $old);
 
-            // Step 10: explicit activity entry (see class docblock).
+            // Step 8: explicit activity entry (see class docblock).
             $this->logOperationalChange($opportunity, $actor, $changed, $old);
 
             return $this->loadWorkPanel($opportunity);
@@ -292,21 +254,16 @@ final class RequestManagementService
      * entry is added for them, which would double-log the same diff.
      *
      * @param  array<string, mixed>  $data
-     * @return bool whether `source_id` actually changed — the workflow
-     *              resolution criterion the caller re-runs on (spec 0047)
      */
-    private function applyAttribution(Opportunity $opportunity, array $data): bool
+    private function applyAttribution(Opportunity $opportunity, array $data): void
     {
         $submitted = array_intersect_key($data, array_flip(['source_id', 'reporter_id', 'operational_site_id']));
 
         if ($submitted === []) {
-            return false;
+            return;
         }
 
-        $previousSourceId = $opportunity->source_id;
         $opportunity->fill($submitted);
-
-        return $opportunity->source_id !== $previousSourceId;
     }
 
     /**
@@ -458,13 +415,5 @@ final class RequestManagementService
             ->event('updated')
             ->withProperties(['attributes' => $changed, 'old' => $old])
             ->log('Request management work update');
-    }
-
-    /**
-     * @return Collection<int, OpportunityWorkflowStatus>
-     */
-    private function resolveWorkflowStatuses(Opportunity $opportunity): Collection
-    {
-        return $this->workflowResolver->statusesFor($this->workflowResolver->resolve($opportunity));
     }
 }

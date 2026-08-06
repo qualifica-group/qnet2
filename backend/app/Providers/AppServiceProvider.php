@@ -29,8 +29,6 @@ use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
-use App\Models\OpportunityWorkflow;
-use App\Models\OpportunityWorkflowStatus;
 use App\Models\PaymentMethod;
 use App\Models\PersonalData;
 use App\Models\PipelineStatus;
@@ -39,7 +37,8 @@ use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
-use App\Models\QuoteStatus;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
@@ -53,6 +52,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
+use App\Services\Opportunities\OpportunityStatusResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -70,6 +70,18 @@ class AppServiceProvider extends ServiceProvider
         // ResourceAuthorization instances per request (e.g. the FormRequest's
         // EnforcesFieldPermissions AND the controller's permissions block).
         $this->app->singleton(FieldPermissionRepository::class);
+
+        // Scoped so OpportunityStatusResolver::defaultEntry() — the GLOBAL
+        // default workflow's `open` row, the D-8 fallback every quote-less
+        // Opportunity resolves to — is queried at most once per request.
+        // Its memoization is per-INSTANCE, and four resources build the
+        // computed status with a fresh `app()` call PER ROW (RewardResource,
+        // RequestManagementResource, OpportunityResource, RecordDetails): a
+        // new instance per row meant a new query per row, so a page of N
+        // quote-less rows cost N queries instead of one. Scoped, not
+        // singleton: the cached row must not outlive the request (a queue
+        // worker would otherwise serve a stale name/color forever).
+        $this->app->scoped(OpportunityStatusResolver::class);
 
         // Singleton so the custom-fieldable entity map (spec 0021) — built by
         // intersecting config/tables.php with config/authorization.php and
@@ -144,14 +156,13 @@ class AppServiceProvider extends ServiceProvider
             'lead' => Lead::class,
             'note' => Note::class,
             'opportunity' => Opportunity::class,
-            'opportunity_workflow' => OpportunityWorkflow::class,
-            'opportunity_workflow_status' => OpportunityWorkflowStatus::class,
             'reward' => Reward::class,
             'reward_type' => RewardType::class,
             'reward_status' => RewardStatus::class,
             'vat_rate' => VatRate::class,
             'quote' => Quote::class,
-            'quote_status' => QuoteStatus::class,
+            'quote_workflow' => QuoteWorkflow::class,
+            'quote_workflow_status' => QuoteWorkflowStatus::class,
             'commission_configuration' => CommissionConfiguration::class,
             'quote_line_commission' => QuoteLineCommission::class,
             'payment_method' => PaymentMethod::class,

@@ -210,31 +210,14 @@ export function clientAddressChanged(current: AddressDraft[], original: Address 
 }
 
 /**
- * Builds the sparse PATCH payload (AC-062): only `opportunity_workflow_status_id`
- * and/or `attribute_values` are included, each only when it actually changed
- * from the loaded `panel`. `note` rides along ONLY when the working status
- * both changed and its target is flagged `requires_note` (spec 0054 D-5) —
- * the server rejects the note on every other write, so it is never sent
- * speculatively.
+ * Builds the sparse PATCH payload (AC-062): each key is included only when it
+ * actually changed from the loaded `panel`.
  */
 export function buildRequestWorkPayload(
   values: RequestWorkFormValues,
   panel: RequestWorkPanel,
 ): UpdateRequestWorkPayload {
   const payload: UpdateRequestWorkPayload = {}
-
-  const originalWorkflowStatusId = panel.workflow_status?.id ?? null
-  if (values.opportunity_workflow_status_id !== originalWorkflowStatusId) {
-    payload.opportunity_workflow_status_id = values.opportunity_workflow_status_id
-
-    const targetStatus = panel.workflow_statuses.find(
-      (status) => status.id === values.opportunity_workflow_status_id,
-    )
-    const note = values.note.trim()
-    if (targetStatus?.requires_note && note !== '') {
-      payload.note = note
-    }
-  }
 
   if (values.next_callback_at !== (panel.next_callback_at ?? null)) {
     payload.next_callback_at = values.next_callback_at

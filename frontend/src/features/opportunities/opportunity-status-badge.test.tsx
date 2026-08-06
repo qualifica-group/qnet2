@@ -49,7 +49,7 @@ describe('OpportunityStatusBadge', () => {
     render(
       <OpportunityStatusBadge
         summary={{
-          source: 'workflow',
+          source: 'default',
           distinct_count: 1,
           entries: [{ id: 9, name: 'Da lavorare', color: 'blue', group: 'open', count: 1 }],
         }}
@@ -61,7 +61,7 @@ describe('OpportunityStatusBadge', () => {
 
   it('renders nothing when no status resolves', () => {
     const { container } = render(
-      <OpportunityStatusBadge summary={{ source: 'workflow', distinct_count: 0, entries: [] }} />,
+      <OpportunityStatusBadge summary={{ source: 'default', distinct_count: 0, entries: [] }} />,
     )
 
     expect(container).toBeEmptyDOMElement()

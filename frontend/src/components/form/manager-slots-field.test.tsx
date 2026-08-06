@@ -56,6 +56,20 @@ describe('ManagerSlotsField', () => {
     expect(container.querySelector('[title="Account manager 2"]')).not.toBeNull()
   })
 
+  it('shows the resolved denominations as visible text, unconfigured positions keeping the default name', () => {
+    renderField({ labels: { 1: 'Commercial' } })
+
+    expect(screen.getByText('Commercial')).toBeInTheDocument()
+    expect(screen.getByText('Account manager 2')).toBeInTheDocument()
+  })
+
+  it('keeps the compact number badge when the caller resolved no denomination (Registries non-regression)', () => {
+    renderField()
+
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.queryByText('Account manager 1')).toBeNull()
+  })
+
   it('AC-052/AC-053: renders all 12 slots and their overrides, including positions past the 4th', () => {
     renderField({
       value: Array.from({ length: MAX_MANAGER_SLOTS }, () => null),
