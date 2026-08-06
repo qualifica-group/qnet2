@@ -6,6 +6,21 @@ import type { OpportunityDetailWithPermissions } from '@/features/opportunities/
 
 /** AC-077: `/opportunities/:id` shows every field read-only via the record-panel kit. */
 
+/**
+ * Since the user directive of 2026-08-06 the Team rows are buttons too: they
+ * open the shared read-only user-profile Sheet on click. AC-077 is about
+ * controls that MUTATE the opportunity, so "read-only" can no longer be
+ * asserted as "no button at all" — the profile openers are excluded by their
+ * accessible name (`common.viewProfile`, "View {{name}}'s profile").
+ */
+const PROFILE_BUTTON_NAME = /'s profile$/
+
+function mutatingButtons(): HTMLElement[] {
+  return screen
+    .queryAllByRole('button')
+    .filter((button) => !PROFILE_BUTTON_NAME.test(button.getAttribute('aria-label') ?? ''))
+}
+
 // The collaboration card reads the actor's client abilities to gate its Notes
 // tab (`request-management.view`): stub them, this suite has no AuthProvider
 // (mirrors `request-work-panel.test.tsx`). Defaults to false so the existing
@@ -135,7 +150,7 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(mutatingButtons()).toHaveLength(0)
     // Tab triggers carry `role="tab"`, not `button` — this fixture also has no
     // collaboration ability, so the tab strip itself is absent.
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
@@ -192,7 +207,7 @@ describe('OpportunityDetailView — edit action', () => {
   it('shows Modifica when onEdit is supplied and the actor can update', () => {
     render(<OpportunityDetailView opportunity={opportunity()} onEdit={vi.fn()} />)
 
-    const buttons = screen.getAllByRole('button')
+    const buttons = mutatingButtons()
     expect(buttons).toHaveLength(1)
     expect(buttons[0]).toHaveAccessibleName('Edit')
   })
@@ -315,75 +330,5 @@ describe('OpportunityDetailView — rewards', () => {
     render(<OpportunityDetailView opportunity={opportunity({ rewards: [] })} />)
 
     expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
-  })
-})
-
-/** Spec 0049 D-8/AC-064: additive read-only "Informazioni aggiuntive" section. */
-describe('OpportunityDetailView — additional information (AC-064)', () => {
-  it('renders the applicable attributes with their formatted collected values', () => {
-    render(
-      <OpportunityDetailView
-        opportunity={opportunity({
-          applicable_attributes: [
-            { id: 1, code: 'floor_area', name: 'Floor area', type: 'decimal', description: null, help_text: null, placeholder: null, icon: null, config: null, relation_target: null, is_required: true, sort_order: 1, options: [] },
-            { id: 2, code: 'has_elevator', name: 'Has elevator', type: 'boolean', description: null, help_text: null, placeholder: null, icon: null, config: null, relation_target: null, is_required: false, sort_order: 2, options: [] },
-            {
-              id: 3,
-              code: 'building_kind',
-              name: 'Building kind',
-              type: 'enum',
-              description: null,
-              help_text: null,
-              placeholder: null,
-              icon: null,
-              config: null,
-              relation_target: null,
-              is_required: false,
-              sort_order: 3,
-              options: [
-                { value: 'office', label: 'Office', color: 'blue' },
-                { value: 'retail', label: 'Retail', color: 'amber' },
-              ],
-            },
-            { id: 4, code: 'notes', name: 'Notes', type: 'text', description: null, help_text: null, placeholder: null, icon: null, config: null, relation_target: null, is_required: false, sort_order: 4, options: [] },
-          ],
-          attribute_values: {
-            floor_area: '120.50',
-            has_elevator: true,
-            building_kind: 'office',
-          },
-        })}
-      />,
-    )
-
-    expect(screen.getByText('Additional information')).toBeInTheDocument()
-    expect(screen.getByText('Floor area')).toBeInTheDocument()
-    expect(screen.getByText('120.50')).toBeInTheDocument()
-    expect(screen.getByText('Has elevator')).toBeInTheDocument()
-    expect(screen.getByText('Yes')).toBeInTheDocument()
-    expect(screen.getByText('Building kind')).toBeInTheDocument()
-    expect(screen.getByText('Office')).toBeInTheDocument()
-    // Notes has no collected value: falls back to the shared em dash placeholder.
-    expect(screen.getByText('Notes')).toBeInTheDocument()
-  })
-
-  it('does not render the section when there is no applicable attribute', () => {
-    render(
-      <OpportunityDetailView
-        opportunity={opportunity({ applicable_attributes: [], attribute_values: {} })}
-      />,
-    )
-
-    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
-  })
-
-  it('does not crash and omits the section when both fields are absent from the fixture (older shape)', () => {
-    render(
-      <OpportunityDetailView
-        opportunity={opportunity({ applicable_attributes: undefined, attribute_values: undefined })}
-      />,
-    )
-
-    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
   })
 })

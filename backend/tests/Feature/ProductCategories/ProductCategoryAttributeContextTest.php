@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 use App\Enums\AttributeContext;
 use App\Models\Attribute;
-use App\Models\Opportunity;
-use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\User;
-use App\RequestManagement\ApplicableAttributesResolver;
+use App\RequestManagement\AttributeSetResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -16,10 +14,11 @@ use Spatie\Permission\Models\Permission;
 
 // Spec 0061: the Product/Opportunity context discriminator on the
 // attribute_category pivot. The HARD INVARIANT (spec 0061 <hard-invariant>):
-// the Opportunity path (ApplicableAttributesResolver, request-management)
-// must stay byte-for-byte identical — every pre-existing assignment
-// backfills to context='opportunity', and a NEW Product-context assignment
-// must never leak into the Opportunity-side resolution.
+// the Opportunity-context resolution (spec 0084: generalized into
+// App\RequestManagement\AttributeSetResolver) must stay byte-for-byte
+// identical — every pre-existing assignment backfills to context='opportunity',
+// and a NEW Product-context assignment must never leak into the
+// Opportunity-side resolution.
 
 uses(RefreshDatabase::class);
 
@@ -60,7 +59,7 @@ it('regression: a legacy attach() with no context backfills to opportunity', fun
     ]);
 });
 
-it('regression: ApplicableAttributesResolver (opportunity path) never sees a Product-context attribute', function (): void {
+it('regression: AttributeSetResolver (opportunity context) never sees a Product-context attribute', function (): void {
     $category = ProductCategory::factory()->create();
     $opportunityAttribute = Attribute::factory()->create(['code' => 'opportunity_only']);
     $productAttribute = Attribute::factory()->create(['code' => 'product_only']);
@@ -68,10 +67,7 @@ it('regression: ApplicableAttributesResolver (opportunity path) never sees a Pro
     $category->attributes()->attach($opportunityAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'opportunity']);
     $category->attributes()->attach($productAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'product']);
 
-    $opportunity = Opportunity::factory()->create();
-    OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
-
-    $resolved = app(ApplicableAttributesResolver::class)->resolve($opportunity);
+    $resolved = app(AttributeSetResolver::class)->resolve([$category->id], AttributeContext::Opportunity);
 
     expect($resolved->pluck('code')->all())->toBe(['opportunity_only']);
 });

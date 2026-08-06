@@ -35,7 +35,7 @@ function buildAttributeScalarSchema(attribute: ApplicableAttribute, t: TFunction
           if (value !== null && !values.has(value)) {
             ctx.addIssue({
               code: 'custom',
-              message: t('requestManagement.workPanel.validation.enumInvalid', {
+              message: t('attributeValues.validation.enumInvalid', {
                 defaultValue: 'Select a valid option.',
               }),
             })

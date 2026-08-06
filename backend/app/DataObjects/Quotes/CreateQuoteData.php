@@ -41,6 +41,13 @@ namespace App\DataObjects\Quotes;
  * `offerLines`/`costLines` follow the CreateOpportunityData::$productLines
  * convention: null means "no rows submitted for this tab", an array
  * (including empty) is an authoritative full-replace set (D-8).
+ *
+ * `attributeValues` (spec 0084, D-1/D-5): the dynamic "Informazioni
+ * aggiuntive" map, `null` when the key was absent. Out of attributes() like
+ * every collection above — the column is not fillable and the map is
+ * validated/merged by QuoteAttributeValueWriter AFTER the offer lines are
+ * synced, i.e. against the applicable set those lines' categories produce
+ * (the same set the form rendered its fields from).
  */
 final readonly class CreateQuoteData
 {
@@ -79,6 +86,10 @@ final readonly class CreateQuoteData
         // flag: nothing is inherited or defaulted for this field, so a plain
         // nullable value already says everything (see attributes() below).
         public ?int $paymentMethodId = null,
+        // Appended after the pre-existing parameters (spec 0084) for the
+        // same positional-compat reason.
+        /** @var array<string, mixed>|null */
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -110,6 +121,9 @@ final readonly class CreateQuoteData
             layoutId: isset($data['layout_id']) ? (int) $data['layout_id'] : null,
             layoutIdSubmitted: array_key_exists('layout_id', $data),
             paymentMethodId: isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null,
+            attributeValues: array_key_exists('attribute_values', $data)
+                ? (array) $data['attribute_values']
+                : null,
         );
     }
 

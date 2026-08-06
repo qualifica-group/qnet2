@@ -49,6 +49,9 @@ final readonly class UpdateProductCategoryData
         public bool $managerLabelsSubmitted = false,
         public ?bool $inheritsManagerLabels = null,
         public bool $inheritsManagerLabelsSubmitted = false,
+        /** Spec 0084: the third usage context's own inheritance barrier (App\Enums\AttributeContext::Quote), same submitted-flag convention as inheritsProductAttributes/inheritsOpportunityAttributes above. */
+        public ?bool $inheritsQuoteAttributes = null,
+        public bool $inheritsQuoteAttributesSubmitted = false,
     ) {}
 
     /**
@@ -81,6 +84,8 @@ final readonly class UpdateProductCategoryData
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
             inheritsManagerLabelsSubmitted: array_key_exists('inherits_manager_labels', $data),
+            inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : null,
+            inheritsQuoteAttributesSubmitted: array_key_exists('inherits_quote_attributes', $data),
         );
     }
 
@@ -123,6 +128,10 @@ final readonly class UpdateProductCategoryData
 
         if ($this->inheritsOpportunityAttributesSubmitted) {
             $attributes['inherits_opportunity_attributes'] = $this->inheritsOpportunityAttributes;
+        }
+
+        if ($this->inheritsQuoteAttributesSubmitted) {
+            $attributes['inherits_quote_attributes'] = $this->inheritsQuoteAttributes;
         }
 
         if ($this->descriptionSubmitted) {

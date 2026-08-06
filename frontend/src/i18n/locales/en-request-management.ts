@@ -154,10 +154,6 @@ export const requestManagement = {
     generalNotes: {
       title: 'General notes',
     },
-    dynamicFields: {
-      title: 'Additional information',
-      empty: 'No additional fields for this opportunity.',
-    },
     callback: {
       title: 'Next callback',
       description: 'Plan the next follow-up call with the client.',
@@ -225,8 +221,6 @@ export const requestManagement = {
       activityTab: 'History',
     },
     validation: {
-      enumInvalid: 'Select a valid option.',
-      required: 'This field is required.',
       sourceRequired: 'Select a source.',
       productLinesRequired: 'Add at least one product line.',
       productLineIncomplete: 'Select a business function and a product category for every row.',

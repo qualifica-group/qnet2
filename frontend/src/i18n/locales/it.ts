@@ -380,6 +380,15 @@ export const it: TranslationResources = {
   contracts,
   commissionConfigurations,
   requestManagement,
+  // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
+  // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie
+  // (prodotto/opportunità/offerta) invece di uno per dominio.
+  attributeValues: {
+    validation: {
+      required: 'Questo campo è obbligatorio.',
+      enumInvalid: 'Seleziona un valore valido.',
+    },
+  },
   fieldChangeRequests,
   rewardTypes,
   rewardStatuses,

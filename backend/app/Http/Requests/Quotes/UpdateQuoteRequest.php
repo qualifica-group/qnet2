@@ -75,6 +75,9 @@ class UpdateQuoteRequest extends FormRequest
             'layout_id' => ['sometimes', 'nullable', 'integer', Rule::exists('document_layouts', 'id')],
             'payment_method_id' => ['sometimes', 'nullable', 'integer', Rule::exists('payment_methods', 'id')],
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            // Spec 0084: deep validation intentionally NOT duplicated here —
+            // see StoreQuoteRequest's own docblock.
+            'attribute_values' => ['sometimes', 'array'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());
     }

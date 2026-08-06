@@ -35,11 +35,14 @@ class ProductCategoryResource extends JsonResource
             'name' => $this->name,
             'parent_id' => $this->parent_id,
             'parent' => $this->parent !== null ? ['id' => $this->parent->id, 'name' => $this->parent->name] : null,
-            // Spec 0061 follow-up: one inheritance barrier per usage context,
-            // decoupled — the Product section can ignore its ancestry while the
-            // Opportunity one keeps inheriting, and vice versa.
+            // Spec 0061 follow-up (spec 0084 adds the third context): one
+            // inheritance barrier per usage context, decoupled — the Product
+            // section can ignore its ancestry while the Opportunity or
+            // Offerta ones keep inheriting, and vice versa.
             'inherits_product_attributes' => (bool) $this->inherits_product_attributes,
             'inherits_opportunity_attributes' => (bool) $this->inherits_opportunity_attributes,
+            // Spec 0084: the third usage context's own inheritance barrier.
+            'inherits_quote_attributes' => (bool) $this->inherits_quote_attributes,
             'description' => $this->description,
             // The EFFECTIVE flag: on a child this already mirrors its root
             // (RequiresQuoteInheritance keeps the column in sync), so no walk

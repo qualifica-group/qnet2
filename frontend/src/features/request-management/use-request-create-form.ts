@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import type { Path, Resolver } from 'react-hook-form'
+import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
@@ -12,14 +12,12 @@ import { emptyProductLineRow } from '@/features/product-lines/types'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { createRequest } from '@/features/request-management/api'
-import { seedAttributeValues } from '@/features/request-management/request-work-payload'
 import { buildRequestCreatePayload } from '@/features/request-management/request-create-payload'
 import {
   buildRequestCreateSchema,
   type RequestCreateFormValues,
 } from '@/features/request-management/request-create-schema'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
-import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
 
 interface UseRequestCreateFormArgs {
   /** Called after a successful create with the new request's (Opportunity) id. */
@@ -37,8 +35,7 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   // the actor was working in.
   'products_of_interest',
   // The operative block (user directive 2026-07-31): each maps 1:1 onto its
-  // own control, so a server 422 lands inline. `attribute_values.<code>` is
-  // appended per applicable attribute at submit time (the set is dynamic).
+  // own control, so a server 422 lands inline.
   'next_callback_at',
   'general_notes',
 ]
@@ -92,17 +89,10 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const [contactsDraft, setContactsDraft] = useState<ContactDraft[]>([])
   const [addressDraft, setAddressDraft] = useState<AddressDraft[]>([])
 
-  // The schema is rebuilt from what the operator picks IN THIS FORM (the
-  // categories decide the dynamic fields, the resolved statuses decide the
-  // select), so it cannot be handed to `useForm` at construction time. The
-  // resolver is a stable indirection that always runs the latest one; the
-  // seed is the context-less schema, the only one that exists before the
-  // first resolution.
-  const baseSchema = useMemo(() => buildRequestCreateSchema(t), [t])
-  const resolverRef = useRef<Resolver<RequestCreateFormValues>>(zodResolver(baseSchema))
+  const schema = useMemo(() => buildRequestCreateSchema(t), [t])
 
   const form = useForm<RequestCreateFormValues>({
-    resolver: (values, context, options) => resolverRef.current(values, context, options),
+    resolver: zodResolver(schema),
     defaultValues: {
       registry_id: null,
       // The form opens on ONE empty product-line row (user directive
@@ -120,7 +110,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       rewards: [],
       next_callback_at: null,
       general_notes: '',
-      attribute_values: {},
     },
   })
 
@@ -131,35 +120,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   // directive 2026-08-04): Operatore = the actor, Sede operativa = the actor's
   // own Sede, mirrored server-side for the actors who never see the two fields.
   useRequestActorAttributionDefaults(form)
-
-  // The create form's live equivalent of what the panel receives already
-  // resolved (user directive 2026-07-31): which dynamic fields the chosen
-  // categories carry, how they are laid out. Watched — not read once —
-  // because the categories are being edited in the very form these blocks
-  // belong to.
-  const sourceId = useWatch({ control: form.control, name: 'source_id' })
-  const productLines = useWatch({ control: form.control, name: 'product_lines' })
-  const { context, isLoading: isContextLoading } = useRequestFormContext(sourceId, productLines)
-
-  const schema = useMemo(
-    () => buildRequestCreateSchema(t, context.applicable_attributes),
-    [t, context.applicable_attributes],
-  )
-
-  useEffect(() => {
-    resolverRef.current = zodResolver(schema)
-  }, [schema])
-
-  // The resolver is swapped as the applicable set changes, so RHF always
-  // validates against the fields currently on screen. `setValue` on the whole
-  // map (rather than a `reset`) keeps every other field the operator has
-  // already filled in — a new category must not wipe the form.
-  useEffect(() => {
-    form.setValue(
-      'attribute_values',
-      seedAttributeValues(context.applicable_attributes, form.getValues('attribute_values')),
-    )
-  }, [context.applicable_attributes, form])
 
   // The card is mandatory only on the "new client" branch (D-2): block the
   // save until its required-by-type fields validate, mirroring the
@@ -214,8 +174,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       rewards: values.rewards,
       nextCallbackAt: values.next_callback_at,
       generalNotes: values.general_notes,
-      attributeValues: values.attribute_values,
-      attributeCodes: context.applicable_attributes.map((attribute) => attribute.code),
     })
 
     try {
@@ -223,12 +181,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       toast.success(t('requestManagement.form.create.success'))
       onSuccess(created.id)
     } catch (error) {
-      const mappedScalar = applyServerValidationErrors(error, form.setError, [
-        ...SCALAR_ERROR_FIELDS,
-        ...context.applicable_attributes.map(
-          (attribute) => `attribute_values.${attribute.code}` as Path<RequestCreateFormValues>,
-        ),
-      ])
+      const mappedScalar = applyServerValidationErrors(error, form.setError, SCALAR_ERROR_FIELDS)
       const clientMessage = collectPrefixedServerErrors(error, CLIENT_ERROR_PREFIXES)
       const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
       const rewardsMessage = collectPrefixedServerErrors(error, REWARDS_ERROR_PREFIXES)
@@ -245,9 +198,6 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     form,
     onSubmit,
     isSubmitting: form.formState.isSubmitting,
-    /** The server-resolved statuses/attributes/layout the operative sections render from. */
-    context,
-    isContextLoading,
     usingExistingRegistry,
     identityDraft,
     setIdentityDraft,

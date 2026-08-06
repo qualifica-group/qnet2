@@ -14,11 +14,15 @@ use Illuminate\Support\Facades\DB;
  * The two DYNAMIC categories of App\Services\DocumentLayouts\DocumentLayoutVariableCatalog
  * (spec 0069, AC-042/043), split out to keep that class under the file-size
  * soft limit (engineering.md §6): `custom_fields` (one variable per active
- * CustomFieldDefinition of the given entity_type) and
- * `opportunity_attributes` (one variable per catalogue Attribute assigned to
- * at least one product category's Opportunity section, spec 0061's
- * AttributeContext::Opportunity — module-independent since attributes are
- * never scoped to a document-layouts module).
+ * CustomFieldDefinition of the given entity_type) and `quote_attributes` (one
+ * variable per catalogue Attribute assigned to at least one product
+ * category's Offerta section, spec 0061/0084's AttributeContext::Quote —
+ * module-independent since attributes are never scoped to a document-layouts
+ * module). Spec 0084: this category used to be `opportunity_attributes`
+ * (AttributeContext::Opportunity) — renamed and re-sourced together with the
+ * dynamic "Informazioni aggiuntive" section's move from the Opportunity to
+ * the Offerta (D-1); DynamicFieldResolver now resolves it straight off
+ * `Quote::attribute_values`, never the (now-gone) Opportunity column.
  *
  * Neither category carries PII (D-6 only ever masks `client.*`, see
  * DocumentLayoutVariableCatalog's class docblock), so no actor/field-permission
@@ -54,7 +58,7 @@ final class DocumentLayoutDynamicVariableCategories
     /**
      * @return array{key: string, label: string, variables: array<int, array{variable: string, label: string, type: string, example: string}>}
      */
-    public function opportunityAttributes(): array
+    public function quoteAttributes(): array
     {
         // A plain whereIn against the pivot table, not whereHas()+wherePivot():
         // the whereHas() constraint closure receives a base Eloquent Builder
@@ -62,7 +66,7 @@ final class DocumentLayoutDynamicVariableCategories
         // method lives on the BelongsToMany relation object itself) — this
         // reads the pivot table directly instead of relying on that.
         $attributeIds = DB::table('attribute_category')
-            ->where('context', AttributeContext::Opportunity->value)
+            ->where('context', AttributeContext::Quote->value)
             ->distinct()
             ->pluck('attribute_id');
 
@@ -71,14 +75,14 @@ final class DocumentLayoutDynamicVariableCategories
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'type'])
             ->map(fn (Attribute $attribute): array => $this->entry(
-                "opportunity_attributes.{$attribute->code}",
+                "quote_attributes.{$attribute->code}",
                 $attribute->name,
                 $attribute->type,
             ))
             ->values()
             ->all();
 
-        return ['key' => 'opportunity_attributes', 'label' => __('document_layouts.variables.categories.opportunity_attributes'), 'variables' => $variables];
+        return ['key' => 'quote_attributes', 'label' => __('document_layouts.variables.categories.quote_attributes'), 'variables' => $variables];
     }
 
     /**

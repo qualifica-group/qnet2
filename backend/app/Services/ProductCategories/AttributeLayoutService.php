@@ -20,9 +20,9 @@ use Illuminate\Validation\ValidationException;
  * `all` layout or a per-mode override of it (App\Enums\LayoutFormScope).
  * Authoring (the configurator) always addresses one exact scope
  * (`resolveExact`/`upsert`); every CONSUMPTION path — Product form/detail
- * and each contributing category of the Opportunity merge
- * (App\RequestManagement\OpportunityAttributeLayoutResolver) — resolves a
- * concrete FormMode through `resolveWithFallback`.
+ * and each contributing category of an Opportunity/Quote merge
+ * (App\RequestManagement\AttributeLayoutMerger) — resolves a concrete
+ * FormMode through `resolveWithFallback`.
  */
 final class AttributeLayoutService
 {

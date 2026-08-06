@@ -4,18 +4,15 @@ namespace Database\Seeders;
 
 use App\Models\Opportunity;
 use App\Models\User;
-use App\RequestManagement\ApplicableAttribute;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Services\RoleAssignmentGuard;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Collection;
 
 /**
- * Fills the OPPORTUNITY-context attributes the seeded requests' categories
- * carry (spec 0061) and plans a callback on some of them (spec 0052), so the
- * demo grid shows worked requests instead of rows with an empty work panel.
+ * Plans a callback on some of the seeded requests (spec 0052), so the demo
+ * grid shows worked requests instead of rows with an empty work panel.
  *
  * Spec 0083 (D-2) REMOVED the "stato di lavorazione" from the Opportunity —
  * the operational status lives on the Offerta now, and the work panel exposes
@@ -25,18 +22,24 @@ use Illuminate\Support\Collection;
  * lifecycle seeder, not to this one, and faking a status the record no longer
  * has would seed data the product cannot represent.
  *
- * What remains still goes through RequestManagementService::updateWork(), the
- * same path PATCH /api/request-management/{opportunity} uses, so attribute
- * validation and the activity log run exactly as they do for an operator.
+ * Spec 0084 (D-1) REMOVED the dynamic "Informazioni aggiuntive" values this
+ * seeder used to fake-fill on the Opportunity (`RequestManagementService::
+ * loadWorkPanel()` no longer resolves an applicable set at all) — that
+ * concern moved to the Offerta, see DemoQuoteSeeder's own `attribute_values`
+ * fake (AC-050).
  *
- * Depends on DemoOpportunitySeeder (the rows) and DemoProductCategorySeeder
- * (the attributes) — must run after both. A no-op without a privileged actor.
+ * The remaining write still goes through RequestManagementService::updateWork(),
+ * the same path PATCH /api/request-management/{opportunity} uses, so the
+ * activity log runs exactly as it does for an operator.
+ *
+ * Depends on DemoOpportunitySeeder (the rows) — must run after it. A no-op
+ * without a privileged actor.
  */
 class DemoOpportunityLifecycleSeeder extends Seeder
 {
     private const int SEED = 20260729;
 
-    /** How often a still-open/pending request also gets a planned callback. */
+    /** How often a request gets a planned callback. */
     private const int CALLBACK_PROBABILITY = 40;
 
     private const int CALLBACK_MIN_DAYS = 1;
@@ -86,48 +89,19 @@ class DemoOpportunityLifecycleSeeder extends Seeder
 
     private function advance(Opportunity $opportunity, User $actor, Generator $faker, int $index): void
     {
-        $panel = $this->requests->loadWorkPanel($opportunity);
+        $callbackAt = $this->maybeCallbackAt($faker, $index);
 
-        $payload = $this->payload($panel['applicable_attributes'], $faker, $index);
-
-        if ($payload === []) {
+        if ($callbackAt === null) {
             return;
         }
 
-        $this->requests->updateWork($opportunity, $actor, $payload);
+        $this->requests->updateWork($opportunity, $actor, ['next_callback_at' => $callbackAt]);
     }
 
     /**
-     * @param  Collection<int, ApplicableAttribute>  $applicableAttributes
-     * @return array<string, mixed>
-     */
-    private function payload(Collection $applicableAttributes, Generator $faker, int $index): array
-    {
-        $payload = [];
-
-        $values = $this->attributeValues($applicableAttributes, $faker);
-
-        if ($values !== []) {
-            $payload['attribute_values'] = $values;
-        }
-
-        $callbackAt = $this->maybeCallbackAt($faker, $index);
-
-        if ($callbackAt !== null) {
-            $payload['next_callback_at'] = $callbackAt;
-        }
-
-        return $payload;
-    }
-
-    /**
-     * A planned callback only makes sense while the request is still being
-     * worked (spec 0052, D-1). Spec 0083 removed the working state from the
-     * Opportunity — it lives on the Offerta now — so "still being worked" can
-     * no longer be read off a status here. The seeder approximates it on the
-     * row index instead: the demo only needs SOME requests to carry a planned
-     * callback and others not, and inventing a status just to branch on it
-     * would put a value on the record that the product no longer has.
+     * The demo only needs SOME requests to carry a planned callback and
+     * others not — approximated on the row index (spec 0083 removed the
+     * working state this used to branch on, see class docblock).
      */
     private function maybeCallbackAt(Generator $faker, int $index): ?string
     {
@@ -139,86 +113,5 @@ class DemoOpportunityLifecycleSeeder extends Seeder
             ->addDays($faker->numberBetween(self::CALLBACK_MIN_DAYS, self::CALLBACK_MAX_DAYS))
             ->setTime($faker->numberBetween(9, 17), $faker->randomElement([0, 15, 30, 45]))
             ->format('Y-m-d H:i:s');
-    }
-
-    /**
-     * A plausible value per applicable attribute, keyed by `code` exactly like
-     * the work panel submits them. A type with no safe demo value (a
-     * `relation`, whose value is an id of another entity) is skipped: the
-     * field stays empty rather than pointing at a row picked at random.
-     *
-     * @param  Collection<int, ApplicableAttribute>  $applicableAttributes
-     * @return array<string, mixed>
-     */
-    private function attributeValues(Collection $applicableAttributes, Generator $faker): array
-    {
-        $values = [];
-
-        foreach ($applicableAttributes as $attribute) {
-            $value = $this->attributeValue($attribute, $faker);
-
-            if ($value !== null) {
-                $values[$attribute->code] = $value;
-            }
-        }
-
-        return $values;
-    }
-
-    private function attributeValue(ApplicableAttribute $attribute, Generator $faker): mixed
-    {
-        return match ($attribute->type) {
-            'text', 'textarea' => $this->stringValue($attribute, $faker),
-            'integer' => $faker->numberBetween($this->min($attribute, 1), $this->max($attribute, 40)),
-            'decimal' => $faker->randomFloat(2, $this->min($attribute, 1), $this->max($attribute, 5000)),
-            'boolean' => $faker->boolean(),
-            'enum' => $this->enumValue($attribute, $faker),
-            'date' => $faker->dateTimeBetween('-2 months', '+2 months')->format('Y-m-d'),
-            'datetime' => $faker->dateTimeBetween('-2 months', '+2 months')->format('Y-m-d\TH:i'),
-            'time' => sprintf('%02d:%02d', $faker->numberBetween(8, 18), $faker->randomElement([0, 30])),
-            'email' => $faker->safeEmail(),
-            'url' => 'https://'.$faker->domainName(),
-            'color' => $faker->hexColor(),
-            default => null,
-        };
-    }
-
-    /**
-     * Kept short on purpose: a `maxLength` config below a generated sentence
-     * would fail validation for the whole request.
-     */
-    private function stringValue(ApplicableAttribute $attribute, Generator $faker): string
-    {
-        $value = $faker->sentence(6);
-        $maxLength = $attribute->config['maxLength'] ?? null;
-
-        return $maxLength === null ? $value : mb_substr($value, 0, (int) $maxLength);
-    }
-
-    /**
-     * One of the attribute's own options — a multiselect one takes a
-     * single-element array, the shape its rules expect.
-     */
-    private function enumValue(ApplicableAttribute $attribute, Generator $faker): string|array|null
-    {
-        $optionValues = array_column($attribute->options, 'value');
-
-        if ($optionValues === []) {
-            return null;
-        }
-
-        $picked = $faker->randomElement($optionValues);
-
-        return ($attribute->config['display'] ?? null) === 'multiselect' ? [$picked] : $picked;
-    }
-
-    private function min(ApplicableAttribute $attribute, int $fallback): int
-    {
-        return (int) ($attribute->config['min'] ?? $fallback);
-    }
-
-    private function max(ApplicableAttribute $attribute, int $fallback): int
-    {
-        return (int) ($attribute->config['max'] ?? $fallback);
     }
 }

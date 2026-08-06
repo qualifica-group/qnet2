@@ -46,6 +46,8 @@ class StoreProductCategoryRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:product_categories,id'],
             'inherits_product_attributes' => ['sometimes', 'boolean'],
             'inherits_opportunity_attributes' => ['sometimes', 'boolean'],
+            // Spec 0084: the third usage context's own inheritance barrier.
+            'inherits_quote_attributes' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
             'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],
             // Only meaningful on a ROOT category: under a parent the value is

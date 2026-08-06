@@ -55,11 +55,14 @@ class DemoProductCategorySeeder extends Seeder
         // Step 2: the attributes, each on the category the catalogue scopes it
         // to — after the WHOLE tree, since an assignment may target any node.
         $this->seedAttributes(DemoCategoryCatalogue::PRODUCT_ATTRIBUTES, AttributeContext::Product);
-        $this->seedAttributes(DemoCategoryCatalogue::OPPORTUNITY_ATTRIBUTES, AttributeContext::Opportunity);
+        // Spec 0084 (AC-050): assigned in QUOTE context — the dynamic
+        // "Informazioni aggiuntive" section moved from the Opportunity to
+        // the Offerta.
+        $this->seedAttributes(DemoCategoryCatalogue::QUOTE_ATTRIBUTES, AttributeContext::Quote);
 
         // Step 3: the form sections, one row per category per context.
         $this->seedLayouts(DemoCategoryCatalogue::PRODUCT_SECTIONS, AttributeContext::Product);
-        $this->seedLayouts(DemoCategoryCatalogue::OPPORTUNITY_SECTIONS, AttributeContext::Opportunity);
+        $this->seedLayouts(DemoCategoryCatalogue::QUOTE_SECTIONS, AttributeContext::Quote);
     }
 
     private function seedTree(): void

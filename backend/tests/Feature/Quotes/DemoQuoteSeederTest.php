@@ -8,6 +8,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
+use App\Quotes\QuoteAttributeResolver;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
@@ -135,6 +136,28 @@ it('lets Opportunity::delete() run right after Quote::delete(), the exact DemoDa
 
     expect(Opportunity::count())->toBe(0)
         ->and(Quote::count())->toBe(0);
+});
+
+it('AC-050: every demo quote with a QUOTE-context applicable attribute carries a coherent attribute_values map', function (): void {
+    seedQuoteDependencies();
+
+    test()->seed(DemoQuoteSeeder::class);
+
+    $resolver = app(QuoteAttributeResolver::class);
+    $sawAtLeastOneValue = false;
+
+    foreach (Quote::query()->with('offerLines.product.category')->get() as $quote) {
+        $applicableCodes = $resolver->resolve($quote)->pluck('code')->all();
+
+        // Never a value for a code the quote's own categories do not carry.
+        expect(array_keys($quote->attribute_values ?? []))->each->toBeIn($applicableCodes, $quote->code);
+
+        if (($quote->attribute_values ?? []) !== []) {
+            $sawAtLeastOneValue = true;
+        }
+    }
+
+    expect($sawAtLeastOneValue)->toBeTrue();
 });
 
 it('seeds nothing when there is no opportunity (nor an offer to build one)', function (): void {

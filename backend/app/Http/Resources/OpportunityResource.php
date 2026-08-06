@@ -2,11 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\FormMode;
 use App\Models\Opportunity;
-use App\RequestManagement\ApplicableAttribute;
-use App\RequestManagement\ApplicableAttributesResolver;
-use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -53,20 +49,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * (spec 0083), but stays a criterion the Quote's own workflow resolver
  * inherits from it (D-7).
  *
- * Spec 0049, D-8/AC-050 (additive, retrocompatible): `attribute_values` is the
- * raw opportunity-level values map (`{}` when null) and `applicable_attributes`
- * is the union/dedup-by-code set of the product lines' effective category
- * attributes (App\RequestManagement\ApplicableAttributesResolver — same
- * resolver the request-management module uses). Relies on
- * OpportunityService::loadDetail() already eager-loading
- * `productLines.productCategory`, so resolving it here never N+1s.
- *
- * User directive 2026-08-05 ("informazioni aggiuntive anche sul form
- * opportunita'"): `attribute_layout` completes that trio with the merged,
- * multi-category layout (spec 0062) the form renders those attributes
- * through — `FormMode::Edit`, since this resource IS what the edit form
- * hydrates from; `null` when no contributing category configures one, which
- * the renderer reads as "flat".
+ * Spec 0084, D-1: the former `attribute_values`/`applicable_attributes`/
+ * `attribute_layout` trio (spec 0049/user directive 2026-08-05) is REMOVED —
+ * the dynamic "Informazioni aggiuntive" section moved to the Offerta (Quote),
+ * see QuoteResource.
  *
  * Spec 0059: `rewards`, ordered by `reward_type.name` (data contract), feeds
  * the form's edit-mode hydration for the "abbinamento buono" control. Relies
@@ -134,10 +120,6 @@ class OpportunityResource extends JsonResource
             'general_notes' => $this->general_notes,
             'quotes_count' => (int) ($this->quotes_count ?? 0),
             'locked_fields' => $this->resolveLockedFields(),
-            'attribute_values' => $this->attribute_values ?? [],
-            'applicable_attributes' => $this->resolveApplicableAttributes(),
-            'attribute_layout' => app(OpportunityAttributeLayoutResolver::class)
-                ->resolve($this->resource, FormMode::Edit),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -246,17 +228,5 @@ class OpportunityResource extends JsonResource
         }
 
         return app(LeadOpportunityDefaultsResolver::class)->resolve($lead)->lockedFields;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function resolveApplicableAttributes(): array
-    {
-        return app(ApplicableAttributesResolver::class)
-            ->resolve($this->resource)
-            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
-            ->values()
-            ->all();
     }
 }

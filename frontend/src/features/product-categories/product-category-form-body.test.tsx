@@ -76,6 +76,7 @@ function category(
     parent: null,
     inherits_product_attributes: true,
     inherits_opportunity_attributes: true,
+    inherits_quote_attributes: true,
     description: null,
     attributes: [],
     inherited_attributes: [],

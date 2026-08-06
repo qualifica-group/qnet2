@@ -14,7 +14,6 @@ import type { ProductLineRow } from '@/features/product-lines/types'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
-import { RequestCreateDynamicFields } from '@/features/request-management/request-create-dynamic-fields'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
@@ -58,15 +57,12 @@ interface RequestCreateFormProps {
  *  - main column = the same sections in the same order: product lines and
  *    products of interest FIRST (user directive 2026-08-03 — they are the
  *    record's headline information), then the next callback, attribution,
- *    dynamic fields, anagrafica.
+ *    anagrafica.
  *
  * The two differences are structural, not cosmetic: the panel's collaboration
  * block (note/documenti/storico) needs a record to hang off, and its summary
  * lists a commercial context that does not exist before the first save — this
  * one recaps what is about to be created instead.
- *
- * The dynamic fields stay hidden until a categoria prodotto is picked: they
- * are resolved FROM it.
  */
 export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProps) {
   const { t } = useTranslation()
@@ -74,8 +70,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     form,
     onSubmit,
     isSubmitting,
-    context,
-    isContextLoading,
     usingExistingRegistry,
     identityDraft,
     setIdentityDraft,
@@ -171,13 +165,6 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               <RequestCreateCallbackSection control={form.control} />
 
               <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
-
-              <RequestCreateDynamicFields
-                control={form.control}
-                attributes={context.applicable_attributes}
-                layout={context.attribute_layout}
-                isLoading={isContextLoading}
-              />
 
               <RequestCreateClientSection
                 control={form.control}

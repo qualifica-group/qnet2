@@ -54,6 +54,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * App\Services\Quotes\QuoteWorkflowResolver — an explicit, already-validated
  * client override is assigned verbatim, otherwise the resolver derives the
  * `open` row of the criteria-resolved set (AC-020/021/022).
+ *
+ * `attribute_values` (spec 0084): the dynamic "Informazioni aggiuntive" map,
+ * moved here from the Opportunity — resolved from the categories of THIS
+ * quote's own offer lines (App\Quotes\QuoteAttributeResolver), never the
+ * parent Opportunity's product lines. DELIBERATELY absent from #[Fillable]
+ * (mass-assignment guard, same discipline as the former
+ * `opportunities.attribute_values`): written only by
+ * App\Services\Quotes\QuoteAttributeValueWriter, inside QuoteService's
+ * create/update transaction.
  */
 #[Fillable([
     'title',
@@ -84,6 +93,7 @@ class Quote extends BaseModel
             'cost_net' => 'decimal:2',
             'cost_vat' => 'decimal:2',
             'margin_net' => 'decimal:2',
+            'attribute_values' => 'array',
         ];
     }
 

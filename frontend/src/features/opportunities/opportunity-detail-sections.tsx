@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Award, Building2, Contact, StickyNote, Users } from 'lucide-react'
+import { Award, Building2, Contact, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import {
   RecordField,
@@ -8,19 +8,27 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
+import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
 import { UserAvatar } from '@/components/user-avatar'
-import { CollectedAttributesSection } from '@/features/opportunities/opportunity-detail-attributes'
+import { UserProfileHoverCard, type UserProfileSummary } from '@/components/user-profile-hover-card'
 import { RewardChip } from '@/features/rewards/reward-chip'
 import type {
-  ApplicableAttributeSummary,
   OpportunityDetailWithPermissions as OpportunityDetailData,
   OpportunityProductLine,
   OpportunityProductOfInterest,
 } from '@/features/opportunities/types'
 
+/** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
+const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
+
+/**
+ * A `RecordField` row whose value is a person: the avatar makes the row taller
+ * than the text-only ones, so it centers on the label instead of sitting on its
+ * baseline (`RecordField`'s own default, right for plain text).
+ */
+const PERSON_ROW_CLASS = '@md:items-center'
+
 /** Stable empty defaults (spec 0049 D-8): a missing key on older fixtures reads the same as `[]`/`{}`. */
-const EMPTY_APPLICABLE_ATTRIBUTES: ApplicableAttributeSummary[] = []
-const EMPTY_ATTRIBUTE_VALUES: Record<string, unknown> = {}
 const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
 
 /**
@@ -32,6 +40,27 @@ const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
  */
 function managerPositionLabel(t: TFunction, position: number, labels: Record<string, string> | undefined): string {
   return labels?.[String(position)] ?? t('registries.form.managerSlotLabel', { n: position })
+}
+
+/**
+ * A team member's row: avatar + name, wrapped in the app's shared
+ * `UserProfileHoverCard` — hovering reveals the card whose action opens the
+ * read-only user detail Sheet, and the row itself is the button that opens it
+ * on click/Enter, so the profile is reachable by keyboard too (user directive
+ * 2026-08-06). Same composition the table's person columns use (`UserCell`),
+ * only with the detail panel's own avatar size.
+ *
+ * `supervisor` and `managers[]` both carry the USER id server-side
+ * (`OpportunityResource::summarizeByName`/`summarizeManagers`), which is what
+ * the Sheet opens on.
+ */
+function TeamPerson({ user }: { user: UserProfileSummary }) {
+  return (
+    <UserProfileHoverCard user={user} triggerClassName="rounded-md">
+      <UserAvatar name={user.name} src={user.avatar_url ?? null} className="size-7 shrink-0" />
+      <span className="truncate text-sm text-foreground">{user.name}</span>
+    </UserProfileHoverCard>
+  )
 }
 
 /** Read-only list of the opportunity's business-function + product-category rows (spec 0040 amendment rev.3, AC-101). */
@@ -91,6 +120,22 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
 
   return (
     <RecordSectionsGrid>
+      {/*
+        Lo STESSO callout del form (user directive 2026-08-06), non una resa
+        propria: il componente e il colore sono quelli che il campo indossa
+        mentre lo si scrive. Prima riga della griglia, a tutta larghezza — la
+        stessa posizione che occupa in cima alla colonna laterale del form e del
+        work panel: e' il testo che l'operatore legge PRIMA di scorrere i campi
+        strutturati. Il callout porta gia' il proprio micro-titolo, quindi non
+        sta dentro una `RecordSection` (sarebbero due intestazioni sullo stesso
+        blocco) e si rende da se' nulla quando non ci sono note.
+      */}
+      <GeneralNotesCallout
+        title={t('opportunities.form.sections.generalNotes.title')}
+        notes={opportunity.general_notes}
+        className={FULL_WIDTH_SECTION_CLASS}
+      />
+
       <RecordSection title={t('opportunities.form.sections.identity.title')} icon={<Contact />}>
         <RecordFieldList>
           <RecordField label={t('opportunities.form.registry')}>
@@ -133,36 +178,40 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
         </RecordFieldList>
       </RecordSection>
 
+      {/*
+        Team = "un ruolo, una persona", una riga per ciascuno. Il Supervisore e
+        i G.A. sono la stessa cosa (una persona con una denominazione), quindi
+        stanno nella STESSA `RecordFieldList` delle altre sezioni: colonna di
+        etichette allineata, filetti fra le righe, avatar su ogni riga. Prima
+        convivevano due idiomi diversi — il Supervisore come riga spec-sheet e i
+        G.A. come lista a se' con un micro-titolo proprio e l'etichetta di ruolo
+        troncata a `max-w-28` dietro un `title` (invisibile su touch, la stessa
+        ragione per cui spec 0080 la vuole come testo VISIBILE).
+      */}
       <RecordSection title={t('opportunities.form.sections.team.title')} icon={<Users />}>
         <RecordFieldList>
-          <RecordField label={t('opportunities.form.supervisor')}>
-            {opportunity.supervisor?.name ?? <DetailEmpty />}
+          <RecordField label={t('opportunities.form.supervisor')} className={PERSON_ROW_CLASS}>
+            {opportunity.supervisor ? <TeamPerson user={opportunity.supervisor} /> : <DetailEmpty />}
           </RecordField>
-        </RecordFieldList>
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">{t('opportunities.form.managers')}</span>
+
           {sortedManagers.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {sortedManagers.map((manager) => {
-                const positionLabel = managerPositionLabel(t, manager.position, opportunity.manager_labels)
-                return (
-                  <li key={manager.id} className="flex items-center gap-2">
-                    <span
-                      className="max-w-28 shrink-0 truncate text-xs font-semibold text-muted-foreground"
-                      title={positionLabel}
-                    >
-                      {positionLabel}
-                    </span>
-                    <UserAvatar name={manager.name} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{manager.name}</span>
-                  </li>
-                )
-              })}
-            </ul>
+            sortedManagers.map((manager) => (
+              // `position` e' la chiave, non `id`: e' lo slot a essere unico —
+              // la stessa persona puo' occupare due G.A. diversi.
+              <RecordField
+                key={manager.position}
+                label={managerPositionLabel(t, manager.position, opportunity.manager_labels)}
+                className={PERSON_ROW_CLASS}
+              >
+                <TeamPerson user={manager} />
+              </RecordField>
+            ))
           ) : (
-            <DetailEmpty />
+            <RecordField label={t('opportunities.form.managers')}>
+              <DetailEmpty />
+            </RecordField>
           )}
-        </div>
+        </RecordFieldList>
       </RecordSection>
 
       {rewards.length > 0 ? (
@@ -174,19 +223,6 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
           </div>
         </RecordSection>
       ) : null}
-
-      {opportunity.general_notes ? (
-        <RecordSection title={t('opportunities.form.sections.generalNotes.title')} icon={<StickyNote />} full>
-          <p className="text-sm break-words whitespace-pre-wrap text-foreground">
-            {opportunity.general_notes}
-          </p>
-        </RecordSection>
-      ) : null}
-
-      <CollectedAttributesSection
-        attributes={opportunity.applicable_attributes ?? EMPTY_APPLICABLE_ATTRIBUTES}
-        values={opportunity.attribute_values ?? EMPTY_ATTRIBUTE_VALUES}
-      />
     </RecordSectionsGrid>
   )
 }

@@ -24,6 +24,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('quotes/next-code', [QuoteController::class, 'nextCode']);
 Route::post('quotes/commission-defaults', QuoteCommissionDefaultsController::class);
 Route::post('quotes/commission-recipients', QuoteCommissionRecipientsController::class);
+// Spec 0084, D-5: live preview of the dynamic "Informazioni aggiuntive" the
+// composed offer lines resolve to, for the CREATE form — declared ABOVE
+// quotes/{quote} so the literal segment wins over the route-model-binding
+// wildcard (mirrors next-code above).
+Route::post('quotes/form-context', [QuoteController::class, 'formContext']);
 
 // Quotes CRUD. Authorization (quotes.view/create/update/delete) is enforced
 // server-side in QuoteController via QuotePolicy on every endpoint.

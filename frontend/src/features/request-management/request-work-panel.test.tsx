@@ -1,5 +1,4 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
@@ -8,9 +7,8 @@ import { RequestWorkPanelScreen } from '@/features/request-management/request-wo
 import { FULL_PERMISSIONS, workPanel as panel } from '@/features/request-management/request-work-panel-fixtures'
 
 /**
- * Spec 0049 AC-061/062/063: the work panel renders the read-only context, a
- * control per applicable Attribute, the working-state select limited to the
- * resolved set, and mounts `ContactsManager` for both Registry and Referent.
+ * Spec 0049 AC-061: the work panel renders the read-only context and mounts
+ * `ContactsManager` for both Registry and Referent.
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
@@ -133,7 +131,7 @@ beforeEach(() => {
 })
 
 describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
-  it('renders the compact context header, the always-active client fields, the dynamic fields and the working state', async () => {
+  it('renders the compact context header and the always-active client fields', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
     renderPanel()
@@ -159,10 +157,6 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     // ...and so is the address: its group is always expanded, no toggle to open.
     expect(screen.queryByRole('button', { name: /^Address$/ })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Address')).toHaveValue('')
-
-    // One control per applicable attribute, by type.
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('Some notes')
-    expect(screen.getByRole('combobox', { name: 'Priority' })).toHaveTextContent('Low')
 
     // Spec 0056: the operational site is exposed and editable from the attribution section.
     expect(screen.getByRole('combobox', { name: 'Operational site' })).toBeInTheDocument()
@@ -251,115 +245,6 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not load the record.'))
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
-  })
-})
-
-describe('RequestWorkPanelScreen — sparse submit (spec 0049 AC-062)', () => {
-  it('maps a 422 on a dynamic field onto the field with the accessible-error triad', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-    updateRequestWorkMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { 'attribute_values.notes': ['Notes is required.'] },
-        },
-      } as never),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    renderPanel()
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument())
-
-    const notesField = screen.getByRole('textbox', { name: 'Notes' })
-    fireEvent.change(notesField, { target: { value: 'Updated notes' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Notes is required.')).toBeInTheDocument())
-    const message = screen.getByText('Notes is required.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(notesField).toHaveAttribute('aria-invalid', 'true')
-    expect(notesField).toHaveAttribute('aria-describedby', expect.stringContaining(message.id))
-
-    vi.restoreAllMocks()
-  })
-})
-
-describe('RequestWorkPanelScreen — bounded controls (spec 0049 AC-063)', () => {
-  it('limits the enum attribute select to its own options', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-
-    renderPanel()
-
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Priority' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('combobox', { name: 'Priority' }))
-
-    const listbox = screen.getByRole('listbox')
-    expect(within(listbox).getAllByRole('option')).toHaveLength(2)
-    expect(within(listbox).getByRole('option', { name: 'Low' })).toBeInTheDocument()
-    expect(within(listbox).getByRole('option', { name: 'High' })).toBeInTheDocument()
-  })
-
-  it('flags the required dynamic field in its label', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-
-    renderPanel()
-
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument(),
-    )
-
-    // The collaboration card renders its own "Notes" tab, so the bare text
-    // query is ambiguous: keep the one that is a field label.
-    const label = screen
-      .getAllByText('Notes')
-      .map((node) => node.closest('label'))
-      .find((node): node is HTMLLabelElement => node !== null)
-
-    expect(label).toBeDefined()
-    expect(label).toHaveTextContent('*')
-  })
-})
-
-describe('RequestWorkPanelScreen — resolved attribute layout (spec 0062 AC-015)', () => {
-  it('renders the panel sectioned when the opportunity carries a resolved layout', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(
-      panel({
-        attribute_layout: {
-          sections: [
-            {
-              id: 's1',
-              title: 'Qualification',
-              description: null,
-              variant: 'default',
-              collapsible: false,
-              default_collapsed: false,
-              columns: 1,
-              sort_order: 0,
-              rows: [{ id: 'r1', items: [{ attribute_code: 'notes', width: 'full' }] }],
-            },
-          ],
-        },
-      }),
-    )
-
-    renderPanel()
-
-    expect(await screen.findByRole('heading', { name: 'Qualification' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('Some notes')
-    // The code left unplaced by the layout still renders, in the synthetic trailing section.
-    expect(screen.getByRole('button', { name: 'Other information' })).toBeInTheDocument()
-  })
-
-  it('falls back to the flat list when the opportunity carries no resolved layout (AC-007)', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel({ attribute_layout: null }))
-
-    renderPanel()
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument())
-    expect(screen.queryByRole('heading', { name: 'Qualification' })).not.toBeInTheDocument()
   })
 })
 

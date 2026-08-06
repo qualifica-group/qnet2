@@ -31,13 +31,14 @@ use App\DataObjects\Users\ProfileData;
  * default RequestCreationService applies — which is what covers an actor who
  * never sees the two fields at all.
  *
- * The last three (user directive 2026-07-31, "la create il piu' simile
- * possibile al pannello") are operative fields the work panel edits, all
- * OPTIONAL at creation: `nextCallbackAt` (the planned follow-up call),
- * `generalNotes` and `attributeValues` (the dynamic per-category fields).
- * `null` means "not submitted" for each. Spec 0083, D-2: the working-status
- * pair (`workflowStatusId`/`statusNote`) is GONE — the Opportunity resolves
- * no working state of its own any more.
+ * The last two (user directive 2026-07-31, "la create il piu' simile
+ * possibile al pannello") are operative fields the work panel edits, both
+ * OPTIONAL at creation: `nextCallbackAt` (the planned follow-up call) and
+ * `generalNotes`. `null` means "not submitted" for each. Spec 0083, D-2: the
+ * working-status pair (`workflowStatusId`/`statusNote`) is GONE — the
+ * Opportunity resolves no working state of its own any more. Spec 0084, D-1:
+ * the former `attributeValues` field (the dynamic per-category fields) is
+ * GONE too — that concern moved to the Offerta (Quote).
  */
 final readonly class CreateRequestData
 {
@@ -45,7 +46,6 @@ final readonly class CreateRequestData
      * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
      * @param  array<int, int>|null  $productsOfInterest  product ids, `null` when the key was absent (nothing to record yet); already checked against `productLines` by StoreRequestRequest (user directive 2026-07-31)
      * @param  array<int, int>|null  $rewards  reward-type ids synced by RewardAssignmentWriter (beneficiary = the created Opportunity's reporter)
-     * @param  array<string, mixed>|null  $attributeValues  submitted dynamic values keyed by attribute `code`, validated post-insert by RequestAttributeValueWriter against the applicable set; `null` when the key was absent
      */
     public function __construct(
         public ?int $registryId,
@@ -59,6 +59,5 @@ final readonly class CreateRequestData
         public ?int $operationalSiteId = null,
         public ?string $nextCallbackAt = null,
         public ?string $generalNotes = null,
-        public ?array $attributeValues = null,
     ) {}
 }

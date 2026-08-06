@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
+use App\Enums\AttributeContext;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
@@ -37,6 +38,11 @@ use Illuminate\Database\Seeder;
  * set applicable to THAT quote (AC-020) — rotating over a catalogue, as this
  * seeder did against the old `quote_statuses`, would hand a quote a status
  * belonging to a workflow set that does not govern it.
+ *
+ * Spec 0084 (AC-050): `attribute_values` is a per-type fake, one per QUOTE-
+ * context effective attribute of the REVENUE line's own category — coherent
+ * by construction, never a value for a code the quote's categories do not
+ * carry (QuoteAttributeValueWriter would reject it).
  *
  * Idempotent: clears its own quotes before reseeding. DemoDataSeeder ALSO
  * clears quotes at its own top, before it re-clears Opportunity — a Quote
@@ -114,6 +120,8 @@ class DemoQuoteSeeder extends Seeder
      */
     private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds): CreateQuoteData
     {
+        $offerLine = $this->offerLine($faker, $index);
+
         return new CreateQuoteData(
             code: null,
             title: sprintf('Offerta %d - %s', $opportunity->id, $faker->company()),
@@ -132,9 +140,54 @@ class DemoQuoteSeeder extends Seeder
             supervisorId: null,
             supervisorIdSubmitted: false,
             internalNotes: $faker->optional(0.5)->sentence(10),
-            offerLines: [$this->offerLine($faker, $index)],
+            offerLines: [$offerLine],
             costLines: [$this->costLine($faker, $costProductIds, $index)],
+            // Spec 0084 (AC-050): coherent with the REVENUE line's own
+            // category — resolved from the SAME QUOTE-context effective set
+            // QuoteAttributeValueWriter validates against post-insert, so a
+            // category with no assigned attribute simply yields an empty map.
+            attributeValues: $this->attributeValues($faker, $offerLine->productId),
         );
+    }
+
+    /**
+     * A value per QUOTE-context effective attribute of $productId's own
+     * category (spec 0084) — a plain per-type fake, coherent enough for a
+     * demo dataset without duplicating AttributeValueNormalizer's own rules.
+     *
+     * @return array<string, mixed>
+     */
+    private function attributeValues(Generator $faker, int $productId): array
+    {
+        $category = Product::query()->findOrFail($productId)->category;
+
+        if ($category === null) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($this->hierarchy->effectiveAttributes($category, AttributeContext::Quote) as $attribute) {
+            $values[$attribute['code']] = $this->fakeAttributeValue($faker, $attribute);
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attribute  a CategoryHierarchy::effectiveAttributes() row
+     */
+    private function fakeAttributeValue(Generator $faker, array $attribute): mixed
+    {
+        return match ($attribute['type']) {
+            'integer' => $faker->numberBetween(1, 100),
+            'decimal' => $faker->randomFloat(2, 1, 1000),
+            'boolean' => $faker->boolean(),
+            'date' => $faker->date('Y-m-d'),
+            'datetime' => $faker->date('Y-m-d\TH:i'),
+            'enum' => $attribute['options'][0]['value'] ?? null,
+            default => $faker->sentence(6),
+        };
     }
 
     /**

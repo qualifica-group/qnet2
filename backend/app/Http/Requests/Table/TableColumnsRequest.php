@@ -11,11 +11,12 @@ use Illuminate\Validation\Rule;
  * Validates the OPTIONAL `product_category_id`/`opportunity_id` query
  * parameters for `GET /api/tables/{domain}/columns`: generic across every
  * domain (harmless for one that never sends it), but only
- * `AttributeScopedTableDefinition` (`request-management`, spec 0064) and
- * `OpportunityScopedTableDefinition` (`quotes`, spec 0067) actually narrow
- * their response from these values — see `TableController::columns()`. The
- * response SHAPE never changes either way (spec 0067 D-1/AC-009): only
- * `request-management`'s `attr.*` columns are shape-dependent on scope.
+ * `RequestManagementTableDefinition` (`request-management`, spec 0064; spec
+ * 0084 dropped its `attr.*`-column-injecting decorator, the scope now only
+ * drives the `operator_ga2` relabel) and `OpportunityScopedTableDefinition`
+ * (`quotes`, spec 0067) actually narrow their response from these values —
+ * see `TableController::columns()`. The response SHAPE never changes either
+ * way (spec 0067 D-1/AC-009; spec 0084 for `request-management`).
  *
  * Authorization stays in the controller via the definition's viewAny, same
  * convention as every other Table FormRequest.

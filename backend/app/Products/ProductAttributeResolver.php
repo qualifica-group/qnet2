@@ -7,23 +7,22 @@ namespace App\Products;
 use App\Enums\AttributeContext;
 use App\Models\Product;
 use App\RequestManagement\ApplicableAttribute;
-use App\Services\ProductCategories\CategoryHierarchy;
+use App\RequestManagement\AttributeSetResolver;
 use Illuminate\Support\Collection;
 
 /**
  * The product-level "applicable attributes" set (spec 0061): the EFFECTIVE
- * (own + inherited) Product-context attributes of the product's OWN category
- * (App\Services\ProductCategories\CategoryHierarchy::effectiveAttributes()).
- * Mirrors App\RequestManagement\ApplicableAttributesResolver's shape but
- * scoped to a SINGLE category — a product carries exactly one, unlike an
- * opportunity's several product lines, so no cross-category merge is needed.
- * Reuses the SAME App\RequestManagement\ApplicableAttribute descriptor so the
- * shared AttributeValueValidator/AttributeValueNormalizer pipeline validates
- * and normalizes product values identically to opportunity ones.
+ * (own + inherited) Product-context attributes of the product's OWN category.
+ * Thin caller of the generalized App\RequestManagement\AttributeSetResolver
+ * (spec 0084, D-4) — scoped to a SINGLE category — a product carries exactly
+ * one, unlike a quote's several offer lines, so no cross-category merge is
+ * needed. Reuses the SAME App\RequestManagement\ApplicableAttribute
+ * descriptor so the shared AttributeValueValidator/AttributeValueNormalizer
+ * pipeline validates and normalizes product values identically to quote ones.
  */
 final class ProductAttributeResolver
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(private readonly AttributeSetResolver $setResolver) {}
 
     /**
      * @return Collection<int, ApplicableAttribute>
@@ -34,8 +33,6 @@ final class ProductAttributeResolver
             return collect();
         }
 
-        return $this->hierarchy->effectiveAttributes($product->category, AttributeContext::Product)
-            ->map(ApplicableAttribute::fromEffectiveAttributeRow(...))
-            ->values();
+        return $this->setResolver->resolve([$product->category->id], AttributeContext::Product);
     }
 }

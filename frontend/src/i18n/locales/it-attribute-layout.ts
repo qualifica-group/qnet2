@@ -52,6 +52,7 @@ export const attributeLayout = {
     context: {
       product: 'Prodotto',
       opportunity: 'Opportunità',
+      quote: 'Offerta',
     },
     modeLabel: 'Modalità form',
     mode: {

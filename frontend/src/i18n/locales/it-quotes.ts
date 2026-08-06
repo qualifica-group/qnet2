@@ -33,6 +33,7 @@ export const quotes = {
     createdRange: 'Creato il',
   },
   detail: {
+    additionalInformation: 'Informazioni aggiuntive',
     loadError: "Impossibile caricare l'offerta. Riprova.",
     opportunity: 'Opportunità',
     workflowStatus: 'Stato',
@@ -110,6 +111,10 @@ export const quotes = {
     deleteError: "Impossibile eliminare l'offerta. Riprova.",
     deleteForbidden: 'Non puoi eliminare questa offerta.',
     sections: {
+      dynamicFields: {
+        title: 'Informazioni aggiuntive',
+        empty: 'Nessun campo aggiuntivo per i prodotti selezionati.',
+      },
       identity: {
         title: 'Dati offerta',
         description: "Codice, titolo, opportunità collegata e team commerciale.",

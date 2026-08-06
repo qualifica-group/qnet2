@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'inherits_quote_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -45,6 +45,11 @@ class ProductCategory extends BaseModel
         return [
             'inherits_product_attributes' => 'boolean',
             'inherits_opportunity_attributes' => 'boolean',
+            // Spec 0084 — the third usage context's own inheritance barrier
+            // (App\Enums\AttributeContext::Quote), independent of the two
+            // above: a category may inherit its ancestors' Offerta attributes
+            // while cutting itself off from the Prodotto or Opportunita' ones.
+            'inherits_quote_attributes' => 'boolean',
             // Owned by the branch ROOT and mirrored on every descendant by
             // RequiresQuoteInheritance — a child's own column is never
             // authored directly, it only ever reflects its root's.

@@ -16,7 +16,7 @@ use App\Models\User;
  * (client/referent/commercial/reporter/supervisor, the only one that masks
  * PII per D-6), OrganizationFieldResolver (company/company_site/
  * operational_site) and DynamicFieldResolver (custom_fields/
- * opportunity_attributes).
+ * quote_attributes).
  *
  * A reference whose category is unknown, or whose key is unknown within a
  * known category, resolves to an empty string and NEVER throws (spec 0070:
@@ -28,7 +28,7 @@ final class VariableResolver
     /**
      * Matches a `{category.key}` token: category and key are both
      * snake_case identifiers (letters/digits/underscore), split on the
-     * FIRST dot only — `opportunity_attributes` is itself an underscored
+     * FIRST dot only — `quote_attributes` is itself an underscored
      * category name, not a nested path.
      */
     private const string TOKEN_PATTERN = '/\{([a-zA-Z][a-zA-Z0-9_]*)\.([a-zA-Z0-9_]+)\}/';
@@ -70,7 +70,7 @@ final class VariableResolver
             'company_site' => $this->organizationFields->companySite($key, $quote) ?? '',
             'operational_site' => $this->organizationFields->operationalSite($key, $quote) ?? '',
             'custom_fields' => $this->dynamicFields->customField($key, $quote),
-            'opportunity_attributes' => $this->dynamicFields->opportunityAttribute($key, $quote),
+            'quote_attributes' => $this->dynamicFields->quoteAttribute($key, $quote),
             default => '',
         };
     }

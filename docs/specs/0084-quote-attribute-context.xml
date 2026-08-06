@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0084 — "Informazioni aggiuntive" passa dall'Opportunita' all'Offerta.
+  Emenda: 0061 (nuovo contesto `quote`), 0062 (layout anche per il contesto `quote`),
+          0064 (le colonne `attr.*` della griglia richieste vengono rimosse).
+  Sostituisce: la sezione attributi dell'Opportunita' e del pannello Gestione Richieste.
+-->
+<spec id="0084-quote-attribute-context" status="draft" owner="nicola" date="2026-08-05">
+
+  <goal>
+    Le informazioni aggiuntive raccolte per categoria prodotto appartengono al singolo preventivo,
+    non all'opportunita': la sezione dinamica "Informazioni aggiuntive" viene spostata sull'Offerta
+    con la stessa identica meccanica (attributi di categoria, contesti, layout configurabile) e
+    rimossa da Opportunita' e Gestione Richieste.
+  </goal>
+
+  <context>
+    Stato verificato del repo:
+
+    - La sezione NON e' statica: e' generata dagli *Attribute* assegnati alle categorie prodotto.
+      Catalogo `attributes`; assegnazione via pivot `attribute_category` con colonna `context`
+      (enum `App\Enums\AttributeContext`: `product` | `opportunity`); barriera di ereditarieta'
+      per contesto su `product_categories.inherits_product_attributes` /
+      `inherits_opportunity_attributes`, risolta da `AttributeContext::inheritanceColumn()`.
+    - Layout (spec 0062): tabella `attribute_layouts`, unique `(product_category_id, context, form_mode)`,
+      servita da `Services\ProductCategories\AttributeLayoutService` (+ `AttributeLayoutValidator`).
+      Enum `FormMode` (create|edit|view) e `LayoutFormScope` (all|create|edit|view).
+    - Valori: colonna JSON `opportunities.attribute_values` (cast `array`, NON fillable, scritta solo
+      da `Services\RequestManagement\RequestAttributeValueWriter`). Validazione profonda in
+      `RequestManagement\AttributeValueValidator`, normalizzazione in `AttributeValueNormalizer`
+      (entrambe gia' agnostiche dal modulo). Errori 422 keyed `attribute_values.&lt;code&gt;`.
+    - Risoluzione set applicabile: `RequestManagement\ApplicableAttributesResolver` (unione + dedup
+      per `code` delle `CategoryHierarchy::effectiveAttributes()` delle categorie distinte delle
+      `productLines` dell'Opportunity; `is_required` piu' stringente vince). Layout multi-categoria:
+      `RequestManagement\OpportunityAttributeLayoutResolver` (concatena le sezioni per categoria,
+      first-wins per `code`, leftover in una sezione sintetica "Altre informazioni").
+    - Consumatori FE della sezione: `opportunity-dynamic-fields-section.tsx` (form opportunita'),
+      `opportunity-detail-attributes.tsx` (dettaglio), `request-dynamic-fields.tsx` +
+      `request-create-dynamic-fields.tsx` (Gestione Richieste). Renderer condiviso
+      `features/attributes/attribute-layout-renderer.tsx` GIA' completamente agnostico dal dominio
+      (6 consumatori, binding fisso `attribute_values.&lt;code&gt;`), come lo sono
+      `request-management/applicable-attribute-adapter.ts` (default `context` parametrizzabile) e
+      `request-management/attribute-values-schema.ts`.
+    - Colonne `attr.*` della griglia Gestione Richieste (spec 0064): `AttributeColumnBuilder`
+      (`ID_PREFIX = 'attr.'`), `AttributeScopedTableDefinition`, `AttributeDateFilterApplier`,
+      `AttributeScopeResolver`, `Concerns\WritesAttributeCells`, agganciate da
+      `TableRegistry::wrapIfAttributeScoped()` e dallo scoping `product_category_id` in
+      `TableController` / `TableRowsRequest` / `TableValuesRequest` / `TableFilterStateRequest` /
+      `TableColumnsRequest`. ATTENZIONE: `AttributeScopedTableDefinition` ospita anche il relabel
+      dell'operatore GA2 (spec 0080), che NON va perso.
+    - `quotes` non ha oggi alcuna colonna attributi. Le righe offerta (`quote_lines`) portano solo
+      `product_id`: categoria e funzione aziendale si leggono live da `products.category_id`.
+    - `quotes_count` / `requires_quote`: il gate del pannello Offerte viene rimosso da spec 0083.
+
+    Decisioni prese dall'utente (2026-08-05):
+    - D-1: spostamento TOTALE. La sezione sparisce da form e dettaglio Opportunita' E dal pannello
+      Gestione Richieste; le colonne `attr.*` della griglia richieste vengono rimosse.
+    - D-2: nessuna migrazione dati: `opportunities.attribute_values` viene droppata senza travaso.
+    - D-3: ogni Opportunita' puo' avere offerte (rimozione del gate `requires_quote`, attuata in
+      spec 0083) — cosi' nessuna opportunita' resta senza un posto dove raccogliere gli attributi.
+
+    Decisione tecnica di questa spec:
+    - D-5 (direttiva utente 2026-08-06): POSIZIONE E INNESCO. La sezione "Informazioni aggiuntive"
+      compare nel form Offerta SOTTO il blocco delle righe (quindi sotto i Costi), prima del
+      riepilogo economico. Non e' dentro il tab Costi: gli attributi si risolvono dalle categorie
+      dei prodotti delle righe OFFERTA, quindi annidarli nel tab dei costi legherebbe la sezione
+      alla scheda sbagliata. L'innesco e' la SCELTA DEL PRODOTTO: appena l'operatore seleziona un
+      prodotto in una riga, la catena prodotto -> categoria prodotto -> attributi applicabili viene
+      risolta e la sezione appare; finche' nessuna riga ha un prodotto, la sezione non c'e'.
+      La risoluzione avviene su righe NON ancora salvate, quindi passa da `POST /api/quotes/form-context`.
+
+    - D-4: le classi di risoluzione vengono GENERALIZZATE, non clonate. `ApplicableAttributesResolver`
+      e `OpportunityAttributeLayoutResolver` diventano `AttributeSetResolver` /
+      `AttributeLayoutMerger` che accettano `(int[] $categoryIds, AttributeContext $context, FormMode $mode)`;
+      i due chiamanti (Prodotto e Offerta) restano sottili. Nessun nuovo livello di astrazione
+      oltre a questo.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo case `AttributeContext::Quote = 'quote'` + colonna `product_categories.inherits_quote_attributes` (bool, default true).</item>
+      <item>Nuova colonna JSON `quotes.attribute_values` (nullable, cast `array`, NON fillable).</item>
+      <item>Terza sezione "Attributi Offerta" nell'editor di assegnazione attributi della categoria prodotto e terzo tab nel configuratore di layout (contesto `quote`, tutti e 4 gli scope).</item>
+      <item>Generalizzazione di `ApplicableAttributesResolver` / `OpportunityAttributeLayoutResolver` (D-4) e nuovo `QuoteAttributeValueWriter` che riusa `AttributeValueValidator` + `AttributeValueNormalizer`.</item>
+      <item>`QuoteResource` espone `attribute_values`, `applicable_attributes`, `attribute_layout`.</item>
+      <item>Nuovo endpoint `POST /api/quotes/form-context` (gemello di `/opportunities/form-context`) per risolvere attributi e layout live mentre l'utente compone le righe offerta.</item>
+      <item>Sezione dinamica nel form Offerta e nel dettaglio Offerta (stessa UX di oggi sull'Opportunita').</item>
+      <item>Rimozione della sezione da form e dettaglio Opportunita' e dal pannello + form di creazione di Gestione Richieste.</item>
+      <item>Rimozione delle colonne `attr.*` della griglia Gestione Richieste e dello scoping `product_category_id` del framework tabellare, preservando i tab categoria come puro filtro e il relabel operatore GA2 (spec 0080).</item>
+      <item>Drop di `opportunities.attribute_values` e di `RequestAttributeValueWriter`.</item>
+    </in>
+    <out>
+      <item>Travaso dei valori esistenti (D-2).</item>
+      <item>Colonne `attr.*` sulla griglia Offerte: NON previste in questa spec.</item>
+      <item>Il contesto `product` e il dominio Prodotti restano intatti.</item>
+      <item>La sezione sintetica "Altre informazioni" resta un letterale server-side, come oggi (non i18n).</item>
+      <item>I tab categoria di Gestione Richieste (spec 0064) restano come filtro di categoria: non vengono rimossi, perdono solo l'iniezione delle colonne attributo.</item>
+      <item>Custom field universali (spec 0021) e colonne `custom.*`: fuori scope, invariati.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/effective-attributes">
+      <request>context: 'product' | 'opportunity' | 'quote'   // 'quote' NUOVO; default invariato</request>
+      <response status="200">{ success, message, data: [ EffectiveAttribute ] }  // shape invariata</response>
+      <errors>403 senza permesso; 422 context non valido</errors>
+    </endpoint>
+
+    <endpoint method="GET|PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>context: 'product'|'opportunity'|'quote'; form_mode: 'all'|'create'|'edit'|'view'; exact?: bool</request>
+      <response status="200">{ success, message, data: { layout, attributes[] } }  // shape invariata</response>
+      <errors>403; 422 su `code` fuori dalla allow-list del contesto</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/product-categories[/{productCategory}]">
+      <request>
+        ...campi attuali, piu':
+        inherits_quote_attributes: bool
+        attributes: [{ attribute_id: int, context: 'product'|'opportunity'|'quote', is_required: bool, sort_order: int }]
+        // invariante cross-row invariata: la coppia (attribute_id, context) e' unica
+      </request>
+      <response status="200|201">data.attributes[] riporta anche le righe con `context: 'quote'`; data include `inherits_quote_attributes`</response>
+      <errors>422 su coppia (attribute_id, context) duplicata</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quotes/form-context">
+      <request>
+        { offer_lines: [ { product_id: int } ] }   // le righe in composizione, anche non salvate
+        Gate: `quotes.create`.
+      </request>
+      <response status="200">
+        { success, message, data: {
+            applicable_attributes: [ { code, name, type, is_required, sort_order, help_text,
+                                       placeholder, icon, config, options, relation_target } ],
+            attribute_layout: { sections: [...] } | null
+        } }
+      </response>
+      <errors>403 senza `quotes.create`; 422 `product_id` inesistente</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <request>route model binding</request>
+      <response status="200">
+        data: {
+          ...campi attuali,
+          attribute_values: { &lt;code&gt;: valore },        // {} se null
+          applicable_attributes: [ ... ],              // risolti dalle categorie delle righe offerta
+          attribute_layout: { sections: [...] } | null // FormMode::Edit, come fa oggi OpportunityResource
+        }
+      </response>
+      <errors>403 senza `quotes.view`; 404</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes[/{quote}]">
+      <request>
+        ...campi attuali, piu':
+        attribute_values: object   // ['sometimes','array'] nel FormRequest; validazione profonda nel writer
+      </request>
+      <response status="200|201">come GET /api/quotes/{quote}</response>
+      <errors>
+        422 keyed `attribute_values.&lt;code&gt;` (required mancante, enum non valido, formato date/datetime/time,
+        color regex, email/url, min/max/regex da `config`);
+        merge sparso: i `code` non inviati conservano il valore precedente
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <request>route model binding</request>
+      <response status="200">
+        data: { ...campi attuali, attribute_values: REMOVED, applicable_attributes: REMOVED, attribute_layout: REMOVED }
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <endpoint method="GET|PUT|PATCH" path="/api/request-management/{opportunity}">
+      <request>`attribute_values` non e' piu' accettato in scrittura.</request>
+      <response status="200">data senza `attribute_values`, `applicable_attributes`, `attribute_layout`</response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/form-context">
+      <request>invariato nei parametri</request>
+      <response status="200">data senza `applicable_attributes` e `attribute_layout`</response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/table/{columns|rows|values|filter-state}">
+      <request>
+        Nessuna colonna con id prefissato `attr.` viene piu' restituita per il dominio
+        `request-management`.
+
+        CORREZIONE (2026-08-06): una stesura precedente di questo blocco dichiarava che
+        `product_category_id` non fosse piu' accettato e andasse rifiutato con 422. Era un errore
+        di questa spec, in contraddizione diretta con AC-044 e con il proprio blocco `constraints`:
+        i tab categoria restano come filtro e il relabel operatore GA2 (spec 0080) va preservato,
+        e ENTRAMBI hanno bisogno di sapere su quale categoria si e' scopati. `product_category_id`
+        e' quel canale, ed e' l'unico. Il parametro RESTA accettato e funzionante; cio' che sparisce
+        e' solo l'iniezione delle colonne attributo.
+      </request>
+      <response status="200">shape invariata, senza colonne `attr.*`; scoping per categoria invariato</response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <endpoint method="MIGRATION" path="schema">
+      <request>
+        1. `product_categories`: add `inherits_quote_attributes` bool default true
+        2. `quotes`: add `attribute_values` json nullable
+        3. `opportunities`: drop `attribute_values`
+        Reversibili. Nessun travaso (D-2).
+      </request>
+      <response status="200">—</response>
+      <errors>—</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Contesto e assegnazione -->
+    <criterion id="AC-001">Dato `AttributeContext::Quote`, quando chiamo `inheritanceColumn()`, allora ritorna `inherits_quote_attributes`.</criterion>
+    <criterion id="AC-002">Data una categoria con un attributo assegnato in contesto `quote` e uno in contesto `opportunity`, quando leggo `effective-attributes?context=quote`, allora ottengo solo il primo.</criterion>
+    <criterion id="AC-003">Data una categoria figlia con `inherits_quote_attributes = false`, quando risolvo gli attributi effettivi in contesto `quote`, allora gli attributi degli antenati sono esclusi mentre quelli in contesto `opportunity` restano governati dalla loro barriera indipendente.</criterion>
+    <criterion id="AC-004">Dato un payload categoria con lo stesso `attribute_id` due volte nello stesso contesto `quote`, quando salvo, allora 422.</criterion>
+    <criterion id="AC-005">Dato un layout salvato per `(categoria, 'quote', 'edit')` con un `code` non assegnato in contesto `quote`, quando salvo, allora 422.</criterion>
+    <criterion id="AC-006">Il configuratore di layout mostra tre tab di contesto (Prodotto, Opportunita', Offerta) e il salvataggio del tab Offerta persiste su `attribute_layouts.context = 'quote'`.</criterion>
+    <criterion id="AC-007">Il form categoria prodotto mostra tre sezioni di assegnazione con i rispettivi toggle di ereditarieta', e il dettaglio categoria le riporta in sola lettura.</criterion>
+
+    <!-- Risoluzione sull'Offerta -->
+    <criterion id="AC-010">Data un'offerta con righe su prodotti di due categorie diverse, quando leggo `GET /api/quotes/{id}`, allora `applicable_attributes` e' l'unione deduplicata per `code` dei due set in contesto `quote`, ordinata per `sort_order` poi `code`.</criterion>
+    <criterion id="AC-011">Dato lo stesso `code` applicabile da due categorie con `is_required` diverso, quando risolvo, allora vince `is_required = true`.</criterion>
+    <criterion id="AC-012">Data un'offerta senza righe offerta, quando leggo il dettaglio, allora `applicable_attributes` e' vuoto e `attribute_layout` e' null.</criterion>
+    <criterion id="AC-013">Data un'offerta le cui categorie non configurano alcun layout, quando leggo il dettaglio, allora `attribute_layout` e' null (rendering flat lato client).</criterion>
+    <criterion id="AC-014">Dato un layout configurato su una sola delle due categorie, quando risolvo, allora le sezioni configurate precedono la sezione sintetica "Altre informazioni" che raccoglie i `code` residui.</criterion>
+    <criterion id="AC-015">`POST /api/quotes/form-context` con `offer_lines` non salvate restituisce lo stesso set che si otterrebbe salvando quelle righe.</criterion>
+
+    <!-- Scrittura valori -->
+    <criterion id="AC-020">Dato un attributo `is_required` applicabile e un payload senza quel `code`, quando salvo l'offerta, allora 422 con chiave `attribute_values.&lt;code&gt;`.</criterion>
+    <criterion id="AC-021">Dato un attributo `enum` e un valore fuori dalle opzioni, quando salvo, allora 422 con chiave `attribute_values.&lt;code&gt;`.</criterion>
+    <criterion id="AC-022">Dato un attributo `date` e il valore `31/12/2026`, quando salvo, allora 422; con `2026-12-31` il salvataggio riesce e il valore e' normalizzato.</criterion>
+    <criterion id="AC-023">Data un'offerta con due `code` gia' valorizzati e un update che invia solo il primo, quando salvo, allora il secondo conserva il valore precedente (merge sparso).</criterion>
+    <criterion id="AC-024">Dato un `code` non applicabile all'offerta, quando lo invio, allora viene ignorato e non finisce in `quotes.attribute_values`.</criterion>
+    <criterion id="AC-025">`quotes.attribute_values` non e' mass-assignable: un payload che tenta di scriverla direttamente non la altera fuori dal writer.</criterion>
+
+    <!-- Frontend Offerta -->
+    <criterion id="AC-030">Il form Offerta mostra la sezione "Informazioni aggiuntive" resa da `AttributeLayoutRenderer`, con lo stesso comportamento di loading/empty della sezione oggi presente sull'Opportunita'.</criterion>
+    <criterion id="AC-031">Cambiando i prodotti delle righe offerta, la sezione si aggiorna con il nuovo set applicabile senza ricaricare la pagina.</criterion>
+    <criterion id="AC-034">Dato un form Offerta in cui nessuna riga ha ancora un prodotto, quando lo apro, allora la sezione "Informazioni aggiuntive" NON e' visibile (D-5).</criterion>
+    <criterion id="AC-035">Dato un form Offerta, quando l'operatore seleziona un prodotto in una riga offerta, allora la sezione compare risolvendo prodotto -&gt; categoria prodotto -&gt; attributi applicabili, senza salvare l'offerta (D-5).</criterion>
+    <criterion id="AC-036">La sezione e' resa SOTTO il blocco dei tab righe (quindi sotto Costi) e SOPRA il riepilogo economico, non dentro il tab Costi (D-5).</criterion>
+    <criterion id="AC-032">Il submit e' bloccato lato client se un attributo `is_required` applicabile e' vuoto, con messaggio sul campo.</criterion>
+    <criterion id="AC-033">Il dettaglio Offerta mostra i valori compilati formattati per tipo; la sezione e' assente se non ci sono attributi applicabili.</criterion>
+
+    <!-- Rimozione lato Opportunita' / Gestione Richieste -->
+    <criterion id="AC-040">Il payload di `GET /api/opportunities/{id}` non contiene `attribute_values`, `applicable_attributes`, `attribute_layout`.</criterion>
+    <criterion id="AC-041">Il form e il dettaglio Opportunita' non mostrano piu' la sezione "Informazioni aggiuntive".</criterion>
+    <criterion id="AC-042">Il pannello di lavorazione e il form di creazione di Gestione Richieste non mostrano piu' la sezione attributi; un `attribute_values` inviato a `PUT /api/request-management/{id}` non produce alcuna scrittura.</criterion>
+    <criterion id="AC-043">`GET /api/table/columns?domain=request-management` non restituisce alcuna colonna con id prefissato `attr.`.</criterion>
+    <criterion id="AC-044">La griglia Gestione Richieste continua a mostrare i tab categoria come filtro e la colonna operatore continua a riportare la label per categoria (spec 0080).</criterion>
+    <criterion id="AC-045">Dato il DB migrato, `opportunities.attribute_values` non esiste piu'; un grep del repo non trova occorrenze residue di `RequestAttributeValueWriter` o `opportunities.attribute_values` (esclusi migrazioni storiche e `docs/`).</criterion>
+
+    <!-- Seed -->
+    <criterion id="AC-050">Dopo `db:seed --class=DemoDataSeeder`, le categorie demo che oggi assegnano attributi in contesto `opportunity` li assegnano in contesto `quote`, e le offerte demo hanno `attribute_values` coerenti con le proprie righe.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza.</item>
+    <item>Riuso obbligatorio dei componenti gia' agnostici: `attribute-layout-renderer.tsx`, `applicable-attribute-adapter.ts`, `attribute-values-schema.ts`, `AttributeValueValidator`, `AttributeValueNormalizer`, `AttributeLayoutService`, `AttributeLayoutValidator`. Vietato clonarli per il contesto `quote`.</item>
+    <item>Le chiavi i18n di validazione oggi sotto `requestManagement.workPanel.validation.*` vanno spostate in un namespace neutro riusabile dai tre domini, aggiornando i chiamanti esistenti.</item>
+    <item>`quotes.attribute_values` non e' fillable: scrittura solo da `QuoteAttributeValueWriter`, dentro la transazione di `QuoteService::create/update`, con report dei cambi per l'activity log come fa oggi il writer dell'opportunita'.</item>
+    <item>Authz server-side: `attribute_values` va dichiarato nei `FieldDefinition` di `QuotesAuthorization` (oggi sull'Opportunita' non lo era e cadeva nel fallback permissivo — qui va dichiarato esplicitamente).</item>
+    <item>Nessun N+1: la risoluzione carica `offerLines.product.category` in eager load unico.</item>
+    <item>Mai modificare una migrazione gia' committata. File entro 300/500 righe. Identificatori in inglese.</item>
+    <item>La rimozione delle colonne `attr.*` deve preservare il relabel operatore GA2 di `AttributeScopedTableDefinition` (spec 0080), spostandolo in `RequestManagementTableDefinition`.</item>
+  </constraints>
+
+</spec>

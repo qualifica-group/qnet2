@@ -4,7 +4,6 @@ use App\Enums\AttributeContext;
 use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
-use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -222,20 +221,6 @@ it('promotes the imported "Titolo di Studio" to a pick list while it carries no 
             'Assolvimento obbligo scolastico', 'Licenza Elementare',
             'Licenza Media', 'Diploma', 'Laurea',
         ]);
-});
-
-it('leaves the imported "Titolo di Studio" as text when a request already uses it', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // Back to the imported shape, with a request carrying a value.
-    Attribute::query()
-        ->where('code', ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE)
-        ->update(['type' => 'text']);
-    Opportunity::factory()->create(['attribute_values' => ['degree' => 'Laurea']]);
-
-    test()->seed(QualificaContactProcessingSeeder::class);
-
-    expect(Attribute::query()->where('code', 'degree')->value('type'))->toBe('text');
 });
 
 it('seeds one "Dati Lavorazione Contatto" section per contributing category', function (): void {

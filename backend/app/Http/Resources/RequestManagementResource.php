@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\Opportunity;
-use App\RequestManagement\ApplicableAttribute;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\Geo\GeoNameLocalizer;
@@ -13,20 +12,21 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Collection;
 
 /**
  * Wire shape for the request-management work panel (spec 0049,
  * data_contract GET/PATCH /api/request-management/{opportunity}). Consumes
- * the {opportunity, applicable_attributes, attribute_layout} array
- * RequestManagementService::loadWorkPanel()/updateWork() build — never a raw
- * Opportunity/OpportunityResource: this is a DEDICATED, purpose-built shape
- * for the operative panel (contacts owners, applicable_attributes,
+ * the {opportunity} array RequestManagementService::loadWorkPanel()/
+ * updateWork() build — never a raw Opportunity/OpportunityResource: this is a
+ * DEDICATED, purpose-built shape for the operative panel (contacts owners,
  * read-only context), independent from the opportunities CRUD resource
  * (D-1/constraints: no change to OpportunityResource's own contract here).
  * Spec 0083, D-2: this panel no longer advances any working status of its
  * own — `workflow_status`/`workflow_statuses` are GONE, `status` stays the
  * COMPUTED, read-only summary (OpportunityStatusResolver) it already was.
+ * Spec 0084, D-1: the former `applicable_attributes`/`attribute_layout`
+ * additive pair (spec 0049/0062) is REMOVED — the dynamic "Informazioni
+ * aggiuntive" section moved to the Offerta (Quote), see QuoteResource.
  *
  * `client_contacts`/`referent_contacts` expose an `owner` OwnerRef
  * (`{type: 'personal_data', id}`) alongside the contact `items`, so the
@@ -35,10 +35,6 @@ use Illuminate\Support\Collection;
  * Referent are NOT valid `contactable_type`s (`config/personal_data.php`
  * `contactable_types` lists only `personal_data`), so the ref must point at
  * the PersonalData card, never the entity.
- *
- * `attribute_layout` (spec 0062) is additive: the merged, multi-category
- * resolved layout (or null, flat fallback) — `applicable_attributes` stays
- * the untouched value-pipeline authority.
  *
  * #[PreserveKeys]: `manager_labels` (spec 0080) is a sparse
  * position("1".."4")->label map — JsonResource's default filter() reindexes
@@ -50,7 +46,7 @@ use Illuminate\Support\Collection;
 class RequestManagementResource extends JsonResource
 {
     /**
-     * @param  array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}  $resource
+     * @param  array{opportunity: Opportunity}  $resource
      */
     public function __construct(array $resource)
     {
@@ -102,9 +98,6 @@ class RequestManagementResource extends JsonResource
             'client_contacts' => $this->summarizeContacts($opportunity->registry),
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
             'referent_contacts' => $this->summarizeContacts($opportunity->referent),
-            'applicable_attributes' => $this->summarizeApplicableAttributes($this->resource['applicable_attributes']),
-            'attribute_layout' => $this->resource['attribute_layout'],
-            'attribute_values' => $opportunity->attribute_values ?? [],
             'next_callback_at' => $opportunity->next_callback_at?->format('Y-m-d\TH:i'),
             'context' => [
                 'estimated_value' => $opportunity->estimated_value,
@@ -255,17 +248,5 @@ class RequestManagementResource extends JsonResource
         $address = $addresses->firstWhere('is_primary', true) ?? $addresses->first();
 
         return $address === null ? null : new AddressResource($address);
-    }
-
-    /**
-     * @param  Collection<int, ApplicableAttribute>  $attributes
-     * @return array<int, array<string, mixed>>
-     */
-    private function summarizeApplicableAttributes(Collection $attributes): array
-    {
-        return $attributes
-            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
-            ->values()
-            ->all();
     }
 }

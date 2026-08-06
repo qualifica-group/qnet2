@@ -46,6 +46,8 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     quote_workflow_status_id: 1,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    applicable_attributes: [],
+    attribute_layout: null,
     commercial_id: null,
     commercial: null,
     reporter_id: null,
@@ -63,6 +65,7 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     payment_method_id: null,
     payment_method: null,
     internal_notes: null,
+    attribute_values: {},
     offer_lines: [],
     cost_lines: [],
     summary: {

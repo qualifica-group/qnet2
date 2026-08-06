@@ -49,7 +49,6 @@ export const opportunities = {
     subtitle: 'Read-only view of the selected opportunity.',
     loadError: 'Unable to load the opportunity. Please try again.',
     sourceLead: 'Originating lead',
-    collectedInformation: 'Additional information',
     rewards: 'Rewards',
     quotes: {
       title: 'Quotes',
@@ -57,6 +56,8 @@ export const opportunities = {
       create: 'New quote',
       empty: 'No quotes yet',
       emptyHint: 'Create the first quote linked to this opportunity.',
+      loadError: 'Unable to load this opportunity’s quotes.',
+      truncated: 'Showing {{shown}} of {{total}} quotes.',
     },
   },
   form: {
@@ -110,10 +111,6 @@ export const opportunities = {
       generalNotes: {
         title: 'General notes',
         description: 'Free-form notes about the opportunity.',
-      },
-      dynamicFields: {
-        title: 'Additional information',
-        empty: 'No additional fields for this opportunity.',
       },
     },
     registry: 'Registry',

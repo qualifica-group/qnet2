@@ -1,11 +1,8 @@
-import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
-  ApplicableAttribute,
   RequestClientAddressPayload,
   RequestClientContactPayload,
   RequestClientIdentity,
@@ -15,49 +12,6 @@ import type {
   RequestWorkPanel,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
-
-/**
- * Every applicable code with the request's stored value, or the type's "unset"
- * default when it has none: `false` for a `boolean` (user directive
- * 2026-07-31), `null` for every other type. A checkbox has no third state, so
- * an unfilled flag means "no", never "not answered" — without this a stored
- * `null` reached `z.boolean()` and the panel reported the field as required,
- * which is exactly what the flags PSP / DID / Documenti Identificativi did.
- *
- * Applied to BOTH the form defaults and the baseline they are diffed against
- * (`attributeValuesChanged`), or a freshly loaded request with no boolean
- * value stored would report itself as already modified and rewrite the whole
- * map on any unrelated save.
- */
-export function seedAttributeValues(
-  attributes: ApplicableAttribute[],
-  values: Record<string, unknown>,
-): Record<string, CustomFieldValue> {
-  const seeded: Record<string, CustomFieldValue> = {}
-
-  for (const attribute of attributes) {
-    const stored = values[attribute.code] as CustomFieldValue | undefined
-    seeded[attribute.code] = stored ?? (attribute.type === 'boolean' ? false : null)
-  }
-
-  return seeded
-}
-
-/**
- * True when at least one applicable attribute's current value differs from
- * the panel's loaded one. `attribute_values` is a merge/replace-whole-map
- * field server-side (spec 0049 data_contract): there is no per-code sparse
- * diff to compute, only whether the map as a whole needs resending.
- */
-export function attributeValuesChanged(
-  current: Record<string, CustomFieldValue>,
-  original: Record<string, unknown>,
-  codes: string[],
-): boolean {
-  return codes.some(
-    (code) => !isEqualCustomFieldValue(current[code] ?? null, (original[code] as CustomFieldValue) ?? null),
-  )
-}
 
 /**
  * True when the products of interest differ as a SET (order is not part of
@@ -221,12 +175,6 @@ export function buildRequestWorkPayload(
 
   if (values.next_callback_at !== (panel.next_callback_at ?? null)) {
     payload.next_callback_at = values.next_callback_at
-  }
-
-  const codes = panel.applicable_attributes.map((attribute) => attribute.code)
-  const originalAttributeValues = seedAttributeValues(panel.applicable_attributes, panel.attribute_values)
-  if (attributeValuesChanged(values.attribute_values, originalAttributeValues, codes)) {
-    payload.attribute_values = values.attribute_values
   }
 
   // Sent only when the client actually has a card: without one there is no

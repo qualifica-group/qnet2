@@ -6,7 +6,6 @@ import { authKeys } from '@/features/auth/query-keys'
 import type { User } from '@/features/auth/types'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
-import type { ApplicableAttribute, RequestFormContext } from '@/features/request-management/types'
 
 /**
  * Shared fixtures for the create form's hook tests, split out when the single
@@ -15,17 +14,11 @@ import type { ApplicableAttribute, RequestFormContext } from '@/features/request
  * still declares its own `@/features/request-management/api` double.
  */
 
-/** A complete funzione+categoria pair — what the schema and the form-context query both require. */
+/** A complete funzione+categoria pair — what the schema requires per row. */
 export const COMPLETE_ROW = { business_function_id: 1, product_category_id: 2 }
 
 /** The Fonte every submitting case must set: mandatory since the user directive 2026-07-29. */
 export const TEST_SOURCE_ID = 7
-
-/** No statuses, no dynamic fields: the default for cases that are not about them. */
-export const EMPTY_FORM_CONTEXT: RequestFormContext = {
-  applicable_attributes: [],
-  attribute_layout: null,
-}
 
 export function completeIdentity(): PersonalDataDraft {
   return {
@@ -42,25 +35,6 @@ export function completeIdentity(): PersonalDataDraft {
     gender: 'male',
     contacts: [],
     addresses: [],
-  }
-}
-
-/** One applicable attribute of the given code, with every optional descriptor left empty. */
-export function anApplicableAttribute(code: string, isRequired = false): ApplicableAttribute {
-  return {
-    id: 1,
-    code,
-    name: code,
-    type: 'text',
-    description: null,
-    help_text: null,
-    placeholder: null,
-    icon: null,
-    config: null,
-    relation_target: null,
-    is_required: isRequired,
-    sort_order: 0,
-    options: [],
   }
 }
 
@@ -87,9 +61,8 @@ const NOT_CALLED = async () => {}
 
 /**
  * Renders the hook with its own QueryClient (frontend.md §10: one PER TEST,
- * never shared — a shared cache would leak the resolved form-context between
- * cases) and its own AuthContext: the form reads the connected actor to default
- * the Operatore / Sede operativa (user directive 2026-08-04).
+ * never shared) and its own AuthContext: the form reads the connected actor
+ * to default the Operatore / Sede operativa (user directive 2026-08-04).
  *
  * `permissions` are the abilities granted to that actor, seeded straight into
  * the cache `useAbilities` reads (no network double needed). Empty by default,

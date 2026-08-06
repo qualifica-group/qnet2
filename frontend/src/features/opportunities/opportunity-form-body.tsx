@@ -8,7 +8,6 @@ import {
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { OpportunityAttributionSection } from '@/features/opportunities/opportunity-attribution-section'
 import { OpportunityClientSection } from '@/features/opportunities/opportunity-client-section'
-import { OpportunityDynamicFieldsSection } from '@/features/opportunities/opportunity-dynamic-fields-section'
 import { OpportunityFormHeader } from '@/features/opportunities/opportunity-form-header'
 import { OpportunityFormSummary } from '@/features/opportunities/opportunity-form-summary'
 import { OpportunityGeneralNotesSection } from '@/features/opportunities/opportunity-general-notes-section'
@@ -75,7 +74,7 @@ interface OpportunityFormBodyProps {
 export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFormBodyProps) {
   const { t } = useTranslation()
 
-  const { form, attributes, attributeLayout, isAttributesLoading } = useOpportunityForm({ mode })
+  const { form } = useOpportunityForm({ mode })
 
   // `useOpportunityLeadSelection` needs `form.setValue`, so it can only run
   // AFTER `useOpportunityForm` — and `leadSubmission` (below) can only be
@@ -112,7 +111,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
     mode,
     leadSubmission,
     onSuccess,
-    attributeCodes: attributes.map((attribute) => attribute.code),
   })
   const selectedItems = useOpportunitySelectedItems(mode, leadSelection.state)
 
@@ -196,15 +194,6 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
                 selectedItems={selectedItems}
                 lockedFields={lockedFields}
                 initialRewards={initialRewards}
-              />
-
-              {/* "Informazioni aggiuntive" sits where Gestione Richieste keeps
-                  it: after the attribution, before the client's own data. */}
-              <OpportunityDynamicFieldsSection
-                control={form.control}
-                attributes={attributes}
-                layout={attributeLayout}
-                isLoading={isAttributesLoading}
               />
 
               <OpportunityTeamSection

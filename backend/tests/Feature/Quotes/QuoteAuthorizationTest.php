@@ -197,8 +197,8 @@ it('AC-064: GET show exposes permissions.fields with the full key set, code read
         'code', 'title', 'opportunity_id', 'quote_workflow_status_id', 'commercial_id',
         'reporter_id', 'supervisor_id', 'company_id', 'company_site_id', 'operational_site_id',
         'layout_id', 'payment_method_id', 'internal_notes', 'offer_lines', 'cost_lines',
-        'commissions', 'commission_recipient', 'commission_type', 'commission_value',
-        'commission_internal_note',
+        'attribute_values', 'commissions', 'commission_recipient', 'commission_type',
+        'commission_value', 'commission_internal_note',
     ])
         ->and($fields['code']['editable'])->toBeFalse()
         ->and($fields['code']['readonly'])->toBeTrue();

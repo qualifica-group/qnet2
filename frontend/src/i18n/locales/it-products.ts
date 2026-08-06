@@ -207,6 +207,11 @@ export const productCategories = {
         title: 'Attributi Opportunità',
         description: 'Caricati nelle informazioni preliminari della richiesta per questa categoria.',
       },
+      quoteAttributes: {
+        title: 'Attributi Offerta',
+        description:
+          "Caricati nelle Informazioni aggiuntive dell'Offerta, quando una riga usa un prodotto di questa categoria.",
+      },
       managerLabels: {
         title: 'Gestori Account',
         description:

@@ -3,6 +3,119 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX — SALVA INERTE SUL FORM OFFERTE IN UPDATE (2026-08-06) — VERDE, NON COMMITTATO
+
+Solo frontend, ZERO modifiche backend. Suite `src/features/quotes` verde (163 test), ESLint EXIT=0,
+`tsc -b --force` senza errori su `quotes/`/`request-management/` (i 49 errori residui sono tutti in
+`features/opportunities/`, file in corso di modifica da un'altra sessione — NON toccati qui).
+
+**Sintomo.** Aprendo un'Offerta esistente e premendo "Salva" non succedeva nulla: nessuna chiamata,
+nessun errore a schermo.
+
+**Root cause (spec 0084 D-5).** `useQuoteForm` swappa il resolver Zod quando il set di attributi
+applicabili si risolve dai prodotti delle righe offerta, ma NON seminava `attribute_values`. Lo
+schema costruito da `buildAttributeValuesSchema` ha una chiave OBBLIGATORIA per ogni `code`
+applicabile: su un'offerta salvata prima che l'Attributo esistesse (o semplicemente mai compilato)
+quelle chiavi erano `undefined` → issue "Required" su campi mai toccati → `handleSubmit` abortiva in
+silenzio. Il form Opportunita' non aveva il bug perche' semina gia' via `seedAttributeValues`.
+
+**Fix.** `use-quote-form.ts`: effetto che fa `form.setValue('attribute_values', seedAttributeValues(
+attributeContext.applicable_attributes, form.getValues('attribute_values')))` a ogni cambio del set —
+stesso identico pattern di `useOpportunityForm`. Vale anche per la create.
+
+**Effetto collaterale corretto insieme.** Con la mappa seminata, il diff `JSON.stringify` di
+`buildUpdatePayload` avrebbe segnalato "cambiato" a ogni salvataggio estraneo (un booleano mai
+salvato diventa `false`). Ora il confronto e' per `code` con `isEqualCustomFieldValue` contro
+l'originale SEMINATO allo stesso modo (`original.applicable_attributes`), sui `code` VIVI di
+`values.attribute_values` — cosi' un attributo appena diventato applicabile puo' comunque viaggiare.
+
+**Nomi da rispettare.** `seedAttributeValues` (in `features/attributes/attribute-values`, spostato li'
+dal vecchio `request-management/request-work-payload` dal refactor del 2026-08-06)
+resta l'UNICO punto in cui si decide il default per tipo (`false` per boolean, `null` altrove):
+usarlo, non reimplementarlo. Chi aggiunge una sezione di attributi dinamici a un nuovo form deve
+seminare la mappa allo stesso modo, altrimenti riproduce esattamente questo bug.
+
+**Test di regressione.** `quote-form-body.test.tsx` → "saves in edit mode when the resolved attributes
+have no stored value yet" (fallisce senza il fix). `quote-form-payload.test.ts` → due casi sul diff
+della mappa.
+
+## DROP-DOWN OFFERTE NELLA TABELLA OPPORTUNITA' (2026-08-06) — VERDE, NON COMMITTATO
+
+Solo frontend, ZERO modifiche backend. `tsc -b --force` EXIT=0, ESLint EXIT=0, suite frontend verde.
+
+**Richiesta utente (2026-08-06).** Sulla riga dell'Opportunita' un drop-down come quello della
+tabella "buoni dei referenti": aprendolo escono le righe delle Offerte, tabellari, con i valori e
+le colonne della tabella Offerte. Azioni di riga ATTIVE e "sincronizzate con quelle su Offerte"
+(seconda risposta dell'utente, che ha sostituito la prima "sola lettura").
+
+**Come.** Il master/detail generico esisteva gia' (`TableView`/`DataTable`:
+`masterDetail`/`detailCellRenderer`/`detailRowAutoHeight`, spec 0059) e lo scoping delle Offerte
+per Opportunita' anche (`OpportunityScopedTableDefinition` + `rowScope`/`opportunityId`, spec
+0067 D-1). Il pannello riusa entrambi: NIENTE nuovo endpoint, le righe arrivano dallo stesso
+`POST /tables/quotes/rows` con `opportunityId`, le colonne da `GET /tables/quotes/columns`.
+
+**Nomi nuovi da rispettare.**
+- `features/opportunities/opportunity-quotes-detail-renderer.tsx` → `OpportunityQuotesDetailRenderer`,
+  il `detailCellRenderer` della tabella Opportunita'.
+- `features/opportunities/use-opportunity-quote-rows.ts` → `useOpportunityQuoteRows` +
+  `opportunityQuoteRowsQueryKey(id)` + `OPPORTUNITY_QUOTE_ROWS_LIMIT` (25).
+- `features/quotes/use-quote-row-actions.ts` → `useQuoteRowActions`, UNICO proprietario del
+  comportamento delle azioni Offerte (view/edit/delete/activity/generate_document). Lo usano SIA
+  `QuotesTable` SIA il pannello: non reimplementare quelle azioni altrove, si romperebbe la
+  sincronizzazione chiesta dall'utente.
+- `features/quotes/action-icons.ts` → `QUOTES_ACTION_ICONS` (era una const privata di
+  `quotes-table.tsx`, spostata perche' ora ha due consumatori).
+- i18n nuove: `opportunities.detail.quotes.loadError` e `.truncated` (it+en, coperte dal test di
+  parita' `opportunity-quotes-i18n.test.ts`).
+
+**Decisioni prese (dichiararle se si cambia idea).** Il pannello e' una griglia AG Grid
+client-side separata, NON un `TableView` annidato: niente toolbar/ricerca/filtri/viste dentro la
+riga (scelta dell'utente "solo righe compatte"). Ordinamento, filtri e inline-edit sono
+disattivati per costruzione (`toReadOnlyColDef`) — le righe sono un estratto capped a 25 ordinato
+lato server, e l'edit inline non e' cablato qui (il PATCH lo possiede `DataTable`). Header del
+pannello a `var(--surface)`, un gradino sotto `--card`, per staccarlo dalla riga (richiesta
+utente); il pannello disegna un proprio bordo perche' il tema condiviso lo toglie.
+View/edit/create sono forzati in Sheet (`OPEN_MODE_MODAL`) per non abbandonare la lista.
+Il chevron di espansione compare solo con `quotes.viewAny`.
+
+**Da verificare a mano (non coperto dai test):** resa reale della riga espansa nel browser
+(altezza auto, scroll interno oltre 22rem, header piu' scuro), e che il contatore Offerte
+eventualmente mostrato sulla riga Opportunita' non resti stale dopo un delete dal pannello — oggi
+il pannello invalida solo le proprie righe, non ricarica la griglia master (scelta deliberata:
+un refresh SSRM collasserebbe le righe aperte).
+
+## RESTYLING DETAIL OPPORTUNITA' — TEAM E NOTE GENERALI (2026-08-06) — VERDE, NON COMMITTATO
+
+Frontend 3545/3545 (497 file), `tsc -b --force` EXIT=0, ESLint EXIT=0. Backend non toccato.
+File modificati: `frontend/src/features/opportunities/opportunity-detail-sections.tsx` e il suo test.
+Nessuna spec: restyling puntuale su richiesta utente su `/opportunities/:id` (detail READ-ONLY).
+
+**Decisione dell'utente (2026-08-06, VINCOLANTE):** le Note generali in lettura sono lo STESSO
+componente e lo STESSO colore del form — callout ambra, non una resa neutra propria della detail.
+Una prima versione neutra (`bg-muted/40`) e' stata scartata dall'utente e rimossa.
+
+**Cosa e' cambiato.** Sezione Team: Supervisore e slot G.A. ora stanno nella STESSA
+`RecordFieldList` (una riga per ruolo, avatar via `DetailPerson`), al posto dei due idiomi
+precedenti (riga spec-sheet + lista a se' con etichetta troncata `max-w-28` dietro un `title`).
+Note generali: prima riga della `RecordSectionsGrid` a tutta larghezza, rese dal nuovo
+`GeneralNotesCallout`.
+
+**Profilo utente dal Team (2026-08-06).** Le righe Supervisore e G.A. usano ora il
+`UserProfileHoverCard` condiviso (hover → card, click/Enter → Sheet profilo), stessa composizione di
+`UserCell` nelle griglie. Il provider e' gia' montato in `App.tsx` e il contesto degrada a no-op
+fuori dal provider, quindi nessun wrapper nuovo. `supervisor.id` e `managers[].id` sono ID UTENTE
+lato server (`OpportunityResource::summarizeByName`/`summarizeManagers`): e' quello che apre lo Sheet.
+Conseguenza sui test: in `opportunity-detail.test.tsx` AC-077 "read-only" non si asserisce piu' come
+"nessun `button`" (le righe persona SONO pulsanti) ma via l'helper `mutatingButtons()`, che esclude i
+pulsanti profilo per accessible name. Requisito cambiato, non test piegato per farlo passare.
+
+**Nome nuovo da rispettare:** `components/record-form/general-notes-callout.tsx` →
+`GeneralNotesCallout({ title, notes, className })` e' ORA l'unica resa read-only delle Note
+generali (porta da se' micro-titolo, ambra, `whitespace-pre-wrap`, `max-h-64` scrollabile, e si
+rende nulla senza note). Non sta dentro una `RecordSection`: avrebbe due intestazioni.
+`RequestGeneralNotesCallout` e' diventato un wrapper che gli passa solo il proprio titolo i18n —
+non duplicare quel markup una terza volta, chi tocca il chrome tocca `layout.ts`.
+
 ## SPEC 0083 — IL WORKFLOW PASSA DALL'OPPORTUNITA' ALL'OFFERTA (2026-08-05) — VERDE, NON COMMITTATO
 
 Backend 5206/5206 (1 skip preesistente `FilterApplierTest`, estraneo). Frontend 3542/3542,

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\Attribute;
-use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -15,12 +13,12 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // User directive 2026-07-31 ("la create il piu' simile possibile al pannello"):
-// the create form now carries the operative fields the work panel edits — next
-// callback, note generali and the dynamic attribute values — plus the POST
-// /api/request-management/form-context preview that lets it render the
-// dynamic fields BEFORE anything is persisted. Spec 0083, D-2: the working
-// status (+ its mandatory note) is GONE from this channel entirely — the
-// Opportunity resolves no working state of its own any more.
+// the create form carries the operative fields the work panel edits — next
+// callback and note generali. Spec 0083, D-2: the working status (+ its
+// mandatory note) is GONE from this channel entirely. Spec 0084, D-1: the
+// dynamic attribute values (+ the POST /api/request-management/form-context
+// preview that used to render them) are GONE too — that concern moved to the
+// Offerta (Quote), see tests/Feature/Quotes/QuoteAttributeValuesTest.php.
 
 uses(RefreshDatabase::class);
 
@@ -49,81 +47,35 @@ if (! function_exists('requestCreateOperativeActor')) {
     }
 }
 
-if (! function_exists('categoryWithAttribute')) {
+if (! function_exists('requestCreateProductLine')) {
     /**
-     * A category carrying one `opportunity`-context attribute, plus the
-     * product-line row that references it.
+     * A valid {business_function_id, product_category_id} pair for the
+     * mandatory `product_lines` row.
      *
-     * @return array{line: array{business_function_id: int, product_category_id: int}, category: ProductCategory}
+     * @return array{business_function_id: int, product_category_id: int}
      */
-    function categoryWithAttribute(string $code, bool $required = false): array
+    function requestCreateProductLine(): array
     {
         $businessFunction = BusinessFunction::factory()->create();
         $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-        $attribute = Attribute::factory()->create(['code' => $code]);
-        $category->attributes()->attach($attribute->id, [
-            'is_required' => $required,
-            'sort_order' => 0,
-            'context' => 'opportunity',
-        ]);
 
-        return [
-            'line' => ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id],
-            'category' => $category,
-        ];
+        return ['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id];
     }
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/request-management/form-context — the create form's preview
+// POST /api/request-management/form-context is REMOVED (spec 0084, D-1): the
+// live preview it served no longer applies once the dynamic section moved to
+// the Offerta. The literal route is gone; `form-context` now only matches the
+// `{opportunity}` wildcard's OTHER verbs (GET/PUT/PATCH/DELETE), so POST 405s
+// rather than 404s.
 // ---------------------------------------------------------------------------
 
-it('form-context: without request-management.create -> 403', function () {
-    Sanctum::actingAs(requestCreateOperativeActor([]));
-
-    $this->postJson('/api/request-management/form-context', ['product_lines' => []])
-        ->assertForbidden();
-});
-
-it('form-context: returns the applicable attributes and the create layout, no workflow_statuses key (spec 0083 D-2)', function () {
-    $actor = requestCreateOperativeActor();
-    ['line' => $line, 'category' => $category] = categoryWithAttribute('material');
-    AttributeLayout::factory()->for($category, 'productCategory')
-        ->withCodes(['material'])
-        ->create(['context' => 'opportunity', 'form_mode' => 'create']);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management/form-context', [
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-    ])->assertOk();
-
-    expect(collect($response->json('data.applicable_attributes'))->pluck('code')->all())->toBe(['material']);
-    expect($response->json('data.attribute_layout.sections'))->not->toBeEmpty();
-    expect($response->json('data'))->not->toHaveKey('workflow_statuses');
-});
-
-it('form-context: a half-filled product line is dropped, not rejected', function () {
-    $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management/form-context', [
-        'product_lines' => [
-            ['business_function_id' => $line['business_function_id'], 'product_category_id' => null],
-        ],
-    ])->assertOk();
-
-    expect($response->json('data.applicable_attributes'))->toBe([]);
-    expect($response->json('data.attribute_layout'))->toBeNull();
-});
-
-it('form-context: an unknown product category -> 422', function () {
+it('form-context: the removed endpoint no longer resolves', function () {
     Sanctum::actingAs(requestCreateOperativeActor());
 
-    $this->postJson('/api/request-management/form-context', [
-        'product_lines' => [['business_function_id' => null, 'product_category_id' => 99999]],
-    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
+    $this->postJson('/api/request-management/form-context', ['product_lines' => []])
+        ->assertStatus(405);
 });
 
 // ---------------------------------------------------------------------------
@@ -132,7 +84,7 @@ it('form-context: an unknown product category -> 422', function () {
 
 it('create: next_callback_at and general_notes are persisted and read back', function () {
     $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
+    $line = requestCreateProductLine();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/request-management', [
@@ -151,9 +103,9 @@ it('create: next_callback_at and general_notes are persisted and read back', fun
         ->and($opportunity->general_notes)->toBe('Il cliente richiama a settembre.');
 });
 
-it('create: attribute_values are validated against the applicable set and persisted', function () {
+it('create: an attribute_values payload is silently ignored (spec 0084, D-1)', function () {
     $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
+    $line = requestCreateProductLine();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/request-management', [
@@ -163,28 +115,13 @@ it('create: attribute_values are validated against the applicable set and persis
         'attribute_values' => ['material' => 'steel'],
     ])->assertCreated();
 
-    expect($response->json('data.attribute_values'))->toBe(['material' => 'steel']);
-    expect(Opportunity::query()->sole()->attribute_values)->toBe(['material' => 'steel']);
-});
-
-it('create: an attribute_value whose code is not applicable -> 422, nothing created', function () {
-    $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => Registry::factory()->create()->id,
-        'source_id' => Source::factory()->create()->id,
-        'product_lines' => [$line],
-        'attribute_values' => ['not_applicable_here' => 'x'],
-    ])->assertStatus(422);
-
-    expect(Opportunity::count())->toBe(0);
+    expect($response->json('data'))->not->toHaveKey('attribute_values');
+    expect(Opportunity::query()->sole()->getAttributes())->not->toHaveKey('attribute_values');
 });
 
 it('create: none of the operative fields submitted leaves the record exactly as before', function () {
     $actor = requestCreateOperativeActor();
-    ['line' => $line] = categoryWithAttribute('material');
+    $line = requestCreateProductLine();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management', [
@@ -195,6 +132,5 @@ it('create: none of the operative fields submitted leaves the record exactly as 
 
     $opportunity = Opportunity::query()->sole();
     expect($opportunity->next_callback_at)->toBeNull()
-        ->and($opportunity->general_notes)->toBeNull()
-        ->and($opportunity->attribute_values ?? [])->toBe([]);
+        ->and($opportunity->general_notes)->toBeNull();
 });

@@ -24,6 +24,13 @@ use Illuminate\Database\Eloquent\Model;
  * `offer_lines`/`cost_lines` (D-8/D-11) are the two repeatable line sets: an
  * empty array is a legitimate, authoritative full-replace (AC-036), so
  * neither is `mandatory`.
+ *
+ * `attribute_values` (spec 0084): declared EXPLICITLY, unlike the former
+ * Opportunity-level field it replaces — on the Opportunity it carried no
+ * FieldDefinition at all and fell through EnforcesFieldPermissions'
+ * permissive fallback (anything not catalogued is allowed). Here it is a
+ * first-class field with the same visible/editable-when-may-write ceiling as
+ * every other one.
  */
 class QuotesAuthorization extends AbstractResourceAuthorization
 {
@@ -62,6 +69,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('internal_notes', 'textarea'),
             new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('cost_lines', 'lines'),
+            new FieldDefinition('attribute_values', 'custom'),
             new FieldDefinition('commissions', 'collection'),
             new FieldDefinition('commission_recipient', 'select'),
             new FieldDefinition('commission_type', 'select'),
@@ -105,6 +113,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commissions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commission_recipient' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'commission_type' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

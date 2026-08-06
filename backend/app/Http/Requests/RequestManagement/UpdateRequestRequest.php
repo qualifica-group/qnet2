@@ -31,14 +31,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * the opportunities form already share — `sometimes` (absent = untouched)
  * with `min:1`, so the collection can be replaced but never cleared.
  *
- * `attribute_values` deep validation (per-code applicability/type/required,
- * spec 0049 D-4) is intentionally NOT duplicated here: it runs inside
- * RequestManagementService::updateWork() via AttributeValueValidator, the
- * single place that also resolves the applicable set and merges the map —
- * doing it twice would mean resolving CategoryHierarchy::effectiveAttributes()
- * an extra time for no benefit. Its ValidationException (keyed
- * `attribute_values.<code>`) surfaces as the same 422 shape either way
- * (BaseApiController::handleControllerException).
+ * Spec 0084, D-1: the former `attribute_values` key (spec 0049 D-4) is
+ * REMOVED — a value submitted here now produces no write, the dynamic
+ * "Informazioni aggiuntive" section having moved to the Offerta (Quote).
  *
  * `client_contacts`/`client_address` (spec 0049 amendment) come from
  * ValidatesRequestClientProfile: the client anagraphic block the panel edits
@@ -66,7 +61,6 @@ class UpdateRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'attribute_values' => ['sometimes', 'array'],
             'next_callback_at' => ['sometimes', 'nullable', 'date'],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // same rule as the opportunities form — sparse like every other key

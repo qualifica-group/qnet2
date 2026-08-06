@@ -20,6 +20,11 @@ namespace App\DataObjects\Quotes;
  * means "not submitted, leave the existing set untouched"; an array
  * (including empty) authoritatively replaces it.
  *
+ * `attributeValues` (spec 0084, D-1/D-5) follows the SAME sparse convention
+ * as `UpdateOpportunityData`'s former field: `null` when the key was absent
+ * — and sparse WITHIN itself too, a code the map leaves out keeps its
+ * persisted value (QuoteAttributeValueWriter owns that merge).
+ *
  * `workflowStatusId` is the OPTIONAL explicit `quote_workflow_status_id`
  * override (AC-021/022): submitted-and-non-null is validated
  * (ValidatesQuoteWorkflowStatus) to belong to the resolved set and written
@@ -70,6 +75,10 @@ final readonly class UpdateQuoteData
         // optional FK here.
         public ?int $paymentMethodId = null,
         public bool $paymentMethodIdSubmitted = false,
+        // Appended after the pre-existing parameters (spec 0084), same
+        // positional-compat reason as every other appended field here.
+        /** @var array<string, mixed>|null */
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -105,6 +114,9 @@ final readonly class UpdateQuoteData
             layoutIdSubmitted: array_key_exists('layout_id', $data),
             paymentMethodId: self::nullableInt($data, 'payment_method_id'),
             paymentMethodIdSubmitted: array_key_exists('payment_method_id', $data),
+            attributeValues: array_key_exists('attribute_values', $data)
+                ? (array) $data['attribute_values']
+                : null,
         );
     }
 

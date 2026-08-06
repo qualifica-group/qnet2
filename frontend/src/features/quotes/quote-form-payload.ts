@@ -1,3 +1,5 @@
+import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type {
   CreateQuotePayload,
@@ -54,6 +56,9 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     title: values.title,
     opportunity_id: values.opportunity_id as number,
     quote_workflow_status_id: values.quote_workflow_status_id,
+    // Spec 0084: la mappa viaggia sempre alla create — non c'e' nulla di
+    // persistito da conservare, quindi il merge sparso lato server non serve.
+    attribute_values: values.attribute_values,
     commercial_id: values.commercial_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
@@ -135,6 +140,30 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   if (values.title !== original.title) {
     payload.title = values.title
   }
+  // Spec 0084: la mappa viaggia solo se un valore e' cambiato. Il server fa un
+  // merge SPARSO, quindi mandarla identica sarebbe un no-op costoso; mandarla
+  // parziale, invece, non cancella nulla (i `code` assenti restano). Il
+  // confronto e' per `code` contro l'originale SEMINATO come lo ha idratato il
+  // form (`useQuoteForm`), altrimenti un booleano mai salvato leggerebbe come
+  // cambiato a ogni salvataggio estraneo. I `code` sono quelli VIVI (le righe
+  // offerta possono aver cambiato categoria in questo stesso form), non quelli
+  // persistiti: un attributo appena diventato applicabile deve poter viaggiare.
+  const originalAttributeValues = seedAttributeValues(
+    original.applicable_attributes ?? [],
+    original.attribute_values ?? {},
+  )
+  const attributeValuesChanged = Object.keys(values.attribute_values).some(
+    (code) =>
+      !isEqualCustomFieldValue(
+        values.attribute_values[code] ?? null,
+        originalAttributeValues[code] ?? null,
+      ),
+  )
+
+  if (attributeValuesChanged) {
+    payload.attribute_values = values.attribute_values
+  }
+
   // Spec 0083: the transition note rides along ONLY when the status actually
   // changes — the server demands it on the transition, not on the row (AC-026),
   // so a quote already parked on a `requires_note` row saves without one.

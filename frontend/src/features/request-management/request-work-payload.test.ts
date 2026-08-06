@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildRequestWorkPayload,
-  seedAttributeValues,
-} from '@/features/request-management/request-work-payload'
+import { buildRequestWorkPayload } from '@/features/request-management/request-work-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type { RequestWorkPanel } from '@/features/request-management/types'
 
@@ -32,39 +29,6 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     client_contacts: { owner: { type: 'personal_data', id: 10 }, items: [] },
     client_address: null,
     referent_contacts: { owner: { type: 'personal_data', id: 20 }, items: [] },
-    applicable_attributes: [
-      {
-        id: 1,
-        code: 'notes',
-        name: 'Notes',
-        type: 'text',
-        description: null,
-        help_text: null,
-        placeholder: null,
-        icon: null,
-        config: null,
-        relation_target: null,
-        is_required: false,
-        sort_order: 1,
-        options: [],
-      },
-      {
-        id: 2,
-        code: 'budget',
-        name: 'Budget',
-        type: 'integer',
-        description: null,
-        help_text: null,
-        placeholder: null,
-        icon: null,
-        config: null,
-        relation_target: null,
-        is_required: false,
-        sort_order: 2,
-        options: [],
-      },
-    ],
-    attribute_values: { notes: 'existing note', budget: 1000 },
     next_callback_at: null,
     context: { estimated_value: null, expected_close_date: null, success_probability: null },
     ...overrides,
@@ -84,7 +48,6 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     reporter_id: null,
     operator_id: null,
     operational_site_id: null,
-    attribute_values: { notes: 'existing note', budget: 1000 },
     ...overrides,
   }
 }
@@ -270,14 +233,6 @@ describe('buildRequestWorkPayload (spec 0049 AC-062)', () => {
     expect(buildRequestWorkPayload(formValues(), panel())).toEqual({})
   })
 
-  it('sends the whole attribute_values map when at least one value changed', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ attribute_values: { notes: 'updated note', budget: 1000 } }),
-      panel(),
-    )
-    expect(payload).toEqual({ attribute_values: { notes: 'updated note', budget: 1000 } })
-  })
-
   it('sends the whole client_contacts set when one channel was typed in', () => {
     const payload = buildRequestWorkPayload(
       formValues({
@@ -325,71 +280,5 @@ describe('buildRequestWorkPayload (spec 0049 AC-062)', () => {
 
   it('omits client_address entirely when the inline fields were left blank', () => {
     expect(buildRequestWorkPayload(formValues({ client_address: [] }), panel())).toEqual({})
-  })
-
-  it('treats null and an absent original value as equal (no spurious diff)', () => {
-    const payload = buildRequestWorkPayload(
-      formValues(),
-      panel({ attribute_values: { notes: 'existing note', budget: 1000, extra: undefined } }),
-    )
-    expect(payload).toEqual({})
-  })
-})
-
-/**
- * User directive 2026-07-31: a `boolean` attribute has no "unanswered" state.
- * Before this, an unset flag was seeded `null`, `z.boolean()` refused it and
- * the panel showed PSP / DID / Documenti Identificativi as required.
- */
-describe('seedAttributeValues — boolean flags default to false', () => {
-  const flagPanel = panel({
-    applicable_attributes: [
-      ...panel().applicable_attributes,
-      {
-        id: 3,
-        code: 'psp',
-        name: 'PSP',
-        type: 'boolean',
-        description: null,
-        help_text: null,
-        placeholder: null,
-        icon: null,
-        config: null,
-        relation_target: null,
-        is_required: false,
-        sort_order: 3,
-        options: [],
-      },
-    ],
-  })
-
-  it('fills an unset boolean with false and every other unset type with null', () => {
-    const seeded = seedAttributeValues(flagPanel.applicable_attributes, {})
-
-    expect(seeded).toEqual({ notes: null, budget: null, psp: false })
-  })
-
-  it('keeps a stored false, which `??` on a nullish default would preserve but a falsy one would not', () => {
-    const seeded = seedAttributeValues(flagPanel.applicable_attributes, { psp: false })
-
-    expect(seeded.psp).toBe(false)
-  })
-
-  it('does not report a request whose flag was never filled as modified', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ attribute_values: { notes: 'existing note', budget: 1000, psp: false } }),
-      flagPanel,
-    )
-
-    expect(payload).toEqual({})
-  })
-
-  it('sends the whole map once the flag is ticked', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ attribute_values: { notes: 'existing note', budget: 1000, psp: true } }),
-      flagPanel,
-    )
-
-    expect(payload).toEqual({ attribute_values: { notes: 'existing note', budget: 1000, psp: true } })
   })
 })

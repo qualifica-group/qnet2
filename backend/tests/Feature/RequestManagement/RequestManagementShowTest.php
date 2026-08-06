@@ -1,12 +1,8 @@
 <?php
 
-use App\Models\Attribute;
-use App\Models\BusinessFunction;
 use App\Models\Contact;
 use App\Models\Opportunity;
-use App\Models\OpportunityProductLine;
 use App\Models\PersonalData;
-use App\Models\ProductCategory;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
@@ -112,8 +108,6 @@ it('GET as the opportunity manager returns the full work-panel shape (AC-020)', 
         ->assertJsonPath('data.client_contacts.items.0.is_primary', true)
         ->assertJsonPath('data.referent_contacts.owner', ['type' => 'personal_data', 'id' => $referentCard->id])
         ->assertJsonPath('data.referent_contacts.items.0.value', '+39 333 0000000')
-        ->assertJsonPath('data.applicable_attributes', [])
-        ->assertJsonPath('data.attribute_values', [])
         ->assertJsonPath('data.context', [
             'estimated_value' => $opportunity->estimated_value,
             'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
@@ -176,54 +170,10 @@ it('GET without request-management.view -> 403 even for a managed opportunity (A
     $this->getJson("/api/request-management/{$opportunity->id}")->assertForbidden();
 });
 
-// ---------------------------------------------------------------------------
-// AC-022 — applicable_attributes union dedup-per-code + empty cases
-// ---------------------------------------------------------------------------
-
-it('applicable_attributes is the union dedup-per-code across all product lines\' categories (AC-022)', function () {
-    $actor = requestManagementUserWith(['view', 'viewAll']);
-    $businessFunction = BusinessFunction::factory()->create();
-    $categoryOne = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-    $categoryTwo = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-    $shared = Attribute::factory()->create(['code' => 'shared_code']);
-    $onlyOne = Attribute::factory()->create(['code' => 'only_one_code']);
-    $categoryOne->attributes()->attach($shared->id, ['is_required' => false, 'sort_order' => 0]);
-    $categoryOne->attributes()->attach($onlyOne->id, ['is_required' => false, 'sort_order' => 1]);
-    $categoryTwo->attributes()->attach($shared->id, ['is_required' => true, 'sort_order' => 0]);
-
-    $opportunity = Opportunity::factory()->create();
-    OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $businessFunction->id,
-        'product_category_id' => $categoryOne->id,
-    ]);
-    OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $businessFunction->id,
-        'product_category_id' => $categoryTwo->id,
-    ]);
-    Sanctum::actingAs($actor);
-
-    $applicable = $this->getJson("/api/request-management/{$opportunity->id}")
-        ->assertOk()
-        ->json('data.applicable_attributes');
-
-    expect($applicable)->toHaveCount(2);
-    $byCode = collect($applicable)->keyBy('code');
-    // strictest requirement wins across the merged categories.
-    expect($byCode['shared_code']['is_required'])->toBeTrue();
-    expect($byCode['only_one_code']['is_required'])->toBeFalse();
-});
-
-it('applicable_attributes is empty for an opportunity with no product lines (AC-022)', function () {
-    $actor = requestManagementUserWith(['view', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->getJson("/api/request-management/{$opportunity->id}")
-        ->assertOk()
-        ->assertJsonPath('data.applicable_attributes', []);
-});
+// Spec 0084, D-1: the former AC-022 (`applicable_attributes` union dedup-per-
+// code across product lines' categories) is GONE — the dynamic attribute set
+// is now resolved from the Offerta's OWN offer lines, see
+// tests/Feature/Quotes/QuoteAttributeValuesTest.php.
 
 // ---------------------------------------------------------------------------
 // User directive 2026-07-27 — the opportunity's "Note generali" surface in the

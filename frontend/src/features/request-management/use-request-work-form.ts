@@ -12,11 +12,7 @@ import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/t
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
-import {
-  buildRequestWorkPayload,
-  seedAttributeValues,
-  toProductLineRows,
-} from '@/features/request-management/request-work-payload'
+import { buildRequestWorkPayload, toProductLineRows } from '@/features/request-management/request-work-payload'
 import {
   buildRequestWorkSchema,
   type RequestWorkFormValues,
@@ -76,7 +72,6 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
     // client has no address yet.
     client_address: panel.client_address ? [addressToDraft(panel.client_address)] : [],
-    attribute_values: seedAttributeValues(panel.applicable_attributes, panel.attribute_values),
     products_of_interest: panel.products_of_interest.map((product) => product.id),
     product_lines: toProductLineRows(panel.product_lines),
     rewards: (panel.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
@@ -90,9 +85,8 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
 /**
  * Owns the RHF/Zod wiring of the work panel's editable surface (spec 0049
  * AC-061/062): dynamic schema/defaults derived from the loaded panel, sparse
- * PATCH submit (`buildRequestWorkPayload`), 422 mapped onto every
- * `attribute_values.<code>` path (accessible triad via `MetaField`/
- * `FormMessage`, frontend.md §10).
+ * PATCH submit (`buildRequestWorkPayload`), 422 mapped onto each field
+ * (accessible triad via `MetaField`/`FormMessage`, frontend.md §10).
  */
 export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const { t } = useTranslation()
@@ -102,12 +96,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
   const schema = useMemo(
     () =>
       buildRequestWorkSchema(
-        panel.applicable_attributes,
         {
-          // Same normalization the defaults and the payload baseline use, or
-          // the schema's "is this map travelling?" gate would disagree with
-          // `buildRequestWorkPayload`'s.
-          attribute_values: seedAttributeValues(panel.applicable_attributes, panel.attribute_values),
           products_of_interest: panel.products_of_interest.map((product) => product.id),
           product_lines: toProductLineRows(panel.product_lines),
           client_identity: panel.client_identity,
@@ -117,8 +106,6 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
         t,
       ),
     [
-      panel.applicable_attributes,
-      panel.attribute_values,
       panel.products_of_interest,
       panel.product_lines,
       panel.client_identity,
@@ -149,9 +136,6 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     'reporter_id' as Path<RequestWorkFormValues>,
     'operator_id' as Path<RequestWorkFormValues>,
     'operational_site_id' as Path<RequestWorkFormValues>,
-    ...panel.applicable_attributes.map(
-      (attribute) => `attribute_values.${attribute.code}` as Path<RequestWorkFormValues>,
-    ),
   ]
 
   const onSubmit = form.handleSubmit(
@@ -180,7 +164,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     (errors) => {
       setSubmitError(
         t('requestManagement.workPanel.validation.summary', {
-          fields: describeInvalidFields(errors, panel.applicable_attributes, panel.manager_labels, t).join(', '),
+          fields: describeInvalidFields(errors, panel.manager_labels, t).join(', '),
         }),
       )
     },

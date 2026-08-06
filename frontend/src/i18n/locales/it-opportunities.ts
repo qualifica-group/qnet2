@@ -49,9 +49,6 @@ export const opportunities = {
     subtitle: "Visualizzazione in sola lettura dell'opportunità selezionata.",
     loadError: "Impossibile caricare l'opportunità. Riprova.",
     sourceLead: 'Lead di origine',
-    // Stessa denominazione della sezione del form (direttiva utente 2026-08-05):
-    // e' lo stesso insieme di campi, in sola lettura.
-    collectedInformation: 'Informazioni aggiuntive',
     rewards: 'Premi',
     quotes: {
       title: 'Offerte',
@@ -59,6 +56,8 @@ export const opportunities = {
       create: 'Nuova offerta',
       empty: 'Nessuna offerta',
       emptyHint: "Crea la prima offerta collegata a questa opportunità.",
+      loadError: 'Impossibile caricare le offerte di questa opportunità.',
+      truncated: 'Mostrate {{shown}} offerte su {{total}}.',
     },
   },
   form: {
@@ -112,10 +111,6 @@ export const opportunities = {
       generalNotes: {
         title: 'Note generali',
         description: "Annotazioni libere sull'opportunità.",
-      },
-      dynamicFields: {
-        title: 'Informazioni aggiuntive',
-        empty: 'Nessun campo aggiuntivo per questa opportunità.',
       },
     },
     registry: 'Anagrafica',

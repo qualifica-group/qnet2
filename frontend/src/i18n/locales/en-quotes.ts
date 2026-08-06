@@ -33,6 +33,7 @@ export const quotes = {
     createdRange: 'Created at',
   },
   detail: {
+    additionalInformation: 'Additional information',
     loadError: 'Unable to load the quote. Please try again.',
     opportunity: 'Opportunity',
     workflowStatus: 'Status',
@@ -110,6 +111,10 @@ export const quotes = {
     deleteError: 'Unable to delete the quote. Please try again.',
     deleteForbidden: 'You cannot delete this quote.',
     sections: {
+      dynamicFields: {
+        title: 'Additional information',
+        empty: 'No additional fields for the selected products.',
+      },
       identity: {
         title: 'Quote',
         description: 'Code, title, linked opportunity and commercial team.',

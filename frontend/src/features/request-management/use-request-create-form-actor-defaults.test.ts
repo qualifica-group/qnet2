@@ -7,7 +7,6 @@ import {
 } from '@/features/request-management/use-request-actor-defaults'
 import {
   COMPLETE_ROW,
-  EMPTY_FORM_CONTEXT,
   TEST_ACTOR_ID,
   TEST_ACTOR_SITE_ID,
   TEST_SOURCE_ID,
@@ -29,7 +28,6 @@ import {
 const createRequestMock = vi.fn()
 vi.mock('@/features/request-management/api', () => ({
   createRequest: (...args: unknown[]) => createRequestMock(...args),
-  fetchRequestFormContext: async () => EMPTY_FORM_CONTEXT,
 }))
 
 const BOTH_ABILITIES = [ASSIGN_OPERATOR_PERMISSION, OPERATIONAL_SITES_VIEW_ANY_PERMISSION]

@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
-import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import {
+  buildAttributeValuesSchema,
+  type TypedAttributeValuesSchema,
+} from '@/features/request-management/attribute-values-schema'
+import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { ApplicableAttributeSummary, QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**
  * Zod schema for the quote create/edit form, built as a factory so validation
@@ -138,7 +144,7 @@ function quoteLineRowSchema(t: TFunction) {
 }
 
 /** Shared fields common to create and edit. */
-function baseFields(t: TFunction) {
+function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
   return {
     // Manual code (D-13/D-1b): trimmed, required (the create form auto-fills
     // the next sequential suggestion, editable), max 32. Read-only in edit
@@ -193,11 +199,42 @@ function baseFields(t: TFunction) {
     cost_lines: z
       .array(quoteLineRowSchema(t))
       .max(MAX_LINES_PER_TAB, t('quotes.form.linesMax')),
+    // "Informazioni aggiuntive" (spec 0084, D-5): una chiave per `code`
+    // applicabile, forma per-tipo dal builder CONDIVISO — lo stesso che usano
+    // Prodotti e Gestione Richieste, cosi' una regola corretta su un canale
+    // non puo' restare sbagliata sull'altro. La obbligatorieta' la aggiunge
+    // ogni caller sotto: dipende dal fatto che la mappa viaggi o no.
+    attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
   }
 }
 
-export function buildCreateQuoteSchema(t: TFunction) {
-  return z.object(baseFields(t))
+/** I `code` applicabili marcati `is_required`: gli unici che una refine impone. */
+function requiredAttributeCodes(attributes: ApplicableAttributeSummary[]): string[] {
+  return attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+}
+
+/** Un'issue "campo obbligatorio" per ogni `code` required rimasto vuoto. */
+function addMissingRequiredAttributes(
+  values: Record<string, CustomFieldValue>,
+  codes: string[],
+  t: TFunction,
+  ctx: z.RefinementCtx,
+): void {
+  for (const code of codes) {
+    if (isEmptyCustomFieldValue(values[code])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['attribute_values', code],
+        message: t('attributeValues.validation.required', { defaultValue: 'This field is required.' }),
+      })
+    }
+  }
+}
+
+export function buildCreateQuoteSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
+  return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
+    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+  })
 }
 
 /**
@@ -214,8 +251,11 @@ export function buildUpdateQuoteSchema(
   t: TFunction,
   statuses: QuoteWorkflowStatusRef[],
   originalStatusId: number | null,
+  attributes: ApplicableAttributeSummary[] = [],
 ) {
-  return z.object(baseFields(t)).superRefine((values, ctx) => {
+  return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
+    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+
     const targetId = values.quote_workflow_status_id
 
     if (targetId === null || targetId === originalStatusId) {

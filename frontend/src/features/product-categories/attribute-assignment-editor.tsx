@@ -25,6 +25,8 @@ interface AttributeAssignmentEditorProps {
   productInheritToggle?: ReactNode
   /** Same, for the Opportunity section — the two barriers are independent. */
   opportunityInheritToggle?: ReactNode
+  /** Spec 0084: la barriera di ereditarieta' del contesto `quote`, indipendente dalle altre due. */
+  quoteInheritToggle?: ReactNode
 }
 
 /**
@@ -46,6 +48,7 @@ export function AttributeAssignmentEditor({
   disabled,
   productInheritToggle,
   opportunityInheritToggle,
+  quoteInheritToggle,
 }: AttributeAssignmentEditorProps) {
   const { t } = useTranslation()
 
@@ -104,6 +107,19 @@ export function AttributeAssignmentEditor({
           onAdd={(attributeId) => addAssignment('opportunity', attributeId)}
           onUpdate={(attributeId, patch) => updateAssignment('opportunity', attributeId, patch)}
           onRemove={(attributeId) => removeAssignment('opportunity', attributeId)}
+        />
+
+        <AttributeAssignmentSection
+          title={t('productCategories.form.sections.quoteAttributes.title')}
+          description={t('productCategories.form.sections.quoteAttributes.description')}
+          assignments={byContext('quote')}
+          known={known}
+          inherited={inheritedByContext('quote')}
+          inheritToggle={quoteInheritToggle}
+          disabled={disabled}
+          onAdd={(attributeId) => addAssignment('quote', attributeId)}
+          onUpdate={(attributeId, patch) => updateAssignment('quote', attributeId, patch)}
+          onRemove={(attributeId) => removeAssignment('quote', attributeId)}
         />
       </div>
     </TooltipProvider>

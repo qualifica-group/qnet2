@@ -152,20 +152,16 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
 
     renderPanel()
 
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('Some notes'))
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
 
-    // Both mandatory rules are broken by an ACTUAL edit: the required
-    // Attribute is emptied and the last product of interest dropped.
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: '' } })
+    // The mandatory rule is broken by an ACTUAL edit: the last product of interest is dropped.
     fireEvent.click(screen.getByRole('button', { name: 'Remove product Fibra 1000' }))
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 
     const header = screen.getByRole('banner')
     const alert = await within(header).findByRole('alert')
-    // The offending blocks are NAMED — the required Attribute by its own name,
-    // not by the block label, since a layout can hide the leaf control.
+    // The offending block is NAMED.
     expect(alert).toHaveTextContent('Products of interest')
-    expect(alert).toHaveTextContent('Notes')
     expect(updateRequestWorkMock).not.toHaveBeenCalled()
   })
 
@@ -193,15 +189,14 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
   })
 
   /**
-   * The counterpart, and the reason those two rules are gated at all: a record
-   * that legitimately has no product of interest (or an empty required
-   * Attribute) must stay savable for any UNRELATED edit — the endpoint is
-   * sparse, so those keys are neither sent nor validated server-side. Making
-   * them unconditional client-side refused every save with no request ever
-   * going out, i.e. the save button did nothing.
+   * The counterpart, and the reason that rule is gated at all: a record that
+   * legitimately has no product of interest must stay savable for any
+   * UNRELATED edit — the endpoint is sparse, so the key is neither sent nor
+   * validated server-side. Making it unconditional client-side refused every
+   * save with no request ever going out, i.e. the save button did nothing.
    */
   it('saves an unrelated edit on a record that is missing a mandatory value', async () => {
-    const stored = panel({ products_of_interest: [], attribute_values: { notes: null, priority: null } })
+    const stored = panel({ products_of_interest: [] })
     fetchRequestWorkPanelMock.mockResolvedValue(stored)
     updateRequestWorkMock.mockResolvedValue(stored)
 
@@ -215,7 +210,6 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     const [, payload] = updateRequestWorkMock.mock.calls[0]
     expect(payload).not.toHaveProperty('products_of_interest')
-    expect(payload).not.toHaveProperty('attribute_values')
   })
 
   /**

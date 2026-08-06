@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Table;
 
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
-use App\Tables\RequestManagement\AttributeScopedTableDefinition;
+use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -59,11 +59,9 @@ class TableValuesRequest extends FormRequest
             // Whitelist the filter keys: every key must be a filterable column.
             'filterModel.*' => ['array'],
 
-            // Spec 0064: required to resolve an `attr.*` columnId for
-            // `request-management` (`columnId` above is ALREADY checked
-            // against this same scoped instance's filterableColumnIds() —
-            // see definition() — so an attr.* columnId with this key absent
-            // is rejected by Rule::in() without any extra logic, AC-014).
+            // Spec 0064 (spec 0084 dropped its `attr.*`-column effect):
+            // accepted for `request-management`, a no-op key for every other
+            // domain.
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
 
             // Spec 0067: scopes `quotes` distinct-values to one Opportunity's
@@ -126,7 +124,7 @@ class TableValuesRequest extends FormRequest
             $domain = (string) $this->route('domain');
             $definition = app(TableRegistry::class)->resolve($domain);
 
-            if ($definition instanceof AttributeScopedTableDefinition) {
+            if ($definition instanceof RequestManagementScopedTableDefinition) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
             }
 

@@ -20,13 +20,13 @@ const OPERATOR_ERROR: FieldErrors<RequestWorkFormValues> = {
 
 describe('describeInvalidFields — Operatore label (spec 0080)', () => {
   it('AC-032: names the field "Operator" with no resolved manager_labels', () => {
-    const fields = describeInvalidFields(OPERATOR_ERROR, [], undefined, i18n.t.bind(i18n))
+    const fields = describeInvalidFields(OPERATOR_ERROR, undefined, i18n.t.bind(i18n))
 
     expect(fields).toEqual([i18n.t('requestManagement.workPanel.attribution.operator')])
   })
 
   it('AC-045: names the field with the resolved level-2 label instead', () => {
-    const fields = describeInvalidFields(OPERATOR_ERROR, [], { '2': 'Consultant' }, i18n.t.bind(i18n))
+    const fields = describeInvalidFields(OPERATOR_ERROR, { '2': 'Consultant' }, i18n.t.bind(i18n))
 
     expect(fields).toEqual(['Consultant'])
   })

@@ -8,10 +8,10 @@ import type { ApplicableAttribute, ApplicableAttributeOption } from '@/features/
 
 /**
  * Adapts `ApplicableAttribute` (spec 0049, the multi-category-merged shape
- * `ProductResource.applicable_attributes` and `RequestManagementResource.
+ * `ProductResource.applicable_attributes` and `QuoteResource.
  * applicable_attributes` both send) onto `EffectiveAttribute` (spec 0061),
  * the shape `AttributeLayoutRenderer` consumes (spec 0062). Shared by the
- * Opportunity work panel's dynamic fields and the Product detail's read-only
+ * Offer form's dynamic fields (spec 0084) and the Product detail's read-only
  * attribute values section — both read the SAME `ApplicableAttribute` DTO,
  * so the mapping lives once here rather than twice. `inherited` is always
  * `false`: the renderer only reads it for the configurator's own palette,

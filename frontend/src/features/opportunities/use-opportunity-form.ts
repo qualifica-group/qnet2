@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import type { Path, Resolver } from 'react-hook-form'
+import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -26,11 +26,8 @@ import {
   DEFAULT_MANAGER_SLOTS,
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
-import { seedAttributeValues } from '@/features/request-management/request-work-payload'
-import { useOpportunityFormContext } from '@/features/opportunities/use-opportunity-form-context'
 import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
 import type {
-  ApplicableAttributeSummary,
   OpportunityDetail,
   OpportunityFormMode,
   OpportunityProductLine,
@@ -55,7 +52,6 @@ const SERVER_ERROR_FIELDS = [
   'estimated_value',
   'success_probability',
   'general_notes',
-  'attribute_values',
 ] as const
 
 export type OpportunityFormValues = CreateOpportunityFormValues
@@ -104,11 +100,6 @@ export interface LeadSubmissionState {
   fromLead: CreatePayloadFromLead | null
 }
 
-/** Hoisted stable empties: a fresh `[]`/`{}` per render would churn every `useMemo` downstream (schema, resolver, seeding effect). */
-const NO_PRODUCT_LINES: ProductLineRow[] = []
-const NO_ATTRIBUTES: ApplicableAttributeSummary[] = []
-const NO_ATTRIBUTE_VALUES: Record<string, unknown> = {}
-
 /** Never blocked, no active lead — the default `LeadSubmissionState` (edit mode, or before any lead is picked in create). */
 export const NO_LEAD_SUBMISSION: LeadSubmissionState = { blocked: false, fromLead: null }
 
@@ -129,36 +120,15 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
   const { t } = useTranslation()
   const isEdit = mode.type === 'edit'
 
-  // The applicable dynamic attributes (user directive 2026-08-05) come
-  // already resolved on the loaded record in edit; in create they depend on
-  // the product lines being picked IN THIS FORM, so they are watched, not read
-  // once. `form` does not exist yet here — the watch below hangs off the
-  // control returned by `useForm`, so the create branch reads the rows through
-  // a ref-free two-step: `useForm` first (with a stable resolver indirection),
-  // then the context, then the resolver swap.
-  const loadedAttributes = useMemo(
-    () => (mode.type === 'edit' ? (mode.opportunity.applicable_attributes ?? NO_ATTRIBUTES) : NO_ATTRIBUTES),
-    [mode],
-  )
-  const loadedAttributeValues = useMemo(
-    () => (mode.type === 'edit' ? (mode.opportunity.attribute_values ?? NO_ATTRIBUTE_VALUES) : NO_ATTRIBUTE_VALUES),
-    [mode],
-  )
-
   // D-5 grandfathering (spec 0077): the update schema's new row-set rules are
   // gated against the loaded opportunity's own persisted rows, so an
   // unrelated field edit on a non-conformant historic record still saves.
-  const baseSchema = useMemo(
+  const schema = useMemo(
     () =>
       mode.type === 'edit'
-        ? buildUpdateOpportunitySchema(
-            t,
-            toProductLineRows(mode.opportunity.product_lines),
-            loadedAttributes,
-            loadedAttributeValues,
-          )
+        ? buildUpdateOpportunitySchema(t, toProductLineRows(mode.opportunity.product_lines))
         : buildCreateOpportunitySchema(t),
-    [mode, t, loadedAttributes, loadedAttributeValues],
+    [mode, t],
   )
 
   const defaultValues = useMemo<OpportunityFormValues>(() => {
@@ -184,13 +154,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
         // hydrates as 0 ("0%" ≡ "not set").
         success_probability: opportunity.success_probability ?? 0,
         general_notes: opportunity.general_notes ?? null,
-        // Seeded per applicable code (never the raw stored map): a boolean
-        // with no stored value must hydrate as `false`, or the payload diff
-        // would report it changed on every unrelated save.
-        attribute_values: seedAttributeValues(
-          opportunity.applicable_attributes ?? [],
-          opportunity.attribute_values ?? {},
-        ),
       }
     }
     const empty: OpportunityFormValues = {
@@ -214,8 +177,6 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       estimated_value: null,
       success_probability: 0,
       general_notes: null,
-      // Filled in as soon as the chosen categories resolve their set.
-      attribute_values: {},
     }
     if (!mode.fromLead) {
       return empty
@@ -242,70 +203,17 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
     }
   }, [mode])
 
-  // The create schema is rebuilt from what the operator picks in this very
-  // form (the categories decide the dynamic fields), so it cannot be handed to
-  // `useForm` at construction time. The resolver is a stable indirection that
-  // always runs the latest one; the seed is the attribute-less schema, the only
-  // one that exists before the first resolution (mirrors `useRequestCreateForm`).
-  const resolverRef = useRef<Resolver<OpportunityFormValues>>(zodResolver(baseSchema))
-
   const form = useForm<OpportunityFormValues>({
-    resolver: (values, context, options) => resolverRef.current(values, context, options),
+    resolver: zodResolver(schema),
     defaultValues,
   })
 
-  const sourceId = useWatch({ control: form.control, name: 'source_id' })
-  const productLines = useWatch({ control: form.control, name: 'product_lines' })
-  // Edit already has its set on the loaded record: no round trip, and no
-  // second source of truth for the same list.
-  const { context, isLoading: isContextLoading } = useOpportunityFormContext(
-    sourceId,
-    isEdit ? NO_PRODUCT_LINES : productLines,
-  )
-  const attributes = isEdit ? loadedAttributes : context.applicable_attributes
-  const attributeLayout = isEdit ? (mode.opportunity.attribute_layout ?? null) : context.attribute_layout
-
-  const schema = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? baseSchema
-        : buildCreateOpportunitySchema(t, context.applicable_attributes),
-    [baseSchema, context.applicable_attributes, mode.type, t],
-  )
-
-  useEffect(() => {
-    resolverRef.current = zodResolver(schema)
-  }, [schema])
-
-  // The resolver is swapped as the applicable set changes, so RHF always
-  // validates against the fields currently on screen. `setValue` on the whole
-  // map (rather than a `reset`) keeps every other field already filled in — a
-  // new category must not wipe the form.
-  useEffect(() => {
-    form.setValue('attribute_values', seedAttributeValues(attributes, form.getValues('attribute_values')))
-  }, [attributes, form])
-
-  return {
-    form,
-    isEdit,
-    /** The dynamic fields currently on screen, and the layout they render through. */
-    attributes,
-    attributeLayout,
-    /** True while the FIRST resolution for the current categories is in flight (create only). */
-    isAttributesLoading: isContextLoading,
-  }
+  return { form, isEdit }
 }
 
 interface UseOpportunityFormSubmitArgs {
   form: ReturnType<typeof useOpportunityForm>['form']
   mode: OpportunityFormMode
-  /**
-   * The dynamic attributes currently on screen (user directive 2026-08-05):
-   * only their codes travel on create — a value left over from a category the
-   * user has since changed is not in the set the server validates against.
-   * Edit diffs against the loaded record instead, inside `buildUpdatePayload`.
-   */
-  attributeCodes?: string[]
   /** Create mode only (spec 0040 A-1): the in-form Lead select's current lock/blocked state. `NO_LEAD_SUBMISSION` in edit mode. */
   leadSubmission: LeadSubmissionState
   /** Called after a successful create/update so the caller can navigate to the detail page. */
@@ -322,7 +230,6 @@ export function useOpportunityFormSubmit({
   mode,
   leadSubmission,
   onSuccess,
-  attributeCodes = [],
 }: UseOpportunityFormSubmitArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -347,9 +254,7 @@ export function useOpportunityFormSubmit({
         return
       }
 
-      const created = await createOpportunity(
-        buildCreatePayload(values, leadSubmission.fromLead ?? undefined, attributeCodes),
-      )
+      const created = await createOpportunity(buildCreatePayload(values, leadSubmission.fromLead ?? undefined))
       toast.success(t('opportunities.form.created'))
       invalidateStats()
       onSuccess(created)

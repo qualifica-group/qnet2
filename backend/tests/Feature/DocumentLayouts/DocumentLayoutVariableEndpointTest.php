@@ -68,7 +68,7 @@ it('200: the response envelope carries {module, categories} with the frozen cate
     expect($categoryKeys)->toBe([
         'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial',
         'reporter', 'supervisor', 'company', 'company_site', 'operational_site',
-        'custom_fields', 'opportunity_attributes', 'document',
+        'custom_fields', 'quote_attributes', 'document',
     ]);
 
     $quoteCategory = collect($response->json('data.categories'))->firstWhere('key', 'quote');

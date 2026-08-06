@@ -21,7 +21,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     rewards: [],
     next_callback_at: null,
     general_notes: '',
-    attribute_values: {},
     ...overrides,
   }
 }

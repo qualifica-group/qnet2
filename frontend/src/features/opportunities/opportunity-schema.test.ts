@@ -40,9 +40,6 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     success_probability: 0,
     // "Note generali" (2026-07-27): free text, never submit-blocking.
     general_notes: null,
-    // "Informazioni aggiuntive" (2026-08-05): one key per applicable
-    // attribute; empty when the schema was built without any (the default).
-    attribute_values: {},
     ...overrides,
   }
 }

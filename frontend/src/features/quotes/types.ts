@@ -11,6 +11,8 @@
  * point of calculation/formatting (see `quote-totals.ts`).
  */
 
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
@@ -216,6 +218,12 @@ export interface QuoteDetail {
   payment_method_id: number | null
   payment_method: QuoteRelationRef | null
   internal_notes: string | null
+  /** Spec 0084: i valori raccolti, uno per `code` applicabile. `{}` quando vuoto. */
+  attribute_values: Record<string, CustomFieldValue>
+  /** Il set risolto dalle categorie dei prodotti delle righe offerta, contesto `quote`. */
+  applicable_attributes: ApplicableAttributeSummary[]
+  /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
+  attribute_layout: LayoutBlob | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
   summary: QuoteSummary
@@ -264,6 +272,8 @@ export interface CreateQuotePayload {
   quote_workflow_status_id?: number | null
   /** Mandatory only when the TARGET status carries `requires_note` (AC-023); never persisted on the quote. */
   note?: string | null
+  /** Spec 0084: merge SPARSO server-side — i `code` assenti conservano il valore precedente. */
+  attribute_values?: Record<string, CustomFieldValue>
   commercial_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
@@ -301,3 +311,45 @@ export type UpdateQuotePayload = Partial<Omit<CreateQuotePayload, 'opportunity_i
 export type QuoteFormMode =
   | { type: 'create'; params?: ModuleCreateParams }
   | { type: 'edit'; quote: QuoteDetailWithPermissions }
+
+/** A single labeled choice of an enum-type Attribute (spec 0049). */
+export interface AttributeOptionRef {
+  value: string
+  label: string
+  color: string | null
+}
+
+/**
+ * Spec 0084: summary of ONE Attribute applicable to this quote — the union,
+ * dedup-per-`code`, of the effective Attributes of every OFFER LINE's product
+ * category, in context `quote` — as exposed by
+ * `QuoteResource.applicable_attributes`. Kept LOCAL rather than imported from
+ * `features/opportunities` to keep the two modules decoupled; it mirrors the
+ * same shape by frozen contract, not by import.
+ */
+export interface ApplicableAttributeSummary {
+  id: number
+  code: string
+  name: string
+  type: string
+  description: string | null
+  help_text: string | null
+  placeholder: string | null
+  icon: string | null
+  config: Record<string, unknown> | null
+  relation_target: Record<string, unknown> | null
+  is_required: boolean
+  sort_order: number
+  options: AttributeOptionRef[]
+}
+
+/**
+ * Wire shape of POST /api/quotes/form-context (spec 0084, D-5): the dynamic
+ * fields the products picked so far resolve to, for a quote that may not be
+ * saved yet.
+ */
+export interface QuoteFormContext {
+  applicable_attributes: ApplicableAttributeSummary[]
+  attribute_layout: LayoutBlob | null
+}
+

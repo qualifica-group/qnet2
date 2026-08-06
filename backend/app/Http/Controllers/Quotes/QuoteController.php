@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Quotes;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\Quotes\QuoteFormContextRequest;
 use App\Http\Requests\Quotes\StoreQuoteRequest;
 use App\Http\Requests\Quotes\UpdateQuoteRequest;
+use App\Http\Resources\QuoteFormContextResource;
 use App\Http\Resources\QuoteResource;
 use App\Models\Quote;
 use App\Models\User;
+use App\Quotes\QuoteAttributeResolver;
 use App\Services\QuoteService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -37,7 +41,27 @@ class QuoteController extends BaseApiController
         private readonly QuoteService $service,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
+        private readonly QuoteAttributeResolver $attributeResolver,
     ) {}
+
+    /**
+     * POST /api/quotes/form-context (spec 0084, D-5): the applicable dynamic
+     * attributes and their layout for the offer lines composed so far. Read-
+     * only (nothing is persisted), gated by the SAME `quotes.create` that
+     * gates the form itself.
+     */
+    public function formContext(QuoteFormContextRequest $request): JsonResponse
+    {
+        try {
+            $this->authorize('create', Quote::class);
+
+            return $this->ok(new QuoteFormContextResource(
+                $this->attributeResolver->formContext($request->productIds(), FormMode::Create),
+            ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
 
     /**
      * GET /api/quotes/{quote} — single quote (view row-action).

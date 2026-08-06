@@ -36,7 +36,7 @@ return [
             'company_site' => 'Sede',
             'operational_site' => 'Sede operativa',
             'custom_fields' => 'Campi personalizzati',
-            'opportunity_attributes' => 'Attributi opportunità',
+            'quote_attributes' => 'Attributi offerta',
             'document' => 'Documento',
         ],
 

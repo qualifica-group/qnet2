@@ -34,6 +34,8 @@ final readonly class CreateProductCategoryData
         public ?array $managerLabels = null,
         /** Spec 0080: whether this category inherits its ancestors' manager labels. Defaults to true, same as the attribute barriers. */
         public bool $inheritsManagerLabels = true,
+        /** Spec 0084: the third usage context's own inheritance barrier (App\Enums\AttributeContext::Quote), same default-true convention as inheritsProductAttributes/inheritsOpportunityAttributes. Appended at the end for positional compat. */
+        public bool $inheritsQuoteAttributes = true,
     ) {}
 
     /**
@@ -56,6 +58,7 @@ final readonly class CreateProductCategoryData
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : true,
+            inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : true,
         );
     }
 

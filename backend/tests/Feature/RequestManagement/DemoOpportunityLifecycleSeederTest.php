@@ -15,12 +15,15 @@ use Database\Seeders\DemoProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 
-// The demo lifecycle pass: fills the opportunity-context attributes (spec
-// 0061) and plans callbacks through the real RequestManagementService write
-// path. Spec 0083 (D-2) removed the "stato di lavorazione" from the
-// Opportunity — the seeder no longer walks a working-status set nor creates
-// a requires_note note on this channel (see the seeder's own docblock); that
-// coverage moved to the Offerta (tests/Feature/Quotes/QuoteRequiresNoteTest.php).
+// The demo lifecycle pass: plans callbacks through the real
+// RequestManagementService write path. Spec 0083 (D-2) removed the "stato di
+// lavorazione" from the Opportunity — the seeder no longer walks a
+// working-status set nor creates a requires_note note on this channel (see
+// the seeder's own docblock); that coverage moved to the Offerta
+// (tests/Feature/Quotes/QuoteRequiresNoteTest.php). Spec 0084 (D-1) removed
+// the opportunity-context attribute fill this seeder used to perform too —
+// see tests/Feature/Quotes/DemoQuoteSeederTest.php for its Offerta-side
+// replacement (AC-050).
 uses(RefreshDatabase::class);
 
 function seedDemoLifecycle(): void
@@ -43,19 +46,12 @@ function seedDemoLifecycle(): void
     test()->seed(DemoOpportunityLifecycleSeeder::class);
 }
 
-it('fills the opportunity-context attribute values of the categories it works', function (): void {
+it('plans a callback on some of the seeded requests', function (): void {
     seedDemoLifecycle();
 
-    $withValues = Opportunity::query()->whereNotNull('attribute_values')->get()
-        ->filter(static fn (Opportunity $opportunity): bool => $opportunity->attribute_values !== []);
+    $withCallback = Opportunity::query()->whereNotNull('next_callback_at')->count();
 
-    expect($withValues)->not->toBeEmpty();
-
-    $codes = $withValues->flatMap(static fn (Opportunity $opportunity): array => array_keys($opportunity->attribute_values))->unique();
-
-    // Only codes the applicable set carries, never a product-context one.
-    expect($codes)->toContain('demo_processing_notes')
-        ->and($codes)->not->toContain('demo_course_hours');
+    expect($withCallback)->toBeGreaterThan(0);
 });
 
 it('is a no-op without an actor allowed to write notes', function (): void {
@@ -71,9 +67,9 @@ it('is a no-op without an actor allowed to write notes', function (): void {
     test()->seed(DemoCategoryWorkflowSeeder::class);
     test()->seed(DemoOpportunitySeeder::class);
 
-    $before = Opportunity::query()->pluck('attribute_values', 'id');
+    $before = Opportunity::query()->pluck('next_callback_at', 'id');
 
     test()->seed(DemoOpportunityLifecycleSeeder::class);
 
-    expect(Opportunity::query()->pluck('attribute_values', 'id')->all())->toBe($before->all());
+    expect(Opportunity::query()->pluck('next_callback_at', 'id')->all())->toEqual($before->all());
 });

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import type { Path } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -14,6 +14,9 @@ import {
   type QuoteFormValues,
   type QuoteLineFormValues,
 } from '@/features/quotes/quote-schema'
+import { useQuoteFormContext } from '@/features/quotes/use-quote-form-context'
+import { seedAttributeValues } from '@/features/attributes/attribute-values'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   QuoteDetail,
   QuoteFormMode,
@@ -23,6 +26,9 @@ import type {
 
 /** Hoisted so the schema memo keeps a stable dependency in create mode (no set resolved yet). */
 const EMPTY_STATUSES: QuoteWorkflowStatusRef[] = []
+
+/** Hoisted: un literal inline creerebbe un nuovo riferimento a ogni render. */
+const EMPTY_ATTRIBUTE_VALUES: Record<string, CustomFieldValue> = {}
 
 /** Server-side field names mapped onto the form for 422 handling (mirrors `opportunities`/`projects`). */
 const SERVER_ERROR_FIELDS = [
@@ -108,7 +114,11 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   const workflowStatuses = mode.type === 'edit' ? (mode.quote.quote_workflow_statuses ?? EMPTY_STATUSES) : EMPTY_STATUSES
   const originalStatusId = mode.type === 'edit' ? mode.quote.quote_workflow_status_id : null
 
-  const schema = useMemo(
+  // Lo schema BASE: quello che esiste prima che un prodotto sia scelto, senza
+  // alcun attributo dinamico. Serve come seme del resolver — il set applicabile
+  // dipende da cio' che l'operatore sceglie in QUESTO form (spec 0084 D-5),
+  // quindi non puo' essere passato a `useForm` alla costruzione.
+  const baseSchema = useMemo(
     () =>
       isEdit
         ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId)
@@ -125,6 +135,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         opportunity_id: quote.opportunity_id,
         quote_workflow_status_id: quote.quote_workflow_status_id,
         note: null,
+        attribute_values: quote.attribute_values ?? EMPTY_ATTRIBUTE_VALUES,
         commercial_id: quote.commercial_id,
         reporter_id: quote.reporter_id,
         supervisor_id: quote.supervisor_id,
@@ -149,6 +160,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       opportunity_id: forcedOpportunityId,
       quote_workflow_status_id: null,
       note: null,
+      attribute_values: EMPTY_ATTRIBUTE_VALUES,
       commercial_id: null,
       reporter_id: null,
       supervisor_id: null,
@@ -168,10 +180,52 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     }
   }, [mode, initialCode])
 
+  // Indirezione stabile: `useForm` riceve un resolver che non cambia mai
+  // identita', ma che esegue sempre l'ultimo schema costruito. Stesso pattern
+  // gia' collaudato in `useOpportunityForm`/`useRequestCreateForm`.
+  const resolverRef = useRef<Resolver<QuoteFormValues>>(zodResolver(baseSchema))
+
   const form = useForm<QuoteFormValues>({
-    resolver: zodResolver(schema),
+    resolver: (values, context, options) => resolverRef.current(values, context, options),
     defaultValues,
   })
+
+  // Spec 0084 D-5: l'innesco e' la scelta del PRODOTTO sulle righe OFFERTA.
+  const offerLines = useWatch({ control: form.control, name: 'offer_lines' })
+  const pickedProductIds = useMemo(
+    () => (offerLines ?? []).map((line) => line.product_id).filter((id): id is number => id !== null),
+    [offerLines],
+  )
+  const { context: attributeContext, isLoading: attributesLoading, hasPickedProduct } =
+    useQuoteFormContext(pickedProductIds)
+
+  // Lo schema vero, ricostruito ogni volta che il set applicabile cambia, cosi'
+  // RHF valida SEMPRE contro i campi realmente a schermo (obbligatorieta'
+  // inclusa). Senza questo swap la refine sui `is_required` resterebbe inerte.
+  const schema = useMemo(
+    () =>
+      isEdit
+        ? buildUpdateQuoteSchema(t, workflowStatuses, originalStatusId, attributeContext.applicable_attributes)
+        : buildCreateQuoteSchema(t, attributeContext.applicable_attributes),
+    [isEdit, t, workflowStatuses, originalStatusId, attributeContext.applicable_attributes],
+  )
+
+  useEffect(() => {
+    resolverRef.current = zodResolver(schema)
+  }, [schema])
+
+  // Il set applicabile arriva DOPO la costruzione del form: senza seminare una
+  // chiave per ogni `code` risolto, l'oggetto Zod appena swappato rifiuterebbe
+  // quelle mancanti (un'offerta salvata prima che l'Attributo esistesse non le
+  // ha) e `handleSubmit` abortirebbe in silenzio, con errori su campi mai
+  // toccati. `setValue` sulla mappa intera, non `reset`: gli altri campi gia'
+  // compilati restano. Stesso pattern di `useOpportunityForm`.
+  useEffect(() => {
+    form.setValue(
+      'attribute_values',
+      seedAttributeValues(attributeContext.applicable_attributes, form.getValues('attribute_values')),
+    )
+  }, [attributeContext.applicable_attributes, form])
 
   const [vatRatePercentById, setVatRatePercentById] = useState<Record<number, number>>(() =>
     initialVatRatePercents(mode),
@@ -208,5 +262,17 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     }
   }
 
-  return { form, isEdit, serverError, onSubmit, vatRatePercentFor, rememberVatRatePercent }
+  return {
+    form,
+    isEdit,
+    serverError,
+    onSubmit,
+    vatRatePercentFor,
+    rememberVatRatePercent,
+    // Spec 0084 D-5: risolti QUI perche' lo schema ne dipende; il body li
+    // consuma per rendere la sezione, senza risolverli una seconda volta.
+    attributeContext,
+    attributesLoading,
+    hasPickedProduct,
+  }
 }

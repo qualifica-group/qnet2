@@ -54,7 +54,7 @@ it('contains every frozen category, in order, for the quotes module (AC-040)', f
     expect(collect($categories)->pluck('key')->all())->toBe([
         'quote', 'totals', 'client', 'opportunity', 'referent', 'commercial', 'reporter',
         'supervisor', 'company', 'company_site', 'operational_site', 'custom_fields',
-        'opportunity_attributes', 'document',
+        'quote_attributes', 'document',
     ]);
 });
 
@@ -62,7 +62,7 @@ it('every variable has a non-empty variable/label/type/example, and no variable 
     CustomFieldDefinition::factory()->forEntity('quotes')->create(['key' => 'delivery_notes', 'label' => 'Delivery notes']);
     $category = ProductCategory::factory()->create();
     $attribute = Attribute::factory()->create(['code' => 'floor_size']);
-    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Opportunity->value]);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Quote->value]);
 
     $categories = dlCatalog()->categoriesFor(DocumentLayoutModule::Quotes, User::factory()->create());
     $variables = collect($categories)->flatMap(fn (array $category): array => $category['variables']);
@@ -113,22 +113,22 @@ it('exposes an active custom field of quotes as {custom_fields.KEY} with zero co
 });
 
 // ---------------------------------------------------------------------------
-// AC-043 — opportunity_attributes is dynamic
+// AC-043 — quote_attributes is dynamic (spec 0084: was opportunity_attributes)
 // ---------------------------------------------------------------------------
 
-it('exposes an Attribute assigned in the opportunity context as {opportunity_attributes.CODE} (AC-043)', function () {
+it('exposes an Attribute assigned in the quote context as {quote_attributes.CODE} (AC-043)', function () {
     $category = ProductCategory::factory()->create();
-    $opportunityAttribute = Attribute::factory()->create(['code' => 'floor_size', 'name' => 'Floor size']);
+    $quoteAttribute = Attribute::factory()->create(['code' => 'floor_size', 'name' => 'Floor size']);
     $productOnlyAttribute = Attribute::factory()->create(['code' => 'weight_kg', 'name' => 'Weight']);
 
-    $category->attributes()->attach($opportunityAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Opportunity->value]);
+    $category->attributes()->attach($quoteAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Quote->value]);
     $category->attributes()->attach($productOnlyAttribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => AttributeContext::Product->value]);
 
     $categories = dlCatalog()->categoriesFor(DocumentLayoutModule::Quotes, User::factory()->create());
-    $tokens = collect(collect($categories)->firstWhere('key', 'opportunity_attributes')['variables'])->pluck('variable');
+    $tokens = collect(collect($categories)->firstWhere('key', 'quote_attributes')['variables'])->pluck('variable');
 
-    expect($tokens->all())->toContain('{opportunity_attributes.floor_size}')
-        ->and($tokens->all())->not->toContain('{opportunity_attributes.weight_kg}');
+    expect($tokens->all())->toContain('{quote_attributes.floor_size}')
+        ->and($tokens->all())->not->toContain('{quote_attributes.weight_kg}');
 });
 
 // ---------------------------------------------------------------------------

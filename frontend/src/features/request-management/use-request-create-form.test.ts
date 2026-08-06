@@ -3,7 +3,6 @@ import { act } from '@testing-library/react'
 import i18n from '@/i18n'
 import {
   COMPLETE_ROW,
-  EMPTY_FORM_CONTEXT,
   TEST_SOURCE_ID,
   completeIdentity,
   renderCreateForm,
@@ -18,16 +17,8 @@ import {
  */
 
 const createRequestMock = vi.fn()
-/**
- * The create form resolves its working statuses / dynamic fields server-side
- * (user directive 2026-07-31). These tests are about the submit logic, so the
- * context stays empty — the sections it feeds render nothing and the payload
- * carries none of their keys.
- */
-const fetchRequestFormContextMock = vi.fn(async () => EMPTY_FORM_CONTEXT)
 vi.mock('@/features/request-management/api', () => ({
   createRequest: (...args: unknown[]) => createRequestMock(...args),
-  fetchRequestFormContext: () => fetchRequestFormContextMock(),
 }))
 
 beforeAll(async () => {
@@ -36,7 +27,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRequestMock.mockReset()
-  fetchRequestFormContextMock.mockClear()
 })
 
 describe('useRequestCreateForm', () => {

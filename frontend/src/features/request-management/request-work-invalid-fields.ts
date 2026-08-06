@@ -2,7 +2,7 @@ import type { FieldErrors } from 'react-hook-form'
 import type { TFunction } from 'i18next'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
-import type { ApplicableAttribute, ManagerLabels } from '@/features/request-management/types'
+import type { ManagerLabels } from '@/features/request-management/types'
 
 /**
  * Names the fields that refused the work panel's submit, for the summary shown
@@ -39,7 +39,6 @@ function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined
     reporter_id: t('requestManagement.workPanel.attribution.reporter'),
     operator_id: managerLabels?.[OPERATOR_MANAGER_LABEL_POSITION] ?? t('requestManagement.workPanel.attribution.operator'),
     operational_site_id: t('requestManagement.workPanel.attribution.operationalSite'),
-    attribute_values: t('requestManagement.workPanel.dynamicFields.title'),
   }
 }
 
@@ -63,28 +62,15 @@ function collectMessages(error: unknown): string[] {
   return [...new Set(nested)]
 }
 
-/**
- * Names the blocking fields. `attribute_values` is expanded into the offending
- * Attribute NAMES: its errors sit one level down (`attribute_values.<code>`)
- * and a configured layout can hide the leaf control in another section, so the
- * block label alone would not locate them.
- */
+/** Names the blocking fields. */
 export function describeInvalidFields(
   errors: FieldErrors<RequestWorkFormValues>,
-  attributes: ApplicableAttribute[],
   managerLabels: ManagerLabels | undefined,
   t: TFunction,
 ): string[] {
   const labels = buildFieldLabels(t, managerLabels)
 
   return Object.entries(errors).flatMap(([key, error]) => {
-    if (key === 'attribute_values') {
-      const codes = Object.keys((error ?? {}) as Record<string, unknown>)
-      const names = codes.map((code) => attributes.find((attribute) => attribute.code === code)?.name ?? code)
-
-      return names.length > 0 ? names : [labels[key]]
-    }
-
     const label = labels[key] ?? key
 
     if (!BUFFERED_BLOCKS.has(key)) {

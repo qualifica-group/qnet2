@@ -7,18 +7,13 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
-use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\User;
-use App\RequestManagement\ApplicableAttribute;
-use App\RequestManagement\ApplicableAttributesResolver;
-use App\RequestManagement\OpportunityAttributeLayoutResolver;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,23 +24,25 @@ use Illuminate\Validation\ValidationException;
  * operative endpoints have their OWN authorization (`request-management.*`)
  * and their own write rules (D-4/D-5).
  *
- * `loadWorkPanel()`/`updateWork()` both return the SAME shape —
- * {opportunity, applicable_attributes, attribute_layout} — consumed
- * directly by RequestManagementResource, so show/update render identically
- * (data contract: "Response identica alla GET"). Spec 0083, D-2: this panel
- * no longer advances any working status of its own — the Opportunity's
- * `status` stays the COMPUTED, read-only summary it already was.
+ * `loadWorkPanel()`/`updateWork()` both return the SAME shape — {opportunity}
+ * — consumed directly by RequestManagementResource, so show/update render
+ * identically (data contract: "Response identica alla GET"). Spec 0083, D-2:
+ * this panel no longer advances any working status of its own — the
+ * Opportunity's `status` stays the COMPUTED, read-only summary it already
+ * was. Spec 0084, D-1: the former `applicable_attributes`/`attribute_layout`
+ * pair is REMOVED — the dynamic "Informazioni aggiuntive" section moved to
+ * the Offerta (Quote).
  *
- * Activity logging: `attribute_values` and (spec 0052 D-2) `next_callback_at`
- * are BOTH deliberately excluded from `Opportunity::$fillable` (mass-
- * assignment guard), and `LogsModelActivity::getActivitylogOptions()` calls
- * `logFillable()` — Spatie's dirty-diff only ever inspects the model's
- * fillable attributes. A change to either column therefore never reaches the
- * automatic model-event log. `updateWork()` compensates with an EXPLICIT
- * `activity()` call carrying the same `attributes`/`old` property shape the
- * automatic log would have produced, so GET /api/activity-log/request-
- * management/{id} (reading the Opportunity's own activity rows, D-7) still
- * sees the operative change (AC-043).
+ * Activity logging: `next_callback_at` (spec 0052 D-2) is deliberately
+ * excluded from `Opportunity::$fillable` (mass-assignment guard), and
+ * `LogsModelActivity::getActivitylogOptions()` calls `logFillable()` —
+ * Spatie's dirty-diff only ever inspects the model's fillable attributes. A
+ * change to that column therefore never reaches the automatic model-event
+ * log. `updateWork()` compensates with an EXPLICIT `activity()` call carrying
+ * the same `attributes`/`old` property shape the automatic log would have
+ * produced, so GET /api/activity-log/request-management/{id} (reading the
+ * Opportunity's own activity rows, D-7) still sees the operative change
+ * (AC-043).
  */
 final class RequestManagementService
 {
@@ -88,10 +85,7 @@ final class RequestManagementService
     ];
 
     public function __construct(
-        private readonly ApplicableAttributesResolver $attributesResolver,
-        private readonly OpportunityAttributeLayoutResolver $attributeLayoutResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
-        private readonly RequestAttributeValueWriter $attributeValueWriter,
         private readonly RequestClientProfileWriter $clientProfileWriter,
         private readonly RequestOperatorWriter $operatorWriter,
         private readonly ProductCategoryCoherence $coherence,
@@ -101,17 +95,13 @@ final class RequestManagementService
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
+     * @return array{opportunity: Opportunity}
      */
-    public function loadWorkPanel(Opportunity $opportunity, FormMode $formMode = FormMode::Edit): array
+    public function loadWorkPanel(Opportunity $opportunity): array
     {
         $opportunity->loadMissing(self::WORK_PANEL_RELATIONS);
 
-        return [
-            'opportunity' => $opportunity,
-            'applicable_attributes' => $this->attributesResolver->resolve($opportunity),
-            'attribute_layout' => $this->attributeLayoutResolver->resolve($opportunity, $formMode),
-        ];
+        return ['opportunity' => $opportunity];
     }
 
     /**
@@ -119,8 +109,8 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{attribute_values?: array<string, mixed>, next_callback_at?: string|null, products_of_interest?: array<int, int>, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
+     * @param  array{next_callback_at?: string|null, products_of_interest?: array<int, int>, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput, client_first_name?: string|null, client_last_name?: string|null, client_tax_code?: string|null, client_phone?: string|null}  $data
+     * @return array{opportunity: Opportunity}
      */
     public function updateWork(Opportunity $opportunity, User $actor, array $data): array
     {
@@ -135,15 +125,6 @@ final class RequestManagementService
             // Step 0: attribution (user directive 2026-07-22) — "Fonte",
             // "Segnalatore", Sede operativa.
             $this->applyAttribution($opportunity, $data);
-
-            // Step 1: dynamic field values — validate against the applicable
-            // set as it is BEFORE Step 2 replaces the product lines, i.e. the
-            // set the panel rendered its fields from (AttributeValueValidator,
-            // keyed attribute_values.<code> on failure), then merge into the
-            // existing map (sparse: unset codes keep their persisted value).
-            if (array_key_exists('attribute_values', $data)) {
-                $this->attributeValueWriter->apply($opportunity, (array) $data['attribute_values'], $changed, $old);
-            }
 
             // Step 2: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31).

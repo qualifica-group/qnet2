@@ -154,10 +154,6 @@ export const requestManagement = {
     generalNotes: {
       title: 'Note generali',
     },
-    dynamicFields: {
-      title: 'Informazioni aggiuntive',
-      empty: 'Nessun campo aggiuntivo per questa opportunità.',
-    },
     callback: {
       title: 'Prossimo richiamo',
       description: 'Pianifica la prossima chiamata di follow-up con il cliente.',
@@ -225,8 +221,6 @@ export const requestManagement = {
       activityTab: 'Storico',
     },
     validation: {
-      enumInvalid: 'Seleziona un valore valido.',
-      required: 'Questo campo è obbligatorio.',
       sourceRequired: 'Seleziona una fonte.',
       productLinesRequired: 'Aggiungi almeno una linea di prodotto.',
       productLineIncomplete: 'Seleziona funzione aziendale e categoria prodotto per ogni riga.',

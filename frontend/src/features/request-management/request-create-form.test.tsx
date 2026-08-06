@@ -1,11 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestCreateForm } from '@/features/request-management/request-create-form'
-import { EMPTY_FORM_CONTEXT } from '@/features/request-management/request-create-form-harness'
-import type { RequestFormContext } from '@/features/request-management/types'
 
 /**
  * User directive 2026-07-31 ("la scheda di creazione il piu' simile possibile a
@@ -16,10 +14,8 @@ import type { RequestFormContext } from '@/features/request-management/types'
  * drops one of them fails here.
  */
 
-const fetchRequestFormContextMock = vi.fn(async (): Promise<RequestFormContext> => EMPTY_FORM_CONTEXT)
 vi.mock('@/features/request-management/api', () => ({
   createRequest: vi.fn(),
-  fetchRequestFormContext: () => fetchRequestFormContextMock(),
 }))
 
 // The attribution pickers and the registry picker read their options from the
@@ -53,11 +49,6 @@ function renderCreateForm() {
 
 beforeAll(async () => {
   await i18n.changeLanguage('it')
-})
-
-beforeEach(() => {
-  fetchRequestFormContextMock.mockReset()
-  fetchRequestFormContextMock.mockResolvedValue(EMPTY_FORM_CONTEXT)
 })
 
 describe('RequestCreateForm — lo scheletro del pannello', () => {
@@ -154,15 +145,6 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
       'Attribuzione',
       'Anagrafica cliente',
     ])
-  })
-
-  /** The dynamic fields have nothing to render with no categoria prodotto picked (an empty card would read as "this request has no additional fields"). */
-  it('nasconde i campi dinamici finche non ci sono criteri', async () => {
-    renderCreateForm()
-
-    await waitFor(() => expect(fetchRequestFormContextMock).not.toHaveBeenCalled())
-
-    expect(screen.queryByText('Informazioni aggiuntive')).not.toBeInTheDocument()
   })
 
   /**

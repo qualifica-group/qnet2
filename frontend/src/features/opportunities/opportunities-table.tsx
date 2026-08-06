@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
@@ -20,6 +21,7 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { opportunityColumnRenderers } from '@/features/opportunities/column-renderers'
+import { OpportunityQuotesDetailRenderer } from '@/features/opportunities/opportunity-quotes-detail-renderer'
 import {
   deleteOpportunity,
   OPPORTUNITIES_DOMAIN,
@@ -59,6 +61,11 @@ const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = {
  */
 export function OpportunitiesTable() {
   const { t } = useTranslation()
+  // The expandable Offerte panel (master/detail) is an affordance only: without
+  // `quotes.viewAny` the expand chevron is not rendered at all, and the panel's
+  // own requests would be refused server-side anyway.
+  const { can } = useAbilities()
+  const canViewQuotes = can('quotes.viewAny')
   const stats = useStatsPanel(OPPORTUNITIES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
 
@@ -182,6 +189,9 @@ export function OpportunitiesTable() {
         onAction={handleAction}
         isBusy={isBusy}
         iconMap={OPPORTUNITIES_ACTION_ICONS}
+        masterDetail={canViewQuotes}
+        detailCellRenderer={OpportunityQuotesDetailRenderer}
+        detailRowAutoHeight
       />
 
       {sheet}

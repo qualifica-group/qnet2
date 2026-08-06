@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * class never invents a separate rule.
  *
  * Lives in app/RequestManagement/ (this module's own namespace, alongside
- * ApplicableAttributesResolver et al.), NOT app/Notes/: the module declares
+ * AttributeSetResolver et al.), NOT app/Notes/: the module declares
  * how it wants to be treated by the notes component, the notes component
  * never names the module (AC-021). Resolved from the container by
  * App\Notes\NoteEntityRegistry via the class-string mapped in

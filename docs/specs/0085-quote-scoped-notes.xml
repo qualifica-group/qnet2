@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0085 — Note generali dell'Opportunita' e note specifiche dell'Offerta.
+  Emenda: 0052 (note collaborative). Dipende da: 0083 (la nota di `requires_note` nasce
+  sul canale Offerta e qui riceve il legame `quote_id`).
+-->
+<spec id="0085-quote-scoped-notes" status="draft" owner="nicola" date="2026-08-05">
+
+  <goal>
+    Il sistema di note resta quello attuale, ma ogni nota puo' essere generale (visibile per l'intera
+    Opportunita') oppure legata a una singola Offerta. La lista mostra per default tutte le note con
+    il contesto sempre visibile, e permette di filtrare solo quelle di una determinata Offerta.
+  </goal>
+
+  <context>
+    Stato verificato del repo:
+
+    - Tabella `notes`: polimorfica (`nullableMorphs('notable')`), `parent_id` (thread a un solo
+      livello, normalizzato da `Notes\NoteThreadResolver`), `user_id`, `body` (max 5000),
+      `edited_at`, softDeletes. Indice `(notable_type, notable_id, created_at)`. Pivot
+      `note_mentions`.
+    - `config/notes.php` registra UN SOLO slug: `'request-management' => RequestManagementNotable::class`,
+      il cui `modelClass()` e' `Opportunity`. Quindi l'Opportunita' e' gia' l'unico host, sia dal
+      dettaglio Opportunita' sia da Gestione Richieste. `NoteEntityRegistry::entityTypeForModel()`
+      fa reverse-lookup per classe e assume UNO slug per model: registrare `Quote` come secondo
+      notable romperebbe quell'assunzione, ed e' il motivo della decisione D-1.
+    - Lettura autorizzata per-record da `RequestManagementNotable::authorizeRead`:
+      `request-management.view` AND (`request-management.viewAll` OR essere operatore GA2 della riga).
+      `NotePolicy` genera il solo permesso `notes.create`; update/delete sono author-only.
+    - `GET /api/notes` accetta `entity_type`, `entity_id`, `cursor` (opaco base64
+      `"{created_at}|{id}"`), `limit` (1..50, default 20, conta solo le root); ordinamento keyset
+      `created_at DESC, id DESC`, replies eager-loaded `created_at ASC, id ASC`. Envelope custom
+      `{ success, message, data: Note[], meta: { next_cursor, has_more } }`.
+    - FE `features/notes/`: `use-notes.ts` (`useInfiniteQuery`), `notes-section.tsx`,
+      `notes-dialog.tsx`, `note-list.tsx`, `note-item.tsx`, `note-composer.tsx`,
+      `use-mentionable-users.ts`, `query-keys.ts`. Consumatori: tab Note del dettaglio Opportunita'
+      (`opportunity-detail.tsx`), row action `notes` delle griglie Opportunita' e Gestione Richieste
+      (badge da `notes_count`, `withCount('notes')`).
+    - Spec 0083 sposta l'enforcement di `requires_note` sul canale Offerta: la nota automatica di
+      cambio stato nasce sul thread dell'Opportunita' padre e, con questa spec, porta il `quote_id`
+      dell'offerta che ha cambiato stato.
+
+    Decisione presa dall'utente (2026-08-05):
+    - D-1: si aggiunge la colonna `notes.quote_id` nullable. La nota resta appesa all'Opportunita'
+      (slug `request-management`); `quote_id` null = nota generale, valorizzato = nota di
+      quell'Offerta. Un solo thread, un solo `entity_type`, nessuna nuova entita' notable, nessun
+      conflitto con `entityTypeForModel()`, e la lista aggregata e' nativa.
+
+    Decisioni tecniche di questa spec:
+    - D-2: il filtro e' UN solo parametro `quote_scope`: `'all'` (default) | `'general'` |
+      `'&lt;id&gt;'` numerico. Mappa 1:1 sul selettore della UI e non ammette combinazioni ambigue.
+    - D-3: `quote_id` e' immutabile dopo la creazione — spostare una nota da un'offerta all'altra
+      falsificherebbe il contesto di una conversazione gia' avvenuta. `PATCH` lo ignora, come gia'
+      fa con `parent_id`.
+    - D-4: una reply eredita il `quote_id` della root, sempre. Una reply non puo' avere un contesto
+      diverso dal messaggio a cui risponde.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonna `notes.quote_id` nullable FK -> `quotes`, `cascadeOnDelete`, con indice composito per il filtro.</item>
+      <item>Parametro `quote_scope` su `GET /api/notes` e campo `quote_id` su `POST /api/notes`, con validazione di appartenenza all'Opportunita' host.</item>
+      <item>`NoteResource` espone `quote_id` e un oggetto `quote` compatto per etichettare il contesto in lista.</item>
+      <item>Ereditarieta' del `quote_id` sulle reply (D-4) e immutabilita' in update (D-3).</item>
+      <item>Selettore di filtro nella lista note (Tutte / Generali / una Offerta) e selettore di destinazione nel composer.</item>
+      <item>Etichetta di contesto su ogni nota nella vista aggregata.</item>
+      <item>Montaggio della sezione Note nel dettaglio Offerta, pre-filtrata su quell'offerta e con composer bloccato su di essa.</item>
+      <item>Passaggio del `quote_id` nella nota automatica di cambio stato (spec 0083).</item>
+    </in>
+    <out>
+      <item>Registrazione di `Quote` come entita' notable autonoma (esclusa da D-1).</item>
+      <item>Modifiche al modello di autorizzazione delle note: la lettura resta governata dall'Opportunita' host, l'update/delete resta author-only. Chi vede l'Opportunita' vede tutte le sue note, incluse quelle di offerta.</item>
+      <item>Un contatore `notes_count` separato per offerta sulla griglia Offerte.</item>
+      <item>Menzioni: il bacino di utenti menzionabili resta quello dell'Opportunita' host, invariato.</item>
+      <item>Modifiche al cursore di paginazione: resta `created_at|id`.</item>
+      <item>Note su entita' diverse da Opportunita'/Offerta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/notes">
+      <request>
+        entity_type: string   // required, `Rule::in(registeredTypes())` — oggi solo 'request-management'
+        entity_id: int        // required, min:1
+        quote_scope: string   // NUOVO, opzionale, default 'all'. Valori: 'all' | 'general' | '&lt;int&gt;'
+        cursor: string        // opzionale, opaco
+        limit: int            // opzionale 1..50, default 20 (conta solo le root)
+      </request>
+      <response status="200">
+        { success, message,
+          data: [ {
+            id, body, author: { id, name, avatar_url }, mentions: [...], parent_id,
+            quote_id: int|null,                                  // NUOVO
+            quote: { id, code, title } | null,                   // NUOVO, null per le note generali
+            created_at, edited_at,
+            can: { update, delete },
+            replies: [ ...stesso shape, quote_id ereditato... ]
+          } ],
+          meta: { next_cursor: string|null, has_more: bool } }
+        Semantica del filtro: 'all' = nessun predicato; 'general' = `quote_id IS NULL`;
+        '&lt;id&gt;' = `quote_id = &lt;id&gt;`. Il filtro si applica alle ROOT; le reply seguono la propria root.
+      </response>
+      <errors>
+        403 se `authorizeRead` nega; 404 record host inesistente;
+        422 `quote_scope` malformato; 422 `quote_scope` numerico che non e' un'offerta dell'Opportunita' host
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/notes">
+      <request>
+        entity_type: string   // required
+        entity_id: int        // required
+        body: string          // required, 1..5000
+        parent_id: int|null   // opzionale; se valorizzato, `quote_id` viene IGNORATO ed ereditato dalla root (D-4)
+        quote_id: int|null    // NUOVO, opzionale. null/assente = nota generale
+        mentions: int[]       // opzionale
+      </request>
+      <response status="201">{ success, message, data: Note }  // con `quote_id` e `quote` valorizzati</response>
+      <errors>
+        403 senza `notes.create` o se `authorizeRead` nega; 404 host inesistente;
+        422 `body` vuoto o oltre 5000;
+        422 `quote_id` inesistente o appartenente a un'Opportunita' diversa da `entity_id`
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/notes/{note}">
+      <request>
+        body: string, mentions: int[]
+        // `quote_id` NON e' accettato: se inviato viene ignorato (D-3), come gia' `parent_id`
+      </request>
+      <response status="200">{ success, message, data: Note }</response>
+      <errors>403 non autore; 422 `body` non valido</errors>
+    </endpoint>
+
+    <endpoint method="MIGRATION" path="schema">
+      <request>
+        `notes`: add `quote_id` unsignedBigInteger nullable, FK -> `quotes` `cascadeOnDelete`,
+        indice `(notable_type, notable_id, quote_id, created_at)`. Reversibile.
+      </request>
+      <response status="200">—</response>
+      <errors>—</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Schema e scrittura -->
+    <criterion id="AC-001">Dato il DB migrato, `notes.quote_id` esiste nullable con FK verso `quotes`; il rollback la rimuove senza errori.</criterion>
+    <criterion id="AC-002">Data un'offerta cancellata, quando la elimino, allora le sue note vengono eliminate insieme e le note generali dell'Opportunita' restano.</criterion>
+    <criterion id="AC-003">Dato `POST /api/notes` senza `quote_id`, quando salvo, allora la nota ha `quote_id = null` e `quote = null`.</criterion>
+    <criterion id="AC-004">Dato `POST /api/notes` con un `quote_id` che appartiene all'Opportunita' indicata, quando salvo, allora la nota e' creata e la risposta riporta `quote: { id, code, title }`.</criterion>
+    <criterion id="AC-005">Dato `POST /api/notes` con un `quote_id` di un'offerta di un'ALTRA opportunita', quando salvo, allora 422 con chiave `quote_id` e nessuna nota creata.</criterion>
+    <criterion id="AC-006">Dato `POST /api/notes` con `parent_id` di una root che ha `quote_id = Q` e un `quote_id` diverso nel payload, quando salvo, allora la reply nasce con `quote_id = Q` (ereditato, D-4).</criterion>
+    <criterion id="AC-007">Dato `PATCH /api/notes/{id}` con un `quote_id` diverso, quando salvo, allora il `quote_id` della nota non cambia e il `body` viene aggiornato.</criterion>
+
+    <!-- Lettura e filtro -->
+    <criterion id="AC-010">Data un'Opportunita' con 2 note generali e 3 note su due offerte, quando chiamo `GET /api/notes` senza `quote_scope`, allora ottengo tutte e 5 le root in ordine `created_at DESC, id DESC`.</criterion>
+    <criterion id="AC-011">Con `quote_scope=general` ottengo solo le 2 note generali.</criterion>
+    <criterion id="AC-012">Con `quote_scope=&lt;id offerta A&gt;` ottengo solo le note di A.</criterion>
+    <criterion id="AC-013">Con `quote_scope` numerico riferito a un'offerta di un'altra Opportunita', ottengo 422.</criterion>
+    <criterion id="AC-014">Con `quote_scope=pippo` ottengo 422.</criterion>
+    <criterion id="AC-015">Data una lista filtrata piu' lunga di `limit`, quando pagino con il `next_cursor`, allora il filtro resta applicato e non ci sono duplicati ne' buchi tra le pagine.</criterion>
+    <criterion id="AC-016">Le reply di una root inclusa nel filtro sono sempre presenti, indipendentemente dal loro `quote_id`.</criterion>
+    <criterion id="AC-017">Un attore che non supera `authorizeRead` sull'Opportunita' host riceve 403 anche passando un `quote_scope` valido.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-020">Nel tab Note del dettaglio Opportunita', un selettore permette di scegliere "Tutte" (default), "Generali" e ciascuna Offerta dell'Opportunita'; cambiando selezione la lista si aggiorna.</criterion>
+    <criterion id="AC-021">Nella vista "Tutte", ogni nota di offerta mostra un'etichetta con il codice dell'Offerta e le note generali mostrano l'etichetta "Generale".</criterion>
+    <criterion id="AC-022">Il composer permette di scegliere la destinazione (Generale oppure una specifica Offerta); con un filtro attivo su un'Offerta la destinazione e' preselezionata su quell'Offerta.</criterion>
+    <criterion id="AC-023">Rispondendo a una nota, il selettore di destinazione non compare: la reply eredita il contesto della root.</criterion>
+    <criterion id="AC-024">Nel dettaglio Offerta la sezione Note e' pre-filtrata su quell'Offerta e il composer scrive sempre con quel `quote_id`, senza selettore.</criterion>
+    <criterion id="AC-025">Un'Opportunita' senza offerte non mostra il selettore di filtro ne' quello di destinazione: la sezione si comporta esattamente come oggi.</criterion>
+    <criterion id="AC-026">Le query key di React Query includono lo scope: cambiando filtro non si riusa la cache di un altro scope.</criterion>
+
+    <!-- Integrazione con 0083 -->
+    <criterion id="AC-030">Dato un cambio di stato di un'Offerta verso uno stato con `requires_note = true`, quando salvo con una nota valida, allora la nota creata ha il `quote_id` di quell'Offerta.</criterion>
+    <criterion id="AC-031">Il badge `notes_count` delle griglie Opportunita' e Gestione Richieste continua a contare TUTTE le note dell'Opportunita', generali e di offerta.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza.</item>
+    <item>Il core note resta agnostico dal modulo host: il vincolo testato da `NoteAgnosticismTest` (nessun riferimento al modulo host fuori da `config/notes.php`) deve continuare a valere. `quote_id` e' una colonna di scoping, non un secondo `notable`: la validazione di appartenenza va delegata all'entita' host (`NotableEntity`), non scritta dentro `NoteService`.</item>
+    <item>Autorizzazione invariata e server-side: nessun nuovo permesso, nessun allentamento di `authorizeRead`.</item>
+    <item>Il filtro `quote_scope` deve essere applicato in query (allow-list dei tre valori ammessi, nessuna interpolazione), mai lato applicazione dopo il fetch: la paginazione keyset lo richiede.</item>
+    <item>Nessun N+1 sull'etichetta di contesto: la relazione `quote` va in eager load nella lista.</item>
+    <item>Le stringhe nuove passano da i18next nel namespace `notes`.</item>
+    <item>File entro 300/500 righe; identificatori in inglese; nessuna migrazione gia' committata modificata.</item>
+  </constraints>
+
+</spec>

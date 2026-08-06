@@ -11,8 +11,12 @@ import type { AttributeContext } from '@/features/product-categories/types'
  * component export.
  */
 
-/** The two attribute usage contexts a layout can be configured for (spec 0061). */
-export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'opportunity']
+/**
+ * The attribute usage contexts a layout can be configured for (spec 0061).
+ * `quote` joined them with spec 0084: le "Informazioni aggiuntive" appartengono
+ * al preventivo, non all'opportunita'.
+ */
+export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'opportunity', 'quote']
 
 /**
  * Mirrors backend `App\Enums\LayoutFormScope` (spec 0062 D3 revised): the

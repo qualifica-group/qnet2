@@ -40,12 +40,24 @@ use Illuminate\Support\Facades\Auth;
  *    (authorizeViewAny runs first; a null id simply matches no rows via
  *    `whereHas`, never fail-open).
  *
+ * The category tabs' row scope (spec 0064 D-2/D-3) and the GA2 operator
+ * relabel (spec 0080) are NOT here: spec 0084 moved them into the decorator
+ * `App\Tables\RequestManagement\RequestManagementScopedTableDefinition`,
+ * composed OUTSIDE `CustomFieldAwareTableDefinition` in
+ * `TableRegistry::resolve()` — this domain IS custom-fieldable
+ * (`CustomFieldEntityRegistry`), so `TableController`'s `instanceof` scoping
+ * check must target the OUTERMOST wrap, exactly like
+ * `App\Tables\Quotes\OpportunityScopedTableDefinition` does for `quotes`; a
+ * capability baked into THIS concrete class would sit one layer too deep and
+ * never be reached once wrapped.
+ *
  * `source`/`product_categories` are delegated to RequestRelationColumns
  * (file-size split, engineering.md §6). Spec 0056: `operational_site` (the
  * Sede operativa) has no relation-by-name equivalent (the site has no own
  * name) — delegated instead to the shared App\Tables\Shared\OperationalSiteColumn.
  * Spec 0083, D-2: `workflow_status` is REMOVED — the Opportunity resolves no
- * working state of its own any more.
+ * working state of its own any more. Spec 0084, D-1: the `attr.*` dynamic
+ * attribute columns are REMOVED — the category tabs stay a pure row filter.
  */
 class RequestManagementTableDefinition extends AbstractTableDefinition
 {

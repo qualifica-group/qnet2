@@ -89,19 +89,19 @@ it('resolves {totals.revenue_net}/{totals.revenue_vat}/{totals.revenue_gross} wi
 });
 
 // ---------------------------------------------------------------------------
-// AC-236 — dynamic categories: custom_fields, opportunity_attributes
+// AC-236 — dynamic categories: custom_fields, quote_attributes (spec 0084:
+// was opportunity_attributes, resolved off the Opportunity)
 // ---------------------------------------------------------------------------
 
-it('resolves a valorized {custom_fields.KEY} and {opportunity_attributes.CODE} (AC-236)', function () {
+it('resolves a valorized {custom_fields.KEY} and {quote_attributes.CODE} (AC-236)', function () {
     $quote = dlrFullQuote();
     CustomFieldDefinition::factory()->forEntity('quotes')->create(['key' => 'delivery_notes', 'label' => 'Delivery notes', 'type' => 'text']);
     CustomFieldValue::factory()->create(['entity_type' => 'quotes', 'entity_id' => $quote->id, 'values' => ['delivery_notes' => 'Consegna urgente']]);
 
-    $quote->opportunity->attribute_values = ['floor_size' => '42 mq'];
-    $quote->opportunity->save();
+    $quote->forceFill(['attribute_values' => ['floor_size' => '42 mq']])->save();
 
     $config = dlrDocConfig(['body' => ['blocks' => [
-        dlrTextBlock([dlrRun(['text' => 'Notes:{custom_fields.delivery_notes}|Attr:{opportunity_attributes.floor_size}'])]),
+        dlrTextBlock([dlrRun(['text' => 'Notes:{custom_fields.delivery_notes}|Attr:{quote_attributes.floor_size}'])]),
     ]]]);
 
     $zip = dlrOpenZip(dlrRender($config, $quote->fresh(['opportunity'])));

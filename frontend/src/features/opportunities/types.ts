@@ -6,8 +6,6 @@
  * nullable on stored opportunities and in edit mode.
  */
 
-import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
@@ -57,8 +55,7 @@ export interface OpportunityLeadRef {
  * `OpportunityResource.operational_site`. `operational_sites` has no `name`
  * column: the identity is a server-composed "{line1} - {city}" label (mirrors
  * `ProjectOperationalSiteRef`). Kept LOCAL rather than imported from
- * `features/projects` to keep the two modules decoupled (same reasoning as
- * `ApplicableAttributeSummary` above).
+ * `features/projects` to keep the two modules decoupled.
  */
 export interface OpportunityOperationalSiteRef {
   id: number
@@ -70,48 +67,6 @@ export interface OpportunityManagerRef {
   id: number
   name: string
   position: number
-}
-
-/** A single labeled choice of an enum-type Attribute (spec 0049). */
-export interface AttributeOptionRef {
-  value: string
-  label: string
-  color: string | null
-}
-
-/**
- * Spec 0049 (D-8, `data_contract` "OPPORTUNITA' (additivo)"): summary of ONE
- * Attribute applicable to this opportunity — the union, dedup-per-`code`, of
- * the effective Attributes of every product-category row — as exposed by
- * `OpportunityResource.applicable_attributes`. Kept LOCAL rather than imported
- * from `features/request-management` to keep the two modules decoupled; it
- * mirrors the same shape by frozen contract, not by import.
- */
-export interface ApplicableAttributeSummary {
-  id: number
-  code: string
-  name: string
-  type: string
-  description: string | null
-  help_text: string | null
-  placeholder: string | null
-  icon: string | null
-  config: Record<string, unknown> | null
-  relation_target: Record<string, unknown> | null
-  is_required: boolean
-  sort_order: number
-  options: AttributeOptionRef[]
-}
-
-/**
- * Wire shape of POST /api/opportunities/form-context (user directive
- * 2026-08-05): the dynamic fields the criteria typed so far resolve to, for
- * the CREATE form — the same endpoint/response request-management already
- * exposes.
- */
-export interface OpportunityFormContext {
-  applicable_attributes: ApplicableAttributeSummary[]
-  attribute_layout: LayoutBlob | null
 }
 
 /**
@@ -222,27 +177,6 @@ export interface OpportunityDetail {
   created_at: string
   updated_at: string
   /**
-   * Spec 0049 (D-8): opportunity-level dynamic field values collected by the
-   * "Gestione Richieste" module, keyed by Attribute `code`; `{}` when none.
-   * Optional for the same fixture-compatibility reason as `state` above —
-   * treat a missing key the same as `{}`.
-   */
-  attribute_values?: Record<string, unknown>
-  /**
-   * Spec 0049 (D-8): the union (dedup per `code`) of the effective Attributes
-   * of every product-category row, feeding `attribute_values`'s labels in the
-   * read-only "Informazioni aggiuntive" section (`opportunity-detail.tsx`).
-   * Optional for the same fixture-compatibility reason; treat missing as `[]`.
-   */
-  applicable_attributes?: ApplicableAttributeSummary[]
-  /**
-   * Spec 0062: the merged, multi-category layout the dynamic fields are
-   * rendered through (`FormMode::Edit`), `null` when no contributing category
-   * configures one — the renderer reads that as "flat". Optional for the same
-   * fixture-compatibility reason as the two keys above.
-   */
-  attribute_layout?: LayoutBlob | null
-  /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
    * `reward_type.name`. Optional for the same fixture-compatibility reason
    * as `state` above — treat a missing key the same as `[]`.
@@ -308,14 +242,6 @@ export interface CreateOpportunityPayload {
   success_probability?: number | null
   /** "Note generali" (user directive 2026-07-27): free text, never lead-locked — always sent as-is. */
   general_notes?: string | null
-  /**
-   * User directive 2026-08-05: the dynamic "Informazioni aggiuntive" map,
-   * keyed by Attribute `code` — the same key both request-management channels
-   * send. Included only when there is something to send: on create when the
-   * chosen categories resolve at least one attribute, on update only when a
-   * value actually changed (the server merges sparsely either way).
-   */
-  attribute_values?: Record<string, CustomFieldValue>
   /**
    * Amendment rev.3 (AC-099): the server REPLACES the entire row collection
    * on every write. Always sent in full on create (even empty); the update

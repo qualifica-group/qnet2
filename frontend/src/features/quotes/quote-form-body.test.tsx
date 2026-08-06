@@ -1,13 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
-import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
+import { fetchQuoteFormContext, updateQuote } from '@/features/quotes/api'
+import type { ApplicableAttributeSummary, QuoteDetailWithPermissions, QuoteLine } from '@/features/quotes/types'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
 
 /**
@@ -23,6 +24,7 @@ vi.mock('@/features/quotes/api', async () => {
     createQuote: vi.fn(),
     updateQuote: vi.fn(),
     fetchQuoteNextCode: vi.fn(),
+    fetchQuoteFormContext: vi.fn(),
   }
 })
 
@@ -75,6 +77,8 @@ function quoteFixture(): QuoteDetailWithPermissions {
     quote_workflow_status_id: 1,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    applicable_attributes: [],
+    attribute_layout: null,
     commercial_id: null,
     commercial: null,
     reporter_id: null,
@@ -92,6 +96,7 @@ function quoteFixture(): QuoteDetailWithPermissions {
     payment_method_id: null,
     payment_method: null,
     internal_notes: null,
+    attribute_values: {},
     offer_lines: [],
     cost_lines: [],
     summary: {
@@ -102,6 +107,42 @@ function quoteFixture(): QuoteDetailWithPermissions {
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
+  }
+}
+
+/** A persisted offer line carrying a product: the trigger of the dynamic-fields resolution (spec 0084 D-5). */
+function offerLineFixture(): QuoteLine {
+  return {
+    id: 1,
+    product_id: 7,
+    product: { id: 7, name: 'Product 7', code: 'P7', category: null, business_function: null },
+    quantity: '1.00',
+    unit_price: '100.00',
+    vat_rate_id: null,
+    vat_rate: null,
+    net_amount: '100.00',
+    vat_amount: '0.00',
+    total_amount: '100.00',
+    sort_order: 0,
+  }
+}
+
+/** One applicable Attribute, NOT required: nothing on it may block the save. */
+function attributeFixture(type: string, code: string): ApplicableAttributeSummary {
+  return {
+    id: 1,
+    code,
+    name: code,
+    type,
+    description: null,
+    help_text: null,
+    placeholder: null,
+    icon: null,
+    config: null,
+    relation_target: null,
+    is_required: false,
+    sort_order: 0,
+    options: [],
   }
 }
 
@@ -121,6 +162,10 @@ beforeAll(async () => {
 beforeEach(() => {
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
+  // Azzerato anche questo: senza, le chiamate si accumulano tra i test del
+  // file e un'asserzione "non e' stato chiamato" fallisce per colpa del test
+  // precedente, non del codice sotto esame.
+  vi.mocked(fetchQuoteFormContext).mockReset()
 })
 
 describe('QuoteFormBody (spec 0065)', () => {
@@ -190,5 +235,111 @@ describe('QuoteFormBody (spec 0065)', () => {
     )
 
     expect(screen.getByRole('combobox', { name: 'Commercial' })).toBeDisabled()
+  })
+
+  // Spec 0084 D-5 regression: the applicable set arrives AFTER the form is
+  // built, so a quote saved before an Attribute was configured (or simply left
+  // blank) has no key for it in `attribute_values`. Without seeding one per
+  // applicable `code`, the rebuilt Zod object rejects the missing keys and
+  // `handleSubmit` aborts with errors on fields the operator never touched —
+  // the save button visibly does nothing.
+  it('saves in edit mode when the resolved attributes have no stored value yet', async () => {
+    const quote = quoteFixture()
+    quote.offer_lines = [offerLineFixture()]
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [attributeFixture('text', 'colour'), attributeFixture('boolean', 'urgent')],
+      attribute_layout: null,
+    })
+    vi.mocked(updateQuote).mockResolvedValue(quote)
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByLabelText('colour')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+  })
+
+  // Spec 0084 D-5 (direttiva utente 2026-08-06): l'innesco della sezione e' la
+  // SCELTA DEL PRODOTTO. Senza prodotto non c'e' categoria, quindi nessun
+  // attributo: la sezione non deve esistere affatto. Un placeholder "nessun
+  // campo aggiuntivo" sotto i totali di un'offerta appena aperta si legge come
+  // un difetto, non come un'informazione.
+  it('does not render the additional-information section until a product is picked (AC-034)', async () => {
+    const quote = quoteFixture()
+    quote.offer_lines = []
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [attributeFixture('text', 'colour')],
+      attribute_layout: null,
+    })
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    expect(
+      screen.queryByText(/Informazioni aggiuntive|Additional information/),
+    ).not.toBeInTheDocument()
+    // E nemmeno l'endpoint viene interrogato: senza prodotti non c'e' nulla da
+    // risolvere, e chiamarlo costerebbe un round trip per un set vuoto.
+    expect(vi.mocked(fetchQuoteFormContext)).not.toHaveBeenCalled()
+  })
+
+  // AC-035: con un prodotto scelto la catena prodotto -> categoria -> attributi
+  // si risolve e la sezione compare, SENZA che l'offerta sia salvata.
+  it('resolves and shows the section once an offer line carries a product (AC-035)', async () => {
+    const quote = quoteFixture()
+    quote.offer_lines = [offerLineFixture()]
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [attributeFixture('text', 'colour')],
+      attribute_layout: null,
+    })
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByLabelText('colour')).toBeInTheDocument()
+    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith([offerLineFixture().product_id])
+  })
+
+  // AC-036: la sezione sta SOTTO il blocco dei tab righe (quindi sotto Costi) e
+  // SOPRA il riepilogo economico. Verificato sull'ordine nel DOM, non
+  // sull'aspetto: e' l'unica proprieta' oggettiva della richiesta.
+  it('renders the section below the line tabs and above the economic summary (AC-036)', async () => {
+    const quote = quoteFixture()
+    quote.offer_lines = [offerLineFixture()]
+    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
+      applicable_attributes: [attributeFixture('text', 'colour')],
+      attribute_layout: null,
+    })
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    const section = await screen.findByText(/Informazioni aggiuntive|Additional information/)
+    const costsTab = screen.getByRole('tab', { name: /Costi|Costs/ })
+    const summary = screen.getByText(/Ricavi attesi|Expected revenue/)
+
+    expect(costsTab.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(section.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

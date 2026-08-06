@@ -3,9 +3,10 @@
 namespace Database\Seeders\DemoCatalog;
 
 /**
- * The DEMO product-category catalogue (spec 0017/0061/0062): a small two-branch
- * tree with its own attributes in BOTH usage contexts and the form sections
- * that group them. Pure data — DemoProductCategorySeeder holds the logic.
+ * The DEMO product-category catalogue (spec 0017/0061/0062/0084): a small
+ * two-branch tree with its own attributes in the Product AND Quote usage
+ * contexts and the form sections that group them. Pure data —
+ * DemoProductCategorySeeder holds the logic.
  *
  * It exists because the demo dataset had no category at all: the client's real
  * catalogue lives in the Qualifica* seeders (production data, never part of
@@ -86,14 +87,15 @@ final class DemoCategoryCatalogue
     ];
 
     /**
-     * OPPORTUNITY-context attributes (what the operator records while working
-     * the request, spec 0049 work panel): same scoping rule as above.
-     * `demo_processing_notes` is assigned to BOTH roots on purpose — one
-     * catalogue row (the code is the natural key), two assignments.
+     * QUOTE-context attributes (what the operator records on the Offerta,
+     * spec 0084 — moved here from the Opportunity work panel, spec 0049):
+     * same scoping rule as above. `demo_processing_notes` is assigned to BOTH
+     * roots on purpose — one catalogue row (the code is the natural key), two
+     * assignments.
      *
      * @var array<string, list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>>
      */
-    public const array OPPORTUNITY_ATTRIBUTES = [
+    public const array QUOTE_ATTRIBUTES = [
         'Servizi Formativi' => [
             ['code' => 'demo_enrollment_status', 'name' => 'Stato iscrizione', 'type' => 'enum', 'options' => [
                 ['value' => 'to_contact', 'label' => 'Da contattare'],
@@ -159,13 +161,13 @@ final class DemoCategoryCatalogue
     ];
 
     /**
-     * OPPORTUNITY-context form sections: the "Dati lavorazione" blocks the
-     * work panel renders for a request whose product lines point at a
+     * QUOTE-context form sections: the "Dati lavorazione" blocks the Offerta
+     * form renders (spec 0084) for a quote whose offer lines point at a
      * category of the branch.
      *
      * @var array<string, list<array{id: string, title: string, rows: list<list<string>>}>>
      */
-    public const array OPPORTUNITY_SECTIONS = [
+    public const array QUOTE_SECTIONS = [
         'Servizi Formativi' => [
             [
                 'id' => 'demo-enrollment',

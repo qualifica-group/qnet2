@@ -16,9 +16,9 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 // AC-043 — write side: RequestManagementService::updateWork() writes an
 // explicit activity() entry on the Opportunity for every operative PATCH
-// (attribute_values, next_callback_at — spec 0083 D-2 removed the former
-// working-status field from this channel entirely), which logFillable()
-// cannot capture (those columns are outside $fillable).
+// (next_callback_at — spec 0083 D-2 removed the former working-status field
+// from this channel entirely, and spec 0084 D-1 the attribute_values one),
+// which logFillable() cannot capture (that column is outside $fillable).
 //
 // Read side (D-7, AMENDED — user request 2026-07-22): the module DOES expose
 // its own activity surface, `GET /api/activity-log/request-management/{id}`.

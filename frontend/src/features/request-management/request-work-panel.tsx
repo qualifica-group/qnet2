@@ -24,7 +24,6 @@ import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { RequestAttributionSection } from '@/features/request-management/request-attribution-section'
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
-import { RequestDynamicFields } from '@/features/request-management/request-dynamic-fields'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
@@ -225,8 +224,7 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 2026-08-03): what the request is about comes FIRST — the product
                 classification and the products of interest are the record's
                 headline information — then the working state and the next
-                callback, then what the request needs (dynamic fields), then the
-                client's data. */}
+                callback, then the client's data. */}
             <form id={REQUEST_WORK_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
               {/* Funzione aziendale + categoria prodotto (user directive
                   2026-07-31), right before the picker they scope. */}
@@ -258,12 +256,6 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 operationalSite={toRelationFieldRef(panel.operational_site)}
                 rewards={panel.rewards ?? []}
                 managerLabels={panel.manager_labels}
-              />
-
-              <RequestDynamicFields
-                control={form.control}
-                attributes={panel.applicable_attributes}
-                layout={panel.attribute_layout}
               />
 
               <RequestClientSection control={form.control} />

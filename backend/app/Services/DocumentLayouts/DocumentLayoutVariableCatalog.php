@@ -15,7 +15,7 @@ use App\Models\User;
  *  - STATIC (quote, totals, client, ...): a fixed list declared in
  *    quoteCategories() — one method per module (only `quotes` exists today,
  *    D-2/scope).
- *  - DYNAMIC (custom_fields, opportunity_attributes): built from live data
+ *  - DYNAMIC (custom_fields, quote_attributes): built from live data
  *    (App\CustomFields\CustomFieldProvider / the Attribute catalogue), so a
  *    new CustomFieldDefinition/Attribute appears with zero code change
  *    (AC-042/043).
@@ -152,7 +152,7 @@ final class DocumentLayoutVariableCatalog
                 ['key' => 'label', 'type' => self::TYPE_STRING, 'example' => 'Via Torino 5 - Milano'],
             ]),
             $this->dynamicCategories->customFields('quotes'),
-            $this->dynamicCategories->opportunityAttributes(),
+            $this->dynamicCategories->quoteAttributes(),
             $this->staticCategory('document', [
                 ['key' => 'generated_at', 'type' => self::TYPE_DATE, 'example' => '2026-07-30'],
                 ['key' => 'generated_by', 'type' => self::TYPE_STRING, 'example' => 'Mario Rossi'],

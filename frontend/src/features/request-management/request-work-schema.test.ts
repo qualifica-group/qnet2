@@ -4,7 +4,6 @@ import {
   buildRequestWorkSchema,
   type RequestWorkOriginalState,
 } from '@/features/request-management/request-work-schema'
-import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /**
  * The panel's loaded state: what the schema compares against to decide
@@ -12,7 +11,6 @@ import type { ApplicableAttribute } from '@/features/request-management/types'
  */
 function original(overrides: Partial<RequestWorkOriginalState> = {}): RequestWorkOriginalState {
   return {
-    attribute_values: {},
     products_of_interest: [7],
     product_lines: [{ business_function_id: 40, product_category_id: 500 }],
     client_identity: null,
@@ -39,7 +37,6 @@ function values(overrides: Record<string, unknown> = {}) {
     reporter_id: null,
     operator_id: null,
     operational_site_id: null,
-    attribute_values: {},
     ...overrides,
   }
 }
@@ -48,7 +45,7 @@ function values(overrides: Record<string, unknown> = {}) {
 // opportunities form, so it carries the same mandatory rule.
 describe('buildRequestWorkSchema — products of interest', () => {
   it('rejects an empty collection', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
     const result = schema.safeParse(values({ products_of_interest: [] }))
 
     expect(result.success).toBe(false)
@@ -58,7 +55,7 @@ describe('buildRequestWorkSchema — products of interest', () => {
   })
 
   it('accepts one or more products', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
 
     expect(schema.safeParse(values({ products_of_interest: [7] })).success).toBe(true)
   })
@@ -71,7 +68,7 @@ describe('buildRequestWorkSchema — products of interest', () => {
    * ever going out.
    */
   it('leaves an empty collection alone while it stays untouched', () => {
-    const schema = buildRequestWorkSchema([], original({ products_of_interest: [] }), i18n.t)
+    const schema = buildRequestWorkSchema(original({ products_of_interest: [] }), i18n.t)
 
     expect(schema.safeParse(values({ products_of_interest: [] })).success).toBe(true)
   })
@@ -84,7 +81,7 @@ describe('buildRequestWorkSchema — product lines', () => {
   const EDITED = [{ business_function_id: 41, product_category_id: 501 }]
 
   it('rejects clearing the collection', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
     const result = schema.safeParse(values({ product_lines: [] }))
 
     expect(result.success).toBe(false)
@@ -94,7 +91,7 @@ describe('buildRequestWorkSchema — product lines', () => {
   })
 
   it('rejects a row missing its product category', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
     const result = schema.safeParse(
       values({ product_lines: [{ business_function_id: 41, product_category_id: null }] }),
     )
@@ -106,13 +103,13 @@ describe('buildRequestWorkSchema — product lines', () => {
   })
 
   it('accepts a complete replacement', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
 
     expect(schema.safeParse(values({ product_lines: EDITED })).success).toBe(true)
   })
 
   it('leaves an untouched collection alone, even when the request has no line', () => {
-    const schema = buildRequestWorkSchema([], original({ product_lines: [] }), i18n.t)
+    const schema = buildRequestWorkSchema(original({ product_lines: [] }), i18n.t)
 
     expect(schema.safeParse(values({ product_lines: [] })).success).toBe(true)
   })
@@ -125,7 +122,7 @@ describe('buildRequestWorkSchema — product lines', () => {
    */
   describe('shared business function (spec 0077 INV-2)', () => {
     it('rejects mismatched functions once the collection is edited', () => {
-      const schema = buildRequestWorkSchema([], original(), i18n.t)
+      const schema = buildRequestWorkSchema(original(), i18n.t)
       const result = schema.safeParse(
         values({
           product_lines: [
@@ -142,7 +139,7 @@ describe('buildRequestWorkSchema — product lines', () => {
     })
 
     it('accepts several edited rows sharing the same business function', () => {
-      const schema = buildRequestWorkSchema([], original(), i18n.t)
+      const schema = buildRequestWorkSchema(original(), i18n.t)
       const result = schema.safeParse(
         values({
           product_lines: [
@@ -161,7 +158,7 @@ describe('buildRequestWorkSchema — product lines', () => {
         { business_function_id: 41, product_category_id: 501 },
         { business_function_id: 42, product_category_id: 502 },
       ]
-      const schema = buildRequestWorkSchema([], original({ product_lines: historicRows }), i18n.t)
+      const schema = buildRequestWorkSchema(original({ product_lines: historicRows }), i18n.t)
 
       // The panel resubmits the SAME historic rows unchanged, only `next_callback_at` differs.
       const result = schema.safeParse(
@@ -182,7 +179,7 @@ describe('buildRequestWorkSchema — product lines', () => {
  */
 describe('buildRequestWorkSchema — source (Fonte)', () => {
   it('rejects a null source', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
     const result = schema.safeParse(values({ source_id: null }))
 
     expect(result.success).toBe(false)
@@ -192,53 +189,8 @@ describe('buildRequestWorkSchema — source (Fonte)', () => {
   })
 
   it('accepts a chosen source', () => {
-    const schema = buildRequestWorkSchema([], original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), i18n.t)
 
     expect(schema.safeParse(values({ source_id: 30 })).success).toBe(true)
-  })
-})
-
-/**
- * Same sparse mirror for the dynamic Attributes: `AttributeValueValidator`
- * checks `is_required` only on SUBMITTED codes, and the panel sends the map
- * only when one of them changed.
- */
-describe('buildRequestWorkSchema — required attributes', () => {
-  const ATTRIBUTES: ApplicableAttribute[] = [
-    {
-      id: 1,
-      code: 'notes',
-      name: 'Notes',
-      type: 'text',
-      description: null,
-      help_text: null,
-      placeholder: null,
-      icon: null,
-      config: null,
-      relation_target: null,
-      is_required: true,
-      sort_order: 1,
-      options: [],
-    },
-  ]
-
-  it('leaves an empty required attribute alone while the map stays untouched', () => {
-    const schema = buildRequestWorkSchema(ATTRIBUTES, original({ attribute_values: { notes: null } }), i18n.t)
-
-    expect(schema.safeParse(values({ attribute_values: { notes: null } })).success).toBe(true)
-  })
-
-  it('rejects an empty required attribute once the map is edited', () => {
-    const schema = buildRequestWorkSchema(
-      ATTRIBUTES,
-      original({ attribute_values: { notes: 'Some notes' } }),
-      i18n.t,
-    )
-    const result = schema.safeParse(values({ attribute_values: { notes: '' } }))
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'attribute_values.notes')).toBe(true)
-    }
   })
 })

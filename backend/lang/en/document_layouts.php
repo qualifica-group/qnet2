@@ -36,7 +36,7 @@ return [
             'company_site' => 'Company site',
             'operational_site' => 'Operational site',
             'custom_fields' => 'Custom fields',
-            'opportunity_attributes' => 'Opportunity attributes',
+            'quote_attributes' => 'Quote attributes',
             'document' => 'Document',
         ],
 

@@ -93,6 +93,7 @@ function toKnownAttributes(mode: ProductCategoryFormMode): AttributeCatalogEntry
 const INHERITANCE_FIELD = {
   product: 'inherits_product_attributes',
   opportunity: 'inherits_opportunity_attributes',
+  quote: 'inherits_quote_attributes',
 } as const
 
 interface InheritanceToggleProps {
@@ -321,6 +322,9 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
                     }
                     opportunityInheritToggle={
                       parentId !== null ? <InheritanceToggle control={form.control} context="opportunity" /> : null
+                    }
+                    quoteInheritToggle={
+                      parentId !== null ? <InheritanceToggle control={form.control} context="quote" /> : null
                     }
                   />
                 )}

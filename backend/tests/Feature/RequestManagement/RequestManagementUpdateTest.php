@@ -1,10 +1,6 @@
 <?php
 
-use App\Models\Attribute;
-use App\Models\BusinessFunction;
 use App\Models\Opportunity;
-use App\Models\OpportunityProductLine;
-use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -79,122 +75,37 @@ it('PATCH on a nonexistent opportunity -> 404 (AC-032)', function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-040 / AC-041 / AC-042 — attribute_values write pipeline
+// Spec 0084, D-1/AC-042: the dynamic "Informazioni aggiuntive" write pipeline
+// (formerly AC-040/041/042) moved to the Offerta (Quote) — see
+// tests/Feature/Quotes/QuoteAttributeValuesTest.php. `attribute_values` is no
+// longer an accepted key on this PATCH; a submitted one is silently dropped.
 // ---------------------------------------------------------------------------
 
-if (! function_exists('opportunityWithApplicableAttribute')) {
-    /**
-     * @return array{opportunity: Opportunity, attribute: Attribute}
-     */
-    function opportunityWithApplicableAttribute(array $attributeOverrides = [], bool $required = false): array
-    {
-        $businessFunction = BusinessFunction::factory()->create();
-        $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-        $attribute = Attribute::factory()->create($attributeOverrides);
-        $category->attributes()->attach($attribute->id, ['is_required' => $required, 'sort_order' => 0]);
-
-        $opportunity = Opportunity::factory()->create();
-        OpportunityProductLine::factory()->create([
-            'opportunity_id' => $opportunity->id,
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => $category->id,
-        ]);
-
-        return ['opportunity' => $opportunity, 'attribute' => $attribute];
-    }
-}
-
-it('PATCH with a valid attribute_values payload -> 200, merged into the stored map (AC-040)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity, 'attribute' => $attribute] = opportunityWithApplicableAttribute([
-        'code' => 'contract_length', 'type' => 'integer',
-    ]);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'attribute_values' => ['contract_length' => '24'],
-    ])->assertOk()->assertJsonPath('data.attribute_values.contract_length', 24);
-
-    expect($opportunity->fresh()->attribute_values)->toBe(['contract_length' => 24]);
-});
-
-it('PATCH merges attribute_values, keeping previously stored codes untouched (AC-040)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity, 'attribute' => $attribute] = opportunityWithApplicableAttribute([
-        'code' => 'contract_length', 'type' => 'integer',
-    ]);
-    $opportunity->forceFill(['attribute_values' => ['contract_length' => 12]])->save();
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    Sanctum::actingAs($actor);
-
-    // A second applicable code, submitted alone: the first must survive the merge.
-    $category = $opportunity->productLines()->first()->productCategory;
-    $otherAttribute = Attribute::factory()->create(['code' => 'notes', 'type' => 'text']);
-    $category->attributes()->attach($otherAttribute->id, ['is_required' => false, 'sort_order' => 1]);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'attribute_values' => ['notes' => 'hello'],
-    ])->assertOk();
-
-    expect($opportunity->fresh()->attribute_values)->toBe(['contract_length' => 12, 'notes' => 'hello']);
-});
-
-it('PATCH with a code not in the applicable set -> 422 keyed attribute_values.<code> (AC-041)', function () {
+it('PATCH with an attribute_values payload produces no write (AC-042)', function () {
     $actor = requestManagementUpdaterWith(['update']);
     $opportunity = managedOpportunity($actor);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'attribute_values' => ['unknown_code' => 'x'],
-    ])->assertStatus(422)->assertJsonValidationErrors('attribute_values.unknown_code');
-});
+        'attribute_values' => ['anything' => 'x'],
+    ])->assertOk();
 
-it('PATCH with a value not valid for the attribute type -> 422 (AC-041)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity] = opportunityWithApplicableAttribute(['code' => 'quantity', 'type' => 'integer']);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'attribute_values' => ['quantity' => 'not-a-number'],
-    ])->assertStatus(422)->assertJsonValidationErrors('attribute_values.quantity');
-});
-
-it('PATCH with a required attribute submitted empty -> 422 (AC-042)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity] = opportunityWithApplicableAttribute(['code' => 'mandatory_field', 'type' => 'text'], required: true);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'attribute_values' => ['mandatory_field' => ''],
-    ])->assertStatus(422)->assertJsonValidationErrors('attribute_values.mandatory_field');
-});
-
-it('PATCH with a non-required attribute simply absent -> ok (AC-042)', function () {
-    $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity] = opportunityWithApplicableAttribute(['code' => 'optional_field', 'type' => 'text'], required: false);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['attribute_values' => []])->assertOk();
+    // No column left to write to (D-1/D-2): a fresh read carries no trace.
+    expect($opportunity->fresh()->getAttributes())->not->toHaveKey('attribute_values');
 });
 
 // ---------------------------------------------------------------------------
 // AC-043 — operative changes are recorded on the Opportunity's activity log
 // ---------------------------------------------------------------------------
 
-it('PATCH next_callback_at + attribute_values writes an activity entry on the Opportunity (AC-043)', function () {
+it('PATCH next_callback_at writes an activity entry on the Opportunity (AC-043)', function () {
     $actor = requestManagementUpdaterWith(['update']);
-    ['opportunity' => $opportunity] = opportunityWithApplicableAttribute(['code' => 'contract_length', 'type' => 'integer']);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    $opportunity = managedOpportunity($actor);
     $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$opportunity->id}", [
         'next_callback_at' => $callbackAt,
-        'attribute_values' => ['contract_length' => 6],
     ])->assertOk();
 
     $activity = Activity::query()
@@ -206,10 +117,7 @@ it('PATCH next_callback_at + attribute_values writes an activity entry on the Op
 
     expect($activity)->not->toBeNull();
     expect($activity->causer_id)->toBe($actor->id);
-    expect($activity->properties->get('attributes'))->toHaveKey('next_callback_at')
-        ->and($activity->properties->get('attributes'))->toMatchArray([
-            'attribute_values' => ['contract_length' => 6],
-        ]);
+    expect($activity->properties->get('attributes'))->toHaveKey('next_callback_at');
 
     // The module exposes no separately-gated activity endpoint (lead
     // decision): the generic ActivityLogController resolves its Policy by

@@ -106,8 +106,6 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     client_contacts: { owner: null, items: [] },
     client_address: null,
     referent_contacts: { owner: null, items: [] },
-    applicable_attributes: [],
-    attribute_values: {},
     next_callback_at: null,
     context: { estimated_value: null, expected_close_date: null, success_probability: null },
     permissions: { resource: { view: true, create: true, update: true, delete: true, export: true, import: true }, fields: {}, actions: {} },

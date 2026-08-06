@@ -12,8 +12,7 @@ use Spatie\Permission\Models\Permission;
  * Spec 0067 (AC-019..022): the explicit inverse `Opportunity::quotes()`
  * relation plus the `quotes_count` field OpportunityResource exposes for the
  * Offerte panel's initial header value. No existing key changes name, type
- * or position (asserted alongside `attribute_values`/`applicable_attributes`
- * in OpportunityAttributeValuesResourceTest, same additive precedent).
+ * or position — a purely additive field.
  */
 uses(RefreshDatabase::class);
 

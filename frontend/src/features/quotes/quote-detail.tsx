@@ -15,6 +15,7 @@ import {
   DetailSection,
 } from '@/components/detail/detail-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { QuoteDetailAttributes } from '@/features/quotes/quote-detail-attributes'
 import { QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
@@ -147,6 +148,11 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           />
         </div>
       </DetailSection>
+
+      <QuoteDetailAttributes
+        attributes={quote.applicable_attributes}
+        values={quote.attribute_values}
+      />
 
       {createdAt ? <DetailMeta label={t('quotes.detail.createdAt')}>{createdAt}</DetailMeta> : null}
     </DetailPanel>

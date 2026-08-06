@@ -107,12 +107,6 @@ class StoreRequestRequest extends FormRequest
                 // Opportunity resolves no working state of its own any more.
                 'next_callback_at' => ['sometimes', 'nullable', 'date'],
                 'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
-                // Deep validation (per-code applicability/type/required) runs
-                // in RequestAttributeValueWriter against the applicable set the
-                // inserted product lines produce — the same single place the
-                // PATCH channel uses, and the only one that can resolve that
-                // set (it does not exist before the insert).
-                'attribute_values' => ['sometimes', 'array'],
             ],
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
@@ -210,9 +204,6 @@ class StoreRequestRequest extends FormRequest
             operationalSiteId: isset($validated['operational_site_id']) ? (int) $validated['operational_site_id'] : null,
             nextCallbackAt: $validated['next_callback_at'] ?? null,
             generalNotes: $validated['general_notes'] ?? null,
-            attributeValues: array_key_exists('attribute_values', $validated)
-                ? (array) $validated['attribute_values']
-                : null,
         );
     }
 

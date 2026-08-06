@@ -10,9 +10,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
-// Request Management module (spec 0049, D-4/AC-040/041/042): AttributeValueValidator
-// validates a submitted `attribute_values` map {code => value} against an
-// opportunity's applicable-attribute set.
+// Spec 0049, D-4/AC-040/041/042 (spec 0084: reused verbatim by the Quote
+// context, constraints: vietato clonarli): AttributeValueValidator validates
+// a submitted `attribute_values` map {code => value} against an
+// already-resolved applicable-attribute set — agnostic of which domain
+// resolved it.
 
 uses(TestCase::class, RefreshDatabase::class);
 

@@ -24,6 +24,7 @@ import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
 import { QuoteSitesSection } from '@/features/quotes/quote-sites-section'
+import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
@@ -59,11 +60,16 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   // Controlled, so the tab strip can hand the selection over to its select
   // fallback when the tabs no longer fit.
   const [activeTab, setActiveTab] = useState(OFFER_TAB)
-  const { form, serverError, onSubmit, vatRatePercentFor, rememberVatRatePercent } = useQuoteForm({
-    mode,
-    onSuccess,
-    initialCode,
-  })
+  const {
+    form,
+    serverError,
+    onSubmit,
+    vatRatePercentFor,
+    rememberVatRatePercent,
+    attributeContext,
+    attributesLoading,
+    hasPickedProduct,
+  } = useQuoteForm({ mode, onSuccess, initialCode })
   const original = mode.type === 'edit' ? mode.quote : null
   // Watched here rather than inside the field so that component stays
   // presentational: it only decides whether the transition note is visible.
@@ -314,6 +320,15 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
           </Tabs>
 
           {/* Always visible below the tabs, whichever tab is active (AC-070). */}
+          {hasPickedProduct ? (
+            <QuoteDynamicFieldsSection
+              control={form.control}
+              attributes={attributeContext.applicable_attributes}
+              layout={attributeContext.attribute_layout}
+              isLoading={attributesLoading}
+            />
+          ) : null}
+
           <QuoteLiveSummary control={form.control} vatRatePercentFor={vatRatePercentFor} />
 
           {serverError && (

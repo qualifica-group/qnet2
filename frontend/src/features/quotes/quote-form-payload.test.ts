@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
-import type { QuoteDetail } from '@/features/quotes/types'
+import type { ApplicableAttributeSummary, QuoteDetail } from '@/features/quotes/types'
 
 /** Spec 0065 AC-076: the payload builder never emits calculated amounts. */
 
@@ -24,6 +24,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     layout_id: null,
     payment_method_id: null,
     internal_notes: null,
+    attribute_values: {},
     offer_lines: [],
     cost_lines: [],
     ...overrides,
@@ -40,6 +41,8 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     quote_workflow_status_id: 1,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
+    applicable_attributes: [],
+    attribute_layout: null,
     commercial_id: null,
     commercial: null,
     reporter_id: null,
@@ -57,6 +60,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     payment_method_id: null,
     payment_method: null,
     internal_notes: null,
+    attribute_values: {},
     offer_lines: [],
     cost_lines: [],
     summary: {
@@ -67,6 +71,25 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     created_at: '2026-07-29T00:00:00Z',
     updated_at: '2026-07-29T00:00:00Z',
     ...overrides,
+  }
+}
+
+/** One applicable Attribute of the loaded quote, as the resource exposes it. */
+function attribute(code: string, type: string): ApplicableAttributeSummary {
+  return {
+    id: 1,
+    code,
+    name: code,
+    type,
+    description: null,
+    help_text: null,
+    placeholder: null,
+    icon: null,
+    config: null,
+    relation_target: null,
+    is_required: false,
+    sort_order: 0,
+    options: [],
   }
 }
 
@@ -249,5 +272,33 @@ describe('buildUpdatePayload', () => {
     )
     expect(payload.offer_lines).toBeDefined()
     expect(payload.cost_lines).toBeUndefined()
+  })
+
+  // Spec 0084: the form hydrates `attribute_values` SEEDED (a key per
+  // applicable code, `false`/`null` when unstored), so the diff has to seed
+  // the original the same way — otherwise an attribute nobody ever filled in
+  // would read as changed on every unrelated save.
+  it('omits attribute_values when the seeded map matches the stored one', () => {
+    const original = detail({
+      applicable_attributes: [attribute('urgent', 'boolean'), attribute('colour', 'text')],
+      attribute_values: {},
+    })
+    const payload = buildUpdatePayload(
+      formValues({ attribute_values: { urgent: false, colour: null } }),
+      original,
+    )
+    expect(payload.attribute_values).toBeUndefined()
+  })
+
+  it('sends attribute_values when one applicable code changed', () => {
+    const original = detail({
+      applicable_attributes: [attribute('urgent', 'boolean'), attribute('colour', 'text')],
+      attribute_values: {},
+    })
+    const payload = buildUpdatePayload(
+      formValues({ attribute_values: { urgent: true, colour: null } }),
+      original,
+    )
+    expect(payload.attribute_values).toEqual({ urgent: true, colour: null })
   })
 })

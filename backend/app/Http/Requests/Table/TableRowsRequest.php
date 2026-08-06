@@ -5,7 +5,7 @@ namespace App\Http\Requests\Table;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
-use App\Tables\RequestManagement\AttributeScopedTableDefinition;
+use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -76,13 +76,9 @@ class TableRowsRequest extends FormRequest
             // advancedFilters() catalogue in withValidator() below.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
 
-            // Spec 0064: scopes `request-management` to one product category
-            // (D-2) and its `attr.*` columns — a no-op key for every other
-            // domain. `sortable`/`filterable` above are ALREADY resolved
-            // against this same scoped instance (see definition()), so an
-            // `attr.*` colId/filterModel key outside the requested category
-            // (or with this key absent) is rejected by the Rule::in()/
-            // in_array() checks above without any extra logic (AC-013).
+            // Spec 0064 (spec 0084 dropped its `attr.*`-column effect):
+            // scopes `request-management`'s ROWS to one product category
+            // (D-2) — a no-op key for every other domain.
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
 
             // Spec 0067: scopes `quotes` to one Opportunity's Offerte — a
@@ -159,7 +155,7 @@ class TableRowsRequest extends FormRequest
             $domain = (string) $this->route('domain');
             $definition = app(TableRegistry::class)->resolve($domain);
 
-            if ($definition instanceof AttributeScopedTableDefinition) {
+            if ($definition instanceof RequestManagementScopedTableDefinition) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
             }
 

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\FormMode;
 use App\Models\Company;
 use App\Models\Quote;
+use App\Quotes\QuoteAttributeResolver;
+use App\RequestManagement\ApplicableAttribute;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
@@ -49,6 +52,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * persisted (D-9): the 5 persisted aggregates (`revenue_net`, `revenue_vat`,
  * `cost_net`, `cost_vat`, `margin_net`) are the only source of truth this
  * resource reads from.
+ *
+ * Spec 0084 (D-1/D-5): `attribute_values` is the raw quote-level values map
+ * (`{}` when null); `applicable_attributes` is the union/dedup-by-code set of
+ * THIS quote's own offer lines' effective category attributes
+ * (App\Quotes\QuoteAttributeResolver, context `quote`); `attribute_layout`
+ * completes the trio with the merged, multi-category layout (spec 0062),
+ * `FormMode::Edit` since this resource IS what the edit form hydrates from —
+ * `null` when no contributing category configures one (flat rendering).
+ * Relies on QuoteService::DETAIL_RELATIONS already eager-loading
+ * `offerLines.product.category`, so resolving all three never N+1s.
  */
 class QuoteResource extends JsonResource
 {
@@ -88,6 +101,9 @@ class QuoteResource extends JsonResource
             'internal_notes' => $this->internal_notes,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
+            'attribute_values' => $this->attribute_values ?? [],
+            'applicable_attributes' => $this->resolveApplicableAttributes(),
+            'attribute_layout' => app(QuoteAttributeResolver::class)->layout($this->resource, FormMode::Edit),
             'summary' => $this->summarizeTotals(
                 $commissionPermissions['commissions']->visible
                     && $commissionPermissions['commission_value']->visible,
@@ -188,5 +204,17 @@ class QuoteResource extends JsonResource
             'vat' => $vat,
             'gross' => number_format((float) $net + (float) $vat, 2, '.', ''),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveApplicableAttributes(): array
+    {
+        return app(QuoteAttributeResolver::class)
+            ->resolve($this->resource)
+            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
+            ->values()
+            ->all();
     }
 }

@@ -93,14 +93,6 @@ class UpdateOpportunityRequest extends FormRequest
             // "Note generali" (user directive 2026-07-27): free text, same
             // 5000-char ceiling as the lead `notes` it is inherited from.
             'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            // User directive 2026-08-05: the dynamic "Informazioni aggiuntive"
-            // map, exactly as the request-management channels accept it. The
-            // per-code deep validation (applicability/type/required, spec 0049
-            // D-4) is NOT duplicated here: it runs in
-            // RequestAttributeValueWriter, the single place that also resolves
-            // the applicable set and merges the map, and surfaces as the same
-            // 422 keyed `attribute_values.<code>`.
-            'attribute_values' => ['sometimes', 'array'],
             // spec 0047: state_id (Regione, D1) is freely editable on the
             // standalone opportunity.
             'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],

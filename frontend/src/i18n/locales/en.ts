@@ -394,6 +394,15 @@ export const en = {
   contracts,
   commissionConfigurations,
   requestManagement,
+  // Shared validation messages of the `attribute_values` dynamic map (spec
+  // 0084): a neutral namespace reused by every context that collects it
+  // (product/opportunity/quote) instead of one per domain.
+  attributeValues: {
+    validation: {
+      required: 'This field is required.',
+      enumInvalid: 'Select a valid option.',
+    },
+  },
   fieldChangeRequests,
   rewardTypes,
   rewardStatuses,

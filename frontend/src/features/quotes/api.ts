@@ -4,6 +4,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateQuotePayload,
   QuoteDetail,
+  QuoteFormContext,
   QuoteDetailWithPermissions,
   UpdateQuotePayload,
   QuoteLineCommission,
@@ -32,6 +33,18 @@ export async function fetchQuote(id: number): Promise<QuoteDetailWithPermissions
     `/quotes/${id}`,
   )
   return { ...data.data, permissions: data.permissions }
+}
+
+/**
+ * Spec 0084 (D-5): risolve gli attributi applicabili e il loro layout dai
+ * prodotti scelti finora, su un'offerta che puo' non essere ancora salvata —
+ * la catena prodotto -> categoria prodotto -> attributi, valutata server-side.
+ */
+export async function fetchQuoteFormContext(productIds: number[]): Promise<QuoteFormContext> {
+  const { data } = await apiClient.post<ApiResponse<QuoteFormContext>>('/quotes/form-context', {
+    offer_lines: productIds.map((productId) => ({ product_id: productId })),
+  })
+  return data.data
 }
 
 /**

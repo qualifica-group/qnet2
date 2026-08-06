@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0083 — Il configuratore di workflow passa dall'Opportunita' all'Offerta.
+  Sostituisce: 0065 D-2 (modulo `quote-statuses`), 0082 (fallback su stato di lavorazione).
+  Emenda: 0047 (il configuratore resta, cambia il record governato e il catalogo criteri).
+-->
+<spec id="0083-quote-workflow-statuses" status="draft" owner="nicola" date="2026-08-05">
+
+  <goal>
+    Un solo configuratore di stati in tutto il flusso commerciale: il "Configuratore Stati
+    Lavorazione" (oggi `opportunity-workflows`, spec 0047) viene agganciato all'Offerta e diventa
+    "Configuratore Stati Offerta", eliminando del tutto il modulo `quote-statuses`. L'Offerta ha
+    un solo stato operativo, scelto dal set risolto per criteri; l'Opportunita' non ha piu' uno
+    stato proprio e mostra solo lo stato calcolato dalle sue Offerte.
+  </goal>
+
+  <context>
+    Stato verificato del repo (working tree, branch `feat/new-flow`):
+
+    - Il modulo `opportunity-statuses` NON esiste piu' (commit `4f79029`, spec 0082). Lo stato
+      dell'Opportunita' e' gia' calcolato da `App\Services\Opportunities\OpportunityStatusResolver`
+      con due sorgenti: `SOURCE_QUOTES` (stati delle offerte) e `SOURCE_WORKFLOW` (fallback su
+      `opportunities.opportunity_workflow_status_id` quando non ci sono offerte).
+    - Esistono quindi DUE workflow distinti, che questa spec fonde in uno:
+      `opportunity_workflow_statuses` (spec 0047: set multipli risolti per criteri, `requires_note`,
+      gruppo `validated`) e `quote_statuses` (spec 0065: lista piatta unica, 3 righe di sistema
+      Bozza/Accettata/Rifiutata).
+    - Configuratore workflow (0047), da spostare: tabelle `opportunity_workflows`,
+      `opportunity_workflow_criteria` (`field`, `value_id`, unique `(workflow_id, field)`),
+      `opportunity_workflow_statuses` (`opportunity_workflow_id` NULLABLE = set globale di default,
+      `name`, `color`, `description`, `requires_note`, `sort_order`, `system_key`, `group`).
+      Servizi: `OpportunityWorkflowResolver` (specificita' = numero criteri, tie-break `id` asc),
+      `OpportunityWorkflowService`, `WorkflowStatusWriter` (STEP 10, `open` in testa, coda
+      `validated`/`closed_won`/`closed_lost`), `ValidatedStatusMarker` (marchio `validated` opzionale
+      e unico per set), `Support\OpportunityWorkflows\CriterionFieldRegistry`. Enum
+      `WorkflowStatusGroup` (open|pending|validated|closed_won|closed_lost) e
+      `WorkflowStatusSystemKey` (open|validated|closed_won|closed_lost).
+    - `requires_note` e' oggi enforced in UN SOLO punto: `RequestManagement\RequestWorkflowStatusWriter`
+      (work panel + inline edit della griglia richieste), che crea la nota via `NoteService` con
+      `entity_type = 'request-management'`.
+    - Modulo `quote-statuses` da eliminare: tabella `quote_statuses`, `Models\QuoteStatus`,
+      `Enums\QuoteStatusGroup`, `QuoteStatusPolicy`, `QuoteStatusesAuthorization`,
+      `QuoteStatusController` + `QuoteStatusForSelectController`, `QuoteStatusService`,
+      DataObjects/Requests, `QuoteStatusesTableDefinition` + `QuoteStatuses\QuoteStatusColumnCatalog`
+      + `QuoteStatusAdvancedFilterCatalog`, `QuoteStatusFactory`, FE `features/quote-statuses/**`,
+      `pages/quote-statuses-page.tsx`, i18n `{it,en}-quote-statuses.ts`.
+    - FK: `quotes.quote_status_id` NOT NULL (`restrictOnDelete`);
+      `opportunities.opportunity_workflow_status_id` nullable (`nullOnDelete`).
+    - Gate offerte introdotto ieri: `OpportunityResource.requires_quote` +
+      `OpportunityQuotesSection` (`frontend/src/features/opportunities/opportunity-quotes-section.tsx`).
+
+    Decisioni prese dall'utente (2026-08-05) e vincolanti per questa spec:
+    - D-1: il workflow si sposta sull'Offerta, `quote-statuses` viene eliminato.
+    - D-2: l'Opportunita' perde ogni stato di lavorazione proprio; con zero offerte mostra
+      unicamente lo stato "aperto".
+    - D-3: i criteri si valutano sull'Offerta stessa.
+    - D-4: nessuna migrazione dati; le migrazioni droppano e i seeder demo si riallineano.
+    - D-5: il gate `requires_quote` sul dettaglio Opportunita' viene rimosso — ogni Opportunita'
+      puo' avere offerte (deciso in spec 0084, riportato qui perche' tocca lo stesso componente).
+
+    Decisioni tecniche di questa spec:
+    - D-6: RINOMINA completa del dominio a `quote-workflows`. Un modulo chiamato
+      "opportunity workflows" che governa le Offerte e' naming drift (CLAUDE.md §2). Tabelle,
+      route, permessi, feature folder, i18n e chiavi di navigazione seguono.
+    - D-7: catalogo criteri. I due campi multi-valore si risolvono sull'OFFERTA
+      (`product_category_id` dalle categorie dei prodotti delle sue righe offerta;
+      `business_function_id` da `product_categories.business_function_id` di quelle categorie).
+      I due campi scalari `state_id` e `source_id` non esistono sull'Offerta e si risolvono per
+      ereditarieta' dall'Opportunita' padre (`quote.opportunity.state_id` / `.source_id`): il set
+      dei criteri configurabili resta identico a oggi, nessuna funzionalita' persa.
+    - D-8: con zero offerte lo stato mostrato dall'Opportunita' e' la riga `system_key = 'open'`
+      del SET GLOBALE DI DEFAULT (`quote_workflow_statuses` con `quote_workflow_id IS NULL`) —
+      dato reale, con nome e colore configurabili dall'utente, non una stringa hardcoded.
+  </context>
+
+  <scope>
+    <in>
+      <item>Rinomina del dominio `opportunity-workflows` -> `quote-workflows`: tabelle, model, servizi, controller, route, permessi, TableDefinition, navigazione, feature folder FE, i18n.</item>
+      <item>Nuovo `Support\QuoteWorkflows\QuoteCriterionFieldRegistry`: stessi 4 campi nativi + custom field `relation`, risolti sull'Offerta (D-7).</item>
+      <item>`quotes.quote_workflow_status_id` sostituisce `quotes.quote_status_id`; drop di `quote_statuses` e dell'intero modulo `quote-statuses`.</item>
+      <item>Drop di `opportunities.opportunity_workflow_status_id` e di tutti i suoi lettori/scrittori.</item>
+      <item>Risoluzione automatica dello stato di un'Offerta alla create e al cambio delle sue righe (equivalente di `resolveAndAssign`, ora su Quote).</item>
+      <item>Enforcement di `requires_note` sul canale Offerta (`QuoteService::update`), con nota creata sul thread dell'Opportunita' padre.</item>
+      <item>`OpportunityStatusResolver` / `OpportunityStatusScope` / `OpportunityStatusColumn` riscritti su sorgente unica Offerte + default `open` (D-8).</item>
+      <item>Rimozione di `OpportunityResource.requires_quote` e del gate omonimo sul pannello Offerte (D-5).</item>
+      <item>Riallineamento dei seeder demo (`DemoQuoteSeeder`, `DemoOpportunityWorkflowSeeder`, `QualificaWorkflowSeeder`, `DemoCategoryWorkflowSeeder`, `PicksDemoOffers`) e delle factory.</item>
+    </in>
+    <out>
+      <item>Nuovi campi-criterio propri dell'Offerta (societa', sede operativa, metodo di pagamento): valutabili in una spec successiva, NON qui.</item>
+      <item>Macchina a stati con transizioni consentite: il configuratore resta una lista ordinata, come oggi.</item>
+      <item>Travaso dei dati esistenti (D-4).</item>
+      <item>Attributi dinamici sull'Offerta — spec 0084.</item>
+      <item>Note per Offerta — spec 0085 (qui la nota di `requires_note` nasce senza `quote_id`, che 0085 aggiunge).</item>
+      <item>La colonna `product_categories.requires_quote` resta: e' usata dalla generazione documento (spec 0070). Si rimuove solo il gate di UI.</item>
+      <item>Il gruppo `validated` e il marchio `ValidatedStatusMarker` restano invariati nella semantica.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ====== Configuratore (ex opportunity-workflows) ====== -->
+    <endpoint method="GET" path="/api/quote-workflows/criterion-fields">
+      <request>nessun parametro. Gate: `quote-workflows.view`.</request>
+      <response status="200">
+        { success, message, data: [ {
+            field: string,                  // 'state_id' | 'source_id' | 'business_function_id' | 'product_category_id' | 'custom.&lt;key&gt;'
+            label: string,                  // nativi: chiave i18n `quoteWorkflows.criterionFields.&lt;field&gt;`; custom: label letterale
+            source: 'native' | 'custom',
+            for_select_resource: string,
+            multi_valued: bool,
+            inherited: bool                 // NUOVO: true per i campi risolti dall'Opportunita' padre (state_id, source_id, custom.*)
+        } ] }
+      </response>
+      <errors>403 senza `quote-workflows.view`</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|DELETE" path="/api/quote-workflows[/{quoteWorkflow}]">
+      <request>
+        Shape IDENTICA alle attuali `/api/opportunity-workflows/*`, con le sole chiavi rinominate:
+        { name: string, is_active: bool,
+          criteria: [{ field: string, value_id: int }],
+          statuses: [{ id?: int, name: string, color?: string, description?: string,
+                       requires_note: bool, system_key?: string }] }
+      </request>
+      <response status="200">
+        { success, message, data: { id, name, is_active, criteria[], statuses[], created_at, updated_at } }
+      </response>
+      <errors>403 senza permesso; 422 su criteri duplicati / firma criteri gia' esistente / riga di sistema mutata oltre name|description|color|requires_note / piu' di una riga `validated`</errors>
+    </endpoint>
+
+    <endpoint method="GET|PUT" path="/api/quote-workflows/default-statuses">
+      <request>PUT: { statuses: [...] } — set globale (`quote_workflow_id IS NULL`).</request>
+      <response status="200">{ success, message, data: [ QuoteWorkflowStatus ] }</response>
+      <errors>403 senza `quote-workflows.update`; 422 come sopra</errors>
+    </endpoint>
+
+    <!-- ====== Offerta ====== -->
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <request>route model binding</request>
+      <response status="200">
+        data: {
+          ...campi attuali INVARIATI,
+          quote_status_id: REMOVED,
+          quote_status: REMOVED,
+          quote_workflow_status_id: int,                              // NOT NULL
+          quote_workflow_status: { id, name, color, group, requires_note },
+          quote_workflow_statuses: [ { id, name, color, group, requires_note, sort_order } ]  // set risolto per QUESTA offerta
+        }
+      </response>
+      <errors>403 senza `quotes.view`; 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes[/{quote}]">
+      <request>
+        ...campi attuali INVARIATI, meno `quote_status_id`, piu':
+        quote_workflow_status_id: int|null   // nullable/omesso alla create -> risolto server-side sul set applicabile
+        note: string|null                    // richiesta SOLO se lo stato di destinazione ha `requires_note = true`
+      </request>
+      <response status="200|201">come GET /api/quotes/{quote}</response>
+      <errors>
+        422 `quote_workflow_status_id` fuori dal set risolto per l'offerta;
+        422 `note` mancante/vuota quando lo stato di destinazione ha `requires_note = true`;
+        403 se l'attore non ha `notes.create` e la nota sarebbe obbligatoria;
+        403/422 restanti invariati
+      </errors>
+    </endpoint>
+
+    <!-- ====== Stato calcolato dell'Opportunita' ====== -->
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <request>route model binding</request>
+      <response status="200">
+        data: {
+          ...campi attuali,
+          requires_quote: REMOVED,
+          opportunity_workflow_status_id: REMOVED,
+          workflow_status: REMOVED,
+          workflow_statuses: REMOVED,
+          status: {
+            source: 'quotes' | 'default',                 // 'workflow' ELIMINATO
+            distinct_count: int,
+            entries: [ { id: int, name: string, color: string|null, group: string, count: int } ]
+          }
+        }
+        Regola: >=1 offerta -> `source: 'quotes'`, una entry per `quote_workflow_status_id` distinto,
+        ordinate per `sort_order`, con `count`. Zero offerte -> `source: 'default'`, una sola entry =
+        riga `system_key = 'open'` del set globale, `count: 0`.
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+
+    <!-- ====== Rimozioni ====== -->
+    <endpoint method="ALL" path="/api/quote-statuses/*">
+      <request>ELIMINATO (for-select, reorder, CRUD).</request>
+      <response status="404">rotta inesistente</response>
+      <errors>—</errors>
+    </endpoint>
+
+    <endpoint method="ALL" path="/api/opportunity-workflows/*">
+      <request>ELIMINATO — sostituito da `/api/quote-workflows/*`. Nessun alias di compatibilita'.</request>
+      <response status="404">rotta inesistente</response>
+      <errors>—</errors>
+    </endpoint>
+
+    <!-- ====== Schema ====== -->
+    <endpoint method="MIGRATION" path="schema">
+      <request>
+        1. rename `opportunity_workflows` -> `quote_workflows`
+        2. rename `opportunity_workflow_criteria` -> `quote_workflow_criteria` (colonna
+           `opportunity_workflow_id` -> `quote_workflow_id`, indice unique rinominato)
+        3. rename `opportunity_workflow_statuses` -> `quote_workflow_statuses` (colonna
+           `opportunity_workflow_id` -> `quote_workflow_id`, indici unique rinominati)
+        4. `quotes`: drop FK+colonna `quote_status_id`; add `quote_workflow_status_id` nullable FK
+           -> `quote_workflow_statuses` `restrictOnDelete`; backfill sulle righe esistenti con la
+           riga `system_key='open'` del set globale; `->change()` a NOT NULL; indice
+        5. `opportunities`: drop FK+colonna `opportunity_workflow_status_id`
+        6. `dropIfExists('quote_statuses')`
+        7. prune permessi: delete `permissions` like `quote-statuses.%`; update `permissions.name`
+           da `opportunity-workflows.%` a `quote-workflows.%`; stesso rename su
+           `role_field_permissions.resource`; delete righe `role_field_permissions` per il campo
+           `opportunities.opportunity_workflow_status_id` e per la resource `quote-statuses`
+        8. morph map / `config/activity-log.php` / `config/tables.php` / `config/authorization.php` /
+           `config/navigation/opportunities.php` aggiornati agli slug nuovi
+        Tutte reversibili (`down`).
+      </request>
+      <response status="200">—</response>
+      <errors>—</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Schema e permessi -->
+    <criterion id="AC-001">Dato il DB migrato, quando ispeziono lo schema, allora esistono `quote_workflows`, `quote_workflow_criteria`, `quote_workflow_statuses` e NON esistono `opportunity_workflows`, `opportunity_workflow_criteria`, `opportunity_workflow_statuses`, `quote_statuses`.</criterion>
+    <criterion id="AC-002">Dato il DB migrato, quando ispeziono `quotes`, allora `quote_status_id` non esiste e `quote_workflow_status_id` esiste NOT NULL con FK verso `quote_workflow_statuses`.</criterion>
+    <criterion id="AC-003">Dato il DB migrato, quando ispeziono `opportunities`, allora `opportunity_workflow_status_id` non esiste.</criterion>
+    <criterion id="AC-004">Dato il rollback di tutte le migrazioni nuove, quando eseguo `migrate:rollback`, allora lo schema torna allo stato precedente senza errori.</criterion>
+    <criterion id="AC-005">Dopo `permissions:sync`, esistono i permessi `quote-workflows.{viewAny,view,create,update,delete,export,import,viewActivity}` e non esiste alcun permesso `opportunity-workflows.*` ne' `quote-statuses.*`.</criterion>
+
+    <!-- Risoluzione dei criteri sull'Offerta -->
+    <criterion id="AC-010">Data un'offerta le cui righe offerta puntano a prodotti di categoria C, quando risolvo il workflow, allora un workflow con criterio `product_category_id = C` matcha, anche se l'Opportunita' padre ha product line di categorie diverse.</criterion>
+    <criterion id="AC-011">Data un'offerta le cui categorie di riga hanno `business_function_id = B`, quando risolvo il workflow, allora un workflow con criterio `business_function_id = B` matcha.</criterion>
+    <criterion id="AC-012">Data un'offerta la cui Opportunita' padre ha `state_id = S`, quando risolvo il workflow, allora un workflow con criterio `state_id = S` matcha (campo ereditato, `inherited: true` nel catalogo).</criterion>
+    <criterion id="AC-013">Dati due workflow che matchano con 2 e 1 criteri, quando risolvo, allora vince quello con 2 criteri; a parita' di numero di criteri vince l'`id` piu' basso.</criterion>
+    <criterion id="AC-014">Dato nessun workflow matchante (o un workflow `is_active = false`), quando risolvo, allora si usa il set globale di default (`quote_workflow_id IS NULL`).</criterion>
+    <criterion id="AC-015">Dato un workflow senza criteri, quando risolvo, allora NON matcha mai.</criterion>
+    <criterion id="AC-016">`GET /api/quote-workflows/criterion-fields` restituisce esattamente i 4 campi nativi con `inherited` true su `state_id`/`source_id` e false su `business_function_id`/`product_category_id`, piu' i custom field di tipo `relation` (`inherited: true`).</criterion>
+
+    <!-- Stato dell'Offerta -->
+    <criterion id="AC-020">Data la creazione di un'offerta senza `quote_workflow_status_id`, quando la salvo, allora lo stato assegnato e' la riga `system_key = 'open'` del set risolto per quell'offerta.</criterion>
+    <criterion id="AC-021">Dato un `quote_workflow_status_id` che non appartiene al set risolto per l'offerta, quando salvo, allora 422 con chiave `quote_workflow_status_id`.</criterion>
+    <criterion id="AC-022">Dato un cambio delle righe offerta che cambia il workflow risolto, quando salvo, allora lo stato viene rimappato per `system_key` sul nuovo set; se il `system_key` corrente non esiste nel nuovo set, si ricade sulla riga `open`.</criterion>
+    <criterion id="AC-023">Dato uno stato di destinazione con `requires_note = true`, quando aggiorno l'offerta senza `note` (o con `note` vuota), allora 422 con chiave `note` e lo stato NON cambia.</criterion>
+    <criterion id="AC-024">Dato uno stato con `requires_note = true` e un attore senza `notes.create`, quando aggiorno l'offerta con una `note` valida, allora 403 e lo stato NON cambia (rollback della transazione).</criterion>
+    <criterion id="AC-025">Dato uno stato con `requires_note = true` e un attore autorizzato, quando aggiorno l'offerta con `note` valida, allora lo stato cambia e viene creata una nota sul thread dell'Opportunita' padre con il corpo inviato.</criterion>
+    <criterion id="AC-026">Dato uno stato di destinazione uguale a quello corrente, quando aggiorno l'offerta senza `note`, allora nessun requisito di nota scatta e il salvataggio riesce.</criterion>
+
+    <!-- Stato calcolato dell'Opportunita' -->
+    <criterion id="AC-030">Data un'opportunita' con 3 offerte su 2 stati distinti, quando leggo `GET /api/opportunities/{id}`, allora `status.source = 'quotes'`, `distinct_count = 2` e le entry riportano i `count` corretti ordinati per `sort_order`.</criterion>
+    <criterion id="AC-031">Data un'opportunita' senza offerte, quando leggo `GET /api/opportunities/{id}`, allora `status.source = 'default'`, `distinct_count = 1` e l'unica entry e' la riga `system_key = 'open'` del set globale.</criterion>
+    <criterion id="AC-032">Data la rinomina della riga `open` del set globale, quando rileggo un'opportunita' senza offerte, allora il badge riporta il nuovo nome e il nuovo colore (nessuna stringa hardcoded).</criterion>
+    <criterion id="AC-033">Il payload di `GET /api/opportunities/{id}` non contiene piu' `requires_quote`, `opportunity_workflow_status_id`, `workflow_status`, `workflow_statuses`.</criterion>
+    <criterion id="AC-034">Dato il filtro `set` sulla colonna `status` della griglia opportunita', quando filtro per il nome della riga `open` del set globale, allora compaiono anche le opportunita' senza offerte.</criterion>
+    <criterion id="AC-035">Dato il filtro "attive"/"chiuse" della griglia Referenti premiati, quando lo applico, allora i gruppi considerati restano `open|pending|validated` e `closed_won|closed_lost` e i risultati sono coerenti con gli stati delle offerte.</criterion>
+
+    <!-- Superficie rimossa -->
+    <criterion id="AC-040">`GET /api/quote-statuses/for-select` e ogni altra rotta `quote-statuses` restituiscono 404.</criterion>
+    <criterion id="AC-041">`GET /api/opportunity-workflows` restituisce 404; `GET /api/quote-workflows` risponde 200 all'attore autorizzato.</criterion>
+    <criterion id="AC-042">Un grep del repo su `quote_status_id`, `QuoteStatus`, `opportunity_workflow_status_id`, `OpportunityWorkflow` non trova occorrenze residue (esclusi i file di migrazione storici e la cartella `docs/`).</criterion>
+    <criterion id="AC-043">Il menu di navigazione mostra "Configuratore Stati Offerta" (`/quote-workflows`) nel gruppo Offerte e non mostra ne' "Stati Offerta" ne' "Configuratore Stati Lavorazione".</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-050">Nel form Offerta, il select dello stato mostra solo le righe di `quote_workflow_statuses` del set risolto per quell'offerta.</criterion>
+    <criterion id="AC-051">Nel form Offerta, selezionando uno stato con `requires_note = true`, compare il campo nota obbligatorio e il submit e' bloccato finche' e' vuoto (validazione Zod, speculare al server).</criterion>
+    <criterion id="AC-052">Il dettaglio Opportunita' non mostra piu' alcun campo "Stato di lavorazione"; il badge di stato riflette `status.entries` (badge singolo se 1, "N stati" con tooltip se N).</criterion>
+    <criterion id="AC-053">Il pannello Offerte del dettaglio Opportunita' e' visibile in base al solo permesso `quotes.viewAny`, su qualunque opportunita' (nessun gate `requires_quote`).</criterion>
+    <criterion id="AC-054">Il form Opportunita' non espone piu' il campo stato di lavorazione e il suo payload non contiene `opportunity_workflow_status_id`.</criterion>
+    <criterion id="AC-055">La griglia Gestione Richieste non espone piu' la colonna inline-editable `workflow_status`.</criterion>
+
+    <!-- Seed -->
+    <criterion id="AC-060">Dopo `db:seed` (seed pulito) esiste il set globale di default con le righe `open`/`closed_won`/`closed_lost` e nessuna riga di `quote_statuses`.</criterion>
+    <criterion id="AC-061">Dopo `db:seed --class=DemoDataSeeder`, ogni offerta demo ha un `quote_workflow_status_id` appartenente al set risolto per la propria offerta.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo quanto gia' in `composer.json` / `package.json`.</item>
+    <item>Authz server-side su ogni endpoint (Policy `QuoteWorkflowPolicy` via `BasePolicy`, `QuoteWorkflowsAuthorization`), incluso il dominio tabellare (`viewAny` nella `TableDefinition`).</item>
+    <item>Mai modificare una migrazione gia' committata: ogni cambio di schema e' una migrazione NUOVA e reversibile.</item>
+    <item>`system_key` e `quote_workflow_id` restano fuori da `#[Fillable]`: scritture via `forceFill`/`forceCreate` come oggi.</item>
+    <item>La risoluzione dei criteri non deve introdurre N+1: `QuoteWorkflowResolver` carica in una volta `offerLines.product.category` e `opportunity`, e memoizza i workflow attivi per istanza come fa oggi `OpportunityWorkflowResolver`.</item>
+    <item>La nota di `requires_note` e la scrittura dello stato stanno nella STESSA transazione: se la nota fallisce, lo stato non cambia.</item>
+    <item>Nessun alias di compatibilita' sulle rotte vecchie: la rinomina e' netta (D-6).</item>
+    <item>File entro 300 righe (soft) / 500 (hard); zero dead code; identificatori in inglese.</item>
+  </constraints>
+
+</spec>

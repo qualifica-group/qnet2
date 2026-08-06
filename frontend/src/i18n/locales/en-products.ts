@@ -205,6 +205,11 @@ export const productCategories = {
         title: 'Opportunity attributes',
         description: 'Loaded in the Opportunity preliminary info for requests in this category.',
       },
+      quoteAttributes: {
+        title: 'Quote attributes',
+        description:
+          'Loaded in the Quote additional information, when a line uses a product from this category.',
+      },
       managerLabels: {
         title: 'Account managers',
         description:

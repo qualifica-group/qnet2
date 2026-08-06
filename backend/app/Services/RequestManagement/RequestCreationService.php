@@ -7,14 +7,11 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
-use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\User;
-use App\RequestManagement\ApplicableAttribute;
 use App\Services\OpportunityService;
 use App\Services\RegistryService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -38,11 +35,10 @@ final class RequestCreationService
         private readonly RegistryService $registryService,
         private readonly OpportunityService $opportunityService,
         private readonly RequestManagementService $panel,
-        private readonly RequestAttributeValueWriter $attributeValueWriter,
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity, applicable_attributes: Collection<int, ApplicableAttribute>, attribute_layout: array<string, mixed>|null}
+     * @return array{opportunity: Opportunity}
      */
     public function create(User $actor, CreateRequestData $data): array
     {
@@ -94,47 +90,25 @@ final class RequestCreationService
                 generalNotes: $data->generalNotes,
             ), $actor);
 
-            // Step 3: the operative fields the work panel edits, submitted at
-            // creation too (user directive 2026-07-31). They run AFTER the
-            // insert on purpose: neither is mass-assignable (D-4 guard), and
-            // the dynamic values are validated against a set that only
-            // exists once the product lines are persisted.
+            // Step 3: the planned callback, submitted at creation too (user
+            // directive 2026-07-31) — NOT mass-assignable (D-4 guard), so
+            // written AFTER the insert like every other operative field of
+            // this panel.
             $this->applyOperativeFields($opportunity, $data);
 
-            // Spec 0062, D3: the distinct "new request" form, never the full
-            // edit work panel's own layout.
-            return $this->panel->loadWorkPanel($opportunity, FormMode::Create);
+            return $this->panel->loadWorkPanel($opportunity);
         });
     }
 
     /**
-     * The planned callback and the dynamic values, both optional (user
-     * directive 2026-07-31). Neither is mass-assignable (D-4 guard), and the
-     * dynamic values are validated through the SAME writer the panel's PATCH
-     * uses (RequestAttributeValueWriter), so the two channels can never
-     * diverge on the applicability rule.
-     *
-     * Nothing submitted means nothing to save: the early return keeps a plain
-     * create at the single insert it has always been.
+     * The planned callback, optional (user directive 2026-07-31). Nothing
+     * submitted means nothing to save: the early return keeps a plain create
+     * at the single insert it has always been.
      */
     private function applyOperativeFields(Opportunity $opportunity, CreateRequestData $data): void
     {
-        // Discarded: on create there is no previous state to diff against, and
-        // the record's own `created` activity entry is the audit trail (the
-        // panel's explicit entry exists only because a PATCH of these
-        // non-fillable columns would otherwise leave no trace at all).
-        $changed = [];
-        $old = [];
-
         if ($data->nextCallbackAt !== null) {
             $opportunity->next_callback_at = $data->nextCallbackAt;
-        }
-
-        if ($data->attributeValues !== null) {
-            $this->attributeValueWriter->apply($opportunity, $data->attributeValues, $changed, $old);
-        }
-
-        if ($opportunity->isDirty()) {
             $opportunity->save();
         }
     }

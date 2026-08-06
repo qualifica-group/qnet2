@@ -6,7 +6,6 @@ use App\Enums\AttributeContext;
 use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
-use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -26,7 +25,7 @@ use Illuminate\Database\Seeder;
  * them and groups them into one form section (spec 0062).
  *
  * ONE LAYOUT ROW PER CATEGORY, not one on the root: like the Product side, a
- * layout is not inherited — OpportunityAttributeLayoutResolver reads the
+ * layout is not inherited — AttributeLayoutMerger reads the
  * layout of each category CONTRIBUTING to the request (its product lines'
  * categories), never an ancestor's. A single root row would render nowhere.
  * Each category's section is built from its OWN effective attributes, so
@@ -89,7 +88,7 @@ class QualificaContactProcessingSeeder extends Seeder
      *     work panel stops rendering it (context-agnostic on purpose: the
      *     directive is "in every category", not "in this context");
      *   - the persisted layout blobs, because a stale item is not merely
-     *     invisible — OpportunityAttributeLayoutResolver does drop it at
+     *     invisible — AttributeLayoutMerger does drop it at
      *     render time, but AttributeLayoutValidator rejects a code outside the
      *     category's effective set on WRITE, so leaving it there would 422 the
      *     next save from the layout configurator.
@@ -168,10 +167,13 @@ class QualificaContactProcessingSeeder extends Seeder
     /**
      * The q-crm import created "Titolo di Studio" as free text; the client's
      * list wants a pick list. Promoting the type rewrites how every stored
-     * value is read, so it only happens while NO request carries one —
-     * otherwise the field keeps its imported type and the options are simply
-     * ignored by a `text` control, which is recoverable, unlike silently
-     * reinterpreting live data.
+     * value is read.
+     *
+     * Spec 0084: this used to guard the promotion on NO Opportunity already
+     * carrying a value (`opportunities.attribute_values`, dropped without
+     * migration by D-2) — that value store is gone, so there is nothing left
+     * for a promotion to silently reinterpret, and the guard is removed
+     * along with it.
      */
     private function promoteDegree(): void
     {
@@ -180,20 +182,6 @@ class QualificaContactProcessingSeeder extends Seeder
             ->first();
 
         if ($degree === null || $degree->type === 'enum') {
-            return;
-        }
-
-        $isUsed = Opportunity::query()
-            ->whereJsonContainsKey('attribute_values->'.ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE)
-            ->exists();
-
-        if ($isUsed) {
-            $this->command?->warn(sprintf(
-                'Attributo "%s" lasciato di tipo %s: alcune richieste hanno gia\' un valore.',
-                $degree->name,
-                $degree->type,
-            ));
-
             return;
         }
 

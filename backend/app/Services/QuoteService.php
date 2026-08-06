@@ -21,6 +21,7 @@ use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\OpportunityTitleBuilder;
+use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteLineWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
@@ -96,6 +97,7 @@ class QuoteService
         private readonly OpportunityTitleBuilder $titleBuilder,
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
+        private readonly QuoteAttributeValueWriter $attributeValueWriter,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -144,6 +146,17 @@ class QuoteService
             // Step 4: write the submitted line sets (full-replace, D-8) and
             // cover the opportunity for REVENUE lines only (D-7).
             $this->writeSubmittedLines($quote, $opportunity, $data->offerLines, $data->costLines);
+
+            // Step 4b (spec 0084, D-5): "Informazioni aggiuntive" — written
+            // AFTER the offer lines, so the applicable set validated against
+            // is the one THOSE lines' categories produce, exactly the set the
+            // create form rendered its fields from.
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($quote, $data->attributeValues, $changed, $old);
+                $quote->save();
+            }
 
             // Step 5: persist the recalculated aggregates (D-9).
             $this->persistAggregates($quote);
@@ -199,6 +212,18 @@ class QuoteService
                 $quote->offerLines()->get()->each(
                     fn ($line) => $this->commissionWriter->sync($line, null),
                 );
+            }
+
+            // "Informazioni aggiuntive" (spec 0084, D-5): validated against
+            // the applicable set as it is AFTER any submitted `offer_lines`
+            // replace it above — i.e. the set the form rendered its fields
+            // from — then merged sparsely (a code the map leaves out keeps
+            // its persisted value).
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($quote, $data->attributeValues, $changed, $old);
+                $quote->save();
             }
 
             $this->persistAggregates($quote);

@@ -141,28 +141,4 @@ describe('buildCreatePayload', () => {
       expect(payload).not.toHaveProperty('lead_id')
     })
   })
-
-  /**
-   * "Informazioni aggiuntive" (user directive 2026-08-05): the map travels
-   * only for the codes the chosen categories actually resolved — a value left
-   * over from a category the user has since changed is not in the set the
-   * server validates against, and sending it would 422 the whole create.
-   */
-  describe('attribute_values', () => {
-    it('omits the map entirely when the categories resolved no attribute', () => {
-      const payload = buildCreatePayload(createValues({ attribute_values: { stale_code: 'x' } }))
-
-      expect(payload).not.toHaveProperty('attribute_values')
-    })
-
-    it('sends exactly the applicable codes, defaulting an unfilled one to null', () => {
-      const payload = buildCreatePayload(
-        createValues({ attribute_values: { contract_length: 24, stale_code: 'x' } }),
-        undefined,
-        ['contract_length', 'sla_hours'],
-      )
-
-      expect(payload.attribute_values).toEqual({ contract_length: 24, sla_hours: null })
-    })
-  })
 })

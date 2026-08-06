@@ -30,11 +30,6 @@ Route::post('request-management/transfer', [RequestManagementController::class, 
 // assign-operators above, otherwise "product-categories" is swallowed by the
 // wildcard's route model binding.
 Route::get('request-management/product-categories', ProductCategoryTabsController::class);
-// User directive 2026-07-31: the create form's live preview of the working
-// statuses / dynamic attributes / layout for the criteria typed so far.
-// Literal segment, so it is declared BEFORE the {opportunity} wildcard for the
-// same reason as the two routes above.
-Route::post('request-management/form-context', [RequestManagementController::class, 'formContext']);
 // Spec 0057: the bare POST, gated by `request-management.create` — no
 // {opportunity} to conflict with (creation), but declared here too for
 // consistency with the file's own convention.

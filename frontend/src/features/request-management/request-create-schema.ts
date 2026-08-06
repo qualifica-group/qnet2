@@ -1,13 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { ProductLineRow } from '@/features/product-lines/product-lines-field'
-import {
-  buildAttributeValuesSchema,
-  type TypedAttributeValuesSchema,
-} from '@/features/request-management/attribute-values-schema'
-import { attributeValuesFilled } from '@/features/request-management/request-create-payload'
-import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /**
  * D-3: `product_lines` is mandatory — at least one row — and every row
@@ -58,16 +51,8 @@ function buildProductLinesSchema(t: TFunction) {
  * validate themselves inline and are not RHF-connected — `useRequestCreateForm`
  * gates the submit on their own validity instead (D-2's mutually-exclusive
  * anagrafica branches).
- *
- * `attributes` come from `POST /request-management/form-context` (user
- * directive 2026-07-31): they are what the create form renders its dynamic
- * fields from, so the schema is REBUILT whenever the chosen categories
- * change — exactly as the work panel rebuilds its own from the loaded panel.
  */
-export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAttribute[] = []) {
-  const codes = attributes.map((attribute) => attribute.code)
-  const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
-
+export function buildRequestCreateSchema(t: TFunction) {
   return z.object({
     registry_id: z.number().nullable(),
     product_lines: buildProductLinesSchema(t),
@@ -108,31 +93,7 @@ export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAtt
     // opened knowing nothing but its anagrafica and its product lines.
     next_callback_at: z.string().nullable(),
     general_notes: z.string(),
-    attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
   })
-    .superRefine((values, ctx) => {
-      // The required dynamic fields, on the SAME gate
-      // `buildRequestCreatePayload` uses to decide whether the map travels at
-      // all — mirroring both the panel and the server, which checks
-      // `is_required` only on submitted codes. A request whose category
-      // declares a required attribute therefore stays creatable while the
-      // operator still knows nothing about it (the whole point of a
-      // "informazioni preliminari" module), and becomes strict as soon as they
-      // start filling the block in.
-      if (attributeValuesFilled(values.attribute_values, codes)) {
-        for (const code of requiredCodes) {
-          if (isEmptyCustomFieldValue(values.attribute_values[code])) {
-            ctx.addIssue({
-              code: 'custom',
-              path: ['attribute_values', code],
-              message: t('requestManagement.workPanel.validation.required', {
-                defaultValue: 'This field is required.',
-              }),
-            })
-          }
-        }
-      }
-    })
 }
 
 export type RequestCreateFormValues = z.infer<ReturnType<typeof buildRequestCreateSchema>>

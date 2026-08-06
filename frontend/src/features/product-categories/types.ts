@@ -47,7 +47,7 @@ export type CategoryManagementMode = 'single' | 'multiple'
  * both (two separate pivot rows). Default everywhere is `'opportunity'`
  * (backward compatible with every assignment that predates this spec).
  */
-export type AttributeContext = 'product' | 'opportunity'
+export type AttributeContext = 'product' | 'opportunity' | 'quote'
 
 /**
  * A category's manager-label overrides (spec 0080): position ("1".."4",
@@ -109,6 +109,8 @@ export interface ProductCategoryDetail {
   inherits_product_attributes: boolean
   /** Same barrier for OPPORTUNITY attributes — fully independent of the product one. */
   inherits_opportunity_attributes: boolean
+  /** Spec 0084: barriera del contesto `quote`, indipendente dalle altre due. */
+  inherits_quote_attributes: boolean
   description: string | null
   attributes: ProductCategoryAttributeAssignment[]
   inherited_attributes: ProductCategoryInheritedAttribute[]
@@ -206,6 +208,7 @@ export interface CreateProductCategoryPayload {
   parent_id?: number | null
   inherits_product_attributes?: boolean
   inherits_opportunity_attributes?: boolean
+  inherits_quote_attributes?: boolean
   description?: string | null
   attributes?: AttributeAssignmentInput[]
   /** Own business function; omit or null when the category has none of its own (spec 0023). */

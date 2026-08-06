@@ -39,21 +39,20 @@ function formatCustomNumber(value: unknown): string {
 }
 
 /**
- * Whether a column is one of the dynamic, backend-driven kinds that carry no
- * per-id renderer: `custom.<key>` (spec 0021) or `attr.<code>` (spec 0064,
- * request-management's category attributes). Both share the same generic
- * formatting fallbacks below.
+ * Whether a column is the dynamic, backend-driven kind that carries no per-id
+ * renderer: `custom.<key>` (spec 0021), sharing the generic formatting
+ * fallbacks below.
  */
 function isDynamicColumn(column: TableColumn): boolean {
-  return column.source === 'custom' || column.source === 'attribute'
+  return column.source === 'custom'
 }
 
 /**
  * Default cell value formatter for a column, when no cell renderer applies.
  * `tags` maps each raw value (a backend `code`/id) through the column's own
- * `badges`/`enumKey` metadata when present — a multiselect enum attribute
- * (spec 0064) or custom field carries option codes, not display labels, so
- * joining them raw would show gibberish. A column with no `badges` (native
+ * `badges`/`enumKey` metadata when present — a multiselect enum custom field
+ * carries option codes, not display labels, so joining them raw would show
+ * gibberish. A column with no `badges` (native
  * `tags` such as roles, already display strings; a `relation` many-to-many,
  * which the backend never resolves to a label catalog) falls through
  * unchanged — `formatBadgeFilterValue` returns the raw value verbatim when it
@@ -91,10 +90,10 @@ export function defaultValueFormatter(
 
 /**
  * Whether a column renders as the generic enum badge fallback: native `badge`
- * columns and dynamic `enum` columns (`source:'custom'` or `source:'attribute'`,
- * spec 0064) share the same backend-supplied badge metadata shape
- * (`badges`/`enumKey`), so both use the same agnostic `BadgeCell` — no per-id
- * renderer needed even though the dynamic column id is, well, dynamic.
+ * columns and dynamic `enum` columns (`source:'custom'`) share the same
+ * backend-supplied badge metadata shape (`badges`/`enumKey`), so both use the
+ * same agnostic `BadgeCell` — no per-id renderer needed even though the
+ * dynamic column id is, well, dynamic.
  * Deliberately excludes `relation` columns: the backend emits no `badges` for
  * them (no static option catalog server-side), so they stay on the plain
  * text/`tags` fallback above regardless of source.

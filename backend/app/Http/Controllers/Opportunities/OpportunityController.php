@@ -8,13 +8,10 @@ use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Opportunities\StoreOpportunityRequest;
 use App\Http\Requests\Opportunities\UpdateOpportunityRequest;
-use App\Http\Requests\RequestManagement\RequestFormContextRequest;
 use App\Http\Resources\OpportunityResource;
-use App\Http\Resources\RequestFormContextResource;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\OpportunityService;
-use App\Services\RequestManagement\RequestFormContextResolver;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,39 +37,7 @@ class OpportunityController extends BaseApiController
         private readonly OpportunityService $service,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
-        private readonly RequestFormContextResolver $formContextResolver,
     ) {}
-
-    /**
-     * POST /api/opportunities/form-context (user directive 2026-08-05) — the
-     * dynamic attributes and their layout for the criteria typed so far, so
-     * the CREATE form can render "Informazioni aggiuntive" before anything is
-     * persisted, exactly as the request-management create form does.
-     *
-     * Deliberately the SAME resolver, the same request contract and the same
-     * response shape as POST /api/request-management/form-context, not a
-     * parallel implementation: the applicable set is an OPPORTUNITY-level
-     * concept (spec 0049 D-4 — App\RequestManagement only happens to be where
-     * the resolver lives), so two copies could only ever drift into two
-     * different sets for the same product lines.
-     *
-     * Read-only despite the verb: the criteria are a collection of objects,
-     * which has no sane query-string encoding. Gated on `opportunities.create`
-     * — the actor is filling THIS module's create form; the request-management
-     * ability is unrelated and may well be absent.
-     */
-    public function formContext(RequestFormContextRequest $request): JsonResponse
-    {
-        try {
-            abort_unless($request->user()->can('opportunities.create'), 403);
-
-            return $this->ok(new RequestFormContextResource(
-                $this->formContextResolver->resolve($request->productLines()),
-            ));
-        } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__);
-        }
-    }
 
     /**
      * GET /api/opportunities/{opportunity} — single opportunity (view row-action).

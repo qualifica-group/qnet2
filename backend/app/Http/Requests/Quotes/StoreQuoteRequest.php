@@ -77,6 +77,13 @@ class StoreQuoteRequest extends FormRequest
             'layout_id' => ['sometimes', 'nullable', 'integer', Rule::exists('document_layouts', 'id')],
             'payment_method_id' => ['nullable', 'integer', Rule::exists('payment_methods', 'id')],
             'internal_notes' => ['nullable', 'string', 'max:5000'],
+            // Spec 0084: the dynamic "Informazioni aggiuntive" map. The
+            // per-code deep validation (applicability/type/required) is NOT
+            // duplicated here: it runs in QuoteAttributeValueWriter, the
+            // single place that also resolves the applicable set (from the
+            // submitted offer lines' categories) and merges the map, and
+            // surfaces as the same 422 keyed `attribute_values.<code>`.
+            'attribute_values' => ['sometimes', 'array'],
             'summary' => ['prohibited'],
         ], $this->quoteLinesRules());
     }

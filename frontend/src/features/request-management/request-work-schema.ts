@@ -1,37 +1,21 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import {
-  buildAttributeValuesSchema,
-  type TypedAttributeValuesSchema,
-} from '@/features/request-management/attribute-values-schema'
-import {
-  attributeValuesChanged,
   clientAddressChanged,
   clientContactsChanged,
   clientIdentityChanged,
   productLinesChanged,
   productsOfInterestChanged,
 } from '@/features/request-management/request-work-payload'
-import type {
-  ApplicableAttribute,
-  RequestClientIdentity,
-  RequestContact,
-} from '@/features/request-management/types'
+import type { RequestClientIdentity, RequestContact } from '@/features/request-management/types'
 
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
- * AC-062/063): the dynamic `attribute_values` map, one entry per
- * `applicable_attributes` row, keyed by `code`. The map's per-type shape
- * comes from the shared `buildAttributeValuesSchema` (the create form builds
- * the identical one); `is_required` is added by the refinement below, which
- * alone knows whether the map is going to be sent at all. MIRRORS the
- * backend's `AttributeValueValidator`, it does not replace it — the server
- * stays authoritative (406/422 still applies).
+ * AC-062/063).
  */
 
 /**
@@ -159,16 +143,13 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
 
 /**
  * The panel's loaded state, against which the sparse rules below are decided.
- * `UpdateRequestRequest` marks every key `sometimes` and
- * `AttributeValueValidator` checks `is_required` only on SUBMITTED codes: an
- * untouched key is never validated server-side, so mirroring it
- * unconditionally here would be STRICTER than the endpoint — it would make a
- * record that is missing a required Attribute (or has no product of interest)
- * unsavable for any unrelated edit, with the submit refused before any
- * request went out.
+ * `UpdateRequestRequest` marks every key `sometimes`: an untouched key is
+ * never validated server-side, so mirroring it unconditionally here would be
+ * STRICTER than the endpoint — it would make a record that has no product of
+ * interest unsavable for any unrelated edit, with the submit refused before
+ * any request went out.
  */
 export interface RequestWorkOriginalState {
-  attribute_values: Record<string, unknown>
   products_of_interest: number[]
   /** The persisted funzione/categoria pairs, in the form's own row shape. */
   product_lines: ProductLineRow[]
@@ -178,14 +159,7 @@ export interface RequestWorkOriginalState {
   client_address: Address | null
 }
 
-export function buildRequestWorkSchema(
-  attributes: ApplicableAttribute[],
-  original: RequestWorkOriginalState,
-  t: TFunction,
-) {
-  const codes = attributes.map((attribute) => attribute.code)
-  const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
-
+export function buildRequestWorkSchema(original: RequestWorkOriginalState, t: TFunction) {
   return z
     .object({
       next_callback_at: z.string().nullable(),
@@ -219,26 +193,8 @@ export function buildRequestWorkSchema(
       operator_id: z.number().nullable(),
       // Spec 0056: facoltativa, same attribution shape.
       operational_site_id: z.number().nullable(),
-      attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
     })
     .superRefine((values, ctx) => {
-      // Step 1: the two mandatory rules, gated on the key being sent at all —
-      // the SAME predicates `buildRequestWorkPayload` uses to decide that, so
-      // the two can never drift.
-      if (attributeValuesChanged(values.attribute_values, original.attribute_values, codes)) {
-        for (const code of requiredCodes) {
-          if (isEmptyCustomFieldValue(values.attribute_values[code])) {
-            ctx.addIssue({
-              code: 'custom',
-              path: ['attribute_values', code],
-              message: t('requestManagement.workPanel.validation.required', {
-                defaultValue: 'This field is required.',
-              }),
-            })
-          }
-        }
-      }
-
       if (
         productsOfInterestChanged(values.products_of_interest, original.products_of_interest) &&
         values.products_of_interest.length === 0
@@ -265,7 +221,7 @@ export function buildRequestWorkSchema(
         })
       }
 
-      // Step 2: the buffered client blocks, on the same gate. A legacy card
+      // Step 1: the buffered client blocks, on the same gate. A legacy card
       // whose tax code or VAT number does not pass the fiscal rules would
       // otherwise block every unrelated edit of the panel — while the server,
       // never receiving the block, has nothing to complain about.

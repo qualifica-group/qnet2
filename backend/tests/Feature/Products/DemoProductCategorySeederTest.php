@@ -68,7 +68,7 @@ it('makes every leaf resolve an effective business function and its own products
     }
 });
 
-it('assigns the demo attributes in both usage contexts and lets the branch inherit them', function (): void {
+it('assigns the demo attributes in the Product and Quote usage contexts and lets the branch inherit them', function (): void {
     seedDemoCatalog();
 
     $hierarchy = app(CategoryHierarchy::class);
@@ -77,7 +77,7 @@ it('assigns the demo attributes in both usage contexts and lets the branch inher
 
     $onlineProductCodes = $hierarchy->effectiveAttributes($online, AttributeContext::Product)->pluck('code')->all();
     $classroomProductCodes = $hierarchy->effectiveAttributes($classroom, AttributeContext::Product)->pluck('code')->all();
-    $onlineOpportunityCodes = $hierarchy->effectiveAttributes($online, AttributeContext::Opportunity)->pluck('code')->all();
+    $onlineQuoteCodes = $hierarchy->effectiveAttributes($online, AttributeContext::Quote)->pluck('code')->all();
 
     expect($onlineProductCodes)
         // Inherited from the branch root...
@@ -87,8 +87,8 @@ it('assigns the demo attributes in both usage contexts and lets the branch inher
         ->and($classroomProductCodes)
         ->toContain('demo_course_hours')
         ->not->toContain('demo_platform')
-        // The opportunity context is a separate set on the same categories.
-        ->and($onlineOpportunityCodes)->toContain('demo_enrollment_status')
+        // The quote context is a separate set on the same categories.
+        ->and($onlineQuoteCodes)->toContain('demo_enrollment_status')
         ->and($onlineProductCodes)->not->toContain('demo_enrollment_status');
 });
 
@@ -98,7 +98,7 @@ it('shares one catalogue row when two branches assign the same attribute code', 
     $notes = Attribute::query()->where('code', 'demo_processing_notes')->get();
 
     expect($notes)->toHaveCount(1)
-        ->and($notes->first()->categories()->wherePivot('context', AttributeContext::Opportunity->value)->count())->toBe(2);
+        ->and($notes->first()->categories()->wherePivot('context', AttributeContext::Quote->value)->count())->toBe(2);
 });
 
 it('writes one layout row per category per context, keeping only the codes it resolves', function (): void {
@@ -107,7 +107,7 @@ it('writes one layout row per category per context, keeping only the codes it re
     $categoryNames = DemoCategoryCatalogue::categoryNames();
 
     expect(AttributeLayout::query()->where('context', AttributeContext::Product->value)->count())->toBe(count($categoryNames))
-        ->and(AttributeLayout::query()->where('context', AttributeContext::Opportunity->value)->count())->toBe(count($categoryNames));
+        ->and(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(count($categoryNames));
 
     $sectionIdsFor = function (string $categoryName, AttributeContext $context): array {
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
@@ -121,7 +121,7 @@ it('writes one layout row per category per context, keeping only the codes it re
     // resolves it, so the section is dropped everywhere else.
     expect($sectionIdsFor('Corsi Online', AttributeContext::Product))->toBe(['demo-course-data', 'demo-course-delivery'])
         ->and($sectionIdsFor('Corsi in Aula', AttributeContext::Product))->toBe(['demo-course-data'])
-        ->and($sectionIdsFor('Consulenza IT', AttributeContext::Opportunity))->toBe(['demo-appointment', 'demo-consulting-outcome']);
+        ->and($sectionIdsFor('Consulenza IT', AttributeContext::Quote))->toBe(['demo-appointment', 'demo-consulting-outcome']);
 });
 
 it('is idempotent and never overwrites a layout configured by hand', function (): void {

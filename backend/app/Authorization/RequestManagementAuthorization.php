@@ -18,9 +18,10 @@ use Illuminate\Database\Eloquent\Model;
  * when the actor may write, else read-only. Only `products_of_interest`,
  * `source_id` and `product_lines` are mandatory-restrictive (user directives
  * 2026-07-23 / 2026-07-29 / 2026-07-31); every other field blocks on nothing
- * here, its dedicated 422 rules living in AttributeValueValidator. Spec
- * 0083, D-2: the former workflow-status override field is REMOVED — the
- * Opportunity resolves no working state of its own any more.
+ * here. Spec 0083, D-2: the former workflow-status override field is REMOVED
+ * — the Opportunity resolves no working state of its own any more. Spec
+ * 0084, D-1: the former `attribute_values` field is REMOVED too — the
+ * dynamic "Informazioni aggiuntive" section moved to the Offerta (Quote).
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
@@ -40,7 +41,6 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
     public function fields(): array
     {
         return [
-            new FieldDefinition('attribute_values', 'custom'),
             // Spec 0054, D-4: written exclusively by
             // RequestManagementService::updateWork() (never mass-assigned —
             // Opportunity::$fillable deliberately excludes it, spec 0052
@@ -107,7 +107,6 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
         $mayWrite = $this->actorMayWrite($actor, $model);
 
         return [
-            'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'next_callback_at' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

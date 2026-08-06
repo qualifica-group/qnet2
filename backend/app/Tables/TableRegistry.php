@@ -4,7 +4,7 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
-use App\Tables\RequestManagement\AttributeScopedTableDefinition;
+use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -23,9 +23,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class TableRegistry
 {
     /**
-     * The only domain wrapped in `AttributeScopedTableDefinition` (spec
-     * 0064): category-attribute columns are a `request-management`-specific
-     * concept, not a generic table-framework one (unlike custom fields).
+     * The only domain wrapped in `RequestManagementScopedTableDefinition`
+     * (spec 0064; spec 0084 dropped its `attr.*`-column effect): the
+     * category tab strip's row scope + GA2 relabel are a
+     * `request-management`-specific concept, not a generic table-framework
+     * one (unlike custom fields).
      */
     private const string REQUEST_MANAGEMENT_DOMAIN = 'request-management';
 
@@ -41,18 +43,17 @@ class TableRegistry
     /**
      * Resolve the definition for the given domain, wrapped in
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
-     * custom-fieldable, THEN in `AttributeScopedTableDefinition` (spec 0064)
-     * for `request-management`, THEN in `OpportunityScopedTableDefinition`
-     * (spec 0067) for `quotes` — one line each here, zero per-module code.
-     * Column order this composition yields: native, then `custom.*`, then
-     * `attr.*`.
+     * custom-fieldable, THEN in `RequestManagementScopedTableDefinition`
+     * (spec 0064/0084) for `request-management`, THEN in
+     * `OpportunityScopedTableDefinition` (spec 0067) for `quotes` — one line
+     * each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
     public function resolve(string $domain): TableDefinition
     {
         $definition = $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
-        $definition = $this->wrapIfAttributeScoped($domain, $definition);
+        $definition = $this->wrapIfRequestManagementScoped($domain, $definition);
 
         return $this->wrapIfOpportunityScoped($domain, $definition);
     }
@@ -115,17 +116,17 @@ class TableRegistry
     }
 
     /**
-     * Wrap in `AttributeScopedTableDefinition` (spec 0064) for
+     * Wrap in `RequestManagementScopedTableDefinition` (spec 0064/0084) for
      * `request-management` only — every other domain is returned unchanged.
      */
-    private function wrapIfAttributeScoped(string $domain, TableDefinition $definition): TableDefinition
+    private function wrapIfRequestManagementScoped(string $domain, TableDefinition $definition): TableDefinition
     {
         if ($domain !== self::REQUEST_MANAGEMENT_DOMAIN) {
             return $definition;
         }
 
-        /** @var AttributeScopedTableDefinition $wrapped */
-        $wrapped = $this->container->make(AttributeScopedTableDefinition::class, [
+        /** @var RequestManagementScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(RequestManagementScopedTableDefinition::class, [
             'inner' => $definition,
         ]);
 

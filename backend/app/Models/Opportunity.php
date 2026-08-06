@@ -41,6 +41,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * `general_notes`, NOT `notes`, because `notes()` is already this model's
  * collaborative-thread relation (HasNotes, spec 0052).
  *
+ * Spec 0084: the former `attribute_values` column (the dynamic "Informazioni
+ * aggiuntive" map) is GONE — that concern moved to the Offerta (Quote), one
+ * per quote rather than one per opportunity.
+ *
  * Spec 0056 (2026-07-23) SUPERSEDES the 2026-07-17 removal limitedly to
  * `operational_site_id`: reintroduced as a plain, optional FK (nullOnDelete —
  * a deliberate deviation from this model's other restrictOnDelete relations,
@@ -79,7 +83,6 @@ class Opportunity extends BaseModel
             'expected_close_date' => 'date',
             'estimated_value' => 'decimal:2',
             'success_probability' => 'integer',
-            'attribute_values' => 'array',
             'next_callback_at' => 'datetime',
             'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',

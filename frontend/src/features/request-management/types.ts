@@ -7,7 +7,6 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { Address, GeoRef, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
 import type { OpportunityStatusSummary } from '@/features/opportunities/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
@@ -211,17 +210,6 @@ export interface RequestWorkPanel {
    */
   client_address: Address | null
   referent_contacts: RequestContactsBlock
-  /** Union, dedup by `code`, of the effective attributes of every product line. */
-  applicable_attributes: ApplicableAttribute[]
-  /** Current values keyed by attribute `code`; `{}` when none. */
-  attribute_values: Record<string, unknown>
-  /**
-   * The merged, multi-category resolved attribute layout for the panel's
-   * form mode, additive (spec 0062). `null`/absent falls back to the flat
-   * rendering of `applicable_attributes` (AC-007) — optional for the same
-   * fixture-compatibility convention as `rewards` below.
-   */
-  attribute_layout?: LayoutBlob | null
   /** Next follow-up call the operator scheduled, `"Y-m-d\TH:i"` local format or null (spec 0052 D-1/D-5). */
   next_callback_at: string | null
   context: RequestWorkContext
@@ -286,14 +274,11 @@ export interface RequestClientAddressPayload {
 
 /**
  * Payload for `PATCH /api/request-management/{opportunity}` (sparse diff):
- * only the sent keys change. `attribute_values`, when sent, replaces the
- * entire map (keys not included are left untouched server-side).
- * `client_contacts`, when sent, is AUTHORITATIVE (a removed row is deleted);
- * `client_address` is a single create-or-update row and never deletes the
- * client's other addresses.
+ * only the sent keys change. `client_contacts`, when sent, is AUTHORITATIVE
+ * (a removed row is deleted); `client_address` is a single create-or-update
+ * row and never deletes the client's other addresses.
  */
 export interface UpdateRequestWorkPayload {
-  attribute_values?: Record<string, unknown>
   next_callback_at?: string | null
   /**
    * Product ids, AUTHORITATIVE when sent (`[]` clears the collection). A
@@ -341,8 +326,8 @@ export interface RequestProductLinePayload {
  * One `rewards` row of the update payload (spec 0059 §4): only the type id
  * travels — the beneficiary (the reporter) and `assigned_at` are derived
  * server-side by `RewardAssignmentWriter`. Kept LOCAL rather than imported
- * from `features/opportunities` (same module-decoupling reason as
- * `ApplicableAttributeSummary`/`RequestProductLine`).
+ * from `features/opportunities` (module-decoupling reason, same as
+ * `RequestProductLine`).
  */
 export interface RequestRewardInput {
   reward_type_id: number
@@ -389,29 +374,6 @@ export interface CreateRequestPayload {
   /** `"Y-m-d\TH:i"` local format, same shape the panel PATCHes. */
   next_callback_at?: string
   general_notes?: string
-  /** Dynamic values keyed by attribute `code`, validated against the applicable set of the created request. */
-  attribute_values?: Record<string, unknown>
-}
-
-/**
- * Body of POST /request-management/form-context (user directive 2026-07-31):
- * the criteria the create form has collected so far. Half-filled product lines
- * are dropped client-side (they scope nothing) exactly as the server does.
- */
-export interface RequestFormContextPayload {
-  source_id: number | null
-  product_lines: RequestProductLinePayload[]
-}
-
-/**
- * Response of the same endpoint: the two blocks the create form needs before
- * anything is persisted, resolved from the criteria above. Same keys and same
- * per-item shapes as the work panel's own — the two forms render the identical
- * sections from the identical types.
- */
-export interface RequestFormContext {
-  applicable_attributes: ApplicableAttribute[]
-  attribute_layout: LayoutBlob | null
 }
 
 /**
