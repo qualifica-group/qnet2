@@ -50,6 +50,23 @@ interface NotableEntity
     public function ownsQuote(Model $record, int $quoteId): bool;
 
     /**
+     * Every scoping unit that belongs to $record, in the SAME `{id, code,
+     * title}` shape NoteResource exposes as a note's own `quote` — the list
+     * the client offers as filter and as destination. Returned by the notes
+     * index itself so a host mounting the component never has to fetch and
+     * pass it: a second projection of the same thing would drift apart at
+     * the first change, and a host that cannot fetch it (a grid row, a
+     * dialog) would silently lose the selector.
+     *
+     * Same delegation reason as ownsQuote(): the agnostic core never queries
+     * a host module's own scoping entity. A host with no such concept
+     * returns an empty array, and the selectors do not mount at all.
+     *
+     * @return array<int, array{id: int, code: string, title: string}>
+     */
+    public function quoteScopes(Model $record): array;
+
+    /**
      * Human label for $record, used in the mention notification message.
      */
     public function label(Model $record): string;

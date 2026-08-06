@@ -64,6 +64,14 @@ final class NoteEntityRegistry
         return $this->entityFor($entityType)->ownsQuote($record, $quoteId);
     }
 
+    /**
+     * @return array<int, array{id: int, code: string, title: string}>
+     */
+    public function quoteScopes(string $entityType, Model $record): array
+    {
+        return $this->entityFor($entityType)->quoteScopes($record);
+    }
+
     public function labelFor(string $entityType, Model $record): string
     {
         return $this->entityFor($entityType)->label($record);

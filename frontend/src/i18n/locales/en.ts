@@ -108,7 +108,7 @@ export const en = {
     notes: 'Notes',
     impersonate: 'Impersonate',
     layout: 'Attribute layout',
-    generateWord: 'Download quote',
+    generatePdf: 'Download quote',
     transferContact: 'Transfer contact',
   },
   table,

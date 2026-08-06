@@ -54,12 +54,12 @@ describe('quotes navigation icon', () => {
 })
 
 // Spec 0070 AC-315: the Layout field, its form section, the detail field, the
-// backend-declared row-action label (`actions.generateWord`) and every new
+// backend-declared row-action label (`actions.generatePdf`) and every new
 // document-generation message must exist in both locales.
 describe('quotes document generation i18n (spec 0070)', () => {
-  it('translates the shared "actions.generateWord" row-action label declared by the backend', () => {
-    expect(en.actions.generateWord).toBeTruthy()
-    expect(itLocale.actions.generateWord).toBeTruthy()
+  it('translates the shared "actions.generatePdf" row-action label declared by the backend', () => {
+    expect(en.actions.generatePdf).toBeTruthy()
+    expect(itLocale.actions.generatePdf).toBeTruthy()
   })
 
   it('translates the Layout field, its search placeholder and its form section', () => {

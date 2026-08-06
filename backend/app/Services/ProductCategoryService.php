@@ -51,7 +51,6 @@ class ProductCategoryService
                 'name' => $data->name,
                 'parent_id' => $data->parentId,
                 'inherits_product_attributes' => $data->inheritsProductAttributes,
-                'inherits_opportunity_attributes' => $data->inheritsOpportunityAttributes,
                 'inherits_quote_attributes' => $data->inheritsQuoteAttributes,
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
@@ -173,24 +172,23 @@ class ProductCategoryService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function effectiveAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
+    public function effectiveAttributes(ProductCategory $category, AttributeContext $context): Collection
     {
         return $this->hierarchy->effectiveAttributes($category, $context);
     }
 
     /**
      * The category's inherited attributes across every context, each row
-     * tagged `context` (spec 0061; spec 0084 adds `quote`) — the config
-     * page's read-only side list feeds the "Attributi Prodotto",
-     * "Attributi Opportunita'" AND "Attributi Offerta" sections in one flat
-     * response, the frontend splitting by that tag.
+     * tagged `context` (spec 0061; spec 0084 replaces `opportunity` with
+     * `quote`) — the config page's read-only side list feeds the "Attributi
+     * Prodotto" AND "Attributi Offerta" sections in one flat response, the
+     * frontend splitting by that tag.
      *
      * @return Collection<int, array<string, mixed>>
      */
     public function inheritedAttributes(ProductCategory $category): Collection
     {
-        return $this->hierarchy->ancestorAttributes($category, AttributeContext::Opportunity)
-            ->merge($this->hierarchy->ancestorAttributes($category, AttributeContext::Product))
+        return $this->hierarchy->ancestorAttributes($category, AttributeContext::Product)
             ->merge($this->hierarchy->ancestorAttributes($category, AttributeContext::Quote))
             ->values();
     }

@@ -71,7 +71,7 @@ const DELETE_ACTION: TableActionDefinition = {
 
 const GENERATE_DOCUMENT_ACTION: TableActionDefinition = {
   key: 'generate_document',
-  label: 'actions.generateWord',
+  label: 'actions.generatePdf',
   icon: 'file-text',
   type: 'action',
   confirm: false,
@@ -195,7 +195,7 @@ describe('QuotesTable — generate_document row action (spec 0070 AC-302)', () =
     screen.getByRole('button', { name: 'generate document row' }).click()
 
     await waitFor(() => expect(generateQuoteDocumentMock).toHaveBeenCalledWith(3, 'QUO-0003'))
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Word document generated successfully.'))
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('PDF generated successfully.'))
     expect(refreshMock).not.toHaveBeenCalled()
   })
 

@@ -61,13 +61,20 @@ class QualificaContactProcessingSeeder extends Seeder
         $this->promoteDegree();
 
         // Step 2: the attributes, each on the category the client scoped it to.
+        //
+        // Spec 0084 moved the "Informazioni aggiuntive" from the Opportunity to
+        // the Offerta, so these go in `AttributeContext::Quote`. They used to be
+        // seeded in `::Opportunity`, which NOTHING renders any more: leaving
+        // them there would have configured a real client catalogue into a
+        // context no screen reads — present in the database, invisible to the
+        // operator, and impossible to tell apart from a configuration mistake.
         foreach (ContactProcessingAttributeCatalogue::ATTRIBUTES as $categoryName => $specs) {
             // Created by QualificaCatalogSeeder: a miss means the two lists
             // drifted apart, which must fail loudly rather than silently drop
             // a whole category's fields.
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
-            $this->seedCategoryAttributes($category, $specs, AttributeContext::Opportunity);
+            $this->seedCategoryAttributes($category, $specs, AttributeContext::Quote);
         }
 
         // Step 2-bis: the codes the catalogue stopped declaring, withdrawn from
@@ -213,12 +220,12 @@ class QualificaContactProcessingSeeder extends Seeder
     private function seedLayout(ProductCategory $category): void
     {
         // A configured layout is user data: leave it exactly as it is.
-        if ($this->layouts->resolveExact($category, AttributeContext::Opportunity, LayoutFormScope::All) !== null) {
+        if ($this->layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All) !== null) {
             return;
         }
 
         $effective = $this->hierarchy
-            ->effectiveAttributes($category, AttributeContext::Opportunity)
+            ->effectiveAttributes($category, AttributeContext::Quote)
             ->pluck('code')
             ->all();
 
@@ -228,7 +235,7 @@ class QualificaContactProcessingSeeder extends Seeder
             return;
         }
 
-        $this->layouts->upsert($category, AttributeContext::Opportunity, LayoutFormScope::All, [
+        $this->layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, [
             'sections' => [
                 $this->layoutSection(
                     self::SECTION_ID,

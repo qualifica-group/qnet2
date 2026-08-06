@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
+use App\Http\Requests\Concerns\ValidatesQuoteSupervisor;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -47,6 +48,7 @@ class StoreQuoteRequest extends FormRequest
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
+    use ValidatesQuoteSupervisor;
     use ValidatesQuoteWorkflowStatus;
 
     public function authorize(): bool
@@ -95,6 +97,7 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceCommissionFieldPermissions($validator, null);
             $this->enforceCommissionRecipients($validator, null);
             $this->enforceCompanySiteBelongsToCompany($validator, null);
+            $this->enforceSupervisorIsOpportunityManager($validator, null);
             $this->enforceQuoteLayout($validator, null);
             $this->validateQuoteWorkflowStatus($validator);
         });

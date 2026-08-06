@@ -77,6 +77,10 @@ it('AC-020: POST without the 3 commercial roles inherits them from the opportuni
         'reporter_id' => $reporter->id,
         'supervisor_id' => $supervisor->id,
     ]);
+    // Directive 2026-08-06: only a Gestore Account of the opportunity is an
+    // inheritable Supervisore (a non-GA one prefills nothing — covered in
+    // QuoteSupervisorManagerTest).
+    $opportunity->managers()->attach($supervisor->id, ['position' => 1]);
     $actor = quoteHttpUserWith(['create']);
     Sanctum::actingAs($actor);
 

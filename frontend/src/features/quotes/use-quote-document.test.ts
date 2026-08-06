@@ -56,7 +56,7 @@ describe('useQuoteDocument', () => {
     })
 
     expect(generateQuoteDocumentMock).toHaveBeenCalledWith(9, 'QUO-0009')
-    expect(toastSuccessMock).toHaveBeenCalledWith('Word document generated successfully.')
+    expect(toastSuccessMock).toHaveBeenCalledWith('PDF generated successfully.')
   })
 
   it('tracks isGenerating per quote id and blocks a concurrent second call (AC-304)', async () => {

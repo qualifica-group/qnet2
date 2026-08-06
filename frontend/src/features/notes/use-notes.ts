@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { fetchNotes, NOTES_DEFAULT_PAGE_SIZE } from '@/features/notes/api'
 import { notesKeys } from '@/features/notes/query-keys'
 import type { NoteQuoteScope } from '@/features/notes/types'
@@ -22,6 +22,12 @@ export function useNotes(
       fetchNotes({ entityType, entityId, cursor: pageParam, limit: NOTES_DEFAULT_PAGE_SIZE, quoteScope }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => (lastPage.meta.has_more ? (lastPage.meta.next_cursor ?? undefined) : undefined),
+    // Cambiare `quoteScope` cambia la query key: senza questo la pagina
+    // tornerebbe a `undefined` durante il fetch e la sezione smonterebbe i
+    // selettori (che vivono in `meta.quotes`) proprio mentre l'utente ci sta
+    // interagendo. Tenendo la pagina precedente il filtro resta al suo posto e
+    // la lista si sostituisce, non lampeggia. Stesso pattern di `useGeo`.
+    placeholderData: keepPreviousData,
     enabled,
   })
 }

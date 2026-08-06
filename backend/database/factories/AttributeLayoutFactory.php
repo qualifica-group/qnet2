@@ -23,7 +23,7 @@ class AttributeLayoutFactory extends Factory
     {
         return [
             'product_category_id' => ProductCategory::factory(),
-            'context' => AttributeContext::Opportunity->value,
+            'context' => AttributeContext::Quote->value,
             // The shared scope is the default configuration (spec 0062 D3 revised).
             'form_mode' => LayoutFormScope::All->value,
             'layout' => ['sections' => []],

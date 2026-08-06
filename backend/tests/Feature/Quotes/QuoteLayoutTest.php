@@ -267,6 +267,10 @@ it('AC-217: layout_id is NOT inherited from the Opportunity, while the 4 snapsho
         'reporter_id' => $reporter->id,
         'supervisor_id' => $supervisor->id,
     ]);
+    // Directive 2026-08-06: only a Gestore Account of the opportunity is an
+    // inheritable Supervisore (a non-GA one prefills nothing — covered in
+    // QuoteSupervisorManagerTest).
+    $opportunity->managers()->attach($supervisor->id, ['position' => 1]);
     Sanctum::actingAs(quoteLayoutUserWith(['create']));
 
     $response = $this->postJson('/api/quotes', [

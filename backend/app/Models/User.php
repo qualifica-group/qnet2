@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -107,6 +108,20 @@ class User extends Authenticatable implements HasLocalePreference
     public function opportunitiesAsSupervisor(): HasMany
     {
         return $this->hasMany(Opportunity::class, 'supervisor_id');
+    }
+
+    /**
+     * The opportunities this user manages as "Gestore Account" — the inverse
+     * of Opportunity::managers() over the same `opportunity_user` pivot.
+     * Read-side only (UserService::forSelect scopes the Supervisore picker to
+     * a given opportunity's GA): the pivot is written exclusively from the
+     * Opportunity side.
+     *
+     * @return BelongsToMany<Opportunity, $this>
+     */
+    public function managedOpportunities(): BelongsToMany
+    {
+        return $this->belongsToMany(Opportunity::class, 'opportunity_user')->withPivot('position');
     }
 
     /**

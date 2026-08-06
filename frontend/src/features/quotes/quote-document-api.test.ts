@@ -34,25 +34,25 @@ beforeEach(() => {
 
 describe('generateQuoteDocument', () => {
   it('downloads the blob using the Content-Disposition filename (AC-230)', async () => {
-    const blob = new Blob(['docx-bytes'])
+    const blob = new Blob(['pdf-bytes'])
     postMock.mockResolvedValue({
       data: blob,
-      headers: { 'content-disposition': 'attachment; filename="QUO-0009.docx"' },
+      headers: { 'content-disposition': 'attachment; filename="QUO-0009.pdf"' },
     })
 
     await generateQuoteDocument(9, 'QUO-0009')
 
     expect(postMock).toHaveBeenCalledWith('/quotes/9/document', undefined, { responseType: 'blob' })
-    expect(saveBlob).toHaveBeenCalledWith(blob, 'QUO-0009.docx')
+    expect(saveBlob).toHaveBeenCalledWith(blob, 'QUO-0009.pdf')
   })
 
-  it('falls back to "{code}.docx" when Content-Disposition is missing', async () => {
-    const blob = new Blob(['docx-bytes'])
+  it('falls back to "{code}.pdf" when Content-Disposition is missing', async () => {
+    const blob = new Blob(['pdf-bytes'])
     postMock.mockResolvedValue({ data: blob, headers: {} })
 
     await generateQuoteDocument(9, 'QUO-0009')
 
-    expect(saveBlob).toHaveBeenCalledWith(blob, 'QUO-0009.docx')
+    expect(saveBlob).toHaveBeenCalledWith(blob, 'QUO-0009.pdf')
   })
 
   it('parses a blob-shaped 422 error body so the message survives (AC-303)', async () => {

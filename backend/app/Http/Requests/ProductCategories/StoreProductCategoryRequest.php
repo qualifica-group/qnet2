@@ -45,8 +45,7 @@ class StoreProductCategoryRequest extends FormRequest
             'name' => ['required', 'string', 'max:191'],
             'parent_id' => ['nullable', 'integer', 'exists:product_categories,id'],
             'inherits_product_attributes' => ['sometimes', 'boolean'],
-            'inherits_opportunity_attributes' => ['sometimes', 'boolean'],
-            // Spec 0084: the third usage context's own inheritance barrier.
+            // Spec 0084: the Offerta usage context's own inheritance barrier.
             'inherits_quote_attributes' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
             'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],

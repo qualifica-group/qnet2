@@ -74,6 +74,12 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
   // Watched here rather than inside the field so that component stays
   // presentational: it only decides whether the transition note is visible.
   const selectedStatusId = useWatch({ control: form.control, name: 'quote_workflow_status_id' })
+  // Directive 2026-08-06: the Supervisore can only be a Gestore Account of
+  // the picked Opportunita', so its picker is scoped to it and stays locked
+  // until one is chosen — the same cascade shape as Societa' -> Societa' Sede
+  // (`QuoteSitesSection`). The server rejects a non-GA anyway
+  // (ValidatesQuoteSupervisor): this only keeps the user from building one.
+  const selectedOpportunityId = useWatch({ control: form.control, name: 'opportunity_id' })
 
   // Directive 2026-07-29: Commerciale, Segnalatore and Supervisore are always
   // inherited from the picked Opportunita' — hydrated straight from its
@@ -242,6 +248,10 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 resource={USERS_FOR_SELECT_RESOURCE}
                 searchPlaceholder={t('quotes.form.supervisorSearch')}
                 selected={roleRef('supervisor', original?.supervisor ?? null)}
+                forceDisabled={selectedOpportunityId === null}
+                params={
+                  selectedOpportunityId !== null ? { opportunity_id: selectedOpportunityId } : undefined
+                }
                 showAvatar
                 {...relationLabels}
               />

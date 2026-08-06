@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Permission;
  * `POST /api/document-layouts/{documentLayout}/preview` (spec 0070, MT-13):
  * quote resolution (explicit `quote_id` / most recent visible / deterministic
  * sample), authorization on both the layout and the resolved quote, and the
- * `{layout.code}-preview.docx` filename contract.
+ * `{layout.code}-preview.pdf` filename contract.
  */
 uses(RefreshDatabase::class);
 
@@ -110,13 +110,16 @@ if (! function_exists('dlpConfig')) {
 it('AC-270: 200 with deterministic sample data when quote_id is omitted and no quote exists', function () {
     $actor = documentLayoutUserWith(['view']);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => dlpConfig()]);
+    $renderedDocx = captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     expect(Quote::count())->toBe(0);
 
     $response = $this->postJson("/api/document-layouts/{$layout->id}/preview", [])->assertOk();
 
-    $zip = dlpOpenZip($response->streamedContent());
+    expect($response->streamedContent())->toStartWith('%PDF-');
+
+    $zip = dlpOpenZip($renderedDocx());
     expect($zip->locateName('word/document.xml'))->not->toBeFalse();
 });
 
@@ -129,11 +132,12 @@ it('AC-271: 200 rendering the requested quotes own data via quote_id', function 
     grantQuotesView($actor);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => dlpConfig()]);
     $quote = Quote::factory()->create();
+    $renderedDocx = captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson("/api/document-layouts/{$layout->id}/preview", ['quote_id' => $quote->id])->assertOk();
+    $this->postJson("/api/document-layouts/{$layout->id}/preview", ['quote_id' => $quote->id])->assertOk();
 
-    $text = dlpDocumentText(dlpOpenZip($response->streamedContent()));
+    $text = dlpDocumentText(dlpOpenZip($renderedDocx()));
     expect($text)->toContain($quote->code);
 });
 
@@ -164,11 +168,12 @@ it('falls back to the most recent quote visible to the actor when quote_id is om
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => dlpConfig()]);
     Quote::factory()->create();
     $latest = Quote::factory()->create();
+    $renderedDocx = captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson("/api/document-layouts/{$layout->id}/preview", [])->assertOk();
+    $this->postJson("/api/document-layouts/{$layout->id}/preview", [])->assertOk();
 
-    $text = dlpDocumentText(dlpOpenZip($response->streamedContent()));
+    $text = dlpDocumentText(dlpOpenZip($renderedDocx()));
     expect($text)->toContain($latest->code);
 });
 
@@ -197,14 +202,14 @@ it('AC-272: 422 when the layouts persisted config no longer validates', function
 // AC-273 — filename contract
 // ---------------------------------------------------------------------------
 
-it('AC-273: Content-Disposition uses "{layout.code}-preview.docx"', function () {
+it('AC-273: Content-Disposition uses "{layout.code}-preview.pdf"', function () {
     $actor = documentLayoutUserWith(['view']);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => dlpConfig()]);
+    captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson("/api/document-layouts/{$layout->id}/preview", [])->assertOk();
 
-    expect($response->headers->get('Content-Disposition'))->toContain("{$layout->code}-preview.docx")
-        ->and($response->headers->get('Content-Type'))
-        ->toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    expect($response->headers->get('Content-Disposition'))->toContain("{$layout->code}-preview.pdf")
+        ->and($response->headers->get('Content-Type'))->toBe('application/pdf');
 });

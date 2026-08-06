@@ -284,12 +284,32 @@ class QuoteService
 
         $attributes['commercial_id'] = $data->commercialIdSubmitted ? $data->commercialId : $opportunity->commercial_id;
         $attributes['reporter_id'] = $data->reporterIdSubmitted ? $data->reporterId : $opportunity->reporter_id;
-        $attributes['supervisor_id'] = $data->supervisorIdSubmitted ? $data->supervisorId : $opportunity->supervisor_id;
+        $attributes['supervisor_id'] = $data->supervisorIdSubmitted
+            ? $data->supervisorId
+            : $this->inheritedSupervisorId($opportunity);
         $attributes['operational_site_id'] = $data->operationalSiteIdSubmitted
             ? $data->operationalSiteId
             : $opportunity->operational_site_id;
 
         return $attributes;
+    }
+
+    /**
+     * The Opportunity's own Supervisore, but ONLY when they are also one of
+     * its Gestori Account (user directive 2026-08-06): on an offer the
+     * Supervisore can be nobody else, so inheriting a non-GA would seed the
+     * quote with a value the write side (ValidatesQuoteSupervisor) rejects on
+     * the very next edit. Nothing to inherit in that case.
+     */
+    private function inheritedSupervisorId(Opportunity $opportunity): ?int
+    {
+        $supervisorId = $opportunity->supervisor_id;
+
+        if ($supervisorId === null) {
+            return null;
+        }
+
+        return $opportunity->managers()->whereKey($supervisorId)->exists() ? $supervisorId : null;
     }
 
     /**

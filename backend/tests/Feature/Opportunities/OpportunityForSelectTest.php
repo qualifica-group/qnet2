@@ -81,6 +81,10 @@ it('exposes meta.commercial, meta.reporter and meta.supervisor when set', functi
         'reporter_id' => $reporter->id,
         'supervisor_id' => $supervisor->id,
     ]);
+    // Directive 2026-08-06: `meta.supervisor` is emitted only when the
+    // Supervisore is ALSO a Gestore Account, since an Offerta accepts nobody
+    // else there (the non-GA case lives in QuoteSupervisorManagerTest).
+    $target->managers()->attach($supervisor->id, ['position' => 1]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/opportunities/for-select?ids[]={$target->id}")->assertOk();

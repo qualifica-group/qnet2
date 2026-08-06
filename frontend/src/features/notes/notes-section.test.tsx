@@ -47,12 +47,12 @@ function makeNote(overrides: Partial<Note> = {}): Note {
   }
 }
 
-function renderSection(entityId = 7) {
+function renderSection(entityId = 7, props: { lockedQuoteId?: number | null } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <NotesSection entityType="request-management" entityId={entityId} />
+        <NotesSection entityType="request-management" entityId={entityId} {...props} />
       </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
@@ -270,5 +270,82 @@ describe('NotesSection — reply flow (AC-071, D-7)', () => {
         }),
       ),
     )
+  })
+})
+
+/**
+ * Spec 0085 amendment (2026-08-06): the host record's Offerte arrive WITH the
+ * thread (`meta.quotes`), not from the host. What this covers is that the
+ * section mounts filter and destination on its own — the reason every surface
+ * (grid row dialog, work panel, detail tab) now has them, with no host passing
+ * anything down.
+ */
+describe('NotesSection — quote scope selectors from meta.quotes', () => {
+  const QUOTES = [
+    { id: 11, code: 'QUO-0001', title: 'Prima offerta' },
+    { id: 12, code: 'QUO-0002', title: 'Seconda offerta' },
+  ]
+
+  it('mounts the list filter and the composer destination when the response carries Offerte', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote()],
+      meta: { next_cursor: null, has_more: false, quotes: QUOTES },
+    })
+
+    renderSection()
+    await screen.findByText('A note')
+
+    expect(screen.getByRole('combobox', { name: 'Filter notes by quote' })).toHaveTextContent(
+      'All notes',
+    )
+    expect(screen.getByRole('combobox', { name: 'Note destination' })).toBeInTheDocument()
+  })
+
+  it('refetches on the picked Offerta and keeps the filter mounted while the new scope loads', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ body: 'General note' })],
+      meta: { next_cursor: null, has_more: false, quotes: QUOTES },
+    })
+
+    renderSection()
+    await screen.findByText('General note')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter notes by quote' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'QUO-0001' }))
+
+    await waitFor(() =>
+      expect(fetchNotesMock).toHaveBeenLastCalledWith(expect.objectContaining({ quoteScope: 11 })),
+    )
+    // The selector lives in the response the scope change invalidates: it must
+    // survive the refetch, or the operator loses the control mid-interaction.
+    expect(screen.getByRole('combobox', { name: 'Filter notes by quote' })).toBeInTheDocument()
+  })
+
+  it('mounts neither selector when the host record has no Offerta', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote()],
+      meta: { next_cursor: null, has_more: false, quotes: [] },
+    })
+
+    renderSection()
+    await screen.findByText('A note')
+
+    expect(screen.queryByRole('combobox', { name: 'Filter notes by quote' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Note destination' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the filter off a section locked on one Offerta (quote detail)', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [makeNote({ quote_id: 11, quote: QUOTES[0] })],
+      meta: { next_cursor: null, has_more: false, quotes: QUOTES },
+    })
+
+    renderSection(7, { lockedQuoteId: 11 })
+    await screen.findByText('A note')
+
+    expect(screen.queryByRole('combobox', { name: 'Filter notes by quote' })).not.toBeInTheDocument()
+    // The destination is fixed too: the note being written belongs to that Offerta.
+    expect(screen.queryByRole('combobox', { name: 'Note destination' })).not.toBeInTheDocument()
+    expect(fetchNotesMock.mock.calls[0][0]).toMatchObject({ quoteScope: 11 })
   })
 })

@@ -45,7 +45,6 @@ class UpdateProductCategoryRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
             'inherits_product_attributes' => ['sometimes', 'boolean'],
-            'inherits_opportunity_attributes' => ['sometimes', 'boolean'],
             // Spec 0084: the third usage context's own inheritance barrier.
             'inherits_quote_attributes' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string'],

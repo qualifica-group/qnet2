@@ -316,15 +316,15 @@ final class CategoryHierarchy
      * order remains "ancestors first, then by sort_order" even after an
      * override.
      *
-     * $context (spec 0061, default Opportunity so every pre-existing caller
-     * is unaffected) scopes both which pivot rows are read at EVERY level of
-     * the chain AND which inheritance barrier truncates it — a category's
-     * Product and Opportunity attribute sets are resolved and inherited
-     * completely independently of one another.
+     * $context (spec 0061, always named explicitly by the caller) scopes both
+     * which pivot rows are read at EVERY level of the chain AND which
+     * inheritance barrier truncates it — a category's Product and Offerta
+     * attribute sets are resolved and inherited completely independently of
+     * one another.
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function effectiveAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
+    public function effectiveAttributes(ProductCategory $category, AttributeContext $context): Collection
     {
         $chain = $this->inheritedAncestors($category, $context)->push($category);
 
@@ -370,12 +370,12 @@ final class CategoryHierarchy
      * closer ancestor wins; empty when $category opts out of inheritance IN
      * $context), for the show endpoint's read-only `inherited_attributes` side
      * list — never merged with $category's own assignments. $context (spec
-     * 0061, default Opportunity) scopes both the pivot rows read and the
-     * barrier walked, same as effectiveAttributes().
+     * 0061, always named explicitly by the caller) scopes both the pivot rows
+     * read and the barrier walked, same as effectiveAttributes().
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function ancestorAttributes(ProductCategory $category, AttributeContext $context = AttributeContext::Opportunity): Collection
+    public function ancestorAttributes(ProductCategory $category, AttributeContext $context): Collection
     {
         $ordered = [];
         $index = [];

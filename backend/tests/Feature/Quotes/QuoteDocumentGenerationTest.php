@@ -111,22 +111,25 @@ if (! function_exists('qdgTextBlock')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-230 — 200, correct headers, valid docx (zip + parts)
+// AC-230 — 200, PDF headers, valid docx (zip + parts) behind the conversion
 // ---------------------------------------------------------------------------
 
-it('AC-230: generates a valid docx with the correct headers and parts', function () {
+it('AC-230: delivers a PDF rendered from a valid docx with the expected parts', function () {
     $actor = quoteAuthUserWith(['view']);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => qdgConfig()]);
     $quote = Quote::factory()->create(['layout_id' => $layout->id]);
+    $renderedDocx = captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson("/api/quotes/{$quote->id}/document")->assertOk();
 
-    expect($response->headers->get('Content-Type'))
-        ->toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-        ->and($response->headers->get('Content-Disposition'))->toContain("{$quote->code}.docx");
+    expect($response->headers->get('Content-Type'))->toBe('application/pdf')
+        ->and($response->headers->get('Content-Disposition'))->toContain("{$quote->code}.pdf")
+        ->and($response->streamedContent())->toStartWith('%PDF-');
 
-    $zip = qdgOpenZip($response->streamedContent());
+    // The OOXML the conversion consumed: PDF is the delivered format, docx
+    // stays the rendering format these assertions are about.
+    $zip = qdgOpenZip($renderedDocx());
 
     expect($zip->locateName('word/document.xml'))->not->toBeFalse()
         ->and($zip->locateName('[Content_Types].xml'))->not->toBeFalse()
@@ -157,6 +160,7 @@ it('AC-261: 200 using the modules current active default when the quote has no l
         'module' => 'quotes', 'is_default' => true, 'is_active' => true, 'config' => qdgConfig(),
     ]);
     $quote = Quote::factory()->create(['layout_id' => null]);
+    captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/quotes/{$quote->id}/document")->assertOk();
@@ -166,6 +170,7 @@ it('D-3: a quotes own layout is used even after it has since been deactivated', 
     $actor = quoteAuthUserWith(['view']);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'is_active' => false, 'config' => qdgConfig()]);
     $quote = Quote::factory()->create(['layout_id' => $layout->id]);
+    captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/quotes/{$quote->id}/document")->assertOk();
@@ -215,6 +220,7 @@ it('AC-264: generation writes no persistent file to the local disk', function ()
     $actor = quoteAuthUserWith(['view']);
     $layout = DocumentLayout::factory()->create(['module' => 'quotes', 'config' => qdgConfig()]);
     $quote = Quote::factory()->create(['layout_id' => $layout->id]);
+    captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/quotes/{$quote->id}/document")->assertOk();
@@ -232,6 +238,7 @@ it('AC-265: generation is a pure read: updated_at, aggregates and activity log a
     ]);
     $updatedAtBefore = $quote->updated_at;
     $activityCountBefore = $quote->activities()->count();
+    captureDocxToPdfConversion();
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/quotes/{$quote->id}/document")->assertOk();
@@ -259,7 +266,7 @@ it('AC-300: GET /api/tables/quotes/columns declares generate_document, gated by 
     $action = collect($columns['actions'])->firstWhere('key', 'generate_document');
 
     expect($action)->not->toBeNull()
-        ->and($action['label'])->toBe('actions.generateWord');
+        ->and($action['label'])->toBe('actions.generatePdf');
 
     $actorWithoutView = quoteAuthUserWith(['viewAny']);
     Sanctum::actingAs($actorWithoutView);

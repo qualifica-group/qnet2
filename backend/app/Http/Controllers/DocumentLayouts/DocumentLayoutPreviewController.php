@@ -10,6 +10,7 @@ use App\Http\Requests\DocumentLayouts\DocumentLayoutPreviewRequest;
 use App\Models\DocumentLayout;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\Exceptions\InvalidDocumentLayoutConfigException;
 use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -18,10 +19,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
- * POST /api/document-layouts/{documentLayout}/preview — a real `.docx`
+ * POST /api/document-layouts/{documentLayout}/preview — a real `.pdf`
  * rendered from THIS layout's config (spec 0070; 0069 D-8 promised a
  * high-fidelity check beyond the editor's HTML approximation), gated by
- * `document-layouts.view`.
+ * `document-layouts.view`. Same format the quote document is delivered in, so
+ * the layout is designed against exactly what the client receives.
  *
  * The Quote rendered against is resolved in three steps: the requested
  * `quote_id` when given (404 if unknown, 403 if the actor lacks
@@ -37,13 +39,16 @@ class DocumentLayoutPreviewController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    private const string CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    private const string CONTENT_TYPE = 'application/pdf';
 
     private const string SAMPLE_CODE = 'QUO-SAMPLE';
 
     private const string SAMPLE_TITLE = 'Sample quote';
 
-    public function __construct(private readonly QuoteDocumentGenerator $generator) {}
+    public function __construct(
+        private readonly QuoteDocumentGenerator $generator,
+        private readonly DocxToPdfConverter $pdfConverter,
+    ) {}
 
     public function __invoke(DocumentLayoutPreviewRequest $request, DocumentLayout $documentLayout): StreamedResponse|JsonResponse
     {
@@ -54,9 +59,9 @@ class DocumentLayoutPreviewController extends BaseApiController
             $actor = $request->user();
             $quote = $this->resolveQuote($request, $actor);
 
-            $binary = $this->generator->generate($quote, $documentLayout, $actor);
+            $docx = $this->generator->generate($quote, $documentLayout, $actor);
 
-            return $this->streamDocx($binary, "{$documentLayout->code}-preview.docx");
+            return $this->streamPdf($this->pdfConverter->convert($docx), "{$documentLayout->code}-preview.pdf");
         } catch (InvalidDocumentLayoutConfigException $exception) {
             return $this->fail($exception->getMessage(), HttpStatusEnum::UNPROCESSABLE_ENTITY->value, $exception->errors());
         } catch (Throwable $exception) {
@@ -96,7 +101,7 @@ class DocumentLayoutPreviewController extends BaseApiController
         return $quote;
     }
 
-    private function streamDocx(string $binary, string $filename): StreamedResponse
+    private function streamPdf(string $binary, string $filename): StreamedResponse
     {
         return response()->streamDownload(
             static function () use ($binary): void {

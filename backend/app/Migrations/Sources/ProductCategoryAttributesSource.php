@@ -26,9 +26,9 @@ use RuntimeException;
  *
  * Each link identifies its attribute by EXTERNAL id (`attribute_id`, remapped
  * via `old_id`) or by qnet `attribute_code`, and MUST declare its `context`
- * (product|opportunity, spec 0061): the same attribute can be assigned to a
- * category's Product section, its Opportunity section, or both (two pivot
- * rows), so the destination is never guessed. `is_required`/`sort_order` are
+ * (product|quote, spec 0061/0084): the same attribute can be assigned to a
+ * category's Product section, its Offerta section, or both (two pivot rows),
+ * so the destination is never guessed. `is_required`/`sort_order` are
  * optional per-assignment extras.
  *
  * Writes go straight to the pivot and are ADDITIVE — never
@@ -78,7 +78,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $sample = parent::sampleResponse();
         $sample['items'][0]['attributes'] = [
             ['attribute_id' => 7, 'context' => 'product', 'is_required' => true, 'sort_order' => 0],
-            ['attribute_code' => 'size', 'context' => 'opportunity'],
+            ['attribute_code' => 'size', 'context' => 'quote'],
         ];
 
         return $sample;
@@ -231,9 +231,10 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
     /**
      * The destination section of the assignment (spec 0061) is MANDATORY on
      * every link: the same attribute can legitimately belong to the Product
-     * section, the Opportunity section, or both, so an absent or unknown
-     * context is never defaulted — it is a non-fatal warning that ignores the
-     * link.
+     * section, the Offerta section, or both, so an absent or unknown context
+     * is never defaulted — it is a non-fatal warning that ignores the link.
+     * A link still carrying the retired `opportunity` context (spec 0084)
+     * lands on the unknown-context branch, which is the intended outcome.
      *
      * @param  array<string, mixed>  $link
      * @param  array<int, string>  $warnings
@@ -243,7 +244,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $raw = trim((string) ($link['context'] ?? ''));
 
         if ($raw === '') {
-            $warnings[] = 'Attribute link without context (expected product or opportunity); link ignored.';
+            $warnings[] = 'Attribute link without context (expected product or quote); link ignored.';
 
             return null;
         }
@@ -251,7 +252,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $context = AttributeContext::tryFrom($raw);
 
         if ($context === null) {
-            $warnings[] = "Unknown attribute link context [{$raw}] (expected product or opportunity); link ignored.";
+            $warnings[] = "Unknown attribute link context [{$raw}] (expected product or quote); link ignored.";
         }
 
         return $context;

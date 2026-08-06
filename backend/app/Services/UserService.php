@@ -231,6 +231,11 @@ class UserService
      * users whose employment profile points to that Sede. The employment/site/
      * address/city relations are always eager-loaded (filtered or not) so
      * UserForSelectResource can emit the operator's Sede `meta` without N+1.
+     *
+     * `$query->opportunityId` (directive 2026-08-06), when set, restricts the
+     * list to that opportunity's Gestori Account: the Offerta form's
+     * Supervisore can only be one of them, and the write side rejects
+     * anything else (ValidatesQuoteSupervisor). The two filters compose.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
@@ -242,6 +247,13 @@ class UserService
             $siteId = $query->operationalSiteId;
             $base->whereHas('employment', function (Builder $employmentQuery) use ($siteId): void {
                 $employmentQuery->where('operational_site_id', $siteId);
+            });
+        }
+
+        if ($query->opportunityId !== null) {
+            $opportunityId = $query->opportunityId;
+            $base->whereHas('managedOpportunities', function (Builder $managedQuery) use ($opportunityId): void {
+                $managedQuery->whereKey($opportunityId);
             });
         }
 
@@ -275,7 +287,7 @@ class UserService
     /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are not
      * already on the page, deduplicated. They bypass every narrowing filter
-     * (search, `operational_site_id`) — same precedent as ProductCategoryService/
+     * (search, `operational_site_id`, `opportunity_id`) — same precedent as ProductCategoryService/
      * OperationalSiteService's own hydration — but eager-load the SAME
      * employment/site/address/city tree as the main query, so their `meta`
      * resolves without N+1. Total is unaffected.

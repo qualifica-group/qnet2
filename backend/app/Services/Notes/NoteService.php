@@ -43,6 +43,11 @@ final class NoteService
      * desc`, D-13), each with its full `replies` eager-loaded. $scope (spec
      * 0085, D-2) narrows the ROOT set only — a reply is always returned
      * alongside its root regardless of its own `quote_id` (AC-016).
+     *
+     * The page also carries the host record's scoping units, so the caller
+     * never has to fetch them separately to render filter and destination
+     * (spec 0085 amendment 2026-08-06). They are NOT narrowed by $scope:
+     * they are the choices, not the result.
      */
     public function listForEntity(User $user, string $entityType, int $entityId, ?NoteCursor $cursor, ?int $limit, NoteQuoteScope $scope): NotePage
     {
@@ -71,7 +76,12 @@ final class NoteService
         $hasMore = $roots->count() > $limit;
         $items = $roots->take($limit)->values();
 
-        return new NotePage($items, $hasMore ? $this->cursorFor($items->last())->encode() : null, $hasMore);
+        return new NotePage(
+            $items,
+            $hasMore ? $this->cursorFor($items->last())->encode() : null,
+            $hasMore,
+            $this->registry->quoteScopes($entityType, $record),
+        );
     }
 
     /**

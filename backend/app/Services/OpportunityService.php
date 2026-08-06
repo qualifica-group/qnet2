@@ -88,19 +88,13 @@ class OpportunityService
         // Spec 0067, AC-020/021: `quotes_count` feeds the panel's initial
         // counter via its own loadCount().
         //
-        // Spec 0085: the detail read ALSO loads the quotes themselves — the
-        // notes `quote_scope` filter and the composer's destination selector
-        // need {id, code, title}. It loads them through
-        // OpportunityStatusResolver::EAGER_LOADS rather than a hand-rolled
-        // column select, and that is load-bearing: the resolver PREFERS an
-        // already-loaded relation (`relationLoaded('quotes')`) over its own
-        // aggregate query, so a projection missing `quote_workflow_status_id`
-        // silently collapses the computed status to the zero-quotes fallback
-        // even on an opportunity that has quotes. Reusing the constant is what
-        // stops the two from drifting apart again.
-        //
-        // Collection contexts (grid, notifications) never call loadDetail(),
-        // so OpportunityResource guards `quotes` with whenLoaded().
+        // The quotes themselves are loaded through
+        // OpportunityStatusResolver::EAGER_LOADS, and that constant is
+        // load-bearing: the resolver PREFERS an already-loaded relation
+        // (`relationLoaded('quotes')`) over its own aggregate query, so a
+        // projection missing `quote_workflow_status_id` would silently
+        // collapse the computed status to the zero-quotes fallback even on an
+        // opportunity that has quotes.
         return $opportunity
             ->load(self::DETAIL_RELATIONS)
             ->load(OpportunityStatusResolver::EAGER_LOADS)
@@ -155,6 +149,10 @@ class OpportunityService
             ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
             ->with([
                 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
+                // The Gestori Account decide whether the Supervisore is
+                // inheritable at all (user directive 2026-08-06) — see
+                // OpportunityForSelectResource.
+                'managers:id',
                 // The sede operativa's label is composed from its primary
                 // address + city (it has no name column of its own).
                 'operationalSite.addresses.city',

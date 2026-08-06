@@ -90,6 +90,28 @@ final class RequestManagementNotable implements NotableEntity
         return Quote::query()->whereKey($quoteId)->where('opportunity_id', $record->getKey())->exists();
     }
 
+    /**
+     * D-1: this Opportunity's own Offerte, the same ownership ownsQuote()
+     * validates a single id against. Ordered by `code` so the selector reads
+     * in the order the operator knows the offers by, and projected with an
+     * explicit column list — the notes index runs this on every page.
+     *
+     * @return array<int, array{id: int, code: string, title: string}>
+     */
+    public function quoteScopes(Model $record): array
+    {
+        return Quote::query()
+            ->where('opportunity_id', $record->getKey())
+            ->orderBy('code')
+            ->get(['id', 'code', 'title'])
+            ->map(static fn (Quote $quote): array => [
+                'id' => $quote->id,
+                'code' => $quote->code,
+                'title' => $quote->title,
+            ])
+            ->all();
+    }
+
     public function label(Model $record): string
     {
         /** @var Opportunity $record */

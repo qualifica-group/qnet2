@@ -5,6 +5,7 @@ use App\Models\Country;
 use App\Models\Province;
 use App\Models\State;
 use App\Models\User;
+use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Models\Permission;
@@ -95,6 +96,47 @@ function geoChain(): array
     $city = City::factory()->create(['name' => 'Milano', 'province_id' => $province->id, 'state_id' => $state->id, 'country_id' => $country->id]);
 
     return compact('country', 'state', 'province', 'city');
+}
+
+/**
+ * A PDF-shaped placeholder: enough of a header that a caller checking the
+ * delivered format sees a PDF, small enough that no test mistakes it for a
+ * rendered document.
+ */
+const FAKE_PDF_BINARY = "%PDF-1.7\n% converted by a test double\n";
+
+/**
+ * Swap the LibreOffice conversion (spec 0070: the document is rendered as
+ * `.docx` and DELIVERED as `.pdf`) for a double that records what it was
+ * given.
+ *
+ * Two reasons, both about keeping assertions honest. The rendering assertions
+ * — variable substitution, header part, which quote the controller resolved —
+ * are about the OOXML the generator produced, and PDF is a lossy place to look
+ * for them; the returned getter hands that exact `.docx` back. And a real
+ * LibreOffice run costs ~2s per call, which would buy nothing in a test that
+ * only asserts a 200. The real binary is exercised end-to-end by
+ * QuoteDocumentPdfTest.
+ *
+ * @return Closure(): string the last `.docx` handed to the converter
+ */
+function captureDocxToPdfConversion(): Closure
+{
+    $recorder = new class extends DocxToPdfConverter
+    {
+        public string $docx = '';
+
+        public function convert(string $docx): string
+        {
+            $this->docx = $docx;
+
+            return FAKE_PDF_BINARY;
+        }
+    };
+
+    app()->instance(DocxToPdfConverter::class, $recorder);
+
+    return static fn (): string => $recorder->docx;
 }
 
 /**

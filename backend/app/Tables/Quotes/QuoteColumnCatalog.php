@@ -176,11 +176,24 @@ final class QuoteColumnCatalog
             // action above, not `update`.
             [
                 'key' => 'generate_document',
-                'label' => 'actions.generateWord',
+                'label' => 'actions.generatePdf',
                 'icon' => 'file-text',
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'quotes.view',
+            ],
+            // Spec 0085: le note dell'Offerta vivono sul thread dell'Opportunita'
+            // padre, filtrate su `quote_id` — quindi il gate e' quello del modulo
+            // ospite (`request-management.view`, come sulla griglia Opportunita'),
+            // mai una permission `quotes.*`. Nessun `count_field`: un contatore
+            // per-offerta e' esplicitamente fuori scope (spec 0085 <out>).
+            [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'message-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'request-management.view',
             ],
         ];
     }

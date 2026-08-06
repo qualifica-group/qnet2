@@ -44,8 +44,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('parent_id', 'select'),
             new FieldDefinition('inherits_product_attributes', 'boolean'),
-            new FieldDefinition('inherits_opportunity_attributes', 'boolean'),
-            // Spec 0084: the third usage context's own inheritance barrier.
+            // Spec 0084: the Offerta usage context's own inheritance barrier.
             new FieldDefinition('inherits_quote_attributes', 'boolean'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('business_function_id', 'select'),
@@ -79,7 +78,6 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'parent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'inherits_product_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'inherits_opportunity_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'inherits_quote_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

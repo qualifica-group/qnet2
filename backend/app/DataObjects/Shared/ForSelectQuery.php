@@ -27,6 +27,10 @@ namespace App\DataObjects\Shared;
  *   ProductCategoryService::forSelect (product-categories/for-select scoped
  *   to a branch root's subtree, INV-1) — same retrocompatible pattern as
  *   `businessFunctionId`.
+ * - `opportunityId` (directive 2026-08-06): ADDITIVE, consumed ONLY by
+ *   UserService::forSelect (users/for-select restricted to that
+ *   opportunity's Gestori Account) — same retrocompatible pattern as
+ *   `operationalSiteId`.
  */
 final readonly class ForSelectQuery
 {
@@ -43,6 +47,7 @@ final readonly class ForSelectQuery
         public ?int $operationalSiteId = null,
         public array $categoryIds = [],
         public ?int $rootCategoryId = null,
+        public ?int $opportunityId = null,
     ) {}
 
     /**
@@ -75,6 +80,7 @@ final readonly class ForSelectQuery
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             categoryIds: $categoryIds,
             rootCategoryId: isset($data['root_category_id']) ? (int) $data['root_category_id'] : null,
+            opportunityId: isset($data['opportunity_id']) ? (int) $data['opportunity_id'] : null,
         );
     }
 

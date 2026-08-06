@@ -4,7 +4,7 @@ import { filenameFromContentDisposition, saveBlob } from '@/lib/download'
 
 /** Fallback filename when the response carries no `Content-Disposition` header (should never happen server-side, spec 0070). */
 function fallbackDocumentFilename(quoteCode: string): string {
-  return `${quoteCode}.docx`
+  return `${quoteCode}.pdf`
 }
 
 /**
@@ -31,7 +31,7 @@ async function normalizeBlobError(error: unknown): Promise<unknown> {
 }
 
 /**
- * Generates and downloads the quote's Word document
+ * Generates and downloads the quote's PDF document
  * (`POST /quotes/{id}/document`, spec 0070). A binary streaming response, NOT
  * the standard `{success,message,data}` envelope — mirrors `downloadExport`.
  * No request body: the endpoint reads the quote's own `layout_id` (or the

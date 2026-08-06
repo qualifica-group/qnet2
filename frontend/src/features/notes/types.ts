@@ -70,6 +70,13 @@ export interface Note {
 export interface NotesPageMeta {
   next_cursor: string | null
   has_more: boolean
+  /**
+   * Spec 0085 amendment: le Offerte del record ospite, indipendenti dal
+   * filtro applicato — sono le scelte, non il risultato. Opzionale per
+   * compatibilita' con le fixture dei test che costruiscono una pagina a
+   * mano: assente si comporta come "nessuna Offerta" (nessun selettore).
+   */
+  quotes?: NoteQuoteRef[]
 }
 
 /** One page as returned in the `GET /api/notes` envelope `data` + `meta`. */

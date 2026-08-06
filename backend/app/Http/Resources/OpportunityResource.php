@@ -66,13 +66,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Spec 0083, D-5: `requires_quote` is REMOVED — the Offerte panel's gate on
  * it is dropped, every Opportunity may carry offers.
  *
- * Spec 0085: `quotes` is ADDITIVE — a compact `{id, code, title}` per
- * Offerta, ordered by `code`, feeding the notes list's quote_scope filter
- * and the composer's destination selector; `[]` when the opportunity has no
- * offer. Relies on OpportunityService::loadDetail() eager-loading it —
- * every current caller (show/store/update) goes through loadDetail(), but
- * `whenLoaded()` guards it anyway: were this Resource ever built from a
- * bare model, the key is simply OMITTED, never lazy-loaded.
+ * Spec 0085 amendment (2026-08-06): the compact `{id, code, title}` per
+ * Offerta is NO LONGER projected here. It feeds the notes selectors only,
+ * and those now read it from the notes response itself (`meta.quotes`,
+ * NotableEntity::quoteScopes) — the surfaces mounting the component from a
+ * grid row have no opportunity detail to read it from, and two projections
+ * of the same thing would drift apart at the first change.
  *
  * Spec 0080: `manager_labels` is ADDITIVE — the per-position "Gestore
  * Account" denomination overrides resolved from the product line(s)' product
@@ -127,21 +126,6 @@ class OpportunityResource extends JsonResource
             'success_probability' => $this->success_probability,
             'general_notes' => $this->general_notes,
             'quotes_count' => (int) ($this->quotes_count ?? 0),
-            // Spec 0085: the compact Offerte list feeding the notes list's
-            // quote_scope filter. SAME shape as the `quote` object inside
-            // NoteResource — two different projections of the same thing
-            // would drift apart at the first change. `whenLoaded()` is
-            // mandatory, not defensive: this Resource also serves
-            // collections, where a per-row resolution would silently N+1.
-            'quotes' => $this->whenLoaded('quotes', fn () => $this->quotes
-                ->sortBy('code')
-                ->map(static fn ($quote): array => [
-                    'id' => $quote->id,
-                    'code' => $quote->code,
-                    'title' => $quote->title,
-                ])
-                ->values()
-                ->all()),
             'locked_fields' => $this->resolveLockedFields(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

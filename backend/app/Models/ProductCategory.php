@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_opportunity_attributes', 'inherits_quote_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -44,11 +44,10 @@ class ProductCategory extends BaseModel
     {
         return [
             'inherits_product_attributes' => 'boolean',
-            'inherits_opportunity_attributes' => 'boolean',
-            // Spec 0084 — the third usage context's own inheritance barrier
-            // (App\Enums\AttributeContext::Quote), independent of the two
+            // Spec 0084 — the second usage context's own inheritance barrier
+            // (App\Enums\AttributeContext::Quote), independent of the one
             // above: a category may inherit its ancestors' Offerta attributes
-            // while cutting itself off from the Prodotto or Opportunita' ones.
+            // while cutting itself off from the Prodotto ones.
             'inherits_quote_attributes' => 'boolean',
             // Owned by the branch ROOT and mirrored on every descendant by
             // RequiresQuoteInheritance — a child's own column is never
@@ -70,7 +69,7 @@ class ProductCategory extends BaseModel
             'manager_labels' => 'array',
             // Spec 0080 — per-context inheritance barrier for manager_labels,
             // same shape as inherits_product_attributes/
-            // inherits_opportunity_attributes (spec 0061).
+            // inherits_quote_attributes (spec 0061).
             'inherits_manager_labels' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for a
             // migrated category, guarded (not in #[Fillable]) so it is only ever
@@ -83,7 +82,7 @@ class ProductCategory extends BaseModel
     /**
      * Whether this category pulls its ancestors' attributes IN $context. The
      * two usage contexts (spec 0061) each carry their OWN barrier flag, so a
-     * category can keep inheriting Opportunity attributes while cutting itself
+     * category can keep inheriting Offerta attributes while cutting itself
      * off from the Product ones — the barriers are fully independent.
      */
     public function inheritsAttributesIn(AttributeContext $context): bool

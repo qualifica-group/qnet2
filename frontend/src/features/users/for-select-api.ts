@@ -33,7 +33,9 @@ export interface UserForSelectItem extends ForSelectItem {
  * Fetches a page of user options from `GET /api/users/for-select`. Thin wrapper
  * over the generic for-select fetcher, bound to the `users` resource. For users
  * the item carries `label` (name) and `subtitle` (email). `params.operational_site_id`
- * (spec 0048) filters to the operators of that Sede; omitted, every user is returned.
+ * (spec 0048) filters to the operators of that Sede, `params.opportunity_id` (directive
+ * 2026-08-06) to that opportunity's Gestori Account — the only users an Offerta accepts as
+ * Supervisore. Omitted, every user is returned.
  */
 export function fetchUsersForSelect(
   params: ForSelectParams = {},

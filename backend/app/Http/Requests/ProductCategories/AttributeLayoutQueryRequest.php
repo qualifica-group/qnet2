@@ -11,8 +11,9 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the query for
  * GET /api/product-categories/{productCategory}/attribute-layouts (spec
- * 0062, data_contract): `context` defaults to Opportunity (same default as
- * the pre-existing effective-attributes endpoint). `form_mode` means two
+ * 0062, data_contract): `context` is REQUIRED (same as the sibling
+ * effective-attributes endpoint — the former implicit Opportunity default
+ * died with that context, spec 0084). `form_mode` means two
  * different things on the two callers, so it is validated against two
  * different enums: an authoring load (`exact`) addresses a
  * LayoutFormScope — including the shared `all` — while a consuming load
@@ -33,7 +34,7 @@ class AttributeLayoutQueryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'context' => ['sometimes', Rule::enum(AttributeContext::class)],
+            'context' => ['required', Rule::enum(AttributeContext::class)],
             'form_mode' => [
                 'sometimes',
                 $this->boolean('exact') ? Rule::enum(LayoutFormScope::class) : Rule::enum(FormMode::class),
@@ -62,9 +63,7 @@ class AttributeLayoutQueryRequest extends FormRequest
 
     public function context(): AttributeContext
     {
-        $value = $this->validated('context');
-
-        return $value === null ? AttributeContext::Opportunity : AttributeContext::from($value);
+        return AttributeContext::from($this->validated('context'));
     }
 
     public function formMode(): FormMode

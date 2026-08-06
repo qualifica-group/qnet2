@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\AttributeContext;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,6 +15,12 @@ use Illuminate\Support\Facades\Schema;
  * the same catalogue attribute may be assigned to a category's Product
  * section, its Opportunity section, or both (two pivot rows) — hence the
  * unique is (attribute_id, category_id, context), not the pair alone.
+ *
+ * The default is the LITERAL 'opportunity', not App\Enums\AttributeContext's
+ * case, on purpose: a migration records the schema as it was on this date and
+ * must keep replaying after the enum moves on. That case was later retired
+ * (spec 0084) and 2026_08_06_120000 drops this default outright — had the
+ * reference stayed symbolic, `migrate:fresh` would fatal here.
  */
 return new class extends Migration
 {
@@ -25,7 +30,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('attribute_id')->constrained()->cascadeOnDelete();
             $table->foreignId('category_id')->constrained('product_categories')->cascadeOnDelete();
-            $table->string('context')->default(AttributeContext::Opportunity->value);
+            $table->string('context')->default('opportunity');
             $table->boolean('is_required')->default(false);
             $table->integer('sort_order')->default(0);
             $table->timestamps();

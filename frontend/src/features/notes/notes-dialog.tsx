@@ -17,6 +17,12 @@ export interface NotesDialogProps {
   onOpenChange: (open: boolean) => void
   /** Optional record label (e.g. its name); falls back to the generic "Note" title. */
   title?: string
+  /**
+   * Spec 0085: blocca il thread su UNA Offerta del record ospite — la lista
+   * mostra solo le sue note e il composer le crea con quel `quote_id`, senza
+   * selettori. `null` = thread completo dell'Opportunita', filtrabile.
+   */
+  lockedQuoteId?: number | null
 }
 
 /**
@@ -30,7 +36,13 @@ export interface NotesDialogProps {
  * so the dialog doesn't show a "Note" title twice: this dialog's own
  * `DialogTitle` carries it instead.
  */
-export function NotesDialog({ entityType, entityId, onOpenChange, title }: NotesDialogProps) {
+export function NotesDialog({
+  entityType,
+  entityId,
+  onOpenChange,
+  title,
+  lockedQuoteId = null,
+}: NotesDialogProps) {
   const { t } = useTranslation()
 
   return (
@@ -53,7 +65,12 @@ export function NotesDialog({ entityType, entityId, onOpenChange, title }: Notes
         </DialogHeader>
         {entityId !== null ? (
           <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-            <NotesSection entityType={entityType} entityId={entityId} showHeader={false} />
+            <NotesSection
+              entityType={entityType}
+              entityId={entityId}
+              showHeader={false}
+              lockedQuoteId={lockedQuoteId}
+            />
           </div>
         ) : null}
       </DialogContent>

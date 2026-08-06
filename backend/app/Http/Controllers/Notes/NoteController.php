@@ -53,6 +53,11 @@ class NoteController extends BaseApiController
                 'meta' => [
                     'next_cursor' => $page->nextCursor,
                     'has_more' => $page->hasMore,
+                    // Spec 0085 amendment: the host record's Offerte travel
+                    // with the thread, so every surface mounting the notes
+                    // component (detail tab, grid row dialog, work panel)
+                    // renders filter and destination without its own fetch.
+                    'quotes' => $page->quoteScopes,
                 ],
             ]);
         } catch (Throwable $exception) {

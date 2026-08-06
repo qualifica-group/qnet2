@@ -127,7 +127,7 @@ describe('QuoteDetailView — Download quote button (AC-304)', () => {
     screen.getByRole('button', { name: 'Download quote' }).click()
 
     await waitFor(() => expect(generateQuoteDocumentMock).toHaveBeenCalledWith(9, 'QUO-0009'))
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Word document generated successfully.'))
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('PDF generated successfully.'))
   })
 
   it("shows the backend's message on a 422 (AC-303)", async () => {

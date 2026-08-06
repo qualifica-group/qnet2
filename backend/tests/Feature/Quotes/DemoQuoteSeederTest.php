@@ -77,6 +77,30 @@ it('goes through QuoteService: aggregates persisted and offer categories cover t
     }
 });
 
+it('gives every demo quote a supervisor drawn from its opportunity Gestori Account (directive 2026-08-06)', function (): void {
+    seedQuoteDependencies();
+
+    test()->seed(DemoQuoteSeeder::class);
+
+    $quotes = Quote::query()->with('opportunity.managers:id')->get();
+    $sawAtLeastOneSupervisor = false;
+
+    foreach ($quotes as $quote) {
+        $managerIds = $quote->opportunity->managers->pluck('id')->all();
+
+        if ($quote->supervisor_id === null) {
+            continue;
+        }
+
+        $sawAtLeastOneSupervisor = true;
+        expect($quote->supervisor_id)->toBeIn($managerIds, $quote->code);
+    }
+
+    // A dataset where NO quote got a supervisor would make the assertion above
+    // vacuous: DemoOpportunitySeeder attaches manager slots to ~half the batch.
+    expect($sawAtLeastOneSupervisor)->toBeTrue();
+});
+
 it('starts the offer unit price from the product price and the cost line from the product cost (D-6)', function (): void {
     seedQuoteDependencies();
 

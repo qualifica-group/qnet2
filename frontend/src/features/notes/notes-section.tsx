@@ -10,7 +10,7 @@ import type { NoteQuoteRef, NoteQuoteScope } from '@/features/notes/types'
 import { NoteList } from '@/features/notes/note-list'
 import { useNotes } from '@/features/notes/use-notes'
 
-export /** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
+/** Hoistato: un `[]` inline creerebbe un riferimento nuovo a ogni render. */
 const NO_QUOTES: NoteQuoteRef[] = []
 
 interface NotesSectionProps {
@@ -25,8 +25,6 @@ interface NotesSectionProps {
    * `DialogTitle`), mirroring `ContactsManager`'s `showHeader` convention.
    */
   showHeader?: boolean
-  /** Le Offerte dell'Opportunita' ospite: senza, filtro e destinazione non si montano. */
-  quotes?: NoteQuoteRef[]
   /**
    * Blocca la sezione su UNA Offerta (dettaglio Offerta): niente filtro, e ogni
    * nota scritta appartiene a quella. `null` = vista Opportunita', filtrabile.
@@ -47,7 +45,6 @@ export function NotesSection({
   entityType,
   entityId,
   showHeader = true,
-  quotes = NO_QUOTES,
   lockedQuoteId = null,
 }: NotesSectionProps) {
   const { t } = useTranslation()
@@ -65,6 +62,12 @@ export function NotesSection({
   } = useNotes(entityType, entityId, true, quoteScope)
 
   const roots = data?.pages.flatMap((page) => page.data) ?? []
+  // Spec 0085 amendment: le Offerte arrivano con il thread, non dall'host —
+  // cosi' ogni superficie che monta la sezione (tab del dettaglio, dialog di
+  // riga, pannello di lavorazione) ha filtro e destinazione, non solo quelle
+  // che hanno gia' caricato il record ospite. Si leggono dalla PRIMA pagina:
+  // le successive descrivono lo stesso record, non un elenco diverso.
+  const quotes = data?.pages[0]?.meta.quotes ?? NO_QUOTES
 
   const content = (
     <>

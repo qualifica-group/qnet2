@@ -49,7 +49,7 @@ export const quotes = {
     createdAt: 'Created at',
     linesEmpty: 'No rows yet.',
     generatingDocument: 'Generating…',
-    documentGenerated: 'Word document generated successfully.',
+    documentGenerated: 'PDF generated successfully.',
     documentForbidden: "You don't have permission to generate this document.",
     documentGenericError: 'Unable to generate the document. Please try again.',
   },
@@ -126,7 +126,7 @@ export const quotes = {
       },
       layout: {
         title: 'Document layout',
-        description: 'Word layout used to generate the quote document.',
+        description: 'Layout used to generate the quote document.',
       },
       workflowStatus: {
         title: 'Status',

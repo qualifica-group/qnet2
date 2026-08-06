@@ -71,7 +71,7 @@ class DemoQuoteSeeder extends Seeder
     {
         Quote::query()->delete();
 
-        $opportunities = Opportunity::query()->orderBy('id')->get();
+        $opportunities = Opportunity::query()->with('managers:id')->orderBy('id')->get();
         $this->loadOffers($this->hierarchy);
 
         if ($opportunities->isEmpty() || ! $this->hasOffers()) {
@@ -137,8 +137,14 @@ class DemoQuoteSeeder extends Seeder
             commercialIdSubmitted: false,
             reporterId: null,
             reporterIdSubmitted: false,
-            supervisorId: null,
-            supervisorIdSubmitted: false,
+            // Directive 2026-08-06: on an offer the Supervisore can ONLY be a
+            // Gestore Account of its opportunity, so the value is drawn from
+            // that pivot instead of being inherited from
+            // `opportunities.supervisor_id` (which the opportunity seeders
+            // pick from the whole user base). Submitted explicitly, null
+            // included: an opportunity with no GA leaves the field empty.
+            supervisorId: $this->supervisorId($faker, $opportunity),
+            supervisorIdSubmitted: true,
             internalNotes: $faker->optional(0.5)->sentence(10),
             offerLines: [$offerLine],
             costLines: [$this->costLine($faker, $costProductIds, $index)],
@@ -148,6 +154,19 @@ class DemoQuoteSeeder extends Seeder
             // category with no assigned attribute simply yields an empty map.
             attributeValues: $this->attributeValues($faker, $offerLine->productId),
         );
+    }
+
+    /**
+     * One of the opportunity's Gestori Account, or null when it has none —
+     * the only population an offer's Supervisore may be drawn from
+     * (ValidatesQuoteSupervisor rejects anything else). Reads the eager-loaded
+     * `managers`, so the loop stays a single query.
+     */
+    private function supervisorId(Generator $faker, Opportunity $opportunity): ?int
+    {
+        $managerIds = $opportunity->managers->pluck('id')->all();
+
+        return $managerIds === [] ? null : (int) $faker->randomElement($managerIds);
     }
 
     /**

@@ -10,6 +10,33 @@
     cliente.
   </goal>
 
+  <amendment date="2026-08-06" status="applied">
+    IL FORMATO CONSEGNATO E PDF, NON PIU `.docx` (decisione utente 2026-08-06). Il `.docx` resta
+    il formato INTERNO di rendering: la pipeline PhpWord (`DocxRenderer` + `Blocks/*`) e invariata,
+    e un passo di conversione la segue.
+
+    Come: `App\Services\DocumentLayouts\Rendering\DocxToPdfConverter` esegue LibreOffice headless
+    (`soffice --headless --convert-to pdf`) sul binario `.docx`, in un workspace temporaneo per-run
+    che viene rimosso prima del ritorno (D-2/D-4 valgono identici per il PDF).
+    NESSUNA nuova dipendenza composer: la scelta ha preferito la fedelta (LibreOffice legge OOXML
+    nativamente: tabelle, immagini, header, interruzioni di pagina sopravvivono) al writer PDF di
+    PhpWord, che passa per HTML e degrada il documento.
+    REQUISITO DI DEPLOY che ne deriva: LibreOffice deve essere installato sul server. Percorso e
+    timeout in `config/documents.php` (`LIBREOFFICE_BINARY`, `LIBREOFFICE_TIMEOUT`). Se manca, gli
+    endpoint rispondono 500 con l'envelope generico (stderr solo nel log): mai un documento
+    degradato in silenzio.
+
+    Delta sul contratto:
+    - AC-230: `Content-Type: application/pdf`, `Content-Disposition` = `{quote.code}.pdf`.
+      Le asserzioni sull'OOXML restano, sul `.docx` che la conversione ha consumato.
+    - AC-273: l'anteprima layout e anch'essa PDF (`{layout.code}-preview.pdf`), cosi il layout si
+      progetta sul formato che il cliente riceve.
+    - AC-300/301: la label della row action passa da `actions.generateWord` a
+      `actions.generatePdf` (il testo visibile, "Scarica preventivo", non cambia).
+    Costo misurato: ~1,8s per conversione a freddo escluso (prima esecuzione ~8s, creazione del
+    profilo LibreOffice).
+  </amendment>
+
   <context>
     DIPENDE DALLA SPEC 0069, che deve essere implementata e verde prima di questa. Da 0069 si
     danno per esistenti e congelati: tabella `document_layouts`, model `App\Models\DocumentLayout`,

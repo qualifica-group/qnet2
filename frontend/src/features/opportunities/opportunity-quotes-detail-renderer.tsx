@@ -14,6 +14,8 @@ import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { NotesDialog } from '@/features/notes/notes-dialog'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
 import { QUOTES_DOMAIN } from '@/features/quotes/api'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
@@ -197,10 +199,11 @@ export function OpportunityQuotesDetailRenderer({
     }
   }, [opportunityId, queryClient])
 
-  const { handleAction, isBusy, activityRow, closeActivity, sheet } = useQuoteRowActions({
-    onMutated: handleMutated,
-    forceMode: OPEN_MODE_MODAL,
-  })
+  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, sheet } =
+    useQuoteRowActions({
+      onMutated: handleMutated,
+      forceMode: OPEN_MODE_MODAL,
+    })
 
   const actions = config.data?.actions
   const renderRowActions = useMemo(
@@ -283,6 +286,14 @@ export function OpportunityQuotesDetailRenderer({
         resource={QUOTES_DOMAIN}
         row={activityRow}
         onOpenChange={closeActivity}
+      />
+
+      <NotesDialog
+        entityType={REQUEST_MANAGEMENT_DOMAIN}
+        entityId={notesTarget?.opportunityId ?? null}
+        lockedQuoteId={notesTarget?.quoteId ?? null}
+        title={notesTarget?.code}
+        onOpenChange={closeNotes}
       />
     </div>
   )

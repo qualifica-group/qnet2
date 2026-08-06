@@ -6,6 +6,69 @@
 -->
 <spec id="0085-quote-scoped-notes" status="draft" owner="nicola" date="2026-08-05">
 
+  <amendment date="2026-08-06" status="applied">
+    I SELETTORI DI OFFERTA VIAGGIANO CON IL THREAD, NON CON L'HOST (richiesta utente 2026-08-06:
+    "sulla tabella Opportunita' e su Gestione Richieste, quando scrivi una nota non c'e' la
+    possibilita' di filtrare per quale offerta ne' di scegliere per quale offerta scrivere").
+
+    Causa. AC-020/022 erano implementati passando `quotes` come PROP a `NotesSection`, e l'unica
+    fonte era `OpportunityResource.quotes` — disponibile solo a chi aveva caricato il dettaglio
+    Opportunita'. Le altre superfici montano la stessa sezione da una RIGA di griglia o dal
+    pannello di lavorazione: nessun dettaglio caricato, quindi nessun selettore. Non un bug del
+    componente: un contratto che chiedeva all'host un dato che tre host su quattro non hanno.
+
+    Correzione, una sola fonte. Le Offerte del record ospite viaggiano nella risposta note:
+    `GET /api/notes` -> `meta.quotes: [{id, code, title}]`, prodotto da
+    `NotableEntity::quoteScopes()` (stessa delega di `ownsQuote`, il core note resta agnostico) e
+    trasportato da `NotePage::$quoteScopes`. NON e' filtrato da `quote_scope`: sono le scelte, non
+    il risultato. `NotesSection` lo legge dalla prima pagina e non accetta piu' la prop `quotes`.
+    Effetto: tab del dettaglio Opportunita', dialog di riga della griglia Opportunita', dialog di
+    riga e pannello di lavorazione di Gestione Richieste, dialog di riga Offerta hanno tutti
+    filtro e destinazione, senza codice per-superficie. AC-020..025 valgono ovunque, non solo sul
+    dettaglio; AC-025 (nessuna Offerta -> nessun selettore) diventa `meta.quotes === []`.
+
+    Rimosso perche' senza consumatori (non commentato): `OpportunityResource.quotes` e il tipo
+    `OpportunityQuoteRef`. `OpportunityService::loadDetail()` continua a caricare la relazione —
+    serve a `OpportunityStatusResolver`, non alle note. Cancellato di conseguenza
+    `tests/Feature/Opportunities/OpportunityQuotesProjectionTest.php`: copriva la proiezione
+    rimossa (requisito cambiato, non test piegato per farlo passare).
+
+    Copertura: `tests/Feature/Notes/NoteQuoteScopeMetaTest.php` (ordinamento per `code`, `[]` senza
+    Offerte, mai le Offerte di un'altra Opportunita', scelte invariate sotto filtro, query singola,
+    403 invariato) e i tre casi in `frontend/src/features/notes/notes-section.test.tsx`.
+  </amendment>
+
+  <amendment date="2026-08-06" status="applied">
+    AZIONE `notes` TRA LE AZIONI DI RIGA DELL'OFFERTA (richiesta utente 2026-08-06). Estende lo
+    `<in>` "Montaggio della sezione Note nel dettaglio Offerta": lo stesso accesso pre-filtrato
+    esiste ora anche come AZIONE di riga, senza entrare nell'Offerta. Nessuna nuova gestione,
+    nessun nuovo endpoint, nessun nuovo permesso: e' lo stesso `NotesDialog` -> `NotesSection`
+    che aprono la griglia Opportunita' e Gestione Richieste, con `lockedQuoteId` valorizzato —
+    quindi form, menzioni, allegati, reply e autorizzazioni restano quelli di oggi (AC-024 gia'
+    descrive la semantica: lista filtrata su quell'Offerta, composer bloccato su di essa,
+    nessun selettore).
+
+    - CATALOGO (`QuoteColumnCatalog::actions`): voce `notes`, icona `message-square`, permission
+      `request-management.view` — NON una `quotes.*`: la nota vive sul thread dell'Opportunita'
+      padre (D-1), quindi il gate e' quello del modulo ospite. Nessun `count_field`: un contatore
+      per-Offerta resta fuori scope (`<out>`).
+    - PER-RIGA (`QuotesTableDefinition::actionsFor`): stessa regola di
+      `RequestManagementNotable::authorizeRead` applicata a `quote->opportunity`
+      (`request-management.view` AND (`viewAll` OR essere il GA2 Operatore)), identica a
+      `OpportunitiesTableDefinition::allowsNotes`. `opportunity.managers` entra negli eager-load
+      per non fare una query per riga.
+    - FRONTEND: `NotesDialog` accetta `lockedQuoteId` (passante verso `NotesSection`, gia'
+      pronta); `useQuoteRowActions` gestisce il caso `notes` esponendo `notesTarget`
+      ({ opportunityId, quoteId, code }) e `closeNotes`. Il dialog e' montato dalle DUE superfici
+      che condividono quel hook — la griglia Offerte e il pannello Offerte dentro la riga
+      Opportunita' — cosi' non possono divergere. `entity_id` e' l'OPPORTUNITA' padre, letto dal
+      ref di riga `opportunity`; senza quel ref l'azione non apre nulla. Nessun refresh alla
+      chiusura: a differenza della griglia Opportunita' qui nessuna cella dipende dal thread.
+
+    Copertura: `tests/Feature/Quotes/QuoteNotesActionTest.php` (catalogo, gate, scope GA2,
+    proiezione di `opportunity.id`) e `frontend/src/features/quotes/quotes-table-notes.test.tsx`.
+  </amendment>
+
   <goal>
     Il sistema di note resta quello attuale, ma ogni nota puo' essere generale (visibile per l'intera
     Opportunita') oppure legata a una singola Offerta. La lista mostra per default tutte le note con

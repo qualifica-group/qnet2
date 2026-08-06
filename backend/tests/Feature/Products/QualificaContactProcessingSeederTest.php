@@ -25,7 +25,7 @@ function effectiveOpportunityCodes(string $categoryName): array
     $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
     return app(CategoryHierarchy::class)
-        ->effectiveAttributes($category, AttributeContext::Opportunity)
+        ->effectiveAttributes($category, AttributeContext::Quote)
         ->pluck('code')
         ->all();
 }
@@ -44,7 +44,7 @@ it('assigns the training set to the Formazione root, idempotently', function ():
 
     $pivot = DB::table('attribute_category')
         ->whereIn('attribute_id', $attributeIds)
-        ->where('context', AttributeContext::Opportunity->value)
+        ->where('context', AttributeContext::Quote->value)
         ->get();
 
     expect($pivot)->toHaveCount(count($codes))
@@ -117,7 +117,7 @@ it('places each appointment time right under its own date', function (): void {
     $service = app(AttributeLayoutService::class);
     $rowsOf = function (string $categoryName) use ($service): array {
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-        $blob = $service->resolveExact($category, AttributeContext::Opportunity, LayoutFormScope::All);
+        $blob = $service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All);
 
         return array_map(
             static fn (array $row): array => array_column($row['items'], 'attribute_code'),
@@ -155,14 +155,14 @@ it('retires "Corso di interesse" from every category without deleting the import
     $corso = Attribute::query()->create(['code' => 'corso', 'name' => 'Corso scelto', 'type' => 'text']);
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
     $formazione->attributes()->attach($corso->id, [
-        'context' => AttributeContext::Opportunity->value,
+        'context' => AttributeContext::Quote->value,
         'is_required' => false,
         'sort_order' => 0,
     ]);
 
     $service = app(AttributeLayoutService::class);
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $service->upsert($molise, AttributeContext::Opportunity, LayoutFormScope::All, [
+    $service->upsert($molise, AttributeContext::Quote, LayoutFormScope::All, [
         'sections' => [[
             'id' => 'legacy',
             'title' => 'Dati Lavorazione Contatto',
@@ -187,7 +187,7 @@ it('retires "Corso di interesse" from every category without deleting the import
         ->and(effectiveOpportunityCodes('GOL - Molise'))->not->toContain('corso');
 
     // The stale layout item goes with it, or the next save would 422.
-    $blob = $service->resolveExact($molise, AttributeContext::Opportunity, LayoutFormScope::All);
+    $blob = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
     expect($blob['sections'][0]['rows'])->toHaveCount(1)
         ->and(array_column($blob['sections'][0]['rows'][0]['items'], 'attribute_code'))->toBe(['cpi']);
 });
@@ -230,10 +230,10 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     $service = app(AttributeLayoutService::class);
 
     // The Formazione branch (16) plus the two Consulenza leaves.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Opportunity->value)->count())->toBe(18);
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(18);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $layout = $service->resolveExact($molise, AttributeContext::Opportunity, LayoutFormScope::All);
+    $layout = $service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All);
     $section = $layout['sections'][0];
 
     expect($section['title'])->toBe('Dati Lavorazione Contatto')
@@ -244,7 +244,7 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     // Each category places exactly what it resolves: the consulting leaf has
     // none of the training rows, Autofinanziato adds its own pair.
     $trattative = ProductCategory::query()->where('name', 'Trattative in Corso')->firstOrFail();
-    $consulting = $service->resolveExact($trattative, AttributeContext::Opportunity, LayoutFormScope::All);
+    $consulting = $service->resolveExact($trattative, AttributeContext::Quote, LayoutFormScope::All);
 
     $placed = fn (array $blob): array => collect($blob['sections'][0]['rows'])
         ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
@@ -256,7 +256,7 @@ it('seeds one "Dati Lavorazione Contatto" section per contributing category', fu
     ]);
 
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-    expect($placed($service->resolveExact($autofinanziato, AttributeContext::Opportunity, LayoutFormScope::All)))
+    expect($placed($service->resolveExact($autofinanziato, AttributeContext::Quote, LayoutFormScope::All)))
         ->toContain('course_time_preference', 'price', 'cpi');
 });
 
@@ -266,7 +266,7 @@ it('never overwrites an opportunity layout configured by hand', function (): voi
     $service = app(AttributeLayoutService::class);
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
 
-    $configured = $service->upsert($molise, AttributeContext::Opportunity, LayoutFormScope::All, [
+    $configured = $service->upsert($molise, AttributeContext::Quote, LayoutFormScope::All, [
         'sections' => [[
             'id' => 'by-hand',
             'title' => 'Configurata a mano',
@@ -282,5 +282,5 @@ it('never overwrites an opportunity layout configured by hand', function (): voi
 
     test()->seed(QualificaContactProcessingSeeder::class);
 
-    expect($service->resolveExact($molise, AttributeContext::Opportunity, LayoutFormScope::All))->toBe($configured);
+    expect($service->resolveExact($molise, AttributeContext::Quote, LayoutFormScope::All))->toBe($configured);
 });

@@ -81,13 +81,21 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
     onChange,
     onItemChange,
     labels,
+    disabled,
+    params,
   }: {
     value: number | null
     onChange: (value: number | null) => void
     onItemChange?: (item: ForSelectItem | null) => void
     labels: { triggerLabel: string }
+    disabled?: boolean
+    params?: Record<string, string | number>
   }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
+    <div
+      data-testid={`select-${labels.triggerLabel}`}
+      data-disabled={disabled ? 'true' : 'false'}
+      data-params={JSON.stringify(params ?? null)}
+    >
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
       {[OPPORTUNITY_WITH_ROLES, OPPORTUNITY_WITHOUT_ROLES].map((item) => (
         <button
@@ -162,6 +170,41 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
     await waitFor(() => expect(screen.getByTestId('value-Commercial')).toHaveTextContent(''))
     expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
     expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
+  })
+
+  // Directive 2026-08-06: the Supervisore can only be a Gestore Account of
+  // the picked Opportunita', so its picker is locked until one is chosen and
+  // then scoped to it (`opportunity_id` dependency param).
+  it('locks the Supervisor picker until an opportunity is picked, then scopes it to that opportunity', async () => {
+    renderCreateForm()
+
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-params', 'null')
+
+    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false'),
+    )
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute(
+      'data-params',
+      JSON.stringify({ opportunity_id: OPPORTUNITY_WITH_ROLES.id }),
+    )
+  })
+
+  it('re-locks the Supervisor picker when the opportunity is cleared', async () => {
+    renderCreateForm()
+
+    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
+    await waitFor(() =>
+      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false'),
+    )
+
+    screen.getByRole('button', { name: 'clear Opportunity' }).click()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'true'),
+    )
   })
 
   it('clears the three when the opportunity itself is cleared', async () => {

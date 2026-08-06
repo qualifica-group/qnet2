@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
+import { NotesDialog } from '@/features/notes/notes-dialog'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { quoteColumnRenderers } from '@/features/quotes/column-renderers'
 import { QUOTES_ACTION_ICONS } from '@/features/quotes/action-icons'
@@ -29,7 +31,7 @@ export function QuotesTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
-  const { handleAction, isBusy, activityRow, closeActivity, sheet, openCreate } =
+  const { handleAction, isBusy, activityRow, closeActivity, notesTarget, closeNotes, sheet, openCreate } =
     useQuoteRowActions({ onMutated: refreshGrid })
 
   return (
@@ -60,6 +62,14 @@ export function QuotesTable() {
         resource={QUOTES_DOMAIN}
         row={activityRow}
         onOpenChange={closeActivity}
+      />
+
+      <NotesDialog
+        entityType={REQUEST_MANAGEMENT_DOMAIN}
+        entityId={notesTarget?.opportunityId ?? null}
+        lockedQuoteId={notesTarget?.quoteId ?? null}
+        title={notesTarget?.code}
+        onOpenChange={closeNotes}
       />
     </div>
   )

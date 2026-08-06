@@ -65,7 +65,7 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
             disabled={generatingThisQuote}
           >
             <Download aria-hidden="true" />
-            {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generateWord')}
+            {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
           </Button>
         </div>
       ) : null}

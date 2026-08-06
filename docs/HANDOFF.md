@@ -3,6 +3,171 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SELETTORI OFFERTA DELLE NOTE SU TUTTE LE SUPERFICI (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Sulla tabella Opportunita' e su Gestione Richieste, scrivendo una nota
+mancavano il filtro "per quale Offerta leggere" e la scelta "per quale Offerta scrivere": doveva
+comportarsi come la tab Note di `/opportunities/16`, con LO STESSO componente, senza duplicare
+codice.
+
+**Causa (non era un bug del componente).** `NotesSection` riceveva le Offerte come PROP, e l'unica
+fonte era `OpportunityResource.quotes` — leggibile solo da chi aveva caricato il DETTAGLIO
+Opportunita'. Le altre superfici montano la stessa sezione da una riga di griglia o dal pannello di
+lavorazione: nessun dettaglio caricato, quindi nessun selettore. Il contratto chiedeva all'host un
+dato che tre host su quattro non hanno.
+
+**Correzione: una sola fonte, dentro la risposta note.** `GET /api/notes` ora restituisce
+`meta.quotes: [{id, code, title}]`, prodotto da `NotableEntity::quoteScopes()` (stessa delega di
+`ownsQuote` — il core note resta agnostico, `NoteAgnosticismTest` invariato) e trasportato da
+`NotePage::$quoteScopes`. NON e' filtrato da `quote_scope`: sono le scelte, non il risultato.
+`NotesSection` lo legge dalla prima pagina e NON accetta piu' la prop `quotes`.
+
+**Effetto:** hanno filtro + destinazione, senza una riga di codice per-superficie, la tab del
+dettaglio Opportunita', il dialog di riga della griglia Opportunita', il dialog di riga E il
+pannello di lavorazione di Gestione Richieste, il dialog di riga Offerta. Il dettaglio Offerta
+resta bloccato su `lockedQuoteId` (nessun selettore, per costruzione).
+
+**`useNotes` monta `placeholderData: keepPreviousData`** (precedente: `useGeo`): cambiare filtro
+cambia la query key, e senza questo la pagina tornava `undefined` durante il fetch smontando i
+selettori — che vivono in `meta.quotes` — proprio mentre l'utente ci sta interagendo. Il test lo
+copre ed e' sensibile: rimuovendo la riga fallisce.
+
+**Rimosso perche' senza consumatori** (non commentato): `OpportunityResource.quotes`, il tipo FE
+`OpportunityQuoteRef`, e `tests/Feature/Opportunities/OpportunityQuotesProjectionTest.php` (copriva
+la proiezione rimossa: requisito cambiato, non test piegato). `OpportunityService::loadDetail()`
+continua a caricare la relazione — serve a `OpportunityStatusResolver`, non alle note.
+
+**Da rispettare.** Chi aggiunge un nuovo host notes implementa `quoteScopes()` (array vuoto se non
+ha un concetto di scoping): e' l'unico punto da cui i selettori si alimentano. Non reintrodurre una
+seconda proiezione delle Offerte lato host.
+
+**Verificato:** `NoteQuoteScopeMetaTest` 6/6; backend Notes 128/128; Opportunities+RequestManagement
++Quotes 720/720; Pint pulito; FE `src/features/notes` 48/48, opportunities+request-management+quotes
+574/574; `tsc -b --force` EXIT=0. Spec `0085` aggiornata con `<amendment>`.
+
+## AZIONE NOTE SULL'OFFERTA (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Aggiungere l'azione `Note` tra le azioni di riga dell'Offerta, RIUSANDO
+componente/form/UX gia' presenti nelle Opportunita' — nessuna gestione dedicata. Le note restano
+nella stessa entita' (`notes`, appese all'Opportunita'), ma collegate anche all'Offerta: aprendo
+l'azione si vedono SOLO le note di quell'Offerta, e le nuove nascono con quel `quote_id`.
+
+**Non e' stata costruita nessuna infrastruttura nuova: c'era gia' tutta.** La spec 0085 aveva gia'
+`notes.quote_id`, `quote_scope` su `GET /api/notes`, e `NotesSection` con `lockedQuoteId` (AC-024).
+Mancava solo il modo di ARRIVARCI da una riga Offerta. Chi tocca questa area non reimplementi il
+filtro: passi `lockedQuoteId`.
+
+**Il punto da ricordare: `entity_id` NON e' l'Offerta.** La nota vive sul thread dell'OPPORTUNITA'
+padre (D-1) e l'Offerta e' solo lo scope. Quindi il dialog riceve
+`entityType='request-management'` + `entityId = row.opportunity.id` + `lockedQuoteId = row.id`.
+Passare l'id dell'Offerta come `entity_id` da 422 (`request-management` mappa `Opportunity`).
+Per la stessa ragione il gate dell'azione e' `request-management.view` (+ `viewAll` OR essere il
+GA2 Operatore), MAI una permission `quotes.*` — stessa regola di
+`OpportunitiesTableDefinition::allowsNotes`, qui in `QuotesTableDefinition::allowsNotes` applicata
+a `quote->opportunity`. `opportunity.managers` e' negli eager-load per quel gate: non rimuoverlo.
+
+**File.** BE: `QuoteColumnCatalog::actions` (voce `notes`, icona `message-square`, nessun
+`count_field` — contatore per-Offerta fuori scope), `QuotesTableDefinition` (eager-load +
+`actionsFor` + `allowsNotes`). FE: `notes-dialog.tsx` (nuova prop `lockedQuoteId`),
+`use-quote-row-actions.ts` (`notesTarget`/`closeNotes`), `action-icons.ts`, e le DUE superfici che
+condividono il hook — `quotes-table.tsx` e `opportunity-quotes-detail-renderer.tsx`: montare il
+dialog in una sola delle due le farebbe divergere. Nessun refresh alla chiusura (nessuna cella
+dell'Offerta dipende dal thread).
+
+**Verde.** `QuoteNotesActionTest` (5) + `quotes-table-notes.test.tsx` (4); suite BE
+`Quote|Note|Opportunity` 778 passed, FE quotes+notes+opportunities 431 passed, `tsc -b --force`
+pulito, Pint + ESLint puliti. Spec 0085 aggiornata con un `<amendment>`.
+
+**Prossimi passi.** Nulla di aperto. Da valutare solo se l'utente lo chiede: un badge conteggio
+per-Offerta (oggi esplicitamente `<out>` in 0085).
+
+## OFFERTE: IL SUPERVISORE E' SOLO UN GESTORE ACCOUNT DELL'OPPORTUNITA' (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Su un'offerta il Supervisore puo' essere soltanto un Gestore Account (GA)
+della sua opportunita': devono filtrare sia la lista sia il seeder. Scelte confermate dall'utente
+in sessione: (1) l'ereditarieta' copia il supervisore dell'opportunita' SOLO se e' anche GA;
+(2) enforcement server-side su Store+Update, non solo filtro UI. Spec 0065 aggiornata con un
+`<amendment>`.
+
+**La popolazione ammessa** non e' `users` ma il pivot `opportunity_user` (`Opportunity::managers()`,
+i "G.A. n"). Vale solo per `supervisor_id`: Commerciale/Segnalatore (referenti) restano invariati.
+Le OPPORTUNITA' non sono toccate — `opportunities.supervisor_id` resta libero, e cosi'
+`DemoOpportunitySeeder`.
+
+**Tre superfici, una sola regola.**
+- Lista: `GET /api/users/for-select` accetta `opportunity_id` (additivo su `ForSelectQuery`, stesso
+  meccanismo di `operational_site_id`/spec 0048) -> `UserService::forSelect` filtra via la nuova
+  relazione inversa `User::managedOpportunities()`. Gli `ids[]` di idratazione continuano a
+  bypassare il filtro (un'offerta storica con supervisore non-GA mostra comunque la sua etichetta).
+- Scrittura: `App\Http\Requests\Concerns\ValidatesQuoteSupervisor` su Store/UpdateQuoteRequest ->
+  422 `supervisor_id` (`quotes.supervisor_not_manager`, it+en). Valore assente o null mai rifiutato:
+  un'offerta salvata prima di questa regola resta editabile sugli altri campi.
+- Ereditarieta': `QuoteService::inheritedSupervisorId()` e `OpportunityForSelectResource::meta.supervisor`
+  applicano la stessa condizione, cosi' prefill del form e server non divergono
+  (`OpportunityService::forSelectBaseQuery` eager-carica `managers:id` per non N+1).
+
+**Frontend.** In `quote-form-body.tsx` il picker Supervisore e' `forceDisabled` finche' non si
+sceglie l'Opportunita', poi `params={{ opportunity_id }}` — identica cascata di Societa' ->
+Societa' Sede (`QuoteSitesSection`).
+
+**Seeder.** `DemoQuoteSeeder` non eredita piu': pesca dai `managers` della propria opportunita'
+(`supervisorIdSubmitted: true`), null quando l'opportunita' non ha GA — quindi nel dataset demo
+molte offerte restano senza supervisore, ed e' corretto.
+
+**Test aggiornati perche' il requisito e' cambiato** (dichiarato, non per farli passare):
+QuoteServiceTest AC-020, QuoteCrudHttpTest AC-020, QuoteLayoutTest AC-217, OpportunityForSelectTest
+ora agganciano il supervisore come GA nella fixture. Nuovo
+`tests/Feature/Quotes/QuoteSupervisorManagerTest.php` (11 test) per lista/422/ereditarieta'/meta,
++1 assert in `DemoQuoteSeederTest`, +2 in `quote-form-opportunity-roles.test.tsx`.
+
+**Da verificare al prossimo giro.** Nessuna migrazione di dati: le offerte gia' salvate con un
+supervisore non-GA restano com'e' e diventano non piu' modificabili SU QUEL CAMPO finche' non si
+sceglie un GA (o si svuota). Se emergesse il bisogno, servirebbe una bonifica esplicita.
+
+## SCARICA PREVENTIVO: IL FORMATO CONSEGNATO E' PDF (2026-08-06) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Scarica preventivo" deve produrre un PDF, non un `.docx`. Anteprima layout
+inclusa (scelta utente). Spec 0070 aggiornata con un `<amendment>`.
+
+**Come.** Il `.docx` resta il formato INTERNO di rendering: `DocxRenderer` + `Blocks/*` e
+`QuoteDocumentGenerator` sono invariati. Nuovo passo finale
+`app/Services/DocumentLayouts/Rendering/DocxToPdfConverter.php` → LibreOffice headless
+(`soffice --headless --convert-to pdf`) in un workspace temporaneo per-run, cancellato prima del
+ritorno (D-2/D-4 valgono anche per il PDF). Nessuna nuova dipendenza composer: il writer PDF di
+PhpWord passa per HTML e degrada tabelle/immagini, LibreOffice legge OOXML nativamente.
+
+**REQUISITO DI DEPLOY (nuovo).** LibreOffice deve esistere sul server. Config in
+`config/documents.php`: `LIBREOFFICE_BINARY` (default `soffice`), `LIBREOFFICE_TIMEOUT` (60s).
+In locale installato via `brew install --cask libreoffice`; il `.env` di dev punta al path assoluto
+`/Applications/LibreOffice.app/Contents/MacOS/soffice` perche' PHP-FPM non eredita il PATH della
+shell. Binario mancante o conversione fallita = 500 con envelope generico (stderr solo nel log),
+mai un documento degradato in silenzio.
+
+**Il flag `-env:UserInstallation` non e' opzionale.** LibreOffice serializza su un profilo
+condiviso: due conversioni simultanee farebbero uscire la seconda con exit 0 e nessun file, e sotto
+php-fpm `$HOME` spesso non e' scrivibile. Un profilo per-run risolve entrambi.
+
+**Contratto cambiato (chi consuma questi endpoint lo deve sapere).**
+- `POST /api/quotes/{quote}/document` → `application/pdf`, `{quote.code}.pdf`.
+- `POST /api/document-layouts/{layout}/preview` → `application/pdf`, `{layout.code}-preview.pdf`.
+- Label row action rinominata `actions.generateWord` → `actions.generatePdf` (BE `QuoteColumnCatalog`
+  + locali FE). Testo visibile invariato: "Scarica preventivo".
+- Toast: "PDF generato con successo" (era "Documento Word...").
+
+**Test.** `captureDocxToPdfConversion()` in `tests/Pest.php` sostituisce la conversione con un doppio
+che REGISTRA il `.docx` ricevuto: le asserzioni sull'OOXML restano vere e nessun test paga 2s di
+LibreOffice. Il binario vero e' esercitato da `tests/Feature/Quotes/QuoteDocumentPdfTest.php`
+(5 test: PDF valido, workspace pulito, binario mancante → eccezione, 500 con envelope generico,
+end-to-end HTTP). Un rosso LI' significa "LibreOffice manca su questa macchina", non una regressione.
+
+**Verificato.** Suite backend completa `XDEBUG_MODE=off pest` → 5177 passed / 1 skipped /
+22769 assertions. `vitest` completo → 3529 passed (497 file). Pint pulito, ESLint pulito,
+`tsc -b --force` EXIT=0. Conversione reale su dati dev: 16582 byte, `%PDF-1.7`, ~1,8s a caldo
+(~8s la primissima, creazione profilo).
+
+**Nota.** `./vendor/bin/pest` senza `XDEBUG_MODE=off` va in segfault (exit 139) sulla suite completa:
+e' Xdebug, pre-esistente, non il codice.
+
 ## FIX — FORM MODIFICA OFFERTA: "SALVA" NON FACEVA NULLA (2026-08-06) — VERDE, NON COMMITTATO
 
 **Sintomo.** In modifica offerta il click su Salva non produceva nulla: nessuna chiamata, nessun errore a
@@ -31,8 +196,9 @@ senza, un `toHaveBeenCalledTimes(1)` passava per merito della chiamata del test 
 di regressione passava a vuoto).
 
 **Aperto / da sapere.**
-- Il DB di dev ha migrazioni PENDING (`2026_08_06_100000_add_quote_attribute_context_columns`, e quella
-  delle note in corso): serve `php artisan migrate`, altrimenti `quotes.attribute_values` non esiste.
+- ~~Il DB di dev ha migrazioni PENDING~~ RISOLTO 2026-08-06: il DB di dev e' stato rimigrato e
+  riseminato, `migrate:status` non ha piu' pending. Era la causa dei 500 `Unknown column 'quote_id'`
+  su `POST /api/notes` visibili in `storage/logs/laravel.log`.
 - `ProductResource` ha lo stesso `?? []`, ma il form Prodotto normalizza gia' nei `defaultValues` via
   `seedAttributeValues` e un test asserisce `[]`: lasciato invariato, fuori scope.
 - `quote-detail.test.tsx` ha 6 test rossi PRE-ESISTENTI (`NotesSection` senza `QueryClientProvider`),

@@ -3,6 +3,7 @@
 namespace App\Tables;
 
 use App\Models\Company;
+use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -87,6 +88,11 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // OpportunitiesTableDefinition's own supervisor.avatar eager-load.
         return Quote::query()->with([
             'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
+            // Spec 0085: il gate dell'azione `notes` legge il GA2 Operatore
+            // dell'Opportunita' padre per ogni riga — senza questo eager-load
+            // sarebbe una query per riga (mirrors OpportunitiesTableDefinition,
+            // che carica `managers` per la stessa ragione).
+            'opportunity.managers',
             'company', 'companySite',
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
@@ -254,7 +260,31 @@ class QuotesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'generate_document';
         }
 
+        /** @var Quote $row */
+        if ($this->allowsNotes($actor, $row->opportunity)) {
+            $allowed[] = 'notes';
+        }
+
         return $allowed;
+    }
+
+    /**
+     * The SAME rule RequestManagementNotable::authorizeRead re-checks when the
+     * note endpoints are called, applied here to the Offerta's PARENT
+     * Opportunity: spec 0085 keeps the note attached to the Opportunity and
+     * only scopes it with `quote_id`, so reading an Offerta's notes is
+     * reading its Opportunity's thread — never a `quotes.*` permission.
+     * Mirrors OpportunitiesTableDefinition::allowsNotes verbatim; this action
+     * is an affordance only, the endpoint authorizes for real.
+     */
+    private function allowsNotes(User $actor, ?Opportunity $opportunity): bool
+    {
+        if ($opportunity === null || ! $actor->can('request-management.view')) {
+            return false;
+        }
+
+        return $actor->can('request-management.viewAll')
+            || $opportunity->operatorManager()?->id === $actor->id;
     }
 
     /**

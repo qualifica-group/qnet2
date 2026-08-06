@@ -31,8 +31,9 @@ final readonly class UpdateProductCategoryData
         public bool $parentIdSubmitted = false,
         public ?bool $inheritsProductAttributes = null,
         public bool $inheritsProductAttributesSubmitted = false,
-        public ?bool $inheritsOpportunityAttributes = null,
-        public bool $inheritsOpportunityAttributesSubmitted = false,
+        /** Spec 0084: the Offerta context's own inheritance barrier (App\Enums\AttributeContext::Quote), same submitted-flag convention as inheritsProductAttributes above. */
+        public ?bool $inheritsQuoteAttributes = null,
+        public bool $inheritsQuoteAttributesSubmitted = false,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
         public ?array $attributes = null,
@@ -49,9 +50,6 @@ final readonly class UpdateProductCategoryData
         public bool $managerLabelsSubmitted = false,
         public ?bool $inheritsManagerLabels = null,
         public bool $inheritsManagerLabelsSubmitted = false,
-        /** Spec 0084: the third usage context's own inheritance barrier (App\Enums\AttributeContext::Quote), same submitted-flag convention as inheritsProductAttributes/inheritsOpportunityAttributes above. */
-        public ?bool $inheritsQuoteAttributes = null,
-        public bool $inheritsQuoteAttributesSubmitted = false,
     ) {}
 
     /**
@@ -67,8 +65,8 @@ final readonly class UpdateProductCategoryData
             parentIdSubmitted: array_key_exists('parent_id', $data),
             inheritsProductAttributes: array_key_exists('inherits_product_attributes', $data) ? (bool) $data['inherits_product_attributes'] : null,
             inheritsProductAttributesSubmitted: array_key_exists('inherits_product_attributes', $data),
-            inheritsOpportunityAttributes: array_key_exists('inherits_opportunity_attributes', $data) ? (bool) $data['inherits_opportunity_attributes'] : null,
-            inheritsOpportunityAttributesSubmitted: array_key_exists('inherits_opportunity_attributes', $data),
+            inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : null,
+            inheritsQuoteAttributesSubmitted: array_key_exists('inherits_quote_attributes', $data),
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
@@ -84,8 +82,6 @@ final readonly class UpdateProductCategoryData
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
             inheritsManagerLabelsSubmitted: array_key_exists('inherits_manager_labels', $data),
-            inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : null,
-            inheritsQuoteAttributesSubmitted: array_key_exists('inherits_quote_attributes', $data),
         );
     }
 
@@ -126,10 +122,6 @@ final readonly class UpdateProductCategoryData
             $attributes['inherits_product_attributes'] = $this->inheritsProductAttributes;
         }
 
-        if ($this->inheritsOpportunityAttributesSubmitted) {
-            $attributes['inherits_opportunity_attributes'] = $this->inheritsOpportunityAttributes;
-        }
-
         if ($this->inheritsQuoteAttributesSubmitted) {
             $attributes['inherits_quote_attributes'] = $this->inheritsQuoteAttributes;
         }
@@ -163,7 +155,7 @@ final readonly class UpdateProductCategoryData
         }
 
         // Spec 0080: mirrors inherits_product_attributes/
-        // inherits_opportunity_attributes — a plain boolean, written verbatim.
+        // inherits_quote_attributes — a plain boolean, written verbatim.
         // `manager_labels` itself is deliberately NOT added here: its values
         // need normalizing (trim, empty removed), which ProductCategoryService
         // applies on top of this array — this DTO stays a dumb data carrier.

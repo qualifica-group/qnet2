@@ -6,6 +6,38 @@
 -->
 <spec id="0065-quotes-module" status="draft" owner="utente" date="2026-07-29">
 
+  <amendment date="2026-08-06" status="applied">
+    IL SUPERVISORE DI UN'OFFERTA PUO' ESSERE SOLO UN GESTORE ACCOUNT DELLA SUA OPPORTUNITA'
+    (decisione utente 2026-08-06). La popolazione ammessa non e' piu' l'intera tabella `users` ma
+    il pivot `opportunity_user` (`Opportunity::managers()`, i "G.A. n"). Restringe D-3 sul solo
+    `supervisor_id`: Commerciale e Segnalatore (referenti) restano invariati.
+
+    Tre superfici allineate sulla stessa regola:
+    - LISTA: `GET /api/users/for-select` accetta `opportunity_id` (ADDITIVO, `ForSelectQuery::opportunityId`,
+      stesso meccanismo di `operational_site_id` della spec 0048) e restringe ai GA di
+      quell'opportunita'. Gli `ids[]` di idratazione continuano a bypassare il filtro, cosi'
+      un'offerta gia' salvata con un supervisore non-GA mostra comunque la sua etichetta.
+      Nel form l'attivazione e' a cascata come Societa' -> Societa' Sede: il picker Supervisore e'
+      BLOCCATO finche' non si sceglie l'Opportunita', poi scoped su di essa.
+    - SCRITTURA: `App\Http\Requests\Concerns\ValidatesQuoteSupervisor` su Store/UpdateQuoteRequest —
+      422 `supervisor_id` (`quotes.supervisor_not_manager`) se il valore inviato non e' un GA
+      dell'opportunita' (quella inviata in creazione, quella persistita in update: `opportunity_id`
+      resta immutabile, AC-025). Un `supervisor_id` assente o null non e' mai rifiutato.
+    - EREDITARIETA' (AC-020): `QuoteService::applySnapshotDefaults` copia `opportunities.supervisor_id`
+      SOLO se quell'utente e' anche GA dell'opportunita', altrimenti null; `OpportunityForSelectResource`
+      applica la stessa regola a `meta.supervisor`, cosi' il prefill del form e il server non divergono.
+      Le opportunita' NON sono toccate: `opportunities.supervisor_id` resta libero.
+
+    Seeder: `DemoQuoteSeeder` non eredita piu' il supervisore, lo pesca dai `managers` della propria
+    opportunita' (`supervisorIdSubmitted: true`, null quando l'opportunita' non ha GA).
+    `DemoOpportunitySeeder` resta invariato (fuori scope: e' il supervisore dell'OPPORTUNITA').
+
+    Test AGGIORNATI perche' il requisito e' cambiato (non per farli passare): QuoteServiceTest AC-020,
+    QuoteCrudHttpTest AC-020, QuoteLayoutTest AC-217 e OpportunityForSelectTest ora agganciano il
+    supervisore come GA nella fixture. Il caso non-GA e' coperto da
+    `tests/Feature/Quotes/QuoteSupervisorManagerTest.php`.
+  </amendment>
+
   <goal>
     Introdurre il modulo Offerte collegato alle Opportunita' (una Opportunita' contiene
     uno o piu' offerte) e il modulo di configurazione Stati Offerta. Ogni offerta raccoglie le
