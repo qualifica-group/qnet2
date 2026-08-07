@@ -29,7 +29,7 @@ function buildCriteriaPayload(rows: CriterionFormRow[]): CreateQuoteWorkflowCrit
 
 /**
  * Builds the CREATE `statuses[]` payload: every row in visual order — the
- * custom (intermediate) rows plus the 2 pinned rows carrying their
+ * custom (intermediate) rows plus the 3 pinned rows carrying their
  * `system_key`, so the backend seeds the auto-created open/closed rows with
  * the name/color the user typed (AC-004).
  */
@@ -48,15 +48,14 @@ function buildStatusesCreatePayload(rows: WorkflowStatusFormRow[]): CreateQuoteW
  * Builds the UPDATE/default-statuses `statuses[]` payload: every row that
  * has a real, persisted identity — `id` present = update (system or
  * custom), absent = a new custom row — in visual order (positional
- * `sort_order` for the customs, AC-025). A placeholder MANDATORY pinned row
- * (no `statusId` yet) never occurs in edit mode (every row hydrates from a
+ * `sort_order` for the customs, AC-025). A placeholder pinned row (no
+ * `statusId` yet) never occurs in edit mode (every row hydrates from a
  * persisted `QuoteWorkflowDetail`/default set), but is filtered out
- * defensively all the same — unlike a not-yet-persisted `validated` row,
- * which is exactly how the optional mark reaches the backend.
+ * defensively all the same.
  */
 function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateQuoteWorkflowStatusPayload[] {
   return rows
-    .filter((row) => row.statusId !== undefined || row.system_key === null || row.system_key === 'validated')
+    .filter((row) => row.statusId !== undefined || row.system_key === null)
     .map((row) => ({
       id: row.statusId,
       name: row.name,
@@ -64,9 +63,6 @@ function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateQuoteW
       color: row.color,
       group: row.group,
       requires_note: row.requires_note,
-      // Always sent, `null` included: the backend only removes the optional
-      // `validated` mark from a row that explicitly carries the key.
-      system_key: row.system_key,
     }))
 }
 

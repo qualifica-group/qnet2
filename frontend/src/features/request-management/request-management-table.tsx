@@ -59,23 +59,25 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
 }
 
 /**
- * Thin Request Management adapter over the generic table (spec 0049): an
- * OPERATIVE view over the same Opportunity rows (D-1, no new entity, no
- * duplication). Mounts `<TableView>` with the `request-management` domain
- * and its status-badge renderers, and delegates the "Lavora" row action
- * (`view`) to `useModuleOpener`, resolved from the user's open-mode
- * preference (spec 0042): modal mounts the work panel in a Sheet, page mode
- * navigates to `/request-management/:id`. The `documents` row action opens the
- * shared `DocumentsDialog` on the same polymorphic owner the opportunities
- * module uses (the row IS the Opportunity), gated server-side by this module's
- * OWN `request-management.viewDocuments` (D-2). The `notes` row action opens
- * the agnostic `NotesDialog` on the same row (spec 0052), gated server-side by
- * the notes feature's own hybrid authorization (D-6) — this module only wires
- * the `entityType`/`entityId` pair. The `activity` row action — declared last
- * in the catalog, so the shared inline limit pushes it into the three-dots
- * overflow — opens `ResourceActivityDialog` on this module's OWN activity
- * resource key (`request-management`, gated server-side by
- * `request-management.viewActivity` + the GA2 scope).
+ * Thin Request Management adapter over the generic table: an OPERATIVE view
+ * over `quotes` rows (spec 0086 D-1, one row = one Offerta). Mounts
+ * `<TableView>` with the `request-management` domain and its status-badge
+ * renderers, and delegates the "Lavora" row action (`view`) to
+ * `useModuleOpener`, resolved from the user's open-mode preference (spec
+ * 0042): modal mounts the work panel in a Sheet, page mode navigates to
+ * `/request-management/:id` (the Offerta id). The `documents` row action opens
+ * the shared `DocumentsDialog` on the same polymorphic owner the opportunities
+ * module uses, keyed on the row's `opportunity_id` (spec 0086 D-9: documents
+ * stay anchored to the Opportunity, never the Offerta), gated server-side by
+ * this module's OWN `request-management.viewDocuments` (D-2). The `notes` row
+ * action opens the agnostic `NotesDialog` on the same `opportunity_id` (spec
+ * 0052/0086 D-9), gated server-side by the notes feature's own hybrid
+ * authorization (D-6) — this module only wires the `entityType`/`entityId`
+ * pair. The `activity` row action — declared last in the catalog, so the
+ * shared inline limit pushes it into the three-dots overflow — opens
+ * `ResourceActivityDialog` on this module's OWN activity resource key
+ * (`request-management`, likewise keyed on `opportunity_id`, gated
+ * server-side by `request-management.viewActivity` + the supervisor scope).
  *
  * Selection (user directive 2026-07-23): this module owns bulk flows, as the
  * Lead table does — the generic "elimina selezionati" (switched on by the
@@ -178,18 +180,24 @@ export function RequestManagementTable() {
           openView(row)
           break
         case 'documents':
-          setDocumentsRowId(row.id)
+          // Spec 0086 D-9: documents stay anchored to the Opportunity, never
+          // the row's own Quote id.
+          setDocumentsRowId(row.opportunity_id as number)
           break
         case 'notes':
-          setNotesRowId(row.id)
+          setNotesRowId(row.opportunity_id as number)
           break
         case 'delete':
           void runDelete(row)
           break
         case 'activity':
-          setActivityRow(row)
+          // Same D-9 reason: the shared dialog reads `row.id`, so the row is
+          // projected onto the Opportunity id before it reaches it.
+          setActivityRow({ ...row, id: row.opportunity_id as number })
           break
         case 'transfer-contact':
+          // Transfer writes `quotes.supervisor_id`/`operational_site_id`
+          // (spec 0086): request_ids are Offerta ids, i.e. the row's own id.
           openTransferDialog({ ids: [row.id], rows: [row] })
           break
         default:

@@ -36,7 +36,6 @@ export function DefaultStatusesSheet({ open, onOpenChange }: DefaultStatusesShee
     addCustom,
     removeCustom,
     updateRow,
-    markValidated,
     reorder,
     save,
   } = useDefaultStatuses({
@@ -86,7 +85,6 @@ export function DefaultStatusesSheet({ open, onOpenChange }: DefaultStatusesShee
               onAddCustom={addCustom}
               onRemoveCustom={removeCustom}
               onUpdateRow={updateRow}
-              onMarkValidated={markValidated}
               disabled={isSaving}
               error={error}
             />

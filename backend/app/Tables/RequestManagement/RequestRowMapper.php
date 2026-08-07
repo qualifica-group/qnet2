@@ -7,15 +7,19 @@ namespace App\Tables\RequestManagement;
 use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
+use App\Models\OpportunityProductLine;
+use App\Models\Quote;
 use App\Models\User;
 use App\Support\OperationalSiteLabel;
-use App\Tables\Shared\ProductsOfInterestColumn;
+use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
- * Row projection for the `request-management` domain (spec 0049): turns an
- * eager-loaded Opportunity into the operative row payload the grid renders.
+ * Row projection for the `request-management` domain (spec 0086: the row is
+ * now a `quotes` record, D-1 — migrated off the former `opportunities`-rooted
+ * grid, spec 0049): turns an eager-loaded Quote into the operative row
+ * payload the grid renders.
  *
  * Split out of RequestManagementTableDefinition so the definition keeps a
  * single concern (query building: scoping, filters, sorts, distinct values)
@@ -23,71 +27,89 @@ use Illuminate\Support\Collection;
  * relations already loaded by the definition's baseQuery — this mapper never
  * queries.
  *
- * Spec 0083: the working-state columns (`workflow_status` and the per-row
- * `workflow_status_options`) are gone from this domain — the operational
- * status now lives on the Offerta, not on the Opportunita'. With them went the
- * only reason this mapper had a constructor dependency at all.
+ * D-9: `opportunity_id` rides along as the record the `documents`/`notes`/
+ * `activity` row actions and the field-change-request "current value" for
+ * `source` key off — documents/notes/activity stay anchored to the
+ * Opportunity (two sibling offers show the same thread), while `source` etc.
+ * are re-derived THROUGH `quote.opportunity` for display. `pending_change_requests`
+ * does NOT follow that split (D-10, corrected in execution): it counts the
+ * QUOTE's own field-change-requests — two sibling offers carry independent
+ * badges.
  */
 final class RequestRowMapper
 {
     /**
      * @return array<string, mixed>
      */
-    public function map(Opportunity $row): array
+    public function map(Quote $row): array
     {
+        $opportunity = $row->opportunity;
+
         return [
             'id' => $row->id,
-            'name' => $row->name,
-            // "Fonte" (user directive 2026-07-31): the `{id, name}` ref both
-            // the relation cell and its inline picker read.
-            'source' => $this->summarize($row->source),
-            // "Richieste di modifica in attesa" (spec 0078, AC-037): rides
-            // along from baseQuery's withCount('pendingFieldChangeRequests')
-            // — already excludes approved/rejected requests (D-4/D-5), so no
-            // further filtering is needed here. 0 when the relation was not
-            // counted (defensive default, never expected on this domain's
-            // own baseQuery).
+            // D-9: the record documents/notes/activity/history keep reading —
+            // both stay anchored to the Opportunity, never the offer.
+            'opportunity_id' => $row->opportunity_id,
+            // "Fonte" (user directive 2026-07-31): re-derived through the
+            // offer's opportunity (spec 0086) — the `{id, name}` ref both the
+            // relation cell and its inline picker read.
+            'source' => $this->summarize($opportunity?->source),
+            // "Richieste di modifica in attesa" (spec 0078, AC-037; spec
+            // 0086, D-10 corrected): the OFFER's own pending requests —
+            // `withCount('pendingFieldChangeRequests')` on the Quote itself
+            // already excludes approved/rejected requests, so two sibling
+            // offers carry independent badges.
             'pending_change_requests' => (int) ($row->pending_field_change_requests_count ?? 0),
-            // "Note generali" (user directive 2026-07-31): the opportunity's
-            // own free text, projected raw — display-only in this module.
-            'general_notes' => $row->general_notes,
-            // "Categoria prodotto": the request's own product lines (spec
-            // 0075). Projected as the {funzione aziendale, categoria} PAIRS —
-            // ids for the inline editor to commit, names for the cell to
-            // render — and no longer as a pre-joined string: the cell is
-            // edited through the same collection the form edits, so its value
-            // must BE that collection.
-            'product_categories' => $this->productLinePairs($row),
-            // "Prodotti di interesse" (user directive 2026-07-23): the same
-            // projection the opportunities grid emits — the selected `{id,
-            // name}` refs plus the category ids the inline editor scopes to.
-            ...ProductsOfInterestColumn::project($row),
-            // "Operatore": the Account Manager at pivot position 2 (GA2).
-            'operator_ga2' => $this->operatorSummary($row->managers),
-            // Spec 0056: the Sede operativa — the site has no own name, so
-            // its label is composed server-side from its primary address.
+            // "Note generali" (user directive 2026-07-31; spec 0086, D-11):
+            // still `opportunity.general_notes`, display-only in this module.
+            'general_notes' => $opportunity?->general_notes,
+            // "Categoria prodotto": the OPPORTUNITY's own product lines (spec
+            // 0075), re-derived through `quote.opportunity` (spec 0086).
+            // Projected as the {funzione aziendale, categoria} PAIRS — ids
+            // for the inline editor to commit, names for the cell to render.
+            'product_categories' => $this->productLinePairs($opportunity),
+            // The `product_categories` inline editor's OWN scope (spec 0075,
+            // D-6): the opportunity's product-line category ids, unchanged in
+            // shape from the former ProductsOfInterestColumn::SCOPE_COLUMN
+            // projection (data contract: "invariata come scope dell'editor
+            // delle linee").
+            'product_category_ids' => $this->productCategoryIds($opportunity),
+            // "Linee di prodotto" (spec 0086, D-7): the offer's own REVENUE
+            // lines' products, replacing "Prodotti di interesse" on this
+            // domain only (AC-021).
+            ...OfferLinesColumn::project($row),
+            // "Operatore": spec 0086, D-3 — the offer's own Supervisore, a
+            // real FK on `quotes`, no longer the GA2 pivot row.
+            'operator_ga2' => $this->userSummary($row->supervisor),
+            // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
+            // FK — the site has no own name, so its label is composed
+            // server-side from its primary address.
             'operational_site' => OperationalSiteLabel::summarize($row->operationalSite),
-            // "Trasferito" (spec 0079): a real column, never derived —
-            // display-only, no inline editor exists for it (AC-024).
+            // "Trasferito" (spec 0079; spec 0086, D-6 — migrated to `quotes`,
+            // per-offer rather than per-deal): a real column, never derived —
+            // display-only, no inline editor exists for it (AC-024/AC-035).
             'is_transferred' => (bool) $row->is_transferred,
-            ...$this->clientAnagraphics($row),
-            // "Prossimo richiamo" (spec 0052 D-1/D-5), same wire format as
+            ...$this->clientAnagraphics($opportunity),
+            // "Prossimo richiamo" (spec 0052 D-1/D-5): still
+            // `opportunity.next_callback_at`, same wire format as
             // RequestManagementResource so FE date parsing stays identical.
-            'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
-            // Hidden column, drives the default "most recently loaded first" sort only.
+            'next_callback_at' => $opportunity?->next_callback_at?->format('Y-m-d\TH:i'),
+            // Hidden column, drives the default "most recently loaded first"
+            // sort only — the OFFER's own `created_at` now (AC-014).
             'created_at' => $row->created_at,
         ];
     }
 
     /**
      * The client anagraphic columns, read from the Registry's PersonalData
-     * card (phone = its primary phone/mobile contact).
+     * card (phone = its primary phone/mobile contact), through the offer's
+     * opportunity (spec 0086: `quotes` carries no `registry_id` of its own).
      *
      * @return array<string, string|null>
      */
-    private function clientAnagraphics(Opportunity $row): array
+    private function clientAnagraphics(?Opportunity $opportunity): array
     {
-        $card = $row->registry?->personalData;
+        $card = $opportunity?->registry?->personalData;
 
         return [
             'first_name' => $card?->first_name,
@@ -98,25 +120,19 @@ final class RequestRowMapper
     }
 
     /**
-     * The GA2 operator as a person summary (id, name, inline avatar) for the
-     * shared UserCell — the Account Manager attached at pivot `position` =
-     * Opportunity::OPERATOR_MANAGER_POSITION, or null when that slot is empty.
-     * Mirrors OpportunitiesTableDefinition::userSummary (supervisor column).
+     * A person summary carrying the inline avatar (data URI) for the shared
+     * UserCell — mirrors QuotesTableDefinition::userSummary/
+     * OpportunitiesTableDefinition::userSummary. Null when unset.
      *
-     * @param  Collection<int, User>  $managers
      * @return array{id: int, name: string, avatar_url: string|null}|null
      */
-    private function operatorSummary(Collection $managers): ?array
+    private function userSummary(?User $user): ?array
     {
-        $operator = $managers->first(
-            static fn (User $manager): bool => (int) $manager->pivot->position === Opportunity::OPERATOR_MANAGER_POSITION,
-        );
-
-        if ($operator === null) {
+        if ($user === null) {
             return null;
         }
 
-        return ['id' => $operator->id, 'name' => $operator->name, 'avatar_url' => $operator->avatarDataUri()];
+        return ['id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatarDataUri()];
     }
 
     /**
@@ -157,17 +173,33 @@ final class RequestRowMapper
      *
      * @return array<int, array{business_function_id: int, business_function_name: string, product_category_id: int, product_category_name: string}>
      */
-    private function productLinePairs(Opportunity $row): array
+    private function productLinePairs(?Opportunity $opportunity): array
     {
-        return $row->productLines
-            ->filter(static fn ($line): bool => $line->businessFunction !== null && $line->productCategory !== null)
-            ->map(static fn ($line): array => [
+        return ($opportunity?->productLines ?? collect())
+            ->filter(static fn (OpportunityProductLine $line): bool => $line->businessFunction !== null && $line->productCategory !== null)
+            ->map(static fn (OpportunityProductLine $line): array => [
                 'business_function_id' => (int) $line->business_function_id,
                 'business_function_name' => (string) $line->businessFunction->name,
                 'product_category_id' => (int) $line->product_category_id,
                 'product_category_name' => (string) $line->productCategory->name,
             ])
             ->values()
+            ->all();
+    }
+
+    /**
+     * The `product_categories` inline editor's scope (spec 0075, D-6): the
+     * distinct product-line category ids of the offer's opportunity.
+     *
+     * @return array<int, int>
+     */
+    private function productCategoryIds(?Opportunity $opportunity): array
+    {
+        return ($opportunity?->productLines ?? collect())
+            ->pluck('product_category_id')
+            ->unique()
+            ->values()
+            ->map(static fn (mixed $id): int => (int) $id)
             ->all();
     }
 }

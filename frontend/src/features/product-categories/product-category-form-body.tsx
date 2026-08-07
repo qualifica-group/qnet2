@@ -27,8 +27,7 @@ import { AttributeAssignmentEditor } from '@/features/product-categories/attribu
 import { ManagerLabelEditor, ManagerLabelsInheritanceToggle } from '@/features/product-categories/manager-label-editor'
 import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
 import { ProductCategoryBusinessFunctionField } from '@/features/product-categories/product-category-business-function-field'
-import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
-import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
+import { ProductCategoryRulesSection } from '@/features/product-categories/product-category-rules-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type {
   AttributeContext,
@@ -183,9 +182,7 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
     fieldPermission('name').visible ||
     fieldPermission('parent_id').visible ||
     fieldPermission('description').visible ||
-    fieldPermission('business_function_id').visible ||
-    fieldPermission('requires_quote').visible ||
-    fieldPermission('management_mode').visible
+    fieldPermission('business_function_id').visible
   const attributesVisible = fieldPermission('attributes').visible
   const managerLabelsVisible = fieldPermission('manager_labels').visible
 
@@ -269,32 +266,10 @@ export function ProductCategoryFormBody({ mode, onSuccess, onCancel }: ProductCa
               </MetaField>
 
               <ProductCategoryBusinessFunctionField control={form.control} mode={mode} parentId={parentId} />
-
-              <ProductCategoryRequiresQuoteField control={form.control} mode={mode} parentId={parentId} />
-
-              <ProductCategoryManagementModeField control={form.control} mode={mode} parentId={parentId} />
-
-              <MetaField
-                control={form.control}
-                name="is_selectable"
-                metaKey="is_selectable"
-                label={t('productCategories.form.isSelectable')}
-                description={
-                  <FormDescription>{t('productCategories.form.isSelectableHint')}</FormDescription>
-                }
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
             </FormSection>
           )}
+
+          <ProductCategoryRulesSection control={form.control} mode={mode} parentId={parentId} />
 
           {attributesVisible && (
             <FormSection

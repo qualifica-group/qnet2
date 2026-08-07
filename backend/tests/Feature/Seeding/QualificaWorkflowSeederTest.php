@@ -50,8 +50,8 @@ it('seeds a GOL region column in the sheet order, between the pinned system rows
 
     // Every row of the Lombardia column is seeded once: three of them are
     // promoted onto pinned system rows, the rest stay custom. No extra row is
-    // added — the GOL block has no state for the optional 'validated' one
-    // (user directive 2026-08-03).
+    // added — 'validated' is a group, not a system row (user directive
+    // 2026-08-07), and the GOL block classifies no state under it.
     $all = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
     $custom = WorkflowStatusCatalogue::customStatusesFor('GOL - Lombardia');
 
@@ -85,10 +85,10 @@ it('labels the pinned system rows with the sheet states, never the generic defau
     };
 
     // Each pinned row takes over the FIRST state its block classifies under
-    // the same group. The optional 'validated' row is promoted BY NAME and
-    // only where the sheet has a state for it: "OK_Da Caricare", which is
-    // therefore no longer the closed_won row of its own section (user
-    // directive 2026-08-03).
+    // the same group. In AUTOIMPIEGO/YISU that is not "OK_Da Caricare": the
+    // catalogue classifies it under the `validated` group, which is pinned to
+    // nothing (user directive 2026-08-07), so closed_won falls to the next
+    // green state.
     expect($pinned('GOL - Lombardia'))->toBe([
         'closed_lost' => 'Percorso 101',
         'closed_won' => 'Associato SI _ NOI',
@@ -105,14 +105,12 @@ it('labels the pinned system rows with the sheet states, never the generic defau
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Da Richiamare',
-        'validated' => 'OK_Da Caricare',
     ]);
 
     expect($pinned('Yisu'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Da Richiamare',
-        'validated' => 'OK_Da Caricare',
     ]);
 
     expect($pinned('Autofinanziato'))->toBe([

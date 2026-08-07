@@ -114,6 +114,8 @@ export const table = {
     back: 'Torna alle funzioni aziendali',
     businessFunctionStep: 'Passo 1: scegli la funzione aziendale.',
     categoryStep: 'Passo 2: scegli una categoria prodotto di {{name}}.',
+    singleModeReached:
+      'Questa categoria prodotto è gestita a riga singola: rimuovi quella presente per sceglierne un\'altra.',
     businessFunctionSearch: 'Cerca funzioni aziendali…',
     categorySearch: 'Cerca categorie prodotto…',
     empty: 'Nessun risultato.',

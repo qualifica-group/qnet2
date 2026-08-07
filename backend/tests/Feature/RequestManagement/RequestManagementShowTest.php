@@ -3,6 +3,7 @@
 use App\Models\Contact;
 use App\Models\Opportunity;
 use App\Models\PersonalData;
+use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
@@ -10,7 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// GET /api/request-management/{opportunity} (spec 0049 data_contract, AC-020/021/022).
+// GET /api/request-management/{quote} (spec 0049 data_contract, AC-020/021/022;
+// migrated onto the Quote by spec 0086, D-2).
 
 uses(RefreshDatabase::class);
 
@@ -34,17 +36,17 @@ if (! function_exists('requestManagementUserWith')) {
     }
 }
 
-if (! function_exists('opportunityWithContacts')) {
+if (! function_exists('quoteWithContacts')) {
     /**
-     * A fresh Opportunity linked to a Registry + Referent, each carrying a
-     * PersonalData card with one contact channel (spec 0049 D-6). The
-     * `owner` ref exposed to the frontend must point at the PersonalData
-     * card itself (`registryCard`/`referentCard`), not the entity, since
-     * `contactable_type` only accepts `personal_data`.
+     * A fresh Quote linked to a Registry + Referent (through its Opportunity),
+     * each carrying a PersonalData card with one contact channel (spec 0049
+     * D-6). The `owner` ref exposed to the frontend must point at the
+     * PersonalData card itself (`registryCard`/`referentCard`), not the
+     * entity, since `contactable_type` only accepts `personal_data`.
      *
-     * @return array{opportunity: Opportunity, registry: Registry, referent: Referent, registryCard: PersonalData, referentCard: PersonalData}
+     * @return array{quote: Quote, opportunity: Opportunity, registry: Registry, referent: Referent, registryCard: PersonalData, referentCard: PersonalData}
      */
-    function opportunityWithContacts(): array
+    function quoteWithContacts(): array
     {
         $registry = Registry::factory()->create();
         $registryCard = PersonalData::factory()->for($registry, 'personable')->create();
@@ -65,7 +67,10 @@ if (! function_exists('opportunityWithContacts')) {
             'referent_id' => $referent->id,
         ]);
 
+        $quote = Quote::factory()->for($opportunity)->create();
+
         return [
+            'quote' => $quote,
             'opportunity' => $opportunity,
             'registry' => $registry,
             'referent' => $referent,
@@ -76,33 +81,37 @@ if (! function_exists('opportunityWithContacts')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-020 — full contract shape as the opportunity's Account Manager
+// AC-020 — full contract shape as the offer's Supervisore
 // ---------------------------------------------------------------------------
 
-it('GET as the opportunity manager returns the full work-panel shape (AC-020)', function () {
+it('GET as the offer supervisor returns the full work-panel shape (AC-020)', function () {
     $actor = requestManagementUserWith(['view']);
     [
+        'quote' => $quote,
         'opportunity' => $opportunity,
         'registry' => $registry,
         'referent' => $referent,
         'registryCard' => $registryCard,
         'referentCard' => $referentCard,
-    ] = opportunityWithContacts();
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    ] = quoteWithContacts();
+    $quote->update(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
-    $response = $this->getJson("/api/request-management/{$opportunity->id}")->assertOk();
+    $response = $this->getJson("/api/request-management/{$quote->id}")->assertOk();
 
-    $response->assertJsonPath('data.id', $opportunity->id)
+    $response->assertJsonPath('data.id', $quote->id)
+        ->assertJsonPath('data.opportunity_id', $opportunity->id)
         ->assertJsonPath('data.name', $opportunity->name)
         ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => $registry->name])
         ->assertJsonPath('data.referent', ['id' => $referent->id, 'name' => $referent->name])
         ->assertJsonPath('data.commercial', null)
-        // Spec 0083, D-8: no quote on this request -> the computed status
-        // falls back to the GLOBAL default quote-workflow set's `open` row.
-        ->assertJsonPath('data.status.source', 'default')
+        // Spec 0086, D-1: a request-management row is always backed by a
+        // Quote — the panel's own subject — so the status is always resolved
+        // from THAT quote's own workflow status, never the "no quote yet"
+        // fallback (which no longer applies to this module).
+        ->assertJsonPath('data.status.source', 'quotes')
         ->assertJsonPath('data.status.distinct_count', 1)
-        ->assertJsonPath('data.status.entries.0.count', 0)
+        ->assertJsonPath('data.status.entries.0.count', 1)
         ->assertJsonPath('data.client_contacts.owner', ['type' => 'personal_data', 'id' => $registryCard->id])
         ->assertJsonPath('data.client_contacts.items.0.value', 'client@example.com')
         ->assertJsonPath('data.client_contacts.items.0.is_primary', true)
@@ -131,9 +140,10 @@ it('client_contacts/referent_contacts owner is null when the entity has no Perso
         'registry_id' => Registry::factory()->create()->id,
         'referent_id' => Referent::factory()->create()->id,
     ]);
+    $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('data.client_contacts.owner', null)
         ->assertJsonPath('data.client_contacts.items', [])
@@ -145,29 +155,28 @@ it('client_contacts/referent_contacts owner is null when the entity has no Perso
 // AC-021 — scope guard + view permission gate
 // ---------------------------------------------------------------------------
 
-it('GET on an opportunity the actor does not manage and without viewAll -> 403 (AC-021)', function () {
+it('GET on a quote the actor does not supervise and without viewAll -> 403 (AC-021)', function () {
     $actor = requestManagementUserWith(['view']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")->assertForbidden();
+    $this->getJson("/api/request-management/{$quote->id}")->assertForbidden();
 });
 
-it('GET on an unmanaged opportunity with viewAll -> 200 (AC-021)', function () {
+it('GET on an unsupervised quote with viewAll -> 200 (AC-021)', function () {
     $actor = requestManagementUserWith(['view', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")->assertOk();
+    $this->getJson("/api/request-management/{$quote->id}")->assertOk();
 });
 
-it('GET without request-management.view -> 403 even for a managed opportunity (AC-021)', function () {
+it('GET without request-management.view -> 403 even for a supervised quote (AC-021)', function () {
     $actor = requestManagementUserWith([]);
-    $opportunity = Opportunity::factory()->create();
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    $quote = Quote::factory()->create(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")->assertForbidden();
+    $this->getJson("/api/request-management/{$quote->id}")->assertForbidden();
 });
 
 // Spec 0084, D-1: the former AC-022 (`applicable_attributes` union dedup-per-
@@ -187,9 +196,10 @@ it('context.general_notes carries the opportunity notes, read-only', function ()
         'registry_id' => Registry::factory()->create()->id,
         'general_notes' => 'Il cliente richiama a settembre.',
     ]);
+    $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('data.context.general_notes', 'Il cliente richiama a settembre.');
 });
@@ -200,9 +210,10 @@ it('a PATCH attempting to write general_notes from this module leaves the field 
         'registry_id' => Registry::factory()->create()->id,
         'general_notes' => 'Nota originale',
     ]);
+    $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['general_notes' => 'Riscritta']);
+    $this->patchJson("/api/request-management/{$quote->id}", ['general_notes' => 'Riscritta']);
 
     expect($opportunity->fresh()->general_notes)->toBe('Nota originale');
 });
@@ -219,10 +230,10 @@ it('permissions.actions.transfer_contact is true with both request-management.up
     // run and may predate this ability — don't depend on it for existence.
     Permission::findOrCreate('request-management.transferContact');
     $actor = requestManagementUserWith(['view', 'viewAll', 'update', 'transferContact']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('permissions.actions.transfer_contact', true);
 });
@@ -230,10 +241,10 @@ it('permissions.actions.transfer_contact is true with both request-management.up
 it('permissions.actions.transfer_contact is false without request-management.transferContact', function () {
     Permission::findOrCreate('request-management.transferContact');
     $actor = requestManagementUserWith(['view', 'viewAll', 'update']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('permissions.actions.transfer_contact', false);
 });
@@ -244,10 +255,10 @@ it('permissions.actions.transfer_contact is false with .transferContact but with
     // predicate ("true" while the endpoint would 403) until fixed.
     Permission::findOrCreate('request-management.transferContact');
     $actor = requestManagementUserWith(['view', 'viewAll', 'transferContact']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('permissions.actions.transfer_contact', false);
 });

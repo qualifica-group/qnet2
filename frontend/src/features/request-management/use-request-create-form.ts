@@ -20,7 +20,7 @@ import {
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 
 interface UseRequestCreateFormArgs {
-  /** Called after a successful create with the new request's (Opportunity) id. */
+  /** Called after a successful create with the new request's (Offerta/Quote) id. */
   onSuccess: (id: number) => void
 }
 

@@ -111,6 +111,7 @@ function treeNode(
     requires_quote: false,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     ...overrides,
   }
 }

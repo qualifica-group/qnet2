@@ -65,6 +65,10 @@ export function buildCreatePayload(
     // Same rule for the management mode (spec 0077 D-2/INV-5): only a ROOT
     // authors it, a child inherits and a divergent value is a 422.
     ...(values.parent_id === null ? { management_mode: values.management_mode } : {}),
+    // And again for the single-offer rule: root-owned, inherited by children.
+    ...(values.parent_id === null
+      ? { single_quote_per_opportunity: values.single_quote_per_opportunity }
+      : {}),
     manager_labels: buildManagerLabelsValue(values.manager_labels),
     inherits_manager_labels: values.inherits_manager_labels,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -124,6 +128,14 @@ export function buildUpdatePayload(
   // read-only and merely mirrors the root.
   if (values.parent_id === null && values.management_mode !== original.management_mode) {
     payload.management_mode = values.management_mode
+  }
+
+  // Same root-only guard for the single-offer rule.
+  if (
+    values.parent_id === null &&
+    values.single_quote_per_opportunity !== original.single_quote_per_opportunity
+  ) {
+    payload.single_quote_per_opportunity = values.single_quote_per_opportunity
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

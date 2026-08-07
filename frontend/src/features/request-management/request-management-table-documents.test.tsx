@@ -10,10 +10,11 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /**
  * The `documents` row action of the request-management adapter: clicking it
- * opens the shared `DocumentsDialog` on the POLYMORPHIC OWNER of that row —
- * the `opportunity` alias, since the record IS the Opportunity (spec 0049
- * D-1) — and closing it refreshes the grid so the `documents_count` badge
- * stays current. The generic `<TableView>` and `DocumentsSection` are stubbed
+ * opens the shared `DocumentsDialog` on the POLYMORPHIC OWNER of the row's
+ * OWN `opportunity_id`, never its `id` — the row is now an Offerta (spec
+ * 0086 D-1), but documents stay anchored to the Opportunity (D-9) — and
+ * closing it refreshes the grid so the `documents_count` badge stays
+ * current. The generic `<TableView>` and `DocumentsSection` are stubbed
  * (their own behavior is covered by their suites); this one is only about what
  * the adapter does with the action and the dialog's open state.
  */
@@ -44,7 +45,9 @@ vi.mock('@/features/attachments/documents-section', () => ({
   },
 }))
 
-const ROW: TableRow = { id: 7, actions: ['view', 'documents'], documents_count: 2 }
+// `opportunity_id` deliberately DIFFERENT from `id` (the row's Offerta id):
+// proves the dialog is keyed on the Opportunity, not the row's own record.
+const ROW: TableRow = { id: 7, opportunity_id: 99, actions: ['view', 'documents'], documents_count: 2 }
 
 const DOCUMENTS_ACTION: TableActionDefinition = {
   key: 'documents',
@@ -101,9 +104,9 @@ describe('RequestManagementTable — "documents" row action', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trigger-documents' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('documents-section:opportunity:7')).toBeInTheDocument()
+    expect(screen.getByText('documents-section:opportunity:99')).toBeInTheDocument()
     expect(documentsSectionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'opportunity', id: 7, canUpload: true, canDelete: true }),
+      expect.objectContaining({ resource: 'opportunity', id: 99, canUpload: true, canDelete: true }),
     )
   })
 

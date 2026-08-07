@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0086-request-management-on-quotes" status="draft" owner="utente" date="2026-08-06">
+
+  <goal>
+    La Gestione Richieste lavora sulle Offerte (Quote) invece che sulle Opportunità: una riga di
+    griglia è un record `quotes`, non più un record `opportunities`. Esperienza utente, struttura
+    della tabella, tab per categoria, filtri, ordinamenti, azioni e modello dei permessi restano
+    quelli di oggi: cambiano solo il modello dati sottostante e l'origine di alcuni campi.
+  </goal>
+
+  <context>
+    Stato attuale verificato nel codice (nomi reali, non ipotizzati):
+
+    - `config/tables.php:95` registra `'request-management' => RequestManagementTableDefinition::class`.
+      `RequestManagementTableDefinition::modelClass()` ritorna `Opportunity::class`.
+      `TableRegistry::resolve()` avvolge: raw -> `CustomFieldAwareTableDefinition` ->
+      `RequestManagementScopedTableDefinition` (`TableRegistry.php:122`).
+    - L'"Operatore GA2" NON è una colonna: è la riga pivot `opportunity_user` con `position = 2`
+      (`Opportunity::OPERATOR_MANAGER_POSITION`, `Opportunity.php:206`), letta da `operatorManager()`
+      (:231) ed esposta come attributo virtuale `operator_id` (:249). Unico writer:
+      `RequestOperatorWriter::apply()`.
+    - Lo scoping "solo le mie righe" è replicato in 6 punti, sempre come pivot position 2:
+      `RequestManagementScope::isOperatorOf():48`, `RequestManagementTableDefinition::baseQuery():196`,
+      `RequestCategoryTabsResolver::applyOperatorScope():58`, `RequestAssignmentService::inScopeRequests():83`,
+      `RequestTransferService::inScopeRequests():102`, `RequestRowMapper::operatorSummary():109`.
+      Bypass unico: ability `request-management.viewAll`.
+    - Offerte: `Quote` (tabella `quotes`) e `QuoteLine` (tabella `quote_lines`, `line_type`
+      REVENUE/COST). `quotes.supervisor_id` -> `User` (`Quote.php:139`), `quotes.reporter_id` ->
+      `Referent` (:132), `quotes.operational_site_id` -> `OperationalSite` (:171),
+      `quotes.opportunity_id` NOT NULL restrictOnDelete e immutabile (:105).
+      `Quote::offerLines()` = righe `line_type = REVENUE` (:226).
+    - `quotes` NON ha `registry_id`, `source_id`, `next_callback_at`, `is_transferred`: cliente,
+      fonte, data richiamo e flag trasferimento oggi esistono solo su `opportunities`.
+    - `Quote` usa SOLO `HasFactory, LogsModelActivity` (`Quote.php:84`). `Opportunity` usa anche
+      `HasAttachments, HasFieldChangeRequests, HasNotes` (`Opportunity.php:74`). Documenti, note e
+      richieste di modifica sono quindi agganciati all'Opportunità, non all'Offerta.
+    - `Quote` ha già le note scopate all'offerta via `scopedNotes()` (:254, colonna `notes.quote_id`,
+      spec 0085) e `RequestManagementNotable::ownsQuote()` (:87) già le conosce.
+    - `ValidatesQuoteSupervisor::enforceSupervisorIsOpportunityManager()` (:31) impone che
+      `quotes.supervisor_id` sia un manager dell'opportunità (pivot `opportunity_user`); errore
+      `quotes.supervisor_not_manager`. È usato da Store/UpdateQuoteRequest del modulo Offerte.
+    - `App\Tables\Shared\ProductsOfInterestColumn` è condivisa VERBATIM dai domini `opportunities` e
+      `request-management` ("one declaration, so the two can never drift"): non è modificabile da
+      questa spec.
+    - `RewardAssignmentWriter` (`app/Services/Opportunities/`) è tipizzato su `Opportunity` ed è usato
+      anche da `OpportunityService` (form Opportunità): non è ritipizzabile su `Quote`.
+    - `QuoteService::create()` (`Services/QuoteService.php:123`) è una transazione a 7 step che
+      genera `code` con lock pessimistico, bootstrappa `quote_workflow_status_id`, scrive le righe,
+      ricalcola gli aggregati, ri-deriva il nome dell'opportunità e innesca `ContractLifecycleManager`.
+      Qualunque creazione di Offerta deve passare da lì.
+    - Superficie di test esistente: 41 file Pest sotto `tests/**/RequestManagement`, 54 file su quotes.
+
+    Decisioni prese esplicitamente con l'utente in sede di pianificazione (vincolanti):
+
+    - D-1. Una riga della griglia = un record `quotes`. Mai una `QuoteLine`.
+    - D-2. Migrazione completa: griglia, pannello di lavorazione, PATCH inline, assegna operatori e
+      trasferisci contatto lavorano tutti sul Quote (il path param `{quote}` sostituisce
+      `{opportunity}`). I campi che vivono sull'Opportunità si leggono e si scrivono attraverso
+      `quote.opportunity`.
+    - D-3. Quando cambia il supervisore dell'Offerta, lo slot Gestore Account `position = 2`
+      dell'Opportunità viene sincronizzato sullo stesso utente. Questo soddisfa per costruzione
+      `ValidatesQuoteSupervisor`, che resta invariato e continua a proteggere il modulo Offerte.
+    - D-4. Buoni: `rewards.source` diventa il Quote e il beneficiario è `quote.reporter_id`.
+    - D-5. "Nuova richiesta" crea Opportunità + Offerta in un'unica operazione. Il form resta quello
+      di oggi. L'Offerta nasce senza righe prodotto.
+    - D-6. `is_transferred` e `transferred_from_operational_site_id` migrano su `quotes`.
+    - D-7. La colonna che sostituisce "Prodotti di interesse" ha id `offer_lines` e label
+      "Linee di prodotto".
+    - D-8. Il database non contiene dati di produzione: i reward esistenti vengono cancellati dalla
+      migrazione e ripopolati dai seeder demo. Nessuna strategia di riaggancio storico.
+
+    Decisioni derivate, proposte da questa spec e da validare in approvazione:
+
+    - D-9. Documenti, Note e Storico attività restano ancorati all'Opportunità sottostante.
+      Motivo: `Quote` non ha `HasAttachments`/`HasNotes`, e aggiungerli comporterebbe registrare
+      un nuovo attachable alias e un nuovo notable, cambiando anche il modulo Offerte, che è fuori
+      scope. La riga di griglia e il pannello proiettano `opportunity_id` e le azioni di riga lo
+      usano come identificatore del record collaborativo. Conseguenza accettata e dichiarata: due
+      offerte della stessa opportunità mostrano gli stessi documenti, le stesse note e lo stesso
+      storico. Le note restano comunque scopabili per offerta tramite `notes.quote_id`, meccanismo
+      già esistente (spec 0085).
+    - D-10. CORRETTA in fase di esecuzione (2026-08-07), dopo verifica del meccanismo generico. Le
+      Richieste di modifica NON seguono D-9: il loro subject è il **Quote**, non l'Opportunità.
+      Motivo, verificato nel codice: `FieldChangeRequestValueResolver::record():39` risolve il
+      subject con `$definition->baseQuery()->findOrFail($subjectId)` e
+      `FieldChangeRequestApprover:63` applica l'approvazione via `updateCell()` sulla stessa
+      TableDefinition. Entrambi sono keyed sul record di GRIGLIA: con `modelClass() = Quote::class`
+      un `subject_id` di Opportunità risolverebbe l'offerta sbagliata o un 404.
+      Conseguenze operative:
+        - `Quote` riceve il concern `HasFieldChangeRequests` (additivo e inerte per il modulo
+          Offerte, che non dichiara campi protetti in `config/field-change-requests.php`).
+        - `FieldChangeRequestValueResolver::currentValue():70` legge
+          `$record->getAttribute('source_id')`, che su un Quote non esiste: `Quote` espone quindi un
+          attributo virtuale READ-ONLY `source_id` che legge through da `quote.opportunity`, stesso
+          pattern del già esistente `Opportunity::operatorId()` (attributo virtuale, non colonna).
+          Non fillable, non scrivibile: la scrittura resta quella di `updateCell()` sulla colonna
+          `source`, che scrive through su `quote.opportunity`.
+        - La colonna `pending_change_requests` conta quindi le richieste dell'OFFERTA: due offerte
+          sorelle hanno badge indipendenti.
+        - `config/field-change-requests.php` resta comunque invariato: nessuna riga di quel registro
+          cambia.
+        - Le eventuali richieste di modifica già presenti con `subject_type = opportunity` sul
+          resource `request-management` vengono cancellate dalla migrazione di reset (coerente con
+          D-8: il DB non contiene dati di produzione).
+    - D-11. `general_notes` resta `opportunity.general_notes`, read-only come oggi. `quotes.internal_notes`
+      non entra in questo modulo.
+    - D-12. `RewardAssignmentWriter` viene generalizzato per accettare qualunque model che espone una
+      `rewards()` MorphMany e un `reporter_id` (nuovo concern `HasRewards`, applicato a `Opportunity`
+      e `Quote`). Il comportamento sul percorso Opportunità resta identico: nessuna regressione sul
+      form Opportunità.
+  </context>
+
+  <scope>
+    <in>
+      <item>`RequestManagementTableDefinition` passa a `modelClass() = Quote::class`; `baseQuery()`, eager loading e scoping riscritti sul Quote.</item>
+      <item>Scoping non-supervisore riscritto su `quotes.supervisor_id = Auth::id()` in tutti e 6 i punti, bypass `request-management.viewAll` invariato.</item>
+      <item>Colonna `operator_ga2` alimentata da `quote.supervisor`, con label attuale "Operatore" e rietichettatura dinamica per categoria invariata.</item>
+      <item>Nuova colonna `offer_lines` (label "Linee di prodotto") alimentata da `quote.offerLines.product`, in sostituzione di `products_of_interest` nel solo dominio `request-management`.</item>
+      <item>Colonne `source`, `product_categories`, `next_callback_at`, `general_notes`, `first_name`, `last_name`, `tax_code`, `phone` ri-derivate attraverso `quote.opportunity`.</item>
+      <item>Colonne `operational_site` e `is_transferred` alimentate dal Quote.</item>
+      <item>Tab per categoria: stesso comportamento, filtro su `quote.opportunity.productLines.product_category_id`.</item>
+      <item>Endpoint del modulo: path param e route model binding passano da `{opportunity}` a `{quote}`.</item>
+      <item>Pannello di lavorazione: `RequestManagementResource` proietta il Quote, con i blocchi opportunity-level letti via `quote.opportunity`.</item>
+      <item>Write path: `RequestManagementService::updateWork()` instrada ogni campo verso Quote o Opportunità; nuovo writer del supervisore con sincronizzazione dello slot GA2 (D-3).</item>
+      <item>Create: `RequestCreationService` crea Opportunità e poi Offerta via `QuoteService::create()` (D-5).</item>
+      <item>Assegna operatori e trasferisci contatto: operano su id di Quote e scrivono `quotes.supervisor_id` / `quotes.operational_site_id`.</item>
+      <item>Migrazioni: `quotes.is_transferred`, `quotes.transferred_from_operational_site_id`, reset dei reward esistenti.</item>
+      <item>Buoni: `rewards.source` = Quote, beneficiario `quote.reporter_id`; `RewardAssignmentWriter` generalizzato (D-12).</item>
+      <item>Frontend: tipi, api, payload builder, pannello, sezioni, form di creazione, renderer di colonna, chiavi i18n.</item>
+      <item>Aggiornamento della suite Pest esistente del modulo e nuovi test sugli AC di questa spec.</item>
+    </in>
+    <out>
+      <item>Modulo Offerte (`quotes`): form, `QuotesTableDefinition`, `QuoteColumnCatalog`, `QuoteResource`, `QuoteService`. Si consuma `QuoteService::create()`, non lo si modifica.</item>
+      <item>Modulo Opportunità: `OpportunitiesTableDefinition`, `OpportunityResource`, form e `OpportunityService`. Il percorso reward dell'Opportunità resta funzionante e invariato nel comportamento.</item>
+      <item>`App\Tables\Shared\ProductsOfInterestColumn`: non si tocca, resta al dominio `opportunities`.</item>
+      <item>`ValidatesQuoteSupervisor`: non si allenta né si rimuove.</item>
+      <item>`config/field-change-requests.php` e il sistema generico delle richieste di modifica.</item>
+      <item>Modulo "Segnalatori premiati" (`rewarded-referents`): nessuna modifica di codice; ne va solo verificata la non regressione dopo il cambio di morph.</item>
+      <item>Aggiunta di `HasAttachments`/`HasNotes`/`HasFieldChangeRequests` a `Quote`.</item>
+      <item>Nuove dipendenze composer/npm.</item>
+      <item>Modifiche al design system e a `components/ui/`: la UI resta visivamente identica.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/tables/request-management/config">
+      <request>Query `productCategoryId` opzionale (tab attivo), invariato.</request>
+      <response status="200">
+        Envelope `{ success, message, data }`. `data.columns` mantiene ordine, id, tipo, editor e
+        flag di oggi, con queste due sole differenze:
+        - la colonna `products_of_interest` è SOSTITUITA da:
+          `{ id: 'offer_lines', label: 'requestManagement.columns.offerLines', type: 'text',
+             visible: true, sortable: false, filterable: true, filterType: 'set',
+             editable: false }`
+        - la colonna `operator_ga2` resta INVARIATA in id, label, rietichettatura dinamica,
+          `sortable: false`, `filterable: false` ed `editableField: 'operator_id'`.
+          CORRETTO in esecuzione (2026-08-07): la formulazione originale congelava
+          `editableField` a `supervisor_id`. Era un errore, ed è costato un bug reale.
+          `editableField` è la chiave LOGICA che la cella invia a `updateWork()`, non il nome
+          della colonna DB su cui la scrittura atterra: quella resta `quotes.supervisor_id`, ma
+          è un dettaglio interno di `RequestSupervisorWriter`. Avere due nomi (`operator_id` dal
+          pannello, `supervisor_id` dalla griglia) per la stessa scrittura ha prodotto un no-op
+          silenzioso — `updateWork()` riconosceva solo `operator_id`, quindi la cella di griglia
+          rispondeva 200 OK senza scrivere né `quotes.supervisor_id` né il pivot GA2.
+          Vincolo derivato: esiste UNA sola chiave logica per questa scrittura, `operator_id`,
+          su entrambi i canali. `RequestManagementAuthorization` dichiara di conseguenza il solo
+          campo `operator_id`, senza gemello `supervisor_id`.
+        Tutte le altre colonne (`source`, `pending_change_requests`, `product_categories`,
+        `general_notes`, `operational_site`, `is_transferred`, `first_name`, `last_name`,
+        `tax_code`, `phone`, `next_callback_at`, `created_at`) mantengono id, label, tipo ed
+        editabilità odierni.
+      </response>
+      <errors>403 senza `request-management.viewAny`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/request-management/rows">
+      <request>Invariata: `{ startRow, endRow, sortModel, filterModel, search?, advancedFilters?, productCategoryId? }`.</request>
+      <response status="200">
+        `data.rows[]`: `id` è ora l'id del Quote. Chiavi della riga:
+        `id` (int, quote id),
+        `opportunity_id` (int, NUOVA — identificatore del record collaborativo per le azioni
+          documenti/note/storico/richieste di modifica, D-9),
+        `source` ({id,name}|null, da `quote.opportunity.source`),
+        `pending_change_requests` (int, dal Quote — D-10 corretta),
+        `product_categories` (array {id,name}, da `quote.opportunity.productLines.productCategory`),
+        `product_category_ids` (array int, invariata come scope dell'editor delle linee),
+        `offer_lines` (array {id,name}, prodotti delle righe REVENUE del Quote),
+        `general_notes` (string|null, dall'Opportunità),
+        `operational_site` ({id,label}|null, dal Quote),
+        `is_transferred` (bool, dal Quote),
+        `operator_ga2` ({id,name,avatar_url}|null, da `quote.supervisor`),
+        `first_name`, `last_name`, `tax_code`, `phone` (dal Registry via `quote.opportunity`),
+        `next_callback_at` (string|null `Y-m-d\TH:i`, dall'Opportunità),
+        `created_at` (string, del Quote),
+        più i contatori azione `documents_count` e `notes_count` (dall'Opportunità).
+        `data.total` invariato.
+      </response>
+      <errors>403 senza `request-management.viewAny`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/{quote}">
+      <request>Route model binding su `Quote`.</request>
+      <response status="200">
+        `data` mantiene TUTTE le chiavi odierne di `RequestManagementResource`, con queste origini:
+        `id` = quote id; `opportunity_id` (NUOVA); `name`, `registry`, `referent`, `commercial`,
+        `source_id`, `source`, `next_callback_at`, `product_lines`, `client_identity`,
+        `client_contacts`, `client_address`, `referent_contacts`, `status`,
+        `context.{estimated_value, expected_close_date, success_probability, general_notes}`
+        letti da `quote.opportunity`;
+        `reporter_id`, `reporter`, `operational_site_id`, `operational_site`, `is_transferred`,
+        `transferred_from`, `rewards` letti dal Quote;
+        `operator_id` e `operator` letti da `quote.supervisor` (chiavi INVARIATE sul wire: il
+        frontend continua a chiamarlo operatore, D-7 vale solo per la colonna di griglia);
+        `manager_labels` invariato, risolto dalle product line dell'Opportunità;
+        `products_of_interest` SOSTITUITO da `offer_lines`: array di
+        `{ id, name, product_category: {id,name}|null }` dai prodotti delle righe REVENUE.
+        L'envelope include `permissions` (field permission + azioni) come oggi.
+      </response>
+      <errors>403 senza `request-management.view` o fuori scope supervisore; 404 quote inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/request-management/{quote}">
+      <request>
+        Diff sparso, whitelist di chiavi accettate:
+        `next_callback_at` (-> Opportunità), `source_id` (-> Opportunità, campo protetto),
+        `reporter_id` (-> Quote), `operator_id` (-> `quotes.supervisor_id` + sync slot GA2, D-3),
+        `operational_site_id` (-> Quote), `rewards` (-> Quote), `product_lines` (-> Opportunità),
+        `client_first_name` / `client_last_name` / `client_tax_code` / `client_phone` (-> Registry).
+        `products_of_interest` NON è più accettato. `offer_lines` NON è scrivibile da questo modulo.
+      </request>
+      <response status="200">Stessa shape del GET.</response>
+      <errors>403 senza `request-management.update`, fuori scope, o field permission negato; 422 validazione (incluse le regole reward/segnalatore esistenti).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management">
+      <request>
+        Payload INVARIATO rispetto a oggi: `registry_id` XOR blocco `client_*`, `product_lines`,
+        `source_id` (required), `reporter_id`, `operator_id`, `operational_site_id`,
+        `next_callback_at`, `general_notes`, `rewards`, `products_of_interest`.
+        `products_of_interest` resta accettato e continua a scrivere i prodotti di interesse
+        dell'Opportunità (il dato non sparisce dal dominio, sparisce dalla griglia).
+      </request>
+      <response status="201">
+        Stessa shape del GET, riferita all'Offerta appena creata. `id` = quote id.
+      </response>
+      <errors>403 senza `request-management.create` (o senza `assignOperator` con `operator_id`, o senza `operational-sites.viewAny` con `operational_site_id`); 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/request-management/{quote}">
+      <request>Route model binding su `Quote`.</request>
+      <response status="200">`{ success: true, message }`. Elimina l'Offerta via `QuoteService::delete()`; l'Opportunità NON viene eliminata.</response>
+      <errors>403 senza `request-management.delete` o fuori scope; 404 quote inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/assign-operators">
+      <request>`{ request_ids: int[] (quote id), operational_site_id: int, mode: LeadAssignmentMode, operator_id?: int }` — chiavi invariate, semantica degli id cambiata.</request>
+      <response status="200">`{ success, message, data: { assigned: int } }` invariato.</response>
+      <errors>403 senza `request-management.update` + `request-management.assignOperator`; gli id fuori scope sono saltati silenziosamente come oggi.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/request-management/transfer">
+      <request>`{ request_ids: int[] (quote id), operational_site_id: int, operator_id: int }` — invariata nella forma.</request>
+      <response status="200">`{ success, message, data: { transferred: int } }` invariato.</response>
+      <errors>403 senza `request-management.update` + `request-management.transferContact`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/request-management/product-categories">
+      <request>Nessun parametro.</request>
+      <response status="200">`data[]` di `{ id, name, requests_count }` — `requests_count` conta ora le OFFERTE in scope per quella categoria, non le opportunità.</response>
+      <errors>403 senza `request-management.viewAny`.</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Dato un utente con `request-management.viewAll`, quando richiede le righe della griglia, allora riceve una riga per ogni `quotes` esistente e nessuna riga per le opportunità prive di offerte.</criterion>
+    <criterion id="AC-002">Dato un utente SENZA `request-management.viewAll`, quando richiede le righe, allora riceve solo le offerte con `quotes.supervisor_id` uguale al proprio id, indipendentemente dal fatto che sia Gestore Account dell'opportunità.</criterion>
+    <criterion id="AC-003">Dato un utente non supervisore di una certa offerta, quando apre `GET /api/request-management/{quote}` di quell'offerta, allora riceve 403.</criterion>
+    <criterion id="AC-004">Dato lo stesso utente, quando invia `PATCH`, `DELETE`, o include quell'id in `assign-operators`/`transfer`, allora la riga non viene né letta né scritta (403 sui singoli, skip silenzioso sui bulk, come oggi).</criterion>
+    <criterion id="AC-005">Dato un utente senza `request-management.create`, quando invia `POST /api/request-management`, allora riceve 403 e nessuna Opportunità né Offerta viene creata.</criterion>
+    <criterion id="AC-006">Data una griglia con due offerte della stessa opportunità, quando si leggono le righe, allora entrambe espongono lo stesso `source`, `product_categories`, `next_callback_at` e dati anagrafici, e ciascuna il proprio `operator_ga2`, `operational_site`, `is_transferred` e `offer_lines`.</criterion>
+    <criterion id="AC-007">Data un'offerta con righe REVENUE su prodotti A e B e una riga COST su prodotto C, quando si legge la riga di griglia, allora `offer_lines` contiene A e B e non contiene C.</criterion>
+    <criterion id="AC-008">Data la configurazione della tabella, quando la si richiede, allora esiste la colonna `offer_lines` con label `requestManagement.columns.offerLines` e NON esiste più la colonna `products_of_interest`.</criterion>
+    <criterion id="AC-009">Dato il dominio `opportunities`, quando se ne richiede la configurazione, allora la colonna `products_of_interest` è ancora presente e invariata (nessuna regressione da `ProductsOfInterestColumn`).</criterion>
+    <criterion id="AC-010">Data la colonna `operator_ga2`, quando la si legge, allora proietta `quote.supervisor` e la sua label resta quella odierna, inclusa la rietichettatura per categoria via `ProductCategoryService::effectiveManagerLabels()` in posizione 2.</criterion>
+    <criterion id="AC-011">CORRETTO in esecuzione (2026-08-07). Data la configurazione della tabella, quando si legge la colonna `operator_ga2`, allora resta `sortable: false` e `filterable: false` esattamente come prima della migrazione. La formulazione originale di questo AC pretendeva un filtro set sul supervisore: era un errore di spec, perché quella colonna non è mai stata filtrabile e la direttiva utente impone che filtri e ordinamenti non cambino. Cambia solo la SORGENTE della colonna (da pivot GA2 a `quote.supervisor`), mai la sua filtrabilità.</criterion>
+    <criterion id="AC-012">Dato un tab di categoria attivo, quando si leggono le righe, allora vengono restituite solo le offerte la cui opportunità ha una product line di quella categoria; il conteggio del tab riflette lo stesso insieme.</criterion>
+    <criterion id="AC-013">Dati i filtri avanzati `registry`, `referent`, `operational_site`, `expected_close_range`, `next_callback_range`, quando li si applica, allora filtrano rispettivamente attraverso l'opportunità (registry, referent, expected_close, next_callback) e sul Quote (operational_site).</criterion>
+    <criterion id="AC-014">Dato l'ordinamento di default, quando si apre la griglia senza sort esplicito, allora le righe sono ordinate per `quotes.created_at` discendente.</criterion>
+    <criterion id="AC-015">Dato un edit inline sulla cella `source`, quando si conferma un valore, allora `opportunities.source_id` dell'opportunità dell'offerta viene aggiornato e la riga sorella riflette lo stesso valore.</criterion>
+    <criterion id="AC-016">Dato un edit inline sulla cella `operator_ga2`, quando si conferma un utente, allora `quotes.supervisor_id` viene aggiornato E il pivot `opportunity_user` position 2 dell'opportunità punta allo stesso utente (D-3).</criterion>
+    <criterion id="AC-017">Dato il cambio di supervisore di AC-016, quando si rilegge l'opportunità tramite il modulo Offerte, allora `ValidatesQuoteSupervisor` accetta quel supervisore senza errore `quotes.supervisor_not_manager`.</criterion>
+    <criterion id="AC-018">Dato un edit inline su `operational_site`, quando si conferma, allora è `quotes.operational_site_id` a cambiare e `opportunities.operational_site_id` resta invariato.</criterion>
+    <criterion id="AC-019">Dato un edit inline su `next_callback_at`, `first_name`, `last_name`, `tax_code` o `phone`, quando si conferma, allora la scrittura arriva rispettivamente sull'Opportunità e sulla PersonalData del Registry, con lo stesso comportamento di oggi.</criterion>
+    <criterion id="AC-020">Dato il pannello di lavorazione di un'offerta, quando lo si apre, allora `operator_id` e `operator` valorizzano il supervisore dell'offerta, `reporter`/`operational_site` vengono dall'offerta, e `source`/`next_callback_at`/`product_lines`/anagrafica dall'opportunità.</criterion>
+    <criterion id="AC-021">Dato il pannello, quando lo si legge, allora espone `offer_lines` e non espone più `products_of_interest`.</criterion>
+    <criterion id="AC-022">Dato un `PATCH` che invia `products_of_interest`, quando viene processato, allora la chiave è ignorata o rifiutata e nessun prodotto di interesse viene modificato da questo modulo.</criterion>
+    <criterion id="AC-023">Dato un `PATCH` con `reporter_id` valorizzato e `rewards` non vuoto, quando viene salvato, allora i reward creati hanno `source_type` = Quote, `source_id` = id dell'offerta e `referent_id` = `quotes.reporter_id`.</criterion>
+    <criterion id="AC-024">Dato un `PATCH` che cambia solo `reporter_id` su un'offerta con reward esistenti, quando viene salvato, allora tutti i reward dell'offerta vengono riassegnati al nuovo segnalatore con salvataggio per-model (activity log preservato).</criterion>
+    <criterion id="AC-025">Dato un `PATCH` con `rewards` non vuoto e `reporter_id` nullo, quando viene inviato, allora risponde 422 con la regola esistente, invariata.</criterion>
+    <criterion id="AC-026">Dato il form Opportunità (modulo fuori scope), quando assegna reward, allora continua a creare reward con `source_type` = Opportunity e beneficiario `opportunity.reporter_id`, senza regressioni.</criterion>
+    <criterion id="AC-027">Dato `POST /api/request-management` con payload valido, quando viene eseguito, allora crea una Opportunità e una Offerta collegata, in un'unica transazione, e risponde con `id` uguale all'id dell'Offerta.</criterion>
+    <criterion id="AC-028">Data la creazione di AC-027, quando si ispeziona l'Offerta creata, allora ha `code` generato, `quote_workflow_status_id` valorizzato, nessuna riga prodotto, e `supervisor_id`/`reporter_id`/`operational_site_id` presi dal payload.</criterion>
+    <criterion id="AC-029">Data la creazione di AC-027 con `operator_id` valorizzato, quando si ispeziona l'Opportunità, allora anche il pivot `opportunity_user` position 2 punta a quell'utente (D-3).</criterion>
+    <criterion id="AC-030">Dato un fallimento di validazione a metà creazione, quando la transazione viene annullata, allora né l'Opportunità né l'Offerta restano persistite.</criterion>
+    <criterion id="AC-031">Dato `DELETE /api/request-management/{quote}`, quando viene eseguito con permesso, allora l'Offerta è eliminata e l'Opportunità continua a esistere.</criterion>
+    <criterion id="AC-032">Dato `assign-operators` in modalità singola con `operator_id`, quando viene eseguito su N offerte in scope, allora tutte e N hanno quel `supervisor_id` e i rispettivi slot GA2 sincronizzati.</criterion>
+    <criterion id="AC-033">Dato `assign-operators` in modalità bilanciata, quando viene eseguito, allora il carico è calcolato contando le OFFERTE per supervisore, non le opportunità per pivot.</criterion>
+    <criterion id="AC-034">Dato `transfer` su un'offerta, quando viene eseguito, allora l'offerta ha nuova `operational_site_id` e nuovo `supervisor_id`, `quotes.is_transferred` è true e `quotes.transferred_from_operational_site_id` contiene la sede precedente.</criterion>
+    <criterion id="AC-035">Dato il trasferimento di AC-034, quando si legge l'offerta sorella della stessa opportunità, allora il suo `is_transferred` è ancora false (il flag è per-offerta, D-6).</criterion>
+    <criterion id="AC-036">Dato il trasferimento di AC-034, quando si osservano le notifiche, allora vengono inviate ai medesimi destinatari di oggi (`request-management.receiveTransferNotifications`), con la stessa shape.</criterion>
+    <criterion id="AC-037">Dato un utente senza `request-management.viewAll`, quando richiede i tab categoria, allora i `requests_count` contano solo le offerte di cui è supervisore.</criterion>
+    <criterion id="AC-038">Data un'azione di riga `documents`, `notes` o `activity`, quando viene invocata dalla griglia, allora usa `opportunity_id` della riga e funziona come oggi (D-9).</criterion>
+    <criterion id="AC-042">Dato un utente senza `request-management.updateSource` che propone una modifica di `source_id` dalla griglia o dal pannello, quando la richiesta viene creata, allora ha `subject_type` = quote e `subject_id` = id dell'offerta, e il "valore attuale" mostrato è la Fonte dell'opportunità sottostante (D-10, attributo virtuale `Quote::source_id`).</criterion>
+    <criterion id="AC-043">Data la richiesta di AC-042, quando un utente autorizzato la approva, allora `opportunities.source_id` dell'opportunità dell'offerta viene aggiornato via `updateCell()` e la richiesta passa ad approvata; l'offerta sorella riflette la nuova Fonte e mantiene il proprio badge `pending_change_requests` indipendente.</criterion>
+    <criterion id="AC-039">Dato lo storico attività del modulo, quando lo si apre su un'offerta in scope, allora l'autorizzazione passa per `request-management.viewActivity` più il nuovo scope supervisore.</criterion>
+    <criterion id="AC-040">Dato il frontend, quando si esegue `cd frontend &amp;&amp; npx tsc -b --force`, allora il typecheck è pulito e nessun riferimento a `products_of_interest` resta nella feature `request-management`.</criterion>
+    <criterion id="AC-041">Dato l'intero backend, quando si esegue la suite Pest, allora tutti i test passano, inclusi i 54 file del dominio quotes e i moduli Opportunità e `rewarded-referents`.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza composer o npm.</item>
+    <item>Autorizzazione server-side su ogni endpoint: nessun controllo delegato al client. Lo scoping è fail-closed: un `Auth::id()` nullo non deve mai aprire la visibilità.</item>
+    <item>Nessun `whereRaw`/`orderByRaw`/`groupByRaw` costruito da input: filtri e ordinamenti derivano da allow-list di colonne, come oggi.</item>
+    <item>Le migrazioni sono reversibili (`down`) e non modificano migrazioni già committate.</item>
+    <item>`ValidatesQuoteSupervisor` non va allentato: il vincolo si soddisfa sincronizzando lo slot GA2 (D-3), non rimuovendo il controllo.</item>
+    <item>`App\Tables\Shared\ProductsOfInterestColumn` e il dominio `opportunities` restano intatti: la nuova colonna è una dichiarazione separata.</item>
+    <item>`RewardAssignmentWriter` resta l'unico writer dei reward su entrambi i percorsi; la generalizzazione non deve cambiare il comportamento del percorso Opportunità.</item>
+    <item>Ogni file resta entro 300 righe soft / 500 hard; il codice sostituito viene cancellato, mai commentato.</item>
+    <item>Identificatori in inglese; label utente solo via i18next, con chiavi aggiornate in `it-request-management.ts` e `en-request-management.ts`.</item>
+    <item>Definition of Done: Pest e Vitest eseguiti davvero, Pint pulito, `npx tsc -b --force` pulito.</item>
+  </constraints>
+
+</spec>

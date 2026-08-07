@@ -4,6 +4,7 @@ use App\Models\Attachment;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\PersonalData;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,9 +27,12 @@ uses(RefreshDatabase::class);
 // CLASS (Opportunity), i.e. gating by `opportunities.*` — is gone: the
 // resource declares its own ActivityLogAuthorizer
 // (RequestManagementActivityAuthorizer), so the gate is
-// `request-management.viewActivity` PLUS the work panel's own GA2 scope. The
-// timeline aggregates the request, its notes (soft-deleted included), its
-// documents and the client anagraphic block edited from the panel.
+// `request-management.viewActivity` PLUS the D-3 scope, re-keyed on the
+// Opportunity's own Offerte (spec 0086, D-9: the {id} route param stays the
+// Opportunity, but authorization requires the actor to supervise at least
+// one of its Offerte). The timeline aggregates the request, its notes
+// (soft-deleted included), its documents and the client anagraphic block
+// edited from the panel.
 // ---------------------------------------------------------------------------
 
 if (! function_exists('requestManagementActivityUserWith')) {
@@ -53,12 +57,13 @@ if (! function_exists('requestManagementActivityUserWith')) {
 
 it('PATCH /api/request-management/{id} writes exactly one activity entry on the Opportunity (AC-043)', function () {
     $actor = requestManagementActivityUserWith(['viewAny', 'view', 'update', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
+    $opportunity = $quote->opportunity;
     $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
 
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'next_callback_at' => $callbackAt,
     ])->assertOk();
 
@@ -75,12 +80,13 @@ it('PATCH /api/request-management/{id} writes exactly one activity entry on the 
 
 it('exposes the operative change through the request-management resource key, with NO opportunities.* permission', function () {
     $actor = requestManagementActivityUserWith(['viewAny', 'view', 'update', 'viewAll', 'viewActivity']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
+    $opportunity = $quote->opportunity;
     $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
 
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'next_callback_at' => $callbackAt,
     ])->assertOk();
 
@@ -103,7 +109,7 @@ it('denies the request-management activity log without request-management.viewAc
     $this->getJson("/api/activity-log/request-management/{$opportunity->id}")->assertForbidden();
 });
 
-it('denies the request-management activity log to an actor outside the GA2 scope', function () {
+it('denies the request-management activity log to an actor outside the D-3 scope', function () {
     $actor = requestManagementActivityUserWith(['viewAny', 'view', 'viewActivity']);
     $opportunity = Opportunity::factory()->create();
 
@@ -111,9 +117,9 @@ it('denies the request-management activity log to an actor outside the GA2 scope
 
     $this->getJson("/api/activity-log/request-management/{$opportunity->id}")->assertForbidden();
 
-    // Same actor, same record: becoming the GA2 "Operatore" is enough, no
-    // viewAll needed — the panel's own boundary, verbatim.
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    // Same actor, same record: supervising ONE of its Offerte is enough, no
+    // viewAll needed — the panel's own boundary, verbatim (D-3/D-9).
+    Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
 
     $this->getJson("/api/activity-log/request-management/{$opportunity->id}")->assertOk();
 });
@@ -124,6 +130,10 @@ it('aggregates notes (soft-deleted included), documents and the client anagraphi
     $registry = Registry::factory()->create();
     $card = PersonalData::factory()->for($registry, 'personable')->create();
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    // D-9: read access is re-keyed on the Opportunity's own Offerte — at
+    // least one must exist, even with viewAll (see NoteAuthorizationTest's
+    // own precedent for the same trap).
+    Quote::factory()->for($opportunity)->create();
 
     $note = Note::factory()->for($opportunity, 'notable')->create();
     $note->delete();

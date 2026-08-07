@@ -5,21 +5,25 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
+use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
+use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\OpportunityService;
+use App\Services\QuoteService;
 use App\Services\RegistryService;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Creation entry point for the request-management work panel (spec 0057,
- * POST /api/request-management). The record IS an Opportunity (D-1): a
- * dedicated class rather than growing RequestManagementService (which owns
- * the panel's read/update lifecycle, a distinct concern — SRP, file-size
- * split per engineering.md §6).
+ * POST /api/request-management; spec 0086, D-5: creates the Opportunity AND
+ * the Offerta, in ONE transaction, AC-027/AC-030). A dedicated class rather
+ * than growing RequestManagementService (which owns the panel's read/update
+ * lifecycle, a distinct concern — SRP, file-size split per engineering.md §6).
  *
  * The client anagraphic block (D-2) either points at an existing Registry
  * (`registry_id`, left untouched) or creates a brand-new one through
@@ -27,18 +31,29 @@ use Illuminate\Support\Facades\DB;
  * Registry's anagrafica, that stays the work panel's own competence. The
  * Opportunity itself is created through the SAME OpportunityService the
  * opportunities form uses, so the `OPP_{id}` name derivation (spec 0057,
- * D-5) and the product-lines sync are never duplicated here.
+ * D-5) and the product-lines sync are never duplicated here. The Offerta is
+ * then created through the SAME QuoteService::create() the quotes module
+ * uses (constraints: "consuma QuoteService::create(), non lo si modifica"),
+ * born with no product lines (AC-028).
+ *
+ * D-4: the reward beneficiary is now the Offerta's OWN Segnalatore, so
+ * `rewards` is deliberately withheld from CreateOpportunityData and synced
+ * onto the freshly created Quote instead (Step 3) — never through
+ * OpportunityService's own reward channel, which would target the wrong
+ * owner.
  */
 final class RequestCreationService
 {
     public function __construct(
         private readonly RegistryService $registryService,
         private readonly OpportunityService $opportunityService,
+        private readonly QuoteService $quoteService,
+        private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly RequestManagementService $panel,
     ) {}
 
     /**
-     * @return array{opportunity: Opportunity}
+     * @return array{quote: Quote}
      */
     public function create(User $actor, CreateRequestData $data): array
     {
@@ -50,22 +65,25 @@ final class RequestCreationService
                 ? Registry::findOrFail($data->registryId)
                 : $this->registryService->create($actor, $this->newClientRegistryData(), $data->clientProfile);
 
-            // Step 2: the Opportunity itself, through the shared service. The
-            // initial attribution (source/reporter/Sede operativa) and reward
-            // assignments travel with it; every other relation stays unset
-            // (out of scope, D-4). `reporterId` is part of the insert, so RewardAssignmentWriter
-            // (invoked by OpportunityService::create) already targets the right
-            // beneficiary — no retarget step needed.
-            //
             // Operatore and Sede operativa DEFAULT to the creating actor and
             // the actor's own Sede (user directive 2026-08-04): a request is
-            // always worked by whoever opened it, from the Sede they belong to,
-            // and that holds whether or not the form showed the two fields —
-            // an actor without `request-management.assignOperator` /
-            // `operational-sites.viewAny` never renders them, so an absent key
-            // is exactly the case this default covers. A submitted value (only
-            // an actor holding those abilities gets past the controller's
-            // guards) always wins.
+            // always worked by whoever opened it, from the Sede they belong
+            // to, and that holds whether or not the form showed the two
+            // fields — an actor without `request-management.assignOperator`/
+            // `operational-sites.viewAny` never renders them, so an absent
+            // key is exactly the case this default covers. A submitted value
+            // (only an actor holding those abilities gets past the
+            // controller's guards) always wins. Resolved ONCE, so the
+            // Opportunity's GA2 slot and the Offerta's own Supervisore never
+            // diverge (D-3, AC-029).
+            $supervisorId = $data->operatorId ?? $actor->id;
+            $operationalSiteId = $data->operationalSiteId ?? $this->actorOperationalSiteId($actor);
+
+            // Step 2: the Opportunity, through the shared service. The
+            // initial attribution (source/reporter/Sede operativa) travels
+            // with it; every other relation stays unset (out of scope, D-4).
+            // `rewards` is withheld (see class docblock) — Step 4 syncs them
+            // onto the Offerta instead.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
@@ -74,19 +92,22 @@ final class RequestCreationService
                 supervisorId: null,
                 sourceId: $data->sourceId,
                 leadId: null,
-                managerSlots: $this->operatorManagerSlots($data->operatorId ?? $actor->id),
-                operationalSiteId: $data->operationalSiteId ?? $this->actorOperationalSiteId($actor),
+                managerSlots: $this->operatorManagerSlots($supervisorId),
+                operationalSiteId: $operationalSiteId,
                 productLines: $data->productLines,
                 // "Prodotti di interesse" (user directive 2026-07-31): already
                 // checked against the product lines above by
                 // StoreRequestRequest, so the shared writer's cross-category
                 // branch (which would add a line) is unreachable from here.
+                // Spec 0086: this stays an Opportunity-level collection —
+                // POST is the one endpoint of this module that still accepts
+                // it (data_contract).
                 productsOfInterest: $data->productsOfInterest,
                 startDate: null,
                 estimatedValue: null,
                 expectedCloseDate: null,
                 successProbability: null,
-                rewards: $data->rewards,
+                rewards: null,
                 generalNotes: $data->generalNotes,
             ), $actor);
 
@@ -96,7 +117,38 @@ final class RequestCreationService
             // this panel.
             $this->applyOperativeFields($opportunity, $data);
 
-            return $this->panel->loadWorkPanel($opportunity);
+            // Step 4: the Offerta itself (spec 0086, D-5), always through
+            // QuoteService::create() — the ONE entry point that generates
+            // `code`, bootstraps `quote_workflow_status_id` and recalculates
+            // every aggregate. Born with no product lines (AC-028);
+            // `supervisor_id`/`reporter_id`/`operational_site_id` are the
+            // SAME resolved values just used for the Opportunity, so the two
+            // records never disagree at creation time.
+            $quote = $this->quoteService->create(new CreateQuoteData(
+                code: null,
+                title: $opportunity->name,
+                opportunityId: $opportunity->id,
+                workflowStatusId: null,
+                note: null,
+                commercialId: null,
+                commercialIdSubmitted: false,
+                reporterId: $data->reporterId,
+                reporterIdSubmitted: true,
+                supervisorId: $supervisorId,
+                supervisorIdSubmitted: true,
+                internalNotes: null,
+                operationalSiteId: $operationalSiteId,
+                operationalSiteIdSubmitted: true,
+            ), $actor);
+
+            // Step 5: reward assignments (D-4/D-12, AC-023) — the Offerta's
+            // own Segnalatore is the beneficiary, so the sync runs only once
+            // the Offerta exists.
+            if ($data->rewards !== null) {
+                $this->rewardAssignmentWriter->sync($quote, $data->rewards);
+            }
+
+            return $this->panel->loadWorkPanel($quote);
         });
     }
 

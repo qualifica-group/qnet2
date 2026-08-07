@@ -5,6 +5,7 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -62,6 +63,7 @@ it('AC-011: create via /api/request-management with two rows under a single-mode
     ])->assertStatus(422)->assertJsonValidationErrors('product_lines');
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 it('AC-018: the inline cell editor refuses a second row on a single-mode root, same rule as the form', function () {
@@ -80,9 +82,10 @@ it('AC-018: the inline cell editor refuses a second row on a single-mode root, s
         'business_function_id' => $businessFunction->id,
         'product_category_id' => $root->id,
     ]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'product_categories',
         'value' => [
             ['business_function_id' => $businessFunction->id, 'product_category_id' => $root->id],

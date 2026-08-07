@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import { opportunityDetailQueryKey } from '@/features/opportunities/api'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
 import { workPanel as panel } from '@/features/request-management/request-work-panel-fixtures'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
@@ -14,10 +15,10 @@ import type { FieldChangeRequestResource } from '@/features/field-change-request
  * The endpoint is SPARSE: `UpdateRequestRequest` marks every key `sometimes`,
  * so a block the operator did not touch never travels and is never validated
  * server-side. Mirroring a mandatory rule unconditionally client-side was
- * therefore STRICTER than the server: on a legacy record (no product of
- * interest, an Attribute made required after the fact, a card whose VAT number
- * fails the control digit) `handleSubmit` refused every save before any
- * request went out — and refused it silently, which read as a dead button.
+ * therefore STRICTER than the server: on a legacy record (no product line, a
+ * card whose VAT number fails the control digit) `handleSubmit` refused every
+ * save before any request went out — and refused it silently, which read as a
+ * dead button.
  *
  * Split out of `request-work-panel.test.tsx` (hard limit 500 lines).
  */
@@ -91,7 +92,7 @@ function legacyVatPanel(): RequestWorkPanelWithPermissions {
   }
 }
 
-function renderPanel(id = 1) {
+function renderPanel(id = 4001) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -146,30 +147,11 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
    * dropped it, the save button stayed as it was and the blocking fields
    * reported nothing where the operator was looking — the button read as
    * broken. The refusal is now stated next to the button itself.
-   */
-  it('states why a blocked save did not go through, next to the save button', async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel())
-
-    renderPanel()
-
-    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
-
-    // The mandatory rule is broken by an ACTUAL edit: the last product of interest is dropped.
-    fireEvent.click(screen.getByRole('button', { name: 'Remove product Fibra 1000' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    const header = screen.getByRole('banner')
-    const alert = await within(header).findByRole('alert')
-    // The offending block is NAMED.
-    expect(alert).toHaveTextContent('Products of interest')
-    expect(updateRequestWorkMock).not.toHaveBeenCalled()
-  })
-
-  /**
+   *
    * Funzione aziendale + categoria prodotto are editable since the user
    * directive 2026-07-31, under the same "never empty" rule the server
-   * enforces (`min:1`): emptying the collection is refused before the request
-   * goes out, and the summary names the block.
+   * enforces (`min:1`): emptying the collection is refused before the
+   * request goes out, and the summary names the offending block.
    */
   it('refuses a save that would leave the request without a product line', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
@@ -186,30 +168,6 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     const alert = await within(screen.getByRole('banner')).findByRole('alert')
     expect(alert).toHaveTextContent('Product lines')
     expect(updateRequestWorkMock).not.toHaveBeenCalled()
-  })
-
-  /**
-   * The counterpart, and the reason that rule is gated at all: a record that
-   * legitimately has no product of interest must stay savable for any
-   * UNRELATED edit — the endpoint is sparse, so the key is neither sent nor
-   * validated server-side. Making it unconditional client-side refused every
-   * save with no request ever going out, i.e. the save button did nothing.
-   */
-  it('saves an unrelated edit on a record that is missing a mandatory value', async () => {
-    const stored = panel({ products_of_interest: [] })
-    fetchRequestWorkPanelMock.mockResolvedValue(stored)
-    updateRequestWorkMock.mockResolvedValue(stored)
-
-    renderPanel()
-
-    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
-
-    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
-    const [, payload] = updateRequestWorkMock.mock.calls[0]
-    expect(payload).not.toHaveProperty('products_of_interest')
   })
 
   /**
@@ -289,5 +247,36 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     expect(updateRequestWorkMock.mock.calls[0][1]).not.toHaveProperty('source_id')
+  })
+
+  /**
+   * Spec 0086 D-9: the opportunity detail cache invalidated after a save is
+   * keyed on `panel.opportunity_id`, never `panel.id` — the panel's own id is
+   * now the Offerta's, and the fixture keeps the two DELIBERATELY apart so an
+   * inverted key would fail this assertion instead of passing by coincidence.
+   */
+  it('invalidates the opportunity detail cache on the Opportunity id, not the Offerta id', async () => {
+    const stored = panel()
+    fetchRequestWorkPanelMock.mockResolvedValue(stored)
+    updateRequestWorkMock.mockResolvedValue(stored)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
+
+    render(
+      <QueryClientProvider client={client}>
+        <ConfirmDialogProvider>
+          <RequestWorkPanelScreen id={4001} />
+        </ConfirmDialogProvider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
+
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: opportunityDetailQueryKey(stored.opportunity_id) })
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: opportunityDetailQueryKey(stored.id) })
   })
 })

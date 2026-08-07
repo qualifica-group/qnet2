@@ -2,13 +2,21 @@
 
 use App\Models\FieldChangeRequest;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// POST /api/field-change-requests (spec 0078): AC-013..023.
+// POST /api/field-change-requests (spec 0078): AC-013..023. Spec 0086, D-10
+// (corrected in execution): the request-management subject is now the QUOTE
+// (`FieldChangeRequestValueResolver::record()` resolves through
+// `RequestManagementTableDefinition::baseQuery()`, whose `modelClass()` is
+// `Quote`), never the Opportunity — `subject_type` is `quote`
+// (`Relation::morphMap`), `current_value` reads through `Quote::sourceId()`
+// (D-10's virtual read-through accessor), and the D-3 scope guard is now the
+// Offerta's own `quotes.supervisor_id`.
 
 uses(RefreshDatabase::class);
 
@@ -47,10 +55,12 @@ if (! function_exists('fcrActorWith')) {
     }
 }
 
-if (! function_exists('fcrOpportunityWithSource')) {
-    function fcrOpportunityWithSource(): Opportunity
+if (! function_exists('fcrQuoteWithSource')) {
+    function fcrQuoteWithSource(): Quote
     {
-        return Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+
+        return Quote::factory()->for($opportunity)->create();
     }
 }
 
@@ -60,39 +70,39 @@ if (! function_exists('fcrOpportunityWithSource')) {
 
 it('AC-013: POST creates a pending request with a server-computed snapshot', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
         'reason' => 'Il cliente ha confermato di arrivare da un referral.',
     ])->assertCreated();
 
     $response->assertJsonPath('data.status', 'pending')
-        ->assertJsonPath('data.current_value', $opportunity->source_id)
+        ->assertJsonPath('data.current_value', $quote->opportunity->source_id)
         ->assertJsonPath('data.requested_value', $newSource->id)
         ->assertJsonPath('data.requested_by.id', $actor->id);
 
     $row = FieldChangeRequest::sole();
     expect($row->status->value)->toBe('pending')
         ->and($row->requested_by_id)->toBe($actor->id)
-        ->and($row->current_value)->toBe($opportunity->source_id)
-        ->and($row->pending_key)->toBe("opportunity:{$opportunity->id}:source_id");
+        ->and($row->current_value)->toBe($quote->opportunity->source_id)
+        ->and($row->pending_key)->toBe("quote:{$quote->id}:source_id");
 });
 
 it('AC-014: reason omitted -> 201, reason is null', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated()
@@ -107,14 +117,14 @@ it('AC-014: reason omitted -> 201, reason is null', function () {
 
 it('AC-015: client-supplied current_value/status/requested_by_id/handled_by_id are ignored', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     $otherUser = User::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
         'current_value' => 999999,
@@ -125,7 +135,7 @@ it('AC-015: client-supplied current_value/status/requested_by_id/handled_by_id a
 
     $row = FieldChangeRequest::sole();
     expect($row->status->value)->toBe('pending')
-        ->and($row->current_value)->toBe($opportunity->source_id)
+        ->and($row->current_value)->toBe($quote->opportunity->source_id)
         ->and($row->requested_by_id)->toBe($actor->id)
         ->and($row->handled_by_id)->toBeNull();
 });
@@ -136,13 +146,13 @@ it('AC-015: client-supplied current_value/status/requested_by_id/handled_by_id a
 
 it('AC-016: actor WITH request-management.updateSource -> 422, no row written', function () {
     $actor = fcrActorWith(['create'], ['view', 'viewAll', 'update', 'updateSource']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertStatus(422);
@@ -156,12 +166,12 @@ it('AC-016: actor WITH request-management.updateSource -> 422, no row written', 
 
 it('AC-017: a field not protected for this resource -> 422, no row written', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'general_notes',
         'requested_value' => 'anything',
     ])->assertStatus(422);
@@ -175,12 +185,12 @@ it('AC-017: a field not protected for this resource -> 422, no row written', fun
 
 it('AC-018: a nonexistent Fonte id -> 422, no row written', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => 999999,
     ])->assertStatus(422);
@@ -194,14 +204,14 @@ it('AC-018: a nonexistent Fonte id -> 422, no row written', function () {
 
 it('AC-019: requested_value equal to the current one -> 422, no row written', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
-        'requested_value' => $opportunity->source_id,
+        'requested_value' => $quote->opportunity->source_id,
     ])->assertStatus(422);
 
     expect(FieldChangeRequest::query()->count())->toBe(0);
@@ -213,21 +223,21 @@ it('AC-019: requested_value equal to the current one -> 422, no row written', fu
 
 it('AC-020: a second pending request on the same (record, field) -> 422', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     $anotherSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated();
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $anotherSource->id,
     ])->assertStatus(422);
@@ -237,19 +247,19 @@ it('AC-020: a second pending request on the same (record, field) -> 422', functi
 
 it('AC-021: a new request after a previous one was handled -> 201 (pending_key null does not block UNIQUE)', function () {
     $actor = fcrActorWith(['create']);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     FieldChangeRequest::factory()->approved()->create([
         'resource' => 'request-management',
-        'subject_type' => 'opportunity',
-        'subject_id' => $opportunity->id,
+        'subject_type' => 'quote',
+        'subject_id' => $quote->id,
         'field' => 'source_id',
     ]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated();
@@ -262,14 +272,14 @@ it('AC-021: a new request after a previous one was handled -> 201 (pending_key n
 // ---------------------------------------------------------------------------
 
 it('AC-022: a record out of the actor\'s own baseQuery() scope -> 404, no row written', function () {
-    $actor = fcrActorWith(['create'], ['view']); // no viewAll, not a manager of the opportunity
-    $opportunity = fcrOpportunityWithSource();
+    $actor = fcrActorWith(['create'], ['view']); // no viewAll, not the offer's supervisor
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertNotFound();
@@ -283,13 +293,13 @@ it('AC-022: a record out of the actor\'s own baseQuery() scope -> 404, no row wr
 
 it('AC-023: actor without field-change-requests.create -> 403', function () {
     $actor = fcrActorWith([]);
-    $opportunity = fcrOpportunityWithSource();
+    $quote = fcrQuoteWithSource();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertForbidden();

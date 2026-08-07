@@ -45,6 +45,8 @@ final readonly class UpdateProductCategoryData
         public bool $isSelectableSubmitted = false,
         public ?CategoryManagementMode $managementMode = null,
         public bool $managementModeSubmitted = false,
+        public ?bool $singleQuotePerOpportunity = null,
+        public bool $singleQuotePerOpportunitySubmitted = false,
         /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
         public ?array $managerLabels = null,
         public bool $managerLabelsSubmitted = false,
@@ -78,6 +80,8 @@ final readonly class UpdateProductCategoryData
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             managementModeSubmitted: array_key_exists('management_mode', $data),
+            singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
+            singleQuotePerOpportunitySubmitted: array_key_exists('single_quote_per_opportunity', $data),
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
@@ -152,6 +156,13 @@ final readonly class UpdateProductCategoryData
         // CategoryManagementModeInheritance::syncSubtree (ProductCategoryService).
         if ($this->managementModeSubmitted) {
             $attributes['management_mode'] = $this->managementMode;
+        }
+
+        // User directive 2026-08-07: identical root-only handling — on a child
+        // the value written here is immediately re-aligned on the root's by
+        // SingleQuotePerOpportunityInheritance::syncSubtree.
+        if ($this->singleQuotePerOpportunitySubmitted) {
+            $attributes['single_quote_per_opportunity'] = $this->singleQuotePerOpportunity;
         }
 
         // Spec 0080: mirrors inherits_product_attributes/

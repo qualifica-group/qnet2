@@ -4,13 +4,15 @@ use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // GET /api/request-management/product-categories (spec 0064 data_contract, M3,
-// AC-001/002/003 + the D-2 multi-category count).
+// AC-001/002/003 + the D-2 multi-category count). Spec 0086: `requests_count`
+// now counts the OFFERTE (Quote) in scope for the category, not opportunities.
 
 uses(RefreshDatabase::class);
 
@@ -34,11 +36,12 @@ if (! function_exists('categoryTabsUserWith')) {
     }
 }
 
-if (! function_exists('opportunityWithCategory')) {
+if (! function_exists('quoteWithCategory')) {
     /**
-     * A fresh Opportunity carrying one product line against $category.
+     * A fresh Quote whose opportunity carries one product line against
+     * $category.
      */
-    function opportunityWithCategory(ProductCategory $category): Opportunity
+    function quoteWithCategory(ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
         OpportunityProductLine::factory()->create([
@@ -47,7 +50,7 @@ if (! function_exists('opportunityWithCategory')) {
             'product_category_id' => $category->id,
         ]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create();
     }
 }
 
@@ -61,10 +64,10 @@ it('viewAll actor receives every category present in scope, ordered by name, wit
     $categoryA = ProductCategory::factory()->create(['name' => 'Alpha']);
     $categoryM = ProductCategory::factory()->create(['name' => 'Mu']);
 
-    opportunityWithCategory($categoryZ);
-    opportunityWithCategory($categoryA);
-    opportunityWithCategory($categoryA);
-    opportunityWithCategory($categoryM);
+    quoteWithCategory($categoryZ);
+    quoteWithCategory($categoryA);
+    quoteWithCategory($categoryA);
+    quoteWithCategory($categoryM);
 
     // A category with no requests at all must never appear.
     ProductCategory::factory()->create(['name' => 'Empty']);
@@ -87,20 +90,20 @@ it('viewAll actor receives every category present in scope, ordered by name, wit
 });
 
 // ---------------------------------------------------------------------------
-// AC-002 — operator scope: only the actor's own managed requests count
+// AC-002 — operator scope: only the actor's own supervised offers count (D-3)
 // ---------------------------------------------------------------------------
 
-it('an operator without viewAll only sees the category of the requests they manage (AC-002)', function () {
+it('an operator without viewAll only sees the category of the offers they supervise (AC-002)', function () {
     $actor = categoryTabsUserWith(['viewAny']);
     $categoryA = ProductCategory::factory()->create(['name' => 'Category A']);
     $categoryB = ProductCategory::factory()->create(['name' => 'Category B']);
 
-    $ownRequest = opportunityWithCategory($categoryA);
-    $ownRequest->managers()->attach($actor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+    $ownRequest = quoteWithCategory($categoryA);
+    $ownRequest->update(['supervisor_id' => $actor->id]);
 
-    // Someone else's request on a DIFFERENT category — must not leak in.
-    $otherRequest = opportunityWithCategory($categoryB);
-    $otherRequest->managers()->attach(User::factory()->create()->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+    // Someone else's offer on a DIFFERENT category — must not leak in.
+    $otherRequest = quoteWithCategory($categoryB);
+    $otherRequest->update(['supervisor_id' => User::factory()->create()->id]);
 
     Sanctum::actingAs($actor);
 
@@ -146,6 +149,7 @@ it('a request with two product lines on different categories counts in both tabs
         'business_function_id' => BusinessFunction::factory()->create()->id,
         'product_category_id' => $categoryB->id,
     ]);
+    Quote::factory()->for($opportunity)->create();
 
     Sanctum::actingAs($actor);
 
@@ -165,6 +169,7 @@ it('a request with two product lines of the SAME category counts once, not twice
         'opportunity_id' => $opportunity->id,
         'product_category_id' => $category->id,
     ]);
+    Quote::factory()->for($opportunity)->create();
 
     Sanctum::actingAs($actor);
 

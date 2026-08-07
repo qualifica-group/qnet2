@@ -2,6 +2,7 @@
 
 use App\Http\Requests\Table\TableRowsRequest;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,11 +32,11 @@ if (! function_exists('requestManagementUserWith')) {
 }
 
 /**
- * An Opportunity whose client card carries the given anagraphic values plus a
+ * A quote whose client card carries the given anagraphic values plus a
  * primary phone contact — the exact relation path RequestRowMapper reads and
  * RequestClientColumns searches, filters and sorts.
  */
-function requestWithClient(string $firstName, string $lastName, string $taxCode, string $phone): Opportunity
+function requestWithClient(string $firstName, string $lastName, string $taxCode, string $phone): Quote
 {
     $registry = Registry::factory()->create();
     $card = $registry->personalData()->create([
@@ -46,7 +47,9 @@ function requestWithClient(string $firstName, string $lastName, string $taxCode,
     ]);
     $card->contacts()->create(['type' => 'phone', 'value' => $phone, 'is_primary' => true]);
 
-    return Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+
+    return Quote::factory()->for($opportunity)->create();
 }
 
 /**
@@ -112,7 +115,7 @@ it('rows: a blank search term is a no-op', function () {
 it('rows: the search never escapes the GA2 scope of a viewAny-only actor', function () {
     $actor = requestManagementUserWith(['viewAny']);
     $mine = requestWithClient('Mario', 'Rossi', 'RSSMRA80A01H501U', '+39 02 1234567');
-    $mine->managers()->attach($actor->id, ['position' => 2]);
+    $mine->update(['supervisor_id' => $actor->id]);
     $foreign = requestWithClient('Mario', 'Verdi', 'VRDMRA70A01H501U', '+39 02 9999999');
 
     Sanctum::actingAs($actor);

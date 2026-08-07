@@ -2,6 +2,7 @@
 
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +36,12 @@ if (! function_exists('noteActor')) {
 }
 
 if (! function_exists('noteManagedOpportunity')) {
-    function noteManagedOpportunity(User $manager): Opportunity
+    // Spec 0086, D-9: read/mention access is re-keyed on the Opportunity's
+    // own Offerte (D-3, `quotes.supervisor_id`), not the GA2 pivot slot.
+    function noteManagedOpportunity(User $supervisor): Opportunity
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+        Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
 
         return $opportunity;
     }
@@ -46,12 +49,9 @@ if (! function_exists('noteManagedOpportunity')) {
 
 if (! function_exists('grantMentionAccess')) {
     /**
-     * Grants $user D-10 mentionable access to $opportunity WITHOUT the GA2
-     * manager pivot: `opportunity_user` has a UNIQUE(opportunity_id,
-     * position) constraint (only one Account Manager per position per
-     * opportunity), so a second mentionable user on the SAME opportunity
-     * that noteManagedOpportunity() already assigned must qualify via the
-     * OTHER D-10 branch instead — `request-management.viewAll`.
+     * Grants $user D-10 mentionable access to $opportunity WITHOUT making
+     * them supervise a second Offerta of it: qualifies via the OTHER D-10
+     * branch instead — `request-management.viewAll`.
      */
     function grantMentionAccess(Opportunity $opportunity, User $user): void
     {

@@ -4,6 +4,7 @@ use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
@@ -18,7 +19,8 @@ use Spatie\Permission\Models\Permission;
 // anagraphic fields, which live on the Registry's PersonalData card and are
 // written one at a time through RequestManagementService::updateWork().
 // `next_callback_at` keeps its own dedicated file. Spec 0083, D-2 removed
-// `workflow_status` from this grid entirely.
+// `workflow_status` from this grid entirely. Spec 0086, D-1: the row is now a
+// `quotes` record.
 
 uses(RefreshDatabase::class);
 
@@ -70,14 +72,14 @@ if (! function_exists('inlineEditorsActorWithMatrixRow')) {
 }
 
 if (! function_exists('inlineEditorsRequest')) {
-    /** An opportunity the actor operates as GA2, whose client carries an anagraphic card. */
-    function inlineEditorsRequest(User $manager): Opportunity
+    /** A quote supervised by $supervisor, whose client carries an anagraphic card. */
+    function inlineEditorsRequest(User $supervisor): Quote
     {
         $registry = Registry::factory()->withPersonalData()->create();
         $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
@@ -101,7 +103,12 @@ it('AC-001: every activated column advertises its own editor', function () {
 
     expect($columns['next_callback_at']['editor'])->toBe('datetime')
         ->and($columns['operator_ga2']['editor'])->toBe('relation')
-        ->and($columns['operator_ga2']['relation']['resource'])->toBe('users');
+        ->and($columns['operator_ga2']['relation']['resource'])->toBe('users')
+        // AC-011 corrected in execution: the migration moves only the
+        // underlying model (pivot -> quote.supervisor), never the column's
+        // sort/filter behaviour — this was wrong in the spec's first draft.
+        ->and($columns['operator_ga2']['sortable'])->toBeFalse()
+        ->and($columns['operator_ga2']['filterable'])->toBeFalse();
 
     foreach (['first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeTrue()
@@ -126,10 +133,10 @@ it('AC-002 (superseded by 0075 AC-001): product_categories edits the product_lin
 
 it('AC-002: PATCH product_categories with a plain string -> 422, never a silent write', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'product_categories',
         'value' => 'Anything',
     ])->assertStatus(422);
@@ -141,7 +148,7 @@ it('AC-002: PATCH product_categories with a plain string -> 422, never a silent 
 
 it('AC-003: without request-management.update every column is read-only and every PATCH is 403', function () {
     $actor = inlineEditorsActor(['viewAny']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
     $columns = inlineEditorsColumns();
@@ -149,7 +156,7 @@ it('AC-003: without request-management.update every column is read-only and ever
     foreach (['next_callback_at', 'operator_ga2', 'first_name', 'last_name', 'tax_code', 'phone'] as $id) {
         expect($columns[$id]['editable'])->toBeFalse();
 
-        $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+        $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
             'column' => $id,
             'value' => 'Whatever',
         ])->assertForbidden();
@@ -168,8 +175,8 @@ it('AC-004: denying client_tax_code leaves the other three anagraphic columns ed
         'editable' => false,
         'required' => false,
     ]);
-    $opportunity = inlineEditorsRequest($actor);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    $quote = inlineEditorsRequest($actor);
+    $quote->opportunity->managers()->sync([$actor->id => ['position' => 2]]);
     Sanctum::actingAs($actor);
 
     $columns = inlineEditorsColumns();
@@ -179,12 +186,12 @@ it('AC-004: denying client_tax_code leaves the other three anagraphic columns ed
         ->and($columns['last_name']['editable'])->toBeTrue()
         ->and($columns['phone']['editable'])->toBeTrue();
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'tax_code',
         'value' => 'RSSMRA80A01H501U',
     ])->assertForbidden();
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'first_name',
         'value' => 'Mario',
     ])->assertOk();
@@ -198,14 +205,14 @@ it('AC-005: a required field rejects a blank value and keeps the persisted one',
         'editable' => true,
         'required' => true,
     ]);
-    $opportunity = inlineEditorsRequest($actor);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineEditorsRequest($actor);
+    $quote->opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    $card = $quote->opportunity->registry->personalData;
     $card->update(['first_name' => 'Mario']);
     Sanctum::actingAs($actor);
 
     foreach ([null, '', '   '] as $blank) {
-        $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+        $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
             'column' => 'first_name',
             'value' => $blank,
         ])->assertStatus(422);
@@ -220,14 +227,14 @@ it('AC-005: a required field rejects a blank value and keeps the persisted one',
 
 it('AC-009: PATCH first_name updates only that field and re-derives the registry name', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineEditorsRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     // An INDIVIDUAL card: on a company card `registries.name` derives from the
     // company name, so the re-derivation below would (correctly) not move.
     $card->update(['type' => PersonalDataTypeEnum::Individual, 'first_name' => 'Vecchio', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U']);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'first_name',
         'value' => 'Mario',
     ])->assertOk()->assertJsonPath('data.first_name', 'Mario');
@@ -237,28 +244,28 @@ it('AC-009: PATCH first_name updates only that field and re-derives the registry
     expect($fresh->first_name)->toBe('Mario')
         ->and($fresh->last_name)->toBe('Rossi')
         ->and($fresh->tax_code)->toBe('RSSMRA80A01H501U')
-        ->and($opportunity->registry->fresh()->name)->toBe('Mario Rossi');
+        ->and($quote->opportunity->registry->fresh()->name)->toBe('Mario Rossi');
 });
 
 it('AC-012: a text column with an editableField validates as a string, not as an id', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'last_name',
         'value' => 'Bianchi',
     ])->assertOk();
 
-    expect($opportunity->registry->personalData->fresh()->last_name)->toBe('Bianchi');
+    expect($quote->opportunity->registry->personalData->fresh()->last_name)->toBe('Bianchi');
 });
 
 it('a client anagraphic value longer than the column width -> 422', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'last_name',
         'value' => str_repeat('a', 256),
     ])->assertStatus(422);
@@ -267,10 +274,10 @@ it('a client anagraphic value longer than the column width -> 422', function () 
 it('a request whose client has no anagraphic card -> 422, not a silent create', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $opportunity = Opportunity::factory()->create(['registry_id' => Registry::factory()->create()->id]);
-    $opportunity->managers()->sync([$actor->id => ['position' => 2]]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'first_name',
         'value' => 'Mario',
     ])->assertStatus(422);
@@ -282,8 +289,8 @@ it('a request whose client has no anagraphic card -> 422, not a silent create', 
 
 it('AC-010: PATCH phone updates the primary telephone row and leaves the other contacts alone', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineEditorsRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     $phone = Contact::factory()->create([
         'contactable_type' => 'personal_data', 'contactable_id' => $card->id,
         'type' => ContactTypeEnum::Mobile, 'value' => '3330000000', 'is_primary' => true,
@@ -294,7 +301,7 @@ it('AC-010: PATCH phone updates the primary telephone row and leaves the other c
     ]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'phone',
         'value' => '3331234567',
     ])->assertOk()->assertJsonPath('data.phone', '3331234567');
@@ -307,11 +314,11 @@ it('AC-010: PATCH phone updates the primary telephone row and leaves the other c
 
 it('AC-010: PATCH phone on a card with no telephone row creates a primary phone contact', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineEditorsRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'phone',
         'value' => '3331234567',
     ])->assertOk();
@@ -325,15 +332,15 @@ it('AC-010: PATCH phone on a card with no telephone row creates a primary phone 
 
 it('AC-010: clearing phone removes the telephone row instead of leaving an empty one', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineEditorsRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     Contact::factory()->create([
         'contactable_type' => 'personal_data', 'contactable_id' => $card->id,
         'type' => ContactTypeEnum::Phone, 'value' => '3330000000', 'is_primary' => true,
     ]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'phone',
         'value' => null,
     ])->assertOk()->assertJsonPath('data.phone', null);
@@ -342,29 +349,30 @@ it('AC-010: clearing phone removes the telephone row instead of leaving an empty
 });
 
 // ---------------------------------------------------------------------------
-// AC-008 — the GA2 operator
+// AC-008 — the GA2 operator (now the offer's own Supervisore, D-3)
 // ---------------------------------------------------------------------------
 
-it('AC-008: PATCH operator_ga2 reassigns the GA2 pivot row and re-projects the new operator', function () {
+it('AC-008: PATCH operator_ga2 reassigns the supervisor and syncs the GA2 pivot row', function () {
     $actor = inlineEditorsActor(['viewAny', 'update', 'viewAll']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operator_ga2',
         'value' => $newOperator->id,
     ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);
 
-    expect($opportunity->fresh()->operatorManager()?->id)->toBe($newOperator->id);
+    expect($quote->fresh()->supervisor_id)->toBe($newOperator->id)
+        ->and($quote->opportunity->fresh()->operatorManager()?->id)->toBe($newOperator->id);
 });
 
 it('AC-008: an operator id the actor could not pick -> 422', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operator_ga2',
         'value' => 999999,
     ])->assertStatus(422);
@@ -376,18 +384,18 @@ it('AC-008: an operator id the actor could not pick -> 422', function () {
 
 it('AC-011: an anagraphic inline edit leaves an activity entry on the request', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
-    $opportunity->registry->personalData->update(['first_name' => 'Vecchio']);
+    $quote = inlineEditorsRequest($actor);
+    $quote->opportunity->registry->personalData->update(['first_name' => 'Vecchio']);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'first_name',
         'value' => 'Mario',
     ])->assertOk();
 
     $entry = Activity::query()
         ->where('subject_type', 'opportunity')
-        ->where('subject_id', $opportunity->id)
+        ->where('subject_id', $quote->opportunity_id)
         ->latest('id')
         ->first();
 
@@ -402,7 +410,7 @@ it('AC-011: an anagraphic inline edit leaves an activity entry on the request', 
 
 it('operator_ga2 is editable, pickable and savable for an actor without users.viewAny', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
-    $opportunity = inlineEditorsRequest($actor);
+    $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -414,7 +422,7 @@ it('operator_ga2 is editable, pickable and savable for an actor without users.vi
 
     $this->getJson('/api/users/for-select')->assertOk();
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operator_ga2',
         'value' => $newOperator->id,
     ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);

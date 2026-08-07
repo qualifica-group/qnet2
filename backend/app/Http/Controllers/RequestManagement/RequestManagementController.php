@@ -13,8 +13,9 @@ use App\Http\Requests\RequestManagement\StoreRequestRequest;
 use App\Http\Requests\RequestManagement\TransferRequestsRequest;
 use App\Http\Requests\RequestManagement\UpdateRequestRequest;
 use App\Http\Resources\RequestManagementResource;
-use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
+use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
 use App\Services\RequestManagement\RequestManagementScope;
@@ -26,10 +27,11 @@ use Throwable;
 
 /**
  * Dedicated create/show/update endpoints for the "Gestione Richieste" work
- * panel (spec 0049/0057): the record IS an Opportunity (D-1), but access runs
- * through its OWN `request-management.*` permissions and D-3 scoping guard,
- * never `opportunities.*`/PATCH /api/opportunities/{id}. `store()` has no
- * scope guard to run (there is no {opportunity} yet).
+ * panel (spec 0049/0057, migrated onto the Quote by spec 0086): a grid row
+ * IS a Quote (D-1/D-2), but access runs through its OWN `request-management.*`
+ * permissions and the D-3 supervisor-scoping guard, never `quotes.*`/PATCH
+ * /api/quotes/{id}. `store()` has no scope guard to run (there is no
+ * {quote} yet).
  *
  * Thin controller: permission gate + scope guard, FormRequest validation,
  * Service call, Resource output. Every action attaches the same
@@ -47,13 +49,14 @@ class RequestManagementController extends BaseApiController
         private readonly RequestAssignmentService $assignmentService,
         private readonly RequestTransferService $transferService,
         private readonly RequestCreationService $creationService,
+        private readonly QuoteService $quoteService,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
 
     /**
-     * POST /api/request-management (spec 0057): creates the Opportunity
-     * behind a new "Gestione Richieste" row.
+     * POST /api/request-management (spec 0057; D-5): creates the Opportunity
+     * behind a new "Gestione Richieste" row, then the Offerta itself.
      */
     public function store(StoreRequestRequest $request): JsonResponse
     {
@@ -80,12 +83,12 @@ class RequestManagementController extends BaseApiController
             );
 
             $panel = $this->creationService->create($user, $data);
-            /** @var Opportunity $opportunity */
-            $opportunity = $panel['opportunity'];
+            /** @var Quote $quote */
+            $quote = $panel['quote'];
 
             return $this->okWithPermissions(
                 new RequestManagementResource($panel),
-                $this->buildPermissions($user, $opportunity),
+                $this->buildPermissions($user, $quote),
                 'Created',
                 HttpStatusEnum::CREATED,
             );
@@ -95,42 +98,42 @@ class RequestManagementController extends BaseApiController
     }
 
     /**
-     * GET /api/request-management/{opportunity} — the work panel.
+     * GET /api/request-management/{quote} — the work panel.
      */
-    public function show(Request $request, Opportunity $opportunity): JsonResponse
+    public function show(Request $request, Quote $quote): JsonResponse
     {
         try {
             $user = $request->user();
             abort_unless($user->can('request-management.view'), 403);
-            $this->scope->assertInScope($user, $opportunity);
+            $this->scope->assertInScope($user, $quote);
 
             return $this->okWithPermissions(
-                new RequestManagementResource($this->service->loadWorkPanel($opportunity)),
-                $this->buildPermissions($user, $opportunity),
+                new RequestManagementResource($this->service->loadWorkPanel($quote)),
+                $this->buildPermissions($user, $quote),
             );
         } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__, ['opportunity' => $opportunity->id]);
+            return $this->handleControllerException($exception, __FUNCTION__, ['quote' => $quote->id]);
         }
     }
 
     /**
-     * PUT/PATCH /api/request-management/{opportunity} — persist dynamic
-     * field values and the other operative fields (sparse, D-4/D-5).
+     * PUT/PATCH /api/request-management/{quote} — persist the operative
+     * fields (sparse diff), routed onto the Quote or its Opportunity per
+     * field (spec 0086, D-2).
      */
-    public function update(UpdateRequestRequest $request, Opportunity $opportunity): JsonResponse
+    public function update(UpdateRequestRequest $request, Quote $quote): JsonResponse
     {
         try {
             $user = $request->user();
             abort_unless($user->can('request-management.update'), 403);
-            $this->scope->assertInScope($user, $opportunity);
+            $this->scope->assertInScope($user, $quote);
 
             $panel = $this->service->updateWork(
-                $opportunity,
+                $quote,
                 $user,
                 [
                     ...$request->safe()->only([
                         'next_callback_at',
-                        'products_of_interest',
                         'source_id',
                         'reporter_id',
                         'operator_id',
@@ -153,33 +156,33 @@ class RequestManagementController extends BaseApiController
 
             return $this->okWithPermissions(
                 new RequestManagementResource($panel),
-                $this->buildPermissions($user, $opportunity),
+                $this->buildPermissions($user, $quote),
                 'Updated',
             );
         } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__, ['opportunity' => $opportunity->id]);
+            return $this->handleControllerException($exception, __FUNCTION__, ['quote' => $quote->id]);
         }
     }
 
     /**
-     * DELETE /api/request-management/{opportunity} — the row action behind
-     * the table's "Elimina" (user directive 2026-07-23). Gated by this
-     * module's OWN `request-management.delete` plus the D-3 scope, never
-     * `opportunities.delete`; the record removed IS the Opportunity (D-1),
-     * there is no separate request row.
+     * DELETE /api/request-management/{quote} — the row action behind the
+     * table's "Elimina" (user directive 2026-07-23). Gated by this module's
+     * OWN `request-management.delete` plus the D-3 scope, never
+     * `quotes.delete`; the record removed IS the Offerta (spec 0086, AC-031):
+     * deleted through QuoteService::delete() so the Opportunity survives.
      */
-    public function destroy(Request $request, Opportunity $opportunity): JsonResponse
+    public function destroy(Request $request, Quote $quote): JsonResponse
     {
         try {
             $user = $request->user();
             abort_unless($user->can('request-management.delete'), 403);
-            $this->scope->assertInScope($user, $opportunity);
+            $this->scope->assertInScope($user, $quote);
 
-            $opportunity->delete();
+            $this->quoteService->delete($quote);
 
             return $this->noContent();
         } catch (Throwable $exception) {
-            return $this->handleControllerException($exception, __FUNCTION__, ['opportunity' => $opportunity->id]);
+            return $this->handleControllerException($exception, __FUNCTION__, ['quote' => $quote->id]);
         }
     }
 
@@ -189,7 +192,8 @@ class RequestManagementController extends BaseApiController
      * directive 2026-07-23, "come nei lead"). The per-row D-3 scope is
      * enforced inside the service, which SKIPS every unreachable id rather
      * than failing the batch — an out-of-scope row does not exist for this
-     * actor, so `assigned` reports what was actually written.
+     * actor, so `assigned` reports what was actually written. The ids are
+     * Offerta ids (spec 0086).
      *
      * `assignOperator` on top of `update` (user directive 2026-08-03): this
      * endpoint writes the Sede AND the Operatore of many requests at once, the
@@ -224,7 +228,7 @@ class RequestManagementController extends BaseApiController
      * "Operatore" in the same call. Same D-3 skip-in-scope semantics as
      * assignOperators() above: an id the actor may not reach is silently
      * excluded, never a 403/404 on the batch (`transferred` reports what was
-     * actually written).
+     * actually written). The ids are Offerta ids (spec 0086).
      *
      * `transferContact` on top of `update`, mirroring `assignOperator` above:
      * the endpoint writes the Sede AND the Operatore of many requests at
@@ -252,12 +256,12 @@ class RequestManagementController extends BaseApiController
     }
 
     /**
-     * The `permissions` block for $model, contextual to $actor (spec 0004).
+     * The `permissions` block for $quote, contextual to $actor (spec 0004).
      *
      * @return array<string, mixed>
      */
-    private function buildPermissions(User $actor, ?Opportunity $model): array
+    private function buildPermissions(User $actor, ?Quote $quote): array
     {
-        return $this->permissionsBuilder->build($this->authorization->resolve('request-management'), $actor, $model);
+        return $this->permissionsBuilder->build($this->authorization->resolve('request-management'), $actor, $quote);
     }
 }

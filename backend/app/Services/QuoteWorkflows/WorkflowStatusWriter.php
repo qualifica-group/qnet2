@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\DB;
  * StatusSystemKey::New tail-anchoring), whereas every QuoteWorkflowStatus set
  * independently pins its OWN system rows — the initial 'open' row plus the
  * two terminal closed-outcome rows 'closed_won'/'closed_lost' (AC-004/
- * AC-005). The fourth key, 'validated', is OPTIONAL and never created by
- * default: ValidatedStatusMarker owns it.
+ * AC-005). Those three are the whole set of system rows: "Validato" is a
+ * plain `group` value carried by ordinary custom rows (user directive
+ * 2026-08-07), not a system key.
  *
  * `quote_workflow_id`/`system_key` are DELIBERATELY absent from
  * QuoteWorkflowStatus's #[Fillable] (never mass-assignable from a request),
@@ -32,8 +33,6 @@ final class WorkflowStatusWriter
 {
     private const int STEP = 10;
 
-    public function __construct(private readonly ValidatedStatusMarker $validatedMarker) {}
-
     /**
      * Creates a brand-new set (AC-004): the pinned 'open' row (sort_order 0),
      * every $customStatuses row in submission order (STEP apart), then the
@@ -42,14 +41,8 @@ final class WorkflowStatusWriter
      * pinned rows' descriptive fields when the client filled them up front;
      * null falls back to the default label.
      *
-     * $validatedOverride is the ONLY one that also decides whether its row
-     * exists at all: the optional 'validated' row is created only when the
-     * client explicitly marked one (user directive 2026-08-03), and sits
-     * between the customs and 'closed_won'.
-     *
      * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $customStatuses
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openOverride
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $validatedOverride
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonOverride
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostOverride
      */
@@ -57,7 +50,6 @@ final class WorkflowStatusWriter
         ?int $workflowId,
         array $customStatuses,
         ?array $openOverride = null,
-        ?array $validatedOverride = null,
         ?array $closedWonOverride = null,
         ?array $closedLostOverride = null,
     ): void {
@@ -70,17 +62,12 @@ final class WorkflowStatusWriter
             $sortOrder += self::STEP;
         }
 
-        if ($validatedOverride !== null) {
-            $this->forceCreateSystemRow($workflowId, WorkflowStatusSystemKey::Validated, $sortOrder, $validatedOverride);
-            $sortOrder += self::STEP;
-        }
-
         $tailOverrides = [
             WorkflowStatusSystemKey::ClosedWon->value => $closedWonOverride,
             WorkflowStatusSystemKey::ClosedLost->value => $closedLostOverride,
         ];
 
-        foreach (WorkflowStatusSystemKey::mandatoryTailKeys() as $key) {
+        foreach (WorkflowStatusSystemKey::tailKeys() as $key) {
             $this->forceCreateSystemRow($workflowId, $key, $sortOrder, $tailOverrides[$key->value]);
             $sortOrder += self::STEP;
         }
@@ -89,13 +76,13 @@ final class WorkflowStatusWriter
     /**
      * Authoritative sync of $set's CUSTOM rows (id present = update, absent =
      * new; existing customs not included = deleted), resequencing sort_order
-     * so 'open' stays first and the pinned tail rows 'validated'/'closed_won'/
+     * so 'open' stays first and the pinned tail rows 'closed_won'/
      * 'closed_lost' stay last. A submitted row whose
      * `id` matches an existing SYSTEM row is routed to
      * assertMutableSystemRow() instead (everything but `group`, spec 0047
      * data contract) and never counted as a custom / never deleted.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool, system_key?: ?string, system_key_submitted?: bool}>  $statusRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statusRows
      */
     public function syncCustoms(?int $workflowId, array $statusRows): void
     {
@@ -106,12 +93,7 @@ final class WorkflowStatusWriter
                 ->get()
                 ->keyBy('id');
 
-            // Step 2: the optional 'validated' mark first — it can move a row
-            // between the system and the custom bucket, so the partition must
-            // see the post-transition identity.
-            $this->validatedMarker->apply($workflowId, $statusRows, $existing);
-
-            // Step 3: everything else splits into system updates + custom sync.
+            // Step 2: the payload splits into system updates + custom sync.
             [$systemRows, $customRows] = $this->partitionSubmitted($statusRows, $existing);
 
             $this->applySystemUpdates($systemRows, $existing);
@@ -160,7 +142,6 @@ final class WorkflowStatusWriter
     {
         [$defaultName, $group] = match ($key) {
             WorkflowStatusSystemKey::Open => ['Aperta', WorkflowStatusGroup::Open],
-            WorkflowStatusSystemKey::Validated => ['Validato', WorkflowStatusGroup::Validated],
             WorkflowStatusSystemKey::ClosedWon => ['Chiusa positiva', WorkflowStatusGroup::ClosedWon],
             WorkflowStatusSystemKey::ClosedLost => ['Chiusa negativa', WorkflowStatusGroup::ClosedLost],
         };
@@ -196,11 +177,9 @@ final class WorkflowStatusWriter
 
     /**
      * Splits $statusRows into [systemRows, customRows] by whether a
-     * submitted `id` resolves to an existing SYSTEM row in $existing. Rows
-     * carrying the optional 'validated' mark are skipped: ValidatedStatusMarker
-     * has already written them in full.
+     * submitted `id` resolves to an existing SYSTEM row in $existing.
      *
-     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool, system_key?: ?string}>  $statusRows
+     * @param  array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statusRows
      * @param  Collection<int, QuoteWorkflowStatus>  $existing
      * @return array{0: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>, 1: array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>}
      */
@@ -210,10 +189,6 @@ final class WorkflowStatusWriter
         $customRows = [];
 
         foreach ($statusRows as $row) {
-            if (($row['system_key'] ?? null) === WorkflowStatusSystemKey::Validated->value) {
-                continue;
-            }
-
             $existingRow = $row['id'] !== null ? $existing->get($row['id']) : null;
 
             if ($existingRow !== null && $existingRow->isSystem()) {
@@ -304,17 +279,13 @@ final class WorkflowStatusWriter
             $sortOrder += self::STEP;
         }
 
-        // 'validated' is optional: a set without it just skips that step, so
-        // the closed rows keep following the customs with no gap.
         foreach (WorkflowStatusSystemKey::tailKeys() as $key) {
-            $updated = QuoteWorkflowStatus::query()
+            QuoteWorkflowStatus::query()
                 ->where('quote_workflow_id', $workflowId)
                 ->where('system_key', $key->value)
                 ->update(['sort_order' => $sortOrder]);
 
-            if ($updated > 0) {
-                $sortOrder += self::STEP;
-            }
+            $sortOrder += self::STEP;
         }
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
@@ -190,15 +191,23 @@ it('applies the same supervisor and manager rules to an opportunity (AC-008)', f
 // AC-009 / AC-010 / AC-011 — the GA2 "Operatore" of request management
 // ---------------------------------------------------------------------------
 
+// spec 0086: a "Gestione Richieste" record IS the Offerta (Quote), not the
+// Opportunity — the endpoints below are keyed on {quote}. Every fixture
+// shifts the two id sequences apart (a throwaway Opportunity created before
+// the real one) so a passing assertion can never be a coincidental id match.
+
 it('notifies the operator assigned from the work panel, at the GA2 slot (AC-009)', function () {
     Notification::fake();
 
+    Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['operator_id' => $operator->id])->assertOk();
+    expect($quote->id)->not->toBe($quote->opportunity_id);
+
+    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $operator->id])->assertOk();
 
     Notification::assertSentTo($operator, function (RecordAssignmentNotification $notification) use ($operator): bool {
         return str_contains(
@@ -211,9 +220,10 @@ it('notifies the operator assigned from the work panel, at the GA2 slot (AC-009)
 it('a bulk assignment of N requests produces N notifications for the operator (AC-010)', function () {
     Notification::fake();
 
+    Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
-    $requests = Opportunity::factory()->count(3)->create();
+    $requests = Quote::factory()->count(3)->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/assign-operators', [
@@ -229,13 +239,16 @@ it('a bulk assignment of N requests produces N notifications for the operator (A
 it('reassigning the operator to the user already holding the slot notifies nobody (AC-011)', function () {
     Notification::fake();
 
+    Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
-    $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+    $quote = Quote::factory()->create(['supervisor_id' => $operator->id]);
+    $quote->opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['operator_id' => $operator->id])->assertOk();
+    expect($quote->id)->not->toBe($quote->opportunity_id);
+
+    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $operator->id])->assertOk();
 
     Notification::assertNothingSent();
 });

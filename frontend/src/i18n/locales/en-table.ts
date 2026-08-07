@@ -114,6 +114,7 @@ export const table = {
     back: 'Back to the business functions',
     businessFunctionStep: 'Step 1: pick the business function.',
     categoryStep: 'Step 2: pick a product category of {{name}}.',
+    singleModeReached: 'This product category is managed as a single row: remove the current one to pick another.',
     businessFunctionSearch: 'Search business functions…',
     categorySearch: 'Search product categories…',
     empty: 'No results.',

@@ -35,7 +35,27 @@ use Illuminate\Validation\ValidationException;
  */
 final class OpportunityProductLineCoverage
 {
+    /**
+     * The quote-side twin of ProductLineSetValidator::SINGLE_ROW_ONLY_MESSAGE
+     * (user directive 2026-08-07): kept as the ENGLISH source string `__()`
+     * is keyed by, like every other message of this family.
+     */
+    public const string SINGLE_OFFER_LINE_MESSAGE = 'This opportunity is managed on a single product category: its offer may carry one product row only.';
+
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+
+    /**
+     * The management mode governing $opportunity, for a caller that has no
+     * product to check but still needs the mode — the offer-lines rule
+     * (ValidatesQuoteLines), which counts rows rather than resolving
+     * categories. `null` when indeterminate (see resolvedManagementMode).
+     */
+    public function managementModeOf(Opportunity $opportunity): ?CategoryManagementMode
+    {
+        return $this->resolvedManagementMode(
+            $opportunity->productLines()->pluck('product_category_id')->all(),
+        );
+    }
 
     /**
      * Creates the missing funzione-aziendale + categoria-prodotto rows for

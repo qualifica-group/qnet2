@@ -9,12 +9,14 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /**
- * The `activity` row action of the request-management adapter (spec 0049 D-7,
- * amended): clicking it opens the shared `ResourceActivityDialog` on THIS
- * module's own activity resource key — `request-management`, not
- * `opportunities`, since the read gate is this module's permission set. The
- * generic `<TableView>` and `ActivityLogSection` are stubbed (their own
- * behavior has its own suites); this is only about what the adapter wires.
+ * The `activity` row action of the request-management adapter: clicking it
+ * opens the shared `ResourceActivityDialog` on THIS module's own activity
+ * resource key — `request-management`, not `opportunities`, since the read
+ * gate is this module's permission set — keyed on the row's `opportunity_id`,
+ * never its `id`: the row is now an Offerta (spec 0086 D-1), but activity
+ * history stays anchored to the Opportunity (D-9). The generic `<TableView>`
+ * and `ActivityLogSection` are stubbed (their own behavior has its own
+ * suites); this is only about what the adapter wires.
  */
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({
@@ -37,7 +39,9 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   },
 }))
 
-const ROW: TableRow = { id: 7, actions: ['view', 'activity'], editable: false }
+// `opportunity_id` deliberately DIFFERENT from `id` (the row's Offerta id):
+// proves the dialog is keyed on the Opportunity, not the row's own record.
+const ROW: TableRow = { id: 7, opportunity_id: 99, actions: ['view', 'activity'], editable: false }
 
 const ACTIVITY_ACTION: TableActionDefinition = {
   key: 'activity',
@@ -88,9 +92,9 @@ describe('RequestManagementTable — "activity" row action', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trigger-activity' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('activity-log:request-management:7')).toBeInTheDocument()
+    expect(screen.getByText('activity-log:request-management:99')).toBeInTheDocument()
     expect(activityLogSectionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'request-management', id: 7 }),
+      expect.objectContaining({ resource: 'request-management', id: 99 }),
     )
   })
 
@@ -101,6 +105,6 @@ describe('RequestManagementTable — "activity" row action', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.queryByText('activity-log:request-management:7')).not.toBeInTheDocument()
+    expect(screen.queryByText('activity-log:request-management:99')).not.toBeInTheDocument()
   })
 })

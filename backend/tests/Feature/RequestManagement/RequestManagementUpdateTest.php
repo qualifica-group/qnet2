@@ -1,14 +1,15 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
-// PATCH /api/request-management/{opportunity} (spec 0049 data_contract,
-// AC-030/031/032/040/041/042/043).
+// PATCH /api/request-management/{quote} (spec 0049 data_contract, migrated
+// onto the Quote by spec 0086, D-2; AC-030/031/032/040/041/042/043).
 
 uses(RefreshDatabase::class);
 
@@ -33,12 +34,12 @@ if (! function_exists('requestManagementUpdaterWith')) {
 }
 
 if (! function_exists('managedOpportunity')) {
-    function managedOpportunity(User $manager): Opportunity
+    function managedOpportunity(User $supervisor): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
@@ -53,21 +54,21 @@ if (! function_exists('managedOpportunity')) {
 
 it('PATCH without request-management.update -> 403 (AC-032)', function () {
     $actor = requestManagementUpdaterWith([]);
-    $opportunity = managedOpportunity($actor);
+    $quote = managedOpportunity($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [])->assertForbidden();
+    $this->patchJson("/api/request-management/{$quote->id}", [])->assertForbidden();
 });
 
-it('PATCH on an opportunity the actor does not manage and without viewAll -> 403 (AC-032)', function () {
+it('PATCH on a quote the actor does not supervise and without viewAll -> 403 (AC-032)', function () {
     $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [])->assertForbidden();
+    $this->patchJson("/api/request-management/{$quote->id}", [])->assertForbidden();
 });
 
-it('PATCH on a nonexistent opportunity -> 404 (AC-032)', function () {
+it('PATCH on a nonexistent quote -> 404 (AC-032)', function () {
     $actor = requestManagementUpdaterWith(['update']);
     Sanctum::actingAs($actor);
 
@@ -83,28 +84,30 @@ it('PATCH on a nonexistent opportunity -> 404 (AC-032)', function () {
 
 it('PATCH with an attribute_values payload produces no write (AC-042)', function () {
     $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
+    $quote = managedOpportunity($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'attribute_values' => ['anything' => 'x'],
     ])->assertOk();
 
     // No column left to write to (D-1/D-2): a fresh read carries no trace.
-    expect($opportunity->fresh()->getAttributes())->not->toHaveKey('attribute_values');
+    expect($quote->opportunity->fresh()->getAttributes())->not->toHaveKey('attribute_values');
 });
 
 // ---------------------------------------------------------------------------
 // AC-043 — operative changes are recorded on the Opportunity's activity log
+// (D-9: still anchored there even though the row moved onto the Quote)
 // ---------------------------------------------------------------------------
 
 it('PATCH next_callback_at writes an activity entry on the Opportunity (AC-043)', function () {
     $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
+    $quote = managedOpportunity($actor);
+    $opportunity = $quote->opportunity;
     $callbackAt = now()->addDay()->format('Y-m-d\TH:i');
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'next_callback_at' => $callbackAt,
     ])->assertOk();
 
@@ -130,7 +133,8 @@ it('PATCH next_callback_at writes an activity entry on the Opportunity (AC-043)'
 
 it('PATCH with no actual change writes no activity entry', function () {
     $actor = requestManagementUpdaterWith(['update']);
-    $opportunity = managedOpportunity($actor);
+    $quote = managedOpportunity($actor);
+    $opportunity = $quote->opportunity;
     Sanctum::actingAs($actor);
 
     $before = Activity::query()
@@ -138,7 +142,7 @@ it('PATCH with no actual change writes no activity entry', function () {
         ->where('subject_id', $opportunity->id)
         ->count();
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'general_notes' => $opportunity->general_notes,
     ])->assertOk();
 

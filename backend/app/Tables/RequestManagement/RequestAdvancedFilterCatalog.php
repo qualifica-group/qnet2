@@ -7,22 +7,34 @@ namespace App\Tables\RequestManagement;
 use App\Enums\AdvancedFilterType;
 
 /**
- * Advanced-filter catalogue for the `request-management` domain (spec 0049).
- * Curated from the domain's own derived columns (RequestColumnCatalog) and
- * the relations already eager-loaded by
- * RequestManagementTableDefinition::baseQuery() — no invented column/
- * relation, mirroring OpportunityAdvancedFilterCatalog. `target` is the
- * relation accessor name (generic whereHas-by-id via AdvancedFilterApplier
- * for every `relation` entry) or the real DB column (`expected_close_date`).
+ * Advanced-filter catalogue for the `request-management` domain (spec 0086:
+ * the row is now a `quotes` record, D-1). Curated from the domain's own
+ * derived columns (RequestColumnCatalog) and the relations already
+ * eager-loaded by RequestManagementTableDefinition::baseQuery() — no invented
+ * column/relation, mirroring OpportunityAdvancedFilterCatalog. `target` is
+ * the relation accessor name (generic whereHas-by-id via AdvancedFilterApplier
+ * for every `relation` entry, dot-path nested relations supported natively
+ * by Eloquent's own `whereHas()`) or the real DB column.
  *
- * Spec 0083, D-2: `workflow_status` is REMOVED — the Opportunity resolves no
- * working state of its own any more.
+ * `registry`/`referent` (AC-013) now target `opportunity.registry`/
+ * `opportunity.referent`: neither field lives on `quotes` any more (spec
+ * 0086) — only the dot-path prefix changed, the generic id-based `whereHas`
+ * default is otherwise untouched.
+ *
+ * `expected_close_range`/`next_callback_range` (AC-013) target real
+ * `opportunities` columns (`expected_close_date`/`next_callback_at`), NOT
+ * `quotes` ones: RequestManagementTableDefinition::applyAdvancedFilter()
+ * overrides the generic default to scope AdvancedFilterApplier inside a
+ * `whereHas('opportunity', ...)` closure — the generic default's plain
+ * `$query->where($target, ...)` would target a column that does not exist on
+ * `quotes`.
  *
  * `operational_site` is a PICKER, not free text (user directive 2026-07-31):
  * an id-based `relation` filter over the `operational-sites/for-select` route
- * — the same source the column's inline editor already uses — applied by the
- * generic whereHas-by-id default. The site having no own `name` column only
- * rules out a name-based whereIn, not an id-based one: the for-select route
+ * — the same source the column's inline editor already uses, unchanged by
+ * spec 0086 (D-6: a real FK on `quotes` itself) — applied by the generic
+ * whereHas-by-id default. The site having no own `name` column only rules
+ * out a name-based whereIn, not an id-based one: the for-select route
  * composes the label ("{line1} - {city}"), so the operator picks a real site
  * instead of typing a substring of its address.
  */
@@ -44,7 +56,7 @@ final class RequestAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => true,
                 'source' => ['resource' => 'registries'],
-                'target' => 'registry',
+                'target' => 'opportunity.registry',
             ],
             [
                 'name' => 'referent',
@@ -56,7 +68,7 @@ final class RequestAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => true,
                 'source' => ['resource' => 'referents'],
-                'target' => 'referent',
+                'target' => 'opportunity.referent',
             ],
             [
                 'name' => 'operational_site',

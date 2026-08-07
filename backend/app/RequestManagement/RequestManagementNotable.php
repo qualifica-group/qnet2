@@ -13,12 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The `request-management` notable_types descriptor (spec 0052, D-9/D-10):
- * declares how the agnostic notes component may attach to an Opportunity
- * through THIS module's OWN authorization story (spec 0049) — read access
- * and the mentionable set both mirror the work panel's own gate
- * (RequestManagementScope, `request-management.viewAll`) verbatim; this
- * class never invents a separate rule.
+ * The `request-management` notable_types descriptor (spec 0052, D-9/D-10;
+ * spec 0086, D-9): declares how the agnostic notes component may attach to
+ * an Opportunity through THIS module's OWN authorization story (spec 0049)
+ * — read access and the mentionable set both mirror the work panel's own
+ * D-3 scope (RequestManagementScope::scopeToActor(), `request-management.
+ * viewAll`), just re-keyed on the Opportunity's Offerte since the
+ * predicate itself is a Quote one; this class never invents a separate
+ * rule.
  *
  * Lives in app/RequestManagement/ (this module's own namespace, alongside
  * AttributeSetResolver et al.), NOT app/Notes/: the module declares
@@ -30,13 +32,18 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class RequestManagementNotable implements NotableEntity
 {
-    public function __construct(private readonly RequestManagementScope $scope) {}
-
     public function modelClass(): string
     {
         return Opportunity::class;
     }
 
+    /**
+     * D-9: read access is decided by the SAME D-3 rule the work panel
+     * applies, but keyed on the Opportunity's Offerte (RequestManagementScope's
+     * predicate is a Quote one) — an actor reads the collaborative record's
+     * notes when they supervise at least one of this Opportunity's Offerte,
+     * or hold `request-management.viewAll`.
+     */
     public function authorizeRead(User $user, Model $record): bool
     {
         if (! $user->can('request-management.view')) {
@@ -44,12 +51,14 @@ final class RequestManagementNotable implements NotableEntity
         }
 
         /** @var Opportunity $record */
-        return $user->can('request-management.viewAll') || $this->scope->isOperatorOf($user, $record);
+        $query = Quote::query()->where('opportunity_id', $record->getKey());
+
+        return RequestManagementScope::scopeToActor($query, $user)->exists();
     }
 
     /**
-     * D-10: active users who hold `request-management.view` AND are either
-     * this opportunity's GA2 Account Manager or hold
+     * D-10: active users who hold `request-management.view` AND either
+     * supervise one of this Opportunity's Offerte or hold
      * `request-management.viewAll`, plus super-admins. A plain `whereHas`
      * matching the role by NAME — not the `role()` scope, which resolves the
      * name via `Role::findByName()` and THROWS `RoleDoesNotExist` if that row
@@ -59,18 +68,19 @@ final class RequestManagementNotable implements NotableEntity
     public function mentionableUsersQuery(Model $record): Builder
     {
         /** @var Opportunity $record */
-        $managerIds = $record->managers()
-            ->wherePivot('position', Opportunity::OPERATOR_MANAGER_POSITION)
-            ->pluck('users.id');
+        $supervisorIds = Quote::query()
+            ->where('opportunity_id', $record->getKey())
+            ->whereNotNull('supervisor_id')
+            ->pluck('supervisor_id');
 
         return User::query()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($managerIds): void {
+            ->where(function (Builder $query) use ($supervisorIds): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($managerIds): void {
+                    ->orWhere(function (Builder $canRead) use ($supervisorIds): void {
                         $canRead->permission('request-management.view')
-                            ->where(function (Builder $access) use ($managerIds): void {
-                                $access->whereIn('id', $managerIds)
+                            ->where(function (Builder $access) use ($supervisorIds): void {
+                                $access->whereIn('id', $supervisorIds)
                                     ->orWhere(function (Builder $viewAll): void {
                                         $viewAll->permission('request-management.viewAll');
                                     });

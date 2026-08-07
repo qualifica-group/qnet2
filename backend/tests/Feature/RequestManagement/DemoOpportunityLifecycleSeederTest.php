@@ -12,6 +12,7 @@ use Database\Seeders\DemoOpportunityLifecycleSeeder;
 use Database\Seeders\DemoOpportunitySeeder;
 use Database\Seeders\DemoProductCategorySeeder;
 use Database\Seeders\DemoProductSeeder;
+use Database\Seeders\DemoQuoteSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 
@@ -24,16 +25,33 @@ use Spatie\Permission\Models\Permission;
 // the opportunity-context attribute fill this seeder used to perform too —
 // see tests/Feature/Quotes/DemoQuoteSeederTest.php for its Offerta-side
 // replacement (AC-050).
+//
+// REQUIREMENT CHANGED (spec 0086, D-1): the request-management write path
+// takes the Offerta, so the seeder walks Quotes and the harness must seed
+// DemoQuoteSeeder — without it there is nothing to advance and the pass is a
+// silent no-op.
 uses(RefreshDatabase::class);
 
 function seedDemoLifecycle(): void
 {
-    Registry::factory()->count(3)->create();
-    User::factory()->count(5)->create();
+    seedLifecycleDependencies();
 
     $role = Role::findOrCreate(RoleAssignmentGuard::PRIVILEGED_ROLE);
     $role->givePermissionTo(Permission::findOrCreate('notes.create'));
     User::factory()->create()->assignRole($role);
+
+    test()->seed(DemoQuoteSeeder::class);
+    test()->seed(DemoOpportunityLifecycleSeeder::class);
+}
+
+/**
+ * The rows and catalogue every branch of this file needs, without the
+ * privileged actor — the no-op test has to stay actor-less.
+ */
+function seedLifecycleDependencies(): void
+{
+    Registry::factory()->count(3)->create();
+    User::factory()->count(5)->create();
 
     foreach (DemoCategoryCatalogue::TREE as $branch) {
         BusinessFunction::query()->firstOrCreate(['name' => $branch['business_function']]);
@@ -43,7 +61,6 @@ function seedDemoLifecycle(): void
     test()->seed(DemoProductSeeder::class);
     test()->seed(DemoCategoryWorkflowSeeder::class);
     test()->seed(DemoOpportunitySeeder::class);
-    test()->seed(DemoOpportunityLifecycleSeeder::class);
 }
 
 it('plans a callback on some of the seeded requests', function (): void {
@@ -55,17 +72,8 @@ it('plans a callback on some of the seeded requests', function (): void {
 });
 
 it('is a no-op without an actor allowed to write notes', function (): void {
-    Registry::factory()->count(2)->create();
-    User::factory()->count(3)->create();
-
-    foreach (DemoCategoryCatalogue::TREE as $branch) {
-        BusinessFunction::query()->firstOrCreate(['name' => $branch['business_function']]);
-    }
-
-    test()->seed(DemoProductCategorySeeder::class);
-    test()->seed(DemoProductSeeder::class);
-    test()->seed(DemoCategoryWorkflowSeeder::class);
-    test()->seed(DemoOpportunitySeeder::class);
+    seedLifecycleDependencies();
+    test()->seed(DemoQuoteSeeder::class);
 
     $before = Opportunity::query()->pluck('next_callback_at', 'id');
 

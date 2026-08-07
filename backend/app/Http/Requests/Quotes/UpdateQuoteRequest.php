@@ -93,6 +93,7 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
             $this->enforceSupervisorIsOpportunityManager($validator, $this->currentQuote());
             $this->enforceQuoteLayout($validator, $this->currentQuote());
+            $this->enforceSingleOfferLine($validator, $this->currentQuote());
             $this->validateQuoteWorkflowStatus($validator, $this->currentQuote());
         });
     }

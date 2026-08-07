@@ -5,18 +5,29 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
 /**
- * "Prodotti di interesse" (user directive 2026-07-22) on the operative work
- * panel: PATCH /api/request-management/{opportunity} replaces the whole
- * collection, and a product picked OUTSIDE the opportunity's product-line
- * categories also adds the matching funzione + categoria row — the rule the
- * panel warns about before unlocking the picker.
+ * REQUIREMENT CHANGED WHOLESALE (spec 0086, AC-022): PATCH
+ * /api/request-management/{quote} no longer accepts `products_of_interest`
+ * at all — UpdateRequestRequest::rules() declares no rule for that key any
+ * more (see its own docblock), so the endpoint's `products_of_interest`
+ * write channel this file used to exercise (persist/replace/auto-add
+ * category/coherence-on-write) is GONE. The grid's replacement column,
+ * `offer_lines`, is read-only (AC-021), derived from the Offerta's own
+ * REVENUE lines — editing "prodotti di interesse" is now exclusively an
+ * Opportunities-form concern (`POST /api/request-management` still accepts
+ * it at CREATION time only, data_contract; covered by
+ * RequestManagementProductLinesTest's creation-channel cases).
+ *
+ * Every test below that used to assert a PATCH `products_of_interest` WRITE
+ * is replaced by this file's single concern now: that key is a no-op on this
+ * endpoint — ignored, never rejected, never mutating anything (AC-022's
+ * "ignorata o rifiutata" is satisfied by ignoring).
  */
 uses(RefreshDatabase::class);
 
@@ -34,13 +45,13 @@ if (! function_exists('productInterestActor')) {
     }
 }
 
-if (! function_exists('productInterestOpportunity')) {
-    function productInterestOpportunity(User $manager): Opportunity
+if (! function_exists('productInterestQuote')) {
+    function productInterestQuote(User $supervisor): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
@@ -54,173 +65,83 @@ if (! function_exists('productInterestCategory')) {
     }
 }
 
-it('PATCH products_of_interest persists the collection and exposes it back', function () {
+it('AC-022: PATCH products_of_interest is a no-op — an empty collection stays empty, 200 OK', function () {
     $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
+    $quote = productInterestQuote($actor);
     $category = productInterestCategory();
     OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
+        'opportunity_id' => $quote->opportunity_id,
         'business_function_id' => $category->business_function_id,
         'product_category_id' => $category->id,
     ]);
     $product = Product::factory()->create(['category_id' => $category->id]);
     Sanctum::actingAs($actor);
 
-    $response = $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'products_of_interest' => [$product->id],
     ])->assertOk();
 
-    $response->assertJsonPath('data.products_of_interest.0.id', $product->id)
-        ->assertJsonPath('data.products_of_interest.0.product_category.id', $category->id);
-    $this->assertDatabaseHas('opportunity_product', [
-        'opportunity_id' => $opportunity->id,
+    expect($quote->opportunity->fresh()->productsOfInterest)->toHaveCount(0);
+    $this->assertDatabaseMissing('opportunity_product', [
+        'opportunity_id' => $quote->opportunity_id,
         'product_id' => $product->id,
     ]);
 });
 
-// Requirement CHANGED (user directive 2026-07-23): the collection is still an
-// authoritative replace, but it is now MANDATORY — `[]` is rejected instead of
-// clearing it, exactly like on the opportunities form.
-it('PATCH products_of_interest is authoritative: a removed product is detached, [] is rejected', function () {
+it('AC-022: PATCH products_of_interest never detaches an already-persisted collection', function () {
     $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
+    $quote = productInterestQuote($actor);
     $category = productInterestCategory();
     OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
+        'opportunity_id' => $quote->opportunity_id,
         'business_function_id' => $category->business_function_id,
         'product_category_id' => $category->id,
     ]);
     $kept = Product::factory()->create(['category_id' => $category->id]);
-    $dropped = Product::factory()->create(['category_id' => $category->id]);
-    $opportunity->productsOfInterest()->sync([$kept->id, $dropped->id]);
+    $quote->opportunity->productsOfInterest()->sync([$kept->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'products_of_interest' => [$kept->id],
-    ])->assertOk()->assertJsonCount(1, 'data.products_of_interest');
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'products_of_interest' => [],
-    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
-
-    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(1);
-});
-
-it('PATCH without products_of_interest leaves the collection untouched (sparse payload)', function () {
-    $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    $category = productInterestCategory();
-    $product = Product::factory()->create(['category_id' => $category->id]);
-    $opportunity->productsOfInterest()->sync([$product->id]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [])->assertOk();
-
-    expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$product->id]);
-});
-
-/**
- * REQUIREMENT CHANGED (user directive 2026-07-31). This channel used to ACCEPT
- * a product outside the request's categories and silently add the matching
- * funzione + categoria row (directive 2026-07-22). Now that the commercials
- * edit those rows themselves, the mismatch is REFUSED: the operator adds the
- * product category to the request, or drops the product. The opportunities
- * CRUD keeps the auto-add rule (OpportunityProductLineCoverage) — see its own
- * suite.
- */
-it('a product OUTSIDE the request categories is refused, and no product line is added', function () {
-    $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    $ownCategory = productInterestCategory();
-    OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $ownCategory->business_function_id,
-        'product_category_id' => $ownCategory->id,
-    ]);
-    $otherCategory = productInterestCategory();
-    $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'products_of_interest' => [$outsideProduct->id],
-    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
-
-    expect($opportunity->fresh()->productLines)->toHaveCount(1);
-    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
-});
-
-/** ...and the same PATCH is accepted once it also brings the missing product category. */
-it('accepts the outside product when the same PATCH adds its product category', function () {
-    $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    $ownCategory = productInterestCategory();
-    OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $ownCategory->business_function_id,
-        'product_category_id' => $ownCategory->id,
-    ]);
-    // Spec 0077 INV-1/INV-2: the card's rows must share the same root and
-    // business function — $otherCategory is a CHILD of $ownCategory (not an
-    // independent root/function) so the two-row product_lines below stays a
-    // valid card while still covering the outside product's own category.
-    $otherCategory = ProductCategory::factory()->childOf($ownCategory)->create(['business_function_id' => $ownCategory->business_function_id]);
-    $outsideProduct = Product::factory()->create(['category_id' => $otherCategory->id]);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'products_of_interest' => [$outsideProduct->id],
-        'product_lines' => [
-            ['business_function_id' => $ownCategory->business_function_id, 'product_category_id' => $ownCategory->id],
-            ['business_function_id' => $otherCategory->business_function_id, 'product_category_id' => $otherCategory->id],
-        ],
     ])->assertOk();
 
-    expect($opportunity->fresh()->productLines)->toHaveCount(2);
-    expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$outsideProduct->id]);
+    expect($quote->opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$kept->id]);
 });
 
-it('a product whose category has no business function -> 422, nothing written', function () {
+it('AC-022: an unknown product id in products_of_interest never 422s — the key is never validated', function () {
     $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    $orphanCategory = ProductCategory::factory()->create(['business_function_id' => null, 'parent_id' => null]);
-    $product = Product::factory()->create(['category_id' => $orphanCategory->id]);
+    $quote = productInterestQuote($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'products_of_interest' => [$product->id],
-    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
-
-    expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
-    $this->assertDatabaseCount('opportunity_product_lines', 0);
-});
-
-it('an unknown product id -> 422 (exists rule)', function () {
-    $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'products_of_interest' => [999999],
-    ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest.0');
+    ])->assertOk();
 });
 
-it('a products_of_interest change is logged on the opportunity activity feed', function () {
+it('AC-022: the coherence check on a product_lines change still runs against the PERSISTED products of interest, ignoring a same-request products_of_interest key', function () {
     $actor = productInterestActor();
-    $opportunity = productInterestOpportunity($actor);
-    $category = productInterestCategory();
+    $quote = productInterestQuote($actor);
+    $ownCategory = productInterestCategory();
     OpportunityProductLine::factory()->create([
-        'opportunity_id' => $opportunity->id,
-        'business_function_id' => $category->business_function_id,
-        'product_category_id' => $category->id,
+        'opportunity_id' => $quote->opportunity_id,
+        'business_function_id' => $ownCategory->business_function_id,
+        'product_category_id' => $ownCategory->id,
     ]);
-    $product = Product::factory()->create(['category_id' => $category->id]);
+    $persistedProduct = Product::factory()->create(['category_id' => $ownCategory->id]);
+    $quote->opportunity->productsOfInterest()->sync([$persistedProduct->id]);
+    $replacement = productInterestCategory();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
-        'products_of_interest' => [$product->id],
-    ])->assertOk();
+    // Even though the payload also submits a compatible products_of_interest,
+    // the key is ignored — the coherence check sees the PERSISTED product
+    // still tied to $ownCategory, which product_lines is about to drop.
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'product_lines' => [[
+            'business_function_id' => $replacement->business_function_id,
+            'product_category_id' => $replacement->id,
+        ]],
+        'products_of_interest' => [Product::factory()->create(['category_id' => $replacement->id])->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines');
 
-    $activity = Activity::query()->latest('id')->first();
-    expect($activity)->not->toBeNull()
-        ->and($activity->properties['attributes']['products_of_interest'])->toBe([$product->id]);
+    expect($quote->opportunity->fresh()->productLines()->where('product_category_id', $ownCategory->id)->exists())->toBeTrue();
 });

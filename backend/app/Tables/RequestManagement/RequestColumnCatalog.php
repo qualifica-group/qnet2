@@ -5,43 +5,55 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Rules\TaxCode;
-use App\Tables\Shared\ProductsOfInterestColumn;
+use App\Tables\Shared\OfferLinesColumn;
 
 /**
  * Declarative column/filter/action catalogue for the `request-management`
- * domain (spec 0049): an OPERATIVE view over the same `opportunities` rows
- * (D-1, no new entity). The visible columns are the operator's worklist:
- *  - `source` ("Fonte", user directive 2026-07-31) — the own-FK relation
- *    column opening the worklist, sortable + set-filterable like every other
- *    relation-by-name column here, and inline-editable over
- *    `sources/for-select`.
+ * domain (spec 0086: an OPERATIVE view over `quotes` rows, D-1 — migrated
+ * off the former `opportunities`-rooted grid, spec 0049). The visible
+ * columns are the operator's worklist:
+ *  - `source` ("Fonte", user directive 2026-07-31) — RE-DERIVED through
+ *    `quote.opportunity.source` (spec 0086: the field lives on the
+ *    Opportunity), sortable + set-filterable like every other relation-by-name
+ *    column here, and inline-editable over `sources/for-select`.
  *  - `general_notes` ("Note generali", user directive 2026-07-31) — a real
- *    `opportunities` text column, sortable + text-filterable via the generic
- *    engine, display-only (this module never writes it).
- *  - `product_categories` ("Categoria prodotto") — AGGREGATED
- *    to-many via `productLines.productCategory`, filterable (set) but never
- *    sortable (no single related row to order by), and inline-editable
+ *    `opportunities` text column, reached through `quote.opportunity`
+ *    (`hasFilterValues: false`, no `quotes` column to SELECT DISTINCT on),
+ *    sortable + text-filterable via RequestRelationColumns, display-only
+ *    (this module never writes it).
+ *  - `product_categories` ("Categoria prodotto") — AGGREGATED to-many via
+ *    `quote.opportunity.productLines.productCategory`, filterable (set) but
+ *    never sortable (no single related row to order by), and inline-editable
  *    (spec 0075) through the `product_lines` collection it projects.
- *  - `operator_ga2` ("Operatore") — the Account Manager at pivot position 2
- *    (GA2), display-only. Spec 0083, D-2: the inline-editable `workflow_status`
- *    column is REMOVED — the Opportunity resolves no working state of its
- *    own any more.
+ *  - `offer_lines` ("Linee di prodotto", spec 0086 D-7) — the offer's own
+ *    REVENUE lines' products (`quote.offerLines.product`), read-only
+ *    (AC-021/AC-022), replacing `products_of_interest` on this domain ONLY.
+ *  - `operator_ga2` ("Operatore") — spec 0086, D-3: the offer's own
+ *    Supervisore (`quote.supervisor`, a real FK on `quotes`), no longer the
+ *    GA2 pivot row. `editableField` stays `operator_id` (unchanged: the ONE
+ *    logical write key `updateWork()` recognizes on both channels — a real
+ *    production no-op bug, mt06, ruled out `supervisor_id` as a second key).
+ *    NOT sortable/filterable, unchanged from before this migration (AC-011
+ *    corrected in execution: only the source moves, filter/sort behaviour
+ *    stays put).
  *  - `first_name`/`last_name`/`tax_code`/`phone` — the CLIENT's anagraphic
- *    fields, read from the Registry's PersonalData card (phone = its primary
- *    phone/mobile contact), inline-editable, and — user directive 2026-08-03
- *    — sortable + text-filterable + searchable like every other column here,
- *    all three resolved against that card by RequestClientColumns.
+ *    fields, read from the Registry's PersonalData card through
+ *    `quote.opportunity.registry` (phone = its primary phone/mobile
+ *    contact), inline-editable, sortable + text-filterable + searchable, all
+ *    three resolved against that card by RequestClientColumns.
  *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5) — a real
- *    `opportunities` column, sortable + date-filterable via the generic
- *    engine, mirroring `OpportunityColumnCatalog`'s `created_at`.
- *  - `operational_site` ("Sede operativa", spec 0056) — SPECIALLY-derived
- *    (the site has no own name), sortable + set-filterable via the shared
- *    App\Tables\Shared\OperationalSiteColumn, and inline-editable (user
- *    directive 2026-07-23) since it is what scopes the operator picker of the
+ *    `opportunities` column reached through `quote.opportunity`
+ *    (`hasFilterValues: false`), sortable + date-filterable via
+ *    RequestRelationColumns.
+ *  - `operational_site` ("Sede operativa", spec 0056/0086 D-6) — a real FK on
+ *    `quotes` itself (SPECIALLY-derived: the site has no own name), sortable
+ *    + set-filterable via the shared App\Tables\Shared\OperationalSiteColumn,
+ *    and inline-editable since it is what scopes the operator picker of the
  *    column right after it.
  * All derived/anagraphic values are resolved by
  * RequestManagementTableDefinition::mapRow() from eager-loaded relations. A
- * hidden `created_at` column exists solely to back the default sort.
+ * hidden `created_at` column exists solely to back the default sort — a real
+ * `quotes` column (AC-014), unlike `next_callback_at`.
  */
 final class RequestColumnCatalog
 {
@@ -105,22 +117,23 @@ final class RequestColumnCatalog
                 'editor' => 'product_lines',
                 'editableField' => 'product_lines',
             ],
-            // User directive 2026-07-23: the SAME "Prodotti di interesse"
-            // column the opportunities grid declares (shared declaration), and
-            // — unlike `product_categories` above — inline-editable: the
-            // collection is a first-class operative field here, written through
-            // updateWork() like every other cell of this domain.
-            // The shared declaration carries `lockScope` for both domains
-            // since the user directive 2026-08-05: neither module covers a
-            // cross-category pick with a new product line any more, both
-            // refuse it, so the in-cell picker offers no whole-catalogue
-            // escape on either grid.
-            ProductsOfInterestColumn::declaration('requestManagement.columns.productsOfInterest'),
+            // "Linee di prodotto" (spec 0086, D-7): replaces "Prodotti di
+            // interesse" on this domain ONLY — the opportunities grid keeps
+            // its own untouched ProductsOfInterestColumn (AC-009). Projects
+            // the products of the offer's own REVENUE lines
+            // (`Quote::offerLines()`), never a COST line's product (AC-007).
+            // Read-only (AC-021/AC-022): the offer's lines are written
+            // exclusively by the Offerte module.
+            OfferLinesColumn::declaration('requestManagement.columns.offerLines'),
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own `general_notes` free text, right beside the products the
-            // operator reads it against. A REAL DB column, so sorting and the
-            // `text` filter both resolve through the generic engine with no
-            // derived-column hook. Display-only, mirroring
+            // operator reads it against. Spec 0086, D-11: this is a real DB
+            // column, but on `opportunities`, not `quotes` — sorting and the
+            // `text` filter are therefore DERIVED (RequestRelationColumns'
+            // OPPORTUNITY_SCALAR_COLUMNS), and `hasFilterValues: false` skips
+            // the generic distinct-values fallback, which has no `quotes`
+            // column to SELECT DISTINCT on (mirrors ContractColumnCatalog's
+            // QUOTE_SCALAR_COLUMNS precedent). Display-only, mirroring
             // RequestGeneralNotesCallout in the work panel: this module never
             // writes the field (the opportunities form owns it), so it is
             // deliberately absent from RequestManagementAuthorization::fields().
@@ -132,6 +145,7 @@ final class RequestColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'text',
+                'hasFilterValues' => false,
             ],
             // Inline-editable (user directive 2026-07-23): the site is picked
             // in-cell so the operator column right after it can be narrowed to
@@ -163,16 +177,36 @@ final class RequestColumnCatalog
             [
                 // Inline cell-editing (spec 0055, D-6): the same relation
                 // column LeadColumnCatalog already declares for its operator —
-                // an async `/for-select` picker over `users`, whose value is
-                // the GA2 pivot row (`operator_id`), never a column on
-                // `opportunities`. Nullable: clearing the cell un-assigns the
-                // request (updateWork's applyOperator detaches).
+                // an async `/for-select` picker over `users`. Spec 0086, D-3:
+                // the value now WRITES the offer's own Supervisore
+                // (`quotes.supervisor_id`), a real FK on the row's own table
+                // — no more a pivot row. Nullable: clearing the cell un-assigns
+                // the request (updateWork's supervisor writer un-sets it and
+                // syncs the GA2 slot).
+                //
+                // `editableField` (spec 0086, AC corrected in execution after
+                // a real production bug, mt06): stays `operator_id` —
+                // UNCHANGED from before this migration. `editableField` is the
+                // LOGICAL key the cell sends to `updateWork()`, never the DB
+                // column name it lands on: `RequestManagementService::updateWork()`
+                // recognizes exactly ONE key for this write on BOTH channels
+                // (grid cell and work panel), and that key has always been
+                // `operator_id` — even before D-3, when it addressed a pivot
+                // row, not a same-named column. `supervisor_id` was a second,
+                // divergent key the service never learned: a silent 200 no-op
+                // (no write, no error) rather than a 422/404.
                 //
                 // `relation.scope` (user directive 2026-07-23): the picker is
                 // narrowed to the operators of the row's OWN operational site,
                 // the in-grid twin of the work panel's site-filtered operator
                 // field — `users/for-select?operational_site_id=<the row's
                 // site>`. A row with no site keeps the full list.
+                //
+                // `sortable`/`filterable` (spec 0086, AC-011 corrected in
+                // execution): the user directive behind this migration keeps
+                // filters/sort/behaviour unchanged, only the underlying model
+                // moves — this column was never sortable/filterable before
+                // D-3 either, only its source changed (`quote.supervisor`).
                 'id' => 'operator_ga2',
                 'label' => 'requestManagement.columns.operator',
                 'type' => 'text',
@@ -198,15 +232,17 @@ final class RequestColumnCatalog
             self::clientColumn('tax_code', 'requestManagement.columns.taxCode', 'client_tax_code', [new TaxCode], 'tax_code'),
             self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             [
-                // Real DB column (spec 0052 D-1/D-5): the operator's planned
-                // next contact, sortable/filterable via the generic engine
-                // like OpportunityColumnCatalog's `created_at`. Inline
-                // cell-editing (spec 0054, D-4): NOT in Opportunity::$fillable
-                // (mass-assignment guard), so RequestManagementTableDefinition
-                // overrides updateCell() to write it through
-                // RequestManagementService::updateWork() — never a plain
-                // `$row->update()` (spec 0052 D-4's reminder-marker invariant
-                // lives there).
+                // Real DB column (spec 0052 D-1/D-5) — but, spec 0086, on
+                // `opportunities`, not `quotes`: sorting/filtering are
+                // therefore DERIVED (RequestRelationColumns'
+                // OPPORTUNITY_SCALAR_COLUMNS), `hasFilterValues: false` skips
+                // the generic distinct-values fallback (no `quotes` column to
+                // SELECT DISTINCT on). Inline cell-editing (spec 0054, D-4):
+                // NOT in Opportunity::$fillable (mass-assignment guard), so
+                // RequestManagementTableDefinition overrides updateCell() to
+                // write it through RequestManagementService::updateWork() —
+                // never a plain `$row->update()` (spec 0052 D-4's
+                // reminder-marker invariant lives there).
                 'id' => 'next_callback_at',
                 'label' => 'requestManagement.columns.nextCallbackAt',
                 'type' => 'datetime',
@@ -214,6 +250,7 @@ final class RequestColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+                'hasFilterValues' => false,
                 'editable' => true,
                 // Spec 0055, D-4: a real date/time picker instead of the raw
                 // `Y-m-d\TH:i` string the generic `datetime` editor used to

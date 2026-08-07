@@ -119,6 +119,19 @@ final class ProductCategoryColumnCatalog
                 'options' => array_map(static fn (CategoryManagementMode $case): string => $case->value, CategoryManagementMode::cases()),
             ],
             [
+                // "At most one quote per opportunity" policy. Owned by the
+                // branch ROOT and mirrored onto every descendant by
+                // SingleQuotePerOpportunityInheritance (user directive
+                // 2026-08-07), so this IS a real column here.
+                'id' => 'single_quote_per_opportunity',
+                'label' => 'productCategories.columns.single_quote_per_opportunity',
+                'type' => 'boolean',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Number of attributes directly assigned to this category
                 // (own assignments only — NOT the effective/inherited count),
                 // via withCount('attributes'). AGGREGATE (no real DB column).
@@ -166,6 +179,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'requires_quote', 'type' => 'boolean'],
             ['columnId' => 'is_selectable', 'type' => 'boolean'],
             ['columnId' => 'management_mode', 'type' => 'set'],
+            ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

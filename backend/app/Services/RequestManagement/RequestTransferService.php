@@ -7,7 +7,7 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\RequestManagement\RequestTransferNotice;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\OperationalSite;
-use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
 use App\Support\OperationalSiteLabel;
@@ -18,11 +18,13 @@ use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Business logic for POST /api/request-management/transfer (spec 0079):
- * moves one or many requests to another Sede operativa, assigning that
- * site's own GA2 "Operatore" in the same call, tracked by two columns
- * (`is_transferred`/`transferred_from_operational_site_id`) and audited by
- * ONE explicit Activity Log entry per request.
+ * Business logic for POST /api/request-management/transfer (spec 0079;
+ * migrated onto the Quote by spec 0086, AC-034/AC-035): moves one or many
+ * offers to another Sede operativa, assigning that site's own GA2
+ * "Operatore"/Supervisore in the same call, tracked by two Quote columns
+ * (`is_transferred`/`transferred_from_operational_site_id`, D-6 — per-offer
+ * rather than per-deal from now on) and audited by ONE explicit Activity Log
+ * entry per offer, anchored on the Opportunity (D-9).
  *
  * A SEPARATE service from RequestAssignmentService on purpose (SRP): the
  * bulk assignment documents itself as a plain reassignment, while a transfer
@@ -33,7 +35,7 @@ use Spatie\Permission\Models\Permission;
  * transfer already tells the incoming operator they were assigned, and a
  * second, vaguer copy would be noise.
  *
- * Same two dependencies as RequestAssignmentService, minus the distributor:
+ * Same dependency shape as RequestAssignmentService, minus the distributor:
  * this endpoint has no `balanced` mode (decision utente 2026-08-04, the
  * dialog only offers Sede + Operatore).
  */
@@ -42,25 +44,24 @@ final class RequestTransferService
     /**
      * The permission whose holders are copied on every transfer (spec 0081,
      * decisione utente 2026-08-04). It replaces the `supervisor` ROLE this
-     * service used to look up, and it is never
-     * `Opportunity::supervisor()`/`supervisor_id`, which is a different
-     * concept entirely (see spec 0079 context).
+     * service used to look up, and it is never the Offerta's own
+     * `supervisor_id`, which is a different concept entirely (see spec 0079
+     * context).
      */
     private const string TRANSFER_NOTIFICATION_PERMISSION = 'request-management.receiveTransferNotifications';
 
     public function __construct(
-        private readonly RequestManagementScope $scope,
-        private readonly RequestOperatorWriter $operatorWriter,
+        private readonly RequestSupervisorWriter $supervisorWriter,
     ) {}
 
     /**
-     * @param  array<int, int>  $requestIds
-     * @return int the number of requests transferred
+     * @param  array<int, int>  $requestIds  Offerta (Quote) ids
+     * @return int the number of offers transferred
      */
     public function transfer(array $requestIds, User $actor, int $operationalSiteId, int $operatorId): int
     {
         // Resolved once for the whole batch: the destination Sede and the new
-        // operator are the SAME for every request this call touches.
+        // operator are the SAME for every offer this call touches.
         $destinationSite = OperationalSite::query()->with('addresses.city')->findOrFail($operationalSiteId);
         $newOperator = User::query()->findOrFail($operatorId);
 
@@ -69,20 +70,20 @@ final class RequestTransferService
 
         $transferred = DB::transaction(function () use ($requestIds, $actor, $operationalSiteId, $operatorId, &$notices): int {
             // Step 1: drop the ids the actor may not reach (D-3 scoping).
-            $requests = $this->inScopeRequests($requestIds, $actor);
+            $quotes = $this->inScopeQuotes($requestIds, $actor);
 
-            if ($requests->isEmpty()) {
+            if ($quotes->isEmpty()) {
                 return 0;
             }
 
-            // Step 2: per request, inside the SAME transaction.
-            $originLabels = $this->originSiteLabels($requests);
+            // Step 2: per offer, inside the SAME transaction.
+            $originLabels = $this->originSiteLabels($quotes);
 
-            foreach ($requests as $request) {
-                $notices[] = $this->transferOne($request, $actor, $operationalSiteId, $operatorId, $originLabels);
+            foreach ($quotes as $quote) {
+                $notices[] = $this->transferOne($quote, $actor, $operationalSiteId, $operatorId, $originLabels);
             }
 
-            return $requests->count();
+            return $quotes->count();
         });
 
         // Step 3: dispatch AFTER the commit — a notification sent from inside
@@ -93,38 +94,32 @@ final class RequestTransferService
     }
 
     /**
-     * The submitted requests the actor may actually write, in ascending id
-     * order (same D-3 rule as RequestAssignmentService::inScopeRequests()).
+     * The submitted offers the actor may actually write, in ascending id
+     * order (same D-3 rule as RequestAssignmentService::inScopeQuotes()).
+     * `opportunity` eager-loaded: every step below reads/logs against it
+     * (D-9), never a per-row lazy load.
      *
      * @param  array<int, int>  $requestIds
-     * @return Collection<int, Opportunity>
+     * @return Collection<int, Quote>
      */
-    private function inScopeRequests(array $requestIds, User $actor): Collection
+    private function inScopeQuotes(array $requestIds, User $actor): Collection
     {
-        /** @var Collection<int, Opportunity> $requests */
-        $requests = Opportunity::query()
-            ->whereIn('id', $requestIds)
-            ->orderBy('id')
-            ->get();
+        $query = Quote::query()->with('opportunity')->whereIn('id', $requestIds)->orderBy('id');
 
-        if ($actor->can('request-management.viewAll')) {
-            return $requests;
-        }
-
-        return $requests->filter(fn (Opportunity $request): bool => $this->scope->isOperatorOf($actor, $request))->values();
+        return RequestManagementScope::scopeToActor($query, $actor)->get();
     }
 
     /**
      * The composed label of every DISTINCT origin Sede in the batch, resolved
-     * in one query — never per row (N+1). A request with no current Sede
+     * in one query — never per row (N+1). An offer with no current Sede
      * contributes nothing (its origin stays null, AC-003).
      *
-     * @param  Collection<int, Opportunity>  $requests
+     * @param  Collection<int, Quote>  $quotes
      * @return array<int, string> operational_site_id => label
      */
-    private function originSiteLabels(Collection $requests): array
+    private function originSiteLabels(Collection $quotes): array
     {
-        $siteIds = $requests->pluck('operational_site_id')->filter()->unique()->values();
+        $siteIds = $quotes->pluck('operational_site_id')->filter()->unique()->values();
 
         if ($siteIds->isEmpty()) {
             return [];
@@ -139,64 +134,75 @@ final class RequestTransferService
     }
 
     /**
-     * One request: capture its state BEFORE the write, apply the Sede plus
-     * the transfer flags plus the GA2 operator, then the ONE explicit
-     * Activity Log entry that is this transfer's audit trail.
+     * One offer: capture its state BEFORE the write, apply the Sede plus the
+     * transfer flags plus the Supervisore, then the ONE explicit Activity Log
+     * entry that is this transfer's audit trail — anchored on the
+     * Opportunity (D-9).
      *
      * @param  array<int, string>  $originLabels
      */
-    private function transferOne(Opportunity $request, User $actor, int $operationalSiteId, int $operatorId, array $originLabels): RequestTransferNotice
+    private function transferOne(Quote $quote, User $actor, int $operationalSiteId, int $operatorId, array $originLabels): RequestTransferNotice
     {
         // Step 1: capture the origin/old state before overwriting anything.
-        $originSiteId = $request->operational_site_id;
-        $wasTransferred = (bool) $request->is_transferred;
-        $previousOperator = $request->operatorManager();
+        $originSiteId = $quote->operational_site_id;
+        $wasTransferred = (bool) $quote->is_transferred;
+        $previousSupervisor = $quote->supervisor;
 
         // Step 2: write the destination Sede plus the transfer flags. The
-        // automatic model log is suspended here — `operational_site_id` IS
-        // fillable and would otherwise produce its OWN automatic entry — so
-        // the explicit entry in Step 4 stays the ONE record of this transfer
-        // (AC-011/AC-012), never split across an automatic and an explicit row.
-        $request->disableLogging();
-        $request->operational_site_id = $operationalSiteId;
-        $request->is_transferred = true;
-        $request->transferred_from_operational_site_id = $originSiteId;
-        $request->save();
+        // automatic model log is suspended here (instance-scoped) —
+        // `operational_site_id`/`is_transferred` ARE fillable/persisted and
+        // would otherwise produce their OWN automatic entry on the Quote's
+        // own activity trail — so the explicit entry in Step 4, anchored on
+        // the Opportunity (D-9), stays the ONE record of this transfer
+        // (AC-011/AC-012), never split across an automatic and an explicit
+        // row.
+        $quote->disableLogging();
+        $quote->operational_site_id = $operationalSiteId;
+        $quote->is_transferred = true;
+        $quote->transferred_from_operational_site_id = $originSiteId;
+        $quote->save();
 
-        // Step 3: the GA2 "Operatore" slot (pivot) — never reaches the model
-        // log either way. `operator_id` is SEEDED here rather than left to
-        // apply()'s own early-return: a transfer always ASSIGNS an operator,
-        // changed or not (spec 0079 IDEMPOTENZA), unlike updateWork()/
+        // Step 3: the Supervisore (Quote column + GA2 pivot sync) — never
+        // reaches the Opportunity's automatic model log either way.
+        // `operator_id` is SEEDED here rather than left to apply()'s own
+        // early-return: a transfer always ASSIGNS an operator, changed or
+        // not (spec 0079 IDEMPOTENZA), unlike updateWork()/
         // RequestAssignmentService, which only report a genuine transition —
         // apply() is shared with both and must keep that behaviour for them.
         // When the operator DOES change, apply() overwrites both keys with
         // the same values already seeded here, so the diff stays consistent.
         $changed = ['operational_site_id' => $operationalSiteId, 'is_transferred' => true, 'operator_id' => $operatorId];
-        $old = ['operational_site_id' => $originSiteId, 'is_transferred' => $wasTransferred, 'operator_id' => $previousOperator?->id];
-        $this->operatorWriter->apply($request, $operatorId, $changed, $old);
+        $old = ['operational_site_id' => $originSiteId, 'is_transferred' => $wasTransferred, 'operator_id' => $previousSupervisor?->id];
+        $this->supervisorWriter->apply($quote, $operatorId, $changed, $old);
 
-        // Step 4: the ONE explicit Activity Log entry for this transfer.
-        activity($request->getTable())
-            ->performedOn($request)
+        // Step 4: the ONE explicit Activity Log entry for this transfer,
+        // anchored on the Opportunity (D-9).
+        activity($quote->opportunity->getTable())
+            ->performedOn($quote->opportunity)
             ->causedBy($actor)
             ->event('updated')
             ->withProperties(['attributes' => $changed, 'old' => $old])
             ->log('Request management contact transfer');
 
         // Step 5: accumulate the notification content — nothing sent here.
+        // `requestId` is the Offerta id (D-2): the panel it deep-links to
+        // opens by Quote id.
         return new RequestTransferNotice(
-            requestId: $request->id,
-            contactLabel: $request->name,
+            requestId: $quote->id,
+            contactLabel: $quote->opportunity->name,
             originSiteLabel: $originSiteId === null ? null : ($originLabels[$originSiteId] ?? null),
-            previousOperatorName: $previousOperator?->name,
-            previousOperatorId: $previousOperator?->id,
+            previousOperatorName: $previousSupervisor?->name,
+            previousOperatorId: $previousSupervisor?->id,
+            // Spec 0086, MT-04b: the deep link's `/opportunities/:id` branch
+            // needs this DISTINCT id — `requestId` now names the Quote.
+            opportunityId: $quote->opportunity_id,
         );
     }
 
     /**
-     * Three DISJOINT audiences per request (spec 0081): whoever lost the
+     * Three DISJOINT audiences per offer (spec 0081): whoever lost the
      * contact, whoever gained it, and whoever supervises the module — each
-     * with its own text. One send per request, so a batch of N produces N
+     * with its own text. One send per offer, so a batch of N produces N
      * notifications per recipient (documented consequence, data_contract).
      *
      * @param  array<int, RequestTransferNotice>  $notices
@@ -223,6 +229,9 @@ final class RequestTransferService
                 actorName: $actor->name,
                 transferredAt: $transferredAt,
                 recipientRole: $role,
+                // Spec 0086, MT-04b: the deep link's `/opportunities/:id`
+                // branch needs this DISTINCT id — `requestId` names the Quote.
+                opportunityId: $notice->opportunityId,
             );
 
             // Step 1: the outgoing operator — never the actor, and never the

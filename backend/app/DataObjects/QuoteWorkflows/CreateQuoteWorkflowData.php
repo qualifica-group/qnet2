@@ -18,10 +18,9 @@ use Illuminate\Support\Collection;
  * Service via WorkflowStatusWriter; when the client tags a submitted row
  * with a `system_key`, its descriptive fields SEED that system row (the user
  * can fill the pinned rows up front) — otherwise the writer's defaults
- * apply. Untagged rows are the intermediate CUSTOM rows.
- *
- * The fourth key, 'validated', is OPTIONAL and has no default (user directive
- * 2026-08-03): tagging a row with it is the ONLY way that row gets created.
+ * apply. Untagged rows are the intermediate CUSTOM rows, "Validato" ones
+ * included: that is a plain `group`, not a system key (user directive
+ * 2026-08-07).
  */
 final readonly class CreateQuoteWorkflowData
 {
@@ -29,7 +28,6 @@ final readonly class CreateQuoteWorkflowData
      * @param  array<int, array{field: string, value_id: int}>  $criteria
      * @param  array<int, array{name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statuses  custom rows only
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $openStatus  descriptive seed for the pinned 'open' row (null = writer default)
-     * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $validatedStatus  the row marked as the OPTIONAL 'validated' one (null = the set gets none)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedWonStatus  descriptive seed for the pinned 'closed_won' row (null = writer default)
      * @param  array{name: string, description: ?string, color: ?string, requires_note: bool}|null  $closedLostStatus  descriptive seed for the pinned 'closed_lost' row (null = writer default)
      */
@@ -39,7 +37,6 @@ final readonly class CreateQuoteWorkflowData
         public array $criteria,
         public array $statuses,
         public ?array $openStatus = null,
-        public ?array $validatedStatus = null,
         public ?array $closedWonStatus = null,
         public ?array $closedLostStatus = null,
     ) {}
@@ -60,7 +57,6 @@ final readonly class CreateQuoteWorkflowData
             criteria: self::normalizeCriteria($data['criteria']),
             statuses: self::normalizeStatuses($statuses),
             openStatus: self::extractSystemStatus($statuses, WorkflowStatusSystemKey::Open),
-            validatedStatus: self::extractSystemStatus($statuses, WorkflowStatusSystemKey::Validated),
             closedWonStatus: self::extractSystemStatus($statuses, WorkflowStatusSystemKey::ClosedWon),
             closedLostStatus: self::extractSystemStatus($statuses, WorkflowStatusSystemKey::ClosedLost),
         );

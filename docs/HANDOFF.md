@@ -3,6 +3,229 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REGOLE DI GESTIONE SULLA CATEGORIA PRODOTTO (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "In categoria prodotto form, voglio che prevede preventivo, modalita' gestione,
+selezionabile sia messa in una sezione dedicata a livello di ui. Voglio anche che venga aggiunto anche
+un setting che questa categoria prodotto puo' avere solo una offerta all'interno dell'opportunita',
+stesso comportamento di modalita' gestione [...] inserisci (i) su questi campi".
+
+**Nuovo setting: `single_quote_per_opportunity`** (booleano, default `false`). Stessa semantica
+ROOT-OWNED di `management_mode`: solo una categoria senza padre lo scrive, ogni discendente ne
+rispecchia il valore (colonna denormalizzata), un figlio che ne sottomette uno divergente prende 422.
+Regola DIVERSA da `management_mode`: quest'ultima limita le RIGHE prodotto di una scheda, la nuova
+limita il NUMERO DI DOCUMENTI OFFERTA di un'opportunita'.
+
+**Enforcement.** `App\Services\Opportunities\OpportunityQuoteLimit::allowsAdditionalQuote()` +
+il concern `ValidatesSingleQuotePerOpportunity`, agganciato SOLO a `StoreQuoteRequest` (un update non
+crea documenti). 422 su `opportunity_id`. **Grandfathering deliberato**: un'opportunita' che ha gia'
+piu' offerte quando il flag viene acceso le mantiene e resta modificabile.
+
+**Refactor anti-duplicazione (fatto, non opzionale da rifare).**
+- BE: `RootOwnedCategorySetting` (astratta) ora possiede walk-alla-radice + `syncSubtree` +
+  `sourceCategoryFor`; `RequiresQuoteInheritance`, `CategoryManagementModeInheritance` e la nuova
+  `SingleQuotePerOpportunityInheritance` la estendono e dichiarano solo la propria `column()`.
+- BE: `CategoryHierarchy` aveva superato le 500 righe (hook `code-guard`) → la proiezione ad albero
+  e' uscita in **`CategoryTreeBuilder`** (`tree()`/`buildNodes()`). `ProductCategoryService` inietta
+  ora anche `CategoryTreeBuilder`. Chi cerca `CategoryHierarchy::tree()` non lo trova piu'.
+- FE: `branch-root.ts` (`resolveBranchRoot`) e' l'unico walk; i tre resolver per-setting
+  (`requires-quote-inheritance`, `management-mode-inheritance`, `single-quote-inheritance`) sono
+  wrapper di 3 righe. `ProductCategoryRootFlagField` e' il componente condiviso dei flag root-owned.
+- FE: `product-category-form-payload.test.ts` ha superato le 500 righe → i test di
+  `buildCreatePayload` sono in **`product-category-form-payload-create.test.ts`**.
+
+**UI — sezione "Regole di gestione"** (`product-category-rules-section.tsx`). `requires_quote`,
+`management_mode`, `single_quote_per_opportunity` e `is_selectable` sono usciti dalla sezione
+identita' e vivono in una `FormSection` dedicata, a griglia `sm:grid-cols-2`, ogni regola in una
+`ProductCategoryRuleCard` (glifo che si tinge di primary quando la regola e' attiva + chip "Ereditata
+da X"). Ogni campo ha la (i) via il prop `hint` di `MetaField`. **`MetaField` ha un nuovo prop
+`layout?: 'stacked' | 'inline'`** (default `stacked` = markup identico a prima): `inline` e' la riga
+impostazioni label+hint+descrizione a sinistra, controllo a destra. Anche il detail raggruppa le
+quattro regole in un'unica sezione.
+
+**Attenzione al numero di migrazioni.** `QuoteWorkflowMigrationTest` fa `migrate:rollback --step N`:
+il conteggio e' passato **14 → 15**. Ogni nuova migrazione richiede di ribumparlo (lo dice il suo
+stesso commento).
+
+**Verificato (eseguito davvero).** Pest 5228 test — tutti verdi tranne `QuoteDocumentFidelityTest`
+(errore zip su tempdir, **flake d'ambiente**: passa da solo, non tocca codice mio). Vitest 500 file /
+3555 test verdi. `npx tsc -b --force` pulito. ESLint pulito sui file toccati (i 2 errori `_omit`
+restanti sono pre-esistenti in `referents`/`registries`).
+
+**NOTA D'AMBIENTE.** `./vendor/bin/pest` sull'intera suite **segfaulta (exit 139) con Xdebug attivo**
+e non stampa nulla: girare con `XDEBUG_MODE=off ./vendor/bin/pest`. Non e' un fallimento dei test.
+
+**Non fatto (segnalato, fuori scope).** L'UI Offerte non nasconde/disabilita ancora il pulsante "nuova
+offerta" su un'opportunita' gia' satura: il 422 del backend e' oggi l'unica barriera.
+
+## GESTIONE RICHIESTE SULLE OFFERTE — spec 0086 (2026-08-07) — NON COMMITTATO
+
+**Direttiva utente.** "Convertire la gestione delle righe della Gestione Richieste affinche' utilizzi
+come riferimento le righe delle Offerte, mantenendo invariato tutto il flusso gia' esistente."
+Spec: `docs/specs/0086-request-management-on-quotes.xml` (43 AC). Piano approvato, eseguito da un
+team a ownership disgiunta (database, backend x2, frontend, tester-debug, verifier).
+
+**Il cambiamento in una riga.** `RequestManagementTableDefinition::modelClass()` passa da
+`Opportunity::class` a `Quote::class`: una riga di griglia e' un record `quotes`. Cambiano solo il
+modello dati e l'origine dei campi; colonne, tab per categoria, filtri, ordinamenti e permessi
+restano quelli di prima.
+
+**Origine dei campi dopo la migrazione.** Dal QUOTE: `reporter_id` (Segnalatore), `operational_site_id`,
+`supervisor_id` (l'ex "Operatore GA2"), `rewards`, `is_transferred`, `transferred_from_operational_site_id`,
+`offer_lines`. Dall'OPPORTUNITA' via `quote.opportunity`: `source_id` (Fonte), `next_callback_at`,
+`product_lines`, anagrafica/Registry, `general_notes`.
+
+**Permessi.** Lo scoping non-supervisore passa da `opportunity_user.position = 2` a
+`quotes.supervisor_id`. Era duplicato in 6 punti, ora e' UNO solo riusato ovunque:
+`RequestManagementScope::scopeToActor(Builder $query, ?User $user): Builder` (statico, fail-closed:
+utente null non apre mai la visibilita'). Bypass invariato con `request-management.viewAll`.
+
+**D-3, il punto piu' delicato.** `RequestSupervisorWriter::apply(Quote, ?int, array &$changed, array &$old)`
+scrive `quotes.supervisor_id` E sincronizza lo slot `opportunity_user` position 2 nella stessa
+chiamata. E' questo che tiene valido `ValidatesQuoteSupervisor` SENZA averlo allentato: quel trait
+non e' stato toccato.
+
+**Tre decisioni CORRETTE in corsa (la spec riporta le formulazioni valide, non quelle originali).**
+- **D-10**: le richieste di modifica hanno per subject il QUOTE, non l'Opportunita'. Il meccanismo
+  generico risolve il record con `baseQuery()->findOrFail()` e applica con `updateCell()`, entrambi
+  keyed sul record di griglia. `Quote` ha quindi `HasFieldChangeRequests` + un attributo virtuale
+  READ-ONLY `source_id` che legge through da `quote.opportunity` (senza, il "valore attuale" nel
+  dialog sarebbe stato vuoto in silenzio). Documenti/Note/Storico restano invece sull'Opportunita'
+  (D-9) e usano la nuova chiave di riga `opportunity_id`.
+- **AC-011**: `operator_ga2` resta NON filtrabile e NON ordinabile. La formulazione originale
+  pretendeva un filtro set: era un errore, l'utente ha imposto che filtri e ordinamenti non cambino.
+- **`editableField` di `operator_ga2` resta `operator_id`** su entrambi i canali. Averlo congelato a
+  `supervisor_id` ha prodotto un bug reale (sotto). Esiste UNA sola chiave logica per questa
+  scrittura; la colonna DB su cui atterra e' un dettaglio interno del writer.
+
+**Due bug reali trovati ed eliminati (entrambi silenziosi, entrambi coperti da regressione).**
+1. Edit inline di `operator_ga2` in griglia: 200 OK e NESSUNA scrittura, perche' la cella inviava
+   `supervisor_id` mentre `updateWork()` riconosceva solo `operator_id`. Chiuso unificando la chiave.
+2. `RequestSupervisorWriter` non invalidava la relazione `supervisor` dopo la scrittura (asimmetrico
+   rispetto a `unsetRelation('managers')` del ramo gemello): per un attore SENZA `viewAll` la riga
+   esce dal proprio scope dopo la riassegnazione, il re-fetch fallisce, si ricade sull'istanza in
+   memoria e la risposta rispediva il VECCHIO operatore. Invisibile a qualunque test con utente
+   privilegiato. Regressione in `RequestManagementInlineEditorsTest`, con attore non privilegiato.
+3. `DemoOpportunityLifecycleSeeder` passava ancora un `Opportunity` a `updateWork()`. Corretto: itera
+   le Offerte, UNA per opportunita' (`next_callback_at` vive sull'Opportunita', quindi due offerte
+   sorelle si sovrascriverebbero a vicenda).
+
+**Conseguenza di comportamento da conoscere.** Un'opportunita' SENZA alcuna Offerta non compare piu'
+in questo modulo (AC-001) e le sue note non sono leggibili da qui, nemmeno con `viewAll` (prima:
+200 con lista vuota, ora 403). E' coerente col modello ma e' osservabile.
+
+**Stato.** 50 file di test migrati; suite backend 5202/5204 (1 skip, 1 rosso poi chiuso); frontend
+34 file / 183 test e suite completa 3543 verdi. Verdetto finale del verifier: DA COMPLETARE.
+
+**BLOCCO ESTERNO (non nostro).** `npx tsc -b --force` e' ROSSO con ~19 errori, TUTTI in
+`src/features/product-categories/**` (+1 in `features/products`), zero in `request-management`.
+Causa: la feature concorrente "riga singola" (voce sotto) ha reso `single_quote_per_opportunity` un
+campo OBBLIGATORIO di `ProductCategoryTreeNode`/`ProductCategoryDetail` e del tipo di payload, senza
+aggiornare le proprie fixture di test. Decisione dell'utente 2026-08-07: NON toccare, lo chiude chi
+possiede quella feature. Finche' resta, il gate typecheck del repo e' rosso.
+
+**Debito tecnico dichiarato.**
+- `RequestColumnCatalog.php` a ~455 righe: split di `actions()` in `RequestActionCatalog.php`
+  proposto e approvato, NON eseguito (rifattorizzare sopra una migrazione in corso e' rischio senza
+  guadagno). Da fare a freddo.
+- `RecordLinkResolver`/`AssignmentNotifier` ricevono un id "speciale per il ramo request-management"
+  come parametro opzionale: e' special-casing di un dominio dentro codice condiviso, accettato come
+  fix minimo per non spedire deep-link rotti. Una riprogettazione della catena di notifica e' fuori
+  dalla spec 0086.
+- `Quote.php` a 314 righe (14 oltre il soft limit, sotto il limite duro).
+
+**Attenzione a chi committa.** L'albero contiene TRE lavori mescolati: questa spec, la feature "riga
+singola" e il ritiro della system key `validated` da `quote_workflow_statuses`. Separare i commit.
+
+## RIGA SINGOLA: OFFERTA A UNA RIGA + EDITOR IN GRIGLIA (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "I prodotti che hanno riga singola non possono inserire piu' righe in funzioni
+aziendali e categorie prodotto; stessa cosa anche per offerte, solo una riga prodotto e' possibile
+aggiungere in quel caso." Scope confermato con l'utente: (1) chiudere l'ultimo buco UI sul lato
+`product_lines`, (2) estendere il limite alle righe OFFERTA (ricavo) del preventivo — le righe COSTO
+restano libere (voci interne, stessa asimmetria della regola di copertura D-7).
+
+**Regola nuova, lato offerta.** Un'opportunita' la cui radice categoria e' `management_mode = single`
+ammette UNA sola riga in `offer_lines`. Sta nella FormRequest (il canale d'ingresso e' solo
+POST/PATCH `/api/quotes`): `ValidatesQuoteLines::enforceSingleOfferLine()`, agganciata dal
+`withValidator()` di `StoreQuoteRequest` e `UpdateQuoteRequest`. Scatta **solo da 2 righe in su** e
+**solo se `offer_lines` viene effettivamente inviato** — un preventivo storico non conforme resta
+salvabile sugli altri campi (grandfathering D-5 applicato all'offerta). Messaggio:
+`OpportunityProductLineCoverage::SINGLE_OFFER_LINE_MESSAGE`, tradotto in `lang/it.json`.
+
+**Nuovo punto pubblico di risoluzione modalita':** `OpportunityProductLineCoverage::managementModeOf(Opportunity)`
+— per chi deve conoscere la modalita' senza avere prodotti da verificare (conta righe, non risolve
+categorie). Riusa il resolver privato gia' esistente: nessun secondo walk, nessuna query per riga.
+
+**Editor inline di cella `product_lines` (era il buco dichiarato il 2026-08-05).** Ora
+`ProductLinesCellEditor` risolve la modalita' dall'**albero categorie gia' in cache**
+(`useProductCategoryTree` + `resolveRowSetManagementMode`, identico al form): con radice `single` e
+una coppia gia' presente, input di ricerca e opzioni sono **disabilitati** (non nascosti, come il
+bottone "Aggiungi" del form) e la riga di aiuto diventa `table.productLinesEditor.singleModeReached`.
+`pick()` ha comunque la guardia. Prima la seconda coppia si poteva scegliere e il 422 arrivava solo
+al salvataggio.
+
+**Tab Offerta.** `QuoteOfferTab` risolve la modalita' dalla PRIMA categoria coperta
+(`categoryManagementMetaFor`, INV-1 garantisce radice unica) sullo stesso albero in cache — la
+proiezione `product_lines` dell'opportunita' porta solo id/nomi, non la modalita'. Passa
+`canAddRow` (prop nuova di `QuoteLinesField`, default `true`) e mostra
+`quotes.form.offerTab.hintSingleCategory`. **Indipendente da `unlocked`**: quello switch allarga il
+picker prodotti, non alza il tetto righe.
+
+**Verifica**: Pest `tests/Feature/Quotes` + `Opportunities` + `RequestManagementProductLineInvariantsTest`
+433 passed; nuovo `QuoteSingleOfferLineTest` 8 casi (verificato che falliscono senza la regola);
+Pint pulito sul diff; Vitest suite completa 498 file / 3543 test passed; `tsc -b --force` EXIT=0;
+ESLint pulito.
+
+**Segnalato, NON fatto (fuori scope):** i tre messaggi 0077 gia' esistenti
+(`SAME_BUSINESS_FUNCTION_MESSAGE`, `SAME_ROOT_CATEGORY_MESSAGE`, `SINGLE_ROW_ONLY_MESSAGE`) non sono
+in `lang/it.json` e arrivano all'utente in inglese.
+
+## 'VALIDATO' NON E' PIU' UNO STATO DI SISTEMA (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Nel **Configuratore Stati Offerta** ("validato" appariva accanto a "chiuso
+negativo" come riga obbligatoria, mentre le altre righe hanno il select libero): "voglio che
+validato non sia piu' obbligatorio ma facoltativo". Decisione presa con l'utente fra due letture:
+**eliminare del tutto il system key**, non solo spinnare la riga.
+
+**SOSTITUISCE** la voce "STATI DI LAVORAZIONE: 'VALIDATED' OPZIONALE, NESSUN DEFAULT (2026-08-03)"
+piu' in basso: quella e' storia, non il comportamento corrente. Non esiste piu' ne' marchio ne'
+riga di sistema `validated`.
+
+**Cosa vale ora.** `WorkflowStatusSystemKey` ha TRE casi (`open|closed_won|closed_lost`), tutti
+obbligatori e pinnati; `tailKeys()` e' l'unico metodo di coda (`mandatoryTailKeys()` non esiste
+piu'). `validated` sopravvive SOLO come valore di `WorkflowStatusGroup`: una qualunque riga custom
+puo' prenderlo dal select, anche piu' d'una, e la riga e' eliminabile/riordinabile come le altre.
+
+**Rimossi:** `App\Services\QuoteWorkflows\ValidatedStatusMarker` (+ `QuoteWorkflowValidatedRowTest`),
+il parametro `validatedStatus` di `CreateQuoteWorkflowData` e di
+`WorkflowStatusWriter::createWithCustoms()`, `system_key` dal payload di UPDATE lato BE
+(`UpdateQuoteWorkflowData`, `UpdateDefaultStatusesRequest`: su update una riga di sistema si
+identifica dall'`id` persistito) e lato FE (`UpdateQuoteWorkflowStatusPayload`),
+`frontend/.../workflow-status-rows.ts` + `markValidatedRow`, `isMandatoryWorkflowSystemKey`, lo
+switch "Stato di sistema Validato" e le chiavi i18n `markValidated`/`defaultValidatedName`.
+
+**Dati.** Migrazione `2026_08_07_120000_drop_validated_system_key_from_quote_workflow_statuses`:
+`system_key = null` dove valeva `'validated'`, **`group` invariato** — la "Validato" del set globale
+resta a schermo, come riga ordinaria. Attenzione: essendo ora una riga custom, un PUT
+`/quote-workflows/default-statuses` che non la reinvia la **cancella** (sync autoritativo).
+
+**Seeder.** `WorkflowStatusCatalogue::VALIDATED_STATUSES` non promuove piu': in `statusesFor()`
+sovrascrive il `group` della riga (solo "OK_Da Caricare" di AUTOIMPIEGO/YISU), che resta custom e
+per questo esce dalla promozione `closed_won` (che va a "Associato SI _ NOI", invariato). Le righe
+`validated` di `DemoWorkflowStatusCatalogue::PINNED` e `DemoQuoteWorkflowSeeder::SYSTEM_STATUSES`
+sono diventate righe CUSTOM di gruppo `validated`.
+
+**Verificato (eseguito).** BE: `tests/Feature/QuoteWorkflows` + `tests/Unit/QuoteWorkflows` +
+`tests/Feature/Seeding` = 137 passed. FE: suite completa 3539 passed, `tsc -b --force` pulito,
+ESLint pulito. La suite BE completa ha 48 failure + 1 error TUTTI in
+`tests/Feature/RequestManagement` e `Campaigns` — sono il refactor RequestManagement->Quote non
+committato gia' presente nel tree (es. `RequestManagementService::updateWork()` che riceve
+`Opportunity` invece di `Quote`), **non** questa modifica.
+
+**Se si tocca ancora l'area:** il conteggio `--step` di `QuoteWorkflowMigrationTest` e' salito a
+**14** (ogni nuova migrazione va sommata li').
+
 ## IDENTITA' UNIVOCA FRA UTENTI + ANAGRAFICHE + REFERENTI (2026-08-06) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "Quando c'e' un utente con telefono o codice fiscale o partita IVA, anagrafica
@@ -2072,7 +2295,7 @@ la spec 0073 aveva deliberatamente cancellato (`RewardLifecycleManager`, il suo 
 failure + 3 error deterministici. Ripristinato e riverificato. Il tree e' condiviso da piu' sessioni
 con molto lavoro non committato: usare solo comandi git di sola lettura.
 
-## STATI DI LAVORAZIONE: 'VALIDATED' OPZIONALE, NESSUN DEFAULT (2026-08-03) — VERDE, NON COMMITTATO
+## STATI DI LAVORAZIONE: 'VALIDATED' OPZIONALE, NESSUN DEFAULT (2026-08-03) — STORIA, SUPERATA IL 2026-08-07
 
 Direttiva utente: lo stato di sistema **`validated`** sugli stati di lavorazione
 (`OpportunityWorkflowStatus`) **non e' piu' obbligatorio e non ha default**; l'unico stato che lo

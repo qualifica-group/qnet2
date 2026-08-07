@@ -75,10 +75,11 @@ class RequestManagementScopedTableDefinition implements TableDefinition
 
         $categoryScope = $this->categoryScope;
 
-        // D-2: EXISTS on the opportunity's OWN product lines — a request
+        // D-2: EXISTS on the offer's opportunity's OWN product lines (spec
+        // 0086: `quotes` carries no product lines of its own) — a request
         // with lines on several categories is meant to appear in every
         // matching tab, never deduped here.
-        $query->whereHas('productLines', static function (Builder $relatedQuery) use ($categoryScope): void {
+        $query->whereHas('opportunity.productLines', static function (Builder $relatedQuery) use ($categoryScope): void {
             $relatedQuery->where('product_category_id', $categoryScope);
         });
 

@@ -1,9 +1,11 @@
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useController, type Control } from 'react-hook-form'
+import { Layers } from 'lucide-react'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
+import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
 import { indexCategoryTree } from '@/features/product-categories/business-function-inheritance'
 import {
   resolveInheritedManagementMode,
@@ -76,38 +78,53 @@ export function ProductCategoryManagementModeField({
   const value = inheritance ? inheritance.managementMode : field.value
 
   return (
-    <MetaField
-      control={control}
-      name="management_mode"
-      metaKey="management_mode"
-      label={t('productCategories.form.managementMode')}
-      description={
-        <FormDescription>
-          {inheritance
-            ? t('productCategories.form.managementModeInheritedHint', {
-                category: inheritance.sourceCategory.name,
-              })
-            : t('productCategories.form.managementModeHint')}
-        </FormDescription>
-      }
+    <ProductCategoryRuleCard
+      icon={Layers}
+      // "single" is the constraining mode: it is what the tinted glyph flags.
+      active={value === 'single'}
+      inheritedFrom={inheritance?.sourceCategory.name ?? null}
+      inheritedLabel={t('productCategories.form.inheritedFrom', {
+        category: inheritance?.sourceCategory.name ?? '',
+      })}
     >
-      {({ disabled }) => (
-        <Select
-          value={value}
-          onValueChange={(next) => field.onChange(next as CategoryManagementMode)}
-          disabled={disabled || inherited}
-        >
-          <FormControl>
-            <SelectTrigger size="sm" className="w-full text-xs">
-              <SelectValue />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            <SelectItem value="single">{t('productCategories.form.managementModeSingle')}</SelectItem>
-            <SelectItem value="multiple">{t('productCategories.form.managementModeMultiple')}</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
-    </MetaField>
+      <MetaField
+        control={control}
+        name="management_mode"
+        metaKey="management_mode"
+        layout="inline"
+        label={t('productCategories.form.managementMode')}
+        hint={t('productCategories.form.managementModeInfo')}
+        hintLabel={t('productCategories.form.managementModeInfoLabel')}
+        description={
+          <FormDescription>
+            {inheritance
+              ? t('productCategories.form.managementModeInheritedHint', {
+                  category: inheritance.sourceCategory.name,
+                })
+              : t('productCategories.form.managementModeHint')}
+          </FormDescription>
+        }
+      >
+        {({ disabled }) => (
+          <Select
+            value={value}
+            onValueChange={(next) => field.onChange(next as CategoryManagementMode)}
+            disabled={disabled || inherited}
+          >
+            <FormControl>
+              <SelectTrigger size="sm" className="w-44 max-w-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="single">{t('productCategories.form.managementModeSingle')}</SelectItem>
+              <SelectItem value="multiple">
+                {t('productCategories.form.managementModeMultiple')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </MetaField>
+    </ProductCategoryRuleCard>
   )
 }

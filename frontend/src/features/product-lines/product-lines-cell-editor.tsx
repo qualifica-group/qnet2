@@ -32,6 +32,9 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useForSelect } from '@/features/for-select/use-for-select'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TableRow } from '@/features/table/types'
 import { cn } from '@/lib/utils'
@@ -56,6 +59,9 @@ const SEARCH_DEBOUNCE_MS = 300
 
 /** The row key holding the products whose coverage a removal may break. */
 const PRODUCTS_COLUMN = 'products_of_interest'
+
+/** Stable empty tree while the shared query is still loading (mirrors `useProductLinesField`). */
+const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 /** The step the "add a pair" flow is on: pick the function, then its category. */
 type PickStep = 'business_function' | 'product_category'
@@ -93,6 +99,15 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   const selectedKeys = useMemo(() => new Set(pairs.map(pairKey)), [pairs])
   const orphanedProducts = useMemo(() => uncoveredProducts(data, pairs), [data, pairs])
 
+  // Spec 0077 INV-3 (user directive 2026-08-07): the form fields have hidden
+  // "Add" on a `single`-mode card since 2026-08-05 — this editor was the last
+  // channel where the second pair could still be picked, only to be refused by
+  // the server on commit. Resolved off the SAME cached category tree the form
+  // reads, so a pair loaded from the grid row carries the mode too.
+  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
+  const singleRowReached =
+    pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree)?.managementMode === 'single'
+
   const pickingCategory = step === 'product_category' && businessFunction !== null
 
   const {
@@ -118,6 +133,12 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   }
 
   const pick = (item: ForSelectItem) => {
+    // Defense in depth: the options are already disabled once the single-mode
+    // card holds its one pair, this guards a programmatic call too.
+    if (singleRowReached) {
+      return
+    }
+
     if (!pickingCategory) {
       setBusinessFunction(item)
       setStep('product_category')
@@ -203,14 +224,17 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
               ? t('table.productLinesEditor.categorySearch')
               : t('table.productLinesEditor.businessFunctionSearch')
           }
+          disabled={singleRowReached}
           className="h-7 text-xs"
         />
       </div>
 
       <p className="px-2 pb-1 text-xs text-muted-foreground">
-        {pickingCategory
-          ? t('table.productLinesEditor.categoryStep', { name: businessFunction.label })
-          : t('table.productLinesEditor.businessFunctionStep')}
+        {singleRowReached
+          ? t('table.productLinesEditor.singleModeReached')
+          : pickingCategory
+            ? t('table.productLinesEditor.categoryStep', { name: businessFunction.label })
+            : t('table.productLinesEditor.businessFunctionStep')}
       </p>
 
       <div
@@ -245,6 +269,10 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
               const already =
                 pickingCategory &&
                 selectedKeys.has(pairKey({ business_function_id: businessFunction.id, product_category_id: item.id }))
+              // Two distinct reasons to refuse a pick: the pair is already
+              // there (`aria-selected`), or the card is full (INV-3) — which
+              // is not a selection state, only a disabled one.
+              const blocked = already || singleRowReached
 
               return (
                 <button
@@ -252,12 +280,12 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
                   type="button"
                   role="option"
                   aria-selected={already}
-                  disabled={already}
+                  disabled={blocked}
                   onClick={() => pick(item)}
                   className={cn(
                     'flex w-full items-center gap-1.5 rounded-sm px-2.5 py-1 text-left text-xs',
                     'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-                    already && 'cursor-not-allowed text-muted-foreground',
+                    blocked && 'cursor-not-allowed text-muted-foreground',
                   )}
                 >
                   <span className="truncate">{item.label}</span>

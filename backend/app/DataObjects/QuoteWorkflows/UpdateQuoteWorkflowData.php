@@ -19,7 +19,7 @@ final readonly class UpdateQuoteWorkflowData
 {
     /**
      * @param  ?array<int, array{field: string, value_id: int}>  $criteria
-     * @param  ?array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool, system_key: ?string, system_key_submitted: bool}>  $statuses
+     * @param  ?array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>  $statuses
      */
     public function __construct(
         public ?string $name = null,
@@ -81,20 +81,14 @@ final readonly class UpdateQuoteWorkflowData
     }
 
     /**
-     * `system_key` is carried through for one reason only: the optional
-     * 'validated' mark (user directive 2026-08-03), which
-     * App\Services\QuoteWorkflows\ValidatedStatusMarker reads to
-     * promote/demote a row. The mandatory system rows keep the identity
-     * their persisted `id` already carries.
+     * A submitted `system_key` is deliberately DROPPED here: on update every
+     * system row is identified by its persisted `id` (the writer refuses a
+     * `group` change on one), and no key can be claimed or released by a
+     * payload — "Validato" is a plain group, not a system key (user
+     * directive 2026-08-07).
      *
-     * `system_key_submitted` carries the not-submitted/submitted-as-null
-     * distinction a plain nullable string can't express (same convention as
-     * `isActiveSubmitted` above): a payload that never mentions `system_key`
-     * — every pre-existing client, seeders included — must NOT be read as
-     * "remove the mark".
-     *
-     * @param  array<int, array{id?: mixed, name: mixed, description?: mixed, color?: mixed, group: mixed, requires_note?: mixed, system_key?: mixed}>  $statuses
-     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool, system_key: ?string, system_key_submitted: bool}>
+     * @param  array<int, array{id?: mixed, name: mixed, description?: mixed, color?: mixed, group: mixed, requires_note?: mixed}>  $statuses
+     * @return array<int, array{id: ?int, name: string, description: ?string, color: ?string, group: string, requires_note: bool}>
      */
     private static function normalizeStatuses(array $statuses): array
     {
@@ -106,8 +100,6 @@ final readonly class UpdateQuoteWorkflowData
                 'color' => array_key_exists('color', $status) ? $status['color'] : null,
                 'group' => (string) $status['group'],
                 'requires_note' => (bool) ($status['requires_note'] ?? false),
-                'system_key' => isset($status['system_key']) ? (string) $status['system_key'] : null,
-                'system_key_submitted' => array_key_exists('system_key', $status),
             ],
             $statuses,
         );

@@ -2,6 +2,7 @@
 
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -168,8 +169,9 @@ it('request-management: distinctValues search for a literal % stays literal, not
     $actor = operationalSiteEscapingRequestManagementActor();
     $target = siteWithLine1('Via 100% Sconto');
     $decoy = siteWithLine1('Via 1008 Sconto');
-    Opportunity::factory()->create(['operational_site_id' => $target->id]);
-    Opportunity::factory()->create(['operational_site_id' => $decoy->id]);
+    // Spec 0086, D-6: `operational_site_id` moved to `quotes` — the grid row.
+    Quote::factory()->create(['operational_site_id' => $target->id]);
+    Quote::factory()->create(['operational_site_id' => $decoy->id]);
     Sanctum::actingAs($actor);
 
     $values = operationalSiteDistinctValues('/api/tables/request-management/values', '100%');
@@ -194,8 +196,9 @@ it('request-management: distinctValues search for a literal _ stays literal, not
     $actor = operationalSiteEscapingRequestManagementActor();
     $target = siteWithLine1('Via A_1 Building');
     $decoy = siteWithLine1('Via AX1 Building');
-    Opportunity::factory()->create(['operational_site_id' => $target->id]);
-    Opportunity::factory()->create(['operational_site_id' => $decoy->id]);
+    // Spec 0086, D-6: `operational_site_id` moved to `quotes` — the grid row.
+    Quote::factory()->create(['operational_site_id' => $target->id]);
+    Quote::factory()->create(['operational_site_id' => $decoy->id]);
     Sanctum::actingAs($actor);
 
     $values = operationalSiteDistinctValues('/api/tables/request-management/values', 'A_1');
@@ -215,7 +218,8 @@ it('opportunities: distinctValues search with an apostrophe never breaks the que
 it('request-management: distinctValues search with an apostrophe never breaks the query (bound parameter)', function () {
     $actor = operationalSiteEscapingRequestManagementActor();
     $site = siteWithLine1("Via dell'Orso 5");
-    Opportunity::factory()->create(['operational_site_id' => $site->id]);
+    // Spec 0086, D-6: `operational_site_id` moved to `quotes` — the grid row.
+    Quote::factory()->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
     expect(operationalSiteDistinctValues('/api/tables/request-management/values', "dell'Orso"))->toBe(["Via dell'Orso 5"]);

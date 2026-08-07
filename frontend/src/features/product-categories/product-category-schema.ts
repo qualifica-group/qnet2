@@ -78,6 +78,7 @@ function baseFields(t: TFunction) {
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
     management_mode: z.enum(['single', 'multiple']),
+    single_quote_per_opportunity: z.boolean(),
     attributes: z.array(
       z.object({
         attribute_id: z.number(),

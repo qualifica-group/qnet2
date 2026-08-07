@@ -3,6 +3,7 @@
 use App\Models\Note;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,44 +53,46 @@ if (! function_exists('createNoteOn')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-010 — scoped to the actor's GA2 opportunities for a viewAny-but-not-viewAll
-// user (being GA1 or any other manager slot is NOT enough)
+// AC-010 — scoped to the actor's own SUPERVISED offers for a viewAny-but-not-
+// viewAll user (spec 0086, D-3: `quotes.supervisor_id`, no longer the GA2
+// opportunity-manager pivot slot — being ANY opportunity manager, GA1 or GA2,
+// is not enough on its own any more).
 // ---------------------------------------------------------------------------
 
-it('rows: a user with viewAny but without viewAll sees only opportunities where they are GA2 (AC-010)', function () {
+it('rows: a user with viewAny but without viewAll sees only offers they supervise (AC-010)', function () {
     $actor = requestManagementUserWith(['viewAny']);
-    $asOperator = Opportunity::factory()->create();
-    $asOperator->managers()->attach($actor->id, ['position' => 2]); // GA2 -> in scope
-    $asGa1 = Opportunity::factory()->create();
-    $asGa1->managers()->attach($actor->id, ['position' => 1]);      // GA1 only -> out of scope
-    $notManaged = Opportunity::factory()->create();
+    $supervised = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    // Being a manager of the underlying opportunity (any slot) is NOT the
+    // scoping rule any more (D-3) — only the offer's own supervisor_id is.
+    $managedButNotSupervised = Quote::factory()->create();
+    $managedButNotSupervised->opportunity->managers()->attach($actor->id, ['position' => 1]);
+    $unrelated = Quote::factory()->create();
 
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids->all())->toBe([$asOperator->id])
-        ->and($ids->all())->not->toContain($asGa1->id)
-        ->and($ids->all())->not->toContain($notManaged->id);
+    expect($ids->all())->toBe([$supervised->id])
+        ->and($ids->all())->not->toContain($managedButNotSupervised->id)
+        ->and($ids->all())->not->toContain($unrelated->id);
 });
 
 // ---------------------------------------------------------------------------
-// AC-011 — viewAll sees every opportunity, no scope filter
+// AC-011 — viewAll sees every offer, no scope filter
 // ---------------------------------------------------------------------------
 
-it('rows: a user with viewAll sees every opportunity, managed or not (AC-011)', function () {
+it('rows: a user with viewAll sees every offer, supervised or not (AC-011)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $managed = Opportunity::factory()->create();
-    $managed->managers()->attach($actor->id, ['position' => 1]);
-    $notManaged = Opportunity::factory()->create();
+    $supervised = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $notSupervised = Quote::factory()->create();
 
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids->all())->toContain($managed->id, $notManaged->id);
+    expect($ids->all())->toContain($supervised->id, $notSupervised->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -164,50 +167,51 @@ it('rows: the per-row notes action is gated by request-management.view, same as 
     // itself make it appear in a row's `actions` — that is a SEPARATE
     // allow-list (RequestManagementTableDefinition::actionsFor()), asserted
     // here independently of the catalogue-level test above.
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     $actorWithoutView = requestManagementUserWith(['viewAny', 'viewAll']);
     Sanctum::actingAs($actorWithoutView);
 
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
-    expect($items->firstWhere('id', $opportunity->id)['actions'])->not->toContain('notes');
+    expect($items->firstWhere('id', $quote->id)['actions'])->not->toContain('notes');
 
     $actorWithView = requestManagementUserWith(['viewAny', 'viewAll', 'view']);
     Sanctum::actingAs($actorWithView);
 
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
-    expect($items->firstWhere('id', $opportunity->id)['actions'])->toContain('notes');
+    expect($items->firstWhere('id', $quote->id)['actions'])->toContain('notes');
 });
 
 it('row.actions contains view + notes with request-management.view (AC-012)', function () {
     // Requirement changed by spec 0052 B4b: `notes` shares the SAME gate as
     // `view` (D-6), so it rides along on every row `view` is granted on —
     // updated from the former `['view']`-only expectation.
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
 
-    // viewAll makes the row visible regardless of GA2 scope; this test is about
-    // the row action being gated by request-management.view, not scoping.
+    // viewAll makes the row visible regardless of D-3 scope; this test is
+    // about the row action being gated by request-management.view, not
+    // scoping.
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     Sanctum::actingAs($actor);
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
-    expect($items->firstWhere('id', $opportunity->id)['actions'])->toBe([]);
+    expect($items->firstWhere('id', $quote->id)['actions'])->toBe([]);
 
     $actorWithView = requestManagementUserWith(['viewAny', 'viewAll', 'view']);
     Sanctum::actingAs($actorWithView);
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
-    expect($items->firstWhere('id', $opportunity->id)['actions'])->toBe(['view', 'notes']);
+    expect($items->firstWhere('id', $quote->id)['actions'])->toBe(['view', 'notes']);
 });
 
 // ---------------------------------------------------------------------------
-// AC-013 — zero managed opportunities, no viewAll: empty rows, never 500
+// AC-013 — zero supervised offers, no viewAll: empty rows, never 500
 // ---------------------------------------------------------------------------
 
-it('rows: a user managing nothing and without viewAll gets empty rows, not a 500 (AC-013)', function () {
+it('rows: a user supervising nothing and without viewAll gets empty rows, not a 500 (AC-013)', function () {
     $actor = requestManagementUserWith(['viewAny']);
-    Opportunity::factory()->count(3)->create();
+    Quote::factory()->count(3)->create();
 
     Sanctum::actingAs($actor);
 
@@ -218,10 +222,11 @@ it('rows: a user managing nothing and without viewAll gets empty rows, not a 500
 
 // ---------------------------------------------------------------------------
 // Row mapping: the operative columns surface with the expected shapes — the
-// GA2 operator name, and the client's anagraphic fields (nome/cognome/codice
-// fiscale/telefono) read from the Registry's PersonalData card. Spec 0083,
-// D-2: `workflow_status` is REMOVED from this grid entirely — the
-// Opportunity resolves no working state of its own any more.
+// offer's own Supervisore (D-3), and the client's anagraphic fields
+// (nome/cognome/codice fiscale/telefono) read from the Registry's
+// PersonalData card. Spec 0083, D-2: `workflow_status` is REMOVED from this
+// grid entirely — the Opportunity resolves no working state of its own any
+// more.
 // ---------------------------------------------------------------------------
 
 it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status key', function () {
@@ -236,18 +241,14 @@ it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status k
     ]);
     $card->contacts()->create(['type' => 'phone', 'value' => '+39 02 1234567', 'is_primary' => true]);
 
-    $ga1 = User::factory()->create(['name' => 'GA Uno']);
     $operator = User::factory()->create(['name' => 'Giulia Bianchi']);
-
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-    // GA1 = position 1, GA2 (the "Operatore") = position 2.
-    $opportunity->managers()->attach($ga1->id, ['position' => 1]);
-    $opportunity->managers()->attach($operator->id, ['position' => 2]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $operator->id]);
 
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row)->not->toHaveKey('workflow_status')
         ->and($row['operator_ga2'])->toMatchArray(['id' => $operator->id, 'name' => 'Giulia Bianchi'])
@@ -257,10 +258,25 @@ it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status k
         ->and($row['phone'])->toBe('+39 02 1234567');
 });
 
+it('AC-038: rows carry opportunity_id, the identifier documents/notes/activity row actions key off', function () {
+    $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    // Decoy first, so the quote id can never coincide with the opportunity id.
+    Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
+
+    expect($row)->toHaveKey('opportunity_id')
+        ->and($row['opportunity_id'])->toBe($quote->opportunity_id)
+        ->and($row['opportunity_id'])->not->toBe($quote->id);
+});
+
 // ---------------------------------------------------------------------------
 // AC-012 (spec 0056) — operational_site sorts/filters (set + advanced) by
 // the site's PRIMARY address line1, "allo stesso modo" as the opportunities
-// grid (AC-009/010)
+// grid (AC-009/010). Spec 0086, D-6: the FK is now on `quotes` itself.
 // ---------------------------------------------------------------------------
 
 it('rows: sorting by operational_site orders requests by the site\'s primary address line1 (AC-012)', function () {
@@ -269,8 +285,8 @@ it('rows: sorting by operational_site orders requests by the site\'s primary add
     $siteA->addresses()->create(['line1' => 'Alpha Street', 'is_primary' => true]);
     $siteB = OperationalSite::factory()->create();
     $siteB->addresses()->create(['line1' => 'Zulu Street', 'is_primary' => true]);
-    $opportunityZulu = Opportunity::factory()->create(['operational_site_id' => $siteB->id]);
-    $opportunityAlpha = Opportunity::factory()->create(['operational_site_id' => $siteA->id]);
+    $quoteZulu = Quote::factory()->create(['operational_site_id' => $siteB->id]);
+    $quoteAlpha = Quote::factory()->create(['operational_site_id' => $siteA->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', [
@@ -280,15 +296,15 @@ it('rows: sorting by operational_site orders requests by the site\'s primary add
     ])->assertOk();
 
     $ids = collect($response->json('items'))->pluck('id');
-    expect($ids->all())->toBe([$opportunityAlpha->id, $opportunityZulu->id]);
+    expect($ids->all())->toBe([$quoteAlpha->id, $quoteZulu->id]);
 });
 
 it('rows: a set filter on operational_site matches the site\'s primary address line1, bound (AC-012)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $site = OperationalSite::factory()->create();
     $site->addresses()->create(['line1' => 'Via Roma 1', 'is_primary' => true]);
-    $matching = Opportunity::factory()->create(['operational_site_id' => $site->id]);
-    Opportunity::factory()->create();
+    $matching = Quote::factory()->create(['operational_site_id' => $site->id]);
+    Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', [
@@ -307,8 +323,8 @@ it('rows: the operational_site advanced filter matches the picked site ids', fun
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $site = OperationalSite::factory()->create();
     $site->addresses()->create(['line1' => 'Corso Milano 10', 'is_primary' => true]);
-    $matching = Opportunity::factory()->create(['operational_site_id' => $site->id]);
-    Opportunity::factory()->create();
+    $matching = Quote::factory()->create(['operational_site_id' => $site->id]);
+    Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', [
@@ -334,11 +350,11 @@ it('rows: operational_site is the composed "{line1} - {city}" label (AC-015), no
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $site = OperationalSite::factory()->withAddress()->create();
     $site->addresses()->first()->update(['line1' => 'Via Roma 1']);
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $site->id]);
+    $quote = Quote::factory()->create(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row['operational_site'])->toBeArray()
         ->and($row['operational_site']['id'])->toBe($site->id)
@@ -348,43 +364,43 @@ it('rows: operational_site is the composed "{line1} - {city}" label (AC-015), no
 // ---------------------------------------------------------------------------
 // notes_count (spec 0052 B4c): the `notes` action badge — every message in
 // the discussion (roots + replies), soft-deleted excluded, single aggregated
-// query via HasNotes/withCount('notes').
+// query — still counted through the Opportunity (D-9).
 // ---------------------------------------------------------------------------
 
 it('rows: notes_count counts roots AND replies together', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
-    $root = createNoteOn($opportunity, $actor);
-    createNoteOn($opportunity, $actor, $root->id);
-    createNoteOn($opportunity, $actor);
+    $quote = Quote::factory()->create();
+    $root = createNoteOn($quote->opportunity, $actor);
+    createNoteOn($quote->opportunity, $actor, $root->id);
+    createNoteOn($quote->opportunity, $actor);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row['notes_count'])->toBe(3);
 });
 
 it('rows: a soft-deleted note is NOT counted in notes_count', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
-    createNoteOn($opportunity, $actor);
-    createNoteOn($opportunity, $actor)->delete();
+    $quote = Quote::factory()->create();
+    createNoteOn($quote->opportunity, $actor);
+    createNoteOn($quote->opportunity, $actor)->delete();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row['notes_count'])->toBe(1);
 });
 
 it('rows: a record with no notes exposes notes_count as 0, not null or absent', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $row = collect($response->json('items'))->firstWhere('id', $opportunity->id);
+    $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
     expect($row)->toHaveKey('notes_count')
         ->and($row['notes_count'])->toBe(0);

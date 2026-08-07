@@ -58,6 +58,9 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0077: same root-only semantics as requires_quote — omitted
             // = server-resolved (inherited, or "multiple" at a fresh root).
             'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],
+            // User directive 2026-08-07: same root-only semantics again —
+            // omitted = server-resolved (inherited, or false at a fresh root).
+            'single_quote_per_opportunity' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

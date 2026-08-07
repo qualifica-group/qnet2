@@ -37,12 +37,26 @@ final class AssignmentNotifier
      *                              null when this write did not change it
      * @param  array<int, int>  $managerPositions  userId => 1-based "G.A. n"
      *                                             slot, for NEW attachments only
+     * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: when
+     *                                           $record is an Opportunity
+     *                                           whose "Gestione Richieste"
+     *                                           row is really one of its
+     *                                           Offerte (a grid row IS a
+     *                                           Quote, not the Opportunity,
+     *                                           since spec 0086), the id that
+     *                                           deep-link must open — never
+     *                                           $record's own id. Null (every
+     *                                           caller outside
+     *                                           request-management) falls
+     *                                           back to $record's id, the
+     *                                           pre-0086 behaviour.
      */
     public function notify(
         Model $record,
         ?User $actor,
         ?int $supervisorId,
         array $managerPositions,
+        ?int $requestManagementRecordId = null,
     ): void {
         // Step 1: drop the actor from both roles.
         if ($actor !== null) {
@@ -65,7 +79,7 @@ final class AssignmentNotifier
         // Step 3: dispatch only once the write is durable — a notification
         // sent from inside a transaction that later rolls back would be
         // irrecoverable (same rule as NoteService::syncMentionsAndNotify()).
-        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions): void {
+        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions, $requestManagementRecordId): void {
             $recipients = $this->recipients($supervisorId, $managerPositions);
 
             if ($supervisorId !== null) {
@@ -77,6 +91,7 @@ final class AssignmentNotifier
                     position: null,
                     actorName: $actorName,
                     details: $details,
+                    requestManagementRecordId: $requestManagementRecordId,
                 ));
             }
 
@@ -89,6 +104,7 @@ final class AssignmentNotifier
                     position: $position,
                     actorName: $actorName,
                     details: $details,
+                    requestManagementRecordId: $requestManagementRecordId,
                 ));
             }
         });

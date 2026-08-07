@@ -84,7 +84,12 @@ const READONLY_SOURCE_PERMISSION = {
 
 function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): RequestWorkPanelWithPermissions {
   return {
-    id: 1,
+    // Deliberately DIFFERENT from `opportunity_id` (spec 0086 D-10): the Fonte
+    // picker's field-change-request interception keys on THIS one (the Quote),
+    // never the Opportunity — an id that coincided with `opportunity_id` would
+    // let an inverted wiring pass the assertion below by accident.
+    id: 4001,
+    opportunity_id: 8001,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
@@ -101,7 +106,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     transferred_from: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
-    products_of_interest: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
+    offer_lines: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
     client_identity: null,
     client_contacts: { owner: null, items: [] },
     client_address: null,
@@ -118,7 +123,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <RequestWorkPanelScreen id={1} />
+        <RequestWorkPanelScreen id={4001} />
       </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
@@ -155,7 +160,9 @@ describe('RequestAttributionSection — Fonte field-change-request interception 
     await waitFor(() =>
       expect(requestFieldChangeMock).toHaveBeenCalledWith({
         resource: 'request-management',
-        subjectId: 1,
+        // The Quote id (spec 0086 D-10), not the Opportunity id — the fixture
+        // keeps the two apart so an inverted wiring would fail this assertion.
+        subjectId: 4001,
         field: 'source_id',
         requestedValue: 40,
         currentLabel: 'Web',

@@ -14,18 +14,6 @@ import type {
 } from '@/features/request-management/types'
 
 /**
- * True when the products of interest differ as a SET (order is not part of
- * their identity). Exported alongside the one above because the schema gates
- * its mandatory rules on the same conditions: a key is checked client-side
- * only when it is actually going to be sent.
- */
-export function productsOfInterestChanged(current: number[], original: number[]): boolean {
-  const sort = (ids: number[]) => [...ids].sort((a, b) => a - b)
-
-  return clientBlockChanged(sort(current), sort(original))
-}
-
-/**
  * The panel's loaded funzione/categoria pairs in the row shape the field
  * editor (and the diff above) works with — the form defaults, the schema's
  * baseline and the payload's own comparison all go through this one mapper.
@@ -187,22 +175,14 @@ export function buildRequestWorkPayload(
     payload.client_contacts = values.client_contacts.map(toClientContactPayload)
   }
 
-  // "Prodotti di interesse" (user directive 2026-07-22): an authoritative
-  // replace, so it is sent only when the SET actually changed — order is not
-  // part of its identity.
-  const originalProducts = panel.products_of_interest.map((product) => product.id)
-  if (productsOfInterestChanged(values.products_of_interest, originalProducts)) {
-    payload.products_of_interest = values.products_of_interest
-  }
-
   // "Funzione aziendale" + "categoria prodotto" (user directive 2026-07-31):
-  // same authoritative-replace idiom, sent only when the pairs changed. Every
+  // an authoritative-replace idiom, sent only when the pairs changed. Every
   // row is complete by then — the schema refuses the submit otherwise.
   if (productLinesChanged(values.product_lines, toProductLineRows(panel.product_lines))) {
     payload.product_lines = toProductLinesPayload(values.product_lines)
   }
 
-  // Spec 0059 D-3: same authoritative-replace idiom as products of interest,
+  // Spec 0059 D-3: same authoritative-replace idiom as the collections above,
   // diffed as an unordered SET of reward-type ids.
   const currentRewardTypeIds = values.rewards.map((reward) => reward.reward_type_id).sort((a, b) => a - b)
   const originalRewardTypeIds = (panel.rewards ?? []).map((reward) => reward.reward_type.id).sort((a, b) => a - b)

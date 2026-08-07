@@ -157,6 +157,8 @@ export const quotes = {
       hintScoped: "Prodotti limitati alle categorie dell'opportunità collegata.",
       hintNoCategories: "L'opportunità non ha ancora categorie: aggiungine una riga oppure sblocca il catalogo.",
       hintUnlocked: 'Catalogo prodotti completo, senza filtro per categoria.',
+      hintSingleCategory:
+        "L'opportunità è gestita su una singola categoria prodotto: l'offerta può contenere una sola riga.",
       unlock: 'Mostra tutti i prodotti',
       relock: "Limita alle categorie dell'opportunità",
       unlockDialog: {

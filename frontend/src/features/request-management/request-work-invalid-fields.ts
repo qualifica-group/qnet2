@@ -32,7 +32,6 @@ function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined
     client_identity: t('requestManagement.workPanel.client.identityGroup'),
     client_contacts: t('requestManagement.workPanel.client.contactsGroup'),
     client_address: t('requestManagement.workPanel.client.addressGroup'),
-    products_of_interest: t('products.ofInterest.fieldLabel'),
     product_lines: t('requestManagement.workPanel.productLines.fieldLabel'),
     rewards: t('requestManagement.workPanel.attribution.rewards.fieldLabel'),
     source_id: t('requestManagement.workPanel.attribution.source'),

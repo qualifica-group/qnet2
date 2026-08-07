@@ -41,6 +41,16 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
      * @param  array<string, string>  $details  the record's detail card,
      *                                          english label => value, built
      *                                          by RecordDetails before dispatch
+     * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: overrides
+     *                                           $recordId for the
+     *                                           request-management branch of
+     *                                           the deep link only (a grid
+     *                                           row is a Quote, not an
+     *                                           Opportunity, since spec
+     *                                           0086) — null keeps the
+     *                                           pre-0086 behaviour of
+     *                                           reusing $recordId for both
+     *                                           branches.
      */
     public function __construct(
         private readonly AssignmentTargetEnum $target,
@@ -50,6 +60,7 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
         private readonly ?int $position,
         private readonly string $actorName,
         private readonly array $details = [],
+        private readonly ?int $requestManagementRecordId = null,
     ) {}
 
     /**
@@ -104,7 +115,7 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
     private function pathFor(object $notifiable): ?string
     {
         /** @var User $notifiable */
-        return RecordLinkResolver::pathFor($notifiable, $this->target, $this->recordId);
+        return RecordLinkResolver::pathFor($notifiable, $this->target, $this->recordId, $this->requestManagementRecordId);
     }
 
     private function title(): string

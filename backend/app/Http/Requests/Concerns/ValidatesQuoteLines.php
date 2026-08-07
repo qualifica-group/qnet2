@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\CategoryManagementMode;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Models\Opportunity;
+use App\Models\Quote;
+use App\Services\Opportunities\OpportunityProductLineCoverage;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,6 +39,56 @@ trait ValidatesQuoteLines
             $this->quoteLineFieldRules('offer_lines'),
             $this->quoteLineFieldRules('cost_lines'),
         );
+    }
+
+    /**
+     * Spec 0077, user directive 2026-08-07: an opportunity whose product
+     * category root is managed in `single` mode carries ONE product line
+     * (INV-3) — and its offer carries ONE product row, for the same reason.
+     * COST lines are untouched: they are internal cost items, not the sold
+     * product (same asymmetry as the coverage rule, D-7).
+     *
+     * Only ever checked when `offer_lines` is actually SUBMITTED, and only
+     * from the second row on: an update that leaves the collection untouched
+     * keeps a historic non-conforming quote saveable on its other fields,
+     * exactly like D-5's grandfathering on the opportunity side.
+     */
+    protected function enforceSingleOfferLine(Validator $validator, ?Quote $quote): void
+    {
+        $lines = $this->input('offer_lines');
+
+        if (! is_array($lines) || count($lines) < 2) {
+            return;
+        }
+
+        $opportunity = $this->offerLinesOpportunity($quote);
+
+        if ($opportunity === null) {
+            return;
+        }
+
+        if (app(OpportunityProductLineCoverage::class)->managementModeOf($opportunity) !== CategoryManagementMode::Single) {
+            return;
+        }
+
+        $validator->errors()->add('offer_lines', __(OpportunityProductLineCoverage::SINGLE_OFFER_LINE_MESSAGE));
+    }
+
+    /**
+     * The opportunity the submitted offer lines hang from: the quote's own on
+     * update (`opportunity_id` is `prohibited` there, AC-025), the submitted
+     * id on create. `null` whenever it cannot be resolved — an invalid id is
+     * already reported by its own `exists` rule.
+     */
+    private function offerLinesOpportunity(?Quote $quote): ?Opportunity
+    {
+        if ($quote !== null) {
+            return $quote->opportunity;
+        }
+
+        $opportunityId = $this->input('opportunity_id');
+
+        return is_numeric($opportunityId) ? Opportunity::find((int) $opportunityId) : null;
     }
 
     /**

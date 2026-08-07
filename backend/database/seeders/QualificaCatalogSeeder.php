@@ -4,15 +4,14 @@ namespace Database\Seeders;
 
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\AttributeContext;
-use App\Enums\CategoryManagementMode;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
-use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductService;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
+use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\TrainingCourseCatalogue;
@@ -51,6 +50,10 @@ use Illuminate\Database\Seeder;
  *     with its list price and its delivery mode ("Modalità di svolgimento",
  *     an enum attribute assigned to that subcategory alone). No other product
  *     is seeded;
+ *   - the ROOT-OWNED rules of the two roots (how many product lines a card
+ *     carries, how many offers an opportunity may hold), delegated to
+ *     QualificaCatalog\CatalogRootRules once the whole tree exists — it
+ *     re-syncs each branch;
  *   - the "stati di lavorazione" (spec 0047), delegated to
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
@@ -162,16 +165,6 @@ class QualificaCatalogSeeder extends Seeder
      */
     private const array SELECTABLE_SUBCATEGORIES = [
         SelfFundedCourseCatalogue::CATEGORY,
-    ];
-
-    /**
-     * `management_mode` (spec 0077) per catalogue root: "Formazione" is
-     * "single" (user directive 2026-08-03), "Consulenza" stays "multiple"
-     * (D-8 default) — listed explicitly so a re-run realigns both.
-     */
-    private const array CATALOG_MANAGEMENT_MODES = [
-        'Formazione' => CategoryManagementMode::Single,
-        'Consulenza' => CategoryManagementMode::Multiple,
     ];
 
     /**
@@ -339,19 +332,9 @@ class QualificaCatalogSeeder extends Seeder
             $this->seedCategoryAttributes($category, $specs, AttributeContext::Product);
         }
 
-        $this->seedCatalogManagementModes();
-    }
-
-    private function seedCatalogManagementModes(): void
-    {
-        $inheritance = app(CategoryManagementModeInheritance::class);
-        foreach (self::CATALOG_MANAGEMENT_MODES as $rootName => $mode) {
-            $root = ProductCategory::query()->where('name', $rootName)->whereNull('parent_id')->firstOrFail();
-            if ($root->management_mode !== $mode) {
-                $root->update(['management_mode' => $mode]);
-            }
-            $inheritance->syncSubtree($root);
-        }
+        // The root-owned rules come last: they re-sync the whole subtree, so
+        // every node must already exist.
+        app(CatalogRootRules::class)->apply();
     }
 
     /**

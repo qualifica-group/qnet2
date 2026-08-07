@@ -11,7 +11,6 @@ import {
  */
 function original(overrides: Partial<RequestWorkOriginalState> = {}): RequestWorkOriginalState {
   return {
-    products_of_interest: [7],
     product_lines: [{ business_function_id: 40, product_category_id: 500 }],
     client_identity: null,
     client_contacts: [],
@@ -26,8 +25,6 @@ function values(overrides: Record<string, unknown> = {}) {
     client_identity: null,
     client_contacts: [],
     client_address: [],
-    // Mandatory since the user directive 2026-07-23 (>=1 product).
-    products_of_interest: [7],
     // Editable since the user directive 2026-07-31; unchanged here, so the
     // collection's own rules stay dormant (see the dedicated suite below).
     product_lines: [{ business_function_id: 40, product_category_id: 500 }],
@@ -40,39 +37,6 @@ function values(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
 }
-
-// User directive 2026-07-23: the panel writes the same collection as the
-// opportunities form, so it carries the same mandatory rule.
-describe('buildRequestWorkSchema — products of interest', () => {
-  it('rejects an empty collection', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
-    const result = schema.safeParse(values({ products_of_interest: [] }))
-
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'products_of_interest')).toBe(true)
-    }
-  })
-
-  it('accepts one or more products', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
-
-    expect(schema.safeParse(values({ products_of_interest: [7] })).success).toBe(true)
-  })
-
-  /**
-   * `UpdateRequestRequest` marks the key `sometimes`: an untouched collection
-   * is never sent, so it is never validated server-side either. Blocking the
-   * submit for it would leave a record that legitimately has none unsavable
-   * for every OTHER field — the panel would refuse the save with no request
-   * ever going out.
-   */
-  it('leaves an empty collection alone while it stays untouched', () => {
-    const schema = buildRequestWorkSchema(original({ products_of_interest: [] }), i18n.t)
-
-    expect(schema.safeParse(values({ products_of_interest: [] })).success).toBe(true)
-  })
-})
 
 // User directive 2026-07-31: funzione aziendale + categoria prodotto are
 // edited from the panel too, under the create form's own two rules — but only

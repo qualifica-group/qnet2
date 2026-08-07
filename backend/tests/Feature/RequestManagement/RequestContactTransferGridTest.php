@@ -2,7 +2,7 @@
 
 use App\Jobs\GenerateExportJob;
 use App\Models\OperationalSite;
-use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// POST /api/request-management/transfer (spec 0079): the read/grid surface
-// and the two invariants that follow from it — AC-018 -> AC-021, AC-024,
-// AC-026.
+// POST /api/request-management/transfer (spec 0079, migrated onto the Quote
+// by spec 0086 D-6): the read/grid surface and the two invariants that
+// follow from it — AC-018 -> AC-021, AC-024, AC-026.
 
 uses(RefreshDatabase::class);
 
@@ -49,7 +49,7 @@ if (! function_exists('transferGridSite')) {
 
 it('the work panel exposes is_transferred and transferred_from {id,label}, null when never transferred (AC-018)', function () {
     $viewer = transferGridActorWith(['viewAll', 'view']);
-    $untouched = Opportunity::factory()->create();
+    $untouched = Quote::factory()->create();
     Sanctum::actingAs($viewer);
 
     $this->getJson("/api/request-management/{$untouched->id}")
@@ -60,7 +60,7 @@ it('the work panel exposes is_transferred and transferred_from {id,label}, null 
     $originSite = transferGridSite();
     $destinationSite = transferGridSite();
     $newOperator = User::factory()->create();
-    $transferredRequest = Opportunity::factory()->create(['operational_site_id' => $originSite->id]);
+    $transferredRequest = Quote::factory()->create(['operational_site_id' => $originSite->id]);
     $transferActor = transferGridActorWith(['update', 'viewAll', 'transferContact']);
     Sanctum::actingAs($transferActor);
     $this->postJson('/api/request-management/transfer', [
@@ -87,17 +87,18 @@ it('the grid sorts, boolean-filters and exports the is_transferred column (AC-01
     Queue::fake();
 
     $actor = transferGridActorWith(['viewAny', 'viewAll', 'view']);
-    // ExportController checks the ability against modelClass() (Opportunity),
-    // not this domain's own permission set — pre-existing behaviour of the
-    // generic export framework, unrelated to spec 0079.
-    Permission::findOrCreate('opportunities.export');
-    $actor->givePermissionTo('opportunities.export');
+    // ExportController checks the ability against modelClass() (Quote, spec
+    // 0086) via QuotePolicy, not this domain's own permission set —
+    // pre-existing behaviour of the generic export framework, unrelated to
+    // spec 0079.
+    Permission::findOrCreate('quotes.export');
+    $actor->givePermissionTo('quotes.export');
     // `is_transferred` is NOT fillable (AC-024): set directly, not via
     // the factory's mass-assigned `create()`.
-    $transferred = Opportunity::factory()->create();
+    $transferred = Quote::factory()->create();
     $transferred->is_transferred = true;
     $transferred->save();
-    Opportunity::factory()->create();
+    Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     // AC-019: sortable.
@@ -133,18 +134,18 @@ it('the grid sorts, boolean-filters and exports the is_transferred column (AC-01
 
 it('PATCH never writes is_transferred or transferred_from_operational_site_id, even when submitted (AC-024)', function () {
     $actor = transferGridActorWith(['update', 'viewAll', 'view']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     $otherSite = transferGridSite();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'is_transferred' => true,
         'transferred_from_operational_site_id' => $otherSite->id,
     ])->assertOk();
 
-    $opportunity->refresh();
-    expect($opportunity->is_transferred)->toBeFalse()
-        ->and($opportunity->transferred_from_operational_site_id)->toBeNull();
+    $quote->refresh();
+    expect($quote->is_transferred)->toBeFalse()
+        ->and($quote->transferred_from_operational_site_id)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------
@@ -156,19 +157,19 @@ it('deleting the origin Sede: no 409, the request survives, is_transferred stays
     $originSite = transferGridSite();
     $destinationSite = transferGridSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $originSite->id]);
+    $quote = Quote::factory()->create(['operational_site_id' => $originSite->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
 
     $originSite->delete();
 
-    $opportunity->refresh();
-    expect(Opportunity::query()->whereKey($opportunity->id)->exists())->toBeTrue()
-        ->and($opportunity->is_transferred)->toBeTrue()
-        ->and($opportunity->transferred_from_operational_site_id)->toBeNull();
+    $quote->refresh();
+    expect(Quote::query()->whereKey($quote->id)->exists())->toBeTrue()
+        ->and($quote->is_transferred)->toBeTrue()
+        ->and($quote->transferred_from_operational_site_id)->toBeNull();
 });

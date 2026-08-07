@@ -81,6 +81,8 @@ export const productCategories = {
     business_function: 'Funzione aziendale',
     requires_quote: 'Prevede preventivo',
     is_selectable: 'Selezionabile',
+    management_mode: 'Modalità di gestione',
+    single_quote_per_opportunity: 'Offerta unica per opportunità',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
     productsMore: '+{{count}} altri',
@@ -92,6 +94,7 @@ export const productCategories = {
     businessFunctionInherited: 'Ereditata da {{category}}',
     requiresQuoteInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
+    singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
   },
   bulkMove: {
@@ -169,6 +172,24 @@ export const productCategories = {
       'La modalità di gestione è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
     managementModeSingle: 'Singola (una riga per scheda)',
     managementModeMultiple: 'Multipla (più righe per scheda)',
+    requiresQuoteInfo:
+      "Stabilisce se le opportunità di questo ramo passano o meno da un'offerta. Se attivo, il modulo Offerte fa parte del flusso per ogni prodotto di questa categoria e delle sue sottocategorie; se disattivo, il ramo si lavora senza. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
+    requiresQuoteInfoLabel: 'Maggiori informazioni su Prevede preventivo',
+    managementModeInfo:
+      "Limita quante righe Categoria Prodotto può contenere una scheda. \"Singola\" blocca la scheda su UNA sola categoria prodotto: la sua offerta porta allora anche una sola riga prodotto, e un prodotto di un'altra categoria viene rifiutato invece di allargare in silenzio la copertura. \"Multipla\" è il comportamento senza vincoli. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
+    managementModeInfoLabel: 'Maggiori informazioni su Modalità di gestione',
+    singleQuotePerOpportunity: "Offerta unica per opportunità",
+    singleQuotePerOpportunityHint:
+      "Se attivo, un'opportunità su questa categoria accetta una sola offerta.",
+    singleQuotePerOpportunityInheritedHint:
+      'La regola di offerta unica è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    singleQuotePerOpportunityInfo:
+      "Limita quanti DOCUMENTI OFFERTA può contenere un'opportunità: è una regola diversa dalla modalità di gestione, che limita invece le righe prodotto di una scheda. Se attivo, la creazione di una seconda offerta su un'opportunità di questo ramo viene rifiutata. Le opportunità che ne hanno già più di una le mantengono e restano modificabili. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
+    singleQuotePerOpportunityInfoLabel: 'Maggiori informazioni su Offerta unica per opportunità',
+    isSelectableInfo:
+      "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
+    isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
+    inheritedFrom: 'Ereditata da {{category}}',
     managerLabelLevel: 'G.A. {{n}}',
     managerLabelPlaceholder: 'Gestore account {{n}}',
     managerLabelMax: "L'etichetta deve avere al massimo 60 caratteri.",
@@ -194,6 +215,11 @@ export const productCategories = {
       identity: {
         title: 'Dettagli',
         description: 'Nome, padre e descrizione della categoria.',
+      },
+      rules: {
+        title: 'Regole di gestione',
+        description:
+          "Cosa impone questa categoria a valle: preventivo, righe di scheda, offerte per opportunità e selezionabilità.",
       },
       attributes: {
         title: 'Attributi',

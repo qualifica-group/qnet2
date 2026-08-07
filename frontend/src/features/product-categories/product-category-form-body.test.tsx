@@ -87,7 +87,9 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     management_mode_source_category: null,
+    single_quote_per_opportunity_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -195,8 +197,9 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
 
     await screen.findByRole('button', { name: 'Save' })
 
-    // Scoped by accessible name: the identity section carries its own,
-    // unrelated switch (the quote flag), which a bare role query would count.
+    // Scoped by accessible name: the rules section carries its own, unrelated
+    // switches (quote flag, single offer, selectable), which a bare role query
+    // would count.
     expect(screen.queryAllByRole('switch', { name: 'Inherit from parent' })).toHaveLength(0)
   })
 })
@@ -236,6 +239,41 @@ describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
     expect(selectableSwitch).not.toBeChecked()
     // Unlike the quote flag, this one is never inherited: a child still edits it.
     expect(selectableSwitch).toBeEnabled()
+  })
+})
+
+/**
+ * User directive 2026-08-07: the four behavioural rules moved out of the
+ * identity fields into their own section, each carrying an (i) explanation.
+ */
+describe('ProductCategoryFormBody — management rules section', () => {
+  it('groups the four rules under one section, each with its info glyph', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    const rules = formSection('Management rules')
+
+    expect(within(rules).getByRole('switch', { name: 'Quoted' })).toBeInTheDocument()
+    expect(within(rules).getByRole('combobox')).toBeInTheDocument()
+    expect(within(rules).getByRole('switch', { name: 'One offer per opportunity' })).toBeInTheDocument()
+    expect(within(rules).getByRole('switch', { name: 'Selectable' })).toBeInTheDocument()
+
+    for (const rule of ['Quoted', 'Management mode', 'One offer per opportunity', 'Selectable']) {
+      expect(within(rules).getByRole('button', { name: `More info about ${rule}` })).toBeInTheDocument()
+    }
+  })
+
+  it('no longer shows the rules inside the identity section', async () => {
+    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('button', { name: 'Save' })
+
+    expect(within(formSection('Details')).queryAllByRole('switch')).toHaveLength(0)
   })
 })
 

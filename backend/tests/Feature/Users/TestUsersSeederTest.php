@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\NavigationService;
@@ -52,14 +53,14 @@ function testerAccounts(): array
 }
 
 /**
- * Puts $user in the request's GA2 "Operatore" pivot slot — the only way a role
- * without `request-management.viewAll` reaches a request (D-3 scoping).
+ * Creates an offer on $opportunity supervised by $user (spec 0086, D-3) —
+ * the only way a role without `request-management.viewAll` reaches a
+ * request now: `quotes.supervisor_id`, no longer the GA2 "Operatore" pivot
+ * slot on its own.
  */
-function asOperatorOf(Opportunity $request, User $user): Opportunity
+function asSupervisorOf(Opportunity $opportunity, User $user): Quote
 {
-    $request->managers()->syncWithoutDetaching([$user->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-
-    return $request;
+    return Quote::factory()->for($opportunity)->create(['supervisor_id' => $user->id]);
 }
 
 it('creates every tester account with its role, standalone on a fresh database', function () {
@@ -278,17 +279,17 @@ it('drops the administration, configuration and restricted anagrafiche entries f
 
 // The Commercial holds no `request-management.viewAll`, so the module's D-3
 // scoping (RequestManagementTableDefinition::baseQuery) applies to them: the
-// list is exactly the requests where they sit in the GA2 "Operatore" pivot
-// slot. Granting viewAll to the role silently lifted this for every commercial.
-it('scopes the commercial request list to the requests they hold as GA2 operator', function () {
+// list is exactly the offers they supervise (`quotes.supervisor_id`).
+// Granting viewAll to the role silently lifted this for every commercial.
+it('scopes the commercial request list to the offers they supervise', function () {
     $this->seed(TestUsersSeeder::class);
 
     $lazio = User::query()->where('email', 'lazio@commerciale.com')->firstOrFail();
     $campania = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
 
-    $own = asOperatorOf(Opportunity::factory()->create(), $lazio);
-    $othersRequest = asOperatorOf(Opportunity::factory()->create(), $campania);
-    $unassigned = Opportunity::factory()->create();
+    $own = asSupervisorOf(Opportunity::factory()->create(), $lazio);
+    $othersRequest = asSupervisorOf(Opportunity::factory()->create(), $campania);
+    $unassigned = Quote::factory()->create();
 
     Sanctum::actingAs($lazio);
 
@@ -307,7 +308,7 @@ it('closes the commercial delete of a request, row action and bulk engine alike'
     $this->seed(TestUsersSeeder::class);
 
     $actor = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
-    $opportunity = asOperatorOf(Opportunity::factory()->create(), $actor);
+    $quote = asSupervisorOf(Opportunity::factory()->create(), $actor);
 
     Sanctum::actingAs($actor);
 
@@ -317,16 +318,16 @@ it('closes the commercial delete of a request, row action and bulk engine alike'
         ->assertOk()
         ->json('items');
 
-    expect(collect($items)->firstWhere('id', $opportunity->id)['actions'])->not->toContain('delete');
+    expect(collect($items)->firstWhere('id', $quote->id)['actions'])->not->toContain('delete');
 
     // ...and the generic bulk engine refuses the id: the endpoint's baseline
     // gate is the definition's viewAny, the per-row check is authorizeDelete().
-    $result = $this->postJson('/api/tables/request-management/bulk-delete', ['ids' => [$opportunity->id]])
+    $result = $this->postJson('/api/tables/request-management/bulk-delete', ['ids' => [$quote->id]])
         ->assertOk()
         ->json('data');
 
     expect($result['deleted'])->toBe(0);
-    $this->assertDatabaseHas('opportunities', ['id' => $opportunity->id]);
+    $this->assertDatabaseHas('quotes', ['id' => $quote->id]);
 });
 
 it('lets the commercial role create a referent, for the create form quick-create "+"', function () {
@@ -349,7 +350,8 @@ it('lets the commercial role write a collaborative note on a request', function 
     $actor = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
     // A request of theirs: note authorization runs the same D-3 record
     // boundary (RequestManagementNotable), which no longer opens via viewAll.
-    $opportunity = asOperatorOf(Opportunity::factory()->create(), $actor);
+    $opportunity = Opportunity::factory()->create();
+    asSupervisorOf($opportunity, $actor);
 
     Sanctum::actingAs($actor);
 

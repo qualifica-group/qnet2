@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\Opportunity;
+use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\Geo\GeoNameLocalizer;
@@ -15,18 +17,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Wire shape for the request-management work panel (spec 0049,
- * data_contract GET/PATCH /api/request-management/{opportunity}). Consumes
- * the {opportunity} array RequestManagementService::loadWorkPanel()/
- * updateWork() build — never a raw Opportunity/OpportunityResource: this is a
- * DEDICATED, purpose-built shape for the operative panel (contacts owners,
- * read-only context), independent from the opportunities CRUD resource
- * (D-1/constraints: no change to OpportunityResource's own contract here).
- * Spec 0083, D-2: this panel no longer advances any working status of its
- * own — `workflow_status`/`workflow_statuses` are GONE, `status` stays the
- * COMPUTED, read-only summary (OpportunityStatusResolver) it already was.
- * Spec 0084, D-1: the former `applicable_attributes`/`attribute_layout`
- * additive pair (spec 0049/0062) is REMOVED — the dynamic "Informazioni
- * aggiuntive" section moved to the Offerta (Quote), see QuoteResource.
+ * data_contract GET/PATCH/POST /api/request-management/{quote}, migrated
+ * onto the Quote by spec 0086 D-2). Consumes the {quote} array
+ * RequestManagementService::loadWorkPanel()/updateWork() build — never a raw
+ * Quote/QuoteResource: this is a DEDICATED, purpose-built shape for the
+ * operative panel (contacts owners, read-only context), independent from the
+ * quotes CRUD resource.
+ *
+ * Spec 0086, D-2/D-9: `id`/`opportunity_id` and every field the panel already
+ * carried are re-sourced per the data_contract — the opportunity-level blocks
+ * (identity, attribution's Fonte, product lines, context) read through
+ * `quote.opportunity`, while `reporter`/`operational_site`/`is_transferred`/
+ * `transferred_from`/`operator` (still wired to `operator_id`/`operator` on
+ * the wire) and `rewards` come straight off the Quote. `products_of_interest`
+ * is REPLACED by `offer_lines` (AC-021), the Quote's own REVENUE lines.
  *
  * `client_contacts`/`referent_contacts` expose an `owner` OwnerRef
  * (`{type: 'personal_data', id}`) alongside the contact `items`, so the
@@ -46,7 +50,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class RequestManagementResource extends JsonResource
 {
     /**
-     * @param  array{opportunity: Opportunity}  $resource
+     * @param  array{quote: Quote}  $resource
      */
     public function __construct(array $resource)
     {
@@ -58,11 +62,16 @@ class RequestManagementResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var Quote $quote */
+        $quote = $this->resource['quote'];
         /** @var Opportunity $opportunity */
-        $opportunity = $this->resource['opportunity'];
+        $opportunity = $quote->opportunity;
 
         return [
-            'id' => $opportunity->id,
+            'id' => $quote->id,
+            // Spec 0086, D-9: the collaborative record's own identifier —
+            // documents/notes/activity row actions key off this, never `id`.
+            'opportunity_id' => $opportunity->id,
             'name' => $opportunity->name,
             'registry' => $this->summarizeByName($opportunity->registry),
             'referent' => $this->summarizeByName($opportunity->referent),
@@ -70,30 +79,37 @@ class RequestManagementResource extends JsonResource
             // Attribution block (user directive 2026-07-22): editable from
             // this panel, so each one ships BOTH its id (the form's value)
             // and its `{id, name}` projection (the picker's hydration).
+            // "Fonte" stays on the Opportunity (D-2); "Segnalatore" and the
+            // Sede operativa moved to the Quote (see below).
             'source_id' => $opportunity->source_id,
             'source' => $this->summarizeByName($opportunity->source),
-            'reporter_id' => $opportunity->reporter_id,
-            'reporter' => $this->summarizeByName($opportunity->reporter),
+            'reporter_id' => $quote->reporter_id,
+            'reporter' => $this->summarizeByName($quote->reporter),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block — the site has no own name, so its ref is
             // {id, label} (OperationalSiteLabel), NOT summarizeByName().
-            'operational_site_id' => $opportunity->operational_site_id,
-            'operational_site' => OperationalSiteLabel::summarize($opportunity->operationalSite),
-            // Spec 0079: the transfer flag + the origin Sede's label, both
-            // read-only outputs — no form, inline-editor or endpoint of this
-            // module accepts either in writing (AC-024).
-            'is_transferred' => (bool) $opportunity->is_transferred,
-            'transferred_from' => OperationalSiteLabel::summarize($opportunity->transferredFromOperationalSite),
-            'operator_id' => $opportunity->operatorManager()?->id,
-            'operator' => $this->summarizeByName($opportunity->operatorManager()),
+            'operational_site_id' => $quote->operational_site_id,
+            'operational_site' => OperationalSiteLabel::summarize($quote->operationalSite),
+            // Spec 0079/0086 D-6: the transfer flag + the origin Sede's
+            // label, both read-only outputs, now per-Offerta — two sibling
+            // quotes of the same opportunity carry independent values.
+            'is_transferred' => (bool) $quote->is_transferred,
+            'transferred_from' => OperationalSiteLabel::summarize($quote->transferredFromOperationalSite),
+            // Wire keys stay `operator_id`/`operator` (D-2: the frontend
+            // still calls it "operatore"); the value is the Offerta's own
+            // Supervisore (AC-020).
+            'operator_id' => $quote->supervisor_id,
+            'operator' => $this->summarizeByName($quote->supervisor),
             // Spec 0080: ADDITIVE — the "Gestore Account" label overrides
-            // resolved from the request's product line(s), so the panel can
-            // rietichettare "Operatore (GA2)" with the level-2 label when the
-            // category defines one. `{}` when not resolvable.
+            // resolved from the opportunity's product line(s), so the panel
+            // can rietichettare "Operatore (GA2)" with the level-2 label when
+            // the category defines one. `{}` when not resolvable.
             'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($opportunity),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
             'product_lines' => $this->summarizeProductLines($opportunity->productLines),
-            'products_of_interest' => $this->summarizeProductsOfInterest($opportunity->productsOfInterest),
+            // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the
+            // Offerta's own REVENUE lines, read-only from this module.
+            'offer_lines' => $this->summarizeOfferLines($quote->offerLines),
             'client_identity' => $this->summarizeClientIdentity($opportunity->registry),
             'client_contacts' => $this->summarizeContacts($opportunity->registry),
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
@@ -136,21 +152,20 @@ class RequestManagementResource extends JsonResource
     }
 
     /**
-     * "Prodotti di interesse" (user directive 2026-07-22): the products the
-     * operator recorded for this request, each with its own category so the
-     * panel can show which product line it belongs to. Same shape as
-     * OpportunityResource's, so the work panel and the opportunity card read
-     * the collection identically.
+     * "Linee di prodotto" (spec 0086, D-7): the Offerta's own REVENUE lines'
+     * products, each with its own category — replaces "prodotti di
+     * interesse" in this module (AC-007/AC-021), read-only.
      *
+     * @param  iterable<int, QuoteLine>  $lines
      * @return array<int, array{id: int, name: string, product_category: array{id: int, name: string}|null}>
      */
-    private function summarizeProductsOfInterest(iterable $products): array
+    private function summarizeOfferLines(iterable $lines): array
     {
-        return collect($products)
-            ->map(fn (Model $product): array => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'product_category' => $this->summarizeByName($product->category),
+        return collect($lines)
+            ->map(fn (QuoteLine $line): array => [
+                'id' => $line->product->id,
+                'name' => $line->product->name,
+                'product_category' => $this->summarizeByName($line->product->category),
             ])
             ->values()
             ->all();
@@ -192,7 +207,7 @@ class RequestManagementResource extends JsonResource
      * PersonalData and re-exposed here on purpose, exactly as
      * PersonalDataResource does for the identity sheet — property access
      * bypasses $hidden, so this projection is the re-exposure point. It is
-     * reachable only through `request-management.view` plus the GA2 scope
+     * reachable only through `request-management.view` plus the D-3 scope
      * guard (RequestManagementScope), the same gate as the rest of the panel.
      *
      * `null` when the client has no card yet: there is nothing to show, and the

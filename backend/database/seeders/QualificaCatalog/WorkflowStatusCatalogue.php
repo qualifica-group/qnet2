@@ -3,7 +3,6 @@
 namespace Database\Seeders\QualificaCatalog;
 
 use App\Enums\WorkflowStatusGroup;
-use App\Enums\WorkflowStatusSystemKey;
 use InvalidArgumentException;
 
 /**
@@ -244,14 +243,11 @@ final class WorkflowStatusCatalogue
 
     /**
      * The groups whose first sheet row is PROMOTED onto the matching pinned
-     * system row (user decision 2026-07-28): every set is created with four
+     * system row (user decision 2026-07-28): every set is created with three
      * pinned rows whose default labels ("Aperta", "Chiusa positiva", "Chiusa
      * negativa") belong to no block of the sheet, so each takes the label of
      * the first state the sheet classifies under its own group instead — the
      * `open` one lands on "Da Richiamare" in every block.
-     *
-     * `validated` is deliberately absent: it is not promoted BY GROUP (no
-     * sheet state is classified as such) but by NAME, see VALIDATED_STATUSES.
      *
      * @var list<string>
      */
@@ -262,16 +258,17 @@ final class WorkflowStatusCatalogue
     ];
 
     /**
-     * Section key => the ONE state that carries the optional 'validated'
-     * system row. Only "OK_Da Caricare" does — "pratica verificata e pronta
-     * per essere caricata" is exactly the working phase's last step, esito
-     * accertato ma non ancora chiuso (user directive 2026-08-03). Every other
-     * section is seeded WITHOUT a validated row: it is optional and has no
-     * default.
+     * Section key => the ONE state classified under the `validated` GROUP
+     * rather than the one its legend colour would give it. Only "OK_Da
+     * Caricare" is — "pratica verificata e pronta per essere caricata" is
+     * exactly the working phase's last step, esito accertato ma non ancora
+     * chiuso (user directive 2026-08-03); the sheet paints it green, which
+     * would otherwise classify it as a closed positive outcome.
      *
-     * A section listed here loses that state from its closed_won promotion:
-     * pinnedStatusesFor() removes it before picking the first ClosedWon row,
-     * so the positive outcome falls to the next one ("Associato SI _ NOI").
+     * It is a plain CUSTOM row like any other (user directive 2026-08-07:
+     * `validated` is a group, not a system key). Being out of the closed_won
+     * group also takes it out of that promotion, so the positive outcome
+     * falls to the next green state ("Associato SI _ NOI").
      *
      * @var array<string, string>
      */
@@ -281,28 +278,17 @@ final class WorkflowStatusCatalogue
 
     /**
      * The sheet row promoted onto each system row of $categoryName's set,
-     * keyed by system key and shaped to the CreateQuoteWorkflowData
-     * system-row contract (no `group`: a pinned row's group is fixed by its
-     * system key). Null for a key the category's list never fills — the three
-     * MANDATORY rows then keep the writer's default label, while a null
-     * `validated` means the set gets no validated row at all.
+     * keyed by group and shaped to the CreateQuoteWorkflowData system-row
+     * contract (no `group`: a pinned row's group is fixed by its system
+     * key). Null for a group the category's list never fills — that pinned
+     * row then keeps the writer's default label.
      *
      * @return array<string, array{name: string, description: string, color: string, requires_note: bool}|null>
      */
     public static function pinnedStatusesFor(string $categoryName): array
     {
-        $validatedName = self::validatedStatusNameFor($categoryName);
-
-        // The validated state is claimed BEFORE the group promotions, so it
-        // never doubles as the closed_won row of its own section.
-        $statuses = array_values(array_filter(
-            self::statusesFor($categoryName),
-            static fn (array $status): bool => $status['name'] !== $validatedName,
-        ));
-
-        $promoted = [WorkflowStatusSystemKey::Validated->value => self::promotable(
-            array_find(self::statusesFor($categoryName), static fn (array $status): bool => $status['name'] === $validatedName),
-        )];
+        $statuses = self::statusesFor($categoryName);
+        $promoted = [];
 
         foreach (self::PINNED_GROUPS as $group) {
             $promoted[$group] = self::promotable(
@@ -314,7 +300,7 @@ final class WorkflowStatusCatalogue
     }
 
     /**
-     * The state $categoryName's section marks as the validated one, or null
+     * The state $categoryName's section classifies as `validated`, or null
      * when it declares none (VALIDATED_STATUSES).
      */
     private static function validatedStatusNameFor(string $categoryName): ?string
@@ -369,9 +355,10 @@ final class WorkflowStatusCatalogue
         $workflow = self::WORKFLOWS[$categoryName] ?? throw new InvalidArgumentException("Unknown workflow category [{$categoryName}].");
         $section = self::SECTIONS[$workflow['section']];
         $names = $workflow['statuses'] ?? array_keys($section);
+        $validatedName = self::validatedStatusNameFor($categoryName);
 
         return array_map(
-            static function (string $name) use ($section, $categoryName): array {
+            static function (string $name) use ($section, $categoryName, $validatedName): array {
                 // A region listing a name the section never defines means the
                 // two halves of the sheet drifted apart: fail loudly rather
                 // than seed a status with no description nor classification.
@@ -382,7 +369,10 @@ final class WorkflowStatusCatalogue
                     'name' => $name,
                     'description' => $status['description'],
                     'color' => $legend['color'],
-                    'group' => $legend['group'],
+                    // The legend classifies by fill colour alone, so the one
+                    // "validated" state of a section overrides it (see
+                    // VALIDATED_STATUSES).
+                    'group' => $name === $validatedName ? WorkflowStatusGroup::Validated->value : $legend['group'],
                     // Nothing in the sheet marks a state as note-requiring.
                     'requires_note' => false,
                 ];

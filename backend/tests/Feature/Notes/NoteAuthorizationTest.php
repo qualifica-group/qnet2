@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -9,7 +10,11 @@ use Spatie\Permission\Models\Role;
 
 // D-6 hybrid authorization: read is inherited from the host entity, write
 // requires `notes.create` ANDed with that same read access. Author-only
-// mutability (D-8), with Gate::before still granting the super-admin.
+// mutability (D-8), with Gate::before still granting the super-admin. Spec
+// 0086, D-9: read access is re-keyed on the Opportunity's own Offerte
+// (`RequestManagementNotable::authorizeRead()`) — an actor reads when they
+// SUPERVISE at least one Offerta of the Opportunity (D-3, `quotes.
+// supervisor_id`), not when they hold any opportunity-manager pivot slot.
 
 uses(RefreshDatabase::class);
 
@@ -34,10 +39,10 @@ if (! function_exists('noteActor')) {
 }
 
 if (! function_exists('noteManagedOpportunity')) {
-    function noteManagedOpportunity(User $manager): Opportunity
+    function noteManagedOpportunity(User $supervisor): Opportunity
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+        Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
 
         return $opportunity;
     }
@@ -76,6 +81,11 @@ it('a user without request-management.view -> 403 (AC-030)', function () {
 it('a user with request-management.viewAll reads notes on ANY record (AC-030)', function () {
     $actor = noteActor(['request-management.view', 'request-management.viewAll']);
     $opportunity = Opportunity::factory()->create();
+    // D-9: read access is re-keyed on the Opportunity's own Offerte — an
+    // Opportunity with zero Offerte has no `request-management` record to
+    // speak of any more (D-1: a row is always a Quote), so it needs at least
+    // one (unsupervised is fine: viewAll ignores the supervisor filter).
+    Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertOk();
@@ -156,9 +166,9 @@ it('another user, even with notes.create and record access, gets 403 on PATCH/DE
         'body' => 'Original',
     ])->json('data.id');
 
-    // opportunity_user has a UNIQUE(opportunity_id, position) constraint, so
-    // $other cannot ALSO be the GA2 manager on this already-managed
-    // opportunity — grant read access via viewAll instead (D-10's other branch).
+    // Grant read access via viewAll instead of a second Offerta supervisor
+    // (D-9's other branch) — simpler than minting a sibling Offerta just to
+    // reach the same read scope.
     $other = noteActor(['request-management.view', 'request-management.viewAll', 'notes.create']);
     Sanctum::actingAs($other);
 

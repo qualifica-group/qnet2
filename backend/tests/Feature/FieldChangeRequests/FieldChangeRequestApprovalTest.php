@@ -2,6 +2,7 @@
 
 use App\Models\FieldChangeRequest;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,6 +10,12 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // POST /api/field-change-requests/{id}/approve|reject (spec 0078): AC-028..035.
+// Spec 0086, D-10 (corrected in execution): the subject of a request-management
+// field change request is now the QUOTE (`subject_type = 'quote'`), even
+// though `source_id` itself is still resolved/applied through
+// `quote.opportunity` — approval runs `updateCell()` on
+// `RequestManagementTableDefinition`, whose `baseQuery()`/`modelClass()` are
+// Quote-rooted.
 
 uses(RefreshDatabase::class);
 
@@ -49,26 +56,27 @@ if (! function_exists('fcrHandlerWith')) {
 
 if (! function_exists('fcrPendingRequest')) {
     /**
-     * @return array{0: Opportunity, 1: FieldChangeRequest, 2: Source}
+     * @return array{0: Quote, 1: FieldChangeRequest, 2: Source}
      */
     function fcrPendingRequest(): array
     {
         $currentSource = Source::factory()->create();
         $requestedSource = Source::factory()->create();
         $opportunity = Opportunity::factory()->create(['source_id' => $currentSource->id]);
+        $quote = Quote::factory()->for($opportunity)->create();
 
         $fieldChangeRequest = FieldChangeRequest::factory()->create([
             'resource' => 'request-management',
-            'subject_type' => 'opportunity',
-            'subject_id' => $opportunity->id,
+            'subject_type' => 'quote',
+            'subject_id' => $quote->id,
             'field' => 'source_id',
             'current_value' => $currentSource->id,
             'requested_value' => $requestedSource->id,
             'status' => 'pending',
-            'pending_key' => "opportunity:{$opportunity->id}:source_id",
+            'pending_key' => "quote:{$quote->id}:source_id",
         ]);
 
-        return [$opportunity, $fieldChangeRequest, $requestedSource];
+        return [$quote, $fieldChangeRequest, $requestedSource];
     }
 }
 
@@ -78,7 +86,7 @@ if (! function_exists('fcrPendingRequest')) {
 
 it('AC-028: approve applies the value, closes the request (200)', function () {
     $manager = fcrHandlerWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
-    [$opportunity, $fieldChangeRequest, $requestedSource] = fcrPendingRequest();
+    [$quote, $fieldChangeRequest, $requestedSource] = fcrPendingRequest();
     Sanctum::actingAs($manager);
 
     $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/approve")
@@ -86,7 +94,7 @@ it('AC-028: approve applies the value, closes the request (200)', function () {
         ->assertJsonPath('message', 'Change request approved')
         ->assertJsonPath('data.status', 'approved');
 
-    expect($opportunity->fresh()->source_id)->toBe($requestedSource->id);
+    expect($quote->opportunity->fresh()->source_id)->toBe($requestedSource->id);
 
     $fieldChangeRequest->refresh();
     expect($fieldChangeRequest->status->value)->toBe('approved')
@@ -95,17 +103,50 @@ it('AC-028: approve applies the value, closes the request (200)', function () {
         ->and($fieldChangeRequest->pending_key)->toBeNull();
 });
 
+// spec 0086, AC-043: the underlying `source_id` lives on the shared
+// Opportunity, so approving one offer's change request also moves its
+// SIBLING offer's Fonte — but `pending_change_requests` stays per-Quote
+// (D-10 corrected), so the sibling's own still-open request is untouched.
+it('AC-043: approval reflects on the SIBLING offer, whose own pending_change_requests badge stays independent', function () {
+    $manager = fcrHandlerWith(['manage'], ['view', 'viewAll', 'update', 'updateSource', 'viewAny']);
+    [$quote, $fieldChangeRequest, $requestedSource] = fcrPendingRequest();
+    $sibling = Quote::factory()->for($quote->opportunity)->create();
+    $siblingRequest = FieldChangeRequest::factory()->create([
+        'resource' => 'request-management',
+        'subject_type' => 'quote',
+        'subject_id' => $sibling->id,
+        'field' => 'source_id',
+        'current_value' => $quote->opportunity->source_id,
+        'requested_value' => Source::factory()->create()->id,
+        'status' => 'pending',
+        'pending_key' => "quote:{$sibling->id}:source_id",
+    ]);
+    Sanctum::actingAs($manager);
+
+    $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/approve")->assertOk();
+
+    // The Fonte is shared through the Opportunity: the sibling reflects it too.
+    expect($sibling->opportunity->fresh()->source_id)->toBe($requestedSource->id);
+    // But the sibling's OWN pending request is untouched by this approval.
+    expect($siblingRequest->fresh()->status->value)->toBe('pending');
+
+    $rows = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'));
+    expect($rows->firstWhere('id', $quote->id)['pending_change_requests'])->toBe(0)
+        ->and($rows->firstWhere('id', $sibling->id)['pending_change_requests'])->toBe(1);
+});
+
 it('AC-029: reject closes the request WITHOUT touching the record (200)', function () {
     $manager = fcrHandlerWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
-    [$opportunity, $fieldChangeRequest] = fcrPendingRequest();
-    $originalSourceId = $opportunity->source_id;
+    [$quote, $fieldChangeRequest] = fcrPendingRequest();
+    $originalSourceId = $quote->opportunity->source_id;
     Sanctum::actingAs($manager);
 
     $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/reject")
         ->assertOk()
         ->assertJsonPath('data.status', 'rejected');
 
-    expect($opportunity->fresh()->source_id)->toBe($originalSourceId);
+    expect($quote->opportunity->fresh()->source_id)->toBe($originalSourceId);
 
     $fieldChangeRequest->refresh();
     expect($fieldChangeRequest->status->value)->toBe('rejected')
@@ -118,15 +159,15 @@ it('AC-029: reject closes the request WITHOUT touching the record (200)', functi
 
 it('AC-030: the field changed since proposal -> 409, no write, request stays pending', function () {
     $manager = fcrHandlerWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
-    [$opportunity, $fieldChangeRequest] = fcrPendingRequest();
+    [$quote, $fieldChangeRequest] = fcrPendingRequest();
     $driftedSource = Source::factory()->create();
-    $opportunity->forceFill(['source_id' => $driftedSource->id])->save();
+    $quote->opportunity->forceFill(['source_id' => $driftedSource->id])->save();
     Sanctum::actingAs($manager);
 
     $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/approve")
         ->assertStatus(409);
 
-    expect($opportunity->fresh()->source_id)->toBe($driftedSource->id);
+    expect($quote->opportunity->fresh()->source_id)->toBe($driftedSource->id);
     expect($fieldChangeRequest->fresh()->status->value)->toBe('pending');
 });
 
@@ -180,13 +221,13 @@ it('AC-032: the requester themself cannot approve without manage -> 403', functi
 
 it('AC-033: manage WITHOUT request-management.updateSource -> 403, value not applied', function () {
     $manager = fcrHandlerWith(['manage'], ['view', 'viewAll', 'update']);
-    [$opportunity, $fieldChangeRequest] = fcrPendingRequest();
-    $originalSourceId = $opportunity->source_id;
+    [$quote, $fieldChangeRequest] = fcrPendingRequest();
+    $originalSourceId = $quote->opportunity->source_id;
     Sanctum::actingAs($manager);
 
     $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/approve")->assertForbidden();
 
-    expect($opportunity->fresh()->source_id)->toBe($originalSourceId);
+    expect($quote->opportunity->fresh()->source_id)->toBe($originalSourceId);
     expect($fieldChangeRequest->fresh()->status->value)->toBe('pending');
 });
 
@@ -227,22 +268,23 @@ it('AC-035: the requested Fonte was deleted meanwhile -> 422, request stays pend
     $currentSource = Source::factory()->create();
     $requestedSource = Source::factory()->create();
     $opportunity = Opportunity::factory()->create(['source_id' => $currentSource->id]);
+    $quote = Quote::factory()->for($opportunity)->create();
 
     $fieldChangeRequest = FieldChangeRequest::factory()->create([
         'resource' => 'request-management',
-        'subject_type' => 'opportunity',
-        'subject_id' => $opportunity->id,
+        'subject_type' => 'quote',
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'current_value' => $currentSource->id,
         'requested_value' => $requestedSource->id,
         'status' => 'pending',
-        'pending_key' => "opportunity:{$opportunity->id}:source_id",
+        'pending_key' => "quote:{$quote->id}:source_id",
     ]);
     $requestedSource->delete();
     Sanctum::actingAs($manager);
 
     $this->postJson("/api/field-change-requests/{$fieldChangeRequest->id}/approve")->assertStatus(422);
 
-    expect($opportunity->fresh()->source_id)->toBe($currentSource->id);
+    expect($quote->opportunity->fresh()->source_id)->toBe($currentSource->id);
     expect($fieldChangeRequest->fresh()->status->value)->toBe('pending');
 });

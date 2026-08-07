@@ -31,12 +31,14 @@ if (! function_exists('noteMetaActor')) {
 }
 
 if (! function_exists('noteMetaOpportunity')) {
-    function noteMetaOpportunity(User $manager): Opportunity
+    // Spec 0086, D-9: read access is re-keyed on the Opportunity's own
+    // Offerte (D-3, `quotes.supervisor_id`) — the GA2 pivot slot no longer
+    // grants it on its own. Callers must supervise (or grant viewAll for)
+    // at least one Offerta of the returned opportunity themselves, via
+    // noteMetaQuote(), for a read to succeed.
+    function noteMetaOpportunity(User $supervisor): Opportunity
     {
-        $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-
-        return $opportunity;
+        return Opportunity::factory()->create();
     }
 }
 
@@ -55,6 +57,10 @@ it('exposes the host opportunity Offerte as meta.quotes, ordered by code', funct
     $opportunity = noteMetaOpportunity($actor);
     $second = noteMetaQuote($opportunity, 'QUO-0002', 'Seconda offerta');
     $first = noteMetaQuote($opportunity, 'QUO-0001', 'Prima offerta');
+    // D-9: read access needs the actor to supervise at least ONE of the
+    // opportunity's Offerte — supervising one does not narrow which Offerte
+    // meta.quotes lists (that stays every Offerta of the opportunity).
+    $first->update(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertOk();
@@ -65,20 +71,27 @@ it('exposes the host opportunity Offerte as meta.quotes, ordered by code', funct
     ]);
 });
 
-it('exposes an empty meta.quotes on an opportunity with no Offerta', function () {
+// REQUIREMENT CHANGED (spec 0086, D-9): `authorizeRead()` is now keyed on the
+// Opportunity's own Offerte existing at all — with zero Offerte there is no
+// Quote row for `RequestManagementScope::scopeToActor()` to match against,
+// so `exists()` is false for EVERY actor, viewAll included (D-1: a
+// `request-management` record is always Quote-backed now). The former "200
+// with an empty list" scenario is therefore unreachable; this now documents
+// the 403 instead.
+it('403s on an opportunity with no Offerta at all — unreadable for anyone (D-9)', function () {
     $actor = noteMetaActor();
     $opportunity = noteMetaOpportunity($actor);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")
-        ->assertOk()
-        ->assertJsonPath('meta.quotes', []);
+        ->assertForbidden();
 });
 
 it('never lists an Offerta of another opportunity', function () {
     $actor = noteMetaActor();
     $opportunity = noteMetaOpportunity($actor);
     $own = noteMetaQuote($opportunity, 'QUO-0001', 'Propria');
+    $own->update(['supervisor_id' => $actor->id]);
     noteMetaQuote(Opportunity::factory()->create(), 'QUO-0009', 'Altrui');
     Sanctum::actingAs($actor);
 
@@ -92,6 +105,7 @@ it('keeps offering every Offerta while the list is filtered on one of them', fun
     $opportunity = noteMetaOpportunity($actor);
     $first = noteMetaQuote($opportunity, 'QUO-0001', 'Prima offerta');
     $second = noteMetaQuote($opportunity, 'QUO-0002', 'Seconda offerta');
+    $first->update(['supervisor_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}&quote_scope={$first->id}")
@@ -105,9 +119,10 @@ it('keeps offering every Offerta while the list is filtered on one of them', fun
 it('resolves the Offerte in a single query, whatever their number', function () {
     $actor = noteMetaActor();
     $small = noteMetaOpportunity($actor);
-    Quote::factory()->for($small)->count(1)->create();
+    Quote::factory()->for($small)->create(['supervisor_id' => $actor->id]);
     $large = noteMetaOpportunity($actor);
-    Quote::factory()->for($large)->count(10)->create();
+    Quote::factory()->for($large)->create(['supervisor_id' => $actor->id]);
+    Quote::factory()->for($large)->count(9)->create();
 
     Sanctum::actingAs($actor);
 

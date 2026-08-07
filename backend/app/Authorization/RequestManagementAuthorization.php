@@ -15,13 +15,15 @@ use Illuminate\Database\Eloquent\Model;
  * Eloquent class, so this mirrors the smallest existing authorizations
  * (VatRatesAuthorization) with the operative fields the work panel writes
  * (D-4/D-5, `next_callback_at` added by spec 0054 D-4) — visible+editable
- * when the actor may write, else read-only. Only `products_of_interest`,
- * `source_id` and `product_lines` are mandatory-restrictive (user directives
- * 2026-07-23 / 2026-07-29 / 2026-07-31); every other field blocks on nothing
- * here. Spec 0083, D-2: the former workflow-status override field is REMOVED
- * — the Opportunity resolves no working state of its own any more. Spec
- * 0084, D-1: the former `attribute_values` field is REMOVED too — the
- * dynamic "Informazioni aggiuntive" section moved to the Offerta (Quote).
+ * when the actor may write, else read-only. Only `source_id` and
+ * `product_lines` are mandatory-restrictive (user directives 2026-07-29 /
+ * 2026-07-31); every other field blocks on nothing here. Spec 0083, D-2: the
+ * former workflow-status override field is REMOVED — the Opportunity
+ * resolves no working state of its own any more. Spec 0084, D-1: the former
+ * `attribute_values` field is REMOVED too — the dynamic "Informazioni
+ * aggiuntive" section moved to the Offerta (Quote). Spec 0086: `products_of_
+ * interest` is REMOVED — the module's grid column (`offer_lines`) is
+ * read-only, derived from the Offerta's own REVENUE lines.
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
@@ -47,12 +49,6 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // D-2); this catalogue entry only closes a gap in the per-field
             // permission system, it grants nothing new.
             new FieldDefinition('next_callback_at', 'date'),
-            // "Prodotti di interesse": written by
-            // RequestManagementService::updateWork() through
-            // OpportunityProductInterestWriter. MANDATORY (user directive
-            // 2026-07-23) exactly like in OpportunitiesAuthorization — the two
-            // channels write the same collection, so the rule cannot differ.
-            new FieldDefinition('products_of_interest', 'multiselect', mandatory: true),
             // "Funzione aziendale" + "categoria prodotto" (user directive
             // 2026-07-31): the same `product_lines` collection the create form
             // writes, made editable from the panel too. MANDATORY for the same
@@ -61,17 +57,25 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // write channels), so no role matrix may narrow it away.
             new FieldDefinition('product_lines', 'custom', mandatory: true),
             // Attribution block (user directive 2026-07-22): "Fonte",
-            // "Segnalatore" and the GA2 "Operatore" — the same three
+            // "Segnalatore" and the GA2 "Operatore"/Supervisore — the same
             // dimensions the opportunities form owns, made editable from the
-            // work panel too. `operator_id` is NOT a column: it addresses the
-            // `opportunity_user` pivot row at position
-            // Opportunity::OPERATOR_MANAGER_POSITION (see
-            // Opportunity::operatorManager()).
+            // work panel too.
             // MANDATORY (user directive 2026-07-29): a request always knows
             // where it came from — the create form requires it and the panel
             // never lets it be cleared (UpdateRequestRequest's `required`).
             new FieldDefinition('source_id', 'select', mandatory: true),
             new FieldDefinition('reporter_id', 'select'),
+            // `operator_id`: the ONE field key for the GA2 "Operatore"/
+            // Supervisore, on BOTH write channels — the panel's PATCH wire
+            // key AND the grid's `operator_ga2` column `editableField` (spec
+            // 0086, corrected in execution: a first cut named this field
+            // `supervisor_id` on the grid channel only, which silently
+            // decoupled it from `RequestManagementService::updateWork()`'s
+            // own `operator_id` check — the inline edit returned 200 without
+            // writing anything. The DB column the write actually lands on is
+            // `quotes.supervisor_id`, but that is RequestSupervisorWriter's
+            // own internal detail (plus the GA2 pivot sync, D-3): it never
+            // surfaces as a field-permission key.
             new FieldDefinition('operator_id', 'select'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
@@ -108,7 +112,6 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
 
         return [
             'next_callback_at' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

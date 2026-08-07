@@ -6,6 +6,25 @@
 -->
 <spec id="0083-quote-workflow-statuses" status="draft" owner="nicola" date="2026-08-05">
 
+  <amendment date="2026-08-07" status="applied">
+    Direttiva utente: nel Configuratore Stati Offerta lo stato "Validato" non deve piu' essere una
+    riga obbligatoria/di sistema, ma facoltativa come le altre. Attuazione: il system key
+    `validated` e' ELIMINATO. `WorkflowStatusSystemKey` ha ora tre soli casi
+    (`open|closed_won|closed_lost`), tutti obbligatori; `validated` sopravvive SOLO come valore di
+    `WorkflowStatusGroup`, assegnabile liberamente da select a una qualunque riga custom (anche a
+    piu' d'una). Rimossi `App\Services\QuoteWorkflows\ValidatedStatusMarker`, il parametro
+    `validatedStatus` di `CreateQuoteWorkflowData`/`WorkflowStatusWriter::createWithCustoms()`, il
+    `system_key` dal payload di UPDATE (una riga di sistema si identifica dall'`id` persistito) e
+    lo switch "Stato di sistema Validato" dall'editor. Le righe gia' marchiate sono state
+    smarchiate — `group` invariato — dalla migrazione
+    `2026_08_07_120000_drop_validated_system_key_from_quote_workflow_statuses`.
+
+    REVOCA il punto di `<out>` "Il gruppo `validated` e il marchio `ValidatedStatusMarker` restano
+    invariati nella semantica" e, in `<errors>` della POST/PUT, il 422 "piu' di una riga
+    `validated`" (non esiste piu' un marchio unico da violare; un `system_key: 'validated'`
+    inviato oggi e' un valore fuori enum, quindi 422 di validazione).
+  </amendment>
+
   <goal>
     Un solo configuratore di stati in tutto il flusso commerciale: il "Configuratore Stati
     Lavorazione" (oggi `opportunity-workflows`, spec 0047) viene agganciato all'Offerta e diventa
@@ -92,7 +111,7 @@
       <item>Attributi dinamici sull'Offerta — spec 0084.</item>
       <item>Note per Offerta — spec 0085 (qui la nota di `requires_note` nasce senza `quote_id`, che 0085 aggiunge).</item>
       <item>La colonna `product_categories.requires_quote` resta: e' usata dalla generazione documento (spec 0070). Si rimuove solo il gate di UI.</item>
-      <item>Il gruppo `validated` e il marchio `ValidatedStatusMarker` restano invariati nella semantica.</item>
+      <item status="revoked">REVOCATO (vedi amendment 2026-08-07): il marchio `validated` e' stato eliminato; resta il solo gruppo.</item>
     </out>
   </scope>
 

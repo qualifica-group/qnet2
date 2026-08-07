@@ -4,9 +4,12 @@ namespace App\Models;
 
 use App\Enums\QuoteLineType;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasFieldChangeRequests;
+use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\QuoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -63,6 +66,22 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * `opportunities.attribute_values`): written only by
  * App\Services\Quotes\QuoteAttributeValueWriter, inside QuoteService's
  * create/update transaction.
+ *
+ * `is_transferred`/`transferred_from_operational_site_id` (spec 0086, D-6 —
+ * migrated from the Opportunity, per-offer rather than per-deal from now on)
+ * mirror the former Opportunity columns verbatim, including the guarantee:
+ * `nullOnDelete` on the origin site clears the notice but never lowers
+ * `is_transferred`. Both are DELIBERATELY absent from #[Fillable]: system
+ * flags, written exclusively by RequestTransferService.
+ *
+ * `HasFieldChangeRequests` (spec 0086, D-10 — corrected in execution): field
+ * change requests on the request-management module do NOT follow D-9
+ * (documents/notes/activity stay on the Opportunity). Their subject is the
+ * QUOTE, because `FieldChangeRequestValueResolver`/`FieldChangeRequestApprover`
+ * both resolve/apply against the grid's own `TableDefinition` (`modelClass()`
+ * = Quote), so an Opportunity-keyed subject would resolve the wrong offer or
+ * 404. Additive and inert for the Offerte module itself: it declares no
+ * protected fields in `config/field-change-requests.php`.
  */
 #[Fillable([
     'title',
@@ -80,7 +99,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Quote extends BaseModel
 {
     /** @use HasFactory<QuoteFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
 
     /**
      * @return array<string, string>
@@ -94,6 +113,7 @@ class Quote extends BaseModel
             'cost_vat' => 'decimal:2',
             'margin_net' => 'decimal:2',
             'attribute_values' => 'array',
+            'is_transferred' => 'boolean',
         ];
     }
 
@@ -104,6 +124,27 @@ class Quote extends BaseModel
     public function opportunity(): BelongsTo
     {
         return $this->belongsTo(Opportunity::class);
+    }
+
+    /**
+     * `source_id`: the underlying Opportunity's Fonte, as a virtual
+     * READ-ONLY attribute (spec 0086, D-10). NOT a column and NOT a
+     * duplicate of `opportunities.source_id` — it exists because
+     * `FieldChangeRequestValueResolver::currentValue()` reads
+     * `$record->getAttribute('source_id')` off the field-change-request
+     * SUBJECT, which is this Quote (D-10): without this accessor that read
+     * would silently return null (no exception, an empty "current value" on
+     * the change request) instead of the Fonte actually shown on the grid.
+     * Get-only, mirroring `Opportunity::operatorId()`'s own virtual-attribute
+     * pattern: the one write path stays `TableDefinition::updateCell()` on
+     * the `source` column, which writes through to `quote.opportunity`. Null
+     * when `opportunity` is missing (defensive; the FK is NOT NULL so this
+     * only guards a not-yet-loaded/not-yet-persisted edge case), and safe
+     * whether or not `opportunity` is eager-loaded.
+     */
+    protected function sourceId(): Attribute
+    {
+        return Attribute::get(fn (): ?int => $this->opportunity?->source_id);
     }
 
     /**
@@ -169,6 +210,19 @@ class Quote extends BaseModel
     public function operationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * The Sede operativa this offer was transferred FROM (spec 0086, D-6):
+     * null when never transferred, or when the origin site has since been
+     * deleted (`nullOnDelete` — `is_transferred` survives that, only the
+     * origin reference and its detail-panel notice disappear). Written
+     * exclusively by RequestTransferService, never mass-assignable (see
+     * #[Fillable]).
+     */
+    public function transferredFromOperationalSite(): BelongsTo
+    {
+        return $this->belongsTo(OperationalSite::class, 'transferred_from_operational_site_id');
     }
 
     /**

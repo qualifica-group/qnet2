@@ -157,6 +157,7 @@ export const quotes = {
       hintScoped: "Products limited to the linked opportunity's categories.",
       hintNoCategories: 'The opportunity has no categories yet: add one, or unlock the whole catalogue.',
       hintUnlocked: 'Full product catalogue, no category filter.',
+      hintSingleCategory: 'The opportunity is managed on a single product category: its offer may carry one row only.',
       unlock: 'Show all products',
       relock: "Limit to the opportunity's categories",
       unlockDialog: {

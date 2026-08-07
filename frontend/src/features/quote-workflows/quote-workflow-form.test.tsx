@@ -275,8 +275,8 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
     expect(payload.statuses.map((status: { id?: number }) => status.id)).toEqual([10, 12, 11, 13])
   })
 
-  // Requirement changed (user directive 2026-08-03): the optional 'validated'
-  // row is no longer seeded — a new set starts with the 3 mandatory rows.
+  // Requirement changed (user directive 2026-08-07): there is no 'validated'
+  // system row at all — a new set starts with the 3 mandatory rows.
   it('seeds editable open/closed_won/closed_lost rows and sends them with the added custom row in the create payload', async () => {
     createQuoteWorkflowMock.mockResolvedValue(quoteWorkflow())
     const onSuccess = vi.fn()
@@ -287,7 +287,7 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
     )
 
     // The 3 mandatory pinned rows are present and editable from the start
-    // (seeded); no 'Validated' row exists until the user marks one.
+    // (seeded); nothing seeds a 'Validated' row.
     expect(screen.getByDisplayValue('Open')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('Validated')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Closed (won)')).toBeInTheDocument()

@@ -52,6 +52,27 @@ function resolveManagerLabels(category: ProductCategoryDetailWithPermissions): R
     .filter((entry): entry is ResolvedManagerLabel => entry !== null)
 }
 
+interface RuleValueProps {
+  value: string
+  /** Set when the rule is inherited from a branch root — renders the chip naming it. */
+  inheritedFrom?: string
+  inheritedLabel?: string
+}
+
+/** One rule's resolved value, plus the "inherited from X" chip when it is not this category's own. */
+function RuleValue({ value, inheritedFrom, inheritedLabel }: RuleValueProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span>{value}</span>
+      {inheritedFrom ? (
+        <Badge variant="outline" className="text-xs">
+          {inheritedLabel}
+        </Badge>
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * Read-only detail of a single product category. Purely presentational: the
  * caller (the table's "view" sheet) fetches the fresh detail and passes it
@@ -104,48 +125,47 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         </DetailSection>
       )}
 
-      <DetailSection title={t('productCategories.form.requiresQuote')}>
+      {/* The same grouping the form uses: the rules a category imposes
+          downstream read together, not as four one-field sections. */}
+      <DetailSection title={t('productCategories.form.sections.rules.title')}>
         <DetailGrid>
           <DetailField label={t('productCategories.form.requiresQuote')}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span>{category.requires_quote ? t('common.yes') : t('common.no')}</span>
-              {category.requires_quote_source_category && (
-                <Badge variant="outline" className="text-xs">
-                  {t('productCategories.detail.requiresQuoteInherited', {
-                    category: category.requires_quote_source_category.name,
-                  })}
-                </Badge>
-              )}
-            </div>
+            <RuleValue
+              value={category.requires_quote ? t('common.yes') : t('common.no')}
+              inheritedFrom={category.requires_quote_source_category?.name}
+              inheritedLabel={t('productCategories.detail.requiresQuoteInherited', {
+                category: category.requires_quote_source_category?.name ?? '',
+              })}
+            />
           </DetailField>
-        </DetailGrid>
-      </DetailSection>
 
-      <DetailSection title={t('productCategories.form.managementMode')}>
-        <DetailGrid>
           <DetailField label={t('productCategories.form.managementMode')}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span>
-                {category.management_mode === 'single'
+            <RuleValue
+              value={
+                category.management_mode === 'single'
                   ? t('productCategories.form.managementModeSingle')
-                  : t('productCategories.form.managementModeMultiple')}
-              </span>
-              {category.management_mode_source_category && (
-                <Badge variant="outline" className="text-xs">
-                  {t('productCategories.detail.managementModeInherited', {
-                    category: category.management_mode_source_category.name,
-                  })}
-                </Badge>
-              )}
-            </div>
+                  : t('productCategories.form.managementModeMultiple')
+              }
+              inheritedFrom={category.management_mode_source_category?.name}
+              inheritedLabel={t('productCategories.detail.managementModeInherited', {
+                category: category.management_mode_source_category?.name ?? '',
+              })}
+            />
           </DetailField>
-        </DetailGrid>
-      </DetailSection>
 
-      <DetailSection title={t('productCategories.form.isSelectable')}>
-        <DetailGrid>
+          <DetailField label={t('productCategories.form.singleQuotePerOpportunity')}>
+            <RuleValue
+              value={category.single_quote_per_opportunity ? t('common.yes') : t('common.no')}
+              inheritedFrom={category.single_quote_per_opportunity_source_category?.name}
+              inheritedLabel={t('productCategories.detail.singleQuotePerOpportunityInherited', {
+                category: category.single_quote_per_opportunity_source_category?.name ?? '',
+              })}
+            />
+          </DetailField>
+
           <DetailField label={t('productCategories.form.isSelectable')}>
-            <span>{category.is_selectable ? t('common.yes') : t('common.no')}</span>
+            {/* Per-node and never inherited (spec 0074): no source chip. */}
+            <RuleValue value={category.is_selectable ? t('common.yes') : t('common.no')} />
           </DetailField>
         </DetailGrid>
       </DetailSection>

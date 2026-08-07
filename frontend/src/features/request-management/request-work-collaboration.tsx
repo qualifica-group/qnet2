@@ -26,7 +26,9 @@ interface RequestWorkCollaborationProps {
  * tab strip: notes, documents and history compete for the same space instead
  * of stacking three full-height sections below the editable form. Each tab
  * mounts a self-contained feature section; gating stays here, mirroring the
- * table's row actions.
+ * table's row actions. Every section is keyed on `panel.opportunity_id`, not
+ * `panel.id`: documents/notes/activity stay anchored to the Opportunity
+ * (spec 0086 D-9), the same record the table's row actions target.
  */
 export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWorkCollaborationProps) {
   const { t } = useTranslation()
@@ -61,13 +63,13 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
         <div className="border-t" />
         <div className="min-w-0 p-4">
           <TabsContent value={NOTES_TAB}>
-            <NotesSection entityType={REQUEST_MANAGEMENT_DOMAIN} entityId={panel.id} showHeader={false} />
+            <NotesSection entityType={REQUEST_MANAGEMENT_DOMAIN} entityId={panel.opportunity_id} showHeader={false} />
           </TabsContent>
           {canViewDocuments && (
             <TabsContent value={DOCUMENTS_TAB}>
               <DocumentsSection
                 resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-                id={panel.id}
+                id={panel.opportunity_id}
                 canUpload={can('attachments.create')}
                 canDelete={can('attachments.delete')}
               />
@@ -75,7 +77,7 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
           )}
           {canViewActivity && (
             <TabsContent value={ACTIVITY_TAB}>
-              <ActivityLogSection resource={REQUEST_MANAGEMENT_DOMAIN} id={panel.id} />
+              <ActivityLogSection resource={REQUEST_MANAGEMENT_DOMAIN} id={panel.opportunity_id} />
             </TabsContent>
           )}
         </div>

@@ -72,7 +72,6 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
     // client has no address yet.
     client_address: panel.client_address ? [addressToDraft(panel.client_address)] : [],
-    products_of_interest: panel.products_of_interest.map((product) => product.id),
     product_lines: toProductLineRows(panel.product_lines),
     rewards: (panel.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     source_id: panel.source_id,
@@ -97,7 +96,6 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     () =>
       buildRequestWorkSchema(
         {
-          products_of_interest: panel.products_of_interest.map((product) => product.id),
           product_lines: toProductLineRows(panel.product_lines),
           client_identity: panel.client_identity,
           client_contacts: panel.client_contacts.items,
@@ -105,14 +103,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
         },
         t,
       ),
-    [
-      panel.products_of_interest,
-      panel.product_lines,
-      panel.client_identity,
-      panel.client_contacts,
-      panel.client_address,
-      t,
-    ],
+    [panel.product_lines, panel.client_identity, panel.client_contacts, panel.client_address, t],
   )
 
   const defaultValues = useMemo(() => buildDefaultValues(panel), [panel])
@@ -126,7 +117,6 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     // root carries the message.
     'client_contacts' as Path<RequestWorkFormValues>,
     'client_address' as Path<RequestWorkFormValues>,
-    'products_of_interest' as Path<RequestWorkFormValues>,
     // The collection is submitted as a whole: a per-row 422
     // (`product_lines.0.business_function_id`) has no control of its own here,
     // so the block root carries the message.
@@ -148,7 +138,9 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
       try {
         const updated = await updateRequestWork(panel.id, payload)
         queryClient.setQueryData(requestManagementKeys.panel(panel.id), updated)
-        queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.id) })
+        // The panel's own id is now the Offerta id (spec 0086): the opportunity
+        // detail cache is keyed on the underlying Opportunity's own id.
+        queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.opportunity_id) })
         toast.success(t('requestManagement.workPanel.saved', { defaultValue: 'Working data saved.' }))
         form.reset(buildDefaultValues(updated))
       } catch (error) {

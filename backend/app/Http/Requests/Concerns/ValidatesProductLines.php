@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Services\ProductLines\ProductLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,9 +52,9 @@ trait ValidatesProductLines
      */
     protected function exemptProductCategoryIds(): array
     {
-        $opportunity = $this->route('opportunity');
+        $opportunity = $this->routeOpportunityForProductLines();
 
-        if (! $opportunity instanceof Opportunity) {
+        if ($opportunity === null) {
             return [];
         }
 
@@ -61,6 +62,25 @@ trait ValidatesProductLines
             ->pluck('product_category_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
+    }
+
+    /**
+     * The Opportunity `product_lines` is validated/persisted against: the
+     * route model directly for the opportunities module, or — spec 0086,
+     * D-2 — the Quote's own Opportunity for request-management, whose route
+     * parameter is `{quote}` since the record migrated off the Opportunity.
+     */
+    private function routeOpportunityForProductLines(): ?Opportunity
+    {
+        $opportunity = $this->route('opportunity');
+
+        if ($opportunity instanceof Opportunity) {
+            return $opportunity;
+        }
+
+        $quote = $this->route('quote');
+
+        return $quote instanceof Quote ? $quote->opportunity : null;
     }
 
     /**

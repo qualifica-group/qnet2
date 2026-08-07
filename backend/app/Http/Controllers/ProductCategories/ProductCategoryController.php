@@ -246,6 +246,9 @@ class ProductCategoryController extends BaseApiController
                 // Spec 0077: same read-only "inherited from X" hint for the
                 // card-line management mode.
                 'management_mode_source_category' => $this->service->managementModeSourceCategory($productCategory),
+                // User directive 2026-08-07: same hint for the single-quote
+                // rule.
+                'single_quote_per_opportunity_source_category' => $this->service->singleQuotePerOpportunitySourceCategory($productCategory),
                 // Spec 0080: the "Gestore Account" labels resolved from the
                 // ANCESTORS alone (own ones already sit in the Resource's own
                 // `manager_labels`) — the form's read-only "ereditate dal

@@ -2,6 +2,7 @@
 
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
@@ -31,18 +32,18 @@ if (! function_exists('transferPerspectiveActor')) {
 }
 
 if (! function_exists('transferPerspectiveRequest')) {
-    function transferPerspectiveRequest(?User $operator, ?OperationalSite $originSite = null): Opportunity
+    function transferPerspectiveRequest(?User $operator, ?OperationalSite $originSite = null): Quote
     {
-        $request = Opportunity::factory()->create([
-            'name' => 'Acme deal',
-            'operational_site_id' => $originSite?->id,
-        ]);
+        $opportunity = Opportunity::factory()->create(['name' => 'Acme deal']);
 
         if ($operator !== null) {
-            $request->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+            $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
         }
 
-        return $request;
+        return Quote::factory()->for($opportunity)->create([
+            'operational_site_id' => $originSite?->id,
+            'supervisor_id' => $operator?->id,
+        ]);
     }
 }
 

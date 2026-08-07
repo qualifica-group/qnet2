@@ -9,6 +9,51 @@ import type { TableRow } from '@/features/table/types'
 
 const fetchForSelectMock = vi.fn()
 
+/**
+ * Spec 0077 INV-3 (user directive 2026-08-07): the editor resolves the card's
+ * management mode off the same cached category tree the form pickers read.
+ * Category 71 hangs from a `single` root, category 7 from a `multiple` one.
+ */
+const { CATEGORY_TREE } = vi.hoisted(() => {
+  const node = (overrides: Record<string, unknown>) => ({
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    management_mode: 'multiple',
+    single_quote_per_opportunity: false,
+    ...overrides,
+  })
+
+  return {
+    CATEGORY_TREE: [
+      node({
+        id: 70,
+        name: 'Single root',
+        business_function_id: 3,
+        is_selectable: false,
+        management_mode: 'single',
+        single_quote_per_opportunity: false,
+        children: [node({ id: 71, name: 'Luce singola', parent_id: 70, management_mode: 'single' })],
+      }),
+      node({
+        id: 6,
+        name: 'Multi root',
+        business_function_id: 3,
+        is_selectable: false,
+        children: [node({ id: 7, name: 'Luce', parent_id: 6 })],
+      }),
+    ],
+  }
+})
+
+vi.mock('@/features/product-categories/use-product-category-tree', () => ({
+  useProductCategoryTree: () => ({ data: CATEGORY_TREE, isPending: false, isError: false }),
+}))
+
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
     '@/features/for-select/api',
@@ -112,6 +157,38 @@ describe('ProductLinesCellEditor (spec 0075)', () => {
     renderEditor([], vi.fn(), row)
 
     expect(screen.getByRole('alert')).toHaveTextContent('Fibra 1000')
+  })
+
+  it('INV-3: a single-mode card already holding its pair refuses a second one', async () => {
+    const onValueChange = vi.fn()
+    renderEditor(
+      [
+        {
+          business_function_id: 3,
+          business_function_name: 'Energia',
+          product_category_id: 71,
+          product_category_name: 'Luce singola',
+        },
+      ],
+      onValueChange,
+    )
+
+    expect(
+      screen.getByText('This product category is managed as a single row: remove the current one to pick another.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Search business functions…' })).toBeDisabled()
+
+    const option = await screen.findByRole('option', { name: 'Energia' })
+    expect(option).toBeDisabled()
+
+    fireEvent.click(option)
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('INV-3: a multiple-mode card stays free to add another pair', async () => {
+    renderEditor([PAIR], vi.fn())
+
+    expect(await screen.findByRole('option', { name: 'Energia' })).toBeEnabled()
   })
 
   it('AC-014: no warning while every product stays covered', () => {

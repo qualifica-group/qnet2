@@ -3,6 +3,9 @@
 use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\TransferRecipientRoleEnum;
+use App\Models\OperationalSite;
+use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
@@ -13,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 // Spec 0081 — the per-recipient deep link, the no-access fallback, the
@@ -190,4 +194,64 @@ it('translates every string the two notifications emit (AC-026)', function () {
 
 it('queues both notifications (AC-027)', function () {
     expect(assignmentNotificationFor(AssignmentTargetEnum::Registry))->toBeInstanceOf(ShouldQueue::class);
+});
+
+// ---------------------------------------------------------------------------
+// Spec 0086, MT-04b — the request-management deep link opens the OFFERTA
+// (Quote), never the Opportunity: the two records diverged (D-2), so a
+// recipient reachable only through request-management must land on the
+// specific Quote the notification is about — the module no longer exposes a
+// bare Opportunity record at all. Both fixtures deliberately shift the two
+// id sequences apart (a coincidental match would let either test pass for
+// the wrong reason, the same mistake already made — and fixed — on the
+// frontend).
+// ---------------------------------------------------------------------------
+
+it('a GA2 assignment notification opens the Offerta, not the Opportunity, for a request-management-only recipient', function () {
+    Notification::fake();
+
+    Opportunity::factory()->count(3)->create();
+
+    $actor = linkUserWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
+    $recipient = linkUserWith(['request-management.view']);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create();
+    Sanctum::actingAs($actor);
+
+    expect($quote->id)->not->toBe($opportunity->id);
+
+    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $recipient->id])->assertOk();
+
+    Notification::assertSentTo($recipient, function (RecordAssignmentNotification $notification) use ($recipient, $quote): bool {
+        expect($notification->toArray($recipient)['action_url'])->toBe("/request-management/{$quote->id}");
+
+        return true;
+    });
+});
+
+it('a transfer notification opens the Offerta, not the Opportunity, for a request-management-only recipient', function () {
+    Notification::fake();
+
+    Opportunity::factory()->count(3)->create();
+
+    $actor = linkUserWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.transferContact']);
+    $newOperator = linkUserWith(['request-management.view']);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create();
+    $site = OperationalSite::factory()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    expect($quote->id)->not->toBe($opportunity->id);
+
+    $this->postJson('/api/request-management/transfer', [
+        'request_ids' => [$quote->id],
+        'operational_site_id' => $site->id,
+        'operator_id' => $newOperator->id,
+    ])->assertOk();
+
+    Notification::assertSentTo($newOperator, function (RequestTransferredNotification $notification) use ($newOperator, $quote): bool {
+        expect($notification->toArray($newOperator)['action_url'])->toBe("/request-management/{$quote->id}");
+
+        return true;
+    });
 });

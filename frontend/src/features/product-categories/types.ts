@@ -31,6 +31,8 @@ export interface ProductCategoryTreeNode {
   is_selectable: boolean
   /** The EFFECTIVE management mode: authored by the branch root, mirrored on every descendant server-side (spec 0077). */
   management_mode: CategoryManagementMode
+  /** The EFFECTIVE single-offer rule: authored by the branch root, mirrored on every descendant server-side. */
+  single_quote_per_opportunity: boolean
 }
 
 /**
@@ -133,6 +135,10 @@ export interface ProductCategoryDetail {
   management_mode: CategoryManagementMode
   /** The root `management_mode` is inherited from; null when this category IS the root and owns the value. */
   management_mode_source_category: { id: number; name: string } | null
+  /** Whether an opportunity covered by this category accepts a single offer — authored by the branch ROOT, mirrored here on every descendant. */
+  single_quote_per_opportunity: boolean
+  /** The root `single_quote_per_opportunity` is inherited from; null when this category IS the root and owns the flag. */
+  single_quote_per_opportunity_source_category: { id: number; name: string } | null
   /** This category's OWN manager-label overrides (spec 0080) — never the inherited ones. */
   manager_labels: ManagerLabels
   /** When false the category ignores its ancestry for manager labels (barrier), same shape as the attribute barriers. */
@@ -220,6 +226,8 @@ export interface CreateProductCategoryPayload {
   is_selectable?: boolean
   /** Only ever sent for a ROOT category (`parent_id: null`): a child inherits the value and the server refuses a divergent one (spec 0077). */
   management_mode?: CategoryManagementMode
+  /** Same root-only rule: only ever sent for a ROOT category, a child inherits it. */
+  single_quote_per_opportunity?: boolean
   /** Own manager-label overrides, only valorized positions (spec 0080). */
   manager_labels?: ManagerLabels
   inherits_manager_labels?: boolean

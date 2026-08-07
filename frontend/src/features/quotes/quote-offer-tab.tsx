@@ -8,6 +8,9 @@ import { FormSection } from '@/components/form-section'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { MetaField } from '@/features/authorization/MetaField'
 import { fetchOpportunity, opportunityDetailQueryKey } from '@/features/opportunities/api'
+import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import { categoryManagementMetaFor } from '@/features/product-lines/category-tree-scope'
 import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -22,6 +25,9 @@ interface QuoteOfferTabProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   quoteId?: number
 }
+
+/** Stable empty tree while the shared query is still loading: no fresh reference per render. */
+const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 /**
  * Offer (revenue) lines tab (spec 0065 AC-072): the product picker defaults
@@ -68,6 +74,19 @@ export function QuoteOfferTab({
   const categoryIds = unlocked ? undefined : scopedCategoryIds
   const lockedWithoutScope = !unlocked && scopedCategoryIds.length === 0
 
+  // Spec 0077, user directive 2026-08-07: an opportunity managed on a
+  // `single` product category carries one product line (INV-3), and its offer
+  // one product row. Resolved from the FIRST covered category — INV-1 already
+  // guarantees they share a root — against the same cached category tree the
+  // product-line pickers read, which is where the mode lives (the
+  // opportunity's `product_lines` projection carries ids and names only).
+  // Independent of `unlocked`: that switch widens the product picker, it does
+  // not lift the row cap, which the server enforces either way.
+  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
+  const singleCategoryMode =
+    scopedCategoryIds.length > 0 &&
+    categoryManagementMetaFor(categoryTree, scopedCategoryIds[0])?.managementMode === 'single'
+
   const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
   const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])
 
@@ -104,6 +123,7 @@ export function QuoteOfferTab({
               variant="revenue"
               disabled={disabled}
               categoryIds={categoryIds}
+              canAddRow={!singleCategoryMode || field.value.length === 0}
               errors={errors}
               knownProducts={knownProducts}
               knownVatRates={knownVatRates}
@@ -116,11 +136,13 @@ export function QuoteOfferTab({
               <p className="text-xs text-muted-foreground">
                 {opportunityId === null
                   ? t('quotes.form.offerTab.hintNoOpportunity')
-                  : unlocked
-                    ? t('quotes.form.offerTab.hintUnlocked')
-                    : lockedWithoutScope
-                      ? t('quotes.form.offerTab.hintNoCategories')
-                      : t('quotes.form.offerTab.hintScoped')}
+                  : singleCategoryMode
+                    ? t('quotes.form.offerTab.hintSingleCategory')
+                    : unlocked
+                      ? t('quotes.form.offerTab.hintUnlocked')
+                      : lockedWithoutScope
+                        ? t('quotes.form.offerTab.hintNoCategories')
+                        : t('quotes.form.offerTab.hintScoped')}
               </p>
 
               <Button

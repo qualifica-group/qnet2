@@ -8,6 +8,7 @@ import type { RequestWorkPanel } from '@/features/request-management/types'
 function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
   return {
     id: 1,
+    opportunity_id: 1,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
@@ -24,7 +25,7 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     transferred_from: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
-    products_of_interest: [],
+    offer_lines: [],
     client_identity: null,
     client_contacts: { owner: { type: 'personal_data', id: 10 }, items: [] },
     client_address: null,
@@ -41,7 +42,6 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     client_identity: null,
     client_contacts: [],
     client_address: [],
-    products_of_interest: [],
     product_lines: [],
     rewards: [],
     source_id: null,
@@ -91,40 +91,6 @@ describe('buildRequestWorkPayload — attribution (user directive 2026-07-22)', 
     const payload = buildRequestWorkPayload(formValues(), panel({ operational_site_id: 8 }))
 
     expect(payload).toEqual({ operational_site_id: null })
-  })
-})
-
-describe('buildRequestWorkPayload — products of interest (user directive 2026-07-22)', () => {
-  it('sends the whole id set when the selection changed', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ products_of_interest: [3, 7] }),
-      panel({ products_of_interest: [{ id: 3, name: 'Fibra', product_category: { id: 1, name: 'Connettivita' } }] }),
-    )
-
-    expect(payload.products_of_interest).toEqual([3, 7])
-  })
-
-  it('sends [] when the operator cleared the collection', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ products_of_interest: [] }),
-      panel({ products_of_interest: [{ id: 3, name: 'Fibra', product_category: null }] }),
-    )
-
-    expect(payload.products_of_interest).toEqual([])
-  })
-
-  it('omits the key when the SET is unchanged, whatever the order', () => {
-    const payload = buildRequestWorkPayload(
-      formValues({ products_of_interest: [7, 3] }),
-      panel({
-        products_of_interest: [
-          { id: 3, name: 'Fibra', product_category: null },
-          { id: 7, name: 'Mobile', product_category: null },
-        ],
-      }),
-    )
-
-    expect(payload).not.toHaveProperty('products_of_interest')
   })
 })
 

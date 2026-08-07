@@ -2,6 +2,7 @@
 
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,24 +30,24 @@ if (! function_exists('inlineFormattingActor')) {
 }
 
 if (! function_exists('inlineFormattingRequest')) {
-    function inlineFormattingRequest(User $manager): Opportunity
+    function inlineFormattingRequest(User $supervisor): Quote
     {
         $registry = Registry::factory()->withPersonalData()->create();
         $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
 it('PATCH first_name: title-cases the typed value', function () {
     $actor = inlineFormattingActor();
-    $opportunity = inlineFormattingRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineFormattingRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     $card->update(['type' => PersonalDataTypeEnum::Individual]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'first_name',
         'value' => '  anna   maria ',
     ])->assertOk();
@@ -56,12 +57,12 @@ it('PATCH first_name: title-cases the typed value', function () {
 
 it('PATCH last_name: uppercases the letter after an apostrophe', function () {
     $actor = inlineFormattingActor();
-    $opportunity = inlineFormattingRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineFormattingRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     $card->update(['type' => PersonalDataTypeEnum::Individual]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'last_name',
         'value' => "D'ANGELO",
     ])->assertOk();
@@ -71,15 +72,15 @@ it('PATCH last_name: uppercases the letter after an apostrophe', function () {
 
 it('PATCH phone: keeps only the digits of the typed number', function (string $typed, string $stored) {
     $actor = inlineFormattingActor();
-    $opportunity = inlineFormattingRequest($actor);
+    $quote = inlineFormattingRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'phone',
         'value' => $typed,
     ])->assertOk();
 
-    $phone = $opportunity->registry->personalData->fresh()->contacts()->first();
+    $phone = $quote->opportunity->registry->personalData->fresh()->contacts()->first();
 
     expect($phone->value)->toBe($stored);
 })->with([
@@ -89,14 +90,14 @@ it('PATCH phone: keeps only the digits of the typed number', function (string $t
 
 it('PATCH tax_code: accepts a code typed lowercase and stores it uppercase', function () {
     $actor = inlineFormattingActor();
-    $opportunity = inlineFormattingRequest($actor);
-    $card = $opportunity->registry->personalData;
+    $quote = inlineFormattingRequest($actor);
+    $card = $quote->opportunity->registry->personalData;
     $card->update(['type' => PersonalDataTypeEnum::Individual]);
     Sanctum::actingAs($actor);
 
     // Without the pre-validation formatting the TaxCode rule would see the raw
     // string — this asserts format runs BEFORE the rules, not after.
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'tax_code',
         'value' => 'rss mra80a01h501u',
     ])->assertOk();

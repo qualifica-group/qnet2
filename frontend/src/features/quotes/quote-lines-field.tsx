@@ -39,6 +39,12 @@ interface QuoteLinesFieldProps {
   disabled: boolean
   /** `undefined` = unfiltered (Cost tab always; Offer tab once unlocked). */
   categoryIds?: number[]
+  /**
+   * `false` disables "Add row" (spec 0077, user directive 2026-08-07): the
+   * Offer tab passes it once the opportunity's single product category caps
+   * the offer at one row. The Cost tab never does.
+   */
+  canAddRow?: boolean
   errors?: (QuoteLineRowErrors | undefined)[]
   knownProducts: QuoteLineProductRef[]
   knownVatRates: QuoteLineVatRateRef[]
@@ -59,6 +65,7 @@ export function QuoteLinesField({
   variant,
   disabled,
   categoryIds,
+  canAddRow = true,
   errors,
   knownProducts,
   knownVatRates,
@@ -239,7 +246,7 @@ export function QuoteLinesField({
         type="button"
         variant="outline"
         size="sm"
-        disabled={disabled}
+        disabled={disabled || !canAddRow}
         onClick={addRow}
         className="w-full justify-center border-dashed text-muted-foreground hover:border-solid hover:text-foreground"
       >

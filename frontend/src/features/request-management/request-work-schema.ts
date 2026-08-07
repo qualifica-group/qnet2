@@ -9,7 +9,6 @@ import {
   clientContactsChanged,
   clientIdentityChanged,
   productLinesChanged,
-  productsOfInterestChanged,
 } from '@/features/request-management/request-work-payload'
 import type { RequestClientIdentity, RequestContact } from '@/features/request-management/types'
 
@@ -145,12 +144,11 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
  * The panel's loaded state, against which the sparse rules below are decided.
  * `UpdateRequestRequest` marks every key `sometimes`: an untouched key is
  * never validated server-side, so mirroring it unconditionally here would be
- * STRICTER than the endpoint — it would make a record that has no product of
- * interest unsavable for any unrelated edit, with the submit refused before
- * any request went out.
+ * STRICTER than the endpoint — it would make a legacy record without a
+ * product line unsavable for any unrelated edit, with the submit refused
+ * before any request went out.
  */
 export interface RequestWorkOriginalState {
-  products_of_interest: number[]
   /** The persisted funzione/categoria pairs, in the form's own row shape. */
   product_lines: ProductLineRow[]
   /** The client blocks as the panel loaded them (`ValidatesRequestClientProfile` only sees what travels). */
@@ -168,12 +166,6 @@ export function buildRequestWorkSchema(original: RequestWorkOriginalState, t: TF
       client_identity: z.custom<PersonalDataDraft | null>(),
       client_contacts: z.array(z.custom<ContactDraft>()),
       client_address: z.array(z.custom<AddressDraft>()),
-      // "Prodotti di interesse": a plain id set, MANDATORY since the user
-      // directive 2026-07-23 (same rule as the opportunities form — the two
-      // channels write the same collection), but only once the set is
-      // actually edited (see the refinement below). The other membership
-      // rules (existence, category coverage) stay server-side only.
-      products_of_interest: z.array(z.number()),
       // "Funzione aziendale" + "categoria prodotto" (user directive
       // 2026-07-31): the same rows the create form edits, with the same two
       // rules (at least one row, every row complete) — but gated on the
@@ -195,13 +187,6 @@ export function buildRequestWorkSchema(original: RequestWorkOriginalState, t: TF
       operational_site_id: z.number().nullable(),
     })
     .superRefine((values, ctx) => {
-      if (
-        productsOfInterestChanged(values.products_of_interest, original.products_of_interest) &&
-        values.products_of_interest.length === 0
-      ) {
-        ctx.addIssue({ code: 'custom', path: ['products_of_interest'], message: t('products.ofInterest.required') })
-      }
-
       if (productLinesChanged(values.product_lines, original.product_lines)) {
         addProductLinesIssues(values.product_lines, ctx, t)
       }

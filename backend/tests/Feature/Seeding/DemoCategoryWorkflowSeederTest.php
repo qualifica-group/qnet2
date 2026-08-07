@@ -44,7 +44,7 @@ it('provisions one active workflow per demo category, idempotently', function ()
     }
 });
 
-it('seeds the branch pick list between the four pinned system rows', function (): void {
+it('seeds the branch pick list between the three pinned system rows', function (): void {
     seedDemoWorkflows();
 
     $workflow = QuoteWorkflow::query()->where('name', 'Corsi Online')->firstOrFail();
@@ -60,7 +60,11 @@ it('seeds the branch pick list between the four pinned system rows', function ()
         ->and($statuses->first()->system_key)->toBe('open')
         // The branch's own labels take over the writer's generic ones.
         ->and($statuses->first()->name)->toBe($pinned['open']['name'])
-        ->and($statuses->slice(-3)->pluck('system_key')->all())->toBe(['validated', 'closed_won', 'closed_lost'])
+        ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
+        // "Iscrizione confermata" is an ordinary custom row of the validated
+        // group, no longer a pinned one (user directive 2026-08-07).
+        ->and($statuses->firstWhere('name', 'Iscrizione confermata')->group->value)->toBe('validated')
+        ->and($statuses->firstWhere('name', 'Iscrizione confermata')->system_key)->toBeNull()
         ->and($statuses->slice(1, count($custom))->pluck('name')->all())->toBe(array_column($custom, 'name'));
 });
 

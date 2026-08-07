@@ -42,8 +42,7 @@ class QuoteWorkflowService
 
     /**
      * Creates the workflow, its criteria, and its status set — the mandatory
-     * system rows (AC-004) always, the optional 'validated' one only when the
-     * client marked it, plus $data->statuses' custom rows — atomically.
+     * system rows (AC-004) plus $data->statuses' custom rows — atomically.
      */
     public function create(CreateQuoteWorkflowData $data): QuoteWorkflow
     {
@@ -61,7 +60,7 @@ class QuoteWorkflowService
             $workflow = QuoteWorkflow::query()->forceCreate([...$data->attributes(), 'criteria_signature' => $signature]);
 
             $this->syncCriteria($workflow, $data->criteria);
-            $this->statusWriter->createWithCustoms($workflow->id, $data->statuses, $data->openStatus, $data->validatedStatus, $data->closedWonStatus, $data->closedLostStatus);
+            $this->statusWriter->createWithCustoms($workflow->id, $data->statuses, $data->openStatus, $data->closedWonStatus, $data->closedLostStatus);
 
             return $workflow;
         });

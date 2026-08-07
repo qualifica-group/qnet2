@@ -15,7 +15,42 @@ import type { OpportunityDetailWithPermissions } from '@/features/opportunities/
 /**
  * Spec 0065 AC-072: the Offer tab's product picker defaults to the SELECTED
  * opportunity's own product-line categories; unlocking (confirmed) drops it.
+ * Spec 0077 (user directive 2026-08-07): an opportunity managed on a `single`
+ * product category caps the offer at ONE row — resolved from the same cached
+ * category tree the product-line pickers read.
  */
+
+/** Mutable so a test can swap the mode the opportunity's category resolves to. */
+const { categoryTree } = vi.hoisted(() => ({ categoryTree: { nodes: [] as unknown[] } }))
+
+vi.mock('@/features/product-categories/use-product-category-tree', () => ({
+  useProductCategoryTree: () => ({ data: categoryTree.nodes, isPending: false, isError: false }),
+}))
+
+/** A tree of one root + its two categories, all carrying $mode (mirrored server-side onto every descendant). */
+function treeWithMode(mode: 'single' | 'multiple') {
+  const node = (overrides: Record<string, unknown>) => ({
+    parent_id: null,
+    children: [],
+    attributes_count: 0,
+    products_count: 0,
+    business_function_id: null,
+    requires_quote: false,
+    is_selectable: true,
+    management_mode: mode,
+    ...overrides,
+  })
+
+  return [
+    node({
+      id: 6,
+      name: 'Root',
+      business_function_id: 1,
+      is_selectable: false,
+      children: [node({ id: 7, name: 'Widgets', parent_id: 6 }), node({ id: 9, name: 'Gadgets', parent_id: 6 })],
+    }),
+  ]
+}
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
@@ -141,6 +176,7 @@ beforeEach(() => {
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
   fetchOpportunityMock.mockReset()
   fetchOpportunityMock.mockResolvedValue(opportunityFixture())
+  categoryTree.nodes = treeWithMode('multiple')
 })
 
 describe('QuoteOfferTab (spec 0065 AC-072)', () => {
@@ -179,5 +215,29 @@ describe('QuoteOfferTab (spec 0065 AC-072)', () => {
       'products',
       expect.not.objectContaining({ params: expect.anything() }),
     )
+  })
+
+  it('caps the offer at one row when the opportunity is managed on a single product category', async () => {
+    categoryTree.nodes = treeWithMode('single')
+    render(<Harness />, { wrapper: wrapper() })
+
+    await screen.findByText('The opportunity is managed on a single product category: its offer may carry one row only.')
+
+    const addRow = screen.getByRole('button', { name: 'Add row' })
+    expect(addRow).toBeEnabled()
+
+    fireEvent.click(addRow)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add row' })).toBeDisabled())
+  })
+
+  it('leaves the offer free to grow on a multiple-mode opportunity', async () => {
+    render(<Harness />, { wrapper: wrapper() })
+
+    await screen.findByText("Products limited to the linked opportunity's categories.")
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
+
+    expect(screen.getByRole('button', { name: 'Add row' })).toBeEnabled()
   })
 })

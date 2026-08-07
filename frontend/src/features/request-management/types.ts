@@ -1,9 +1,9 @@
 /**
- * Request-management ("Gestione Richieste") work-panel types. NOT a new
- * entity: the record IS an Opportunity, exposed through a dedicated
- * operational endpoint (spec 0049 frozen `data_contract`). Mirrors
- * `RequestManagementResource` 1:1 — do not add fields the backend doesn't
- * send.
+ * Request-management ("Gestione Richieste") work-panel types. The record IS
+ * an Offerta (Quote), exposed through a dedicated operational endpoint (spec
+ * 0086 frozen `data_contract`, superseding spec 0049's Opportunity-based
+ * one). Mirrors `RequestManagementResource` 1:1 — do not add fields the
+ * backend doesn't send.
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -63,11 +63,13 @@ export interface RequestProductLine {
 }
 
 /**
- * A product the operator recorded as "di interesse" for this request (user
- * directive 2026-07-22), with its own category so the panel can show which
- * product line it belongs to.
+ * One of the offer's own REVENUE lines (spec 0086 D-7), with its own category
+ * so the grid/panel can show which product line it belongs to. Replaces
+ * "prodotti di interesse" in this module: read-only everywhere here (AC-021,
+ * AC-022) — the source of truth is the Offerta's own lines, not a module
+ * field anyone edits.
  */
-export interface RequestProductOfInterest {
+export interface RequestOfferLine {
   id: number
   name: string
   product_category: RequestRelationRef | null
@@ -165,11 +167,20 @@ export interface RequestWorkContext {
 }
 
 /**
- * The work panel returned by `GET /api/request-management/{opportunity}`
- * (envelope `data`). Matches `RequestManagementResource`.
+ * The work panel returned by `GET /api/request-management/{quote}` (envelope
+ * `data`). Matches `RequestManagementResource`.
  */
 export interface RequestWorkPanel {
+  /** The Offerta (Quote) id — this module's own record id since spec 0086. */
   id: number
+  /**
+   * Spec 0086 D-9: the underlying Opportunity's id, the identifier of the
+   * COLLABORATIVE record — documents, notes, activity history and field
+   * change requests stay anchored to the Opportunity (`Quote` carries none of
+   * `HasAttachments`/`HasNotes`/`HasFieldChangeRequests`), so every one of
+   * those surfaces reads this field, never `id`.
+   */
+  opportunity_id: number
   name: string
   registry: RequestRelationRef | null
   referent: RequestRelationRef | null
@@ -198,8 +209,12 @@ export interface RequestWorkPanel {
   /** Spec 0082: the COMPUTED status of the request's opportunity, read-only. */
   status: OpportunityStatusSummary
   product_lines: RequestProductLine[]
-  /** Products of interest recorded for this request; `[]` when none (user directive 2026-07-22). */
-  products_of_interest: RequestProductOfInterest[]
+  /**
+   * The offer's own REVENUE lines (spec 0086 D-7), read-only in this module;
+   * `[]` when the offer has none yet. Replaces `products_of_interest`, which
+   * this module no longer exposes or writes (AC-021/AC-022).
+   */
+  offer_lines: RequestOfferLine[]
   /** The client's card identity, `null` when the client has no card yet. */
   client_identity: RequestClientIdentity | null
   client_contacts: RequestContactsBlock
@@ -273,26 +288,18 @@ export interface RequestClientAddressPayload {
 }
 
 /**
- * Payload for `PATCH /api/request-management/{opportunity}` (sparse diff):
- * only the sent keys change. `client_contacts`, when sent, is AUTHORITATIVE
- * (a removed row is deleted); `client_address` is a single create-or-update
- * row and never deletes the client's other addresses.
+ * Payload for `PATCH /api/request-management/{quote}` (sparse diff): only the
+ * sent keys change. `client_contacts`, when sent, is AUTHORITATIVE (a removed
+ * row is deleted); `client_address` is a single create-or-update row and
+ * never deletes the client's other addresses. `products_of_interest` is NOT
+ * part of this shape (spec 0086 AC-022): the panel no longer writes it.
  */
 export interface UpdateRequestWorkPayload {
   next_callback_at?: string | null
   /**
-   * Product ids, AUTHORITATIVE when sent (`[]` clears the collection). A
-   * product outside the opportunity's product-line categories is accepted:
-   * the server then ADDS the matching business function / product category
-   * row, which is what the picker's unlock dialog warns about.
-   */
-  products_of_interest?: number[]
-  /**
    * "Funzione aziendale" + "categoria prodotto" (user directive 2026-07-31),
    * AUTHORITATIVE when sent: the collection is fully replaced, and it may
-   * never be cleared (`min:1` server-side). Dropping a category whose
-   * products of interest are still selected is rejected 422 — send the new
-   * `products_of_interest` in the same PATCH.
+   * never be cleared (`min:1` server-side).
    */
   product_lines?: RequestProductLinePayload[]
   /**

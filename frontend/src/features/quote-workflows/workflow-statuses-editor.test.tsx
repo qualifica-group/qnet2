@@ -37,7 +37,7 @@ const ROWS: WorkflowStatusFormRow[] = [
   },
 ]
 
-function renderEditor(onUpdateRow = vi.fn(), onMarkValidated = vi.fn()) {
+function renderEditor(onUpdateRow = vi.fn()) {
   render(
     <WorkflowStatusesEditor
       rows={ROWS}
@@ -45,30 +45,29 @@ function renderEditor(onUpdateRow = vi.fn(), onMarkValidated = vi.fn()) {
       onAddCustom={vi.fn()}
       onRemoveCustom={vi.fn()}
       onUpdateRow={onUpdateRow}
-      onMarkValidated={onMarkValidated}
     />,
   )
   return onUpdateRow
 }
 
-describe('WorkflowStatusesEditor — optional validated mark', () => {
-  it('offers the mark on a custom row but never on a mandatory system row', () => {
-    renderEditor()
+describe('WorkflowStatusesEditor — group of a custom row', () => {
+  // User directive 2026-08-07: "Validato" is one of the group values a custom
+  // row may take from the select, never a system row of its own.
+  it('offers the validated group on a custom row and patches it on pick', () => {
+    const onUpdateRow = renderEditor()
 
-    // One switch only: the 'open' row is mandatory and cannot carry the mark.
-    expect(screen.getAllByLabelText('System status "Validated"')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('combobox', { name: 'Group' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Validated' }))
+
+    expect(onUpdateRow).toHaveBeenCalledWith('custom-1', { group: 'validated' })
   })
 
-  it('reports the row the user marks, unchecked by default', () => {
-    const onMarkValidated = vi.fn()
-    renderEditor(vi.fn(), onMarkValidated)
+  it('keeps a system row on a read-only group badge, with no select of its own', () => {
+    renderEditor()
 
-    const toggle = screen.getByLabelText('System status "Validated"')
-    expect(toggle).not.toBeChecked()
-
-    fireEvent.click(toggle)
-
-    expect(onMarkValidated).toHaveBeenCalledWith('custom-1', true)
+    // One select only: the 'open' row is a system one and its group is fixed.
+    expect(screen.getAllByRole('combobox', { name: 'Group' })).toHaveLength(1)
+    expect(screen.getByText('Open')).toBeInTheDocument()
   })
 })
 

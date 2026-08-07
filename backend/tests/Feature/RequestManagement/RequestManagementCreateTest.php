@@ -1,21 +1,28 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
-use App\Models\Referent;
+use App\Models\Quote;
 use App\Models\Registry;
-use App\Models\RewardType;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
-// POST /api/request-management (spec 0057): creates the Opportunity behind a
-// new "Gestione Richieste" row, gated by `request-management.create` — the
-// same permission catalogue as the rest of this module (AC-001..AC-010).
+// POST /api/request-management (spec 0057, migrated onto the Quote by spec
+// 0086 D-5): creates the Opportunity AND the Offerta behind a new "Gestione
+// Richieste" row in one transaction, gated by `request-management.create` —
+// AC-001..AC-007 (permission gate, the D-2 registry/client_identity XOR,
+// product_lines validation, name derivation). The attribution block
+// (Fonte/Segnalatore/rewards/Operatore/Sede) and AC-010 live in
+// RequestManagementCreateAttributionTest (engineering.md §6, file-size
+// budget). `data.id` is the OFFERTA (Quote) id (AC-027), never the
+// Opportunity's — fixtures that need both seed a decoy Opportunity first so
+// the two ids can never coincide by construction (a coincidence would let an
+// assertion that confuses the two records pass for the wrong reason).
 
 uses(RefreshDatabase::class);
 
@@ -60,6 +67,17 @@ if (! function_exists('oneProductLine')) {
     }
 }
 
+if (! function_exists('decoyOpportunity')) {
+    /**
+     * A throwaway Opportunity, created before the real POST under test so its
+     * id can never coincide with the freshly-created Offerta's own id.
+     */
+    function decoyOpportunity(): void
+    {
+        Opportunity::factory()->create();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-001 — 403 without the permission
 // ---------------------------------------------------------------------------
@@ -76,6 +94,7 @@ it('AC-001: POST without request-management.create -> 403, no row created', func
     ])->assertForbidden();
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -86,6 +105,7 @@ it('AC-002: POST with registry_id + product_lines -> 201, attached to that regis
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->withPersonalData()->create();
     $originalName = $registry->name;
+    decoyOpportunity();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/request-management', [
@@ -94,8 +114,9 @@ it('AC-002: POST with registry_id + product_lines -> 201, attached to that regis
         'source_id' => aSourceId(),
     ])->assertCreated();
 
-    $opportunityId = $response->json('data.id');
-    $this->assertDatabaseHas('opportunities', ['id' => $opportunityId, 'registry_id' => $registry->id]);
+    $quote = Quote::findOrFail($response->json('data.id'));
+    expect($quote->opportunity_id)->not->toBe($quote->id);
+    $this->assertDatabaseHas('opportunities', ['id' => $quote->opportunity_id, 'registry_id' => $registry->id]);
     expect($registry->fresh()->name)->toBe($originalName);
 });
 
@@ -105,6 +126,7 @@ it('AC-002: POST with registry_id + product_lines -> 201, attached to that regis
 
 it('AC-003: POST with client_identity + contacts + address -> 201, new Registry+PersonalData created, name derived', function () {
     $actor = requestManagementCreatorWith(['create']);
+    decoyOpportunity();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/request-management', [
@@ -121,7 +143,8 @@ it('AC-003: POST with client_identity + contacts + address -> 201, new Registry+
         'source_id' => aSourceId(),
     ])->assertCreated();
 
-    $opportunity = Opportunity::with('registry.personalData.contacts', 'registry.personalData.addresses')->findOrFail($response->json('data.id'));
+    $quote = Quote::findOrFail($response->json('data.id'));
+    $opportunity = Opportunity::with('registry.personalData.contacts', 'registry.personalData.addresses')->findOrFail($quote->opportunity_id);
     $registry = $opportunity->registry;
 
     expect($registry)->not->toBeNull();
@@ -154,6 +177,7 @@ it('AC-004: POST with registry_id AND client_identity together -> 422, no row cr
     ])->assertStatus(422)->assertJsonValidationErrors('registry_id');
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 it('AC-005: POST with neither registry_id nor client_identity -> 422, no row created', function () {
@@ -165,6 +189,7 @@ it('AC-005: POST with neither registry_id nor client_identity -> 422, no row cre
     ])->assertStatus(422)->assertJsonValidationErrors('registry_id');
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -180,6 +205,7 @@ it('AC-006: POST without product_lines -> 422, no row created', function () {
         ->assertStatus(422)->assertJsonValidationErrors('product_lines');
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 it('AC-006: POST with a category not belonging to the chosen business function -> 422, no row created', function () {
@@ -196,15 +222,17 @@ it('AC-006: POST with a category not belonging to the chosen business function -
     ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.business_function_id');
 
     expect(Opportunity::count())->toBe(0);
+    expect(Quote::count())->toBe(0);
 });
 
 // ---------------------------------------------------------------------------
-// AC-007 — name is derived
+// AC-007 — the Opportunity's name is derived
 // ---------------------------------------------------------------------------
 
-it('AC-007: the created opportunity name is OPP_{id}', function () {
+it('AC-007: the created opportunity name is OPP_{id}, and the response id is the OFFERTA, not the Opportunity', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
+    decoyOpportunity();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/request-management', [
@@ -213,241 +241,43 @@ it('AC-007: the created opportunity name is OPP_{id}', function () {
         'source_id' => aSourceId(),
     ])->assertCreated();
 
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
+    $quote = Quote::findOrFail($response->json('data.id'));
+    $opportunity = $quote->opportunity;
+    expect($quote->opportunity_id)->not->toBe($quote->id);
     expect($opportunity->name)->toBe('OPP_'.$opportunity->id);
     expect($response->json('data.name'))->toBe('OPP_'.$opportunity->id);
 });
 
 // ---------------------------------------------------------------------------
-// Initial attribution (user directive 2026-07-24): Fonte, Segnalatore and the
-// reward assignments accepted at create — same fields/semantics the work panel
-// already carries, set up front on the created Opportunity.
+// AC-030 — a failure INSIDE the transaction, after the Opportunity is already
+// persisted, must roll back BOTH records. Every other "no row created" case
+// in this file 422s at the FormRequest layer, before RequestCreationService's
+// own DB::transaction() ever opens (RequestCreationService.php:60) — that
+// proves "never attempted", not "rolled back mid-flight". This forces a
+// failure past validation, inside the transaction, by making the Offerta's
+// own creation step throw.
 // ---------------------------------------------------------------------------
 
-it('creates with source_id, reporter_id and rewards -> 201, all persisted and the reward targets the reporter', function () {
+it('AC-030: a failure inside the transaction, after the Opportunity insert, leaves neither record persisted', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
-    $source = Source::factory()->create();
-    $reporter = Referent::factory()->create();
-    $rewardType = RewardType::factory()->create();
+    decoyOpportunity();
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => $source->id,
-        'reporter_id' => $reporter->id,
-        'rewards' => [['reward_type_id' => $rewardType->id]],
-    ])->assertCreated();
+    $this->mock(QuoteService::class, function ($mock): void {
+        $mock->shouldReceive('create')
+            ->once()
+            ->andThrow(new RuntimeException('Simulated failure after the Opportunity insert'));
+    });
 
-    $opportunity = Opportunity::with('rewards')->findOrFail($response->json('data.id'));
-    expect($opportunity->source_id)->toBe($source->id);
-    expect($opportunity->reporter_id)->toBe($reporter->id);
-    expect($opportunity->rewards)->toHaveCount(1);
-    $reward = $opportunity->rewards->first();
-    expect($reward->reward_type_id)->toBe($rewardType->id);
-    // D-3: the beneficiary is always the opportunity's reporter, never chosen.
-    expect($reward->referent_id)->toBe($reporter->id);
-});
-
-it('rejects rewards without a reporter_id -> 422 (D-3), no row created', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    $rewardType = RewardType::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'rewards' => [['reward_type_id' => $rewardType->id]],
-    ])->assertStatus(422)->assertJsonValidationErrors('rewards');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-it('rejects a non-existent source_id -> 422, no row created', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => 999999,
-    ])->assertStatus(422)->assertJsonValidationErrors('source_id');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-it('rejects a create without a source_id -> 422, no row created', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-    ])->assertStatus(422)->assertJsonValidationErrors('source_id');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-// ---------------------------------------------------------------------------
-// GA2 "Operatore" at creation (user directive 2026-07-29): a supervisory act,
-// gated by `request-management.assignOperator` ON TOP of `create`.
-// ---------------------------------------------------------------------------
-
-it('creates with operator_id -> 201, the user lands on the GA2 pivot slot', function () {
-    $actor = requestManagementCreatorWith(['create', 'assignOperator']);
-    $registry = Registry::factory()->create();
-    $operator = User::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-        'operator_id' => $operator->id,
-    ])->assertCreated();
-
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager()?->id)->toBe($operator->id);
-    $this->assertDatabaseHas('opportunity_user', [
-        'opportunity_id' => $opportunity->id,
-        'user_id' => $operator->id,
-        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
-    ]);
-});
-
-it('rejects operator_id from an actor without request-management.assignOperator -> 403, no row created', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    $operator = User::factory()->create();
-    Sanctum::actingAs($actor);
+    $opportunitiesBefore = Opportunity::count();
 
     $this->postJson('/api/request-management', [
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
         'source_id' => aSourceId(),
-        'operator_id' => $operator->id,
-    ])->assertForbidden();
+    ])->assertStatus(500);
 
-    expect(Opportunity::count())->toBe(0);
-});
-
-// An ABSENT operator_id is not "no operator": it defaults to the creating
-// actor (user directive 2026-08-04) — see
-// RequestManagementCreateActorDefaultsTest for the whole default block.
-it('falls back to the creating actor as GA2 when operator_id is absent', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-    ])->assertCreated();
-
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager()?->id)->toBe($actor->id);
-});
-
-// ---------------------------------------------------------------------------
-// Sede operativa at creation (user directive 2026-07-31): the same field the
-// work panel edits, and what scopes the operator list the form offers.
-//
-// Submitting it needs `operational-sites.viewAny` ON TOP of `create` (user
-// directive 2026-08-03), the same ability the field's own ceiling hangs off in
-// RequestManagementAuthorization — creation resolves no field permission, so
-// the restriction is enforced in the controller instead.
-// ---------------------------------------------------------------------------
-
-it('creates with operational_site_id -> 201, the site is persisted on the request', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $actor->givePermissionTo(Permission::findOrCreate('operational-sites.viewAny'));
-    $registry = Registry::factory()->create();
-    $site = OperationalSite::factory()->withAddress()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-        'operational_site_id' => $site->id,
-    ])->assertCreated();
-
-    expect(Opportunity::findOrFail($response->json('data.id'))->operational_site_id)->toBe($site->id);
-});
-
-it('rejects operational_site_id from an actor without operational-sites.viewAny -> 403, no row created', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    $site = OperationalSite::factory()->withAddress()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-        'operational_site_id' => $site->id,
-    ])->assertForbidden();
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-it('rejects an operational_site_id that does not exist -> 422', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-        'operational_site_id' => 999999,
-    ])->assertStatus(422)->assertJsonValidationErrors('operational_site_id');
-
-    expect(Opportunity::count())->toBe(0);
-});
-
-// Absent falls back to the actor's OWN Sede (user directive 2026-08-04); this
-// actor has no employment profile, so there is none to fall back to.
-it('creates without a site when operational_site_id is absent and the actor has no Sede', function () {
-    $actor = requestManagementCreatorWith(['create']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-    ])->assertCreated();
-
-    expect(Opportunity::findOrFail($response->json('data.id'))->operational_site_id)->toBeNull();
-});
-
-// ---------------------------------------------------------------------------
-// AC-010 — response shape is the same RequestManagementResource as the GET
-// ---------------------------------------------------------------------------
-
-it('AC-010: the 201 response is a full RequestManagementResource, matching the GET shape', function () {
-    $actor = requestManagementCreatorWith(['create', 'view', 'viewAll']);
-    $registry = Registry::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $created = $this->postJson('/api/request-management', [
-        'registry_id' => $registry->id,
-        'product_lines' => oneProductLine(),
-        'source_id' => aSourceId(),
-    ])->assertCreated();
-
-    $opportunityId = $created->json('data.id');
-    $created->assertJsonStructure([
-        'success', 'message', 'permissions',
-        'data' => ['id', 'name', 'registry', 'product_lines', 'status', 'client_identity', 'client_contacts', 'client_address'],
-    ]);
-
-    $shown = $this->getJson("/api/request-management/{$opportunityId}")->assertOk();
-    expect(array_keys($created->json('data')))->toBe(array_keys($shown->json('data')));
+    expect(Opportunity::count())->toBe($opportunitiesBefore);
+    expect(Quote::count())->toBe(0);
 });

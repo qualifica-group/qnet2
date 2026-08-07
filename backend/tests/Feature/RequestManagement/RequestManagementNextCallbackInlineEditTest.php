@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -10,7 +11,9 @@ use Spatie\Permission\Models\Permission;
 // PATCH /api/tables/request-management/rows/{row} — inline edit of
 // `next_callback_at` (spec 0054, D-4): the ONE request-management column
 // activated this round besides the workflow status (paused pending a
-// product decision on `requires_note`, see docs/HANDOFF.md).
+// product decision on `requires_note`, see docs/HANDOFF.md). Spec 0086,
+// D-1: the row is now a `quotes` record; `next_callback_at` stays on the
+// Opportunity, reached through `quote.opportunity`.
 
 uses(RefreshDatabase::class);
 
@@ -35,12 +38,12 @@ if (! function_exists('requestManagementInlineEditActor')) {
 }
 
 if (! function_exists('managedOpportunityForInlineEdit')) {
-    function managedOpportunityForInlineEdit(User $manager): Opportunity
+    function managedOpportunityForInlineEdit(User $supervisor): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
@@ -56,25 +59,26 @@ it('GET /api/tables/request-management/columns: next_callback_at emits editable:
 
 it('AC-013: PATCH next_callback_at -> 200, persisted, and the reminder marker clears when the value CHANGES', function () {
     $actor = requestManagementInlineEditActor(['viewAny', 'update']);
-    $opportunity = managedOpportunityForInlineEdit($actor);
-    $opportunity->forceFill(['next_callback_reminded_at' => now()])->save();
+    $quote = managedOpportunityForInlineEdit($actor);
+    $quote->opportunity->forceFill(['next_callback_reminded_at' => now()])->save();
     Sanctum::actingAs($actor);
 
     $newCallback = now()->addDays(3)->format('Y-m-d\TH:i');
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'next_callback_at',
         'value' => $newCallback,
     ])->assertOk();
 
-    $fresh = $opportunity->fresh();
+    $fresh = $quote->opportunity->fresh();
     expect($fresh->next_callback_reminded_at)->toBeNull();
     expect($fresh->next_callback_at->format('Y-m-d\TH:i'))->toBe($newCallback);
 });
 
 it('AC-013: resending the SAME next_callback_at value leaves the reminder marker untouched', function () {
     $actor = requestManagementInlineEditActor(['viewAny', 'update']);
-    $opportunity = managedOpportunityForInlineEdit($actor);
+    $quote = managedOpportunityForInlineEdit($actor);
+    $opportunity = $quote->opportunity;
     $opportunity->next_callback_at = now()->addDays(2);
     $opportunity->next_callback_reminded_at = now();
     $opportunity->save();
@@ -82,7 +86,7 @@ it('AC-013: resending the SAME next_callback_at value leaves the reminder marker
 
     $unchanged = $opportunity->fresh()->next_callback_at->format('Y-m-d\TH:i');
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'next_callback_at',
         'value' => $unchanged,
     ])->assertOk();
@@ -92,24 +96,25 @@ it('AC-013: resending the SAME next_callback_at value leaves the reminder marker
 
 it('value:null clears next_callback_at -> 200, NULL persisted', function () {
     $actor = requestManagementInlineEditActor(['viewAny', 'update']);
-    $opportunity = managedOpportunityForInlineEdit($actor);
-    $opportunity->forceFill(['next_callback_at' => now()->addDay()])->save();
+    $quote = managedOpportunityForInlineEdit($actor);
+    $quote->opportunity->forceFill(['next_callback_at' => now()->addDay()])->save();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'next_callback_at',
         'value' => null,
     ])->assertOk();
 
-    expect($opportunity->fresh()->next_callback_at)->toBeNull();
+    expect($quote->opportunity->fresh()->next_callback_at)->toBeNull();
 });
 
 it('AC-014: the write goes through RequestManagementService::updateWork (activity-log entry exists)', function () {
     $actor = requestManagementInlineEditActor(['viewAny', 'update']);
-    $opportunity = managedOpportunityForInlineEdit($actor);
+    $quote = managedOpportunityForInlineEdit($actor);
+    $opportunity = $quote->opportunity;
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'next_callback_at',
         'value' => now()->addDay()->format('Y-m-d\TH:i'),
     ])->assertOk();
@@ -127,12 +132,12 @@ it('AC-014: the write goes through RequestManagementService::updateWork (activit
 
 it('AC-015: an operator not managing the record and without viewAll receives 404 on next_callback_at PATCH', function () {
     $actor = requestManagementInlineEditActor(['viewAny', 'update']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     $otherManager = User::factory()->create();
-    $opportunity->managers()->sync([$otherManager->id => ['position' => 2]]);
+    $quote->opportunity->managers()->sync([$otherManager->id => ['position' => 2]]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'next_callback_at',
         'value' => now()->addDay()->format('Y-m-d\TH:i'),
     ])->assertNotFound();

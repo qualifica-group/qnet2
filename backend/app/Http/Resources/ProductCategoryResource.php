@@ -58,6 +58,11 @@ class ProductCategoryResource extends JsonResource
             // `management_mode_source_category` is attached by the
             // controller alongside `requires_quote_source_category`.
             'management_mode' => $this->management_mode->value,
+            // User directive 2026-08-07: the EFFECTIVE single-quote rule —
+            // already mirrored from the root on every descendant, so no walk
+            // is needed here. `single_quote_per_opportunity_source_category`
+            // is attached by the controller alongside the other two.
+            'single_quote_per_opportunity' => (bool) $this->single_quote_per_opportunity,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

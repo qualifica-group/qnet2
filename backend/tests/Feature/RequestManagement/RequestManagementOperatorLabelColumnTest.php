@@ -3,6 +3,7 @@
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -113,13 +114,14 @@ it('inline PATCH on the operator column is unaffected — the structural lookup 
     $category = ProductCategory::factory()->create(['manager_labels' => ['2' => 'Operatore Tecnico']]);
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operator_ga2',
         'value' => $newOperator->id,
     ])->assertOk();
 
-    expect($opportunity->fresh()->operatorManager()?->id)->toBe($newOperator->id);
+    expect($quote->fresh()->supervisor_id)->toBe($newOperator->id);
 });

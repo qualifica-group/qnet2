@@ -3,6 +3,7 @@
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -10,7 +11,8 @@ use Spatie\Permission\Models\Permission;
 
 // Spec 0080, data_contract (B): the work panel's manager_labels field, so the
 // "Operatore (GA2)" field/column can be rietichettata with the request's
-// category-resolved level-2 label. operator_id/operator stay untouched.
+// category-resolved level-2 label. operator_id/operator stay untouched
+// (spec 0086, D-2: now read from `quote.supervisor`).
 
 uses(RefreshDatabase::class);
 
@@ -40,10 +42,10 @@ it('the work panel exposes manager_labels resolved from the request\'s category,
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
     $operator = User::factory()->create();
-    $opportunity->managers()->attach($operator->id, ['position' => 2]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('data.manager_labels', ['2' => 'Operatore Tecnico'])
         ->assertJsonPath('data.operator_id', $operator->id)
@@ -52,10 +54,10 @@ it('the work panel exposes manager_labels resolved from the request\'s category,
 
 it('the work panel manager_labels is [] when the category has no configured labels', function (): void {
     $actor = managerLabelRequestManagementUserWith(['view', 'viewAll']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->getJson("/api/request-management/{$opportunity->id}")
+    $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
         ->assertJsonPath('data.manager_labels', []);
 });

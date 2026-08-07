@@ -10,7 +10,9 @@ use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
+use App\Services\ProductCategories\CategoryTreeBuilder;
 use App\Services\ProductCategories\RequiresQuoteInheritance;
+use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -26,8 +28,10 @@ class ProductCategoryService
 {
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
+        private readonly CategoryTreeBuilder $treeBuilder,
         private readonly RequiresQuoteInheritance $requiresQuote,
         private readonly CategoryManagementModeInheritance $managementMode,
+        private readonly SingleQuotePerOpportunityInheritance $singleQuote,
         private readonly CategoryManagerLabelResolver $managerLabels,
     ) {}
 
@@ -43,6 +47,10 @@ class ProductCategoryService
 
         if ($data->managementMode !== null) {
             $this->assertManagementModeNotOverridden($data->parentId, $data->managementMode);
+        }
+
+        if ($data->singleQuotePerOpportunity !== null) {
+            $this->assertSingleQuoteNotOverridden($data->parentId, $data->singleQuotePerOpportunity);
         }
 
         return DB::transaction(function () use ($data): ProductCategory {
@@ -61,6 +69,9 @@ class ProductCategoryService
                 // Spec 0077, D-8: same root-only semantics — a fresh root
                 // with no submitted value defaults to "multiple".
                 'management_mode' => $this->managementMode->inheritedValueFor($data->parentId) ?? ($data->managementMode ?? CategoryManagementMode::Multiple),
+                // Same root-only semantics; a fresh root with no submitted
+                // value defaults to false (the pre-existing behaviour).
+                'single_quote_per_opportunity' => $this->singleQuote->inheritedValueFor($data->parentId) ?? ($data->singleQuotePerOpportunity ?? false),
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
                 'inherits_manager_labels' => $data->inheritsManagerLabels,
             ]);
@@ -95,6 +106,11 @@ class ProductCategoryService
         if ($data->managementModeSubmitted && $data->managementMode !== null) {
             $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
             $this->assertManagementModeNotOverridden($resolvedParentId, $data->managementMode);
+        }
+
+        if ($data->singleQuotePerOpportunitySubmitted && $data->singleQuotePerOpportunity !== null) {
+            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
+            $this->assertSingleQuoteNotOverridden($resolvedParentId, $data->singleQuotePerOpportunity);
         }
 
         return DB::transaction(function () use ($category, $data): ProductCategory {
@@ -138,6 +154,12 @@ class ProductCategoryService
                 $this->managementMode->syncSubtree($category);
             }
 
+            // Same trigger set for the single-quote flag (user directive
+            // 2026-08-07).
+            if ($data->hasParentId() || $data->singleQuotePerOpportunitySubmitted) {
+                $this->singleQuote->syncSubtree($category);
+            }
+
             return $category->fresh(['parent', 'attributes', 'businessFunction']);
         });
     }
@@ -166,7 +188,7 @@ class ProductCategoryService
      */
     public function tree(): array
     {
-        return $this->hierarchy->tree();
+        return $this->treeBuilder->tree();
     }
 
     /**
@@ -227,6 +249,19 @@ class ProductCategoryService
     public function managementModeSourceCategory(ProductCategory $category): ?array
     {
         return $this->managementMode->sourceCategoryFor($category);
+    }
+
+    /**
+     * The ROOT category $category takes its `single_quote_per_opportunity`
+     * flag from — null when $category is itself a root (user directive
+     * 2026-08-07). The value itself is a real column on $category, already
+     * carried by the Resource.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public function singleQuotePerOpportunitySourceCategory(ProductCategory $category): ?array
+    {
+        return $this->singleQuote->sourceCategoryFor($category);
     }
 
     /**
@@ -310,6 +345,20 @@ class ProductCategoryService
 
         if ($inherited !== null && $inherited !== $submitted) {
             abort(422, 'This category inherits the management mode from its root category and cannot define its own.');
+        }
+    }
+
+    /**
+     * NO-OVERRIDE guard for the single-quote flag (user directive
+     * 2026-08-07): only a ROOT category authors it, so a category under
+     * $parentId may only submit the value it already inherits.
+     */
+    private function assertSingleQuoteNotOverridden(?int $parentId, bool $submitted): void
+    {
+        $inherited = $this->singleQuote->inheritedValueFor($parentId);
+
+        if ($inherited !== null && $inherited !== $submitted) {
+            abort(422, 'This category inherits the single-quote rule from its root category and cannot define its own.');
         }
     }
 

@@ -106,7 +106,7 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-function renderPanel(id = 1) {
+function renderPanel(id = 4001) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -264,9 +264,11 @@ describe('RequestWorkPanelScreen — activity log tab (spec 0049 D-7 amended)', 
     // Radix `TabsTrigger` activates on `mouseDown`, not `click`.
     fireEvent.mouseDown(tab)
 
-    expect(await screen.findByText('activity-log:request-management:1')).toBeInTheDocument()
+    // The Opportunity id (spec 0086 D-9), NOT the panel's own (Offerta) id —
+    // the fixture sets the two deliberately apart so an inverted wiring fails.
+    expect(await screen.findByText('activity-log:request-management:8001')).toBeInTheDocument()
     expect(activityLogSectionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: 'request-management', id: 1 }),
+      expect.objectContaining({ resource: 'request-management', id: 8001 }),
     )
   })
 

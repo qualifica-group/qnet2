@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,10 +38,11 @@ if (! function_exists('requestManagementUserWith')) {
 }
 
 /**
- * An Opportunity whose client card carries the given anagraphic values plus a
- * primary phone contact — the exact relation path the four columns read.
+ * A Quote (spec 0086, D-1: the grid row) whose Opportunity's client card
+ * carries the given anagraphic values plus a primary phone contact — the
+ * exact relation path the four columns read (`quote.opportunity.registry`).
  */
-function clientColumnRequest(string $firstName, string $lastName, string $taxCode, ?string $phone = null): Opportunity
+function clientColumnRequest(string $firstName, string $lastName, string $taxCode, ?string $phone = null): Quote
 {
     $registry = Registry::factory()->create();
     $card = $registry->personalData()->create([
@@ -54,7 +56,9 @@ function clientColumnRequest(string $firstName, string $lastName, string $taxCod
         $card->contacts()->create(['type' => 'phone', 'value' => $phone, 'is_primary' => true]);
     }
 
-    return Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+
+    return Quote::factory()->for($opportunity)->create();
 }
 
 /**
@@ -187,7 +191,7 @@ it('rows: a LIKE wildcard in a client filter is escaped, never a match-everythin
 it('rows: a client filter never escapes the GA2 scope of a viewAny-only actor', function () {
     $actor = requestManagementUserWith(['viewAny']);
     $mine = clientColumnRequest('Mario', 'Rossi', 'RSSMRA80A01H501U');
-    $mine->managers()->attach($actor->id, ['position' => 2]);
+    $mine->update(['supervisor_id' => $actor->id]);
     $foreign = clientColumnRequest('Mario', 'Verdi', 'VRDMRA70A01H501U');
 
     Sanctum::actingAs($actor);

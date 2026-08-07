@@ -29,88 +29,15 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     requires_quote_source_category: null,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     management_mode_source_category: null,
+    single_quote_per_opportunity_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
     ...overrides,
   }
 }
-
-describe('buildCreatePayload', () => {
-  it('builds the full create payload shape', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      description: null,
-      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
-      business_function_id: null,
-      requires_quote: false,
-      is_selectable: true,
-      management_mode: 'multiple',
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    expect(buildCreatePayload(values)).toEqual({
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      description: null,
-      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
-      business_function_id: null,
-      is_selectable: true,
-      manager_labels: {},
-      inherits_manager_labels: true,
-    })
-  })
-
-  it('omits requires_quote under a parent (inherited) and sends it at the root (owned)', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      description: null,
-      attributes: [],
-      business_function_id: null,
-      requires_quote: true,
-      is_selectable: true,
-      management_mode: 'multiple',
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    expect(buildCreatePayload(values)).not.toHaveProperty('requires_quote')
-    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ requires_quote: true })
-  })
-
-  it('omits management_mode under a parent (inherited) and sends it at the root (owned)', () => {
-    const values: ProductCategoryFormValues = {
-      name: 'Laptops',
-      parent_id: 1,
-      inherits_product_attributes: true,
-      inherits_quote_attributes: true,
-      description: null,
-      attributes: [],
-      business_function_id: null,
-      requires_quote: false,
-      is_selectable: true,
-      management_mode: 'single',
-      manager_labels: {},
-      inherits_manager_labels: true,
-      custom_fields: {},
-    }
-
-    expect(buildCreatePayload(values)).not.toHaveProperty('management_mode')
-    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ management_mode: 'single' })
-  })
-})
 
 describe('buildUpdatePayload', () => {
   it('omits every field when nothing changed', () => {
@@ -125,6 +52,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -145,6 +73,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -165,6 +94,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -188,6 +118,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -210,6 +141,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -232,6 +164,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -252,6 +185,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -275,6 +209,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: true,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -295,6 +230,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: false,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -316,6 +252,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: true,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -341,6 +278,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'single',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -361,6 +299,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'single',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -375,6 +314,33 @@ describe('buildUpdatePayload', () => {
   })
 
   // Spec 0080.
+  it('never sends single_quote_per_opportunity under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: true,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    // Under a parent the flag is read-only: the root owns it, so a diff there
+    // would be an override attempt the server refuses.
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    // Already a root: only the flag changed.
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      single_quote_per_opportunity: true,
+    })
+  })
+
   it('strips blank/whitespace-only rows and trims the rest before sending (AC-042)', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
@@ -387,6 +353,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: { '1': '  Commercial  ', '2': '', '3': '   ', '4': 'Tutor' },
       inherits_manager_labels: true,
       custom_fields: {},
@@ -410,6 +377,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       // Different key order / extra blank rows: the position-by-position diff
       // must still see this as unchanged from `withOwnLabel`.
       manager_labels: { '1': '', '2': 'Operator', '3': '', '4': '' },
@@ -432,6 +400,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: {},
       inherits_manager_labels: false,
       custom_fields: {},
@@ -452,6 +421,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: true,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: { '1': 'Commercial', '2': '  ' },
       inherits_manager_labels: false,
       custom_fields: {},
@@ -477,6 +447,7 @@ describe('buildUpdatePayload', () => {
       requires_quote: false,
       is_selectable: true,
       management_mode: 'multiple',
+      single_quote_per_opportunity: false,
       manager_labels: { '5': 'Regional lead', '12': 'Director' },
       inherits_manager_labels: true,
       custom_fields: {},

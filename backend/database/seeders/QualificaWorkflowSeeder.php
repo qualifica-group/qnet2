@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\DataObjects\QuoteWorkflows\CreateQuoteWorkflowData;
 use App\Enums\WorkflowStatusGroup;
-use App\Enums\WorkflowStatusSystemKey;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Services\QuoteWorkflowService;
@@ -31,10 +30,7 @@ use Illuminate\Database\Seeder;
  * Those pinned rows are seeded with the sheet's OWN labels, not the writer's
  * generic "Aperta"/"Chiusa positiva"/"Chiusa negativa": each takes over the
  * first state its block classifies under the same group (user decision
- * 2026-07-28), so no label foreign to the sheet reaches the pick list. The
- * optional 'validated' row is the exception — promoted by NAME, and only for
- * the one state the sheet has for it, "OK_Da Caricare" (user directive
- * 2026-08-03): every other workflow is seeded without it.
+ * 2026-07-28), so no label foreign to the sheet reaches the pick list.
  *
  * Idempotent: a category whose workflow already exists (by name OR by criteria
  * signature, both unique) is skipped, so a re-run neither duplicates nor
@@ -86,10 +82,6 @@ class QualificaWorkflowSeeder extends Seeder
             criteria: $criteria,
             statuses: WorkflowStatusCatalogue::customStatusesFor($category->name),
             openStatus: $pinned[WorkflowStatusGroup::Open->value],
-            // Null for every section but AUTOIMPIEGO/YISU, whose
-            // "OK_Da Caricare" is the only state carrying the optional
-            // 'validated' row: those sets get none.
-            validatedStatus: $pinned[WorkflowStatusSystemKey::Validated->value],
             closedWonStatus: $pinned[WorkflowStatusGroup::ClosedWon->value],
             closedLostStatus: $pinned[WorkflowStatusGroup::ClosedLost->value],
         ));

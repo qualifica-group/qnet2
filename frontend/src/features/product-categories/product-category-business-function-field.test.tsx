@@ -89,6 +89,7 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCate
     requires_quote: false,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     ...overrides,
   }
 }
@@ -122,7 +123,9 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     management_mode_source_category: null,
+    single_quote_per_opportunity_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},

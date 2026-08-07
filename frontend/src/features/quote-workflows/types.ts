@@ -24,30 +24,20 @@ export type WorkflowStatusGroupValue = (typeof WORKFLOW_STATUS_GROUPS)[number]
 
 /**
  * Marks a workflow-status row as a per-set system row, or `null` for a custom
- * one. `open`/`closed_won`/`closed_lost` are MANDATORY (every set is created
- * with them, none can be deleted); `validated` is OPTIONAL and has no default
- * (user directive 2026-08-03) — a row carries it only while the user marks it,
- * at most one per set.
+ * one. All three are MANDATORY: every set is created with them and none can
+ * be deleted. There is no system key for the "validated" phase (user
+ * directive 2026-08-07) — that is a plain `group` any custom row may carry.
  */
-export type WorkflowStatusSystemKey = 'open' | 'validated' | 'closed_won' | 'closed_lost' | null
+export type WorkflowStatusSystemKey = 'open' | 'closed_won' | 'closed_lost' | null
 
 /**
- * Whether a `system_key` marks one of the pinned TAIL rows (`validated`/
- * `closed_won`/`closed_lost`), all pinned last after every custom row — the
- * anchor a newly-added custom row is inserted before. `open` is pinned first
- * and is NOT part of the tail.
+ * Whether a `system_key` marks one of the pinned TAIL rows (`closed_won`/
+ * `closed_lost`), both pinned last after every custom row — the anchor a
+ * newly-added custom row is inserted before. `open` is pinned first and is
+ * NOT part of the tail.
  */
 export function isTailWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
-  return key === 'validated' || key === 'closed_won' || key === 'closed_lost'
-}
-
-/**
- * Whether a `system_key` marks one of the three MANDATORY pinned rows — the
- * ones whose identity and `group` are immutable. The optional `validated` one
- * is excluded: it can be moved onto another status or dropped entirely.
- */
-export function isMandatoryWorkflowSystemKey(key: WorkflowStatusSystemKey): boolean {
-  return key === 'open' || key === 'closed_won' || key === 'closed_lost'
+  return key === 'closed_won' || key === 'closed_lost'
 }
 
 /**
@@ -121,9 +111,7 @@ export interface CreateQuoteWorkflowCriterionPayload {
  * One `statuses[]` entry accepted by POST (create): the intermediate custom
  * rows (`system_key` null/absent) plus the 3 pinned rows tagged
  * `system_key: 'open'|'closed_won'|'closed_lost'`, whose name/color seed those
- * auto-created system rows (AC-004). A row tagged `system_key: 'validated'`
- * is what CREATES the optional validated row — nothing else does. No `id` —
- * nothing is persisted yet.
+ * auto-created system rows (AC-004). No `id` — nothing is persisted yet.
  */
 export interface CreateQuoteWorkflowStatusPayload {
   name: string
@@ -138,10 +126,16 @@ export interface CreateQuoteWorkflowStatusPayload {
  * One `statuses[]` entry accepted by PUT/PATCH (update) or the default-status
  * endpoint: `id` present = update an existing row (system or custom), absent
  * = a new custom row. Sort order is positional (array index), never sent
- * explicitly.
+ * explicitly. No `system_key`: on update a system row is identified by its
+ * persisted `id`, and no payload can claim or release a key.
  */
-export interface UpdateQuoteWorkflowStatusPayload extends CreateQuoteWorkflowStatusPayload {
+export interface UpdateQuoteWorkflowStatusPayload {
   id?: number
+  name: string
+  description?: string | null
+  color?: string | null
+  group: WorkflowStatusGroupValue
+  requires_note?: boolean
 }
 
 /** Payload for POST /quote-workflows. */

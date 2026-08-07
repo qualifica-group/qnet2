@@ -34,8 +34,9 @@ if (! function_exists('quoteWorkflowUserWith')) {
 // create — POST /api/quote-workflows (AC-004)
 // ---------------------------------------------------------------------------
 
-// Requirement changed (user directive 2026-08-03): 'validated' is no longer
-// auto-created — a set is born with the 3 mandatory rows only.
+// Requirement changed (user directive 2026-08-07): 'validated' is not a system
+// key at all — a set is born with the 3 mandatory rows only, and a
+// "validated" status is an ordinary custom row of that group.
 it('create: 201, persists, and auto-creates exactly the 3 system rows open/closed_won/closed_lost (AC-004)', function () {
     $actor = quoteWorkflowUserWith(['create']);
     $source = Source::factory()->create();
@@ -63,7 +64,6 @@ it('create: 201, persists, and auto-creates exactly the 3 system rows open/close
 
     expect($workflow->statuses()->count())->toBe(4)
         ->and($workflow->statuses()->where('system_key', 'open')->sole()->sort_order)->toBe(0)
-        ->and($workflow->statuses()->where('system_key', 'validated')->exists())->toBeFalse()
         ->and($workflow->statuses()->where('system_key', 'closed_won')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->where('system_key', 'closed_lost')->sole()->sort_order)->toBeGreaterThan(0)
         ->and($workflow->statuses()->whereNull('system_key')->sole()->name)->toBe('In lavorazione')
@@ -85,7 +85,7 @@ it('create: 201 with statuses omitted still creates the 3 mandatory system rows 
         ->and($workflow->statuses()->pluck('system_key')->sort()->values()->all())->toBe(['closed_lost', 'closed_won', 'open']);
 });
 
-it('create: tagging a row with system_key validated creates the optional row between the customs and the closed ones', function () {
+it('create: a validated-group row is a plain custom row, ordered with the customs before the closed ones', function () {
     $actor = quoteWorkflowUserWith(['create']);
     $source = Source::factory()->create();
     Sanctum::actingAs($actor);
@@ -95,17 +95,31 @@ it('create: tagging a row with system_key validated creates the optional row bet
         'criteria' => [['field' => 'source_id', 'value_id' => $source->id]],
         'statuses' => [
             ['name' => 'In lavorazione', 'color' => 'blue', 'group' => 'open'],
-            ['name' => 'Da caricare', 'color' => 'violet', 'group' => 'validated', 'system_key' => 'validated'],
+            ['name' => 'Da caricare', 'color' => 'violet', 'group' => 'validated'],
         ],
     ])->assertCreated()->assertJsonCount(5, 'data.statuses');
 
     $workflow = QuoteWorkflow::where('name', 'With validated')->sole();
-    $validated = $workflow->statuses()->where('system_key', 'validated')->sole();
+    $validated = $workflow->statuses()->where('name', 'Da caricare')->sole();
 
-    expect($validated->name)->toBe('Da caricare')
+    expect($validated->system_key)->toBeNull()
         ->and($validated->group->value)->toBe('validated')
-        ->and($validated->sort_order)->toBeGreaterThan($workflow->statuses()->whereNull('system_key')->sole()->sort_order)
+        ->and($validated->sort_order)->toBeGreaterThan($workflow->statuses()->where('name', 'In lavorazione')->sole()->sort_order)
         ->and($validated->sort_order)->toBeLessThan($workflow->statuses()->where('system_key', 'closed_won')->sole()->sort_order);
+});
+
+it('create: 422 when a row claims the retired validated system key', function () {
+    $actor = quoteWorkflowUserWith(['create']);
+    $source = Source::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/quote-workflows', [
+        'name' => 'Retired key',
+        'criteria' => [['field' => 'source_id', 'value_id' => $source->id]],
+        'statuses' => [
+            ['name' => 'Da caricare', 'group' => 'validated', 'system_key' => 'validated'],
+        ],
+    ])->assertStatus(422);
 });
 
 it('create: seeds the pinned rows with the names/colors the client tagged with system_key (AC-004)', function () {

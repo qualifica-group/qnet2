@@ -43,6 +43,19 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param  int  $requestId  the transferred Offerta's own id (spec 0086,
+     *                          D-2) — a grid row IS the Quote, feeds the
+     *                          `/request-management/:id` branch of the link
+     * @param  ?int  $opportunityId  spec 0086, MT-04b: the Offerta's own
+     *                               Opportunity id, feeds the
+     *                               `/opportunities/:id` branch — DISTINCT
+     *                               from $requestId since the two records
+     *                               diverged. Null keeps the pre-0086
+     *                               behaviour of reusing $requestId for both
+     *                               branches (RecordLinkResolver's own
+     *                               default).
+     */
     public function __construct(
         private readonly int $requestId,
         private readonly string $contactLabel,
@@ -53,6 +66,7 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         private readonly string $actorName,
         private readonly Carbon $transferredAt,
         private readonly TransferRecipientRoleEnum $recipientRole,
+        private readonly ?int $opportunityId = null,
     ) {}
 
     /**
@@ -102,12 +116,20 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
 
     /**
      * A path only (never an absolute URL, contract-frozen), and which path
-     * depends on what THIS recipient may open (spec 0081).
+     * depends on what THIS recipient may open (spec 0081). Spec 0086,
+     * MT-04b: `$requestId` (the Offerta) and `$opportunityId` now name TWO
+     * different records — passed through as the resolver's two distinct ids
+     * rather than one, see RecordLinkResolver::pathFor()'s own docblock.
      */
     private function pathFor(object $notifiable): ?string
     {
         /** @var User $notifiable */
-        return RecordLinkResolver::pathFor($notifiable, AssignmentTargetEnum::Opportunity, $this->requestId);
+        return RecordLinkResolver::pathFor(
+            $notifiable,
+            AssignmentTargetEnum::Opportunity,
+            $this->opportunityId ?? $this->requestId,
+            $this->requestId,
+        );
     }
 
     private function title(): string

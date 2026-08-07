@@ -31,14 +31,17 @@ if (! function_exists('criterionFieldRegistry')) {
 
 // ============ AC-005: global default set seeded by the migration ============
 
-it('seeds exactly 4 global default rows (workflow_id null) with system_key open/validated/closed_won/closed_lost (AC-005)', function () {
+// Requirement changed (user directive 2026-08-07): 'validated' is no longer a
+// system key — the seeded "Validato" row survives as an ordinary row of the
+// `validated` GROUP, unmarked by the 2026_08_07_120000 migration.
+it('seeds 4 global default rows (workflow_id null), only open/closed_won/closed_lost carrying a system_key (AC-005)', function () {
     $globalRows = DB::table('quote_workflow_statuses')
         ->whereNull('quote_workflow_id')
         ->orderBy('sort_order')
         ->get();
 
     expect($globalRows)->toHaveCount(4)
-        ->and($globalRows->pluck('system_key')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost'])
+        ->and($globalRows->pluck('system_key')->all())->toBe(['open', null, 'closed_won', 'closed_lost'])
         ->and($globalRows->pluck('group')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
 });
 

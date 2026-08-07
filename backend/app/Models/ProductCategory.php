@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'management_mode', 'single_quote_per_opportunity', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -62,6 +62,12 @@ class ProductCategory extends BaseModel
             // requires_quote: a child's own column is never authored
             // directly, it only ever reflects its root's.
             'management_mode' => CategoryManagementMode::class,
+            // User directive 2026-08-07 — owned by the branch ROOT and
+            // mirrored on every descendant by
+            // SingleQuotePerOpportunityInheritance, same shape as
+            // management_mode: when true an opportunity covered by this
+            // branch carries at most one quote.
+            'single_quote_per_opportunity' => 'boolean',
             // Spec 0080 — sparse position("1".."4")->label map, own
             // assignments only; null/[] = no own labels. Read-side resolution
             // (own UNION inherited) lives in CategoryManagerLabelResolver,

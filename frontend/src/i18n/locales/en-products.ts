@@ -81,6 +81,8 @@ export const productCategories = {
     business_function: 'Business function',
     requires_quote: 'Quoted',
     is_selectable: 'Selectable',
+    management_mode: 'Management mode',
+    single_quote_per_opportunity: 'One offer per opportunity',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
     productsMore: '+{{count}} more',
@@ -92,6 +94,7 @@ export const productCategories = {
     businessFunctionInherited: 'Inherited from {{category}}',
     requiresQuoteInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
+    singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
   },
   bulkMove: {
@@ -167,6 +170,24 @@ export const productCategories = {
       'The management mode is inherited from the root category "{{category}}". To change it, edit that category instead.',
     managementModeSingle: 'Single (one line per card)',
     managementModeMultiple: 'Multiple (several lines per card)',
+    requiresQuoteInfo:
+      'Governs whether the opportunities of this branch go through an offer at all. When on, the Offers module is part of the flow for every product of this category and of its subcategories; when off, the branch is worked without one. The rule belongs to the ROOT category and the whole subtree follows it.',
+    requiresQuoteInfoLabel: 'More info about Quoted',
+    managementModeInfo:
+      'Bounds how many Category Product lines one card may carry. "Single" locks the card on ONE product category — its offer then carries a single product row too, and a product from another category is refused instead of silently widening the coverage. "Multiple" is the unconstrained behaviour. The rule belongs to the ROOT category and the whole subtree follows it.',
+    managementModeInfoLabel: 'More info about Management mode',
+    singleQuotePerOpportunity: 'One offer per opportunity',
+    singleQuotePerOpportunityHint:
+      'When on, an opportunity on this category accepts a single offer.',
+    singleQuotePerOpportunityInheritedHint:
+      'The one-offer rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    singleQuotePerOpportunityInfo:
+      'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The rule belongs to the ROOT category and the whole subtree follows it.',
+    singleQuotePerOpportunityInfoLabel: 'More info about One offer per opportunity',
+    isSelectableInfo:
+      'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
+    isSelectableInfoLabel: 'More info about Selectable',
+    inheritedFrom: 'Inherited from {{category}}',
     managerLabelLevel: 'A.M. {{n}}',
     managerLabelPlaceholder: 'Account manager {{n}}',
     managerLabelMax: 'The label must be at most 60 characters.',
@@ -192,6 +213,11 @@ export const productCategories = {
       identity: {
         title: 'Details',
         description: 'Name, parent and description of the category.',
+      },
+      rules: {
+        title: 'Management rules',
+        description:
+          'What this category imposes downstream: quoting, card lines, offers per opportunity and selectability.',
       },
       attributes: {
         title: 'Attributes',

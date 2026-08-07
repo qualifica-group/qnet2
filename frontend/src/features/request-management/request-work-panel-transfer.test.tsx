@@ -76,7 +76,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-function renderPanel(id = 1) {
+function renderPanel(id = 4001) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>

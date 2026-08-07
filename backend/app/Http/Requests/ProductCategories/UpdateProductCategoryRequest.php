@@ -59,6 +59,10 @@ class UpdateProductCategoryRequest extends FormRequest
             // reparent (parent_id changes) or an edit of the mode itself
             // triggers ProductCategoryService's subtree resync.
             'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],
+            // User directive 2026-08-07: same root-only semantics as
+            // management_mode — a reparent or an edit of the flag itself
+            // triggers ProductCategoryService's subtree resync.
+            'single_quote_per_opportunity' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

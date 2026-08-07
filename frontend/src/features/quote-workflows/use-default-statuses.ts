@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import type { ApiErrorResponse } from '@/api/types'
 import { fetchDefaultStatuses, updateDefaultStatuses } from '@/features/quote-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/quote-workflows/quote-workflow-form-payload'
-import { markValidatedRow } from '@/features/quote-workflows/workflow-status-rows'
 import {
   isTailWorkflowSystemKey,
   type QuoteWorkflowStatusItem,
@@ -97,10 +96,6 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
   }
 
-  const markValidated = (id: string, marked: boolean) => {
-    setRows((current) => markValidatedRow(current, id, marked))
-  }
-
   const reorder = (orderedIds: string[]) => {
     setRows((current) => {
       const byId = new Map(current.map((row) => [row.id, row]))
@@ -145,7 +140,6 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
     addCustom,
     removeCustom,
     updateRow,
-    markValidated,
     reorder,
     save,
   }

@@ -77,7 +77,6 @@ class DemoCategoryWorkflowSeeder extends Seeder
             criteria: $criteria,
             statuses: $this->customStatuses($branch),
             openStatus: $pinned[WorkflowStatusSystemKey::Open->value],
-            validatedStatus: $pinned[WorkflowStatusSystemKey::Validated->value],
             closedWonStatus: $pinned[WorkflowStatusSystemKey::ClosedWon->value],
             closedLostStatus: $pinned[WorkflowStatusSystemKey::ClosedLost->value],
         ));

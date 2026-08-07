@@ -14,14 +14,15 @@ use Spatie\Permission\Models\Permission;
 // GET /api/tables/{domain}/columns + PATCH .../rows/{row} — "Prodotti di
 // interesse" as a grid column with the SAME behaviour as the form picker (user
 // directive 2026-07-23): the option list is scoped to the row's own
-// product-line categories, the whole catalogue can still be picked from (and a
-// cross-category pick is resolved per domain: `opportunities` adds the missing
-// product line like its form, `request-management` refuses it — user directive
-// 2026-07-31), and the collection is MANDATORY, so it can never be cleared
-// in-grid.
+// product-line categories, the whole catalogue can still be picked from, and
+// the collection is MANDATORY, so it can never be cleared in-grid.
 //
-// Both domains that expose the column are covered here, since they share one
-// declaration (App\Tables\Shared\ProductsOfInterestColumn) and must never drift.
+// Spec 0086, AC-008/AC-009/AC-021: `request-management` no longer exposes this
+// column (replaced by `offer_lines`, covered by
+// tests/Feature/RequestManagement/RequestManagementOfferLinesTest.php) —
+// `opportunities` keeps its own untouched App\Tables\Shared\ProductsOfInterestColumn,
+// so this file now covers that ONE domain only, still parameterized via
+// `->with()` for the least-diff history.
 
 uses(RefreshDatabase::class);
 
@@ -32,9 +33,7 @@ if (! function_exists('productsColumnActor')) {
     function productsColumnActor(array $abilities, bool $canViewProducts = true): User
     {
         foreach ([
-            'opportunities.viewAny', 'opportunities.view', 'opportunities.update',
-            'request-management.viewAny', 'request-management.view', 'request-management.update',
-            'request-management.viewAll', 'products.viewAny',
+            'opportunities.viewAny', 'opportunities.view', 'opportunities.update', 'products.viewAny',
         ] as $ability) {
             Permission::findOrCreate($ability);
         }
@@ -51,7 +50,7 @@ if (! function_exists('productsColumnActor')) {
 }
 
 if (! function_exists('productsColumnOpportunity')) {
-    /** An opportunity carrying ONE product line, with the actor as its GA2 operator (request-management's own row scope). */
+    /** An opportunity carrying ONE product line, with the actor as its GA2 operator (Account Manager, pivot position 2). */
     function productsColumnOpportunity(User $operator, ProductCategory $category): Opportunity
     {
         $opportunity = Opportunity::factory()->create();
@@ -98,7 +97,7 @@ it('advertises a multiselect editor over products, scoped by the row categories'
         ->and($column['sortable'])->toBeFalse()
         ->and($column['relation']['resource'])->toBe('products')
         ->and($column['relation']['scope'])->toBe(['category_ids' => 'product_category_ids']);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 // ADR 0011 amended (2026-07-31): the picker no longer needs `products.viewAny`,
 // so neither does the cell — the actor's own `{domain}.update` is the gate.
@@ -106,14 +105,14 @@ it('stays editable without products.viewAny', function (string $domain) {
     Sanctum::actingAs(productsColumnActor(["{$domain}.viewAny", "{$domain}.update"], canViewProducts: false));
 
     expect(productsColumnConfig($domain)['products_of_interest']['editable'])->toBeTrue();
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 // ---------------------------------------------------------------------------
 // The row payload the cell and the editor read
 // ---------------------------------------------------------------------------
 
 it('projects the selected products and the scope category ids on every row', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id, 'name' => 'Fibra 1000']);
@@ -129,14 +128,14 @@ it('projects the selected products and the scope category ids on every row', fun
     // uncovered. The cell renderer still reads `name` only.
     expect($row['products_of_interest'])->toBe([['id' => $product->id, 'name' => 'Fibra 1000', 'category_id' => $category->id]])
         ->and($row['product_category_ids'])->toBe([$category->id]);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 // ---------------------------------------------------------------------------
 // The write path
 // ---------------------------------------------------------------------------
 
 it('PATCH replaces the whole collection and returns the re-mapped row', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $dropped = Product::factory()->create(['category_id' => $category->id]);
@@ -151,15 +150,12 @@ it('PATCH replaces the whole collection and returns the re-mapped row', function
 
     expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$kept->id])
         ->and($row['products_of_interest'])->toHaveCount(1);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
-// The two domains DIVERGED between the user directives 2026-07-31 (which gave
-// request-management the coherence rule) and 2026-08-05 (which extended it to
-// opportunities, retiring the auto-add on this path): both now REFUSE a
-// product the row's categories do not cover, so the dataset is shared again.
+// User directive 2026-08-05: `opportunities` REFUSES a product the row's
+// categories do not cover (retiring the former auto-add on this path).
 it('PATCH with a product outside the row categories is refused (coherence rule)', function (string $domain) {
-    $abilities = ["{$domain}.viewAny", "{$domain}.update"];
-    $actor = productsColumnActor($domain === 'request-management' ? [...$abilities, 'request-management.viewAll'] : $abilities);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $otherCategory = productsColumnCategory();
@@ -173,10 +169,10 @@ it('PATCH with a product outside the row categories is refused (coherence rule)'
 
     expect($opportunity->fresh()->productLines)->toHaveCount(1)
         ->and($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 it('PATCH with an empty collection -> 422, the collection is kept (mandatory field)', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -189,10 +185,10 @@ it('PATCH with an empty collection -> 422, the collection is kept (mandatory fie
     ])->assertStatus(422);
 
     expect($opportunity->fresh()->productsOfInterest)->toHaveCount(1);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 it('PATCH with an unknown product id -> 422, nothing written', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     Sanctum::actingAs($actor);
@@ -203,12 +199,12 @@ it('PATCH with an unknown product id -> 422, nothing written', function (string 
     ])->assertStatus(422);
 
     expect($opportunity->fresh()->productsOfInterest)->toHaveCount(0);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 // The write follows the config: `products.viewAny` gates neither the picker nor
 // the value-scope guard any more (ADR 0011 amended 2026-07-31).
 it('PATCH without products.viewAny -> 200, the collection is written', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll'], canViewProducts: false);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"], canViewProducts: false);
     $category = productsColumnCategory();
     $opportunity = productsColumnOpportunity($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -220,14 +216,14 @@ it('PATCH without products.viewAny -> 200, the collection is written', function 
     ])->assertOk();
 
     expect($opportunity->fresh()->productsOfInterest->pluck('id')->all())->toBe([$product->id]);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);
 
 // ---------------------------------------------------------------------------
 // Filtering (set filter + distinct values), shared by both domains
 // ---------------------------------------------------------------------------
 
 it('filters the rows by product name and enumerates its distinct values', function (string $domain) {
-    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update", 'request-management.viewAll']);
+    $actor = productsColumnActor(["{$domain}.viewAny", "{$domain}.update"]);
     $category = productsColumnCategory();
     $matching = productsColumnOpportunity($actor, $category);
     $other = productsColumnOpportunity($actor, $category);
@@ -249,4 +245,4 @@ it('filters the rows by product name and enumerates its distinct values', functi
     ])->assertOk()->json('data.values');
 
     expect($values)->toBe(['ADSL 20', 'Fibra 1000']);
-})->with(['opportunities', 'request-management']);
+})->with(['opportunities']);

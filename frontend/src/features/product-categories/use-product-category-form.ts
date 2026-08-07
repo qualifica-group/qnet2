@@ -38,6 +38,7 @@ const SERVER_ERROR_FIELDS = [
   'requires_quote',
   'is_selectable',
   'management_mode',
+  'single_quote_per_opportunity',
   'manager_labels',
   'inherits_manager_labels',
 ] as const
@@ -116,6 +117,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         requires_quote: category.requires_quote,
         is_selectable: category.is_selectable,
         management_mode: category.management_mode,
+        single_quote_per_opportunity: category.single_quote_per_opportunity,
         manager_labels: toManagerLabelsFormValue(category.manager_labels),
         inherits_manager_labels: category.inherits_manager_labels,
         custom_fields: customFields.defaultValues,
@@ -136,6 +138,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',
+      // A new root starts unconstrained: several offers per opportunity, the
+      // behaviour every existing category already has.
+      single_quote_per_opportunity: false,
       manager_labels: EMPTY_MANAGER_LABELS_FORM,
       inherits_manager_labels: true,
       custom_fields: customFields.defaultValues,

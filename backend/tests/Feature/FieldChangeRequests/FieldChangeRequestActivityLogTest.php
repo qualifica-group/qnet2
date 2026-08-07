@@ -2,6 +2,7 @@
 
 use App\Models\FieldChangeRequest;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,7 +10,10 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
-// Activity log (spec 0078): AC-041/042.
+// Activity log (spec 0078): AC-041/042. Spec 0086, D-10 (corrected in
+// execution): the field change request's own subject is the Quote, but the
+// underlying `source_id` write still lands on (and logs against) the
+// Opportunity through `quote.opportunity`.
 
 uses(RefreshDatabase::class);
 
@@ -48,6 +52,15 @@ if (! function_exists('fcrActivityActorWith')) {
     }
 }
 
+if (! function_exists('fcrActivityQuote')) {
+    function fcrActivityQuote(): Quote
+    {
+        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+
+        return Quote::factory()->for($opportunity)->create();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AC-041 — three distinct events + the standard Opportunity update entry
 // ---------------------------------------------------------------------------
@@ -55,13 +68,13 @@ if (! function_exists('fcrActivityActorWith')) {
 it('AC-041: creation, approval and rejection each write a distinct, caused activity-log entry', function () {
     $requester = fcrActivityActorWith(['create']);
     $manager = fcrActivityActorWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $quote = fcrActivityQuote();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($requester);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated();
@@ -85,6 +98,7 @@ it('AC-041: creation, approval and rejection each write a distinct, caused activ
         ->sole();
     expect($approved->causer_id)->toBe($manager->id);
 
+    $opportunity = $quote->opportunity;
     $opportunityUpdate = Activity::query()
         ->where('subject_type', $opportunity->getMorphClass())
         ->where('subject_id', $opportunity->id)
@@ -99,7 +113,7 @@ it('AC-041: creation, approval and rejection each write a distinct, caused activ
     Sanctum::actingAs($requester);
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $anotherSource->id,
     ])->assertCreated();
@@ -122,13 +136,13 @@ it('AC-041: creation, approval and rejection each write a distinct, caused activ
 
 it('AC-042: an actor with viewActivity + view reads the aggregated activity log (200)', function () {
     $requester = fcrActivityActorWith(['create', 'view', 'viewActivity']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $quote = fcrActivityQuote();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($requester);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated();
@@ -139,13 +153,13 @@ it('AC-042: an actor with viewActivity + view reads the aggregated activity log 
 
 it('AC-042: an actor without viewActivity -> 403', function () {
     $requester = fcrActivityActorWith(['create', 'view']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $quote = fcrActivityQuote();
     $newSource = Source::factory()->create();
     Sanctum::actingAs($requester);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $newSource->id,
     ])->assertCreated();

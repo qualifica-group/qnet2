@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { useWatch } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRightLeft, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,14 +25,11 @@ import { RequestCallbackSection } from '@/features/request-management/request-ca
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
-import { RequestProductsOfInterest } from '@/features/request-management/request-products-of-interest'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
-import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
-import type { ProductLineRow } from '@/features/product-lines/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
@@ -144,12 +140,6 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
 
-  // Spec 0075, D-5: re-pointing or removing a product line drops the products
-  // of interest it was covering, right there in the handler — the operator
-  // never reaches the server's refusal of an incoherent pair.
-  const productsOfInterest = useWatch({ control: form.control, name: 'products_of_interest' })
-  const keepCoveredProducts = useProductsOfInterestCoherence(productsOfInterest)
-
   // An approved change request writes the protected field server-side (spec
   // 0078, D-7), so the panel it was decided from is stale the moment it
   // resolves: refetch it, and realign the control the value landed on (see
@@ -163,14 +153,6 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
       typeof request.requested_value === 'number'
     ) {
       form.setValue(SOURCE_FIELD, request.requested_value)
-    }
-  }
-
-  const handleProductLinesChange = (rows: ProductLineRow[]) => {
-    const kept = keepCoveredProducts(rows)
-
-    if (kept.length !== productsOfInterest.length) {
-      form.setValue('products_of_interest', kept, { shouldDirty: true })
     }
   }
 
@@ -199,7 +181,12 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
           {/* Field-change-request proposals on this record (spec 0078
               AC-048), generic and domain-agnostic (`RecordFieldChangeRequests`
               only knows `(resource, subjectId)`) — the panel is the only
-              thing that knows it is request-management's own record. */}
+              thing that knows it is request-management's own record. `id`,
+              NOT `opportunity_id` (spec 0086 D-10, revised): unlike
+              documents/notes/activity, field change requests are keyed
+              through this module's own TableDefinition, whose subject is the
+              Quote — `source_id` is exposed on it as a read-through virtual
+              attribute. */}
           <FormSection
             icon={ListChecks}
             title={t('fieldChangeRequests.section.title', { defaultValue: 'Change requests' })}
@@ -222,31 +209,21 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 boundary, it must not become an extra flex box in the stack below. */}
             {/* Section order = the operator's working order (user directive
                 2026-08-03): what the request is about comes FIRST — the product
-                classification and the products of interest are the record's
-                headline information — then the working state and the next
-                callback, then the client's data. */}
+                classification is the record's headline information — then the
+                working state and the next callback, then the client's data. */}
             <form id={REQUEST_WORK_FORM_ID} onSubmit={onSubmit} className="contents" noValidate>
               {/* Funzione aziendale + categoria prodotto (user directive
-                  2026-07-31), right before the picker they scope. */}
-              <RequestProductLinesSection
-                control={form.control}
-                productLines={panel.product_lines}
-                onLinesChange={handleProductLinesChange}
-              />
-
-              {/* Right after the classification that scopes it: the products of
-                  interest are collected in the same phone call (user directive
-                  2026-07-22). */}
-              <RequestProductsOfInterest
-                control={form.control}
-                products={panel.products_of_interest}
-              />
+                  2026-07-31), right before the working state it precedes. */}
+              <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
 
               <RequestCallbackSection control={form.control} />
 
               {/* Provenance and ownership of the request (user directive
                   2026-07-22), right after the two levers acted on at every
-                  touch and before the request's own content. */}
+                  touch and before the request's own content. `requestId`:
+                  the Fonte picker's field-change-request interception keys
+                  on the same quote id as the section above (spec 0086
+                  D-10). */}
               <RequestAttributionSection
                 form={form}
                 requestId={panel.id}

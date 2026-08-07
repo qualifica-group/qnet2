@@ -43,6 +43,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     requires_quote: false,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     ...overrides,
   })
 
@@ -54,6 +55,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         business_function_id: 1,
         is_selectable: false,
         management_mode: 'single',
+        single_quote_per_opportunity: false,
         children: [node({ id: 901, name: 'Single category', parent_id: 900, management_mode: 'single' })],
       }),
       node({

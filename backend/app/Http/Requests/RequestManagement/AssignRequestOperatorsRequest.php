@@ -19,6 +19,8 @@ use Illuminate\Validation\Rule;
  * same two-mode contract the shared AssignOperatorsDialog submits (renaming it
  * would touch the leads/imports call sites, out of this scope).
  *
+ * `request_ids` are Offerta (Quote) ids (spec 0086, D-2).
+ *
  * Authorization is intentionally NOT handled here (it stays in the controller:
  * the `request-management.update` gate plus the per-row D-3 scope), same
  * convention as UpdateRequestRequest.
@@ -38,7 +40,7 @@ class AssignRequestOperatorsRequest extends FormRequest
     {
         return [
             'request_ids' => ['required', 'array', 'min:1'],
-            'request_ids.*' => ['integer', Rule::exists('opportunities', 'id')],
+            'request_ids.*' => ['integer', Rule::exists('quotes', 'id')],
             'operational_site_id' => ['required', 'integer', Rule::exists('operational_sites', 'id')],
             'mode' => ['required', Rule::enum(LeadAssignmentMode::class)],
             'operator_id' => ['required_if:mode,single', 'integer', Rule::exists('users', 'id')],

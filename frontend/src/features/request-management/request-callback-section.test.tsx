@@ -63,7 +63,11 @@ const READ_ONLY_PERMISSIONS = {
 
 function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): RequestWorkPanelWithPermissions {
   return {
-    id: 1,
+    // Deliberately different from `opportunity_id` (spec 0086 D-9/D-10): not
+    // this suite's own concern, but kept apart everywhere so a coincidental
+    // pass never hides an inverted wiring elsewhere.
+    id: 4001,
+    opportunity_id: 8001,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: { id: 20, name: 'Mario Rossi' },
@@ -80,7 +84,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     transferred_from: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
-    products_of_interest: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
+    offer_lines: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
     client_identity: null,
     client_contacts: { owner: null, items: [] },
     client_address: null,
@@ -92,7 +96,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
   }
 }
 
-function renderPanel(id = 1) {
+function renderPanel(id = 4001) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -156,7 +160,7 @@ describe('RequestCallbackSection — sparse diff submit (AC-008)', () => {
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     const [id, payload] = updateRequestWorkMock.mock.calls[0]
-    expect(id).toBe(1)
+    expect(id).toBe(4001)
     expect(payload).toEqual({ next_callback_at: '2026-08-03T15:30' })
   })
 

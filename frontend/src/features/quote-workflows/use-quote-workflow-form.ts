@@ -7,7 +7,6 @@ import type { TFunction } from 'i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { markValidatedRow } from '@/features/quote-workflows/workflow-status-rows'
 import {
   createQuoteWorkflow,
   fetchCriterionFields,
@@ -49,9 +48,6 @@ const EMPTY_CRITERION_ROW = { field: null, value_id: null }
  * create payload (`buildCreatePayload`) so the backend seeds the auto-created
  * rows with these names. Non-deletable/non-reorderable (enforced by the
  * editor).
- *
- * The optional `validated` row is deliberately NOT seeded (user directive
- * 2026-08-03): it exists only if the user marks a status as such.
  */
 function initialSystemStatusRows(t: TFunction): WorkflowStatusFormRow[] {
   return [
@@ -185,10 +181,6 @@ export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormAr
     setStatusRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
   }
 
-  const markValidatedStatus = (id: string, marked: boolean) => {
-    setStatusRows((rows) => markValidatedRow(rows, id, marked))
-  }
-
   const reorderStatusRows = (orderedIds: string[]) => {
     setStatusRows((rows) => {
       const byId = new Map(rows.map((row) => [row.id, row]))
@@ -249,7 +241,6 @@ export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormAr
     addCustomStatus,
     removeCustomStatus,
     updateStatusRow,
-    markValidatedStatus,
     reorderStatusRows,
   }
 }

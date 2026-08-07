@@ -5,6 +5,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -46,27 +47,27 @@ if (! function_exists('localeCategory')) {
 }
 
 if (! function_exists('localeRequest')) {
-    function localeRequest(User $manager, ProductCategory $category): Opportunity
+    function localeRequest(User $supervisor, ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
         OpportunityProductLine::factory()->create([
             'opportunity_id' => $opportunity->id,
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
 if (! function_exists('localePatch')) {
     /** @param  array<int, array<string, mixed>>  $value */
-    function localePatch(Opportunity $opportunity, array $value, ?string $language = 'it')
+    function localePatch(Quote $quote, array $value, ?string $language = 'it')
     {
         $request = $language === null ? test() : test()->withHeader('Accept-Language', $language);
 
-        return $request->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+        return $request->patchJson("/api/tables/request-management/rows/{$quote->id}", [
             'column' => 'product_categories',
             'value' => $value,
         ]);
@@ -76,13 +77,13 @@ if (! function_exists('localePatch')) {
 it('answers the coherence refusal in Italian when the client asks for it', function () {
     $actor = localeActor();
     $category = localeCategory();
-    $opportunity = localeRequest($actor, $category);
+    $quote = localeRequest($actor, $category);
     $product = Product::factory()->create(['category_id' => $category->id, 'name' => 'Fibra 1000']);
-    $opportunity->productsOfInterest()->sync([$product->id]);
+    $quote->opportunity->productsOfInterest()->sync([$product->id]);
     $replacement = localeCategory();
     Sanctum::actingAs($actor);
 
-    $response = localePatch($opportunity, [[
+    $response = localePatch($quote, [[
         'business_function_id' => (int) $replacement->business_function_id,
         'product_category_id' => $replacement->id,
     ]], 'it-IT,it;q=0.9')->assertStatus(422);
@@ -95,12 +96,12 @@ it('answers the coherence refusal in Italian when the client asks for it', funct
 it('translates the product-line rules and names their fields readably', function () {
     $actor = localeActor();
     $category = localeCategory();
-    $opportunity = localeRequest($actor, $category);
+    $quote = localeRequest($actor, $category);
     $other = localeCategory();
     Sanctum::actingAs($actor);
 
     // The category belongs to its OWN business function, not to this one.
-    expect(localePatch($opportunity, [[
+    expect(localePatch($quote, [[
         'business_function_id' => (int) $category->business_function_id,
         'product_category_id' => $other->id,
     ]])->assertStatus(422)->json('message'))
@@ -108,7 +109,7 @@ it('translates the product-line rules and names their fields readably', function
 
     // A Laravel rule message, with the attribute named for a human instead of
     // "product lines.0.business function id".
-    expect(localePatch($opportunity, [[
+    expect(localePatch($quote, [[
         'business_function_id' => 0,
         'product_category_id' => $other->id,
     ]])->assertStatus(422)->json('message'))->toContain('funzione aziendale');
@@ -116,15 +117,15 @@ it('translates the product-line rules and names their fields readably', function
 
 it('translates the generic inline-edit engine messages too', function () {
     $actor = localeActor();
-    $opportunity = localeRequest($actor, localeCategory());
+    $quote = localeRequest($actor, localeCategory());
     Sanctum::actingAs($actor);
 
-    localePatch($opportunity, [])
+    localePatch($quote, [])
         ->assertStatus(422)
         ->assertJsonPath('message', 'Questo campo è obbligatorio.');
 
     test()->withHeader('Accept-Language', 'it')
-        ->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+        ->patchJson("/api/tables/request-management/rows/{$quote->id}", [
             'column' => 'general_notes',
             'value' => 'x',
         ])->assertStatus(422)
@@ -133,21 +134,21 @@ it('translates the generic inline-edit engine messages too', function () {
 
 it('keeps English for a client that does not ask for Italian', function () {
     $actor = localeActor();
-    $opportunity = localeRequest($actor, localeCategory());
+    $quote = localeRequest($actor, localeCategory());
     Sanctum::actingAs($actor);
 
-    localePatch($opportunity, [], language: null)
+    localePatch($quote, [], language: null)
         ->assertStatus(422)
         ->assertJsonPath('message', 'This field is required.');
 });
 
 it('translates the shared envelope messages (403 and 404)', function () {
     $actor = localeActor();
-    $opportunity = localeRequest($actor, localeCategory());
+    $quote = localeRequest($actor, localeCategory());
     Sanctum::actingAs($actor);
 
     // A row outside the actor's own scope is a 404 with the generic envelope.
-    $foreign = Opportunity::factory()->create();
+    $foreign = Quote::factory()->create();
     test()->withHeader('Accept-Language', 'it')
         ->patchJson("/api/tables/request-management/rows/{$foreign->id}", [
             'column' => 'product_categories',
@@ -158,10 +159,10 @@ it('translates the shared envelope messages (403 and 404)', function () {
     // Without the update ability the same cell is a 403.
     $reader = User::factory()->create();
     $reader->givePermissionTo('request-management.viewAny');
-    $opportunity->managers()->sync([$reader->id => ['position' => 2]]);
+    $quote->update(['supervisor_id' => $reader->id]);
     Sanctum::actingAs($reader);
 
-    localePatch($opportunity, [[
+    localePatch($quote, [[
         'business_function_id' => 1,
         'product_category_id' => 1,
     ]])->assertStatus(403)

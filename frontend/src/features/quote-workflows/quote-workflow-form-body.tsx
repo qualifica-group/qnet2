@@ -43,7 +43,6 @@ export function QuoteWorkflowFormBody({ mode, onSuccess, onCancel }: QuoteWorkfl
     addCustomStatus,
     removeCustomStatus,
     updateStatusRow,
-    markValidatedStatus,
     reorderStatusRows,
   } = useQuoteWorkflowForm({ mode, onSuccess })
 
@@ -105,7 +104,6 @@ export function QuoteWorkflowFormBody({ mode, onSuccess, onCancel }: QuoteWorkfl
               onAddCustom={addCustomStatus}
               onRemoveCustom={removeCustomStatus}
               onUpdateRow={updateStatusRow}
-              onMarkValidated={markValidatedStatus}
               error={statusesError}
             />
           </FormSection>

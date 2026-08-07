@@ -113,7 +113,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   source: (params) => <RelationCell {...params} icon={Radio} />,
   pending_change_requests: (params) => <PendingChangeRequestsCell {...params} />,
   product_categories: (params) => <ProductCategoriesCell {...params} />,
-  products_of_interest: (params) => <RefNamesCell {...params} />,
+  offer_lines: (params) => <RefNamesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,

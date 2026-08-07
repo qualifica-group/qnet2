@@ -102,7 +102,13 @@ vi.mock('@/features/table/table-view', () => ({
 
 function panel(): RequestWorkPanelWithPermissions {
   return {
-    id: 7,
+    // Deliberately different from `opportunity_id` (spec 0086 D-9/D-10): not
+    // this suite's own concern (it only checks the fetch/navigate CALL
+    // argument, which is the route id, i.e. `ROW.id`), but kept apart
+    // everywhere so a coincidental pass never hides an inverted wiring
+    // elsewhere.
+    id: 4001,
+    opportunity_id: 8001,
     name: 'Enterprise deal',
     registry: { id: 10, name: 'Acme S.p.A.' },
     referent: null,
@@ -119,7 +125,7 @@ function panel(): RequestWorkPanelWithPermissions {
     transferred_from: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
-    products_of_interest: [],
+    offer_lines: [],
     client_identity: null,
     client_contacts: { owner: null, items: [] },
     client_address: null,

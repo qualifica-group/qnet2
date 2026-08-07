@@ -43,6 +43,13 @@ interface MetaFieldProps<
   /** Accessible name of the hint trigger; defaults to `t('authorization.moreInfo')`. */
   hintLabel?: string
   /**
+   * `stacked` (default) is the classic label-above-control form row.
+   * `inline` is the settings-row layout — label + hint + description on the
+   * left, the control pinned right — for a compact switch/select whose
+   * explanation must stay readable next to it.
+   */
+  layout?: 'stacked' | 'inline'
+  /**
    * Overrides the required marker when requiredness depends on live form
    * state the static field permission cannot express (e.g. a campaign's
    * classification fields, required only while standalone). Omit to follow
@@ -76,6 +83,7 @@ export function MetaField<
   description,
   hint,
   hintLabel,
+  layout = 'stacked',
   required,
   children,
 }: MetaFieldProps<TFieldValues, TName>) {
@@ -94,28 +102,44 @@ export function MetaField<
   const readOnly = permission.readonly
   const requiredMark = required ?? permission.required
 
+  const labelRow = hint ? (
+    <div className="flex items-center gap-1.5">
+      <FormLabel required={requiredMark}>{label}</FormLabel>
+      <FieldHint text={hint} label={hintLabel ?? t('authorization.moreInfo')} />
+    </div>
+  ) : (
+    <FormLabel required={requiredMark}>{label}</FormLabel>
+  )
+
+  const descriptionNode =
+    description ??
+    (disabled ? <FormDescription>{t('authorization.fieldNotEditable')}</FormDescription> : null)
+
   return (
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem>
-          {hint ? (
-            <div className="flex items-center gap-1.5">
-              <FormLabel required={requiredMark}>{label}</FormLabel>
-              <FieldHint text={hint} label={hintLabel ?? t('authorization.moreInfo')} />
+      render={({ field }) =>
+        layout === 'inline' ? (
+          <FormItem>
+            <div className="flex items-start justify-between gap-3">
+              <div className="grid min-w-0 gap-1">
+                {labelRow}
+                {descriptionNode}
+              </div>
+              <div className="shrink-0">{children({ field, disabled, readOnly })}</div>
             </div>
-          ) : (
-            <FormLabel required={requiredMark}>{label}</FormLabel>
-          )}
-          {children({ field, disabled, readOnly })}
-          {description ??
-            (disabled ? (
-              <FormDescription>{t('authorization.fieldNotEditable')}</FormDescription>
-            ) : null)}
-          <FormMessage />
-        </FormItem>
-      )}
+            <FormMessage />
+          </FormItem>
+        ) : (
+          <FormItem>
+            {labelRow}
+            {children({ field, disabled, readOnly })}
+            {descriptionNode}
+            <FormMessage />
+          </FormItem>
+        )
+      }
     />
   )
 }

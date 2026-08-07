@@ -2,6 +2,7 @@
 
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -42,13 +43,13 @@ if (! function_exists('siteInlineEditActor')) {
 }
 
 if (! function_exists('siteInlineEditRequest')) {
-    /** An opportunity the actor operates as GA2 (the module's own row scope). */
-    function siteInlineEditRequest(User $manager): Opportunity
+    /** A quote the actor supervises (the module's own row scope, D-3). */
+    function siteInlineEditRequest(User $supervisor): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
     }
 }
 
@@ -102,46 +103,63 @@ it('without operational-sites.viewAny the site column stays read-only', function
 
 it('PATCH operational_site persists the FK and returns the row with the composed label', function () {
     $actor = siteInlineEditActor(['viewAny', 'update']);
-    $opportunity = siteInlineEditRequest($actor);
+    $quote = siteInlineEditRequest($actor);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
-    $row = $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $row = $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operational_site',
         'value' => $site->id,
     ])->assertOk()->json('data');
 
-    expect($opportunity->fresh()->operational_site_id)->toBe($site->id)
+    expect($quote->fresh()->operational_site_id)->toBe($site->id)
         ->and($row['operational_site']['id'])->toBe($site->id)
         ->and($row['operational_site']['label'])->toBeString()->not->toBeEmpty();
+});
+
+it('PATCH operational_site writes ONLY quotes.operational_site_id — opportunities.operational_site_id stays untouched (AC-018)', function () {
+    $actor = siteInlineEditActor(['viewAny', 'update']);
+    $quote = siteInlineEditRequest($actor);
+    $opportunitySite = OperationalSite::factory()->withAddress()->create();
+    $quote->opportunity->update(['operational_site_id' => $opportunitySite->id]);
+    $newSite = OperationalSite::factory()->withAddress()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
+        'column' => 'operational_site',
+        'value' => $newSite->id,
+    ])->assertOk();
+
+    expect($quote->fresh()->operational_site_id)->toBe($newSite->id)
+        ->and($quote->opportunity->fresh()->operational_site_id)->toBe($opportunitySite->id);
 });
 
 it('PATCH operational_site with null clears the site', function () {
     $actor = siteInlineEditActor(['viewAny', 'update']);
     $site = OperationalSite::factory()->withAddress()->create();
-    $opportunity = siteInlineEditRequest($actor);
-    $opportunity->update(['operational_site_id' => $site->id]);
+    $quote = siteInlineEditRequest($actor);
+    $quote->update(['operational_site_id' => $site->id]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operational_site',
         'value' => null,
     ])->assertOk();
 
-    expect($opportunity->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operational_site_id)->toBeNull();
 });
 
 it('PATCH operational_site with an unknown id -> 422, nothing written', function () {
     $actor = siteInlineEditActor(['viewAny', 'update']);
-    $opportunity = siteInlineEditRequest($actor);
+    $quote = siteInlineEditRequest($actor);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operational_site',
         'value' => 999999,
     ])->assertStatus(422);
 
-    expect($opportunity->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operational_site_id)->toBeNull();
 });
 
 // 403, not 422: without `operational-sites.viewAny` the field-permission
@@ -150,14 +168,14 @@ it('PATCH operational_site with an unknown id -> 422, nothing written', function
 // failure reasons on distinct status codes by design.
 it('PATCH operational_site without operational-sites.viewAny -> 403, nothing written', function () {
     $actor = siteInlineEditActor(['viewAny', 'update'], canViewSites: false);
-    $opportunity = siteInlineEditRequest($actor);
+    $quote = siteInlineEditRequest($actor);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tables/request-management/rows/{$opportunity->id}", [
+    $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
         'column' => 'operational_site',
         'value' => $site->id,
     ])->assertForbidden();
 
-    expect($opportunity->fresh()->operational_site_id)->toBeNull();
+    expect($quote->fresh()->operational_site_id)->toBeNull();
 });

@@ -10,10 +10,12 @@ namespace Database\Seeders\DemoCatalog;
  * is `product_category_id`, matched on the exact category of a product line,
  * never an ancestor).
  *
- * `CUSTOM` are the intermediate rows; `PINNED` seeds the 4 rows
- * WorkflowStatusWriter always creates (open/validated/closed_won/closed_lost)
- * with labels that read like the branch, instead of the writer's generic ones.
- * `color` is a badge token (BADGE_COLOR_TOKENS), never a raw hex.
+ * `CUSTOM` are the intermediate rows — the `validated` one included, since
+ * that is a plain group and not a system key (user directive 2026-08-07);
+ * `PINNED` seeds the 3 rows WorkflowStatusWriter always creates
+ * (open/closed_won/closed_lost) with labels that read like the branch,
+ * instead of the writer's generic ones. `color` is a badge token
+ * (BADGE_COLOR_TOKENS), never a raw hex.
  */
 final class DemoWorkflowStatusCatalogue
 {
@@ -57,6 +59,13 @@ final class DemoWorkflowStatusCatalogue
                 'group' => 'pending',
                 'requires_note' => false,
             ],
+            [
+                'name' => 'Iscrizione confermata',
+                'description' => 'Iscrizione verificata dalla segreteria, in attesa dell\'avvio.',
+                'color' => 'violet',
+                'group' => 'validated',
+                'requires_note' => false,
+            ],
         ],
         'Consulenza Aziendale' => [
             [
@@ -80,12 +89,19 @@ final class DemoWorkflowStatusCatalogue
                 'group' => 'pending',
                 'requires_note' => true,
             ],
+            [
+                'name' => 'Offerta accettata',
+                'description' => 'Proposta accettata dal cliente, in attesa dell\'avvio dell\'incarico.',
+                'color' => 'violet',
+                'group' => 'validated',
+                'requires_note' => false,
+            ],
         ],
     ];
 
     /**
      * Branch root => the descriptive seed of each pinned system row, keyed by
-     * `system_key`. Every branch fills all four: a set with a gap would fall
+     * `system_key`. Every branch fills all three: a set with a gap would fall
      * back to a generic label in the middle of a domain-specific pick list.
      *
      * @var array<string, array<string, array{name: string, description: string, color: ?string, requires_note: bool}>>
@@ -95,12 +111,6 @@ final class DemoWorkflowStatusCatalogue
             'open' => [
                 'name' => 'Da contattare',
                 'description' => 'Richiesta acquisita: nessun contatto ancora effettuato.',
-                'color' => null,
-                'requires_note' => false,
-            ],
-            'validated' => [
-                'name' => 'Iscrizione confermata',
-                'description' => 'Iscrizione verificata dalla segreteria, in attesa dell\'avvio.',
                 'color' => null,
                 'requires_note' => false,
             ],
@@ -121,12 +131,6 @@ final class DemoWorkflowStatusCatalogue
             'open' => [
                 'name' => 'Da qualificare',
                 'description' => 'Richiesta acquisita: esigenza non ancora qualificata.',
-                'color' => null,
-                'requires_note' => false,
-            ],
-            'validated' => [
-                'name' => 'Offerta accettata',
-                'description' => 'Proposta accettata dal cliente, in attesa dell\'avvio dell\'incarico.',
                 'color' => null,
                 'requires_note' => false,
             ],

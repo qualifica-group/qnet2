@@ -15,11 +15,12 @@ import type {
 } from '@/features/request-management/types'
 
 /**
- * Creates a request (spec 0057, frozen contract): the record created IS an
- * Opportunity (D-1), gated server-side by this module's OWN
- * `request-management.create`. Unlike GET/PATCH, the 201 response carries no
- * `permissions` envelope sibling (the caller navigates away/closes the sheet
- * right after, never renders the work panel from this response).
+ * Creates a request (spec 0086 D-5): a single transaction creates the
+ * Opportunity and its Offerta, gated server-side by this module's OWN
+ * `request-management.create`. The response's `id` is the new Offerta's id.
+ * Unlike GET/PATCH, the 201 response carries no `permissions` envelope
+ * sibling (the caller navigates away/closes the sheet right after, never
+ * renders the work panel from this response).
  */
 export async function createRequest(payload: CreateRequestPayload): Promise<RequestWorkPanel> {
   const { data } = await apiClient.post<ApiResponse<RequestWorkPanel>>('/request-management', payload)
@@ -27,16 +28,14 @@ export async function createRequest(payload: CreateRequestPayload): Promise<Requ
 }
 
 /**
- * Fetches the work panel of a single opportunity together with the actor's
+ * Fetches the work panel of a single Offerta together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
  * of `data`).
  */
-export async function fetchRequestWorkPanel(
-  opportunityId: number,
-): Promise<RequestWorkPanelWithPermissions> {
+export async function fetchRequestWorkPanel(quoteId: number): Promise<RequestWorkPanelWithPermissions> {
   const { data } = await apiClient.get<
     ApiResponseWithPermissions<RequestWorkPanel, ResourcePermissions>
-  >(`/request-management/${opportunityId}`)
+  >(`/request-management/${quoteId}`)
   return { ...data.data, permissions: data.permissions }
 }
 
@@ -45,22 +44,23 @@ export async function fetchRequestWorkPanel(
  * panel together with the actor's authorization metadata.
  */
 export async function updateRequestWork(
-  opportunityId: number,
+  quoteId: number,
   payload: UpdateRequestWorkPayload,
 ): Promise<RequestWorkPanelWithPermissions> {
   const { data } = await apiClient.patch<
     ApiResponseWithPermissions<RequestWorkPanel, ResourcePermissions>
-  >(`/request-management/${opportunityId}`, payload)
+  >(`/request-management/${quoteId}`, payload)
   return { ...data.data, permissions: data.permissions }
 }
 
 /**
  * Deletes a request (user directive 2026-07-23). The record removed IS the
- * Opportunity (D-1); the endpoint is gated by this module's OWN
- * `request-management.delete` plus its D-3 scope, never `opportunities.*`.
+ * Offerta (spec 0086 D-1); its Opportunity is left untouched. Gated by this
+ * module's OWN `request-management.delete` plus its supervisor scope, never
+ * `quotes.*`.
  */
-export async function deleteRequest(opportunityId: number): Promise<void> {
-  await apiClient.delete(`/request-management/${opportunityId}`)
+export async function deleteRequest(quoteId: number): Promise<void> {
+  await apiClient.delete(`/request-management/${quoteId}`)
 }
 
 /**

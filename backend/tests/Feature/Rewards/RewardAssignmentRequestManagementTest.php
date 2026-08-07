@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Reward;
 use App\Models\RewardType;
@@ -10,11 +11,13 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /**
- * AC-023: `PATCH /api/request-management/{opportunity}` accepts the same
- * `rewards` field as the opportunities payload, with IDENTICAL semantics and
- * error codes — same writer (RewardAssignmentWriter), same D-3 guards
- * (ValidatesRewards), reached through RequestManagementService::updateWork()
- * instead of OpportunityService::update().
+ * AC-023: `PATCH /api/request-management/{quote}` accepts the same `rewards`
+ * field as the opportunities payload, with IDENTICAL semantics and error
+ * codes — same writer (RewardAssignmentWriter, generalized by D-12), same
+ * D-3 guards (ValidatesRewards), reached through
+ * RequestManagementService::updateWork() instead of OpportunityService::update().
+ * Spec 0086, D-4: the reward owner/beneficiary moved to the Quote —
+ * `source_type` = quote, beneficiary `quote.reporter_id`.
  *
  * The single most fragile invariant here (flagged explicitly): the three
  * states of the field must stay distinguishable — key ABSENT leaves rewards
@@ -44,17 +47,18 @@ if (! function_exists('rewardAssignmentRmActor')) {
     }
 }
 
-if (! function_exists('rewardAssignmentRmManagedOpportunity')) {
+if (! function_exists('rewardAssignmentRmSupervisedQuote')) {
     /**
-     * An opportunity the actor is scoped to (D-3, GA2 pivot position),
-     * mirroring RequestManagementUpdateTest's own precedent.
+     * A quote the actor supervises (D-3), whose own `reporter_id` (D-4) is
+     * the reward beneficiary — mirrors RequestManagementUpdateTest's own
+     * precedent.
      */
-    function rewardAssignmentRmManagedOpportunity(User $manager, ?int $reporterId = null): Opportunity
+    function rewardAssignmentRmSupervisedQuote(User $supervisor, ?int $reporterId = null): Quote
     {
-        $opportunity = Opportunity::factory()->create(['reporter_id' => $reporterId]);
-        $opportunity->managers()->sync([$manager->id => ['position' => 2]]);
+        $opportunity = Opportunity::factory()->create();
+        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id, 'reporter_id' => $reporterId]);
     }
 }
 
@@ -62,18 +66,18 @@ it('PATCH with rewards + an existing reporter persists the reward row (AC-023)',
     $actor = rewardAssignmentRmActor(['update']);
     $reporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, $reporter->id);
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'rewards' => [['reward_type_id' => $rewardType->id]],
     ])->assertOk();
 
     $this->assertDatabaseHas('rewards', [
         'referent_id' => $reporter->id,
         'reward_type_id' => $rewardType->id,
-        'source_type' => 'opportunity',
-        'source_id' => $opportunity->id,
+        'source_type' => 'quote',
+        'source_id' => $quote->id,
     ]);
 });
 
@@ -81,53 +85,53 @@ it('PATCH with rewards absent leaves the collection untouched (AC-023)', functio
     $actor = rewardAssignmentRmActor(['update']);
     $reporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, $reporter->id);
-    Reward::factory()->for($opportunity, 'source')->for($reporter)->for($rewardType)->create();
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
+    Reward::factory()->for($quote, 'source')->for($reporter)->for($rewardType)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['note' => null])->assertOk();
+    $this->patchJson("/api/request-management/{$quote->id}", ['note' => null])->assertOk();
 
-    expect(Reward::query()->where('source_id', $opportunity->id)->count())->toBe(1);
+    expect(Reward::query()->where('source_id', $quote->id)->where('source_type', 'quote')->count())->toBe(1);
 });
 
 it('PATCH with rewards: [] clears every assignment (AC-023)', function () {
     $actor = rewardAssignmentRmActor(['update']);
     $reporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, $reporter->id);
-    Reward::factory()->for($opportunity, 'source')->for($reporter)->for($rewardType)->create();
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
+    Reward::factory()->for($quote, 'source')->for($reporter)->for($rewardType)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['rewards' => []])->assertOk();
+    $this->patchJson("/api/request-management/{$quote->id}", ['rewards' => []])->assertOk();
 
-    expect(Reward::query()->where('source_id', $opportunity->id)->count())->toBe(0);
+    expect(Reward::query()->where('source_id', $quote->id)->where('source_type', 'quote')->count())->toBe(0);
 });
 
 it('PATCH with rewards non-empty and no reporter -> 422 on rewards, identical error code to the opportunities channel (AC-023)', function () {
     $actor = rewardAssignmentRmActor(['update']);
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, reporterId: null);
+    $quote = rewardAssignmentRmSupervisedQuote($actor, reporterId: null);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", [
+    $this->patchJson("/api/request-management/{$quote->id}", [
         'rewards' => [['reward_type_id' => $rewardType->id]],
     ])->assertStatus(422)->assertJsonValidationErrors('rewards');
 
-    expect(Reward::query()->where('source_id', $opportunity->id)->count())->toBe(0);
+    expect(Reward::query()->where('source_id', $quote->id)->where('source_type', 'quote')->count())->toBe(0);
 });
 
 it('PATCH clearing reporter_id while rewards exist -> 422 on reporter_id (AC-023)', function () {
     $actor = rewardAssignmentRmActor(['update']);
     $reporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, $reporter->id);
-    Reward::factory()->for($opportunity, 'source')->for($reporter)->for($rewardType)->create();
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $reporter->id);
+    Reward::factory()->for($quote, 'source')->for($reporter)->for($rewardType)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['reporter_id' => null])
+    $this->patchJson("/api/request-management/{$quote->id}", ['reporter_id' => null])
         ->assertStatus(422)->assertJsonValidationErrors('reporter_id');
 
-    expect($opportunity->fresh()->reporter_id)->toBe($reporter->id);
+    expect($quote->fresh()->reporter_id)->toBe($reporter->id);
 });
 
 it('PATCH changing reporter_id retargets every existing reward (AC-023, same rule as AC-022)', function () {
@@ -135,12 +139,12 @@ it('PATCH changing reporter_id retargets every existing reward (AC-023, same rul
     $originalReporter = Referent::factory()->create();
     $newReporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
-    $opportunity = rewardAssignmentRmManagedOpportunity($actor, $originalReporter->id);
-    Reward::factory()->for($opportunity, 'source')->for($originalReporter)->for($rewardType)->create();
+    $quote = rewardAssignmentRmSupervisedQuote($actor, $originalReporter->id);
+    Reward::factory()->for($quote, 'source')->for($originalReporter)->for($rewardType)->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['reporter_id' => $newReporter->id])->assertOk();
+    $this->patchJson("/api/request-management/{$quote->id}", ['reporter_id' => $newReporter->id])->assertOk();
 
-    $referentIds = Reward::query()->where('source_id', $opportunity->id)->pluck('referent_id')->unique()->all();
+    $referentIds = Reward::query()->where('source_id', $quote->id)->where('source_type', 'quote')->pluck('referent_id')->unique()->all();
     expect($referentIds)->toBe([$newReporter->id]);
 });

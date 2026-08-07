@@ -61,19 +61,22 @@ it('criterion-fields: 200 with the 4 allow-listed fields, correct for_select_res
 // default-statuses — GET/PUT (AC-005/AC-010, happy + system-row guard)
 // ---------------------------------------------------------------------------
 
-it('default-statuses: GET 200 always exposes the 4 global system rows, ordered (AC-005)', function () {
+it('default-statuses: GET 200 exposes the global set ordered, only open/closed_won/closed_lost pinned (AC-005)', function () {
     $actor = quoteWorkflowUserWith(['view']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson('/api/quote-workflows/default-statuses')->assertOk()->json('data');
 
-    expect(collect($data)->pluck('system_key')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
+    expect(collect($data)->pluck('system_key')->all())->toBe(['open', null, 'closed_won', 'closed_lost'])
+        ->and(collect($data)->pluck('group')->all())->toBe(['open', 'validated', 'closed_won', 'closed_lost']);
 });
 
-it('default-statuses: PUT syncs custom rows, pinning open first / validated + closed_won + closed_lost last', function () {
+it('default-statuses: PUT syncs custom rows (the validated one included), pinning open first / closed_won + closed_lost last', function () {
     $actor = quoteWorkflowUserWith(['view', 'update']);
     Sanctum::actingAs($actor);
 
+    // Authoritative sync: the seeded "Validato" row is now a plain custom one,
+    // so leaving it out of the payload deletes it like any other custom row.
     $response = $this->putJson('/api/quote-workflows/default-statuses', [
         'statuses' => [
             ['name' => 'In corso', 'color' => 'blue', 'group' => 'open'],
@@ -82,9 +85,10 @@ it('default-statuses: PUT syncs custom rows, pinning open first / validated + cl
 
     $data = collect($response->json('data'));
 
-    expect($data)->toHaveCount(5)
+    expect($data)->toHaveCount(4)
         ->and($data->first()['system_key'])->toBe('open')
         ->and($data->last()['system_key'])->toBe('closed_lost')
+        ->and($data->firstWhere('name', 'Validato'))->toBeNull()
         ->and($data->firstWhere('name', 'In corso'))->not->toBeNull();
 
     $this->assertDatabaseHas('quote_workflow_statuses', [

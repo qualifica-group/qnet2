@@ -15,6 +15,7 @@ namespace App\DataObjects\RequestManagement;
 final readonly class RequestTransferNotice
 {
     public function __construct(
+        /** The transferred Offerta's own id (spec 0086, D-2) — a grid row IS the Quote, not the Opportunity. */
         public int $requestId,
         public string $contactLabel,
         public ?string $originSiteLabel,
@@ -26,5 +27,11 @@ final readonly class RequestTransferNotice
          * operator at all.
          */
         public ?int $previousOperatorId = null,
+        /**
+         * The Offerta's own Opportunity id (spec 0086, MT-04b): the deep
+         * link's `/opportunities/:id` branch needs this DISTINCT id — never
+         * $requestId, which now names the Quote.
+         */
+        public ?int $opportunityId = null,
     ) {}
 }

@@ -18,6 +18,8 @@ use Illuminate\Validation\Rule;
  * Authorization is intentionally NOT handled here (it stays in the
  * controller: the double `update` + `transferContact` gate, plus the
  * per-row D-3 scope), same convention as AssignRequestOperatorsRequest.
+ *
+ * `request_ids` are Offerta (Quote) ids (spec 0086, D-2).
  */
 class TransferRequestsRequest extends FormRequest
 {
@@ -34,7 +36,7 @@ class TransferRequestsRequest extends FormRequest
     {
         return [
             'request_ids' => ['required', 'array', 'min:1'],
-            'request_ids.*' => ['integer', Rule::exists('opportunities', 'id')],
+            'request_ids.*' => ['integer', Rule::exists('quotes', 'id')],
             'operational_site_id' => ['required', 'integer', Rule::exists('operational_sites', 'id')],
             'operator_id' => ['required', 'integer', Rule::exists('users', 'id')],
         ];

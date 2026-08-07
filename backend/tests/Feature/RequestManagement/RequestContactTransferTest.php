@@ -15,9 +15,12 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
-// POST /api/request-management/transfer (spec 0079): the write itself,
-// authorization, D-3 scope, payload validation and Activity Log —
-// AC-001 -> AC-012. Notifications: RequestContactTransferNotificationTest.
+// POST /api/request-management/transfer (spec 0079, migrated onto the Quote
+// by spec 0086 AC-034/AC-035): the write itself, authorization, D-3 scope,
+// payload validation and Activity Log — AC-001 -> AC-012. `is_transferred`/
+// `transferred_from_operational_site_id`/`operational_site_id` are now Quote
+// columns (D-6), the audit trail stays anchored on the Opportunity (D-9).
+// Notifications: RequestContactTransferNotificationTest.
 // Resource/grid/no-write-path/site-deletion: RequestContactTransferGridTest.
 
 uses(RefreshDatabase::class);
@@ -53,12 +56,12 @@ if (! function_exists('transferRequestManagedBy')) {
     /**
      * @param  array<string, mixed>  $attributes
      */
-    function transferRequestManagedBy(User $operator, array $attributes = []): Opportunity
+    function transferRequestManagedBy(User $supervisor, array $attributes = []): Quote
     {
-        $opportunity = Opportunity::factory()->create($attributes);
-        $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+        $opportunity = Opportunity::factory()->create();
+        $opportunity->managers()->attach($supervisor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
 
-        return $opportunity;
+        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id, ...$attributes]);
     }
 }
 
@@ -71,19 +74,20 @@ it('transfers a single request: Sede, GA2 operator and is_transferred all change
     $originSite = transferSite();
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $originSite->id]);
+    $quote = Quote::factory()->create(['operational_site_id' => $originSite->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk()->assertJsonPath('data.transferred', 1);
 
-    $opportunity->refresh();
-    expect($opportunity->operational_site_id)->toBe($destinationSite->id)
-        ->and($opportunity->operatorManager()?->id)->toBe($newOperator->id)
-        ->and($opportunity->is_transferred)->toBeTrue();
+    $quote->refresh();
+    expect($quote->operational_site_id)->toBe($destinationSite->id)
+        ->and($quote->supervisor_id)->toBe($newOperator->id)
+        ->and($quote->opportunity->operatorManager()?->id)->toBe($newOperator->id)
+        ->and($quote->is_transferred)->toBeTrue();
 });
 
 it('records the ORIGIN Sede the request had before the transfer (AC-002)', function () {
@@ -91,37 +95,37 @@ it('records the ORIGIN Sede the request had before the transfer (AC-002)', funct
     $originSite = transferSite();
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $originSite->id]);
+    $quote = Quote::factory()->create(['operational_site_id' => $originSite->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
 
-    expect($opportunity->fresh()->transferred_from_operational_site_id)->toBe($originSite->id);
+    expect($quote->fresh()->transferred_from_operational_site_id)->toBe($originSite->id);
 });
 
 it('a request with no Sede of origin transfers fine: origin stays null, is_transferred becomes true (AC-003)', function () {
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => null]);
+    $quote = Quote::factory()->create(['operational_site_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
 
-    $opportunity->refresh();
-    expect($opportunity->transferred_from_operational_site_id)->toBeNull()
-        ->and($opportunity->is_transferred)->toBeTrue();
+    $quote->refresh();
+    expect($quote->transferred_from_operational_site_id)->toBeNull()
+        ->and($quote->is_transferred)->toBeTrue();
 });
 
-it('every other relation of the request survives the transfer untouched — registry, referent, product_lines, products_of_interest, rewards, quotes, note, allegati and the other manager slots (AC-004)', function () {
+it('every other relation of the request survives the transfer untouched — registry, referent, product_lines, products_of_interest, rewards, quotes, note, allegati and the other manager slots; the SIBLING offer is_transferred stays false (AC-004/AC-035)', function () {
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
@@ -134,16 +138,17 @@ it('every other relation of the request survives the transfer untouched — regi
     $product = Product::factory()->create();
     $opportunity->productsOfInterest()->attach($product->id);
     $reward = Reward::factory()->for($opportunity, 'source')->create();
-    $quote = Quote::factory()->for($opportunity)->create();
+    $sisterQuote = Quote::factory()->for($opportunity)->create();
     $note = Note::factory()->for($opportunity, 'notable')->create();
     $attachment = Attachment::factory()->for($opportunity, 'attachable')->create(['collection' => 'documents']);
     $otherManager = User::factory()->create();
     $opportunity->managers()->attach($otherManager->id, ['position' => 1]);
     $registryId = $opportunity->registry_id;
+    $quote = Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
@@ -155,18 +160,21 @@ it('every other relation of the request survives the transfer untouched — regi
         ->and($opportunity->productLines()->whereKey($productLine->id)->exists())->toBeTrue()
         ->and($opportunity->productsOfInterest()->whereKey($product->id)->exists())->toBeTrue()
         ->and(Reward::query()->whereKey($reward->id)->exists())->toBeTrue()
-        ->and(Quote::query()->whereKey($quote->id)->exists())->toBeTrue()
+        ->and(Quote::query()->whereKey($sisterQuote->id)->exists())->toBeTrue()
         ->and(Note::query()->whereKey($note->id)->exists())->toBeTrue()
         ->and(Attachment::query()->whereKey($attachment->id)->exists())->toBeTrue()
-        ->and($opportunity->managers()->wherePivot('position', 1)->first()?->id)->toBe($otherManager->id);
+        ->and($opportunity->managers()->wherePivot('position', 1)->first()?->id)->toBe($otherManager->id)
+        // AC-035: the flag is per-OFFERTA (D-6) — a sibling untouched by this
+        // transfer never flips, even though it shares the same Opportunity.
+        ->and($sisterQuote->fresh()->is_transferred)->toBeFalse();
 });
 
 it('transfers every selected request in one call and reports how many (AC-005)', function () {
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $first = Opportunity::factory()->create();
-    $second = Opportunity::factory()->create();
+    $first = Quote::factory()->create();
+    $second = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
@@ -187,32 +195,32 @@ it('403 without request-management.transferContact, no write (AC-006)', function
     $actor = transferActorWith(['update', 'viewAll']);
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertForbidden();
 
-    expect($opportunity->fresh()->is_transferred)->toBeFalse();
+    expect($quote->fresh()->is_transferred)->toBeFalse();
 });
 
 it('403 without request-management.update, no write (AC-007)', function () {
     $actor = transferActorWith(['viewAll', 'transferContact']);
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertForbidden();
 
-    expect($opportunity->fresh()->is_transferred)->toBeFalse();
+    expect($quote->fresh()->is_transferred)->toBeFalse();
 });
 
 it('an out-of-scope request is silently skipped, never 403/404 on the batch (AC-008)', function () {
@@ -240,24 +248,24 @@ it('an out-of-scope request is silently skipped, never 403/404 on the batch (AC-
 it('422 when operator_id is absent from the payload (AC-009)', function () {
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferSite();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
     ])->assertStatus(422)->assertJsonValidationErrors('operator_id');
 
-    expect($opportunity->fresh()->is_transferred)->toBeFalse();
+    expect($quote->fresh()->is_transferred)->toBeFalse();
 });
 
 it('422 when operational_site_id or operator_id do not exist (AC-010)', function () {
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => 999999,
         'operator_id' => 999999,
     ])->assertStatus(422)
@@ -265,7 +273,7 @@ it('422 when operational_site_id or operator_id do not exist (AC-010)', function
 });
 
 // ---------------------------------------------------------------------------
-// AC-011 / AC-012 — Activity Log
+// AC-011 / AC-012 — Activity Log (still anchored on the Opportunity, D-9)
 // ---------------------------------------------------------------------------
 
 it('writes ONE explicit Activity Log entry per transfer, causer = actor, Sede + operator in old/attributes (AC-011)', function () {
@@ -273,15 +281,16 @@ it('writes ONE explicit Activity Log entry per transfer, causer = actor, Sede + 
     $originSite = transferSite();
     $destinationSite = transferSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $originSite->id]);
+    $quote = Quote::factory()->create(['operational_site_id' => $originSite->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
 
+    $opportunity = $quote->opportunity;
     $entries = Activity::query()
         ->where('subject_type', $opportunity->getMorphClass())
         ->where('subject_id', $opportunity->id)
@@ -303,21 +312,22 @@ it('two successive transfers leave TWO distinct Activity Log entries (AC-012)', 
     $secondSite = transferSite();
     $firstOperator = User::factory()->create();
     $secondOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $firstSite->id,
         'operator_id' => $firstOperator->id,
     ])->assertOk();
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $secondSite->id,
         'operator_id' => $secondOperator->id,
     ])->assertOk();
 
+    $opportunity = $quote->opportunity;
     $count = Activity::query()
         ->where('subject_type', $opportunity->getMorphClass())
         ->where('subject_id', $opportunity->id)
@@ -331,19 +341,21 @@ it('transferring to the ALREADY current Sede and operator is not a silent no-op:
     $actor = transferActorWith(['update', 'viewAll', 'transferContact']);
     $site = transferSite();
     $operator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create(['operational_site_id' => $site->id]);
+    $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+    $quote = Quote::factory()->for($opportunity)->create(['operational_site_id' => $site->id, 'supervisor_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $site->id,
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.transferred', 1);
 
-    $opportunity->refresh();
-    expect($opportunity->is_transferred)->toBeTrue()
-        ->and($opportunity->operatorManager()?->id)->toBe($operator->id);
+    $quote->refresh();
+    expect($quote->is_transferred)->toBeTrue()
+        ->and($quote->supervisor_id)->toBe($operator->id)
+        ->and($quote->opportunity->operatorManager()?->id)->toBe($operator->id);
 
     $entries = Activity::query()
         ->where('subject_type', $opportunity->getMorphClass())

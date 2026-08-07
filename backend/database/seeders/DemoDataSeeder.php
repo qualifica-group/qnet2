@@ -101,16 +101,17 @@ class DemoDataSeeder extends Seeder
         // referents/users/sources/product-categories) and DemoLeadSeeder (for
         // the BR-1 from-lead batch) — must run after all of them.
         $this->call(DemoOpportunitySeeder::class);
-        // Walks those opportunities through their working statuses and fills
-        // the opportunity-context attributes: needs the rows, the pick lists
-        // and the attributes, so it runs after all three.
-        $this->call(DemoOpportunityLifecycleSeeder::class);
         // One quote per opportunity (spec 0065): depends on DemoOpportunitySeeder
         // for the opportunities themselves and on DemoProductSeeder for the
         // offer/cost line products — must run after both.
         $this->call(DemoQuoteSeeder::class);
-        // Depends on DemoRewardTypeSeeder (catalogue) and DemoOpportunitySeeder
-        // (reporters to reward, D-3) — must run after both.
+        // Plans a callback on some of the requests through the module's own
+        // write path. Spec 0086 (D-1) made the Offerta that path's subject, so
+        // this now depends on DemoQuoteSeeder and must run AFTER it.
+        $this->call(DemoOpportunityLifecycleSeeder::class);
+        // Depends on DemoRewardTypeSeeder (catalogue) and DemoQuoteSeeder
+        // (reporters to reward, snapshotted from the opportunity, spec 0086
+        // D-4) — must run after both.
         $this->call(DemoRewardSeeder::class);
         // Needs users (avatars) and company sites (logos) already seeded above;
         // attaches demo files through the real HasAttachments write path.

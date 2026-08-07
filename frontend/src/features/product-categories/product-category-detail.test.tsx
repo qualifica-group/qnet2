@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
@@ -57,7 +57,9 @@ function category(
     requires_quote_source_category: null,
     is_selectable: true,
     management_mode: 'multiple',
+    single_quote_per_opportunity: false,
     management_mode_source_category: null,
+    single_quote_per_opportunity_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -154,16 +156,31 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
   })
 })
 
-describe('ProductCategoryDetailView — quote flag', () => {
-  it('shows the flag with no source badge on a root category', () => {
-    render(<ProductCategoryDetailView category={category({ requires_quote: true })} />)
+/**
+ * The four behavioural rules now read as ONE "Management rules" section
+ * (user directive 2026-08-07), so a rule is located by its own label rather
+ * than by a section heading of its own.
+ */
+function ruleValue(label: string): HTMLElement {
+  return screen.getByText(label).nextElementSibling as HTMLElement
+}
 
-    const section = screen.getByRole('heading', { name: 'Quoted' }).closest('section') as HTMLElement
-    expect(within(section).getByText('Yes')).toBeInTheDocument()
-    expect(within(section).queryByText(/Inherited from/)).not.toBeInTheDocument()
+describe('ProductCategoryDetailView — management rules', () => {
+  it('groups every rule under one section', () => {
+    render(<ProductCategoryDetailView category={category()} />)
+
+    expect(screen.getByRole('heading', { name: 'Management rules' })).toBeInTheDocument()
   })
 
-  it('names the root the flag is inherited from on a child category', () => {
+  it('shows the quote flag with no source badge on a root category', () => {
+    render(<ProductCategoryDetailView category={category({ requires_quote: true })} />)
+
+    const field = ruleValue('Quoted')
+    expect(within(field).getByText('Yes')).toBeInTheDocument()
+    expect(within(field).queryByText(/Inherited from/)).not.toBeInTheDocument()
+  })
+
+  it('names the root the quote flag is inherited from on a child category', () => {
     render(
       <ProductCategoryDetailView
         category={category({
@@ -173,9 +190,28 @@ describe('ProductCategoryDetailView — quote flag', () => {
       />,
     )
 
-    const section = screen.getByRole('heading', { name: 'Quoted' }).closest('section') as HTMLElement
-    expect(within(section).getByText('Yes')).toBeInTheDocument()
-    expect(within(section).getByText('Inherited from Electronics')).toBeInTheDocument()
+    const field = ruleValue('Quoted')
+    expect(within(field).getByText('Yes')).toBeInTheDocument()
+    expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+
+  it('shows the one-offer rule, with the root it is inherited from', () => {
+    render(<ProductCategoryDetailView category={category()} />)
+    expect(within(ruleValue('One offer per opportunity')).getByText('No')).toBeInTheDocument()
+
+    cleanup()
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          single_quote_per_opportunity: true,
+          single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
+        })}
+      />,
+    )
+
+    const field = ruleValue('One offer per opportunity')
+    expect(within(field).getByText('Yes')).toBeInTheDocument()
+    expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
   })
 })
 

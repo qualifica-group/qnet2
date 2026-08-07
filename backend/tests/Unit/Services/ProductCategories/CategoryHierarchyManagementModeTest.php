@@ -3,6 +3,7 @@
 use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\ProductCategories\CategoryTreeBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -71,7 +72,7 @@ it('tree() nodes carry their own effective management_mode', function () {
     $root = ProductCategory::factory()->create(['name' => 'Root', 'management_mode' => CategoryManagementMode::Single]);
     ProductCategory::factory()->childOf($root)->create(['name' => 'Child', 'management_mode' => CategoryManagementMode::Single]);
 
-    $tree = (new CategoryHierarchy)->tree();
+    $tree = (new CategoryTreeBuilder)->tree();
     $rootNode = collect($tree)->firstWhere('name', 'Root');
 
     expect($rootNode['management_mode'])->toBe('single')

@@ -3,6 +3,7 @@
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RequestTransferredNotification;
 use App\Support\OperationalSiteLabel;
@@ -76,11 +77,11 @@ it('the new operator receives a database and a mail notification (AC-013)', func
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferNotifSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
@@ -101,11 +102,11 @@ it('every holder of the transfer-notification permission receives the copy; the 
     $supervisor = transferNotifSupervisor();
     $actor->givePermissionTo('request-management.receiveTransferNotifications');
     $destinationSite = transferNotifSite();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         // The actor is ALSO the new operator here, on top of holding the grant.
         'operator_id' => $actor->id,
@@ -128,15 +129,16 @@ it('the supervisory copy carries contact, origin, destination, operators, author
     $destinationSite = transferNotifSite();
     $previousOperator = User::factory()->create(['name' => 'Old Operator']);
     $newOperator = User::factory()->create(['name' => 'New Operator']);
-    $opportunity = Opportunity::factory()->create([
-        'name' => 'Acme deal',
-        'operational_site_id' => $originSite->id,
-    ]);
+    $opportunity = Opportunity::factory()->create(['name' => 'Acme deal']);
     $opportunity->managers()->attach($previousOperator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+    $quote = Quote::factory()->for($opportunity)->create([
+        'operational_site_id' => $originSite->id,
+        'supervisor_id' => $previousOperator->id,
+    ]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk();
@@ -169,11 +171,11 @@ it('with no holder of the transfer-notification permission, the transfer succeed
     $actor = transferNotifActorWith(['update', 'viewAll', 'transferContact']);
     $destinationSite = transferNotifSite();
     $newOperator = User::factory()->create();
-    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
-        'request_ids' => [$opportunity->id],
+        'request_ids' => [$quote->id],
         'operational_site_id' => $destinationSite->id,
         'operator_id' => $newOperator->id,
     ])->assertOk()->assertJsonPath('data.transferred', 1);

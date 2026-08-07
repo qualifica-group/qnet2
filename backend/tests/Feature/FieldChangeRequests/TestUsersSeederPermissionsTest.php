@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Role;
 use App\Models\Source;
 use App\Models\User;
@@ -64,19 +65,20 @@ it('still lets a commercial read the request they proposed, page permissions asi
     $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $commercial->id]);
 
     Sanctum::actingAs($commercial);
 
     $created = $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => Source::factory()->create()->id,
     ])->assertCreated()->json('data.id');
 
     $this->getJson("/api/field-change-requests/{$created}")->assertOk();
 
-    $this->getJson('/api/field-change-requests/for-record?resource=request-management&subject_id='.$opportunity->id)
+    $this->getJson('/api/field-change-requests/for-record?resource=request-management&subject_id='.$quote->id)
         ->assertOk()
         ->assertJsonPath('data.0.id', $created);
 });
@@ -100,16 +102,17 @@ it('AC-052: a commercial gets 422 writing the Fonte directly and 201 proposing a
     $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $commercial->id]);
     $otherSource = Source::factory()->create();
 
     Sanctum::actingAs($commercial);
 
-    $this->patchJson("/api/request-management/{$opportunity->id}", ['source_id' => $otherSource->id])
+    $this->patchJson("/api/request-management/{$quote->id}", ['source_id' => $otherSource->id])
         ->assertStatus(422);
 
     $this->postJson('/api/field-change-requests', [
         'resource' => 'request-management',
-        'subject_id' => $opportunity->id,
+        'subject_id' => $quote->id,
         'field' => 'source_id',
         'requested_value' => $otherSource->id,
     ])->assertCreated();

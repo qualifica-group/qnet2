@@ -17,7 +17,7 @@ export const requestManagement = {
     source: 'Fonte',
     pendingChangeRequests: 'Richieste di modifica',
     productCategory: 'Categoria prodotto',
-    productsOfInterest: 'Prodotti di interesse',
+    offerLines: 'Linee di prodotto',
     generalNotes: 'Note generali',
     operator: 'Operatore (GA2)',
     operationalSite: 'Sede operativa',

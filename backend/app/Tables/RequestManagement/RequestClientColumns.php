@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement;
 
 use App\Enums\ContactTypeEnum;
-use App\Models\Opportunity;
 use App\Models\PersonalData;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Services\Table\FilterApplier;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,27 +17,23 @@ use Illuminate\Support\Facades\DB;
 /**
  * The CLIENT anagraphic columns of the `request-management` domain — Nome,
  * Cognome, Codice fiscale, Telefono — as a single column contract:
- * quick-search (spec 0009), column filter, sort and Excel-like distinct values
- * (spec 0004/0005). Grew out of the former RequestClientSearch (which owned
- * the search branch alone) when the four columns became filterable+sortable
- * like every other column of the grid (user directive 2026-08-03): the
- * relation path and the column allow-list are the same for all four hooks, so
- * they live here ONCE instead of drifting across two collaborators.
+ * quick-search (spec 0009), column filter, sort and Excel-like distinct
+ * values (spec 0004/0005).
  *
- * None of them is a real `opportunities` column: RequestRowMapper reads them
- * from the client Registry's PersonalData card (`phone` = its primary
- * phone/mobile contact), so the generic engine would target a non-existent
- * column. Each hook translates instead into the relation the mapper reads —
- * `whereHas` for search/filter, a correlated subquery for the sort, a scoped
- * `SELECT DISTINCT` over the related table for the value list.
+ * None of them is a real `quotes` column: RequestRowMapper reads them from
+ * the client Registry's PersonalData card, reached THROUGH the row's
+ * opportunity (spec 0086: `quotes` carries no `registry_id` of its own —
+ * `phone` = its primary phone/mobile contact). Each hook translates into the
+ * relation the mapper reads — `whereHas` for search/filter, a correlated
+ * subquery joined through `opportunities` for the sort, a scoped
+ * `SELECT DISTINCT` for the value list.
  *
- * The per-type filter SHAPES (text conditions, set, `multi` envelope, combined
- * `{operator, conditions}`) are NOT re-implemented here: the generic
- * FilterApplier is pointed at the real card/contact column INSIDE the
- * `whereHas` closure — the same delegation CustomFieldAwareTableDefinition
- * already uses for its JSON-path columns. Consequence to know: since the match
- * is an EXISTS, a request with no registry/card never matches, negations
- * (`notContains`/`notEqual`) included.
+ * The per-type filter SHAPES (text conditions, set, `multi`/combined
+ * envelopes) are NOT re-implemented here: the generic FilterApplier is
+ * pointed at the real card/contact column INSIDE the `whereHas` closure —
+ * the same delegation CustomFieldAwareTableDefinition uses for its JSON-path
+ * columns. Since the match is an EXISTS, a request with no registry/card
+ * never matches, negations (`notContains`/`notEqual`) included.
  *
  * SECURITY: column ids come from the definition's server-side allow-list
  * (never the request), every value stays a bound parameter and LIKE wildcards
@@ -60,9 +56,10 @@ final class RequestClientColumns
     private const string PHONE_COLUMN = 'phone';
 
     /**
-     * The card relation path from an Opportunity, as read by RequestRowMapper.
+     * The card relation path from a Quote, as read by RequestRowMapper (spec
+     * 0086: through the row's own opportunity — `quotes` has no `registry_id`).
      */
-    private const string CARD_RELATION = 'registry.personalData';
+    private const string CARD_RELATION = 'opportunity.registry.personalData';
 
     private const string CONTACTS_RELATION = self::CARD_RELATION.'.contacts';
 
@@ -70,7 +67,8 @@ final class RequestClientColumns
 
     private const string CONTACTS_TABLE = 'contacts';
 
-    private const string OPPORTUNITY_REGISTRY_FK = 'opportunities.registry_id';
+    /** The Registry FK column on `opportunities` (never on `quotes`). */
+    private const string OPPORTUNITY_REGISTRY_FK = 'registry_id';
 
     public function __construct(private readonly FilterApplier $filterApplier) {}
 
@@ -79,7 +77,7 @@ final class RequestClientColumns
      * search group. Returns false for any column this collaborator does not
      * own, so the generic engine handles it.
      *
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      */
     public function applySearch(Builder $query, string $columnId, string $pattern): bool
     {
@@ -112,7 +110,7 @@ final class RequestClientColumns
      * conditions, the Set checklist and the `multi`/combined envelopes all
      * behave exactly as they do on a real column.
      *
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      * @param  array<string, mixed>  $columnConfig
      * @param  array<string, mixed>  $filter
      */
@@ -140,11 +138,11 @@ final class RequestClientColumns
     }
 
     /**
-     * ORDER BY the card value via a correlated subquery on the row's own
-     * registry — never a JOIN on the main query (which would multiply rows
-     * against the to-many contacts).
+     * ORDER BY the card value via a correlated subquery joined through the
+     * row's opportunity — never a JOIN on the main query (which would
+     * multiply rows against the to-many contacts).
      *
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
@@ -164,11 +162,12 @@ final class RequestClientColumns
     }
 
     /**
-     * Excel-like distinct values, scoped to the registries of the rows
-     * matching $query (already narrowed by every OTHER active filter).
-     * Returns null for a column this collaborator does not own.
+     * Excel-like distinct values, scoped to the registries of the
+     * opportunities behind the rows matching $query (already narrowed by
+     * every OTHER active filter). Returns null for a column this
+     * collaborator does not own.
      *
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      * @return array<int, string>|null
      */
     public function distinctValues(string $columnId, Builder $query, ?string $search, int $limit): ?array
@@ -196,7 +195,7 @@ final class RequestClientColumns
     }
 
     /**
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      * @return array<int, string>
      */
     private function distinctPhones(Builder $query, ?string $search, int $limit): array
@@ -220,28 +219,41 @@ final class RequestClientColumns
     }
 
     /**
-     * The PersonalData cards of the registries behind the rows matching
-     * $query — the shared starting point of both distinct-value lists.
+     * The PersonalData cards of the registries behind the OPPORTUNITIES of
+     * the rows matching $query — the shared starting point of both
+     * distinct-value lists.
      *
-     * @param  Builder<Opportunity>  $query
+     * @param  Builder<Quote>  $query
      */
     private function cardQueryFor(Builder $query): QueryBuilder
     {
-        $registryIds = (clone $query)
-            ->whereNotNull(self::OPPORTUNITY_REGISTRY_FK)
-            ->select(self::OPPORTUNITY_REGISTRY_FK);
-
         return DB::table(self::CARD_TABLE)
             ->where('personable_type', (new Registry)->getMorphClass())
-            ->whereIn('personable_id', $registryIds);
+            ->whereIn('personable_id', $this->opportunityRegistryIds($query));
+    }
+
+    /**
+     * The `registry_id` of the opportunities behind the rows matching $query.
+     *
+     * @param  Builder<Quote>  $query
+     */
+    private function opportunityRegistryIds(Builder $query): QueryBuilder
+    {
+        $opportunityIds = (clone $query)->select('quotes.opportunity_id');
+
+        return DB::table('opportunities')
+            ->whereIn('id', $opportunityIds)
+            ->whereNotNull(self::OPPORTUNITY_REGISTRY_FK)
+            ->select(self::OPPORTUNITY_REGISTRY_FK);
     }
 
     private function cardSortSubquery(string $column): QueryBuilder
     {
         return DB::table(self::CARD_TABLE)
-            ->select($column)
-            ->where('personable_type', (new Registry)->getMorphClass())
-            ->whereColumn(self::CARD_TABLE.'.personable_id', self::OPPORTUNITY_REGISTRY_FK)
+            ->select(self::CARD_TABLE.'.'.$column)
+            ->join('opportunities', 'opportunities.'.self::OPPORTUNITY_REGISTRY_FK, '=', self::CARD_TABLE.'.personable_id')
+            ->where(self::CARD_TABLE.'.personable_type', (new Registry)->getMorphClass())
+            ->whereColumn('opportunities.id', 'quotes.opportunity_id')
             ->limit(1);
     }
 
@@ -255,11 +267,12 @@ final class RequestClientColumns
         return DB::table(self::CONTACTS_TABLE)
             ->selectRaw('min(contacts.value)')
             ->join(self::CARD_TABLE, self::CARD_TABLE.'.id', '=', self::CONTACTS_TABLE.'.contactable_id')
+            ->join('opportunities', 'opportunities.'.self::OPPORTUNITY_REGISTRY_FK, '=', self::CARD_TABLE.'.personable_id')
             ->where(self::CONTACTS_TABLE.'.contactable_type', (new PersonalData)->getMorphClass())
             ->where(self::CONTACTS_TABLE.'.is_primary', true)
             ->whereIn(self::CONTACTS_TABLE.'.type', self::phoneTypes())
             ->where(self::CARD_TABLE.'.personable_type', (new Registry)->getMorphClass())
-            ->whereColumn(self::CARD_TABLE.'.personable_id', self::OPPORTUNITY_REGISTRY_FK)
+            ->whereColumn('opportunities.id', 'quotes.opportunity_id')
             ->limit(1);
     }
 
