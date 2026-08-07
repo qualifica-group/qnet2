@@ -172,6 +172,11 @@ class RequestManagementController extends BaseApiController
                         // directive 2026-07-31): a full-replace collection,
                         // sparse like every other key here.
                         'product_lines',
+                        // "Linee dell'offerta" (user directive 2026-08-07):
+                        // the Offerta's own REVENUE rows, full-replace when
+                        // submitted and untouched when absent — the same
+                        // convention the quotes PATCH follows.
+                        'offer_lines',
                         // User directive 2026-08-07: the Offerta's own
                         // "Informazioni aggiuntive" and "Stato di
                         // lavorazione". `note` travels with the status: it is

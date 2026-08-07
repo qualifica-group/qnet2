@@ -18,8 +18,9 @@ use Illuminate\Database\Eloquent\Model;
  * when the actor may write, else read-only. Only `source_id` and
  * `product_lines` are mandatory-restrictive (user directives 2026-07-29 /
  * 2026-07-31); every other field blocks on nothing here. Spec 0086:
- * `products_of_interest` is REMOVED — the module's grid column
- * (`offer_lines`) is read-only, derived from the Offerta's own REVENUE lines.
+ * `products_of_interest` is REMOVED — its replacement, `offer_lines`, is the
+ * Offerta's own REVENUE row collection, WRITABLE from this module since the
+ * user directive 2026-08-07 (the grid column stays a read-only projection).
  *
  * User directive 2026-08-07: `attribute_values` and `quote_workflow_status_id`
  * are BACK, no longer as the Opportunity's own dimensions (which specs 0084
@@ -102,6 +103,12 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // "Stato di lavorazione" (user directive 2026-08-07): the
             // Offerta's own operational status, advanced from this panel.
             new FieldDefinition('quote_workflow_status_id', 'select'),
+            // "Linee dell'offerta" (user directive 2026-08-07): ONE key for
+            // the whole REVENUE row collection, as QuotesAuthorization
+            // declares its own — the per-row 422 rules live in
+            // ValidatesQuoteLines, not in the role matrix. NOT mandatory: an
+            // offer with no row is a legitimate state (spec 0086 AC-028).
+            new FieldDefinition('offer_lines', 'custom'),
         ];
     }
 
@@ -135,6 +142,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'client_phone' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

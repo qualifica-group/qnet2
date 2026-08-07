@@ -42,6 +42,27 @@ trait ValidatesQuoteLines
     }
 
     /**
+     * The REVENUE tab alone, for a channel that writes the offer rows without
+     * owning the commissions block (request-management, user directive
+     * 2026-08-07): same row shape and same rules as the Offerte endpoints —
+     * so a rule fixed on one channel cannot stay wrong on the other — with
+     * `commissions` PROHIBITED. An absent key is what makes
+     * QuoteLineCommissionWriter preserve the persisted overrides and only
+     * recalculate their amounts, so this module never silently drops what the
+     * Offerte form set up. The nested `commissions.*` rules stay inert behind
+     * the prohibition.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    protected function offerLinesOnlyRules(): array
+    {
+        return [
+            ...$this->quoteLineFieldRules('offer_lines'),
+            'offer_lines.*.commissions' => ['prohibited'],
+        ];
+    }
+
+    /**
      * Spec 0077, user directive 2026-08-07: an opportunity whose product
      * category root is managed in `single` mode carries ONE product line
      * (INV-3) — and its offer carries ONE product row, for the same reason.

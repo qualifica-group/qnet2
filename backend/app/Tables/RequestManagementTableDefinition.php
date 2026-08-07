@@ -6,7 +6,6 @@ namespace App\Tables;
 
 use App\Enums\AdvancedFilterType;
 use App\Models\Attachment;
-use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
@@ -201,22 +200,22 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // `FieldChangeRequestValueResolver::record()` precedent).
             'transferredFromOperationalSite',
         ])
-            // D-9: documents/notes stay anchored to the Opportunity — a
-            // correlated subquery through `quotes.opportunity_id`, since
-            // `withCount()` cannot span the BelongsTo `opportunity` hop.
+            // D-9: documents stay anchored to the Opportunity — a correlated
+            // subquery through `quotes.opportunity_id`, since `withCount()`
+            // cannot span the BelongsTo `opportunity` hop.
             ->addSelect([
                 'documents_count' => Attachment::query()
                     ->selectRaw('count(*)')
                     ->where('attachable_type', (new Opportunity)->getMorphClass())
                     ->where('collection', 'documents')
                     ->whereColumn('attachable_id', 'quotes.opportunity_id'),
-                // Roots AND replies together; soft-deleted notes excluded
-                // automatically by Note's own SoftDeletes global scope.
-                'notes_count' => Note::query()
-                    ->selectRaw('count(*)')
-                    ->where('notable_type', (new Opportunity)->getMorphClass())
-                    ->whereColumn('notable_id', 'quotes.opportunity_id'),
             ])
+            // Badge dell'azione `notes` (direttiva utente 2026-08-07): le note
+            // SCOPATE a questa Offerta (`notes.quote_id`), non l'intero thread
+            // dell'Opportunita' — esattamente il thread che l'azione apre, come
+            // gia' fa QuotesTableDefinition. Roots e reply insieme;
+            // soft-deleted escluse dal global scope di Note.
+            ->withCount(['scopedNotes as notes_count'])
             // Spec 0078, AC-037; spec 0086, D-10 (corrected in execution):
             // the OFFER's OWN still-open requests — two sibling offers carry
             // independent badges.
@@ -283,9 +282,9 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * Map a Quote to the operative row payload (delegated to
      * RequestRowMapper, so this definition keeps a single concern: query
      * building). `actions` is attached by the generic TableService via
-     * actionsFor(); `documents_count`/`notes_count` ride along from
-     * baseQuery's addSelect (D-9: both still counted through the OFFER's
-     * opportunity).
+     * actionsFor(); `documents_count` rides along from baseQuery's addSelect
+     * (D-9: still counted through the OFFER's opportunity) and `notes_count`
+     * from its `scopedNotes` withCount (the OFFER's own notes).
      *
      * @return array<string, mixed>
      */

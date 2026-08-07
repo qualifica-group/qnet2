@@ -8,11 +8,13 @@ use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
+use App\Enums\CategoryManagementMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
+use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\OpportunityService;
 use App\Services\Quotes\QuoteAttributeValueWriter;
@@ -55,6 +57,7 @@ final class RequestCreationService
         private readonly RequestManagementService $panel,
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
+        private readonly OpportunityProductLineCoverage $coverage,
     ) {}
 
     /**
@@ -125,10 +128,15 @@ final class RequestCreationService
             // Step 4: the Offerta itself (spec 0086, D-5), always through
             // QuoteService::create() — the ONE entry point that generates
             // `code`, bootstraps `quote_workflow_status_id` and recalculates
-            // every aggregate. Born with no product lines (AC-028);
+            // every aggregate. Its REVENUE rows travel with it when the form
+            // filled any in (user directive 2026-08-07; AC-028's empty offer
+            // stays the default), so coverage/aggregates/derived name are the
+            // service's own concern here too, never duplicated.
             // `supervisor_id`/`reporter_id`/`operational_site_id` are the
             // SAME resolved values just used for the Opportunity, so the two
             // records never disagree at creation time.
+            $this->assertOfferLinesFitManagementMode($opportunity, $data);
+
             $quote = $this->quoteService->create(new CreateQuoteData(
                 code: null,
                 title: $opportunity->name,
@@ -144,6 +152,7 @@ final class RequestCreationService
                 internalNotes: null,
                 operationalSiteId: $operationalSiteId,
                 operationalSiteIdSubmitted: true,
+                offerLines: $data->offerLines,
             ), $actor);
 
             // Step 5: reward assignments (D-4/D-12, AC-023) — the Offerta's
@@ -163,6 +172,32 @@ final class RequestCreationService
 
             return $this->panel->loadWorkPanel($quote);
         });
+    }
+
+    /**
+     * Spec 0077 / user directive 2026-08-07: an opportunity managed on a
+     * `single` product category carries ONE offer row. ValidatesQuoteLines'
+     * own enforceSingleOfferLine() cannot fire on this channel — it resolves
+     * the opportunity from a submitted `opportunity_id`, and here the
+     * Opportunity is born in this very transaction — so the identical rule is
+     * checked here, against the just-inserted product lines, with the SAME
+     * shared message the quotes endpoints report.
+     *
+     * @throws ValidationException more than one offer row on a `single`-managed classification
+     */
+    private function assertOfferLinesFitManagementMode(Opportunity $opportunity, CreateRequestData $data): void
+    {
+        if ($data->offerLines === null || count($data->offerLines) < 2) {
+            return;
+        }
+
+        if ($this->coverage->managementModeOf($opportunity) !== CategoryManagementMode::Single) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'offer_lines' => [__(OpportunityProductLineCoverage::SINGLE_OFFER_LINE_MESSAGE)],
+        ]);
     }
 
     /**

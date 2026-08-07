@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
+import { OFFER_LINE_FIBRA } from '@/features/request-management/request-work-panel-fixtures'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
@@ -89,7 +90,7 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     transferred_from: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [],
-    offer_lines: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
+    offer_lines: [OFFER_LINE_FIBRA],
     client_identity: null,
     client_contacts: { owner: null, items: [] },
     client_address: null,

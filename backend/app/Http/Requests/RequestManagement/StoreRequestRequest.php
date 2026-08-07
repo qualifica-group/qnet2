@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\RequestManagement;
 
+use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\DataObjects\Users\ProfileData;
 use App\Http\Requests\Concerns\ValidatesProductLines;
+use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Services\Opportunities\ProductCategoryCoherence;
@@ -41,6 +43,7 @@ use Illuminate\Validation\Rule;
 class StoreRequestRequest extends FormRequest
 {
     use ValidatesProductLines;
+    use ValidatesQuoteLines;
     use ValidatesRequestClientProfile;
     use ValidatesRewards;
 
@@ -115,6 +118,13 @@ class StoreRequestRequest extends FormRequest
                 // insert), and the same single place the PATCH channel uses.
                 'attribute_values' => ['sometimes', 'array'],
             ],
+            // "Linee dell'offerta" (user directive 2026-08-07): the Offerta
+            // this creation also produces can already carry its REVENUE rows.
+            // OPTIONAL — spec 0086 AC-028's "born with no offer line" stays
+            // the default, it is no longer the only possibility. The rows go
+            // to QuoteService::create() untouched, which is what covers the
+            // opportunity's product lines with them (D-7).
+            $this->offerLinesOnlyRules(),
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
             // Spec 0059: reward assignments for the reporter. Same shape/rules
@@ -213,6 +223,12 @@ class StoreRequestRequest extends FormRequest
             generalNotes: $validated['general_notes'] ?? null,
             attributeValues: array_key_exists('attribute_values', $validated)
                 ? (array) $validated['attribute_values']
+                : null,
+            offerLines: array_key_exists('offer_lines', $validated)
+                ? array_map(
+                    static fn (array $row): QuoteLineData => QuoteLineData::fromValidated($row),
+                    (array) $validated['offer_lines'],
+                )
                 : null,
         );
     }

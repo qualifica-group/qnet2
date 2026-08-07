@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
-use App\Models\QuoteLine;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
@@ -34,7 +33,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `quote.opportunity`, while `reporter`/`operational_site`/`is_transferred`/
  * `transferred_from`/`operator` (still wired to `operator_id`/`operator` on
  * the wire) and `rewards` come straight off the Quote. `products_of_interest`
- * is REPLACED by `offer_lines` (AC-021), the Quote's own REVENUE lines.
+ * is REPLACED by `offer_lines` (AC-021), the Quote's own REVENUE lines —
+ * projected by QuoteLineResource verbatim since the user directive
+ * 2026-08-07 made them editable from this panel too.
  *
  * User directive 2026-08-07: two blocks the module had lost to specs 0083 D-2
  * / 0084 D-1 come back, now sourced from the Offerta — `attribute_values`/
@@ -121,8 +122,12 @@ class RequestManagementResource extends JsonResource
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
             'product_lines' => $this->summarizeProductLines($opportunity->productLines),
             // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the
-            // Offerta's own REVENUE lines, read-only from this module.
-            'offer_lines' => $this->summarizeOfferLines($quote->offerLines),
+            // Offerta's own REVENUE lines. EDITABLE from this module since the
+            // user directive 2026-08-07, so the projection is the Offerte
+            // module's own QuoteLineResource verbatim: the row editor is the
+            // same component, and it needs the same row (quantity, prezzo
+            // unitario, aliquota, importi congelati), not a name-only summary.
+            'offer_lines' => QuoteLineResource::collection($quote->offerLines),
             'client_identity' => $this->summarizeClientIdentity($opportunity->registry),
             'client_contacts' => $this->summarizeContacts($opportunity->registry),
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
@@ -227,26 +232,6 @@ class RequestManagementResource extends JsonResource
                 'business_function' => $this->summarizeByName($line->businessFunction),
                 'product_category' => $this->summarizeByName($line->productCategory),
             ])
-            ->all();
-    }
-
-    /**
-     * "Linee di prodotto" (spec 0086, D-7): the Offerta's own REVENUE lines'
-     * products, each with its own category — replaces "prodotti di
-     * interesse" in this module (AC-007/AC-021), read-only.
-     *
-     * @param  iterable<int, QuoteLine>  $lines
-     * @return array<int, array{id: int, name: string, product_category: array{id: int, name: string}|null}>
-     */
-    private function summarizeOfferLines(iterable $lines): array
-    {
-        return collect($lines)
-            ->map(fn (QuoteLine $line): array => [
-                'id' => $line->product->id,
-                'name' => $line->product->name,
-                'product_category' => $this->summarizeByName($line->product->category),
-            ])
-            ->values()
             ->all();
     }
 

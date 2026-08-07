@@ -2,6 +2,8 @@ import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/product-lines-field'
+import { toLineInputs } from '@/features/quotes/quote-line-values'
+import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type {
   CreateRequestPayload,
   RequestProductLinePayload,
@@ -88,6 +90,8 @@ export interface BuildRequestCreatePayloadArgs {
   productLines: ProductLineRow[]
   /** "Prodotti di interesse" (user directive 2026-07-31): optional at creation, sent only when at least one is picked. */
   productsOfInterest: number[]
+  /** "Linee dell'offerta" (user directive 2026-08-07): optional at creation, sent only when at least one row exists. */
+  offerLines: QuoteLineFormValues[]
   sourceId: number | null
   reporterId: number | null
   /** GA2 "Operatore": `null` whenever the actor may not assign one (the field is not rendered). */
@@ -123,6 +127,7 @@ export function buildRequestCreatePayload({
   address,
   productLines,
   productsOfInterest,
+  offerLines,
   sourceId,
   reporterId,
   operatorId,
@@ -155,9 +160,13 @@ export function buildRequestCreatePayload({
   // "Prodotti di interesse" (user directive 2026-07-31): same "only when
   // picked" rule as `rewards` — the collection is optional at creation, and an
   // empty array is a no-op the server need not process.
+  // "Linee dell'offerta" (user directive 2026-08-07): same "only when filled
+  // in" rule — an empty array would ask the server to replace nothing with
+  // nothing on an Offerta that is being created empty anyway.
   const classification = {
     product_lines,
     ...(productsOfInterest.length > 0 ? { products_of_interest: productsOfInterest } : {}),
+    ...(offerLines.length > 0 ? { offer_lines: toLineInputs(offerLines) } : {}),
   }
 
   // The operative block (user directive 2026-07-31): sent only when it

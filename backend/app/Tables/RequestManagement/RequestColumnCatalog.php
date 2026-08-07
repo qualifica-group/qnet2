@@ -400,8 +400,10 @@ final class RequestColumnCatalog
      * notes is inherited from the ability to open the record (D-6), while
      * writing is separately authorized server-side by `notes.create` inside
      * the dialog itself. `count_field` (spec 0052 B4c, reversing the earlier
-     * "out of scope" call) carries `notes_count` — every note on the record,
-     * roots AND replies, soft-deleted excluded — mirroring `documents`'
+     * "out of scope" call) carries `notes_count` — dalla direttiva utente
+     * 2026-08-07 le note della SINGOLA Offerta della riga, roots AND replies,
+     * soft-deleted escluse: esattamente il thread che il dialog apre
+     * (`lockedQuoteId`), come per le Offerte — mirroring `documents`'
      * `documents_count` badge.
      *
      * @return array<int, array<string, mixed>>

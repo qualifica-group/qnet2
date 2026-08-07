@@ -49,6 +49,7 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     client_contacts: [],
     client_address: [],
     product_lines: [],
+    offer_lines: [],
     rewards: [],
     source_id: null,
     reporter_id: null,
@@ -255,5 +256,66 @@ describe('buildRequestWorkPayload (spec 0049 AC-062)', () => {
 
   it('omits client_address entirely when the inline fields were left blank', () => {
     expect(buildRequestWorkPayload(formValues({ client_address: [] }), panel())).toEqual({})
+  })
+
+  /**
+   * "Linee dell'offerta" (user directive 2026-08-07): full-replace when sent,
+   * so an untouched collection must stay OUT of the payload — including when
+   * the persisted rows carry provvigioni, which this channel never sees.
+   */
+  describe('offer lines', () => {
+    const persisted: RequestWorkPanel['offer_lines'] = [{
+      id: 700,
+      product_id: 900,
+      product: { id: 900, code: 'FIB', name: 'Fibra', category: null, business_function: null },
+      quantity: '2.00',
+      unit_price: '100.00',
+      vat_rate_id: 4,
+      vat_rate: { id: 4, name: '22%', rate: '22.00' },
+      net_amount: '200.00',
+      vat_amount: '44.00',
+      total_amount: '244.00',
+      sort_order: 0,
+      commissions: [{
+        id: 1,
+        recipient_role: 'COMMERCIAL',
+        recipient_type: 'referent',
+        recipient_id: 5,
+        recipient: { id: 5, name: 'Mario' },
+        commission_type: 'PERCENTAGE',
+        value: '10.00',
+        calculated_amount: '20.00',
+        internal_note: null,
+        origin: 'MANUAL_OVERRIDE',
+        commission_configuration_id: null,
+      }],
+    }]
+    const asFormRow = { id: 700, product_id: 900, quantity: 2, unit_price: 100, vat_rate_id: 4 }
+
+    it('omits the collection when the rows were not touched, provvigioni included', () => {
+      expect(
+        buildRequestWorkPayload(formValues({ offer_lines: [asFormRow] }), panel({ offer_lines: persisted })),
+      ).toEqual({})
+    })
+
+    it('sends the whole collection, without commissions, once a row changed', () => {
+      const payload = buildRequestWorkPayload(
+        formValues({ offer_lines: [{ ...asFormRow, quantity: 3 }] }),
+        panel({ offer_lines: persisted }),
+      )
+
+      expect(payload).toEqual({
+        offer_lines: [{ id: 700, product_id: 900, quantity: 3, unit_price: 100, vat_rate_id: 4, sort_order: 0 }],
+      })
+    })
+
+    it('sends an empty collection when the last row was removed', () => {
+      const payload = buildRequestWorkPayload(
+        formValues({ offer_lines: [] }),
+        panel({ offer_lines: persisted }),
+      )
+
+      expect(payload).toEqual({ offer_lines: [] })
+    })
   })
 })

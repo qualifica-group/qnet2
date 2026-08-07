@@ -51,6 +51,13 @@ interface QuoteLinesFieldProps {
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   commissionContext?: QuoteCommissionContext
+  /**
+   * `false` mounts the editor WITHOUT the provvigioni column and without the
+   * role-change re-sync below: Gestione Richieste edits these same rows (user
+   * directive 2026-08-07) but never that block — its endpoint prohibits
+   * `commissions`, so what the Offerte form set up is preserved server-side.
+   */
+  withCommissions?: boolean
 }
 
 /**
@@ -72,6 +79,7 @@ export function QuoteLinesField({
   vatRatePercentFor,
   rememberVatRatePercent,
   commissionContext,
+  withCommissions = true,
 }: QuoteLinesFieldProps) {
   const { t } = useTranslation()
   const confirm = useOptionalConfirm()
@@ -89,7 +97,7 @@ export function QuoteLinesField({
   useEffect(() => {
     const previous = previousRecipients.current
     previousRecipients.current = commissionContext
-    if (variant !== 'revenue' || !previous || !commissionContext) return
+    if (variant !== 'revenue' || !withCommissions || !previous || !commissionContext) return
     const changedRoles = [
       previous.commercialId !== commissionContext.commercialId ? 'COMMERCIAL' : null,
       previous.reporterId !== commissionContext.reporterId ? 'REPORTER' : null,
@@ -145,14 +153,14 @@ export function QuoteLinesField({
         }))
       return { ...row, commissions: [...retained, ...additions] }
     })).then(onChange).catch(() => toast.error(t('quotes.form.commissions.defaultsError')))
-  }, [commissionContext, onChange, t, value, variant])
+  }, [commissionContext, onChange, t, value, variant, withCommissions])
   const changeRevenueProduct = async (
     index: number,
     productId: number | null,
     item: Parameters<typeof setProduct>[2],
   ): Promise<boolean> => {
     const row = value[index]
-    if (variant === 'revenue' && row.product_id !== null && productId !== row.product_id) {
+    if (variant === 'revenue' && withCommissions && row.product_id !== null && productId !== row.product_id) {
       // A revenue product change replaces its commission snapshots. Fail closed
       // when the app-level confirmation service is unavailable.
       if (!confirm) return false
@@ -165,8 +173,8 @@ export function QuoteLinesField({
       })
       if (!accepted) return false
     }
-    if (productId === null || !item || variant === 'cost' || !commissionContext) {
-      setProduct(index, productId, item, variant === 'revenue' ? [] : undefined)
+    if (productId === null || !item || variant === 'cost' || !withCommissions || !commissionContext) {
+      setProduct(index, productId, item, variant === 'revenue' && withCommissions ? [] : undefined)
       return true
     }
     const unitPrice = item.meta.price === null ? 0 : Number(item.meta.price)
@@ -201,8 +209,8 @@ export function QuoteLinesField({
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-x-auto rounded-lg border bg-surface">
-        <div className={quoteLineMinWidthClass(variant)}>
-          <div className={`${quoteLineGridClass(variant)} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}>
+        <div className={quoteLineMinWidthClass(variant, withCommissions)}>
+          <div className={`${quoteLineGridClass(variant, withCommissions)} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}>
             <span>{t('quotes.form.lineProductHeader')}</span>
             <span>{t('quotes.form.lineCodeHeader')}</span>
             <span>{t('quotes.form.lineQuantityHeader')}</span>
@@ -211,7 +219,7 @@ export function QuoteLinesField({
             <span className="text-right">{t('quotes.form.lineNetHeader')}</span>
             <span className="text-right">{t('quotes.form.lineVatHeader')}</span>
             <span className="text-right">{t('quotes.form.lineTotalHeader')}</span>
-            {variant === 'revenue' ? <span className="sr-only">{t('quotes.form.commissions.header')}</span> : null}
+            {variant === 'revenue' && withCommissions ? <span className="sr-only">{t('quotes.form.commissions.header')}</span> : null}
             <span className="sr-only">{t('quotes.form.lineRemoveHeader')}</span>
           </div>
 
@@ -233,6 +241,7 @@ export function QuoteLinesField({
                 error={errors?.[index]}
                 variant={variant}
                 commissionContext={commissionContext}
+                withCommissions={withCommissions}
                 onChangeProduct={(productId, item) => changeRevenueProduct(index, productId, item)}
                 onChangeField={(patch) => setField(index, patch)}
                 onRemove={() => removeRow(index)}

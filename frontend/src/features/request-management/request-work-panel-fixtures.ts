@@ -1,3 +1,4 @@
+import type { QuoteLine } from '@/features/quotes/types'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
@@ -12,6 +13,32 @@ export const FULL_PERMISSIONS = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
   actions: {},
+}
+
+/**
+ * One persisted offer row, in the shape the panel now receives (user
+ * directive 2026-08-07: `QuoteLineResource` verbatim, since the rows are
+ * edited by the Offerte module's own row editor). Exported so every suite
+ * that needs a populated offer builds the SAME row.
+ */
+export const OFFER_LINE_FIBRA: QuoteLine = {
+  id: 700,
+  product_id: 900,
+  product: {
+    id: 900,
+    code: 'FIB-1000',
+    name: 'Fibra 1000',
+    category: { id: 500, name: 'Consulting' },
+    business_function: { id: 40, name: 'Sales' },
+  },
+  quantity: '1.00',
+  unit_price: '100.00',
+  vat_rate_id: null,
+  vat_rate: null,
+  net_amount: '100.00',
+  vat_amount: '0.00',
+  total_amount: '100.00',
+  sort_order: 0,
 }
 
 /** The single resolved working-state row the fixture starts on. */
@@ -53,8 +80,9 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     transferred_from: null,
     status: { source: 'quotes', distinct_count: 1, entries: [{ id: 1, name: 'New', color: 'slate', group: 'open', count: 1 }] },
     product_lines: [{ id: 1, business_function: { id: 40, name: 'Sales' }, product_category: { id: 500, name: 'Consulting' } }],
-    // Read-only offer lines (spec 0086 D-7): the panel starts with one.
-    offer_lines: [{ id: 700, name: 'Fibra 1000', product_category: { id: 500, name: 'Consulting' } }],
+    // The offer's own REVENUE rows (spec 0086 D-7), editable since the user
+    // directive 2026-08-07: the panel starts with one.
+    offer_lines: [OFFER_LINE_FIBRA],
     client_identity: {
       id: 1000,
       type: 'company',

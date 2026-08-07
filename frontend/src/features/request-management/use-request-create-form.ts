@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,6 +36,10 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   // The coherence 422 (user directive 2026-07-31) lands here, on the picker
   // the actor was working in.
   'products_of_interest',
+  // The offer rows' own 422s (single-category cap, a category with no
+  // business function): per-row paths land on their control, the cross-row
+  // ones on the collection.
+  'offer_lines',
   // The operative block (user directive 2026-07-31): each maps 1:1 onto its
   // own control, so a server 422 lands inline.
   'next_callback_at',
@@ -115,12 +119,30 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       operator_id: null,
       operational_site_id: null,
       products_of_interest: [],
+      // "Linee dell'offerta" (user directive 2026-08-07): the form opens with
+      // none — a request is often created before its offer is known (spec
+      // 0086 AC-028), so the operator adds the first row deliberately.
+      offer_lines: [],
       rewards: [],
       next_callback_at: null,
       general_notes: '',
       attribute_values: {},
     },
   })
+
+  // The VAT-percent cache the offer rows' live preview reads (AC-071). Starts
+  // empty here — nothing is persisted yet — and fills up as products/rates are
+  // picked. Same mechanism as `useQuoteForm`/`useRequestWorkForm`.
+  const [vatRatePercentById, setVatRatePercentById] = useState<Record<number, number>>({})
+  const rememberVatRatePercent = useCallback((vatRateId: number, percent: number) => {
+    setVatRatePercentById((previous) =>
+      previous[vatRateId] === percent ? previous : { ...previous, [vatRateId]: percent },
+    )
+  }, [])
+  const vatRatePercentFor = useCallback(
+    (vatRateId: number) => vatRatePercentById[vatRateId] ?? null,
+    [vatRatePercentById],
+  )
 
   const registryId = useWatch({ control: form.control, name: 'registry_id' })
   const usingExistingRegistry = registryId !== null
@@ -207,6 +229,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       operatorId: values.operator_id,
       operationalSiteId: values.operational_site_id,
       productsOfInterest: values.products_of_interest,
+      offerLines: values.offer_lines,
       rewards: values.rewards,
       nextCallbackAt: values.next_callback_at,
       generalNotes: values.general_notes,
@@ -257,5 +280,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     /** The server-resolved attributes/layout the "Informazioni aggiuntive" section renders from. */
     context,
     isContextLoading,
+    vatRatePercentFor,
+    rememberVatRatePercent,
   }
 }

@@ -243,6 +243,62 @@ describe('useRequestCreateForm', () => {
     expect(createRequestMock.mock.calls[1][0]).toMatchObject({ products_of_interest: [700, 701] })
   })
 
+  /**
+   * "Linee dell'offerta" at creation (user directive 2026-08-07): same
+   * "only when filled in" rule, and the wire row is the Offerte contract's own
+   * `QuoteLineInput` — never the form's nullable-per-field shape, and never a
+   * `commissions` block (prohibited on this channel).
+   */
+  it('sends the offer lines only once a row is filled in, in the contract shape', async () => {
+    createRequestMock.mockResolvedValue({ id: 46 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('offer_lines')
+
+    act(() => {
+      result.current.form.setValue('offer_lines', [
+        { product_id: 900, quantity: 2, unit_price: 50, vat_rate_id: null },
+      ])
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({
+      offer_lines: [{ product_id: 900, quantity: 2, unit_price: 50, vat_rate_id: null, sort_order: 0 }],
+    })
+    expect(createRequestMock.mock.calls[1][0].offer_lines?.[0]).not.toHaveProperty('commissions')
+  })
+
+  /** An incomplete row blocks the submit, exactly as it does in the Offerte form. */
+  it('refuses to submit an offer row without a product', async () => {
+    createRequestMock.mockResolvedValue({ id: 47 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+      result.current.form.setValue('offer_lines', [
+        { product_id: null, quantity: 1, unit_price: 10, vat_rate_id: null },
+      ])
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock).not.toHaveBeenCalled()
+  })
+
   /** The coherence 422 lands on the picker itself, not on the generic banner. */
   it('maps the product-category coherence 422 onto the products_of_interest field', async () => {
     createRequestMock.mockRejectedValue({

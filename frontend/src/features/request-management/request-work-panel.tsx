@@ -19,6 +19,7 @@ import { RecordFieldChangeRequests } from '@/features/field-change-requests/reco
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
@@ -27,6 +28,7 @@ import { RequestAttributionSection } from '@/features/request-management/request
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
+import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
@@ -139,7 +141,8 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const { canAction, canResource } = useResourcePermissions()
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
-  const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
+  const { form, onSubmit, submitError, isSubmitting, vatRatePercentFor, rememberVatRatePercent } =
+    useRequestWorkForm(panel)
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
   // Watched here so `QuoteWorkflowStatusField` stays presentational: it is
@@ -221,6 +224,23 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
               {/* Funzione aziendale + categoria prodotto (user directive
                   2026-07-31), right before the working state it precedes. */}
               <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
+
+              {/* "Linee dell'offerta" (user directive 2026-08-07): right
+                  after the classification that scopes its product picker.
+                  Literally the Offerte form's row editor, minus the
+                  provvigioni block this channel does not own. */}
+              <RequestOfferLinesSection
+                control={form.control}
+                knownLines={panel.offer_lines}
+                errors={
+                  // Same cast `QuoteFormBody` applies to its own tab: RHF types
+                  // an array field's errors as one node, the row editor reads
+                  // them per index.
+                  form.formState.errors.offer_lines as unknown as (QuoteLineRowErrors | undefined)[] | undefined
+                }
+                vatRatePercentFor={vatRatePercentFor}
+                rememberVatRatePercent={rememberVatRatePercent}
+              />
 
               {/* "Stato di lavorazione" (user directive 2026-08-07): the
                   Offerta's own operational status, right after the

@@ -145,6 +145,15 @@ export const requestManagement = {
       },
     },
   },
+  /**
+   * "Linee dell'offerta" (direttiva utente 2026-08-07): la sezione riusa le
+   * chiavi `quotes.form.offerTab.*` (e' lo STESSO componente delle Offerte);
+   * qui vive solo il caso che le Offerte non hanno — nessuna categoria scelta
+   * ancora, perche' in questo modulo si sceglie nella stessa schermata.
+   */
+  offerLines: {
+    hintNoCategory: 'Scegli prima una categoria prodotto: limita i prodotti selezionabili.',
+  },
   workPanel: {
     loadError: 'Impossibile caricare il record.',
     saving: 'Salvataggio…',

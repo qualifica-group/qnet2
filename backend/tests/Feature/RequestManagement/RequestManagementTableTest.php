@@ -36,16 +36,18 @@ if (! function_exists('createNoteOn')) {
     /**
      * A `Note` attached to $opportunity, written directly (not through
      * `POST /api/notes`/NoteService — out of this lane's scope): `user_id`/
-     * `parent_id` are set as plain properties since `Note` is
+     * `parent_id`/`quote_id` are set as plain properties since `Note` is
      * `#[Fillable(['body'])]` only (mirrors how RequestManagementService
-     * itself writes columns outside $fillable).
+     * itself writes columns outside $fillable). `$quoteId` is the Offerta the
+     * note is scoped to (spec 0085 D-1), null for a general note.
      */
-    function createNoteOn(Opportunity $opportunity, User $author, ?int $parentId = null): Note
+    function createNoteOn(Opportunity $opportunity, User $author, ?int $parentId = null, ?int $quoteId = null): Note
     {
         $note = new Note(['body' => 'note body']);
         $note->notable()->associate($opportunity);
         $note->user_id = $author->id;
         $note->parent_id = $parentId;
+        $note->quote_id = $quoteId;
         $note->save();
 
         return $note;
@@ -364,15 +366,17 @@ it('rows: operational_site is the composed "{line1} - {city}" label (AC-015), no
 // ---------------------------------------------------------------------------
 // notes_count (spec 0052 B4c): the `notes` action badge — every message in
 // the discussion (roots + replies), soft-deleted excluded, single aggregated
-// query — still counted through the Opportunity (D-9).
+// query. Direttiva utente 2026-08-07: contate sulla SINGOLA Offerta della riga
+// (`notes.quote_id`), non sull'intero thread dell'Opportunita' — il thread che
+// l'azione apre e' gia' filtrato su di essa, come per le Offerte.
 // ---------------------------------------------------------------------------
 
 it('rows: notes_count counts roots AND replies together', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $quote = Quote::factory()->create();
-    $root = createNoteOn($quote->opportunity, $actor);
-    createNoteOn($quote->opportunity, $actor, $root->id);
-    createNoteOn($quote->opportunity, $actor);
+    $root = createNoteOn($quote->opportunity, $actor, null, $quote->id);
+    createNoteOn($quote->opportunity, $actor, $root->id, $quote->id);
+    createNoteOn($quote->opportunity, $actor, null, $quote->id);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
@@ -381,11 +385,32 @@ it('rows: notes_count counts roots AND replies together', function () {
     expect($row['notes_count'])->toBe(3);
 });
 
+it('rows: notes_count counts only the notes scoped to that Offerta, not the parent thread', function () {
+    $actor = requestManagementUserWith(['viewAny', 'viewAll']);
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $sibling = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    createNoteOn($opportunity, $actor, null, $quote->id);
+    createNoteOn($opportunity, $actor, null, $quote->id);
+    // Una nota generale dell'Opportunita' e una dell'altra Offerta: nessuna
+    // delle due appartiene al thread che l'azione di questa riga apre.
+    createNoteOn($opportunity, $actor);
+    createNoteOn($opportunity, $actor, null, $sibling->id);
+    Sanctum::actingAs($actor);
+
+    $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()->json('items'));
+
+    expect($items->firstWhere('id', $quote->id)['notes_count'])->toBe(2)
+        ->and($items->firstWhere('id', $sibling->id)['notes_count'])->toBe(1);
+});
+
 it('rows: a soft-deleted note is NOT counted in notes_count', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
     $quote = Quote::factory()->create();
-    createNoteOn($quote->opportunity, $actor);
-    createNoteOn($quote->opportunity, $actor)->delete();
+    createNoteOn($quote->opportunity, $actor, null, $quote->id);
+    createNoteOn($quote->opportunity, $actor, null, $quote->id)->delete();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();

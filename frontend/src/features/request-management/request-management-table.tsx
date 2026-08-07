@@ -43,6 +43,18 @@ const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
 }
 
 /**
+ * Cio' che il dialog delle note deve sapere della riga aperta (direttiva
+ * utente 2026-08-07): la nota vive sul thread dell'Opportunita'
+ * (`opportunityId` = l'`entity_id` delle note, spec 0086 D-9) ma e' SCOPATA
+ * a questa Offerta (`quoteId`, spec 0085 D-1) — la stessa coppia che le
+ * Offerte risolvono in `useQuoteRowActions`.
+ */
+interface RequestNotesTarget {
+  opportunityId: number
+  quoteId: number
+}
+
+/**
  * The Sede to precompile in the "Assegna operatori" popup: present only when
  * every selected row's `operational_site` (the `{id, label}` shape the
  * definition projects onto the grid row, or null) shares one non-null id —
@@ -73,7 +85,9 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
  * action opens the agnostic `NotesDialog` on the same `opportunity_id` (spec
  * 0052/0086 D-9), gated server-side by the notes feature's own hybrid
  * authorization (D-6) — this module only wires the `entityType`/`entityId`
- * pair. The `activity` row action — declared last in the catalog, so the
+ * pair, plus the `lockedQuoteId` that scopes the thread to the row's OWN
+ * Offerta (direttiva utente 2026-08-07: stesso componente e stesso filtro
+ * delle Offerte, spec 0085). The `activity` row action — declared last in the catalog, so the
  * shared inline limit pushes it into the three-dots overflow — opens
  * `ResourceActivityDialog` on this module's OWN activity resource key
  * (`request-management`, likewise keyed on `opportunity_id`, gated
@@ -106,7 +120,7 @@ export function RequestManagementTable() {
   })
 
   const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
-  const [notesRowId, setNotesRowId] = useState<number | null>(null)
+  const [notesTarget, setNotesTarget] = useState<RequestNotesTarget | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -185,7 +199,9 @@ export function RequestManagementTable() {
           setDocumentsRowId(row.opportunity_id as number)
           break
         case 'notes':
-          setNotesRowId(row.opportunity_id as number)
+          // Il thread resta quello dell'Opportunita' (D-9), filtrato sulla
+          // riga: `row.id` E' l'Offerta (spec 0086 D-1).
+          setNotesTarget({ opportunityId: row.opportunity_id as number, quoteId: row.id })
           break
         case 'delete':
           void runDelete(row)
@@ -323,7 +339,7 @@ export function RequestManagementTable() {
   const handleNotesOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        setNotesRowId(null)
+        setNotesTarget(null)
         refreshGrid()
       }
     },
@@ -401,7 +417,8 @@ export function RequestManagementTable() {
 
       <NotesDialog
         entityType={REQUEST_MANAGEMENT_DOMAIN}
-        entityId={notesRowId}
+        entityId={notesTarget?.opportunityId ?? null}
+        lockedQuoteId={notesTarget?.quoteId ?? null}
         onOpenChange={handleNotesOpenChange}
       />
 

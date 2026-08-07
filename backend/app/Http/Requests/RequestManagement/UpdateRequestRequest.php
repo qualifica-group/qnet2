@@ -6,6 +6,7 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesProductLines;
+use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
@@ -42,8 +43,14 @@ use Illuminate\Validation\Rule;
  * still writes through to the Quote's Opportunity (D-2).
  *
  * Spec 0086, AC-022: `products_of_interest` is NO LONGER accepted by this
- * endpoint — the grid's replacement column (`offer_lines`) is read-only,
- * derived from the Offerta's own REVENUE lines, never written from here.
+ * endpoint. Its replacement, `offer_lines`, is instead WRITABLE since the
+ * user directive 2026-08-07 ("un componente dove si inseriscono le linee
+ * dell'offerta"): the rows are the Offerta's own REVENUE lines, validated by
+ * the SAME ValidatesQuoteLines the quotes endpoints use (offer tab only,
+ * `commissions` prohibited — that block stays the Offerte form's competence)
+ * and written through QuoteService, so coverage (D-7), aggregates (D-9),
+ * the derived opportunity name (spec 0077) and the workflow re-resolution
+ * (spec 0083) can never diverge between the two channels.
  *
  * `client_contacts`/`client_address` (spec 0049 amendment) come from
  * ValidatesRequestClientProfile: the client anagraphic block the panel edits
@@ -58,7 +65,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesQuoteWorkflowStatus, ValidatesRequestClientProfile, ValidatesRewards {
+    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesQuoteLines, ValidatesQuoteWorkflowStatus, ValidatesRequestClientProfile, ValidatesRewards {
         EnforcesFieldPermissions::currentFieldValue as private traitCurrentFieldValue;
     }
 
@@ -101,6 +108,10 @@ class UpdateRequestRequest extends FormRequest
             // enforced by QuoteWorkflowStatusWriter (AC-023).
             'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            // "Linee dell'offerta" (user directive 2026-08-07): the REVENUE
+            // rows, full-replace when submitted (D-8) and untouched when the
+            // key is absent — the same convention the quotes PATCH follows.
+            ...$this->offerLinesOnlyRules(),
             ...$this->rewardsRules(),
             ...$this->clientProfileRules(),
             // Funzione aziendale + categoria prodotto (user directive
@@ -155,9 +166,14 @@ class UpdateRequestRequest extends FormRequest
 
             $this->validateProductLines($validator);
             $this->validateRewards($validator, $quote);
-            // Same set check the quotes endpoints run (spec 0083 AC-021):
-            // this channel never submits `offer_lines`, so the trait resolves
-            // against the Offerta's persisted ones.
+            // Spec 0077 / user directive 2026-08-07: an opportunity managed on
+            // a `single` product category carries one offer row. Same shared
+            // check the quotes endpoints run.
+            $this->enforceSingleOfferLine($validator, $quote);
+            // Same set check the quotes endpoints run (spec 0083 AC-021),
+            // resolved against the SUBMITTED `offer_lines` when this payload
+            // carries them (the trait's own transient quote), else against the
+            // Offerta's persisted ones.
             $this->validateQuoteWorkflowStatus($validator, $quote);
             $this->validateClientProfile($validator);
             // Write-path counterpart of the `permissions` block (spec 0004/

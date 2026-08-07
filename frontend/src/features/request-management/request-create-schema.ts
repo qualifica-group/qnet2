@@ -2,12 +2,16 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { ProductLineRow } from '@/features/product-lines/product-lines-field'
+import { quoteLineRowSchema } from '@/features/quotes/quote-schema'
 import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
 import { attributeValuesFilled } from '@/features/request-management/request-create-payload'
 import type { ApplicableAttribute } from '@/features/request-management/types'
+
+/** Backend per-tab row ceiling (`max:200`), mirrored from `quote-schema.ts`. */
+const MAX_OFFER_LINES = 200
 
 /**
  * D-3: `product_lines` is mandatory — at least one row — and every row
@@ -100,6 +104,12 @@ export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAtt
     // picker's own scope is what prevents it here, since a product's category
     // is not part of what the for-select options carry.
     products_of_interest: z.array(z.number()),
+    // "Linee dell'offerta" (user directive 2026-08-07): the rows of the
+    // Offerta this creation also opens, validated by the SAME per-row schema
+    // the Offerte form and the work panel use. Optional as a COLLECTION (a
+    // request often starts with none, spec 0086 AC-028), strict per row: a
+    // half-filled row is not a line.
+    offer_lines: z.array(quoteLineRowSchema(t)).max(MAX_OFFER_LINES, t('quotes.form.linesMax')),
     // Spec 0059 D-3: reward assignments for the reporter. Only the type id
     // travels (beneficiary/date are server-derived); duplicates are prevented
     // by the add control, which excludes already-picked types.

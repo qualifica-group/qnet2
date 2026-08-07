@@ -3,6 +3,162 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## LINEE DELL'OFFERTA IN GESTIONE RICHIESTE (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "gestione richieste, voglio un componente dove si inseriscono le linee
+dell'offerta, il componente prendi spunto da quello del form dell'offerta". Scelte confermate in
+conversazione: **pannello Lavora + form di creazione** (in aggiunta a "Prodotti di interesse", che
+resta), **senza provvigioni**.
+
+**REQUIREMENT CHANGE dichiarato.** La spec 0086 AC-022 aveva reso `offer_lines` SOLA LETTURA in
+questo modulo. Ora e' scrivibile su entrambi i canali. Resta read-only la **colonna di griglia**
+(`OfferLinesColumn`, test `RequestManagementOfferLinesTest` invariato).
+
+**Riuso, non cloni.** Il componente montato e' `QuoteLinesField` delle Offerte, con il nuovo prop
+`withCommissions` (default `true`, quindi le Offerte non cambiano): a `false` sparisce la colonna
+provvigioni e si spengono sia il ri-sync delle default sul cambio ruoli sia il confirm di
+rigenerazione. `quoteLineGridClass`/`quoteLineMinWidthClass` prendono lo stesso flag come 2° param.
+`quoteLineRowSchema` e' ora **esportato** da `quote-schema.ts`: una sola regola per riga sui tre
+canali. Nuovo modulo condiviso **`features/quotes/quote-line-values.ts`** (`linesToFormValues`,
+`toLineInputs`, `originalLineInputs`, `sameLines`, `vatRatePercentsFromLines`), estratto da
+`use-quote-form.ts`/`quote-form-payload.ts` — chi cerca quelle funzioni li' non le trova piu'.
+`linesToFormValues`/`originalLineInputs` accettano `withCommissions=false`: in Gestione Richieste il
+blocco non deve entrare nei form values (viaggerebbe) ne' nel diff (leggerebbe una modifica
+inesistente su un'offerta che ha provvigioni configurate dalle Offerte).
+
+**Backend — il write passa da `QuoteService::update()`.** Nuovo `App\Services\RequestManagement\
+RequestOfferLineWriter`: costruisce un `UpdateQuoteData::fromValidated(['offer_lines' => ...])` e
+delega. Motivo: scrivere le righe trascina coverage (0065 D-7), aggregati (D-9), nome derivato
+dell'Opportunita' (0077) e ri-risoluzione del workflow (0083) — una seconda implementazione sarebbe
+quattro occasioni di drift. Le commissioni sopravvivono: riga senza chiave `commissions` ->
+`QuoteLineCommissionWriter::recalculateAndInitializeMissing()`.
+
+**Ordine in `updateWork`.** Step 1-ter (righe offerta) sta DOPO `product_lines` e PRIMA di
+`attribute_values` (il set applicabile e' l'unione che include le categorie delle righe, D-1) e dello
+stato di lavorazione (il set workflow si risolve sulle righe).
+
+**SPLIT OBBLIGATO (debito dichiarato la sessione scorsa, ora saldato).** `RequestManagementService`
+aveva superato le 500 righe: il blocco attribuzione e' uscito in **`RequestAttributionWriter`**
+(`applySource`, `applyQuoteAttribution`, `applySupervisor`, `applyRewards`). Il service e' a 366
+righe e non inietta piu' `RequestSupervisorWriter`/`RewardAssignmentWriter`/`AssignmentNotifier`.
+
+**Contratto.** `GET /api/request-management/{quote}`: `offer_lines` non e' piu' `{id, name,
+product_category}` ma la proiezione **`QuoteLineResource` verbatim** (FE: tipo `QuoteLine` delle
+Offerte, `RequestOfferLine` CANCELLATO). `PATCH` e `POST` accettano `offer_lines` con le regole
+condivise `ValidatesQuoteLines::offerLinesOnlyRules()` — `commissions` **prohibited**. Ricordarsi che
+il controller filtra con `$request->safe()->only([...])`: una chiave non elencata li' viene
+silenziosamente ignorata (e' esattamente il bug che ha fatto fallire i primi 4 test).
+
+**Cap "single" in creazione.** `enforceSingleOfferLine` non puo' scattare sul POST (risolve
+l'Opportunity da `opportunity_id`, che qui nasce nella stessa transazione): stessa regola replicata
+in `RequestCreationService::assertOfferLinesFitManagementMode()`, stesso messaggio condiviso.
+
+**Non fatto, dichiarato.** Il canale request-management non chiama `ContractLifecycleManager` sui
+cambi di stato — lacuna PREESISTENTE (vale gia' per `quote_workflow_status_id`), non introdotta qui.
+
+**Verifica eseguita.** Backend: `RequestManagement` + `Quotes` + `Opportunities` = 774 test verdi;
+nuovo `RequestManagementOfferLinesWriteTest` 14/14; Pint passed. Frontend: `vitest` 504 file / 3580
+test verdi, `npx tsc -b --force` PULITO, ESLint pulito.
+
+## NOTE FILTRATE PER OFFERTA IN GESTIONE RICHIESTE (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "gestione richieste, il componente delle note sulla tabella e sul form del
+gestione richieste, deve essere come quello che si trova in tabella e in form dell'offerta, quindi
+ogni nota deve essere filtrata per l'offerta".
+
+**Cosa cambia.** Nessun componente nuovo: le note di Gestione richieste montavano gia' gli stessi
+`NotesDialog`/`NotesSection` delle Offerte, ma **senza** `lockedQuoteId` — quindi thread intero
+dell'Opportunita' + select di scope. Ora entrambe le superfici passano l'Offerta della riga/del
+pannello, come `quotes-table.tsx` e `quote-detail.tsx` (spec 0085 D-1): lista filtrata su quella
+Offerta, composer che crea con quel `quote_id`, niente selettore.
+
+- `request-management-table.tsx`: lo stato `notesRowId` diventa `notesTarget: RequestNotesTarget`
+  (`{opportunityId, quoteId}`) — `entityId` resta l'**Opportunita'** (il thread vive li', spec 0086
+  D-9: passare l'id Offerta come `entity_type=request-management` darebbe 422), `lockedQuoteId` e'
+  `row.id` (l'Offerta, spec 0086 D-1).
+- `request-work-collaboration.tsx`: `NotesSection ... lockedQuoteId={panel.id}` accanto a
+  `entityId={panel.opportunity_id}`. Documenti e attivita' restano invariati sull'Opportunita'.
+- **Backend, badge `notes_count`**: `RequestManagementTableDefinition::baseQuery()` non conta piu'
+  l'intero thread con la subquery correlata su `notable_id = quotes.opportunity_id`, ma usa
+  `->withCount(['scopedNotes as notes_count'])` — le note della singola Offerta, identico a
+  `QuotesTableDefinition`. Altrimenti il badge avrebbe promesso N note e il dialog ne avrebbe mostrate
+  meno. `documents_count` resta sulla subquery dell'Opportunita' (invariato).
+
+**Nessuna modifica al contratto note**: `quote_id`, `meta.quotes` e `RequestManagementNotable::ownsQuote()`
+esistevano gia' dalla 0085 — il modulo li stava solo ignorando.
+
+**Test aggiornati perche' il requisito e' cambiato** (dichiarato nei commenti): i tre casi
+`notes_count` di `RequestManagementTableTest` ora creano note scopate (`createNoteOn(..., $quoteId)`,
+4° parametro nuovo) + un caso nuovo "solo le note di quell'Offerta, non il thread padre";
+`request-work-panel-collaboration-ids.test.tsx` asserisce anche `lockedQuoteId`. Nuovo file
+`request-management-table-notes.test.tsx` (gemello di `quotes-table-notes.test.tsx`).
+
+**Verifica eseguita.** Backend `pest tests/Feature/{RequestManagement,Notes,Quotes}`: 615/615 verdi,
+Pint passed. Frontend `vitest src/features/{request-management,notes,quotes}`: 66 file / 422 test
+verdi, `npx tsc -b --force` PULITO, ESLint pulito sui file toccati.
+
+**Non fatto (segnalato, fuori scope).** Il dialog di riga di Gestione richieste non mostra il codice
+Offerta nel titolo come fa quello delle Offerte (`title={notesTarget?.code}`): la riga
+`request-management` non proietta `code`. Servirebbe aggiungerlo a `RequestRowMapper` — chiedere
+prima di farlo.
+
+## INFORMAZIONI AGGIUNTIVE + STATO DI LAVORAZIONE IN GESTIONE RICHIESTE (2026-08-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "gestione richieste form inserire info preliminari di offerte e inserire gli
+stati di lavorazione di offerte (i componenti devono essere gli stessi che trovi in offerte)" —
+chiarito in conversazione: "info preliminari" = **Informazioni aggiuntive**, cioe' i campi degli
+attributi della categoria prodotto. Su ENTRAMBE le schermate (pannello di lavorazione + form di
+creazione), stato di lavorazione come **select editabile**.
+
+**Cosa cambia in una riga.** Tornano nel modulo i due blocchi che le spec 0083 D-2 / 0084 D-1 avevano
+rimosso — ma non piu' come dimensioni dell'Opportunita' (che non esistono piu'): sono quelli
+dell'**Offerta**, il record che questo modulo E' dalla spec 0086. Storage unico:
+`quotes.attribute_values` e `quotes.quote_workflow_status_id`.
+
+**D-1 (decisione approvata) — da quali categorie si risolve il set applicabile.** UNIONE delle
+categorie delle `product_lines` dell'Opportunita' e di quelle dei prodotti delle righe offerta,
+contesto `AttributeContext::Quote`. Motivo: una richiesta nasce **senza righe offerta** (0086 AC-028),
+quindi la regola delle Offerte (solo righe offerta) lascerebbe la sezione vuota quasi sempre. Le
+product line ci sono sempre (`min:1`). Vive in `App\RequestManagement\RequestAttributeResolver`,
+thin caller dei resolver generalizzati esattamente come `QuoteAttributeResolver`.
+
+**Riuso, non cloni.** `QuoteAttributeValueWriter::apply()` ha ora un 5° parametro opzionale
+(`?Collection $applicable`): stessa pipeline validator/normalizer, set diverso. `QuoteWorkflowStatusWriter`
+e `ValidatesQuoteWorkflowStatus` sono usati **verbatim** — quindi la regola del set risolto (AC-021) e
+la nota obbligatoria su `requires_note` (AC-023/024/025/026) valgono identiche sui due canali; la nota
+atterra sul thread dell'Opportunita' con `quote_id` valorizzato (spec 0085).
+
+**Frontend: stessi componenti, resi generici.** `QuoteDynamicFieldsSection` e `QuoteWorkflowStatusField`
+ora sono generici sul `control` (`AttributeLayoutFormShape` / il nuovo `QuoteWorkflowStatusFormShape`),
+montati as-is dal pannello richieste — nessuna copia, nessuna chiave i18n nuova (si riusano quelle
+`quotes.form.*`, titolo a schermo "Informazioni aggiuntive" e "Stato"). Il cast
+`'campo' as Path<TFieldValues>` dentro il generico e' inevitabile (TS non restringe un literal
+attraverso il generico) ed e' lo stesso idioma gia' usato da `useRequestWorkForm`.
+
+**Contratto.** `GET/PATCH /api/request-management/{quote}` espone in piu' `attribute_values`,
+`applicable_attributes`, `attribute_layout`, `quote_workflow_status_id`, `quote_workflow_status`,
+`quote_workflow_statuses` (proiezioni byte-per-byte di `QuoteResource`). PATCH accetta in piu'
+`attribute_values`, `quote_workflow_status_id`, `note`. POST accetta `attribute_values` (scritto
+DOPO l'insert: il set applicabile non esiste prima). **Ripristinato** `POST /api/request-management/form-context`
+(criteri `product_lines`, risposta `{applicable_attributes, attribute_layout}`) per il form di creazione.
+
+**In creazione NON c'e' il select di stato**, come nelle Offerte: il set dipende da criteri che il
+server risolve, e `QuoteService::create()` assegna da solo la riga `open` (AC-020).
+
+**Tre test esistenti aggiornati perche' il REQUISITO e' cambiato** (dichiarato nei commenti dei file):
+`attribute_values` non e' piu' "silenziosamente ignorato" su PATCH (0086 AC-042) ne' su POST (0084 D-1),
+e `form-context` non risponde piu' 405. Nessun test e' stato piegato per farlo passare.
+
+**Verifica eseguita.** Backend `pest` 5259 (5258 verdi, 1 skip) — il run completo con Xdebug attivo
+segfaulta (exit 139): usare `XDEBUG_MODE=off php -d memory_limit=2G vendor/bin/pest`. Frontend
+`vitest` 502 file / 3568 test verdi, `npx tsc -b --force` PULITO, ESLint pulito, Pint passed.
+
+**Debito dichiarato.** `RequestManagementService.php` e' salito a 487 righe (sotto il limite duro 500,
+ben oltre il soft 300): il prossimo intervento su questo file lo splitti. Nota indipendente trovata
+strada facendo, NON toccata: `QuoteResource::summarizeWorkflowStatus()` non espone `description`,
+mentre il tipo FE `QuoteWorkflowStatusRef` lo dichiara e `WorkflowStatusOption` lo renderizza — la
+descrizione dello stato non appare in nessuno dei due moduli.
+
 ## REGOLE DI GESTIONE SULLA CATEGORIA PRODOTTO (2026-08-07) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "In categoria prodotto form, voglio che prevede preventivo, modalita' gestione,

@@ -145,6 +145,15 @@ export const requestManagement = {
       },
     },
   },
+  /**
+   * "Offer lines" (user directive 2026-08-07): the section reuses the
+   * `quotes.form.offerTab.*` keys (it IS the Offerte component); only the case
+   * the Offerte form does not have lives here — no category picked yet, since
+   * this module picks them on the same screen.
+   */
+  offerLines: {
+    hintNoCategory: 'Pick a product category first: it scopes the selectable products.',
+  },
   workPanel: {
     loadError: 'Could not load the record.',
     saving: 'Saving…',

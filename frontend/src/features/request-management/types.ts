@@ -11,7 +11,12 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, GeoRef, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
 import type { OpportunityStatusSummary } from '@/features/opportunities/types'
-import type { ApplicableAttributeSummary, QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import type {
+  ApplicableAttributeSummary,
+  QuoteLine,
+  QuoteLineInput,
+  QuoteWorkflowStatusRef,
+} from '@/features/quotes/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -63,19 +68,6 @@ export interface RequestProductLine {
   id: number
   business_function: RequestRelationRef
   product_category: RequestRelationRef
-}
-
-/**
- * One of the offer's own REVENUE lines (spec 0086 D-7), with its own category
- * so the grid/panel can show which product line it belongs to. Replaces
- * "prodotti di interesse" in this module: read-only everywhere here (AC-021,
- * AC-022) — the source of truth is the Offerta's own lines, not a module
- * field anyone edits.
- */
-export interface RequestOfferLine {
-  id: number
-  name: string
-  product_category: RequestRelationRef | null
 }
 
 /** A single contact channel (ContactResource), as exposed to this module. */
@@ -213,11 +205,14 @@ export interface RequestWorkPanel {
   status: OpportunityStatusSummary
   product_lines: RequestProductLine[]
   /**
-   * The offer's own REVENUE lines (spec 0086 D-7), read-only in this module;
-   * `[]` when the offer has none yet. Replaces `products_of_interest`, which
-   * this module no longer exposes or writes (AC-021/AC-022).
+   * The offer's own REVENUE lines (spec 0086 D-7); `[]` when the offer has
+   * none yet. Replaces `products_of_interest`, which this module no longer
+   * exposes (AC-021/AC-022) — but unlike it, these rows ARE editable from the
+   * panel since the user directive 2026-08-07, so the projection is the
+   * Offerte module's own `QuoteLine` verbatim: the row editor is the same
+   * component and reads the same shape.
    */
-  offer_lines: RequestOfferLine[]
+  offer_lines: QuoteLine[]
   /** The client's card identity, `null` when the client has no card yet. */
   client_identity: RequestClientIdentity | null
   client_contacts: RequestContactsBlock
@@ -326,6 +321,14 @@ export interface UpdateRequestWorkPayload {
    */
   product_lines?: RequestProductLinePayload[]
   /**
+   * "Linee dell'offerta" (user directive 2026-08-07), AUTHORITATIVE when
+   * sent: the REVENUE set is fully replaced (an omitted persisted row is
+   * deleted), and omitting the key leaves it untouched. `commissions` are
+   * NEVER part of a row here — the endpoint prohibits them and the server
+   * preserves what the Offerte form configured.
+   */
+  offer_lines?: QuoteLineInput[]
+  /**
    * Attribution (user directive 2026-07-22). `operator_id` addresses the GA2
    * pivot slot only: the other manager positions are left untouched, and
    * `null` empties the slot.
@@ -407,6 +410,14 @@ export interface CreateRequestPayload {
    * covering it with an extra product line.
    */
   products_of_interest?: number[]
+  /**
+   * "Linee dell'offerta" (user directive 2026-08-07): the created Offerta's
+   * own REVENUE rows, sent only when at least one is filled in — a request
+   * opened before the first call still has none (spec 0086 AC-028). Unlike
+   * the picker above, an off-category product WIDENS the classification
+   * (OpportunityProductLineCoverage) instead of being refused.
+   */
+  offer_lines?: QuoteLineInput[]
   /** Initial attribution (Fonte/Segnalatore), independent of the anagrafica XOR; `null` leaves the slot empty. */
   source_id?: number | null
   reporter_id?: number | null

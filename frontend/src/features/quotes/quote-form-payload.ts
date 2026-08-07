@@ -1,44 +1,12 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
-import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
+import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type {
   CreateQuotePayload,
   QuoteDetail,
-  QuoteLine,
-  QuoteLineInput,
   UpdateQuotePayload,
 } from '@/features/quotes/types'
-
-/**
- * Casts a validated row to the wire shape, assigning `sort_order` from its
- * position in the array (the contract's own fallback when the key is
- * omitted — AC-038 — so the client never needs to invent one). Every field
- * is non-null here: the schema's per-row `superRefine` (quote-schema.ts)
- * already blocks submit on an incomplete row before this ever runs.
- */
-function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
-  return rows.map((row, index) => ({
-    ...(row.id ? { id: row.id } : {}),
-    product_id: row.product_id as number,
-    quantity: row.quantity as number,
-    unit_price: row.unit_price as number,
-    vat_rate_id: row.vat_rate_id,
-    sort_order: index,
-    ...(row.commissions
-      ? { commissions: row.commissions.map((commission) => ({
-          id: commission.id,
-          recipient_role: commission.recipient_role,
-          recipient_type: commission.recipient_type,
-          recipient_id: commission.recipient_id,
-          commission_type: commission.commission_type,
-          value: commission.value,
-          internal_note: commission.internal_note,
-          origin: commission.origin,
-          commission_configuration_id: commission.commission_configuration_id,
-        })) }
-      : {}),
-  }))
-}
 
 /**
  * Builds the create payload. `code` is included only when set (trimmed,
@@ -71,58 +39,6 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     offer_lines: toLineInputs(values.offer_lines),
     cost_lines: toLineInputs(values.cost_lines),
   }
-}
-
-/** Order- and value-sensitive comparison of two line-input collections (sort_order/position carries meaning, AC-038). */
-function sameLines(a: QuoteLineInput[], b: QuoteLineInput[]): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-  return a.every((line, index) => {
-    const other = b[index]
-    return (
-      line.product_id === other.product_id &&
-      line.quantity === other.quantity &&
-      line.unit_price === other.unit_price &&
-      (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null)
-      && JSON.stringify(line.commissions ?? []) === JSON.stringify(other.commissions ?? [])
-    )
-  })
-}
-
-/**
- * Rebuilds the persisted rows into the same comparable wire shape used by
- * `toLineInputs` (decimal STRINGS coerced to numbers, D-9 contract), ordered
- * by `sort_order` (AC-038: the server already returns them that way, this
- * just makes the invariant explicit for the diff below).
- */
-function originalLineInputs(lines: QuoteLine[]): QuoteLineInput[] {
-  return lines
-    .slice()
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((line, index) => ({
-      id: line.id,
-      product_id: line.product_id,
-      quantity: Number(line.quantity),
-      unit_price: Number(line.unit_price),
-      vat_rate_id: line.vat_rate_id,
-      sort_order: index,
-      ...(line.commissions
-        ? {
-            commissions: line.commissions.map((commission) => ({
-              id: commission.id,
-              recipient_role: commission.recipient_role,
-              recipient_type: commission.recipient_type,
-              recipient_id: commission.recipient_id,
-              commission_type: commission.commission_type,
-              value: Number(commission.value),
-              internal_note: commission.internal_note,
-              origin: commission.origin,
-              commission_configuration_id: commission.commission_configuration_id,
-            })),
-          }
-        : {}),
-    }))
 }
 
 /**

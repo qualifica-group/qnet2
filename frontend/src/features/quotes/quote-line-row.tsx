@@ -57,6 +57,12 @@ interface QuoteLineRowProps {
   error?: QuoteLineRowErrors
   /** The quote's live role selections, from which the commissions dialog resolves its locked recipients (revenue rows only). */
   commissionContext?: QuoteCommissionContext
+  /**
+   * `false` drops the provvigioni control from a revenue row: Gestione
+   * Richieste writes these same rows but never that block (its endpoint
+   * prohibits `commissions`, keeping whatever the Offerte form set up).
+   */
+  withCommissions?: boolean
   onChangeProduct: (
     productId: number | null,
     item: QuoteProductForSelectItem | null,
@@ -94,6 +100,7 @@ export function QuoteLineRow({
   rememberVatRatePercent,
   error,
   commissionContext,
+  withCommissions = true,
   onChangeProduct,
   onChangeField,
   onRemove,
@@ -134,7 +141,7 @@ export function QuoteLineRow({
   const canEditCommissions = collectionPermission.editable && !collectionPermission.disabled
 
   return (
-    <div className={cn(quoteLineGridClass(variant), 'items-start border-b px-2 py-2 last:border-b-0')}>
+    <div className={cn(quoteLineGridClass(variant, withCommissions), 'items-start border-b px-2 py-2 last:border-b-0')}>
       <div className="flex flex-col gap-1">
         <QuoteProductSelect
           value={row.product_id}
@@ -225,7 +232,7 @@ export function QuoteLineRow({
       <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.vat)}</span>
       <span className="pt-2 text-right text-xs font-medium tabular-nums">{formatQuoteAmount(amounts.total)}</span>
 
-      {variant === 'revenue' && canViewCommissions ? (
+      {!withCommissions ? null : variant === 'revenue' && canViewCommissions ? (
         <>
           <Button
             type="button"

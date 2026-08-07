@@ -11,9 +11,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
-use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\ProductCategoryCoherence;
-use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use Illuminate\Support\Carbon;
@@ -30,8 +28,14 @@ use Illuminate\Validation\ValidationException;
  * Each field lands on the model it lives on (D-2): "Fonte", planned
  * callback, the product-line classification and the client anagraphic block
  * are Opportunity-level (`quote.opportunity`); "Segnalatore", "Sede
- * operativa", the GA2 "Operatore"/Supervisore and reward assignments are
- * Quote-level (D-3/D-4). `loadWorkPanel()`/`updateWork()` both return the
+ * operativa", the GA2 "Operatore"/Supervisore, the reward assignments and the
+ * offer's own REVENUE rows are Quote-level (D-3/D-4/D-7).
+ *
+ * This class ORCHESTRATES that sequence; the rules of each block live in a
+ * writer of its own (RequestAttributionWriter, RequestProductLineWriter,
+ * RequestOfferLineWriter, RequestClientProfileWriter) — the file had reached
+ * the size ceiling (engineering.md §6) and the split follows the blocks the
+ * panel itself is made of. `loadWorkPanel()`/`updateWork()` both return the
  * SAME shape — {quote} — consumed directly by RequestManagementResource, so
  * show/update render identically (data contract: "Response identica alla
  * GET").
@@ -87,10 +91,16 @@ final class RequestManagementService
         // production).
         'transferredFromOperationalSite.addresses.city',
         'supervisor',
-        // Spec 0086, D-7: "Linee di prodotto" — the Offerta's own REVENUE
-        // lines, replacing "prodotti di interesse" in this module's panel.
-        // Also one half of RequestAttributeResolver's category union (D-1).
+        // Spec 0086, D-7: "Linee dell'offerta" — the Offerta's own REVENUE
+        // lines, replacing "prodotti di interesse" in this module's panel and
+        // editable from it since the user directive 2026-08-07. Also one half
+        // of RequestAttributeResolver's category union (D-1). `quote`/
+        // `vatRate`/`commissions.recipient` are what QuoteLineResource (the
+        // projection this panel now shares with the Offerte module) reads.
         'offerLines.product.category',
+        'offerLines.quote',
+        'offerLines.vatRate',
+        'offerLines.commissions.recipient',
         // "Stato di lavorazione" (user directive 2026-08-07): the Offerta's
         // own current working-state row, projected by the resource.
         'quoteWorkflowStatus',
@@ -98,11 +108,10 @@ final class RequestManagementService
 
     public function __construct(
         private readonly RequestClientProfileWriter $clientProfileWriter,
-        private readonly RequestSupervisorWriter $supervisorWriter,
         private readonly ProductCategoryCoherence $coherence,
         private readonly RequestProductLineWriter $productLineWriter,
-        private readonly RewardAssignmentWriter $rewardAssignmentWriter,
-        private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly RequestOfferLineWriter $offerLineWriter,
+        private readonly RequestAttributionWriter $attributionWriter,
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
@@ -123,7 +132,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -139,8 +148,8 @@ final class RequestManagementService
 
             // Step 0: attribution — "Fonte" on the Opportunity (D-2),
             // "Segnalatore"/Sede operativa on the Quote (D-3/D-4).
-            $this->applyOpportunitySource($opportunity, $data);
-            $this->applyQuoteAttribution($quote, $data, $changed, $old);
+            $this->attributionWriter->applySource($opportunity, $data);
+            $this->attributionWriter->applyQuoteAttribution($quote, $data, $changed, $old);
 
             // Step 1: funzione aziendale + categoria prodotto (user directive
             // 2026-07-31), still an Opportunity-level classification (D-2).
@@ -155,6 +164,15 @@ final class RequestManagementService
             // writable from this module (AC-022), so only a `product_lines`
             // change can trigger this.
             $this->assertProductCategoryCoherence($opportunity, $data);
+
+            // Step 1-ter: "Linee dell'offerta" (user directive 2026-08-07) —
+            // AFTER the product lines (a replaced classification is what the
+            // rows are covered against) and BEFORE the two steps that depend
+            // on them: the applicable attribute set unions their categories
+            // (D-1) and the workflow set resolves on them (spec 0083).
+            if (array_key_exists('offer_lines', $data)) {
+                $this->offerLineWriter->apply($quote, $actor, (array) $data['offer_lines'], $changed, $old);
+            }
 
             // Step 2: next planned callback (spec 0052 D-1/D-4) — sparse:
             // key absent leaves the persisted value untouched, `null` clears
@@ -189,7 +207,7 @@ final class RequestManagementService
             // Step 3: the GA2 "Operatore" / Supervisore (D-3) — a pivot row
             // plus a Quote column, written after both models are saved.
             if (array_key_exists('operator_id', $data)) {
-                $this->applySupervisor($quote, $data['operator_id'], $actor, $changed, $old);
+                $this->attributionWriter->applySupervisor($quote, $data['operator_id'], $actor, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —
@@ -197,7 +215,7 @@ final class RequestManagementService
             // half runs whenever `reporter_id` genuinely changed, INDEPENDENT
             // of whether `rewards` itself was submitted; the sync half only
             // when `rewards` was submitted. The owner is now the Quote.
-            $this->applyRewards($quote, $previousReporterId, $data, $changed, $old);
+            $this->attributionWriter->applyRewards($quote, $previousReporterId, $data, $changed, $old);
 
             // Step 5: client anagraphic (spec 0049 amendment; spec 0055 D-7
             // for the inline channel's four sparse single-field keys) —
@@ -297,139 +315,6 @@ final class RequestManagementService
             'product_lines',
             ProductCategoryCoherence::REQUEST_MESSAGE,
         );
-    }
-
-    /**
-     * "Fonte" (`source_id`), the one attribution scalar still on the
-     * Opportunity (D-2). IS in Opportunity::$fillable, so — unlike the
-     * operative fields of this panel — its change is picked up by the
-     * automatic activity log (LogsModelActivity::logFillable()); no explicit
-     * entry is added for it, which would double-log the same diff.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function applyOpportunitySource(Opportunity $opportunity, array $data): void
-    {
-        if (! array_key_exists('source_id', $data)) {
-            return;
-        }
-
-        $opportunity->fill(['source_id' => $data['source_id']]);
-    }
-
-    /**
-     * "Segnalatore" (`reporter_id`) and "Sede operativa"
-     * (`operational_site_id`), user directive 2026-07-22/spec 0056 — moved
-     * onto the Quote (D-3). Both ARE in Quote::$fillable, so this instance's
-     * own automatic activity log is suspended (Quote::disableLogging(),
-     * instance-scoped — mirrors RequestTransferService's own discipline) and
-     * a genuine change is reported into $changed/$old instead, so the
-     * caller's EXPLICIT entry — anchored on the Opportunity (D-9) — stays the
-     * one record of it.
-     *
-     * @param  array<string, mixed>  $data
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    private function applyQuoteAttribution(Quote $quote, array $data, array &$changed, array &$old): void
-    {
-        $submitted = [];
-
-        foreach (['reporter_id', 'operational_site_id'] as $key) {
-            if (! array_key_exists($key, $data)) {
-                continue;
-            }
-
-            $value = $data[$key] === null ? null : (int) $data[$key];
-            $previous = $quote->getAttribute($key);
-
-            if ($previous === $value) {
-                continue;
-            }
-
-            $old[$key] = $previous;
-            $changed[$key] = $value;
-            $submitted[$key] = $value;
-        }
-
-        if ($submitted === []) {
-            return;
-        }
-
-        $quote->disableLogging();
-        $quote->fill($submitted);
-    }
-
-    /**
-     * The GA2 "Operatore" / Supervisore (user directive 2026-07-22; spec
-     * 0086, D-3): delegated to RequestSupervisorWriter, the ONE
-     * implementation of the supervisor-slot-sync rule shared with the bulk
-     * assignment (RequestAssignmentService) and the transfer flow
-     * (RequestTransferService).
-     *
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    private function applySupervisor(Quote $quote, mixed $value, User $actor, array &$changed, array &$old): void
-    {
-        $this->supervisorWriter->apply($quote, $value === null ? null : (int) $value, $changed, $old);
-
-        // spec 0081: only a GENUINE transition is an assignment — apply()
-        // leaves `operator_id` unset in $changed when the slot already held
-        // this user, which is exactly the "renamed nothing" case that must
-        // notify nobody. Notified against the Opportunity: the notification
-        // detail card only understands Registry/Opportunity records (D-2).
-        $newSupervisorId = $changed['operator_id'] ?? null;
-
-        if ($newSupervisorId === null) {
-            return;
-        }
-
-        $this->assignmentNotifier->notify(
-            $quote->opportunity,
-            $actor,
-            null,
-            [$newSupervisorId => Opportunity::OPERATOR_MANAGER_POSITION],
-            // Spec 0086, MT-04b: the deep link's request-management branch
-            // must open THIS Offerta, not the Opportunity — the two ids
-            // diverged since the grid row migrated onto the Quote.
-            requestManagementRecordId: $quote->id,
-        );
-    }
-
-    /**
-     * Reward assignments (spec 0059, AC-023; spec 0086, D-4/D-12 — the owner
-     * is now the Offerta, its beneficiary the Offerta's OWN Segnalatore).
-     *
-     * @param  array<string, mixed>  $data
-     * @param  array<string, mixed>  $changed
-     * @param  array<string, mixed>  $old
-     */
-    private function applyRewards(Quote $quote, ?int $previousReporterId, array $data, array &$changed, array &$old): void
-    {
-        $reporterChanged = array_key_exists('reporter_id', $data) && $quote->reporter_id !== $previousReporterId;
-
-        if ($reporterChanged) {
-            $this->rewardAssignmentWriter->retarget($quote);
-        }
-
-        if (! array_key_exists('rewards', $data)) {
-            return;
-        }
-
-        $current = $quote->rewards()->pluck('reward_type_id')->map(intval(...))->sort()->values()->all();
-        $next = collect((array) $data['rewards'])
-            ->map(static fn (array $row): int => (int) $row['reward_type_id'])
-            ->unique()->sort()->values()->all();
-
-        if ($current === $next) {
-            return;
-        }
-
-        $this->rewardAssignmentWriter->sync($quote, $next);
-
-        $old['rewards'] = $current;
-        $changed['rewards'] = $next;
     }
 
     /**

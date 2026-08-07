@@ -70,8 +70,13 @@ function requiredRelationId(message: string) {
  * while typing; `superRefine` enforces the backend's `required`/range/
  * decimal-precision rules per field, each issue keyed to its own path so it
  * survives the array wrapper untouched.
+ *
+ * Exported because Gestione Richieste writes the SAME `offer_lines` (user
+ * directive 2026-08-07) and must validate them by the SAME rules — its own
+ * rows simply never carry the optional `commissions` block, which that
+ * endpoint prohibits.
  */
-function quoteLineRowSchema(t: TFunction) {
+export function quoteLineRowSchema(t: TFunction) {
   return z
     .object({
       id: z.number().optional(),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { opportunityDetailQueryKey } from '@/features/opportunities/api'
+import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
 import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
@@ -74,6 +75,11 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // client has no address yet.
     client_address: panel.client_address ? [addressToDraft(panel.client_address)] : [],
     product_lines: toProductLineRows(panel.product_lines),
+    // "Linee dell'offerta" (user directive 2026-08-07): hydrated by the SAME
+    // mapper the Offerte form uses, minus the provvigioni block — this
+    // channel neither renders nor sends it (the endpoint prohibits it and the
+    // server preserves what is persisted).
+    offer_lines: linesToFormValues(panel.offer_lines, false),
     // Seeded over the APPLICABLE codes, never the raw stored map: the Zod
     // object is built from those codes and a missing key aborts the submit
     // silently (see `seedAttributeValues`).
@@ -141,6 +147,22 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
 
   const form = useForm<RequestWorkFormValues>({ resolver: zodResolver(schema), defaultValues })
 
+  // The VAT-percent cache the offer rows' live preview reads (AC-071), seeded
+  // from the persisted lines' own hydrated rate: the `vat-rates/for-select`
+  // picker never exposes a percentage. Same mechanism as `useQuoteForm`.
+  const [vatRatePercentById, setVatRatePercentById] = useState<Record<number, number>>(() =>
+    vatRatePercentsFromLines(panel.offer_lines),
+  )
+  const rememberVatRatePercent = useCallback((vatRateId: number, percent: number) => {
+    setVatRatePercentById((previous) =>
+      previous[vatRateId] === percent ? previous : { ...previous, [vatRateId]: percent },
+    )
+  }, [])
+  const vatRatePercentFor = useCallback(
+    (vatRateId: number) => vatRatePercentById[vatRateId] ?? null,
+    [vatRatePercentById],
+  )
+
   const errorFields: Path<RequestWorkFormValues>[] = [
     'next_callback_at' as Path<RequestWorkFormValues>,
     // The client block is submitted as a whole: a per-row 422
@@ -152,6 +174,11 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     // (`product_lines.0.business_function_id`) has no control of its own here,
     // so the block root carries the message.
     'product_lines' as Path<RequestWorkFormValues>,
+    // A per-row 422 (`offer_lines.0.quantity`) DOES have a matching control:
+    // the row editor binds each field by index, so the message lands on the
+    // row it belongs to; the collection root carries the cross-row ones
+    // (single-category cap, coverage).
+    'offer_lines' as Path<RequestWorkFormValues>,
     'rewards' as Path<RequestWorkFormValues>,
     'source_id' as Path<RequestWorkFormValues>,
     'reporter_id' as Path<RequestWorkFormValues>,
@@ -199,5 +226,12 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     },
   )
 
-  return { form, onSubmit, submitError, isSubmitting: form.formState.isSubmitting }
+  return {
+    form,
+    onSubmit,
+    submitError,
+    isSubmitting: form.formState.isSubmitting,
+    vatRatePercentFor,
+    rememberVatRatePercent,
+  }
 }

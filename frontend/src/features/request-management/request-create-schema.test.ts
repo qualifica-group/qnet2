@@ -18,6 +18,9 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     operator_id: null,
     operational_site_id: null,
     products_of_interest: [],
+    // "Linee dell'offerta" (user directive 2026-08-07): part of the schema's
+    // shape, empty here — a request often starts with no offer row at all.
+    offer_lines: [],
     rewards: [],
     next_callback_at: null,
     general_notes: '',

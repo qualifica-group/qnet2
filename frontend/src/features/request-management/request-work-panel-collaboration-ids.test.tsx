@@ -15,6 +15,9 @@ import { workPanel as panel } from '@/features/request-management/request-work-p
  * shared fixture deliberately sets these two ids to DIFFERENT values
  * (`request-work-panel-fixtures.ts`) so an inverted wiring fails these
  * assertions instead of passing by coincidence.
+ *
+ * Le note portano ENTRAMBI gli id (direttiva utente 2026-08-07): thread
+ * dell'Opportunita' + `lockedQuoteId` sull'Offerta, come il dettaglio Offerta.
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
@@ -43,9 +46,9 @@ vi.mock('@/features/product-categories/use-product-category-tree', () => ({
 
 const notesSectionMock = vi.fn()
 vi.mock('@/features/notes/notes-section', () => ({
-  NotesSection: (props: { entityType: string; entityId: number }) => {
+  NotesSection: (props: { entityType: string; entityId: number; lockedQuoteId?: number | null }) => {
     notesSectionMock(props)
-    return <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>
+    return <div>{`notes-section:${props.entityType}:${props.entityId}:${props.lockedQuoteId}`}</div>
   },
 }))
 
@@ -95,12 +98,20 @@ beforeEach(() => {
 })
 
 describe('RequestWorkPanelScreen — collaboration ids (spec 0086 D-9)', () => {
-  it('keys Notes on the Opportunity id, never the Offerta id', async () => {
+  it('keys Notes on the Opportunity id, never the Offerta id, and locks the thread on the Offerta', async () => {
     renderPanel()
 
-    expect(await screen.findByText(`notes-section:request-management:${panel().opportunity_id}`)).toBeInTheDocument()
+    expect(
+      await screen.findByText(`notes-section:request-management:${panel().opportunity_id}:${panel().id}`),
+    ).toBeInTheDocument()
     expect(notesSectionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entityType: 'request-management', entityId: panel().opportunity_id }),
+      expect.objectContaining({
+        entityType: 'request-management',
+        entityId: panel().opportunity_id,
+        // Direttiva utente 2026-08-07: stesso filtro del dettaglio Offerta —
+        // il thread e' dell'Opportunita', la lista e' di QUESTA Offerta.
+        lockedQuoteId: panel().id,
+      }),
     )
     expect(notesSectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ entityId: panel().id }))
   })

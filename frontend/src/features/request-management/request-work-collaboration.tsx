@@ -29,6 +29,12 @@ interface RequestWorkCollaborationProps {
  * table's row actions. Every section is keyed on `panel.opportunity_id`, not
  * `panel.id`: documents/notes/activity stay anchored to the Opportunity
  * (spec 0086 D-9), the same record the table's row actions target.
+ *
+ * Le note aggiungono a quell'ancoraggio il filtro sull'Offerta
+ * (`lockedQuoteId={panel.id}`, direttiva utente 2026-08-07): il thread resta
+ * quello dell'Opportunita', ma la lista mostra solo le note di QUESTA Offerta
+ * e il composer le crea con quel `quote_id` — identico al dettaglio Offerta
+ * (`quote-detail.tsx`, spec 0085 D-1), niente selettore di scope.
  */
 export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWorkCollaborationProps) {
   const { t } = useTranslation()
@@ -63,7 +69,12 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
         <div className="border-t" />
         <div className="min-w-0 p-4">
           <TabsContent value={NOTES_TAB}>
-            <NotesSection entityType={REQUEST_MANAGEMENT_DOMAIN} entityId={panel.opportunity_id} showHeader={false} />
+            <NotesSection
+              entityType={REQUEST_MANAGEMENT_DOMAIN}
+              entityId={panel.opportunity_id}
+              showHeader={false}
+              lockedQuoteId={panel.id}
+            />
           </TabsContent>
           {canViewDocuments && (
             <TabsContent value={DOCUMENTS_TAB}>

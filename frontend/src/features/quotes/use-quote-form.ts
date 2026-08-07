@@ -8,11 +8,11 @@ import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
+import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
 import {
   buildCreateQuoteSchema,
   buildUpdateQuoteSchema,
   type QuoteFormValues,
-  type QuoteLineFormValues,
 } from '@/features/quotes/quote-schema'
 import { useQuoteFormContext } from '@/features/quotes/use-quote-form-context'
 import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
@@ -20,7 +20,6 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   QuoteDetail,
   QuoteFormMode,
-  QuoteLine,
   QuoteWorkflowStatusRef,
 } from '@/features/quotes/types'
 
@@ -50,24 +49,6 @@ const SERVER_ERROR_FIELDS = [
   'cost_lines',
 ] as const
 
-/** Rebuilds a persisted line into the row-editor's nullable-per-field form shape, ordered by `sort_order` (AC-038). */
-function linesToFormValues(lines: QuoteLine[]): QuoteLineFormValues[] {
-  return lines
-    .slice()
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((line) => ({
-      id: line.id,
-      product_id: line.product_id,
-      quantity: Number(line.quantity),
-      unit_price: Number(line.unit_price),
-      vat_rate_id: line.vat_rate_id,
-      commissions: (line.commissions ?? []).map((commission) => ({
-        ...commission,
-        value: Number(commission.value),
-      })),
-    }))
-}
-
 /**
  * Seeds the shared VAT-percent cache from every persisted line's own
  * hydrated rate, so the live preview (AC-071) is byte-exact from the first
@@ -78,13 +59,7 @@ function initialVatRatePercents(mode: QuoteFormMode): Record<number, number> {
   if (mode.type !== 'edit') {
     return {}
   }
-  const entries: Record<number, number> = {}
-  for (const line of [...mode.quote.offer_lines, ...mode.quote.cost_lines]) {
-    if (line.vat_rate) {
-      entries[line.vat_rate.id] = Number(line.vat_rate.rate)
-    }
-  }
-  return entries
+  return vatRatePercentsFromLines([...mode.quote.offer_lines, ...mode.quote.cost_lines])
 }
 
 interface UseQuoteFormArgs {

@@ -9,6 +9,7 @@ import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
+import { quoteLineRowSchema } from '@/features/quotes/quote-schema'
 import {
   attributeValuesChanged,
   clientAddressChanged,
@@ -27,6 +28,9 @@ import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
  * Client-side schema for the work panel's editable surface (spec 0049
  * AC-062/063).
  */
+
+/** Backend per-tab row ceiling (`max:200`), mirrored from `quote-schema.ts`. */
+const MAX_OFFER_LINES = 200
 
 /**
  * The three collectors below are invoked from the top-level refinement rather
@@ -200,6 +204,14 @@ export function buildRequestWorkSchema(
       // key does not travel otherwise, and a legacy request with no line
       // would become unsavable for any unrelated edit.
       product_lines: z.array(z.custom<ProductLineRow>()),
+      // "Linee dell'offerta" (user directive 2026-08-07): the SAME per-row
+      // schema the Offerte form validates its own `offer_lines` with — one
+      // rule set for one endpoint contract. Unconditional, unlike the sparse
+      // blocks around it: the persisted rows always satisfy it (the server
+      // wrote them under the same rules), so there is nothing to grandfather,
+      // and an incomplete row must block the submit whether or not the
+      // collection is going to travel.
+      offer_lines: z.array(quoteLineRowSchema(t)).max(MAX_OFFER_LINES, t('quotes.form.linesMax')),
       // Spec 0059 D-3: reward assignments for the reporter (chips under the
       // field). Only the type id travels — beneficiary/date are
       // server-derived. Duplicates are prevented client-side (the add

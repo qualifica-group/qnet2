@@ -30,6 +30,9 @@ function values(overrides: Record<string, unknown> = {}) {
     // Editable since the user directive 2026-07-31; unchanged here, so the
     // collection's own rules stay dormant (see the dedicated suite below).
     product_lines: [{ business_function_id: 40, product_category_id: 500 }],
+    // Editable since the user directive 2026-08-07; empty here, which the
+    // schema accepts (an offer may legitimately carry no row).
+    offer_lines: [],
     rewards: [],
     // Mandatory since the user directive 2026-07-29 (see the dedicated suite below).
     source_id: 30,

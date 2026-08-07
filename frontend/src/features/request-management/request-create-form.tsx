@@ -12,6 +12,9 @@ import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLine } from '@/features/quotes/types'
+import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
@@ -29,6 +32,9 @@ import { useRequestCreateForm } from '@/features/request-management/use-request-
  * submit this form without either of them nesting the other.
  */
 const REQUEST_CREATE_FORM_ID = 'request-create-form'
+
+/** Hoisted: nothing is persisted on a create, and an inline `[]` would be a fresh reference per render. */
+const NO_PERSISTED_LINES: QuoteLine[] = []
 
 const ERROR_BANNER_CLASS =
   'flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive'
@@ -84,6 +90,8 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     rewardsError,
     context,
     isContextLoading,
+    vatRatePercentFor,
+    rememberVatRatePercent,
   } = useRequestCreateForm({ onSuccess })
 
   // Spec 0075, D-5: the same rule the work panel applies — a product line
@@ -164,6 +172,24 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
 
               {/* Right after the product lines, which scope its options. */}
               <RequestCreateProductsOfInterest control={form.control} />
+
+              {/* "Linee dell'offerta" (user directive 2026-08-07): the work
+                  panel's own section — literally the Offerte form's row
+                  editor in both places — so a request can be opened with its
+                  offer already filled in. `knownLines` is empty: nothing is
+                  persisted yet, every label comes from what is picked here. */}
+              <RequestOfferLinesSection
+                control={form.control}
+                knownLines={NO_PERSISTED_LINES}
+                errors={
+                  // Same cast `QuoteFormBody` applies to its own tab: RHF types
+                  // an array field's errors as one node, the row editor reads
+                  // them per index.
+                  form.formState.errors.offer_lines as unknown as (QuoteLineRowErrors | undefined)[] | undefined
+                }
+                vatRatePercentFor={vatRatePercentFor}
+                rememberVatRatePercent={rememberVatRatePercent}
+              />
 
               <RequestCreateCallbackSection control={form.control} />
 

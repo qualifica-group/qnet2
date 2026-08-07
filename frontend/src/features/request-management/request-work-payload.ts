@@ -3,6 +3,7 @@ import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
+import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
 import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
@@ -203,6 +204,16 @@ export function buildRequestWorkPayload(
   // row is complete by then — the schema refuses the submit otherwise.
   if (productLinesChanged(values.product_lines, toProductLineRows(panel.product_lines))) {
     payload.product_lines = toProductLinesPayload(values.product_lines)
+  }
+
+  // "Linee dell'offerta" (user directive 2026-08-07): same authoritative-
+  // replace idiom, diffed exactly as the Offerte form diffs its own tab
+  // (shared `toLineInputs`/`sameLines`) — an included key is a full replace,
+  // so an untouched collection must stay omitted or it would rewrite the rows
+  // (and, through QuoteService, everything derived from them).
+  const offerLines = toLineInputs(values.offer_lines)
+  if (!sameLines(offerLines, originalLineInputs(panel.offer_lines, false))) {
+    payload.offer_lines = offerLines
   }
 
   // Spec 0059 D-3: same authoritative-replace idiom as the collections above,
