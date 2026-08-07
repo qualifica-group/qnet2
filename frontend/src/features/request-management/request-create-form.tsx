@@ -11,6 +11,7 @@ import {
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import type { ProductLineRow } from '@/features/product-lines/types'
+import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
@@ -81,6 +82,8 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     clientBlockError,
     productLinesError,
     rewardsError,
+    context,
+    isContextLoading,
   } = useRequestCreateForm({ onSuccess })
 
   // Spec 0075, D-5: the same rule the work panel applies — a product line
@@ -165,6 +168,21 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               <RequestCreateCallbackSection control={form.control} />
 
               <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
+
+              {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
+                  work panel's own section — literally the Offerte form's
+                  component in both places — fed the set the chosen categories
+                  resolve to. Not mounted until a complete product line exists:
+                  with no category there is nothing to resolve, and an empty
+                  card would read as a defect. */}
+              {(isContextLoading || context.applicable_attributes.length > 0) && (
+                <QuoteDynamicFieldsSection
+                  control={form.control}
+                  attributes={context.applicable_attributes}
+                  layout={context.attribute_layout}
+                  isLoading={isContextLoading}
+                />
+              )}
 
               <RequestCreateClientSection
                 control={form.control}

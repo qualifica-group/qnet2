@@ -6,15 +6,19 @@ namespace App\Http\Controllers\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\AssignRequestOperatorsRequest;
+use App\Http\Requests\RequestManagement\RequestFormContextRequest;
 use App\Http\Requests\RequestManagement\StoreRequestRequest;
 use App\Http\Requests\RequestManagement\TransferRequestsRequest;
 use App\Http\Requests\RequestManagement\UpdateRequestRequest;
+use App\Http\Resources\RequestFormContextResource;
 use App\Http\Resources\RequestManagementResource;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestAttributeResolver;
 use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestAssignmentService;
 use App\Services\RequestManagement\RequestCreationService;
@@ -50,9 +54,31 @@ class RequestManagementController extends BaseApiController
         private readonly RequestTransferService $transferService,
         private readonly RequestCreationService $creationService,
         private readonly QuoteService $quoteService,
+        private readonly RequestAttributeResolver $attributeResolver,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
+
+    /**
+     * POST /api/request-management/form-context (user directive 2026-08-07):
+     * the "Informazioni aggiuntive" the create form must render for the
+     * product-line categories picked so far — nothing is persisted yet, so
+     * there is no record to resolve them from. Read-only despite the verb
+     * (the criteria are a collection of objects), gated by the SAME
+     * `request-management.create` that gates the form itself.
+     */
+    public function formContext(RequestFormContextRequest $request): JsonResponse
+    {
+        try {
+            abort_unless($request->user()->can('request-management.create'), 403);
+
+            return $this->ok(new RequestFormContextResource(
+                $this->attributeResolver->forCategories($request->productCategoryIds(), FormMode::Create),
+            ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
 
     /**
      * POST /api/request-management (spec 0057; D-5): creates the Opportunity
@@ -146,6 +172,13 @@ class RequestManagementController extends BaseApiController
                         // directive 2026-07-31): a full-replace collection,
                         // sparse like every other key here.
                         'product_lines',
+                        // User directive 2026-08-07: the Offerta's own
+                        // "Informazioni aggiuntive" and "Stato di
+                        // lavorazione". `note` travels with the status: it is
+                        // what a `requires_note` destination demands.
+                        'attribute_values',
+                        'quote_workflow_status_id',
+                        'note',
                     ]),
                     // Typed DTOs (ContactInput/AddressInput), not raw arrays:
                     // the client anagraphic block never reaches the service as

@@ -6,9 +6,11 @@ import type {
   AssignRequestOperatorsResult,
   CreateRequestPayload,
   ManagerLabels,
+  RequestFormContext,
   RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
+  RequestProductLinePayload,
   TransferRequestsPayload,
   TransferRequestsResult,
   UpdateRequestWorkPayload,
@@ -24,6 +26,27 @@ import type {
  */
 export async function createRequest(payload: CreateRequestPayload): Promise<RequestWorkPanel> {
   const { data } = await apiClient.post<ApiResponse<RequestWorkPanel>>('/request-management', payload)
+  return data.data
+}
+
+/**
+ * Resolves the "Informazioni aggiuntive" the CREATE form must render for the
+ * product lines picked so far (user directive 2026-08-07). Server-side by
+ * design: the union-by-code of several categories' effective attributes is a
+ * backend rule, and a second implementation here would be free to disagree
+ * with the POST that follows.
+ *
+ * POST despite being read-only: the criteria are a collection of objects,
+ * which has no sane query-string encoding — the same reason
+ * `POST /quotes/form-context` exists in that shape.
+ */
+export async function fetchRequestFormContext(
+  productLines: RequestProductLinePayload[],
+): Promise<RequestFormContext> {
+  const { data } = await apiClient.post<ApiResponse<RequestFormContext>>(
+    '/request-management/form-context',
+    { product_lines: productLines },
+  )
   return data.data
 }
 

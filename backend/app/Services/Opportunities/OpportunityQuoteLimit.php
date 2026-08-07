@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Opportunities;
 
 use App\Models\Opportunity;
-use App\Models\ProductCategory;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 
 /**
  * THE RULE (user directive 2026-08-07): a product-category branch flagged
@@ -49,20 +49,24 @@ final class OpportunityQuoteLimit
     }
 
     /**
-     * Whether any product category covered by $opportunity carries the flag.
-     * A single query on the denormalised column.
+     * Whether any product category covered by $opportunity carries the flag —
+     * i.e. whether the rule applies AT ALL, regardless of how many quotes
+     * already exist. Public because the read side needs it on its own:
+     * OpportunityResource ships it so the Offerte panel can disable its
+     * "Crea Offerta" affordance instead of letting the operator fill a form
+     * that can only 422 (the UI hides, this service still authorizes).
+     *
+     * One query on the denormalised column, never an ancestor walk: the flag
+     * is mirrored onto every category row by
+     * SingleQuotePerOpportunityInheritance.
      */
-    private function isSingleQuoteBranch(Opportunity $opportunity): bool
+    public function isSingleQuoteBranch(Opportunity $opportunity): bool
     {
-        $coveredCategoryIds = $opportunity->productLines()->pluck('product_category_id')->all();
-
-        if ($coveredCategoryIds === []) {
-            return false;
-        }
-
-        return ProductCategory::query()
-            ->whereIn('id', $coveredCategoryIds)
-            ->where('single_quote_per_opportunity', true)
+        return $opportunity->productLines()
+            ->whereHas(
+                'productCategory',
+                static fn (Builder $query) => $query->where('single_quote_per_opportunity', true),
+            )
             ->exists();
     }
 }

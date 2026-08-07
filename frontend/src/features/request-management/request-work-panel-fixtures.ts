@@ -14,6 +14,16 @@ export const FULL_PERMISSIONS = {
   actions: {},
 }
 
+/** The single resolved working-state row the fixture starts on. */
+const WORKFLOW_STATUS_OPEN = {
+  id: 900,
+  name: 'Aperto',
+  color: 'slate',
+  description: null,
+  group: 'open',
+  requires_note: false,
+}
+
 export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): RequestWorkPanelWithPermissions {
   return {
     // Deliberately DIFFERENT from `opportunity_id` below (spec 0086 D-9/D-10):
@@ -68,6 +78,15 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     client_address: null,
     referent_contacts: { owner: { type: 'personal_data', id: 2000 }, items: [] },
     next_callback_at: null,
+    // "Informazioni aggiuntive" (user directive 2026-08-07): empty by
+    // default — a suite that exercises the section overrides all three.
+    attribute_values: {},
+    applicable_attributes: [],
+    attribute_layout: null,
+    // "Stato di lavorazione": one resolved row, the one the request holds.
+    quote_workflow_status_id: 900,
+    quote_workflow_status: WORKFLOW_STATUS_OPEN,
+    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
     context: { estimated_value: 1234.5, expected_close_date: '2026-08-01', success_probability: null },
     permissions: FULL_PERMISSIONS,
     ...overrides,

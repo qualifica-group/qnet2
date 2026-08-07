@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Workflow } from 'lucide-react'
-import type { Control } from 'react-hook-form'
+import type { Control, Path } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { FormControl } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,11 +15,21 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { RequiresNoteBadge } from '@/features/quote-workflows/requires-note-badge'
 import { WorkflowStatusOption } from '@/features/quote-workflows/workflow-status-option'
 import { WorkflowStatusSwatch } from '@/features/quote-workflows/workflow-status-swatch'
-import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
-interface QuoteWorkflowStatusFieldProps {
-  control: Control<QuoteFormValues>
+/**
+ * The two controls this field drives. Any form carrying them can mount the
+ * component as-is — the Offerta form and the Gestione Richieste work panel
+ * both do (user directive 2026-08-07: "i componenti devono essere gli stessi
+ * che trovi in offerte"), which is why this is a shape and not `QuoteFormValues`.
+ */
+export interface QuoteWorkflowStatusFormShape {
+  quote_workflow_status_id: number | null
+  note: string | null
+}
+
+interface QuoteWorkflowStatusFieldProps<TFieldValues extends QuoteWorkflowStatusFormShape> {
+  control: Control<TFieldValues>
   /**
    * The set the backend resolved for THIS quote
    * (`QuoteResource.quote_workflow_statuses`, spec 0083 AC-050). `null` = not
@@ -63,14 +73,18 @@ function SelectedStatus({ status }: { status: QuoteWorkflowStatusRef }) {
  * `superRefine` in `buildUpdateQuoteSchema`, which is what blocks the submit —
  * this component only decides visibility.
  */
-export function QuoteWorkflowStatusField({
+export function QuoteWorkflowStatusField<TFieldValues extends QuoteWorkflowStatusFormShape>({
   control,
   statuses,
   originalStatusId,
   selectedStatusId,
   className,
-}: QuoteWorkflowStatusFieldProps) {
+}: QuoteWorkflowStatusFieldProps<TFieldValues>) {
   const { t } = useTranslation()
+  // The shape guarantees both keys on every accepted form, but TS cannot
+  // narrow a literal to `Path<TFieldValues>` through the generic.
+  const statusField = 'quote_workflow_status_id' as Path<TFieldValues>
+  const noteField = 'note' as Path<TFieldValues>
 
   if (!statuses || statuses.length === 0) {
     return null
@@ -89,7 +103,7 @@ export function QuoteWorkflowStatusField({
     >
       <MetaField
         control={control}
-        name="quote_workflow_status_id"
+        name={statusField}
         metaKey="quote_workflow_status_id"
         label={t('quotes.form.workflowStatus')}
         hint={t('quotes.form.workflowStatusHint')}
@@ -126,7 +140,7 @@ export function QuoteWorkflowStatusField({
       {noteRequired ? (
         <MetaField
           control={control}
-          name="note"
+          name={noteField}
           metaKey="quote_workflow_status_id"
           label={t('quotes.form.note')}
           hint={t('quotes.form.noteHint')}

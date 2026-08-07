@@ -76,23 +76,27 @@ it('PATCH on a nonexistent quote -> 404 (AC-032)', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Spec 0084, D-1/AC-042: the dynamic "Informazioni aggiuntive" write pipeline
-// (formerly AC-040/041/042) moved to the Offerta (Quote) — see
-// tests/Feature/Quotes/QuoteAttributeValuesTest.php. `attribute_values` is no
-// longer an accepted key on this PATCH; a submitted one is silently dropped.
+// "Informazioni aggiuntive" (user directive 2026-08-07). REQUIREMENT CHANGE:
+// spec 0084 D-1 had moved this block off the Opportunity and spec 0086 AC-042
+// froze it as "silently dropped here"; the directive brings it back as the
+// OFFERTA's own block, writable from this panel. The former AC-042 test
+// (a submitted payload produces no write) asserted the superseded rule and is
+// replaced by the two below; the write pipeline itself lives in
+// RequestManagementAttributeValuesTest.
 // ---------------------------------------------------------------------------
 
-it('PATCH with an attribute_values payload produces no write (AC-042)', function () {
+it('PATCH with a code outside the applicable set -> 422 keyed on the code', function () {
     $actor = requestManagementUpdaterWith(['update']);
     $quote = managedOpportunity($actor);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
         'attribute_values' => ['anything' => 'x'],
-    ])->assertOk();
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('attribute_values.anything');
 
-    // No column left to write to (D-1/D-2): a fresh read carries no trace.
-    expect($quote->opportunity->fresh()->getAttributes())->not->toHaveKey('attribute_values');
+    expect($quote->fresh()->attribute_values)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

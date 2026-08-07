@@ -21,6 +21,14 @@ export interface UseOpportunityQuotesPanelResult {
   handleAction: RowActionHandler
   handleRowCountChanged: (count: number | null) => void
   handleCreate: () => void
+  /**
+   * True when the product category caps this opportunity at one offer and one
+   * already exists (user directive 2026-08-07): "Crea Offerta" stays visible
+   * but inert, with the reason on hover, instead of opening a form whose save
+   * can only 422. Derived from the LIVE count, so deleting the only offer
+   * frees the affordance again with no refetch. The backend re-checks anyway.
+   */
+  createBlocked: boolean
   activityRow: TableRow | null
   closeActivity: (open: boolean) => void
   /** The Offerta whose notes are open, `null` when the dialog is closed. */
@@ -43,6 +51,7 @@ export interface UseOpportunityQuotesPanelResult {
 export function useOpportunityQuotesPanel(
   opportunityId: number,
   quotesCount: number,
+  singleQuotePerOpportunity = false,
 ): UseOpportunityQuotesPanelResult {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -80,14 +89,19 @@ export function useOpportunityQuotesPanel(
     [openCreateWith, opportunityId],
   )
 
+  const count = rowCount ?? quotesCount
+
+  // `count` is the LIVE total (the grid's own once reported), which is what
+  // makes the create gate below self-correcting after a delete.
   return {
     tableRef,
-    count: rowCount ?? quotesCount,
+    count,
     showEmptyState: !quotesExist,
     isBusy,
     handleAction,
     handleRowCountChanged,
     handleCreate,
+    createBlocked: singleQuotePerOpportunity && count > 0,
     activityRow,
     closeActivity,
     notesTarget,

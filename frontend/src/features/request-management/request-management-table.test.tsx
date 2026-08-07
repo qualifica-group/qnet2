@@ -131,6 +131,12 @@ function panel(): RequestWorkPanelWithPermissions {
     client_address: null,
     referent_contacts: { owner: null, items: [] },
     next_callback_at: null,
+    attribute_values: {},
+    applicable_attributes: [],
+    attribute_layout: null,
+    quote_workflow_status_id: null,
+    quote_workflow_status: null,
+    quote_workflow_statuses: [],
     context: { estimated_value: null, expected_close_date: null, success_probability: null },
     permissions: {
       resource: { view: true, create: false, update: true, delete: false, export: false, import: false },

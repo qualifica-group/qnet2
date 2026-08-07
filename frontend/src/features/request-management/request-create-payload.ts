@@ -1,3 +1,5 @@
+import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/product-lines-field'
 import type {
@@ -58,6 +60,26 @@ export function toProductLinesPayload(rows: ProductLineRow[]): RequestProductLin
   }))
 }
 
+/**
+ * Whether the dynamic block carries anything worth sending: at least one
+ * applicable code holds a non-empty value. THE gate for both the payload
+ * (which omits `attribute_values` entirely otherwise) and the schema's
+ * required-codes rule — sharing it is what keeps "what travels" and "what is
+ * validated" from drifting apart, exactly as on the work panel.
+ */
+export function attributeValuesFilled(values: Record<string, unknown>, codes: string[]): boolean {
+  return codes.some((code) => !isEmptyCustomFieldValue(values[code]))
+}
+
+/**
+ * The submitted map narrowed to the APPLICABLE codes: the form keeps the
+ * values of a category the operator has since removed (RHF never prunes keys),
+ * and the server rejects a code outside the applicable set with a 422.
+ */
+function pickAttributeValues(values: Record<string, unknown>, codes: string[]): Record<string, CustomFieldValue> {
+  return Object.fromEntries(codes.map((code) => [code, (values[code] as CustomFieldValue) ?? null]))
+}
+
 export interface BuildRequestCreatePayloadArgs {
   registryId: number | null
   identity: PersonalDataDraft
@@ -81,6 +103,10 @@ export interface BuildRequestCreatePayloadArgs {
    */
   nextCallbackAt: string | null
   generalNotes: string
+  /** "Informazioni aggiuntive" (user directive 2026-08-07): the submitted dynamic map. */
+  attributeValues: Record<string, unknown>
+  /** The applicable codes, i.e. which keys of `attributeValues` are eligible to travel. */
+  attributeCodes: string[]
 }
 
 /**
@@ -104,6 +130,8 @@ export function buildRequestCreatePayload({
   rewards,
   nextCallbackAt,
   generalNotes,
+  attributeValues,
+  attributeCodes,
 }: BuildRequestCreatePayloadArgs): CreateRequestPayload {
   const product_lines = toProductLinesPayload(productLines)
 
@@ -135,9 +163,16 @@ export function buildRequestCreatePayload({
   // The operative block (user directive 2026-07-31): sent only when it
   // carries something — on create there is no persisted value a null/empty
   // could clear.
+  // The dynamic map travels as a whole or not at all — the server's
+  // `is_required` check looks at SUBMITTED codes, so sending a map of empty
+  // values would demand every required attribute of a request nobody has
+  // worked yet.
   const operative = {
     ...(nextCallbackAt !== null ? { next_callback_at: nextCallbackAt } : {}),
     ...(generalNotes.trim() !== '' ? { general_notes: generalNotes.trim() } : {}),
+    ...(attributeValuesFilled(attributeValues, attributeCodes)
+      ? { attribute_values: pickAttributeValues(attributeValues, attributeCodes) }
+      : {}),
   }
 
   if (registryId !== null) {

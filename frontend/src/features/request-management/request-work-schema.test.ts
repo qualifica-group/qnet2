@@ -12,6 +12,8 @@ import {
 function original(overrides: Partial<RequestWorkOriginalState> = {}): RequestWorkOriginalState {
   return {
     product_lines: [{ business_function_id: 40, product_category_id: 500 }],
+    attribute_values: {},
+    quote_workflow_status_id: null,
     client_identity: null,
     client_contacts: [],
     client_address: null,
@@ -34,6 +36,9 @@ function values(overrides: Record<string, unknown> = {}) {
     reporter_id: null,
     operator_id: null,
     operational_site_id: null,
+    attribute_values: {},
+    quote_workflow_status_id: null,
+    note: null,
     ...overrides,
   }
 }
@@ -45,7 +50,7 @@ describe('buildRequestWorkSchema — product lines', () => {
   const EDITED = [{ business_function_id: 41, product_category_id: 501 }]
 
   it('rejects clearing the collection', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
     const result = schema.safeParse(values({ product_lines: [] }))
 
     expect(result.success).toBe(false)
@@ -55,7 +60,7 @@ describe('buildRequestWorkSchema — product lines', () => {
   })
 
   it('rejects a row missing its product category', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
     const result = schema.safeParse(
       values({ product_lines: [{ business_function_id: 41, product_category_id: null }] }),
     )
@@ -67,13 +72,13 @@ describe('buildRequestWorkSchema — product lines', () => {
   })
 
   it('accepts a complete replacement', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
 
     expect(schema.safeParse(values({ product_lines: EDITED })).success).toBe(true)
   })
 
   it('leaves an untouched collection alone, even when the request has no line', () => {
-    const schema = buildRequestWorkSchema(original({ product_lines: [] }), i18n.t)
+    const schema = buildRequestWorkSchema(original({ product_lines: [] }), [], [], i18n.t)
 
     expect(schema.safeParse(values({ product_lines: [] })).success).toBe(true)
   })
@@ -86,7 +91,7 @@ describe('buildRequestWorkSchema — product lines', () => {
    */
   describe('shared business function (spec 0077 INV-2)', () => {
     it('rejects mismatched functions once the collection is edited', () => {
-      const schema = buildRequestWorkSchema(original(), i18n.t)
+      const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
       const result = schema.safeParse(
         values({
           product_lines: [
@@ -103,7 +108,7 @@ describe('buildRequestWorkSchema — product lines', () => {
     })
 
     it('accepts several edited rows sharing the same business function', () => {
-      const schema = buildRequestWorkSchema(original(), i18n.t)
+      const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
       const result = schema.safeParse(
         values({
           product_lines: [
@@ -122,7 +127,7 @@ describe('buildRequestWorkSchema — product lines', () => {
         { business_function_id: 41, product_category_id: 501 },
         { business_function_id: 42, product_category_id: 502 },
       ]
-      const schema = buildRequestWorkSchema(original({ product_lines: historicRows }), i18n.t)
+      const schema = buildRequestWorkSchema(original({ product_lines: historicRows }), [], [], i18n.t)
 
       // The panel resubmits the SAME historic rows unchanged, only `next_callback_at` differs.
       const result = schema.safeParse(
@@ -143,7 +148,7 @@ describe('buildRequestWorkSchema — product lines', () => {
  */
 describe('buildRequestWorkSchema — source (Fonte)', () => {
   it('rejects a null source', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
     const result = schema.safeParse(values({ source_id: null }))
 
     expect(result.success).toBe(false)
@@ -153,7 +158,7 @@ describe('buildRequestWorkSchema — source (Fonte)', () => {
   })
 
   it('accepts a chosen source', () => {
-    const schema = buildRequestWorkSchema(original(), i18n.t)
+    const schema = buildRequestWorkSchema(original(), [], [], i18n.t)
 
     expect(schema.safeParse(values({ source_id: 30 })).success).toBe(true)
   })

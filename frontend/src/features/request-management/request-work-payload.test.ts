@@ -31,6 +31,12 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     client_address: null,
     referent_contacts: { owner: { type: 'personal_data', id: 20 }, items: [] },
     next_callback_at: null,
+    attribute_values: {},
+    applicable_attributes: [],
+    attribute_layout: null,
+    quote_workflow_status_id: null,
+    quote_workflow_status: null,
+    quote_workflow_statuses: [],
     context: { estimated_value: null, expected_close_date: null, success_probability: null },
     ...overrides,
   }
@@ -48,6 +54,9 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     reporter_id: null,
     operator_id: null,
     operational_site_id: null,
+    attribute_values: {},
+    quote_workflow_status_id: null,
+    note: null,
     ...overrides,
   }
 }

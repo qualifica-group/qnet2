@@ -124,20 +124,23 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowCountChanged?.(7)}>
           report count
         </button>
+        <button type="button" onClick={() => onRowCountChanged?.(0)}>
+          report zero
+        </button>
       </div>
     )
   }),
 }))
 
-function opportunity(quotesCount: number) {
-  return { id: 42, quotes_count: quotesCount }
+function opportunity(quotesCount: number, singleQuote = false) {
+  return { id: 42, quotes_count: quotesCount, single_quote_per_opportunity: singleQuote }
 }
 
-function renderPanel(quotesCount: number) {
+function renderPanel(quotesCount: number, singleQuote = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <OpportunityQuotesSection opportunity={opportunity(quotesCount)} />
+      <OpportunityQuotesSection opportunity={opportunity(quotesCount, singleQuote)} />
     </QueryClientProvider>,
   )
 }
@@ -357,5 +360,47 @@ describe('OpportunityQuotesSection — delete (AC-062/063)', () => {
     await act(async () => screen.getByRole('button', { name: 'delete row' }).click())
 
     expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this quote.')
+  })
+})
+
+/**
+ * User directive 2026-08-07: on a category capped at one offer, the create
+ * affordance is disabled once an offer exists — with the reason attached, so a
+ * dead button is never unexplained. The backend re-checks regardless (422).
+ */
+describe('OpportunityQuotesSection — one-offer-per-opportunity gate', () => {
+  const REASON = 'The product category of this opportunity allows a single offer: one already exists.'
+
+  it('disables "New quote" and states why when the rule bites', () => {
+    renderPanel(3, true)
+
+    const button = screen.getByRole('button', { name: 'New quote' })
+    expect(button).toBeDisabled()
+    expect(screen.getByText(REASON)).toBeInTheDocument()
+  })
+
+  it('leaves the button enabled while the capped opportunity has no offer yet', () => {
+    renderPanel(0, true)
+
+    for (const button of screen.getAllByRole('button', { name: 'New quote' })) {
+      expect(button).toBeEnabled()
+    }
+    expect(screen.queryByText(REASON)).not.toBeInTheDocument()
+  })
+
+  it('leaves the button enabled on a category that allows several offers', () => {
+    renderPanel(3)
+
+    expect(screen.getByRole('button', { name: 'New quote' })).toBeEnabled()
+    expect(screen.queryByText(REASON)).not.toBeInTheDocument()
+  })
+
+  it('re-enables the button off the LIVE count when the only offer is deleted', () => {
+    renderPanel(3, true)
+    expect(screen.getByRole('button', { name: 'New quote' })).toBeDisabled()
+
+    act(() => screen.getByRole('button', { name: 'report zero' }).click())
+
+    expect(screen.getByRole('button', { name: 'New quote' })).toBeEnabled()
   })
 })

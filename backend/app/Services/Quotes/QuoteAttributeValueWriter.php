@@ -6,8 +6,10 @@ namespace App\Services\Quotes;
 
 use App\Models\Quote;
 use App\Quotes\QuoteAttributeResolver;
+use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -45,12 +47,13 @@ final class QuoteAttributeValueWriter
      * @param  array<string, mixed>  $submitted
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
+     * @param  Collection<int, ApplicableAttribute>|null  $applicable  the set to validate against; `null` = the quote's own offer-line set. Gestione Richieste passes its own (App\RequestManagement\RequestAttributeResolver, D-1): same values map, wider category source — the merge/validation pipeline stays this single one
      *
      * @throws ValidationException a submitted code is not applicable, has the wrong type, or a required one is empty
      */
-    public function apply(Quote $quote, array $submitted, array &$changed, array &$old): void
+    public function apply(Quote $quote, array $submitted, array &$changed, array &$old, ?Collection $applicable = null): void
     {
-        $applicable = $this->attributeResolver->resolve($quote);
+        $applicable ??= $this->attributeResolver->resolve($quote);
         $validated = $this->validator->validate($applicable, $submitted);
         $normalized = $this->normalizer->normalize($applicable, $validated);
 

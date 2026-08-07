@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useWatch } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRightLeft, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/
 import { RecordFieldChangeRequests } from '@/features/field-change-requests/record-field-change-requests'
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
+import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
+import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
@@ -139,6 +142,9 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
   const { form, onSubmit, submitError, isSubmitting } = useRequestWorkForm(panel)
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
+  // Watched here so `QuoteWorkflowStatusField` stays presentational: it is
+  // what decides whether the transition note is demanded.
+  const selectedStatusId = useWatch({ control: form.control, name: 'quote_workflow_status_id' })
 
   // An approved change request writes the protected field server-side (spec
   // 0078, D-7), so the panel it was decided from is stale the moment it
@@ -216,6 +222,19 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                   2026-07-31), right before the working state it precedes. */}
               <RequestProductLinesSection control={form.control} productLines={panel.product_lines} />
 
+              {/* "Stato di lavorazione" (user directive 2026-08-07): the
+                  Offerta's own operational status, right after the
+                  classification that resolves its workflow and before the
+                  callback. Literally the Offerte form's component — the set
+                  and the mandatory-note rule come from the server either way
+                  (spec 0083). */}
+              <QuoteWorkflowStatusField
+                control={form.control}
+                statuses={panel.quote_workflow_statuses}
+                originalStatusId={panel.quote_workflow_status_id}
+                selectedStatusId={selectedStatusId}
+              />
+
               <RequestCallbackSection control={form.control} />
 
               {/* Provenance and ownership of the request (user directive
@@ -236,6 +255,17 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
               />
 
               <RequestClientSection control={form.control} />
+
+              {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
+                  Offerte form's own section, fed the set the server resolved
+                  for this request. Already resolved on load, so it never
+                  loads on its own here. */}
+              <QuoteDynamicFieldsSection
+                control={form.control}
+                attributes={panel.applicable_attributes}
+                layout={panel.attribute_layout}
+                isLoading={false}
+              />
 
               {/* The same save the identity bar carries, repeated where the
                   editable form ends (user directive 2026-08-03): the panel is

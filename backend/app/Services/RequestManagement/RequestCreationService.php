@@ -12,11 +12,14 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
+use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\OpportunityService;
+use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\QuoteService;
 use App\Services\RegistryService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Creation entry point for the request-management work panel (spec 0057,
@@ -50,6 +53,8 @@ final class RequestCreationService
         private readonly QuoteService $quoteService,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly RequestManagementService $panel,
+        private readonly RequestAttributeResolver $attributeResolver,
+        private readonly QuoteAttributeValueWriter $attributeValueWriter,
     ) {}
 
     /**
@@ -148,8 +153,48 @@ final class RequestCreationService
                 $this->rewardAssignmentWriter->sync($quote, $data->rewards);
             }
 
+            // Step 6: "Informazioni aggiuntive" (user directive 2026-08-07) —
+            // written on the Offerta, validated against the applicable set the
+            // just-inserted product lines resolve (RequestAttributeResolver,
+            // D-1). It runs LAST because that set does not exist before the
+            // insert: a code the categories do not carry is a 422 keyed
+            // `attribute_values.<code>`, rolling the whole creation back.
+            $this->applyAttributeValues($quote, $data);
+
             return $this->panel->loadWorkPanel($quote);
         });
+    }
+
+    /**
+     * The dynamic "Informazioni aggiuntive" of the freshly created Offerta
+     * (user directive 2026-08-07), through the SAME writer the Offerte module
+     * uses — fed THIS module's applicable set (D-1: the Opportunity's product
+     * lines, since a request's Offerta is born with no offer lines).
+     *
+     * The `$changed`/`$old` pair the writer reports into is discarded here on
+     * purpose: a creation has no before-state to log, and the record's own
+     * creation entry already carries the row.
+     *
+     * @throws ValidationException a submitted code is not applicable to the created classification
+     */
+    private function applyAttributeValues(Quote $quote, CreateRequestData $data): void
+    {
+        if ($data->attributeValues === null) {
+            return;
+        }
+
+        $changed = [];
+        $old = [];
+
+        $this->attributeValueWriter->apply(
+            $quote,
+            $data->attributeValues,
+            $changed,
+            $old,
+            $this->attributeResolver->resolve($quote),
+        );
+
+        $quote->save();
     }
 
     /**

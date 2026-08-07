@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Opportunity;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
+use App\Services\Opportunities\OpportunityQuoteLimit;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -126,6 +127,12 @@ class OpportunityResource extends JsonResource
             'success_probability' => $this->success_probability,
             'general_notes' => $this->general_notes,
             'quotes_count' => (int) ($this->quotes_count ?? 0),
+            // User directive 2026-08-07: whether this opportunity's product
+            // category caps it at ONE offer. Ships the RULE, not the verdict —
+            // the panel pairs it with the live row count it already tracks, so
+            // deleting the only offer re-enables "Crea Offerta" with no
+            // refetch. StoreQuoteRequest stays the authority (422).
+            'single_quote_per_opportunity' => app(OpportunityQuoteLimit::class)->isSingleQuoteBranch($this->resource),
             'locked_fields' => $this->resolveLockedFields(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

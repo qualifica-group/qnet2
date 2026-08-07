@@ -21,6 +21,10 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     rewards: [],
     next_callback_at: null,
     general_notes: '',
+    // "Informazioni aggiuntive" (user directive 2026-08-07): part of the
+    // schema's shape, empty here — with no applicable attribute the block
+    // validates nothing (its own rules live in the suite below).
+    attribute_values: {},
     ...overrides,
   }
 }

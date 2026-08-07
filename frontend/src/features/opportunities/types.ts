@@ -191,6 +191,15 @@ export interface OpportunityDetail {
    */
   quotes_count?: number
   /**
+   * User directive 2026-08-07: whether this opportunity's product category
+   * caps it at ONE offer (`product_categories.single_quote_per_opportunity`,
+   * owned by the branch root). The RULE, not the verdict — the Quotes panel
+   * pairs it with its live row count to decide whether "Crea Offerta" is
+   * still available. Optional for the same fixture-compatibility reason as
+   * `state` above — treat a missing key the same as `false`.
+   */
+  single_quote_per_opportunity?: boolean
+  /**
    * Spec 0080: G.A. labels resolved from this opportunity's product-line
    * categories (position, as a string key "1".."4" -> label), additive. `{}`
    * when not resolvable (no product line, or several product lines resolving

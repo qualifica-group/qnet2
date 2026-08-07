@@ -2,11 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\RequestManagement\ApplicableAttribute;
+use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +35,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `transferred_from`/`operator` (still wired to `operator_id`/`operator` on
  * the wire) and `rewards` come straight off the Quote. `products_of_interest`
  * is REPLACED by `offer_lines` (AC-021), the Quote's own REVENUE lines.
+ *
+ * User directive 2026-08-07: two blocks the module had lost to specs 0083 D-2
+ * / 0084 D-1 come back, now sourced from the Offerta — `attribute_values`/
+ * `applicable_attributes`/`attribute_layout` ("Informazioni aggiuntive",
+ * applicable set per RequestAttributeResolver D-1) and the
+ * `quote_workflow_status_id`/`quote_workflow_status`/`quote_workflow_statuses`
+ * triplet ("Stato di lavorazione"). Both are byte-for-byte the projections
+ * QuoteResource exposes, so the two forms render the identical components off
+ * the identical types.
  *
  * `client_contacts`/`referent_contacts` expose an `owner` OwnerRef
  * (`{type: 'personal_data', id}`) alongside the contact `items`, so the
@@ -115,6 +128,22 @@ class RequestManagementResource extends JsonResource
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
             'referent_contacts' => $this->summarizeContacts($opportunity->referent),
             'next_callback_at' => $opportunity->next_callback_at?->format('Y-m-d\TH:i'),
+            // "Informazioni aggiuntive" (user directive 2026-08-07): the same
+            // three blocks QuoteResource exposes, byte-for-byte — only the
+            // applicable set is resolved by RequestAttributeResolver (D-1,
+            // product lines UNION offer lines). The values map itself is the
+            // Offerta's own `quotes.attribute_values`: one storage, two forms.
+            'attribute_values' => (object) ($quote->attribute_values ?? []),
+            'applicable_attributes' => $this->resolveApplicableAttributes($quote),
+            'attribute_layout' => app(RequestAttributeResolver::class)->layout($quote, FormMode::Edit),
+            // "Stato di lavorazione" (user directive 2026-08-07): the Offerta's
+            // own operational status (spec 0083), advanced from this panel too.
+            // Same triplet as QuoteResource — current id, its projection, and
+            // the full set QuoteWorkflowResolver resolves right now, which is
+            // what limits the select (AC-021/050).
+            'quote_workflow_status_id' => $quote->quote_workflow_status_id,
+            'quote_workflow_status' => $this->summarizeWorkflowStatus($quote->quoteWorkflowStatus),
+            'quote_workflow_statuses' => $this->resolveWorkflowStatuses($quote),
             'context' => [
                 'estimated_value' => $opportunity->estimated_value,
                 'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
@@ -135,6 +164,56 @@ class RequestManagementResource extends JsonResource
     private function summarizeByName(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * The "Informazioni aggiuntive" descriptors for THIS request (D-1).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveApplicableAttributes(Quote $quote): array
+    {
+        return app(RequestAttributeResolver::class)
+            ->resolve($quote)
+            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The currently resolved working-state row (spec 0083, D-1/D-8), same
+     * projection as QuoteResource's.
+     *
+     * @return array{id: int, name: string, color: string|null, group: string, requires_note: bool}|null
+     */
+    private function summarizeWorkflowStatus(?Model $status): ?array
+    {
+        return $status === null ? null : [
+            'id' => $status->id,
+            'name' => $status->name,
+            'color' => $status->color,
+            'group' => $status->group->value,
+            'requires_note' => $status->requires_note,
+        ];
+    }
+
+    /**
+     * The full ordered set QuoteWorkflowResolver resolves for this Offerta
+     * RIGHT NOW — the only rows the panel's select may offer (AC-021/050).
+     * Carries `sort_order` like the quotes contract does.
+     *
+     * @return array<int, array{id: int, name: string, color: string|null, group: string, requires_note: bool, sort_order: int}>
+     */
+    private function resolveWorkflowStatuses(Quote $quote): array
+    {
+        $resolver = app(QuoteWorkflowResolver::class);
+
+        return $resolver->statusesFor($resolver->resolve($quote))
+            ->map(fn (Model $status): array => [
+                ...$this->summarizeWorkflowStatus($status),
+                'sort_order' => $status->sort_order,
+            ])
+            ->all();
     }
 
     /**

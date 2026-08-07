@@ -10,9 +10,12 @@ use App\DataObjects\Users\ContactInput;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestAttributeResolver;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RewardAssignmentWriter;
+use App\Services\Quotes\QuoteAttributeValueWriter;
+use App\Services\Quotes\QuoteWorkflowStatusWriter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -86,7 +89,11 @@ final class RequestManagementService
         'supervisor',
         // Spec 0086, D-7: "Linee di prodotto" — the Offerta's own REVENUE
         // lines, replacing "prodotti di interesse" in this module's panel.
+        // Also one half of RequestAttributeResolver's category union (D-1).
         'offerLines.product.category',
+        // "Stato di lavorazione" (user directive 2026-08-07): the Offerta's
+        // own current working-state row, projected by the resource.
+        'quoteWorkflowStatus',
     ];
 
     public function __construct(
@@ -96,6 +103,9 @@ final class RequestManagementService
         private readonly RequestProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly RequestAttributeResolver $attributeResolver,
+        private readonly QuoteAttributeValueWriter $attributeValueWriter,
+        private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
     ) {}
 
     /**
@@ -113,7 +123,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -154,6 +164,25 @@ final class RequestManagementService
                 $this->applyNextCallbackAt($opportunity, $data['next_callback_at'], $changed, $old);
             }
 
+            // Step 2-bis: "Informazioni aggiuntive" (user directive
+            // 2026-08-07) — AFTER the product lines, so the set the values are
+            // validated against is the one the panel will render next, not the
+            // pre-PATCH one (OpportunityProductLineWriter::sync() already
+            // unsets the stale relation). Reuses the Offerte writer verbatim,
+            // fed THIS module's applicable set (D-1).
+            if (array_key_exists('attribute_values', $data)) {
+                $this->attributeValueWriter->apply(
+                    $quote,
+                    (array) $data['attribute_values'],
+                    $changed,
+                    $old,
+                    $this->attributeResolver->resolve($quote),
+                );
+            }
+
+            // Step 2-ter: "Stato di lavorazione" (user directive 2026-08-07).
+            $this->applyWorkflowStatus($quote, $actor, $data, $changed, $old);
+
             $opportunity->save();
             $quote->save();
 
@@ -182,6 +211,52 @@ final class RequestManagementService
 
             return $this->loadWorkPanel($quote);
         });
+    }
+
+    /**
+     * The Offerta's working-status advance from this panel (user directive
+     * 2026-08-07), through the SAME choke point the quotes module uses: it
+     * enforces the resolved set (spec 0083 AC-021) and creates the transition
+     * note a `requires_note` destination demands (AC-023/024/025), inside this
+     * service's transaction.
+     *
+     * Sparse like every other key, and `null` is NOT a clear: an Offerta
+     * always carries a working state (QuoteService bootstraps it at
+     * creation), so "no value submitted" is the only meaning null can have
+     * here. The change is mirrored into the caller's audit arrays because
+     * this module reads the OPPORTUNITY's activity thread (D-9), which the
+     * Quote's own model log never reaches.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     *
+     * @throws ValidationException the target is outside the resolved workflow, or it requires a note and none was given
+     */
+    private function applyWorkflowStatus(Quote $quote, User $actor, array $data, array &$changed, array &$old): void
+    {
+        if (! array_key_exists('quote_workflow_status_id', $data) || $data['quote_workflow_status_id'] === null) {
+            return;
+        }
+
+        $previousStatusId = $quote->quote_workflow_status_id;
+
+        $this->workflowStatusWriter->apply(
+            $quote,
+            (int) $data['quote_workflow_status_id'],
+            $actor,
+            $data['note'] ?? null,
+        );
+
+        if ($quote->quote_workflow_status_id === $previousStatusId) {
+            return;
+        }
+
+        $old['quote_workflow_status_id'] = $previousStatusId;
+        $changed['quote_workflow_status_id'] = $quote->quote_workflow_status_id;
+        // The projection the panel re-renders from is the relation, not the
+        // column: a stale loaded copy would send back the PREVIOUS status.
+        $quote->unsetRelation('quoteWorkflowStatus');
     }
 
     /**

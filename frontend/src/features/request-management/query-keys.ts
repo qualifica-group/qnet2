@@ -13,6 +13,12 @@ export const requestManagementKeys = {
   panel: (id: number | null) => ['request-management', 'panel', id] as const,
   /** Query key of the Product Category tab strip (spec 0064). */
   categories: () => ['request-management', 'categories'] as const,
+  /**
+   * Query key of the create form's "Informazioni aggiuntive" resolution (user
+   * directive 2026-08-07): the criteria themselves, so switching category and
+   * back re-reads the cache instead of refetching.
+   */
+  formContext: (criteriaKey: string) => ['request-management', 'form-context', criteriaKey] as const,
   /** Query key of the active category tab's resolved G.A. labels (spec 0080), the create form's own fetch. */
   categoryManagerLabels: (categoryId: number | null) =>
     ['request-management', 'category-manager-labels', categoryId] as const,

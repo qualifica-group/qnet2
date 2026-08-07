@@ -64,18 +64,37 @@ if (! function_exists('requestCreateProductLine')) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/request-management/form-context is REMOVED (spec 0084, D-1): the
-// live preview it served no longer applies once the dynamic section moved to
-// the Offerta. The literal route is gone; `form-context` now only matches the
-// `{opportunity}` wildcard's OTHER verbs (GET/PUT/PATCH/DELETE), so POST 405s
-// rather than 404s.
+// POST /api/request-management/form-context (user directive 2026-08-07).
+// REQUIREMENT CHANGE: spec 0084 D-1 had removed this endpoint along with the
+// section it previews; the directive brings both back, resolving the
+// "Informazioni aggiuntive" of the Offerta the create form is about to open.
+// The former test (the endpoint 405s) asserted the superseded rule.
 // ---------------------------------------------------------------------------
 
-it('form-context: the removed endpoint no longer resolves', function () {
+it('form-context: resolves the applicable set for the picked categories', function () {
+    Sanctum::actingAs(requestCreateOperativeActor());
+    $line = requestCreateProductLine();
+
+    $this->postJson('/api/request-management/form-context', ['product_lines' => [$line]])
+        ->assertOk()
+        ->assertJsonStructure(['data' => ['applicable_attributes', 'attribute_layout']]);
+});
+
+it('form-context: an incomplete product line scopes nothing, never a 422', function () {
     Sanctum::actingAs(requestCreateOperativeActor());
 
+    $response = $this->postJson('/api/request-management/form-context', [
+        'product_lines' => [['business_function_id' => null, 'product_category_id' => null]],
+    ])->assertOk();
+
+    expect($response->json('data.applicable_attributes'))->toBe([]);
+});
+
+it('form-context: requires request-management.create', function () {
+    Sanctum::actingAs(requestCreateOperativeActor(['view']));
+
     $this->postJson('/api/request-management/form-context', ['product_lines' => []])
-        ->assertStatus(405);
+        ->assertForbidden();
 });
 
 // ---------------------------------------------------------------------------
@@ -103,20 +122,28 @@ it('create: next_callback_at and general_notes are persisted and read back', fun
         ->and($opportunity->general_notes)->toBe('Il cliente richiama a settembre.');
 });
 
-it('create: an attribute_values payload is silently ignored (spec 0084, D-1)', function () {
+// REQUIREMENT CHANGE (user directive 2026-08-07): `attribute_values` used to
+// be silently ignored on this channel (spec 0084, D-1). It is now written on
+// the created Offerta, validated against the applicable set the inserted
+// product lines resolve — the happy path lives in
+// RequestManagementAttributeValuesTest, this one guards the rejection.
+it('create: a code outside the applicable set -> 422, nothing is created', function () {
     $actor = requestCreateOperativeActor();
     $line = requestCreateProductLine();
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/request-management', [
+    $this->postJson('/api/request-management', [
         'registry_id' => Registry::factory()->create()->id,
         'source_id' => Source::factory()->create()->id,
         'product_lines' => [$line],
         'attribute_values' => ['material' => 'steel'],
-    ])->assertCreated();
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('attribute_values.material');
 
-    expect($response->json('data'))->not->toHaveKey('attribute_values');
-    expect(Opportunity::query()->sole()->getAttributes())->not->toHaveKey('attribute_values');
+    // The whole creation runs in ONE transaction: a rejected value rolls the
+    // Opportunity and its Offerta back with it.
+    expect(Opportunity::query()->count())->toBe(0);
 });
 
 it('create: none of the operative fields submitted leaves the record exactly as before', function () {

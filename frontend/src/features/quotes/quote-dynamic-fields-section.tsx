@@ -1,18 +1,17 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, SlidersHorizontal } from 'lucide-react'
-import type { Control } from 'react-hook-form'
+import type { Control, Path } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { AttributeLayoutRenderer } from '@/features/attributes/attribute-layout-renderer'
-import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { AttributeLayoutFormShape, LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { MetaField } from '@/features/authorization/MetaField'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
-import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { ApplicableAttributeSummary } from '@/features/quotes/types'
 
-interface QuoteDynamicFieldsSectionProps {
-  control: Control<QuoteFormValues>
-  /** Union, dedup by `code`, of the effective Attributes of every offer line's product category. */
+interface QuoteDynamicFieldsSectionProps<TFieldValues extends AttributeLayoutFormShape> {
+  control: Control<TFieldValues>
+  /** Union, dedup by `code`, of the effective Attributes of the resolved product categories. */
   attributes: ApplicableAttributeSummary[]
   /** The merged, multi-category layout (spec 0062); `null` -> flat. */
   layout: LayoutBlob | null
@@ -49,15 +48,19 @@ interface QuoteDynamicFieldsSectionProps {
  * mounts the gate directly — nesting it inside a `FormSection` would stack two
  * cards on the same surface (ui-design.md §1-bis).
  */
-export function QuoteDynamicFieldsSection({
+export function QuoteDynamicFieldsSection<TFieldValues extends AttributeLayoutFormShape>({
   control,
   attributes,
   layout,
   isLoading,
   className,
-}: QuoteDynamicFieldsSectionProps) {
+}: QuoteDynamicFieldsSectionProps<TFieldValues>) {
   const { t } = useTranslation()
   const title = t('quotes.form.sections.dynamicFields.title')
+  // `AttributeLayoutFormShape` guarantees the key on every accepted form, but
+  // TS cannot narrow a literal to `Path<TFieldValues>` through the generic —
+  // the same cast `useRequestWorkForm` already applies to its own field paths.
+  const attributeValuesField = 'attribute_values' as Path<TFieldValues>
 
   const effectiveAttributes = useMemo(
     () => attributes.map((attribute) => toEffectiveAttribute(attribute, 'quote')),
@@ -86,7 +89,7 @@ export function QuoteDynamicFieldsSection({
   }
 
   const gatedRenderer = (
-    <MetaField control={control} name="attribute_values" metaKey="attribute_values" label={title}>
+    <MetaField control={control} name={attributeValuesField} metaKey="attribute_values" label={title}>
       {({ disabled, readOnly }) => (
         <AttributeLayoutRenderer
           layout={layout}

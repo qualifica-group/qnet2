@@ -6,19 +6,27 @@ namespace App\Http\Requests\RequestManagement;
 
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesProductLines;
+use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Quote;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * PATCH /api/request-management/{quote} (spec 0049 data_contract, migrated
  * onto the Quote by spec 0086, D-2): sparse payload, only the submitted keys
- * are ever touched. Spec 0083, D-2: this panel no longer advances any
- * working status of its own — the former workflow-status override field and
- * its accompanying `note` are GONE.
+ * are ever touched.
+ *
+ * User directive 2026-08-07: the panel writes two more blocks, both the
+ * Offerta's own — `attribute_values` ("Informazioni aggiuntive") and the
+ * `quote_workflow_status_id`/`note` pair ("Stato di lavorazione"). The pair
+ * is the SAME one the quotes endpoints take, validated by the same shared
+ * ValidatesQuoteWorkflowStatus: what spec 0083 D-2 removed was the
+ * OPPORTUNITY's working state, which no longer exists — this one belongs to
+ * the Offerta the request now IS (spec 0086).
  *
  * `authorize()` is a pass-through: the resource authorization
  * (`request-management.update`) AND the D-3 supervisor-scoping guard
@@ -50,7 +58,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesRequestClientProfile, ValidatesRewards {
+    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesQuoteWorkflowStatus, ValidatesRequestClientProfile, ValidatesRewards {
         EnforcesFieldPermissions::currentFieldValue as private traitCurrentFieldValue;
     }
 
@@ -77,6 +85,22 @@ class UpdateRequestRequest extends FormRequest
             // Spec 0056: the Sede operativa, same attribution block, same
             // sparse rule — absent means untouched, `null` clears it.
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
+            // "Informazioni aggiuntive" (user directive 2026-08-07): shallow
+            // here on purpose. The deep per-code validation (applicability/
+            // type/required) runs in QuoteAttributeValueWriter against the
+            // applicable set THIS module resolves (RequestAttributeResolver,
+            // D-1) — the single place that also merges the map, and the only
+            // one that knows the set AFTER a `product_lines` replace in the
+            // same payload. Its ValidationException surfaces as the same 422
+            // shape, keyed `attribute_values.<code>`.
+            'attribute_values' => ['sometimes', 'array'],
+            // "Stato di lavorazione" (user directive 2026-08-07): the same
+            // pair the quotes endpoints take (spec 0083, T-04). Sparse, and
+            // `null` is not a clear — an Offerta always carries a working
+            // state. `note` is demanded only by a `requires_note` destination,
+            // enforced by QuoteWorkflowStatusWriter (AC-023).
+            'quote_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
+            'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
             ...$this->rewardsRules(),
             ...$this->clientProfileRules(),
             // Funzione aziendale + categoria prodotto (user directive
@@ -131,6 +155,10 @@ class UpdateRequestRequest extends FormRequest
 
             $this->validateProductLines($validator);
             $this->validateRewards($validator, $quote);
+            // Same set check the quotes endpoints run (spec 0083 AC-021):
+            // this channel never submits `offer_lines`, so the trait resolves
+            // against the Offerta's persisted ones.
+            $this->validateQuoteWorkflowStatus($validator, $quote);
             $this->validateClientProfile($validator);
             // Write-path counterpart of the `permissions` block (spec 0004/
             // 0008): a field the actor's role may not edit is rejected 422

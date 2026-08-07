@@ -15,6 +15,10 @@ import type { ForSelectItem } from '@/features/for-select/types'
  */
 
 vi.mock('@/features/request-management/api', () => ({
+  // The create form resolves its "Informazioni aggiuntive" from the picked
+  // categories (user directive 2026-08-07): stubbed empty, this suite is not
+  // about that block.
+  fetchRequestFormContext: () => Promise.resolve({ applicable_attributes: [], attribute_layout: null }),
   createRequest: vi.fn(),
 }))
 

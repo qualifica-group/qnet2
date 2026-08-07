@@ -17,13 +17,15 @@ use Illuminate\Database\Eloquent\Model;
  * (D-4/D-5, `next_callback_at` added by spec 0054 D-4) — visible+editable
  * when the actor may write, else read-only. Only `source_id` and
  * `product_lines` are mandatory-restrictive (user directives 2026-07-29 /
- * 2026-07-31); every other field blocks on nothing here. Spec 0083, D-2: the
- * former workflow-status override field is REMOVED — the Opportunity
- * resolves no working state of its own any more. Spec 0084, D-1: the former
- * `attribute_values` field is REMOVED too — the dynamic "Informazioni
- * aggiuntive" section moved to the Offerta (Quote). Spec 0086: `products_of_
- * interest` is REMOVED — the module's grid column (`offer_lines`) is
- * read-only, derived from the Offerta's own REVENUE lines.
+ * 2026-07-31); every other field blocks on nothing here. Spec 0086:
+ * `products_of_interest` is REMOVED — the module's grid column
+ * (`offer_lines`) is read-only, derived from the Offerta's own REVENUE lines.
+ *
+ * User directive 2026-08-07: `attribute_values` and `quote_workflow_status_id`
+ * are BACK, no longer as the Opportunity's own dimensions (which specs 0084
+ * D-1 / 0083 D-2 rightly removed) but as the Offerta's — the record this
+ * module operates on since spec 0086. Same keys, same shape and same
+ * ceiling rule as QuotesAuthorization declares for them.
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
@@ -92,6 +94,14 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('client_last_name', 'text'),
             new FieldDefinition('client_tax_code', 'text'),
             new FieldDefinition('client_phone', 'text'),
+            // "Informazioni aggiuntive" (user directive 2026-08-07): ONE key
+            // for the whole dynamic block, exactly as QuotesAuthorization
+            // declares it — the per-code 422 rules live in
+            // AttributeValueValidator, not in the role matrix.
+            new FieldDefinition('attribute_values', 'custom'),
+            // "Stato di lavorazione" (user directive 2026-08-07): the
+            // Offerta's own operational status, advanced from this panel.
+            new FieldDefinition('quote_workflow_status_id', 'select'),
         ];
     }
 
@@ -123,6 +133,8 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'client_last_name' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_tax_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'client_phone' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

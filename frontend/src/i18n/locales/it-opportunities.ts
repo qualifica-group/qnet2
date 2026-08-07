@@ -56,6 +56,8 @@ export const opportunities = {
       create: 'Nuova offerta',
       empty: 'Nessuna offerta',
       emptyHint: "Crea la prima offerta collegata a questa opportunità.",
+      singleQuoteBlocked:
+        "La categoria prodotto di questa opportunità ammette una sola offerta: ne esiste già una.",
       loadError: 'Impossibile caricare le offerte di questa opportunità.',
       truncated: 'Mostrate {{shown}} offerte su {{total}}.',
     },

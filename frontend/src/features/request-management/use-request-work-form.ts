@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { opportunityDetailQueryKey } from '@/features/opportunities/api'
 import { addressToDraft } from '@/features/personal-data/drafts'
@@ -73,6 +74,17 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // client has no address yet.
     client_address: panel.client_address ? [addressToDraft(panel.client_address)] : [],
     product_lines: toProductLineRows(panel.product_lines),
+    // Seeded over the APPLICABLE codes, never the raw stored map: the Zod
+    // object is built from those codes and a missing key aborts the submit
+    // silently (see `seedAttributeValues`).
+    attribute_values: seedAttributeValues(
+      panel.applicable_attributes,
+      toAttributeValuesMap(panel.attribute_values),
+    ),
+    quote_workflow_status_id: panel.quote_workflow_status_id,
+    // Never prefilled: the note belongs to the transition being made now, not
+    // to the request.
+    note: null,
     rewards: (panel.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     source_id: panel.source_id,
     reporter_id: panel.reporter_id,
@@ -97,13 +109,32 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
       buildRequestWorkSchema(
         {
           product_lines: toProductLineRows(panel.product_lines),
+          // The SAME baseline `buildRequestWorkPayload` diffs against, so the
+          // schema validates exactly the map that is going to travel.
+          attribute_values: seedAttributeValues(
+            panel.applicable_attributes,
+            toAttributeValuesMap(panel.attribute_values),
+          ),
+          quote_workflow_status_id: panel.quote_workflow_status_id,
           client_identity: panel.client_identity,
           client_contacts: panel.client_contacts.items,
           client_address: panel.client_address,
         },
+        panel.applicable_attributes,
+        panel.quote_workflow_statuses,
         t,
       ),
-    [panel.product_lines, panel.client_identity, panel.client_contacts, panel.client_address, t],
+    [
+      panel.product_lines,
+      panel.applicable_attributes,
+      panel.attribute_values,
+      panel.quote_workflow_status_id,
+      panel.quote_workflow_statuses,
+      panel.client_identity,
+      panel.client_contacts,
+      panel.client_address,
+      t,
+    ],
   )
 
   const defaultValues = useMemo(() => buildDefaultValues(panel), [panel])
@@ -126,6 +157,12 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     'reporter_id' as Path<RequestWorkFormValues>,
     'operator_id' as Path<RequestWorkFormValues>,
     'operational_site_id' as Path<RequestWorkFormValues>,
+    // A per-code 422 (`attribute_values.<code>`) DOES have a matching control:
+    // the layout renderer binds each field to that exact path, so the message
+    // lands on the field it belongs to.
+    'attribute_values' as Path<RequestWorkFormValues>,
+    'quote_workflow_status_id' as Path<RequestWorkFormValues>,
+    'note' as Path<RequestWorkFormValues>,
   ]
 
   const onSubmit = form.handleSubmit(

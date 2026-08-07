@@ -56,6 +56,8 @@ export const opportunities = {
       create: 'New quote',
       empty: 'No quotes yet',
       emptyHint: 'Create the first quote linked to this opportunity.',
+      singleQuoteBlocked:
+        'The product category of this opportunity allows a single offer: one already exists.',
       loadError: 'Unable to load this opportunity’s quotes.',
       truncated: 'Showing {{shown}} of {{total}} quotes.',
     },

@@ -105,3 +105,31 @@ it('grandfathering: an already-multi-quote opportunity stays editable once the f
         ->assertOk()
         ->assertJsonPath('data.title', 'Titolo corretto');
 });
+
+// ---------------------------------------------------------------------------
+// read side — the flag the Offerte panel disables its "Crea Offerta" on
+// ---------------------------------------------------------------------------
+
+it('GET opportunity exposes single_quote_per_opportunity, true only on a capped branch', function () {
+    Permission::findOrCreate('opportunities.view');
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('opportunities.view');
+    Sanctum::actingAs($actor);
+
+    $capped = singleQuoteOpportunity(true);
+    $free = singleQuoteOpportunity(false);
+    $bare = Opportunity::factory()->create();
+
+    $this->getJson("/api/opportunities/{$capped->id}")
+        ->assertOk()
+        ->assertJsonPath('data.single_quote_per_opportunity', true);
+
+    $this->getJson("/api/opportunities/{$free->id}")
+        ->assertOk()
+        ->assertJsonPath('data.single_quote_per_opportunity', false);
+
+    // No product line at all: the rule is indeterminate, never applied.
+    $this->getJson("/api/opportunities/{$bare->id}")
+        ->assertOk()
+        ->assertJsonPath('data.single_quote_per_opportunity', false);
+});

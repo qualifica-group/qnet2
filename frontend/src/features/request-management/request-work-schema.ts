@@ -1,16 +1,27 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import {
+  buildAttributeValuesSchema,
+  type TypedAttributeValuesSchema,
+} from '@/features/request-management/attribute-values-schema'
+import {
+  attributeValuesChanged,
   clientAddressChanged,
   clientContactsChanged,
   clientIdentityChanged,
   productLinesChanged,
 } from '@/features/request-management/request-work-payload'
-import type { RequestClientIdentity, RequestContact } from '@/features/request-management/types'
+import type {
+  ApplicableAttribute,
+  RequestClientIdentity,
+  RequestContact,
+} from '@/features/request-management/types'
+import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
@@ -151,13 +162,29 @@ function addProductLinesIssues(rows: ProductLineRow[], ctx: z.RefinementCtx, t: 
 export interface RequestWorkOriginalState {
   /** The persisted funzione/categoria pairs, in the form's own row shape. */
   product_lines: ProductLineRow[]
+  /**
+   * The persisted dynamic values, ALREADY seeded over the applicable codes
+   * (`seedAttributeValues`) — the same baseline `buildRequestWorkPayload`
+   * diffs against, so the schema validates exactly what is going to travel.
+   */
+  attribute_values: Record<string, unknown>
+  /** The status the request currently holds: an unchanged one demands no note (spec 0083 AC-026). */
+  quote_workflow_status_id: number | null
   /** The client blocks as the panel loaded them (`ValidatesRequestClientProfile` only sees what travels). */
   client_identity: RequestClientIdentity | null
   client_contacts: RequestContact[]
   client_address: Address | null
 }
 
-export function buildRequestWorkSchema(original: RequestWorkOriginalState, t: TFunction) {
+export function buildRequestWorkSchema(
+  original: RequestWorkOriginalState,
+  attributes: ApplicableAttribute[],
+  statuses: QuoteWorkflowStatusRef[],
+  t: TFunction,
+) {
+  const codes = attributes.map((attribute) => attribute.code)
+  const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+
   return z
     .object({
       next_callback_at: z.string().nullable(),
@@ -185,8 +212,53 @@ export function buildRequestWorkSchema(original: RequestWorkOriginalState, t: TF
       operator_id: z.number().nullable(),
       // Spec 0056: facoltativa, same attribution shape.
       operational_site_id: z.number().nullable(),
+      // "Informazioni aggiuntive" (user directive 2026-08-07): one key per
+      // applicable `code`, per-type shape from the SHARED builder — the same
+      // one the Offerta form and the create form use. `is_required` is added
+      // by the refinement below, which alone knows whether the map travels.
+      attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
+      // "Stato di lavorazione" (user directive 2026-08-07): the Offerta's own
+      // status plus the note a `requires_note` transition demands.
+      quote_workflow_status_id: z.number().nullable(),
+      note: z.string().nullable(),
     })
     .superRefine((values, ctx) => {
+      // The required-attribute rule is gated on the map being sent at all —
+      // the SAME predicate `buildRequestWorkPayload` uses, so the two cannot
+      // drift. `AttributeValueValidator` checks `is_required` on SUBMITTED
+      // codes only: mirroring it unconditionally would make a legacy request
+      // missing a required attribute unsavable for any unrelated edit.
+      if (attributeValuesChanged(values.attribute_values, original.attribute_values, codes)) {
+        for (const code of requiredCodes) {
+          if (isEmptyCustomFieldValue(values.attribute_values[code])) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['attribute_values', code],
+              message: t('requestManagement.workPanel.validation.required', {
+                defaultValue: 'This field is required.',
+              }),
+            })
+          }
+        }
+      }
+
+      // The transition note (spec 0083 AC-023/026), mirroring the server and
+      // `buildUpdateQuoteSchema` exactly: demanded only when the TARGET row
+      // differs from the one the request holds AND carries `requires_note`.
+      const targetStatusId = values.quote_workflow_status_id
+      if (
+        targetStatusId !== null &&
+        targetStatusId !== original.quote_workflow_status_id &&
+        statuses.find((status) => status.id === targetStatusId)?.requires_note === true &&
+        (values.note ?? '').trim() === ''
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['note'],
+          message: t('quotes.form.noteRequired'),
+        })
+      }
+
       if (productLinesChanged(values.product_lines, original.product_lines)) {
         addProductLinesIssues(values.product_lines, ctx, t)
       }

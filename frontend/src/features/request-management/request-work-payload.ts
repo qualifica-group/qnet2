@@ -1,3 +1,6 @@
+import { seedAttributeValues } from '@/features/attributes/attribute-values'
+import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
@@ -37,6 +40,26 @@ export function productLinesChanged(current: ProductLineRow[], original: Product
     rows.map((row) => `${row.business_function_id}:${row.product_category_id}`).sort()
 
   return clientBlockChanged(keys(current), keys(original))
+}
+
+/**
+ * True when at least one applicable attribute's value differs from the
+ * request's loaded one. `attribute_values` merges server-side per code, but
+ * the panel has no per-code sparse diff to compute — only whether the map as
+ * a whole needs resending. Exported for the same reason as the collections
+ * above: the schema validates the map only when it is going to be sent.
+ *
+ * `original` MUST already be seeded (`seedAttributeValues`), or a request
+ * with no boolean stored reports itself as modified on load.
+ */
+export function attributeValuesChanged(
+  current: Record<string, CustomFieldValue>,
+  original: Record<string, unknown>,
+  codes: string[],
+): boolean {
+  return codes.some(
+    (code) => !isEqualCustomFieldValue(current[code] ?? null, (original[code] as CustomFieldValue) ?? null),
+  )
 }
 
 /**
@@ -188,6 +211,30 @@ export function buildRequestWorkPayload(
   const originalRewardTypeIds = (panel.rewards ?? []).map((reward) => reward.reward_type.id).sort((a, b) => a - b)
   if (clientBlockChanged(currentRewardTypeIds, originalRewardTypeIds)) {
     payload.rewards = values.rewards
+  }
+
+  // "Informazioni aggiuntive" (user directive 2026-08-07): the map travels
+  // whole, only when something in it changed. The codes are the LIVE ones —
+  // a product-line change in this same form can have made a new attribute
+  // applicable, and it must be able to travel.
+  const attributeCodes = panel.applicable_attributes.map((attribute) => attribute.code)
+  const originalAttributeValues = seedAttributeValues(panel.applicable_attributes, panel.attribute_values)
+  if (attributeValuesChanged(values.attribute_values, originalAttributeValues, attributeCodes)) {
+    payload.attribute_values = values.attribute_values
+  }
+
+  // "Stato di lavorazione" (user directive 2026-08-07): sent only on a real
+  // advance — resending the current row is not one (spec 0083 AC-026), and
+  // the note rides along ONLY with the transition that demands it.
+  if (
+    values.quote_workflow_status_id !== null &&
+    values.quote_workflow_status_id !== panel.quote_workflow_status_id
+  ) {
+    payload.quote_workflow_status_id = values.quote_workflow_status_id
+
+    if ((values.note ?? '').trim() !== '') {
+      payload.note = values.note as string
+    }
   }
 
   // Attribution (user directive 2026-07-22): each id is sent on its own, only

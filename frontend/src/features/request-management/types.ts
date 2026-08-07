@@ -6,9 +6,12 @@
  * backend doesn't send.
  */
 
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { Address, GeoRef, Gender, OwnerRef, PersonalDataType } from '@/features/personal-data/types'
 import type { OpportunityStatusSummary } from '@/features/opportunities/types'
+import type { ApplicableAttributeSummary, QuoteWorkflowStatusRef } from '@/features/quotes/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
@@ -227,6 +230,26 @@ export interface RequestWorkPanel {
   referent_contacts: RequestContactsBlock
   /** Next follow-up call the operator scheduled, `"Y-m-d\TH:i"` local format or null (spec 0052 D-1/D-5). */
   next_callback_at: string | null
+  /**
+   * "Informazioni aggiuntive" (user directive 2026-08-07): the Offerta's own
+   * dynamic values map, its applicable descriptors and their merged layout —
+   * the same three blocks `QuoteResource` exposes, rendered by the same
+   * `QuoteDynamicFieldsSection`. The applicable set is resolved from the
+   * request's product lines UNIONED with its offer lines (backend D-1), since
+   * a request is born with no offer line at all.
+   */
+  attribute_values: Record<string, CustomFieldValue>
+  applicable_attributes: ApplicableAttributeSummary[]
+  attribute_layout: LayoutBlob | null
+  /**
+   * "Stato di lavorazione" (user directive 2026-08-07): the Offerta's own
+   * operational status (spec 0083). `quote_workflow_statuses` is the full set
+   * the server resolved for THIS request — the only rows the panel's select
+   * may offer.
+   */
+  quote_workflow_status_id: number | null
+  quote_workflow_status: QuoteWorkflowStatusRef | null
+  quote_workflow_statuses: QuoteWorkflowStatusRef[]
   context: RequestWorkContext
   /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
@@ -317,6 +340,28 @@ export interface UpdateRequestWorkPayload {
   client_address?: RequestClientAddressPayload
   /** Spec 0059 D-3: reward assignments for the reporter, full-replace sync when sent. */
   rewards?: RequestRewardInput[]
+  /**
+   * "Informazioni aggiuntive" (user directive 2026-08-07): sparse per code —
+   * an omitted code keeps its persisted value server-side.
+   */
+  attribute_values?: Record<string, CustomFieldValue>
+  /**
+   * "Stato di lavorazione" (user directive 2026-08-07). `note` travels only
+   * with a transition whose target `requires_note`.
+   */
+  quote_workflow_status_id?: number
+  note?: string
+}
+
+/**
+ * Response of `POST /api/request-management/form-context`: what the CREATE
+ * form must render before anything is persisted, for the product-line
+ * categories picked so far. Byte-for-byte the two blocks the work panel gets
+ * already resolved, so both screens render the identical section.
+ */
+export interface RequestFormContext {
+  applicable_attributes: ApplicableAttributeSummary[]
+  attribute_layout: LayoutBlob | null
 }
 
 /**
@@ -381,6 +426,13 @@ export interface CreateRequestPayload {
   /** `"Y-m-d\TH:i"` local format, same shape the panel PATCHes. */
   next_callback_at?: string
   general_notes?: string
+  /**
+   * "Informazioni aggiuntive" (user directive 2026-08-07): written on the
+   * Offerta the creation opens, validated against the set the submitted
+   * product lines resolve. No working-status key here — the create form does
+   * not offer one, the server assigns the `open` row (spec 0083 AC-020).
+   */
+  attribute_values?: Record<string, CustomFieldValue>
 }
 
 /**

@@ -1,5 +1,7 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RecordCard, RecordCardHeader } from '@/components/detail/record-panel'
@@ -15,7 +17,52 @@ import { useOpportunityQuotesPanel } from '@/features/opportunities/use-opportun
 import type { OpportunityDetail } from '@/features/opportunities/types'
 
 export interface OpportunityQuotesSectionProps {
-  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count'>
+  opportunity: Pick<OpportunityDetail, 'id' | 'quotes_count' | 'single_quote_per_opportunity'>
+}
+
+interface CreateQuoteButtonProps {
+  onClick: () => void
+  /** True when the one-offer rule already bit: the button stays visible but inert. */
+  blocked: boolean
+  className?: string
+}
+
+/**
+ * The "Crea Offerta" affordance. Defined at module level, never inside the
+ * panel: the header and the empty state render the same button.
+ *
+ * When the category caps the opportunity at one offer and one exists, the
+ * button is disabled and carries the reason — a disabled control with no
+ * explanation reads as a bug. `title` + `aria-describedby` rather than a
+ * tooltip primitive: a `disabled` button fires no pointer events, so a
+ * `TooltipTrigger` wrapped around it would never open.
+ */
+function CreateQuoteButton({ onClick, blocked, className }: CreateQuoteButtonProps) {
+  const { t } = useTranslation()
+  const reasonId = useId()
+
+  if (!blocked) {
+    return (
+      <Button size="sm" onClick={onClick} className={className}>
+        <Plus aria-hidden="true" />
+        {t('opportunities.detail.quotes.create')}
+      </Button>
+    )
+  }
+
+  const reason = t('opportunities.detail.quotes.singleQuoteBlocked')
+
+  return (
+    <span className={cn('inline-flex', className)} title={reason}>
+      <Button size="sm" disabled aria-describedby={reasonId}>
+        <Plus aria-hidden="true" />
+        {t('opportunities.detail.quotes.create')}
+      </Button>
+      <span id={reasonId} className="sr-only">
+        {reason}
+      </span>
+    </span>
+  )
 }
 
 /**
@@ -62,9 +109,14 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
     closeActivity,
     notesTarget,
     closeNotes,
+    createBlocked,
     refreshRows,
     sheet,
-  } = useOpportunityQuotesPanel(opportunity.id, opportunity.quotes_count ?? 0)
+  } = useOpportunityQuotesPanel(
+    opportunity.id,
+    opportunity.quotes_count ?? 0,
+    opportunity.single_quote_per_opportunity ?? false,
+  )
 
   return (
     <RecordCard>
@@ -83,12 +135,7 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
           </span>
         }
         actions={
-          canCreate ? (
-            <Button size="sm" onClick={handleCreate}>
-              <Plus aria-hidden="true" />
-              {t('opportunities.detail.quotes.create')}
-            </Button>
-          ) : null
+          canCreate ? <CreateQuoteButton onClick={handleCreate} blocked={createBlocked} /> : null
         }
       />
 
@@ -102,11 +149,13 @@ function OpportunityQuotesPanel({ opportunity }: OpportunityQuotesSectionProps) 
             <p className="max-w-[32ch] text-xs text-muted-foreground">
               {t('opportunities.detail.quotes.emptyHint')}
             </p>
+            {/*
+             * The empty state can never be blocked (the rule only bites from
+             * the SECOND offer on), but it goes through the same component so
+             * the two affordances cannot drift.
+             */}
             {canCreate ? (
-              <Button size="sm" onClick={handleCreate} className="mt-2">
-                <Plus aria-hidden="true" />
-                {t('opportunities.detail.quotes.create')}
-              </Button>
+              <CreateQuoteButton onClick={handleCreate} blocked={createBlocked} className="mt-2" />
             ) : null}
           </div>
         ) : (

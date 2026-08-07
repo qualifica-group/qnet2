@@ -33,6 +33,10 @@ Route::post('request-management/transfer', [RequestManagementController::class, 
 // above, otherwise "product-categories" is swallowed by the wildcard's route
 // model binding.
 Route::get('request-management/product-categories', ProductCategoryTabsController::class);
+// User directive 2026-08-07: the create form's "Informazioni aggiuntive"
+// preview. Same "declared before the wildcard" rule as every literal segment
+// above.
+Route::post('request-management/form-context', [RequestManagementController::class, 'formContext']);
 // Spec 0057: the bare POST, gated by `request-management.create` — no
 // {quote} to conflict with (creation), but declared here too for
 // consistency with the file's own convention.

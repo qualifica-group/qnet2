@@ -55,10 +55,29 @@ restanti sono pre-esistenti in `referents`/`registries`).
 **NOTA D'AMBIENTE.** `./vendor/bin/pest` sull'intera suite **segfaulta (exit 139) con Xdebug attivo**
 e non stampa nulla: girare con `XDEBUG_MODE=off ./vendor/bin/pest`. Non e' un fallimento dei test.
 
-**Non fatto (segnalato, fuori scope).** L'UI Offerte non nasconde/disabilita ancora il pulsante "nuova
-offerta" su un'opportunita' gia' satura: il 422 del backend e' oggi l'unica barriera.
+**Seeder Qualifica (direttiva utente 2026-08-07, secondo giro).** "Formazione" e' ora **una sola riga
+E una sola offerta**: `management_mode = single` (gia' c'era) + `single_quote_per_opportunity = true`.
+"Consulenza" resta senza vincoli su entrambe, dichiarata esplicitamente cosi' un re-run la riallinea.
+Le due regole sono uscite da `QualificaCatalogSeeder` (era a 499 righe) nella nuova
+**`Database\Seeders\QualificaCatalog\CatalogRootRules`**, che tiene mappa + scrittura + `syncSubtree`
+di entrambe: `CATALOG_MANAGEMENT_MODES` e `seedCatalogManagementModes()` NON esistono piu'. Stesso
+split lato test: le asserzioni sulle regole radice sono in
+`tests/Feature/Products/QualificaCatalogRootRulesTest.php` (`QualificaCatalogSeederTest` era a 476).
+Entrambe le regole si riallineano in ENTRAMBE le direzioni su ogni run e cascatano fino ai `GOL -
+<Regione>` di terzo livello.
 
-## GESTIONE RICHIESTE SULLE OFFERTE — spec 0086 (2026-08-07) — NON COMMITTATO
+**Bottone "Crea Offerta" disabilitato (direttiva utente 2026-08-07, terzo giro).** `OpportunityResource`
+espone ora `single_quote_per_opportunity` — la REGOLA, non il verdetto — risolta da
+`OpportunityQuoteLimit::isSingleQuoteBranch()` (reso pubblico, una sola query `whereHas` sulla colonna
+denormalizzata). Il pannello Offerte lo combina con il proprio conteggio LIVE
+(`useOpportunityQuotesPanel` → `createBlocked = singleQuote && count > 0`): cancellata l'unica offerta,
+il bottone si riabilita da solo senza refetch. Unica superficie con l'affordance scoped
+sull'opportunita': `OpportunityQuotesSection` (l'expanded-row renderer non ne ha). Il bottone resta
+VISIBILE ma disabilitato, con il motivo su `title` + `aria-describedby` (`sr-only`): un
+`TooltipTrigger` su un bottone `disabled` non si aprirebbe mai, non spara eventi puntatore.
+`StoreQuoteRequest` resta l'autorita' (422): l'UI nasconde, il backend autorizza.
+
+## GESTIONE RICHIESTE SULLE OFFERTE — spec 0086 (2026-08-07) — VERDE, COMMITTATO IN `bdca4eb`
 
 **Direttiva utente.** "Convertire la gestione delle righe della Gestione Richieste affinche' utilizzi
 come riferimento le righe delle Offerte, mantenendo invariato tutto il flusso gia' esistente."
@@ -114,15 +133,28 @@ non e' stato toccato.
 in questo modulo (AC-001) e le sue note non sono leggibili da qui, nemmeno con `viewAll` (prima:
 200 con lista vuota, ora 403). E' coerente col modello ma e' osservabile.
 
-**Stato.** 50 file di test migrati; suite backend 5202/5204 (1 skip, 1 rosso poi chiuso); frontend
-34 file / 183 test e suite completa 3543 verdi. Verdetto finale del verifier: DA COMPLETARE.
+**VERDETTO DEL VERIFIER: VERDE.** Tutti i 43 AC sono PASS con test nominato e verificato leggendo il
+codice, non i nomi. Batteria finale: Pint pulito; Pest 5242 test, 5241 passati, 1 skip, ZERO falliti;
+`npx tsc -b --force` PULITO repo-wide; Vitest 3555/3555; ESLint 2 soli errori preesistenti estranei
+(`referent-form-metadata.test.tsx`, `registry-form-metadata.test.tsx`, `_omit` inutilizzata);
+`migrate:fresh --seed` + `DemoDataSeeder` x2 idempotenti.
+Il blocco esterno di typecheck (errori `single_quote_per_opportunity` in `product-categories`) e'
+stato chiuso dalla sessione concorrente: non c'e' piu'.
 
-**BLOCCO ESTERNO (non nostro).** `npx tsc -b --force` e' ROSSO con ~19 errori, TUTTI in
-`src/features/product-categories/**` (+1 in `features/products`), zero in `request-management`.
-Causa: la feature concorrente "riga singola" (voce sotto) ha reso `single_quote_per_opportunity` un
-campo OBBLIGATORIO di `ProductCategoryTreeNode`/`ProductCategoryDetail` e del tipo di payload, senza
-aggiornare le proprie fixture di test. Decisione dell'utente 2026-08-07: NON toccare, lo chiude chi
-possiede quella feature. Finche' resta, il gate typecheck del repo e' rosso.
+**Due riserve residue, non bloccanti.** AC-001 (nessuna riga per opportunita' senza offerte) e AC-028
+(code/`quote_workflow_status_id`/zero righe sull'Offerta creata) sono PASS "per costruzione", senza
+test negativo dedicato: la prima e' garantita da `baseQuery()` su `quotes`, la seconda eredita la
+copertura di `QuoteService::create()`, non modificato da questa spec. Rischio basso, dichiarato.
+
+**Nove punti riverificati riga per riga** perche' i test nuovi erano tutti verdi al primo giro (un
+test mai visto fallire e' un test di cui non si sa se puo' fallire): AC-030 (il mock intercetta SOLO
+`QuoteService`, quindi l'Opportunity viene davvero inserita prima del lancio: e' rollback vero, non
+"mai tentato"), AC-035 (`fresh()` reale sulla sorella), AC-006 (verifica entrambe le meta': condivisi
+identici E indipendenti divergenti), AC-013 (ogni filtro ha fixture matching + excluded), AC-038
+(decoy + assert esplicito che gli id differiscono), AC-011, AC-018, AC-031, AC-043. Nessuno ha ceduto.
+
+**`ImportErrorsTest`**: il fallimento intermittente osservato era interferenza da editing concorrente
+su albero in movimento, non flakiness. Non si e' mai ripresentato su un run pulito. Ipotesi chiusa.
 
 **Debito tecnico dichiarato.**
 - `RequestColumnCatalog.php` a ~455 righe: split di `actions()` in `RequestActionCatalog.php`
@@ -134,8 +166,21 @@ possiede quella feature. Finche' resta, il gate typecheck del repo e' rosso.
   dalla spec 0086.
 - `Quote.php` a 314 righe (14 oltre il soft limit, sotto il limite duro).
 
-**Attenzione a chi committa.** L'albero contiene TRE lavori mescolati: questa spec, la feature "riga
-singola" e il ritiro della system key `validated` da `quote_workflow_statuses`. Separare i commit.
+**COMMIT — da sapere.** Questa spec NON e' stata committata da chi l'ha sviluppata. E' finita dentro
+`bdca4eb` ("chore(quote-workflows): remove obsolete tests, services, and components related to
+`validated` system status row handling"), un commit da **245 file** che ha raccolto in un colpo solo
+TRE lavori distinti: spec 0086, la feature "riga singola" e il ritiro della system key `validated`.
+Il messaggio di commit descrive solo il terzo. Conseguenza pratica: chi cerchera' l'origine della
+migrazione Gestione Richieste -> Offerte non la trovera' dal log; il riferimento e' questa voce e
+`docs/specs/0086-request-management-on-quotes.xml`. Un eventuale revert di `bdca4eb` per motivi
+legati a `validated` porterebbe via anche l'intera spec 0086 e la feature "riga singola".
+
+**Dopo `bdca4eb` la superficie di questo modulo si e' gia' rimossa**: e' in corso una feature
+"Informazioni aggiuntive" che tocca file posseduti da 0086 (`RequestManagementController`,
+`RequestManagementResource`, `RequestManagementService`, le route) con nuovi
+`RequestFormContextRequest`/`RequestFormContextResource`/`RequestAttributeResolver`. Se qualcuno
+rilancia la batteria e trova rosso li', la causa piu' probabile e' quella feature, non una
+regressione di 0086.
 
 ## RIGA SINGOLA: OFFERTA A UNA RIGA + EDITOR IN GRIGLIA (2026-08-07) — VERDE, NON COMMITTATO
 
