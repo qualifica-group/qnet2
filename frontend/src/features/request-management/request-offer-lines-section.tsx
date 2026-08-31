@@ -4,7 +4,7 @@ import { useWatch, type Control, type Path } from 'react-hook-form'
 import { TrendingUp } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
-import { categoryManagementMetaFor } from '@/features/product-lines/category-tree-scope'
+import { resolveManagementMode } from '@/features/product-lines/category-tree-scope'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
@@ -82,13 +82,12 @@ export function RequestOfferLinesSection<TFieldValues extends RequestOfferLinesF
   )
 
   // Spec 0077: an opportunity managed on a `single` product category carries
-  // one offer row. Resolved from the FIRST covered category — INV-1 already
-  // guarantees they share a root — against the same cached tree the
-  // product-line pickers read, which is where the mode lives.
+  // one offer row. Resolved over ALL the covered categories — rev.2 revoked
+  // INV-1, so they no longer necessarily share a root and the strictest one
+  // governs — against the same cached tree the product-line pickers read,
+  // which is where the mode lives.
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
-  const singleCategoryMode =
-    categoryIds.length > 0 &&
-    categoryManagementMetaFor(categoryTree, categoryIds[0])?.managementMode === 'single'
+  const singleCategoryMode = resolveManagementMode(categoryTree, categoryIds) === 'single'
 
   const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
   const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])

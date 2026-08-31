@@ -10,7 +10,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { fetchOpportunity, opportunityDetailQueryKey } from '@/features/opportunities/api'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { categoryManagementMetaFor } from '@/features/product-lines/category-tree-scope'
+import { resolveManagementMode } from '@/features/product-lines/category-tree-scope'
 import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -76,16 +76,15 @@ export function QuoteOfferTab({
 
   // Spec 0077, user directive 2026-08-07: an opportunity managed on a
   // `single` product category carries one product line (INV-3), and its offer
-  // one product row. Resolved from the FIRST covered category — INV-1 already
-  // guarantees they share a root — against the same cached category tree the
-  // product-line pickers read, which is where the mode lives (the
-  // opportunity's `product_lines` projection carries ids and names only).
-  // Independent of `unlocked`: that switch widens the product picker, it does
-  // not lift the row cap, which the server enforces either way.
+  // one product row. Resolved over ALL the covered categories — rev.2 revoked
+  // INV-1, so they no longer necessarily share a root and the strictest one
+  // governs — against the same cached category tree the product-line pickers
+  // read, which is where the mode lives (the opportunity's `product_lines`
+  // projection carries ids and names only). Independent of `unlocked`: that
+  // switch widens the product picker, it does not lift the row cap, which the
+  // server enforces either way.
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
-  const singleCategoryMode =
-    scopedCategoryIds.length > 0 &&
-    categoryManagementMetaFor(categoryTree, scopedCategoryIds[0])?.managementMode === 'single'
+  const singleCategoryMode = resolveManagementMode(categoryTree, scopedCategoryIds) === 'single'
 
   const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
   const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])

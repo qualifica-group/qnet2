@@ -88,6 +88,7 @@ export const contracts = {
     terminate: 'Terminate contract',
     reactivate: 'Reactivate contract',
     changeStatus: 'Change status',
+    scheduleUnavailable: 'Not available yet',
 
     statusSearch: 'Search status…',
     statusPlaceholder: 'Select a status',
@@ -96,9 +97,9 @@ export const contracts = {
     viewQuote: 'View quote',
     openOpportunity: 'Open opportunity',
     validateDialog: {
-      description: 'Record the validation date and optionally change the status.',
+      description: 'Record the validation date: the contract moves to the "Validato" status unless another one is picked.',
       date: 'Validation date',
-      status: 'Destination status',
+      status: 'Destination status (positive outcome)',
       confirm: 'Validate',
       saving: 'Validating…',
       success: 'Contract validated successfully.',
@@ -137,8 +138,7 @@ export const contracts = {
     // shared `actions.edit` key, not `contracts.actions.edit`.
     edit: {
       title: 'Edit data',
-      description: 'Update the status, dates and notes of the contract.',
-      status: 'Contract status',
+      description: 'Update the dates and notes of the contract.',
       expiryDate: 'Expiry date',
       renewalDate: 'Renewal date',
       paymentNotes: 'Payment notes',
@@ -147,11 +147,15 @@ export const contracts = {
       saving: 'Saving…',
       success: 'Contract updated successfully.',
       genericError: 'Unable to update the contract. Please try again.',
-      statusRequired: 'Contract status is required.',
     },
     reactivateDialog: {
       description: 'The contract will return to the status it had before suspension.',
+      terminatedDescription:
+        'The termination will be undone (date, reason and author) and the contract will restart from the status you pick.',
+      status: 'Restart status',
+      statusRequired: 'The restart status is required.',
       confirm: 'Reactivate',
+      saving: 'Reactivating…',
       success: 'Contract reactivated successfully.',
       genericError: 'Unable to reactivate the contract. Please try again.',
     },

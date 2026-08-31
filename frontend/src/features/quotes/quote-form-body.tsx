@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
@@ -18,6 +18,7 @@ import {
   type OpportunityForSelectMeta,
   type OpportunityForSelectRoleKey,
 } from '@/features/opportunities/for-select-api'
+import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
@@ -28,7 +29,10 @@ import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-field
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { QuoteLayoutSection } from '@/features/quotes/quote-layout-section'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
+import { parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
+import { EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
+import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteDetail, QuoteFormMode } from '@/features/quotes/types'
 
@@ -46,6 +50,13 @@ const NOTES_TAB = 'notes'
 
 /** Empty placeholders when the form's own `formState.errors` has no array-level issue for that tab. */
 const NO_ROW_ERRORS: undefined = undefined
+
+/**
+ * The quantity a deep-link-seeded offer row starts on (user directive
+ * 2026-08-31): the operator asked for THAT product, so one of it is the only
+ * sensible starting point — and the field stays editable like any other.
+ */
+const SEEDED_LINE_QUANTITY = 1
 
 /**
  * The quote create/edit form UI (spec 0065 AC-070): testata fields (code,
@@ -143,6 +154,49 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
     appliedForcedOpportunity.current = true
     applyInheritedRoleValues(forcedOpportunityMeta)
   }, [forcedOpportunityId, forcedOpportunityMeta, applyInheritedRoleValues])
+
+  // User directive 2026-08-31: an offer opened from the "questa anagrafica ha
+  // gia' un'opportunita' aperta" refusal carries the products the refused
+  // opportunity was going to classify — its rows must already be there. Same
+  // shape as the forced Opportunity above: hydrate the ids through the
+  // for-select label cache, then apply ONCE, so a later edit is never
+  // overwritten by a slow response.
+  const seededProductIds = useMemo(
+    () => (mode.type === 'create' ? parseQuoteCreateProductIds(mode.params) : []),
+    [mode],
+  )
+  const seededProductLabels = useForSelectLabels({
+    resource: PRODUCTS_FOR_SELECT_RESOURCE,
+    ids: seededProductIds,
+    enabled: seededProductIds.length > 0,
+  })
+  const appliedSeededProducts = useRef(false)
+  useEffect(() => {
+    if (seededProductIds.length === 0 || appliedSeededProducts.current) {
+      return
+    }
+
+    const items = seededProductIds
+      .map((id) => seededProductLabels.get(id) as QuoteProductForSelectItem | undefined)
+      .filter((item): item is QuoteProductForSelectItem => item !== undefined)
+
+    if (items.length < seededProductIds.length) {
+      return
+    }
+
+    appliedSeededProducts.current = true
+    form.setValue(
+      'offer_lines',
+      items.map((item) => {
+        if (item.meta.vat_rate_id !== null && item.meta.vat_rate !== null) {
+          rememberVatRatePercent(item.meta.vat_rate_id, Number(item.meta.vat_rate))
+        }
+
+        return { ...EMPTY_LINE_ROW, ...lineValuesFromProduct(item, 'revenue'), quantity: SEEDED_LINE_QUANTITY }
+      }),
+      { shouldDirty: true },
+    )
+  }, [seededProductIds, seededProductLabels, form, rememberVatRatePercent])
 
   /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills; the forced Opportunity's own meta is the fallback source before any user pick. */
   const inheritedMeta = inheritedRoles ?? forcedOpportunityMeta

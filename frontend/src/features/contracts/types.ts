@@ -113,9 +113,12 @@ export interface ContractDetailWithPermissions extends ContractDetail {
   permissions: ResourcePermissions
 }
 
-/** Payload for PATCH /contracts/{id} (partial, D-6: no create/delete). */
+/**
+ * Payload for PATCH /contracts/{id} (partial, D-6: no create/delete). The
+ * endpoint still accepts `contract_status_id`, but no client sends it since
+ * the status left the "Modifica dati" form (user directive 2026-08-31).
+ */
 export interface UpdateContractPayload {
-  contract_status_id?: number
   renewal_date?: string | null
   expiry_date?: string | null
   payment_notes?: string | null
@@ -133,6 +136,17 @@ export interface ScheduleContractPayload {
   expiry_date: string
   renewal_date?: string | null
   contract_status_id: number
+}
+
+/**
+ * Payload for POST /contracts/{id}/reactivate (BR-2). `contract_status_id`
+ * is mandatory when the contract is disdetto (nothing recorded the status
+ * preceding the disdetta, so the user picks it) and must not belong to the
+ * `closed_lost` group; on the suspended path the body is empty and the
+ * pre-suspension status is restored server-side.
+ */
+export interface ReactivateContractPayload {
+  contract_status_id?: number
 }
 
 /** Payload for POST /contracts/{id}/terminate (BR-4). `contract_status_id`, when given, must belong to group `closed_lost` (server-enforced). */

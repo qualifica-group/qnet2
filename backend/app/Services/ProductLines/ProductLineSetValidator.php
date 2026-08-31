@@ -18,9 +18,16 @@ use Illuminate\Validation\ValidationException;
  * SELECTABLE — spec 0074, with the already-persisted ones exempt) and
  * cross-row (no repeated {funzione aziendale, categoria} pair; each row's
  * category belongs to EXACTLY that business function once inheritance is
- * resolved; and, spec 0077 INV-1/INV-2/INV-3, all rows share the same
- * business function AND resolve to the same product-category root, and a
- * root whose management_mode is `single` may carry exactly one row).
+ * resolved; and, spec 0077 rev.2 INV-3, a card carrying a row whose root
+ * management_mode is `single` may carry that row only).
+ *
+ * Spec 0077 rev.2 (user directive 2026-08-31) REVOKED INV-1/INV-2: the rows
+ * of a `multiple` card are independent — each picks its own business
+ * function and its own category root. The two are one decision, not two: a
+ * descendant may not override the business function it inherits
+ * (ProductCategoryService::assertNoInheritedBusinessFunction), so a root
+ * subtree carries exactly one function and a different function is only
+ * reachable under a different root.
  *
  * It exists as a service, and not only as the FormRequest trait it used to
  * be, because the collection is written through TWO channels: the form
@@ -49,15 +56,11 @@ final class ProductLineSetValidator
     public const string BUSINESS_FUNCTION_MISMATCH_MESSAGE = 'This product category does not belong to the selected business function.';
 
     /**
-     * Card-level invariants (spec 0077). Unlike the two messages above (which
-     * blame a single row), these land on the collection attribute itself —
-     * `errors: { product_lines: [...] }`, no row index — because none of the
-     * three is about one row, it is about how the rows relate to each other.
+     * The card-level invariant (spec 0077 INV-3). Unlike the two messages
+     * above (which blame a single row), it lands on the collection attribute
+     * itself — `errors: { product_lines: [...] }`, no row index — because it
+     * is not about one row, it is about how the rows relate to each other.
      */
-    public const string SAME_BUSINESS_FUNCTION_MESSAGE = 'All rows must share the same business function.';
-
-    public const string SAME_ROOT_CATEGORY_MESSAGE = 'All rows must resolve to the same product category.';
-
     public const string SINGLE_ROW_ONLY_MESSAGE = 'This product category allows only a single row.';
 
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
@@ -176,12 +179,18 @@ final class ProductLineSetValidator
     }
 
     /**
-     * Spec 0077 INV-1/INV-2/INV-3: skipped below two well-formed rows — none
-     * of the three can be broken by a single row, and a malformed one is
-     * already reported by the per-row rules. Only ever invoked with the
-     * SUBMITTED collection (crossRowErrors()/assert() are only ever called
-     * that way), so D-5's grandfathering falls out for free: a historical
-     * record that never resubmits `product_lines` never reaches here.
+     * Spec 0077 INV-3: skipped below two well-formed rows — it cannot be
+     * broken by a single row, and a malformed one is already reported by the
+     * per-row rules. Only ever invoked with the SUBMITTED collection
+     * (crossRowErrors()/assert() are only ever called that way), so D-5's
+     * grandfathering falls out for free: a historical record that never
+     * resubmits `product_lines` never reaches here.
+     *
+     * Rows may now sit on different roots (rev.2 revoked INV-1), so the mode
+     * is resolved over ALL of them and the STRICTEST one wins (D-10): one row
+     * on a `single` root caps the whole card at that row. A category that
+     * resolves to nothing is ignored — the per-row existence/selectability
+     * rule already reports it.
      *
      * @param  array<int, mixed>  $lines
      * @return array<string, string>
@@ -198,15 +207,6 @@ final class ProductLineSetValidator
         }
 
         /** @var array<int, array{business_function_id: mixed, product_category_id: mixed}> $wellFormed */
-        $businessFunctionIds = array_unique(array_map(
-            static fn (array $line): int => (int) $line['business_function_id'],
-            $wellFormed,
-        ));
-
-        if (count($businessFunctionIds) > 1) {
-            return [$attribute => __(self::SAME_BUSINESS_FUNCTION_MESSAGE)];
-        }
-
         $categoryIds = array_values(array_unique(array_map(
             static fn (array $line): int => (int) $line['product_category_id'],
             $wellFormed,
@@ -214,29 +214,11 @@ final class ProductLineSetValidator
 
         // One batch call resolves every row's root+mode at once (spec 0077
         // constraint: never a walk per row).
-        $resolutions = array_filter($this->hierarchy->rootManagementModesFor($categoryIds));
+        $carriesSingleModeRow = array_any(
+            array_filter($this->hierarchy->rootManagementModesFor($categoryIds)),
+            static fn (array $resolution): bool => $resolution['management_mode'] === CategoryManagementMode::Single,
+        );
 
-        if ($resolutions === []) {
-            // Every category id is unresolvable — already reported by the
-            // per-row existence/selectability rule.
-            return [];
-        }
-
-        $rootIds = array_unique(array_map(
-            static fn (array $resolution): int => $resolution['root_id'],
-            $resolutions,
-        ));
-
-        if (count($rootIds) > 1) {
-            return [$attribute => __(self::SAME_ROOT_CATEGORY_MESSAGE)];
-        }
-
-        $mode = array_values($resolutions)[0]['management_mode'];
-
-        if ($mode === CategoryManagementMode::Single) {
-            return [$attribute => __(self::SINGLE_ROW_ONLY_MESSAGE)];
-        }
-
-        return [];
+        return $carriesSingleModeRow ? [$attribute => __(self::SINGLE_ROW_ONLY_MESSAGE)] : [];
     }
 }

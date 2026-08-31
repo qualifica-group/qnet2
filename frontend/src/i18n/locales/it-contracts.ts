@@ -88,6 +88,9 @@ export const contracts = {
     terminate: 'Disdici contratto',
     reactivate: 'Riattiva contratto',
     changeStatus: 'Cambia stato',
+    // "Programma" resta a schermo ma disabilitato: l'azione sara' ripensata
+    // (direttiva utente 2026-08-31).
+    scheduleUnavailable: 'Non ancora disponibile',
 
     statusSearch: 'Cerca stato…',
     statusPlaceholder: 'Seleziona uno stato',
@@ -96,9 +99,9 @@ export const contracts = {
     viewQuote: 'Visualizza preventivo',
     openOpportunity: 'Apri opportunità',
     validateDialog: {
-      description: 'Registra la data di validazione del contratto ed eventualmente cambia stato.',
+      description: 'Registra la data di validazione: il contratto passa allo stato «Validato», salvo scelta diversa.',
       date: 'Data di validazione',
-      status: 'Stato di destinazione',
+      status: 'Stato di destinazione (chiusura positiva)',
       confirm: 'Valida',
       saving: 'Validazione…',
       success: 'Contratto validato con successo.',
@@ -137,8 +140,7 @@ export const contracts = {
     // chiave condivisa `actions.edit`, non `contracts.actions.edit`.
     edit: {
       title: 'Modifica dati',
-      description: 'Aggiorna lo stato, le date e le note del contratto.',
-      status: 'Stato contratto',
+      description: 'Aggiorna le date e le note del contratto.',
       expiryDate: 'Data di scadenza',
       renewalDate: 'Data di rinnovo',
       paymentNotes: 'Note di pagamento',
@@ -147,11 +149,17 @@ export const contracts = {
       saving: 'Salvataggio…',
       success: 'Contratto aggiornato con successo.',
       genericError: 'Impossibile aggiornare il contratto. Riprova.',
-      statusRequired: 'Lo stato del contratto è obbligatorio.',
     },
     reactivateDialog: {
+      // Percorso SOSPESO: conferma inline, nessuna scelta da fare.
       description: 'Il contratto tornerà allo stato precedente alla sospensione.',
+      // Percorso DISDETTO: dialog con scelta dello stato di destinazione.
+      terminatedDescription:
+        'La disdetta verrà annullata (data, motivazione e autore) e il contratto ripartirà dallo stato scelto.',
+      status: 'Stato di ripartenza',
+      statusRequired: 'Lo stato di ripartenza è obbligatorio.',
       confirm: 'Riattiva',
+      saving: 'Riattivazione…',
       success: 'Contratto riattivato con successo.',
       genericError: 'Impossibile riattivare il contratto. Riprova.',
     },

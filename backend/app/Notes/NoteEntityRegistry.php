@@ -47,11 +47,16 @@ final class NoteEntityRegistry
     }
 
     /**
+     * The message is explicit (and catalogued in lang/*.json) because
+     * BaseApiController degrades a message-less HttpException to the generic
+     * "An unexpected error occurred.": a legitimate refusal would otherwise
+     * reach the operator as an unexpected server error.
+     *
      * @throws HttpException 403 when unreadable
      */
     public function assertReadable(User $user, string $entityType, Model $record): void
     {
-        abort_unless($this->entityFor($entityType)->authorizeRead($user, $record), 403);
+        abort_unless($this->entityFor($entityType)->authorizeRead($user, $record), 403, 'This action is unauthorized.');
     }
 
     public function mentionableUsersQuery(string $entityType, Model $record): Builder

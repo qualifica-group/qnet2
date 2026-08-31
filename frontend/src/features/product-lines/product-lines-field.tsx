@@ -30,8 +30,12 @@ interface ProductLinesFieldProps {
  * "Add" appends an empty row (full-width dashed button), each row edits its
  * pair IN PLACE (numbered chip, two selects, a trailing remove button), the
  * category select is scoped to the row's own function and disabled until it
- * is chosen. All non-render logic (label resolution) lives in
- * `useProductLinesField` — this component only renders it.
+ * is chosen. Every row is independent: spec 0077 rev.2 (user directive
+ * 2026-08-31) revoked INV-1/INV-2, so the function of a row after the first
+ * is neither prefilled, nor locked, nor confined to the first row's branch —
+ * only the `single`-mode row cap survives (AC-041). All non-render logic
+ * (label resolution) lives in `useProductLinesField` — this component only
+ * renders it.
  *
  * The two selects read DIFFERENT channels on purpose: the function is a flat,
  * server-paginated `for-select`, the category is the structural TREE
@@ -47,8 +51,6 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
     setRowProductCategory,
     businessFunctionLabel,
     canAddRow,
-    managementMode,
-    managementModeRootCategoryId,
   } = useProductLinesField({ value, onChange, knownLines })
   // One quick-create wiring per resource, shared by every row: the refs it
   // tracks are matched by id, so a function created from row 2 also labels
@@ -77,13 +79,6 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                   label: businessFunctionLabel(row.business_function_id) ?? `#${row.business_function_id}`,
                 }
               : null
-          // INV-2 (AC-042): from the second row on, once the mode resolves to
-          // `multiple`, the function follows the first row's and is no
-          // longer independently editable.
-          const businessFunctionLocked = index > 0 && managementMode === 'multiple'
-          // INV-1 (AC-042): same restriction, applied to the category
-          // picker's subtree scope rather than to its own control.
-
           return (
             // The row's identity IS its position, so the index is the correct key (mirrors ManagerSlotsField).
             <li key={index} className="flex items-center gap-2">
@@ -104,9 +99,9 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                     selectedItem={businessFunctionSelected}
                     action={businessFunctionQuickCreate.renderAction(
                       (ref) => setRowBusinessFunction(index, ref.id),
-                      disabled || businessFunctionLocked,
+                      disabled,
                     )}
-                    disabled={disabled || businessFunctionLocked}
+                    disabled={disabled}
                     labels={{
                       ...selectLabels,
                       searchPlaceholder: t('productLines.businessFunctionSearch'),
@@ -125,7 +120,6 @@ export function ProductLinesField({ value, onChange, knownLines = EMPTY_KNOWN_LI
                     value={row.product_category_id}
                     onChange={(id) => setRowProductCategory(index, id)}
                     businessFunctionId={row.business_function_id}
-                    rootCategoryId={businessFunctionLocked ? managementModeRootCategoryId : null}
                     disabled={disabled}
                     action={productCategoryQuickCreate.renderAction(
                       (ref) => setRowProductCategory(index, ref.id),

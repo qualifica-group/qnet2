@@ -3,6 +3,247 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CONTRATTI — AZIONI PER STATO E STATO "VALIDATO" (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Quando il contratto non e' su uno stato con chiusura positiva ci deve stare
+solo il bottone valida o disdici; se e' validato non ci deve stare valida ma solo programma e
+disdici; se il contratto e' disdettato nessun bottone. Il modifica dati non deve avere nel form lo
+stato del contratto. Voglio anche lo stato con esito positivo 'Validato', che non c'e' nel seed.
+Il bottone programma non deve essere attivo per ora perche' sara' utilizzato diversamente."
+**Scelte confermate in sessione:** "Modifica dati" resta visibile per tutto il ciclo e sparisce
+solo a contratto disdetto; la select di stato resta nel dialog "Valida" ma il default e'
+"Validato"; "Validato" e' una riga di SISTEMA.
+
+**Nuova riga di stato.** Migrazione `2026_08_31_100000_add_validated_contract_status`: "Validato",
+`system_key = 'validated'` (nuovo case in `App\Enums\StatusSystemKey`), group `closed_won`, color
+`emerald`. E' una riga di HEAD: `ContractStatus::SYSTEM_HEAD_KEYS = [New, Validated]`, quindi la
+sequenza `sort_order` diventa "Da validare" 0, "Validato" 10, i 3 custom 20/30/40, la coda
+Sospeso/Annullato/Disdetto 50/60/70 — la migrazione risequenzia le righe esistenti (+10). Chi
+tocca `StatusOrderManager` o i test di reorder deve partire da questi numeri, non dai vecchi.
+
+**Regola di ciclo di vita — unica fonte di verita'.**
+`App\Services\Contracts\ContractActionAvailability` (nuova classe) e il suo gemello FE
+`frontend/src/features/contracts/contract-lifecycle.ts`:
+- `validate` = non disdetto AND non validato AND non sospeso
+- `schedule` = non disdetto AND validato
+- `terminate` / `edit` = non disdetto
+"validato" = `validated_at` valorizzato OPPURE stato nel gruppo `closed_won` (l'OR copre i
+contratti spostati su una chiusura positiva per altre vie). Consumata da
+`ContractsAuthorization::actionPermissions()` (i flag `permissions.actions` del dettaglio) e da
+`ContractsTableDefinition::actionsFor()` (le row action della griglia, `contractStatus` gia' in
+eager loading: nessun N+1). Il FE la riapplica in `contract-actions-bar.tsx` perche' deve anche
+decidere "Programma" disabilitato e "Modifica dati" — stesso doppio gate gia' usato per
+`reactivate`.
+
+**"Valida" ora sposta lo stato.** `ContractActionService::validate()` porta SEMPRE il contratto su
+uno stato `closed_won`: default la riga di sistema "Validato" (come `terminate` fa con
+"Disdetto"), e `ValidateContractRequest` accetta solo `contract_status_id` attivi del gruppo
+`closed_won` (`assertClosedWon()` in profondita' nel service). E' cio' che rende "validato" e
+"stato con chiusura positiva" lo stesso fatto per la barra azioni.
+
+**"Modifica dati" senza stato.** Rimosso `contract_status_id` da `contract-edit-dialog.tsx`,
+`buildEditContractSchema()` (che non prende piu' `t`) e `buildEditPayload()`; rimosse le chiavi
+i18n `contracts.actions.edit.status`/`statusRequired`. L'endpoint PATCH continua ad accettare il
+campo (nessun client lo invia): non e' stato ristretto lato server.
+
+**"Programma" disabilitato.** Il bottone si vede solo da contratto validato ed e' `disabled` con
+`title` = `contracts.actions.scheduleUnavailable` ("Non ancora disponibile"). Il dialog e
+l'endpoint restano intatti in attesa del nuovo uso: non cancellarli.
+
+**Verifica eseguita.** Backend `php artisan test`: 5294 passed / 1 skipped / 0 failed (5295).
+Frontend `npx vitest run`: 3587 passed su 504 file. `npx tsc -b --force`: pulito. Pint + ESLint
+puliti. Test toccati per requisito cambiato (dichiarato): `ContractStatusSeedTest` (8 righe),
+`ContractStatusReorderTest` + `ContractStatusCrudTest` + `Unit/Models/ContractStatusTest`
+(head a due righe), `QuoteWorkflowMigrationTest` (`--step` 15 -> 16: OBBLIGATORIO bumparlo a ogni
+nuova migrazione, altrimenti il rollback parziale fa cascata di errori sui test seeder),
+`contract-schema.test.ts` e `contract-detail.test.tsx`. Nuovi: `ContractActionAvailabilityTest`
+(dettaglio + row action della griglia) e il blocco "lifecycle gating" in `contract-detail.test.tsx`.
+
+**Riattivazione di un contratto DISDETTO (stessa data, direttiva successiva).** Emenda la riga
+"disdetto -> nessun bottone": resta "Riattiva contratto". `reactivate` ora ha DUE percorsi in
+`ContractActionService::reactivate(Contract, ReactivateContractData)`:
+- **sospeso** — invariato: body vuoto, ripristino dello stato pre-sospensione, guardia
+  "preventivo attualmente closed_won" (422 altrimenti).
+- **disdetto** — `contract_status_id` obbligatorio (nuovo `ReactivateContractRequest`: `required`
+  se `terminated_at` non e' null, e mai un gruppo `closed_lost`), azzera l'intero timbro di
+  disdetta (`terminated_at`/`termination_reason`/`terminated_by`) e LASCIA `validated_at`. Su
+  questo percorso NON c'e' guardia sul preventivo (decisione utente). Activity log:
+  `reactivated_from` = `suspended` | `terminated`.
+Il controller passa da `Request` a `ReactivateContractRequest`. `ContractActionAvailability::
+mayReactivate()` = sospeso OR disdetto, usata da `ContractsAuthorization` e da `actionsFor()`
+della griglia. FE: `contract-reactivate-dialog.tsx` (nuovo, select stato obbligatoria) sul
+percorso disdetto, mentre il sospeso tiene il confirm inline; `reactivateContract(id, payload)` e
+`useReactivateContract` accettano ora un payload. Chiavi i18n nuove sotto `reactivateDialog`:
+`terminatedDescription`, `status`, `statusRequired`, `saving`.
+Verifica: backend 5303 passed / 1 skipped / 0 failed (5304); frontend 3594 passed su 505 file;
+`tsc -b --force`, Pint ed ESLint puliti.
+
+**Prossimi passi.** Ridefinire cosa fa "Programma" (l'azione backend e' viva e testata); decidere
+se la griglia debba mostrare "Cambia stato" ora che lo stato non e' piu' editabile da "Modifica
+dati".
+
+## UNA SOLA OPPORTUNITA' APERTA PER ANAGRAFICA (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Quando vuoi creare un'opportunita' per un'anagrafica ed esiste gia'
+un'opportunita' aperta, il sistema ti ferma dicendo che esiste gia' un'opportunita' aperta" +
+"blocco ma con l'url dell'opportunita' aperta" + "su tutti i percorsi di creazione".
+**Raffinamento successivo:** "se c'e' un'opportunita' aperta che comprende una categoria singola
+deve poter aprire una nuova opportunita'".
+
+**Definizione di "aperta" (decisa dall'utente).** Non esiste un campo di stato: lo stato
+dell'Opportunita' e' COMPUTATO dalle offerte (spec 0082/0083). "Aperta" = almeno un'offerta fuori
+dai due esiti terminali `closed_won`/`closed_lost`, oppure nessuna offerta (che mostra la riga
+`open` del set di default globale). E' esattamente
+`OpportunityStatusScope::whereGroupIn(..., ACTIVE_GROUPS)` — stesso predicato del badge e del
+filtro di tabella, mai una seconda definizione.
+
+**Esenzione categoria `single`.** Un'opportunita' aperta la cui modalita' risolta (spec 0077,
+`OpportunityProductLineCoverage::managementModeOf()`) e' `single` NON blocca: e' un affare
+one-shot, non il business corrente dell'anagrafica. Blocca solo `multiple` o indeterminata (mai
+PROVATA single). Con piu' opportunita' aperte, blocca la prima `multiple` in ordine di id.
+
+**Punto unico di enforcement.** `App\Services\Opportunities\RegistryOpenOpportunityGuard` —
+`assertNoOpenOpportunity(int $registryId)` lancia `ValidationException` — chiamato dentro
+`OpportunityService::create()` DOPO la derivazione da lead e DENTRO la transazione. Passa di li'
+ogni percorso di creazione (form, conversione lead singola, bulk, auto-convert da import), quindi
+nessuno lo aggira. La 422 arriva al client via `handleControllerException` gia' esistente: nessun
+controller nuovo, nessun catch nuovo.
+
+**Contratto della 422** (envelope `fail()`): `errors.registry_id[0]` = messaggio tradotto
+(`lang/it.json`, chiave `This registry already has an open opportunity: :opportunity. Add the offer
+to that one instead of creating a duplicate.`), `errors.existing_opportunity_id[0]` = id
+dell'opportunita' bloccante COME STRINGA. Il backend non emette MAI path di frontend: gli URL li
+costruisce il client.
+
+**Il rifiuto INDIRIZZA, non chiude (direttiva 2026-08-31).** Il messaggio dice di aggiungere
+l'offerta sull'opportunita' gia' aperta invece di duplicare, e l'alert offre il bottone
+"Aggiungi l'offerta a questa opportunita'" -> `/quotes/new?opportunity_id={id}&product_ids={csv}`:
+il form Offerta si apre sull'opportunita' bloccante con le righe GIA' compilate con i prodotti che
+si volevano classificare. I prodotti NON passano dal backend: li ha gia' il form rifiutato
+(`values.products_of_interest`), quindi `blockingOpportunity` porta `{id, message, productIds}`.
+
+**Canale dei parametri offerta** — `features/quotes/quote-create-params.ts` (nuovo): unica fonte di
+`opportunity_id` + `product_ids` (CSV, `URLSearchParams` non ha forma lista), con
+`quoteCreateHref()` e `parseQuoteCreateProductIds()`. `QuoteFormScreen` inoltra `product_ids`
+verbatim; `QuoteFormBody` idrata i prodotti via `useForSelectLabels` (stessa meccanica gia' usata
+per l'Opportunita' forzata) e applica UNA volta sola le righe, con prezzo e IVA presi dal `meta`
+del prodotto tramite `lineValuesFromProduct()` — estratta da `useQuoteLinesField.setProduct()` cosi'
+la riga seminata e' identica a una scelta manuale. Quantita' iniziale `SEEDED_LINE_QUANTITY = 1`.
+
+**Bulk conversione lead.** Nuovo blocker `BulkConversionBlockedException::BLOCKER_REGISTRY_HAS_OPEN_OPPORTUNITY`
+(`registry_has_open_opportunity`), pre-controllato in `ConvertLeadsToOpportunities::blockers()` con
+UNA query (`openOpportunityIdsByRegistry`). Include il caso intra-batch: due lead della STESSA
+anagrafica nello stesso batch: il secondo e' un blocker (D-1 all-or-nothing).
+
+**Frontend.** `ExistingOpportunityAlert` (`features/opportunities/existing-opportunity-alert.tsx`)
+estratto da `opportunity-lead-field.tsx` e riusato: messaggio + link `/opportunities/{id}`.
+`useOpportunityFormSubmit` espone `blockingOpportunity {id, message}` letto dalla 422; quando c'e',
+il messaggio NON viene anche mappato sul campo (niente doppione) e l'alert vive sotto il campo
+Anagrafica in `OpportunityClientSection`. Nuova reason i18n `registry_has_open_opportunity` in
+`it-leads.ts`/`en-leads.ts` + type `LeadConversionBlockerReason`.
+
+**Seeder adeguati (dati demo devono rispettare l'invariante).** `DemoOpportunitySeeder`: il batch
+standalone consuma anagrafiche DISTINTE (cap = numero registries) e il batch da lead salta i
+registry gia' occupati, uno per anagrafica. `QualificaSampleOpportunitySeeder`: filtra le
+anagrafiche libere via il guard (`freeRegistries()`), perche' il lead seeder che gira prima ha gia'
+convertito alcune delle sue. Fixture di `QualificaSampleOpportunitySeederTest` alzate a
+`SAMPLE_OPPORTUNITIES` (10) registries: il batch ora e' limitato dalle anagrafiche libere.
+
+**Verifica (eseguita).** `OpportunityOpenPerRegistryTest` 15/15,
+`quote-form-seeded-products.test.tsx` 5/5 (link, parsing, righe seminate, payload inviato).
+Suite backend intera: 5304 test, 5303 verdi + 1 skipped, zero rossi. Suite frontend intera:
+506 file / 3599 test verdi. `npx tsc -b --force` pulito, Pint e ESLint puliti sui file toccati.
+
+**Nota dimensioni.** `quote-form-body.tsx` e' a 417 righe (soft limit 300, hard 500): l'effetto di
+semina l'ha allungato di ~45. Se ci si rimette mano, lo split naturale e' estrarre i due effetti
+"applica una volta sola" (Opportunita' forzata + prodotti seminati) in un hook dedicato.
+
+**Fuori scope (segnalato, non implementato).** L'UPDATE di un'opportunita' che sposta
+`registry_id` su un'anagrafica gia' occupata non e' controllato: la direttiva parlava di
+creazione. Serve una decisione prima di estenderlo.
+
+## RIGHE PRODOTTO INDIPENDENTI — SPEC 0077 REV.2 (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Opportunita' - Prodotti Multifida: quando si aggiunge una nuova riga, il
+sistema imposta automaticamente la stessa funzione aziendale della riga precedente, senza
+consentirne la modifica. Deve invece essere possibile selezionare una funzione aziendale diversa
+per ogni nuova riga."
+
+**REQUIREMENT CHANGE dichiarato (spec 0077 rev.2, D-9/D-10).** Cadono **INV-2** (stessa Funzione
+aziendale su tutte le righe) e **INV-1** (stessa Categoria Prodotto radice). Non erano due
+decisioni ma una: `ProductCategoryService::assertNoInheritedBusinessFunction()` vieta a un
+discendente di sovrascrivere la funzione ereditata, quindi un sottoalbero radice porta ESATTAMENTE
+una funzione e una funzione diversa e' raggiungibile solo sotto un'altra radice. Resta **INV-3**
+(radice `single` = una riga sola) e **INV-4** (niente coppie duplicate).
+
+**D-10, nuova regola di risoluzione.** Con righe su radici diverse la modalita' della scheda si
+risolve sulla **piu' restrittiva**: se ANCHE UNA riga risolve a una radice `single`, la scheda e'
+`single`. Sostituisce ovunque la vecchia risoluzione "dalla prima riga", che presupponeva INV-1 —
+quattro punti: `ProductLineSetValidator::collectionInvariantErrors()`,
+`OpportunityProductLineCoverage::resolvedManagementMode()` (che governa anche il cap sulle righe
+d'offerta via `ValidatesQuoteLines` e `RequestCreationService`), e lato FE `quote-offer-tab.tsx` /
+`request-offer-lines-section.tsx`.
+
+**Backend.** `ProductLineSetValidator`: rimosse le costanti `SAME_BUSINESS_FUNCTION_MESSAGE` e
+`SAME_ROOT_CATEGORY_MESSAGE` (chi le cerca non le trova piu'), resta `SINGLE_ROW_ONLY_MESSAGE`.
+`OpportunityProductLineCoverage::resolvedManagementMode()` batcha su TUTTE le categorie coperte.
+Nessuna migrazione, nessun cambio di shape: `product_lines` resta `[{business_function_id,
+product_category_id}]`.
+
+**Frontend.** `use-product-lines-field.ts`: spariti `lockedBusinessFunctionId` e
+`managementModeRootCategoryId`; `addRow()` appende una riga VUOTA (`emptyProductLineRow()`),
+`setRowBusinessFunction()` tocca solo la riga modificata (niente piu' cascata dalla riga 0).
+`product-lines-field.tsx`: niente `businessFunctionLocked`. `category-tree-scope.ts`: rimossa
+`subtreeOf()`, `categoryManagementMetaFor()` sostituita dalla nuova **`resolveManagementMode(nodes,
+categoryIds)`** ("la piu' restrittiva vince"); `resolveRowSetManagementMode()` ora ritorna
+`CategoryManagementMode | null`, non piu' una meta. **File eliminato: `product-lines/management-mode.ts`**
+(il tipo `CategoryManagementMeta` non aveva piu' consumatori). `ProductCategoryTreeSelect` ha perso
+il prop `rootCategoryId` (e il suo stub di test con lui).
+
+**Punto lasciato aperto (segnalato, non toccato).** Il filtro `root_category_id` su
+`GET /api/product-categories/for-select` (`ProductCategoryForSelectRequest`/`...ForSelectResolver`)
+serviva a INV-1 e nessun client lo invia da quando il picker legge l'albero (2026-08-03): ora e'
+codice server senza consumatori. Rimuoverlo e' una decisione di contratto API, fuori dallo scope di
+questa direttiva.
+
+**Verde eseguito (2026-08-31).** Pest: 1173/1173 su `tests/Feature/{Opportunities,RequestManagement,
+ProductCategories,Quotes,Products,Seeding}` + `tests/Unit/Services/ProductCategories` (5112
+asserzioni). Vitest: 22/22 su `src/features/product-lines`, 749/749 su
+`src/features/{opportunities,quotes,request-management,product-categories}`. Pint pulito.
+`npx tsc -b --force --pretty false` EXIT=0. Test riscritti come requirement change dichiarato:
+AC-014/AC-015 (backend) ora asseriscono il SUCCESSO dove asserivano il 422, piu' due nuovi casi —
+D-10 (riga single + riga multiple -> 422) e AC-043 rev.2 su `/api/request-management`; lato FE
+AC-042 rev.2 verifica riga nuova vuota + select abilitato + nessuna cascata.
+
+## NOTE IN GESTIONE RICHIESTE — 403 MASCHERATO DA "ERRORE IMPREVISTO" (2026-08-31) — VERDE, NON COMMITTATO
+
+**Sintomo riportato.** `GET /api/notes?entity_type=request-management&entity_id=23` rispondeva
+`{"success":false,"message":"Si e' verificato un errore imprevisto."}` — letto come un 500.
+
+**Diagnosi.** Non era un 500 ma un **403 corretto**. `NoteEntityRegistry::assertReadable()` usava
+`abort_unless(..., 403)` SENZA messaggio; `BaseApiController::resolveExceptionMessage()` degrada
+ogni `HttpException` con `getMessage() === ''` a `__('An unexpected error occurred.')`. In piu'
+`handleControllerException()` NON logga gli `abort(4xx)` deliberati — per questo in
+`storage/logs/laravel.log` non compare alcuna riga per la richiesta (assenza di log attesa, non
+un secondo bug).
+
+**Fix.** `assertReadable()` passa ora `'This action is unauthorized.'` — chiave gia' presente in
+`lang/it.json` ("Non hai i permessi per questa azione."). Unico file toccato:
+`backend/app/Notes/NoteEntityRegistry.php`. Verde: `php artisan test tests/Feature/Notes` 59/59,
+Pint pulito, verifica HTTP reale (403 it/en corretto, 200 per un utente autorizzato).
+
+**Perche' l'utente vedeva il 403.** Regola D-9 (`RequestManagementNotable::authorizeRead`):
+serve `request-management.view` PIU' `request-management.viewAll` oppure essere Supervisore di
+almeno un'Offerta dell'Opportunity. L'Opportunity 23 ha una sola Offerta (QUO-0002) con
+`supervisor_id` NULL: i commerciali/marketing senza `viewAll` (utenti 5, 6, 7 in locale) non la
+leggono. Comportamento coerente con `RequestManagementScope::scopeToActor`.
+
+**Segnalato, NON implementato (fuori scope).** Il degrado a "errore imprevisto" colpisce QUALSIASI
+`abort(4xx)` senza messaggio in tutta l'API (es. `RequestManagementScope::assertInScope()` fa
+`abort(403)` nudo). Se lo si vuole chiudere alla radice, il punto e'
+`BaseApiController::resolveExceptionMessage()`: per un `HttpExceptionInterface` con messaggio
+vuoto usare la reason phrase dello status invece del testo generico.
+
 ## LINEE DELL'OFFERTA IN GESTIONE RICHIESTE (2026-08-07) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "gestione richieste, voglio un componente dove si inseriscono le linee

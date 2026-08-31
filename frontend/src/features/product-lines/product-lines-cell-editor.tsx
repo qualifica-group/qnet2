@@ -105,8 +105,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   // the server on commit. Resolved off the SAME cached category tree the form
   // reads, so a pair loaded from the grid row carries the mode too.
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
-  const singleRowReached =
-    pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree)?.managementMode === 'single'
+  const singleRowReached = pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree) === 'single'
 
   const pickingCategory = step === 'product_category' && businessFunction !== null
 

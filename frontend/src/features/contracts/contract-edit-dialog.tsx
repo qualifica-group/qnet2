@@ -14,7 +14,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl } from '@/components/ui/form'
-import { RelationSelectField } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
@@ -26,7 +25,6 @@ import { buildEditPayload, useUpdateContract } from '@/features/contracts/use-co
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
 const SERVER_ERROR_FIELDS = [
-  'contract_status_id',
   'renewal_date',
   'expiry_date',
   'payment_notes',
@@ -45,13 +43,16 @@ interface ContractEditDialogProps {
  * fields go through the per-field authorization matrix (`MetaField`), since
  * it maps 1:1 onto `ContractResource.permissions.fields` — unlike the three
  * action endpoints, which have no field-permission ceiling of their own.
+ *
+ * The contract status is DELIBERATELY absent (user directive 2026-08-31):
+ * the state is driven by the domain actions ("Valida" lands on "Validato",
+ * "Disdici" on "Disdetto"), never edited by hand from here.
  */
 export function ContractEditDialog({ open, onOpenChange, contract, onUpdated }: ContractEditDialogProps) {
   const { t } = useTranslation()
-  const schema = buildEditContractSchema(t)
+  const schema = buildEditContractSchema()
 
   const defaultValues: EditContractFormValues = {
-    contract_status_id: contract.contract_status_id,
     renewal_date: contract.renewal_date,
     expiry_date: contract.expiry_date,
     payment_notes: contract.payment_notes,
@@ -105,21 +106,6 @@ export function ContractEditDialog({ open, onOpenChange, contract, onUpdated }: 
               className="flex flex-col gap-4"
               onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
             >
-              <RelationSelectField
-                control={form.control}
-                name="contract_status_id"
-                metaKey="contract_status_id"
-                label={t('contracts.actions.edit.status')}
-                resource="contract-statuses"
-                searchPlaceholder={t('contracts.actions.statusSearch')}
-                selected={contract.contract_status}
-                placeholder={t('contracts.actions.statusPlaceholder')}
-                emptyLabel={t('contracts.actions.statusEmpty')}
-                errorLabel={t('contracts.actions.statusError')}
-                clearLabel={t('common.clear')}
-                retryLabel={t('common.retry')}
-              />
-
               <MetaField
                 control={form.control}
                 name="expiry_date"

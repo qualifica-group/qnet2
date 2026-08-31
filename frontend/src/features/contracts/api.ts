@@ -4,6 +4,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   ContractDetail,
   ContractDetailWithPermissions,
+  ReactivateContractPayload,
   ScheduleContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
@@ -62,8 +63,15 @@ export async function terminateContract(
   return data.data
 }
 
-/** "Riattiva contratto" (BR-2): no body, restores the pre-suspension status. */
-export async function reactivateContract(id: number): Promise<ContractDetail> {
-  const { data } = await apiClient.post<ApiResponse<ContractDetail>>(`/contracts/${id}/reactivate`, {})
+/**
+ * "Riattiva contratto" (BR-2): empty body on a suspended contract (the
+ * pre-suspension status is restored server-side), destination status on a
+ * disdetto one.
+ */
+export async function reactivateContract(
+  id: number,
+  payload: ReactivateContractPayload = {},
+): Promise<ContractDetail> {
+  const { data } = await apiClient.post<ApiResponse<ContractDetail>>(`/contracts/${id}/reactivate`, payload)
   return data.data
 }

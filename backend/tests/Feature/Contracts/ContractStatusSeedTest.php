@@ -12,22 +12,25 @@ use Illuminate\Support\Facades\DB;
 uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------
-// AC-018: after the migration, contract_statuses has exactly the 7 D-2 rows.
+// AC-018, amended by the user directive of 2026-08-31: the D-2 seed plus the
+// positive-outcome row "Validato" — 8 rows, the head sequence now two rows
+// long, so every later row shifted +10.
 // ---------------------------------------------------------------------------
 
-it('seeds exactly the 7 rows of D-2, ordered by sort_order', function () {
+it('seeds exactly the 8 rows, ordered by sort_order', function () {
     $rows = DB::table('contract_statuses')->orderBy('sort_order')->get(['name', 'group', 'system_key', 'sort_order', 'is_default', 'is_active']);
 
-    expect($rows)->toHaveCount(7);
+    expect($rows)->toHaveCount(8);
 
     $expected = [
         ['name' => 'Da validare', 'group' => 'open', 'system_key' => 'new', 'sort_order' => 0],
-        ['name' => 'Da programmare', 'group' => 'pending', 'system_key' => null, 'sort_order' => 10],
-        ['name' => 'Programmato', 'group' => 'pending', 'system_key' => null, 'sort_order' => 20],
-        ['name' => 'In scadenza', 'group' => 'pending', 'system_key' => null, 'sort_order' => 30],
-        ['name' => 'Sospeso', 'group' => 'pending', 'system_key' => 'suspended', 'sort_order' => 40],
-        ['name' => 'Annullato', 'group' => 'closed_lost', 'system_key' => 'cancelled', 'sort_order' => 50],
-        ['name' => 'Disdetto', 'group' => 'closed_lost', 'system_key' => 'terminated', 'sort_order' => 60],
+        ['name' => 'Validato', 'group' => 'closed_won', 'system_key' => 'validated', 'sort_order' => 10],
+        ['name' => 'Da programmare', 'group' => 'pending', 'system_key' => null, 'sort_order' => 20],
+        ['name' => 'Programmato', 'group' => 'pending', 'system_key' => null, 'sort_order' => 30],
+        ['name' => 'In scadenza', 'group' => 'pending', 'system_key' => null, 'sort_order' => 40],
+        ['name' => 'Sospeso', 'group' => 'pending', 'system_key' => 'suspended', 'sort_order' => 50],
+        ['name' => 'Annullato', 'group' => 'closed_lost', 'system_key' => 'cancelled', 'sort_order' => 60],
+        ['name' => 'Disdetto', 'group' => 'closed_lost', 'system_key' => 'terminated', 'sort_order' => 70],
     ];
 
     foreach ($expected as $index => $row) {
@@ -44,18 +47,19 @@ it('"Da validare" is the only row with is_default = true', function () {
     expect($defaults->all())->toBe(['Da validare']);
 });
 
-it('all 7 seeded rows are active', function () {
+it('all 8 seeded rows are active', function () {
     $inactiveCount = DB::table('contract_statuses')->where('is_active', false)->count();
 
     expect($inactiveCount)->toBe(0);
 });
 
-it('the four system rows carry the expected system_key and the three custom rows have none', function () {
-    $systemRows = DB::table('contract_statuses')->whereNotNull('system_key')->pluck('system_key', 'name');
+it('the five system rows carry the expected system_key and the three custom rows have none', function () {
+    $systemRows = DB::table('contract_statuses')->whereNotNull('system_key')->orderBy('sort_order')->pluck('system_key', 'name');
     $customRows = DB::table('contract_statuses')->whereNull('system_key')->pluck('name');
 
     expect($systemRows->all())->toBe([
         'Da validare' => 'new',
+        'Validato' => 'validated',
         'Sospeso' => 'suspended',
         'Annullato' => 'cancelled',
         'Disdetto' => 'terminated',

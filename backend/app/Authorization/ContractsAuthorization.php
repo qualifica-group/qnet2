@@ -6,6 +6,7 @@ namespace App\Authorization;
 
 use App\Models\Contract;
 use App\Models\User;
+use App\Services\Contracts\ContractActionAvailability;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -18,14 +19,18 @@ use Illuminate\Database\Eloquent\Model;
  * `actorMayWrite()` ceiling (create is meaningless for this resource — D-6 —
  * so in practice this is always the `update` ability).
  *
- * `reactivate` (BR-2/D-3) is additionally gated on the model actually being
- * suspended: offering the action on a non-suspended contract would let a
- * client invoke an endpoint that always 422s.
+ * Every domain action is additionally gated on the contract's LIFECYCLE
+ * (ContractActionAvailability, user directive 2026-08-31), not on the
+ * ability alone: offering an action the current state refuses would let a
+ * client invoke an endpoint that always 422s. `reactivate` (BR-2/D-3) is
+ * offered on a suspended OR a disdetto contract.
  */
 class ContractsAuthorization extends AbstractResourceAuthorization
 {
-    public function __construct(FieldPermissionRepository $fieldPermissionRepository)
-    {
+    public function __construct(
+        FieldPermissionRepository $fieldPermissionRepository,
+        private readonly ContractActionAvailability $actionAvailability,
+    ) {
         parent::__construct($fieldPermissionRepository);
     }
 
@@ -87,11 +92,11 @@ class ContractsAuthorization extends AbstractResourceAuthorization
     public function actionPermissions(User $actor, ?Model $model): array
     {
         return [
-            'validate' => $model !== null && $actor->can('contracts.validate'),
-            'terminate' => $model !== null && $actor->can('contracts.terminate'),
-            'schedule' => $model !== null && $actor->can('contracts.schedule'),
+            'validate' => $model instanceof Contract && $this->actionAvailability->mayValidate($model) && $actor->can('contracts.validate'),
+            'terminate' => $model instanceof Contract && $this->actionAvailability->mayTerminate($model) && $actor->can('contracts.terminate'),
+            'schedule' => $model instanceof Contract && $this->actionAvailability->maySchedule($model) && $actor->can('contracts.schedule'),
             'change_status' => $model !== null && $actor->can('contracts.changeStatus'),
-            'reactivate' => $model instanceof Contract && $model->isSuspended() && $actor->can('contracts.reactivate'),
+            'reactivate' => $model instanceof Contract && $this->actionAvailability->mayReactivate($model) && $actor->can('contracts.reactivate'),
             'export' => $actor->can('contracts.export'),
             'view_activity' => $model !== null && $actor->can('contracts.viewActivity'),
         ];

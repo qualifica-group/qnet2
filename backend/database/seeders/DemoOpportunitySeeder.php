@@ -20,11 +20,16 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
 /**
- * Development seed for the opportunities module (spec 0040): round-robins
- * existing registries against the optional lookups for a batch of STANDALONE
- * deals, then generates a handful more FROM existing leads (BR-1) so the demo
- * grid exercises both creation paths and the `locked_fields`/`lead` detail
- * shape.
+ * Development seed for the opportunities module (spec 0040): a batch of
+ * STANDALONE deals, ONE PER ANAGRAFICA, then a handful more FROM existing
+ * leads (BR-1) so the demo grid exercises both creation paths and the
+ * `locked_fields`/`lead` detail shape.
+ *
+ * User directive 2026-08-31: an anagrafica may carry one open opportunity at a
+ * time (RegistryOpenOpportunityGuard), so neither batch may reuse a registry —
+ * the standalone loop consumes DISTINCT registries (and therefore seeds at
+ * most as many deals as there are anagrafiche) and the lead batch skips every
+ * registry the first one claimed.
  *
  * Every opportunity is created through OpportunityService::create() — the
  * same path POST /api/opportunities uses — so this exercises the real write
@@ -88,22 +93,28 @@ class DemoOpportunitySeeder extends Seeder
 
         $rewardTypeIds = RewardType::query()->orderBy('id')->pluck('id')->all();
 
-        for ($index = 0; $index < self::STANDALONE_OPPORTUNITIES; $index++) {
-            $this->createStandalone($faker, $index, $registries, $lookups, $rewardTypeIds);
+        $standaloneCount = min(self::STANDALONE_OPPORTUNITIES, $registries->count());
+
+        /** @var array<int, true> $claimedRegistryIds */
+        $claimedRegistryIds = [];
+
+        for ($index = 0; $index < $standaloneCount; $index++) {
+            $registry = $registries[$index];
+            $this->createStandalone($faker, $index, $registry, $lookups, $rewardTypeIds);
+            $claimedRegistryIds[$registry->id] = true;
         }
 
-        $this->createFromLeads($faker, $lookups);
+        $this->createFromLeads($faker, $lookups, $claimedRegistryIds);
     }
 
     /**
-     * @param  Collection<int, Registry>  $registries
      * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
      * @param  array<int, int>  $rewardTypeIds
      */
     private function createStandalone(
         Generator $faker,
         int $index,
-        Collection $registries,
+        Registry $registry,
         array $lookups,
         array $rewardTypeIds,
     ): void {
@@ -111,7 +122,7 @@ class DemoOpportunitySeeder extends Seeder
         $reporterId = $this->maybePick($lookups['referents'], $index + 6, $faker, 30)?->id;
 
         $data = new CreateOpportunityData(
-            registryId: $registries[$index % $registries->count()]->id,
+            registryId: $registry->id,
             referentId: $this->maybePick($lookups['referents'], $index + 4, $faker, 60)?->id,
             commercialId: $this->maybePick($lookups['referents'], $index + 5, $faker, 40)?->id,
             reporterId: $reporterId,
@@ -143,11 +154,23 @@ class DemoOpportunitySeeder extends Seeder
      * touches. Registry/source come from the lead; the two mandatory
      * collections do NOT derive from it and are drawn here like everywhere else.
      *
+     * Only leads whose anagrafica is still free are converted, one per
+     * anagrafica: the standalone batch has already claimed $claimedRegistryIds,
+     * and two leads of the SAME registry would collide on the second one.
+     *
      * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
+     * @param  array<int, true>  $claimedRegistryIds
      */
-    private function createFromLeads(Generator $faker, array $lookups): void
+    private function createFromLeads(Generator $faker, array $lookups, array $claimedRegistryIds): void
     {
-        $leads = Lead::query()->doesntHave('opportunity')->orderBy('id')->limit(self::FROM_LEAD_OPPORTUNITIES)->get();
+        $leads = Lead::query()
+            ->doesntHave('opportunity')
+            ->whereNotIn('registry_id', array_keys($claimedRegistryIds))
+            ->orderBy('id')
+            ->get()
+            ->unique('registry_id')
+            ->take(self::FROM_LEAD_OPPORTUNITIES)
+            ->values();
 
         foreach ($leads as $index => $lead) {
             $offer = $this->pickOffer($faker, $index + self::STANDALONE_OPPORTUNITIES);

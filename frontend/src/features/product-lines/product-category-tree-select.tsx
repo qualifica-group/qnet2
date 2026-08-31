@@ -6,7 +6,7 @@ import {
   pruneToPickable,
 } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
-import { pickableCategoryIdsFor, subtreeOf } from '@/features/product-lines/category-tree-scope'
+import { pickableCategoryIdsFor } from '@/features/product-lines/category-tree-scope'
 
 export interface ProductCategoryTreeSelectProps {
   value: number | null
@@ -17,8 +17,6 @@ export interface ProductCategoryTreeSelectProps {
    * disables the control — the row's two steps stay in order.
    */
   businessFunctionId: number | null
-  /** Spec 0077 INV-1: rows after the first are confined to the branch root already resolved for the card. */
-  rootCategoryId?: number | null
   disabled?: boolean
   /** Quick-create affordance rendered next to the trigger (spec 0028). */
   action?: ReactNode
@@ -35,11 +33,10 @@ export interface ProductCategoryTreeSelectProps {
  * hidden: it is the branch its children hang from.
  *
  * This replaces the flat, server-paginated `for-select` list this select used
- * to read. The scoping the endpoint did (effective business function, spec
- * 0077 root subtree) is resolved client-side against the same cached tree the
- * product form and the category tree view already share — see
- * `category-tree-scope.ts`, which resolves the card's management mode off the
- * very same tree.
+ * to read. The scoping the endpoint did (effective business function) is
+ * resolved client-side against the same cached tree the product form and the
+ * category tree view already share — see `category-tree-scope.ts`, which
+ * resolves the card's management mode off the very same tree.
  *
  * Branches offering nothing pickable are pruned: disabled ancestors are
  * context for what hangs underneath them, an entirely dead branch is noise.
@@ -48,7 +45,6 @@ export function ProductCategoryTreeSelect({
   value,
   onChange,
   businessFunctionId,
-  rootCategoryId = null,
   disabled = false,
   action,
   triggerLabel,
@@ -61,21 +57,21 @@ export function ProductCategoryTreeSelect({
     if (!tree || businessFunctionId === null) {
       return []
     }
-    // Step 1: INV-1 — rows after the first never leave the resolved branch.
-    const scoped = rootCategoryId === null ? tree : subtreeOf(tree, rootCategoryId)
-    // Step 2: what this row may actually target, inside that scope.
-    const pickableIds = pickableCategoryIdsFor(scoped, businessFunctionId)
-    // Step 3: keep the pickable nodes and the ancestors that lead to them,
+    // Step 1: what this row may actually target. The whole tree is in scope:
+    // spec 0077 rev.2 revoked INV-1, so a row is no longer confined to the
+    // branch root the card resolved.
+    const pickableIds = pickableCategoryIdsFor(tree, businessFunctionId)
+    // Step 2: keep the pickable nodes and the ancestors that lead to them,
     // the latter listed as disabled context. D-3b: the value already saved on
     // the row survives the pruning and stays pickable even when it would no
     // longer qualify — a grandfathered row must not blank out on open.
     const kept = value === null ? pickableIds : new Set([...pickableIds, value])
 
-    return flattenCategoryTree(pruneToPickable(scoped, kept), {
+    return flattenCategoryTree(pruneToPickable(tree, kept), {
       pickableIds,
       keepIds: value === null ? undefined : [value],
     })
-  }, [tree, rootCategoryId, businessFunctionId, value])
+  }, [tree, businessFunctionId, value])
 
   return (
     <SearchableSelect

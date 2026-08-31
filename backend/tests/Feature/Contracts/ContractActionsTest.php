@@ -92,6 +92,101 @@ it('AC-007: reactivating a suspended contract whose quote is NOT closed_won is 4
         ->and($contract->suspended_at)->not->toBeNull();
 });
 
+// ---------------------------------------------------------------------------
+// Reactivating a DISDETTO contract (user directive 2026-08-31)
+// ---------------------------------------------------------------------------
+
+if (! function_exists('terminatedContractForReactivation')) {
+    function terminatedContractForReactivation(): Contract
+    {
+        $contract = Contract::factory()->create([
+            'validated_at' => now()->subMonths(2),
+            'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
+        ]);
+
+        $contract->forceFill([
+            'terminated_at' => now()->subDay(),
+            'termination_reason' => 'Recesso del cliente',
+            'terminated_by' => User::factory()->create()->id,
+            'contract_status_id' => ContractStatus::where('system_key', 'terminated')->sole()->id,
+        ])->save();
+
+        return $contract;
+    }
+}
+
+it('reactivating a disdetto contract clears the whole termination stamp and lands on the chosen status', function () {
+    $contract = terminatedContractForReactivation();
+    $destination = ContractStatus::where('name', 'Programmato')->sole();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", ['contract_status_id' => $destination->id])
+        ->assertOk()
+        ->assertJsonPath('data.contract_status_id', $destination->id)
+        ->assertJsonPath('data.terminated_at', null)
+        ->assertJsonPath('data.termination_reason', null)
+        ->assertJsonPath('data.terminated_by', null);
+
+    $contract->refresh();
+    expect($contract->terminated_at)->toBeNull()
+        ->and($contract->termination_reason)->toBeNull()
+        ->and($contract->terminated_by)->toBeNull()
+        ->and($contract->contract_status_id)->toBe($destination->id)
+        // The validation stamp survives: only the disdetta is undone.
+        ->and($contract->validated_at)->not->toBeNull();
+
+    $activity = Activity::where('subject_id', $contract->id)->where('event', 'contract.reactivated')->first();
+    expect($activity->properties['reactivated_from'])->toBe('terminated');
+});
+
+it('reactivating a disdetto contract without a contract_status_id is 422', function () {
+    $contract = terminatedContractForReactivation();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('contract_status_id');
+
+    expect($contract->fresh()->terminated_at)->not->toBeNull();
+});
+
+it('reactivating a disdetto contract onto a closed_lost status is 422', function () {
+    $contract = terminatedContractForReactivation();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", [
+        'contract_status_id' => ContractStatus::where('system_key', 'cancelled')->sole()->id,
+    ])->assertStatus(422)->assertJsonValidationErrors('contract_status_id');
+
+    expect($contract->fresh()->terminated_at)->not->toBeNull();
+});
+
+it('reactivating a disdetto contract does NOT require the quote to be closed_won (user decision)', function () {
+    $contract = terminatedContractForReactivation();
+    $openStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Open]);
+    $contract->quote()->update(['quote_workflow_status_id' => $openStatus->id]);
+    $destination = ContractStatus::where('name', 'Da programmare')->sole();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", ['contract_status_id' => $destination->id])
+        ->assertOk()
+        ->assertJsonPath('data.contract_status_id', $destination->id);
+});
+
+it('reactivating a contract that is neither suspended nor disdetto is 422', function () {
+    $contract = Contract::factory()->create();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", [
+        'contract_status_id' => ContractStatus::where('name', 'Programmato')->sole()->id,
+    ])->assertStatus(422);
+});
+
 it('reactivate is 403 without contracts.reactivate', function () {
     $contract = Contract::factory()->create(['suspended_at' => now()]);
     $actor = contractActionsUserWith([]);
@@ -152,6 +247,37 @@ it('validating a suspended contract is 422', function () {
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/contracts/{$contract->id}/validate")->assertStatus(422);
+});
+
+// ---------------------------------------------------------------------------
+// Destination status of "Valida" (user directive 2026-08-31)
+// ---------------------------------------------------------------------------
+
+it('validating without a contract_status_id defaults to the system validated row', function () {
+    $contract = Contract::factory()->create();
+    $validatedStatus = ContractStatus::where('system_key', 'validated')->sole();
+    $actor = contractActionsUserWith(['validate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")
+        ->assertOk()
+        ->assertJsonPath('data.contract_status_id', $validatedStatus->id)
+        ->assertJsonPath('data.contract_status.group', 'closed_won');
+
+    expect($contract->fresh()->contract_status_id)->toBe($validatedStatus->id);
+});
+
+it('validating with a non closed_won contract_status_id is 422, nothing persisted', function () {
+    $contract = Contract::factory()->create();
+    $wrongGroupStatus = ContractStatus::factory()->create(['is_active' => true, 'group' => ContractStatusGroup::Pending]);
+    $actor = contractActionsUserWith(['validate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/validate", [
+        'contract_status_id' => $wrongGroupStatus->id,
+    ])->assertStatus(422)->assertJsonValidationErrors('contract_status_id');
+
+    expect($contract->fresh()->validated_at)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

@@ -178,6 +178,7 @@ export const opportunities = {
     existingOpportunityTitle: 'This lead already has an opportunity',
     existingOpportunityDescription: 'A lead can only be linked to one opportunity at a time.',
     goToExistingOpportunity: 'Go to the opportunity',
+    addOfferToExistingOpportunity: 'Add the offer to this opportunity',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',

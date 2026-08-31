@@ -9,17 +9,18 @@ import type { ProductLineRow } from '@/features/product-lines/types'
 /**
  * Spec 0077, MT-7: enforcement of the root category's resolved
  * `management_mode` in the shared row editor. AC-041 (single: "Add" stops
- * being available) and AC-042 (multiple: the second row's function is bound
- * to the first, its category subtree-filtered). The mode is resolved from the
- * category TREE the row's picker renders (user directive 2026-08-03) — never
- * a separate request — for the rows LOADED on an existing record as well as
- * for those picked in this session (user directive 2026-08-05): the
- * opportunity edit form and the request work panel enforce it exactly as the
- * create forms do.
+ * being available) and AC-042 rev.2 (multiple: every row picks its OWN
+ * business function, on any root — user directive 2026-08-31 revoked
+ * INV-1/INV-2). The mode is resolved from the category TREE the row's picker
+ * renders (user directive 2026-08-03) — never a separate request — for the
+ * rows LOADED on an existing record as well as for those picked in this
+ * session (user directive 2026-08-05): the opportunity edit form and the
+ * request work panel enforce it exactly as the create forms do.
  */
 
 const BUSINESS_FUNCTION_A = 1
 const BUSINESS_FUNCTION_B = 2
+const SINGLE_ROOT_ID = 900
 const SINGLE_CATEGORY_ID = 901
 const MULTI_ROOT_ID = 800
 const MULTI_CATEGORY_A = 801
@@ -202,7 +203,7 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
   })
 
-  it('AC-042: binds the second row\'s function to the first and scopes its category to the same root, once mode resolves to multiple', async () => {
+  it('AC-042 rev.2: the second row opens EMPTY and its function stays editable, once mode resolves to multiple', async () => {
     renderHarness()
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${BUSINESS_FUNCTION_A}` }))
@@ -214,23 +215,40 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
-    // The new row's function is prefilled from the first row and locked.
-    expect(screen.getByTestId('value-Business function 2')).toHaveTextContent(String(BUSINESS_FUNCTION_A))
-    expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('true')
-    // Its category is enabled immediately (function already known) and root-scoped.
-    expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('false')
-    // INV-1: the second row is confined to the resolved branch — the
-    // single-mode root's branch is not even listed.
-    expect(screen.getByTestId('options-Product category 2')).toHaveTextContent(
-      `${MULTI_ROOT_ID}:disabled,${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`,
-    )
+    // No prefill, no lock: the operator picks this row's own function.
+    expect(screen.getByTestId('value-Business function 2')).toHaveTextContent('')
+    expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('false')
+    // Its category waits for that pick, as row 1's did.
+    expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('true')
 
-    fireEvent.click(screen.getByRole('button', { name: `select Product category 2 ${MULTI_CATEGORY_B}` }))
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(MULTI_CATEGORY_B)),
-    )
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 2 ${BUSINESS_FUNCTION_B}` }))
+
+    // A DIFFERENT function on the second row: nothing bounces it back to the
+    // first row's, and the whole tree stays available to it.
+    await waitFor(() => expect(screen.getByTestId('value-Business function 2')).toHaveTextContent(String(BUSINESS_FUNCTION_B)))
+    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent(String(BUSINESS_FUNCTION_A))
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(MULTI_CATEGORY_A))
     // "Add" stays available: multiple mode allows further rows.
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+  })
+
+  it('AC-042 rev.2: changing the FIRST row\'s function leaves the other rows untouched', async () => {
+    renderHarness({
+      defaultValue: [
+        { business_function_id: BUSINESS_FUNCTION_A, product_category_id: MULTI_CATEGORY_A },
+        { business_function_id: BUSINESS_FUNCTION_B, product_category_id: MULTI_CATEGORY_B },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${BUSINESS_FUNCTION_B}` }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('value-Business function 1')).toHaveTextContent(String(BUSINESS_FUNCTION_B)),
+    )
+    // Only the edited row loses its category (it was scoped by the old function).
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('')
+    expect(screen.getByTestId('value-Business function 2')).toHaveTextContent(String(BUSINESS_FUNCTION_B))
+    expect(screen.getByTestId('value-Product category 2')).toHaveTextContent(String(MULTI_CATEGORY_B))
   })
 
   it('AC-041 on edit: a row LOADED on a single-mode category disables "Add" without being re-picked', async () => {
@@ -241,7 +259,7 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
   })
 
-  it('AC-042 on edit: rows LOADED on a multiple-mode category keep the function bound to the first row', async () => {
+  it('AC-042 rev.2 on edit: rows LOADED on a multiple-mode category keep their function editable, whole tree in scope', async () => {
     renderHarness({
       defaultValue: [
         { business_function_id: BUSINESS_FUNCTION_A, product_category_id: MULTI_CATEGORY_A },
@@ -249,12 +267,24 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7)', () =>
       ],
     })
 
-    await waitFor(() => expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('true'))
-    // INV-1: the loaded second row is confined to the resolved branch too.
+    await waitFor(() => expect(screen.getByTestId('disabled-Business function 2')).toHaveTextContent('false'))
+    // No root confinement left: the single-mode branch is listed too, for
+    // whatever the row's own function makes pickable there.
     expect(screen.getByTestId('options-Product category 2')).toHaveTextContent(
-      `${MULTI_ROOT_ID}:disabled,${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`,
+      `${SINGLE_ROOT_ID}:disabled,${SINGLE_CATEGORY_ID},${MULTI_ROOT_ID}:disabled,${MULTI_CATEGORY_A},${MULTI_CATEGORY_B}`,
     )
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+  })
+
+  it('AC-041 rev.2: one row on a single-mode category caps the whole card, whatever the others resolve to (D-10)', async () => {
+    renderHarness({
+      defaultValue: [
+        { business_function_id: BUSINESS_FUNCTION_A, product_category_id: MULTI_CATEGORY_A },
+        { business_function_id: BUSINESS_FUNCTION_A, product_category_id: SINGLE_CATEGORY_ID },
+      ],
+    })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
   })
 
   it('leaves rows unconstrained while no category has resolved a mode (indeterminate, point 4)', () => {

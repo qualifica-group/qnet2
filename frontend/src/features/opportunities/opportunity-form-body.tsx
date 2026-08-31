@@ -106,7 +106,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
         }
       : NO_LEAD_SUBMISSION
 
-  const { serverError, onSubmit } = useOpportunityFormSubmit({
+  const { serverError, blockingOpportunity, onSubmit } = useOpportunityFormSubmit({
     form,
     mode,
     leadSubmission,
@@ -209,6 +209,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
                 setValue={form.setValue}
                 selectedItems={selectedItems}
                 lockedFields={lockedFields}
+                blockingOpportunity={blockingOpportunity}
               />
 
               {/* The same actions the identity bar carries, repeated where the

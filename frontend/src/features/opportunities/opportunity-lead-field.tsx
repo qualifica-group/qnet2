@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
-import { CircleAlert } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { ExistingOpportunityAlert } from '@/features/opportunities/existing-opportunity-alert'
 import { LEADS_FOR_SELECT_RESOURCE } from '@/features/leads/for-select-api'
 import type { OpportunityLeadSelectionState } from '@/features/opportunities/use-opportunity-lead-selection'
 
@@ -54,21 +53,10 @@ export function OpportunityLeadField({ state, onSelect }: OpportunityLeadFieldPr
       ) : null}
 
       {state.existingOpportunityId !== null ? (
-        <div
-          role="alert"
-          className="flex flex-col items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-        >
-          <p className="flex items-center gap-2 font-medium">
-            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-            {t('opportunities.form.existingOpportunityTitle')}
-          </p>
-          <Link
-            to={`/opportunities/${state.existingOpportunityId}`}
-            className="font-medium underline underline-offset-4"
-          >
-            {t('opportunities.form.goToExistingOpportunity')}
-          </Link>
-        </div>
+        <ExistingOpportunityAlert
+          opportunityId={state.existingOpportunityId}
+          message={t('opportunities.form.existingOpportunityTitle')}
+        />
       ) : null}
     </div>
   )

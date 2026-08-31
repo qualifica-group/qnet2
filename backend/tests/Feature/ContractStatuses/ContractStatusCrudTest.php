@@ -186,9 +186,10 @@ it('POST create: 403 without contract-statuses.create, no row created', function
 
     $this->postJson('/api/contract-statuses', ['name' => 'Nope', 'color' => 'blue', 'group' => 'open'])->assertForbidden();
 
-    // spec 0072 (D-2): the create migration seeds the 7 mandatory rows
-    // unconditionally, so the post-403 baseline is 7, not 0.
-    expect(ContractStatus::count())->toBe(7);
+    // spec 0072 (D-2) plus the "Validato" row of the 2026-08-31 directive:
+    // the migrations seed 8 rows unconditionally, so the post-403 baseline
+    // is 8, not 0.
+    expect(ContractStatus::count())->toBe(8);
 });
 
 it('PATCH update: 403 without contract-statuses.update, no change persisted', function () {

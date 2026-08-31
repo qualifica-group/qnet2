@@ -170,6 +170,7 @@ export const leads = {
     reasons: {
       already_converted: 'ha già un\'opportunità',
       not_derivable: 'la sua campagna non ha business function o categoria prodotto',
+      registry_has_open_opportunity: 'la sua anagrafica ha già un\'opportunità aperta',
     },
     confirm: 'Converti',
     converting: 'Conversione…',

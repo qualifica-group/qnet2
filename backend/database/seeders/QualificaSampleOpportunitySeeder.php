@@ -8,6 +8,7 @@ use App\Models\Opportunity;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\OpportunityService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\PicksDemoOffers;
@@ -49,6 +50,7 @@ class QualificaSampleOpportunitySeeder extends Seeder
     public function __construct(
         private readonly OpportunityService $opportunities,
         private readonly CategoryHierarchy $hierarchy,
+        private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
     ) {}
 
     public function run(): void
@@ -60,7 +62,10 @@ class QualificaSampleOpportunitySeeder extends Seeder
             return;
         }
 
-        $registries = Registry::query()->orderBy('id')->get();
+        // User directive 2026-08-31: an anagrafica carries ONE open
+        // opportunity at a time, and the lead step right before this one has
+        // already converted some of its own registries — those are off limits.
+        $registries = $this->freeRegistries();
         $this->loadOffers($this->hierarchy);
 
         // Step 2: without the mandatory Anagrafica (spec 0040, D-4) or an
@@ -81,29 +86,50 @@ class QualificaSampleOpportunitySeeder extends Seeder
             'managers' => User::query()->orderBy('id')->get(),
         ];
 
-        // Step 3: the batch itself.
-        for ($index = 0; $index < self::OPPORTUNITIES; $index++) {
-            $this->seedOpportunity($faker, $index, $registries, $lookups);
+        // Step 3: the batch itself — one deal per anagrafica (user directive
+        // 2026-08-31: an anagrafica carries one open opportunity at a time), so
+        // the batch is capped by how many registries exist.
+        $count = min(self::OPPORTUNITIES, $registries->count());
+
+        for ($index = 0; $index < $count; $index++) {
+            $this->seedOpportunity($faker, $index, $registries[$index], $lookups);
         }
 
-        $this->command?->info(sprintf('%d sample opportunities seeded with no lead behind them.', self::OPPORTUNITIES));
+        $this->command?->info(sprintf('%d sample opportunities seeded with no lead behind them.', $count));
     }
 
     /**
-     * @param  Collection<int, Registry>  $registries
+     * The anagrafiche with no open opportunity yet, in id order — the only
+     * ones a new deal may hang on.
+     *
+     * @return Collection<int, Registry>
+     */
+    private function freeRegistries(): Collection
+    {
+        /** @var Collection<int, Registry> $registries */
+        $registries = Registry::query()->orderBy('id')->get();
+
+        $busy = $this->openOpportunityGuard->openOpportunityIdsByRegistry($registries->modelKeys());
+
+        return $registries
+            ->reject(static fn (Registry $registry): bool => isset($busy[$registry->getKey()]))
+            ->values();
+    }
+
+    /**
      * @param  array{sources: Collection<int, Source>, sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
      */
     private function seedOpportunity(
         Generator $faker,
         int $index,
-        Collection $registries,
+        Registry $registry,
         array $lookups,
     ): void {
         $offer = $this->pickOffer($faker, $index);
         $startDate = $faker->dateTimeBetween('-6 months', 'now');
 
         $this->opportunities->create(new CreateOpportunityData(
-            registryId: $registries[$index % $registries->count()]->id,
+            registryId: $registry->id,
             referentId: null,
             commercialId: null,
             reporterId: null,

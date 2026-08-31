@@ -119,16 +119,16 @@ final class OpportunityProductLineCoverage
     }
 
     /**
-     * The management mode governing the opportunity, resolved from the root
-     * of its FIRST covered category — INV-1 guarantees every existing
-     * `opportunity_product_lines` row already shares the same root, so one
-     * id is enough. A single batched lookup (CategoryHierarchy::
-     * rootManagementModesFor), never a query per row.
+     * The management mode governing the opportunity, resolved over ALL of its
+     * covered categories: spec 0077 rev.2 revoked INV-1, so its rows may sit
+     * on different roots and the STRICTEST mode wins (D-10) — one row on a
+     * `single` root governs the whole card. A single batched lookup
+     * (CategoryHierarchy::rootManagementModesFor), never a query per row.
      *
      * Null (indeterminate) when the opportunity carries no product line yet,
-     * or when the covered category's root cannot be resolved: both fall back
-     * to the pre-existing auto-add behaviour (D-8's `multiple` default),
-     * never to the `single` rejection.
+     * or when no covered category's root can be resolved: both fall back to
+     * the pre-existing auto-add behaviour (D-8's `multiple` default), never
+     * to the `single` rejection.
      *
      * @param  array<int, int>  $coveredCategoryIds
      */
@@ -138,10 +138,18 @@ final class OpportunityProductLineCoverage
             return null;
         }
 
-        $rootCategoryId = $coveredCategoryIds[0];
-        $root = $this->hierarchy->rootManagementModesFor([$rootCategoryId])[$rootCategoryId] ?? null;
+        $resolutions = array_filter($this->hierarchy->rootManagementModesFor($coveredCategoryIds));
 
-        return $root['management_mode'] ?? null;
+        if ($resolutions === []) {
+            return null;
+        }
+
+        $carriesSingleModeRow = array_any(
+            $resolutions,
+            static fn (array $resolution): bool => $resolution['management_mode'] === CategoryManagementMode::Single,
+        );
+
+        return $carriesSingleModeRow ? CategoryManagementMode::Single : CategoryManagementMode::Multiple;
     }
 
     /**

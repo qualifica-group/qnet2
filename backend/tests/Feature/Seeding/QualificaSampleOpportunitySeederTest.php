@@ -12,7 +12,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The standalone half of the sample pipeline: deals created with no lead
 // behind them, on the Anagrafiche the lead step already seeded.
+//
+// User directive 2026-08-31: an anagrafica carries ONE open opportunity at a
+// time, so the batch is capped by how many FREE anagrafiche exist — every
+// fixture that expects the full batch seeds SAMPLE_OPPORTUNITIES of them.
 uses(RefreshDatabase::class);
+
+/** The size of the seeder's own batch (QualificaSampleOpportunitySeeder::OPPORTUNITIES). */
+const SAMPLE_OPPORTUNITIES = 10;
 
 $seedOffer = function (): void {
     $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()]);
@@ -41,13 +48,13 @@ it('skips itself when no category pairs a business function with a product', fun
 
 it('seeds deals with no lead, both mandatory collections filled', function () use ($seedOffer): void {
     $seedOffer();
-    Registry::factory()->count(3)->create();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
 
     test()->seed(QualificaSampleOpportunitySeeder::class);
 
     $opportunities = Opportunity::query()->with(['productLines', 'productsOfInterest'])->get();
 
-    expect($opportunities)->toHaveCount(10)
+    expect($opportunities)->toHaveCount(SAMPLE_OPPORTUNITIES)
         ->and($opportunities->whereNotNull('lead_id'))->toBeEmpty()
         ->and($opportunities->filter(fn (Opportunity $deal): bool => $deal->productLines->isEmpty()))->toBeEmpty()
         ->and($opportunities->filter(fn (Opportunity $deal): bool => $deal->productsOfInterest->isEmpty()))->toBeEmpty();
@@ -79,13 +86,13 @@ it('never lines a deal up with an unselectable category', function (): void {
     // latter may reach a deal.
     Product::factory()->create(['category_id' => $container->getKey()]);
     Product::factory()->create(['category_id' => $target->getKey()]);
-    Registry::factory()->create();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
 
     test()->seed(QualificaSampleOpportunitySeeder::class);
 
     $lineCategoryIds = OpportunityProductLine::query()->pluck('product_category_id')->unique()->values()->all();
 
-    expect(Opportunity::query()->count())->toBe(10)
+    expect(Opportunity::query()->count())->toBe(SAMPLE_OPPORTUNITIES)
         ->and($lineCategoryIds)->toBe([$target->getKey()]);
 });
 
@@ -106,22 +113,22 @@ it('gives a single-mode card exactly one product line (spec 0077 INV-3)', functi
         Product::factory()->create(['category_id' => $target->getKey()]);
     }
 
-    Registry::factory()->create();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
 
     test()->seed(QualificaSampleOpportunitySeeder::class);
 
     $lineCounts = Opportunity::query()->withCount('productLines')->pluck('product_lines_count')->unique()->values()->all();
 
-    expect(Opportunity::query()->count())->toBe(10)
+    expect(Opportunity::query()->count())->toBe(SAMPLE_OPPORTUNITIES)
         ->and($lineCounts)->toBe([1]);
 });
 
 it('is idempotent: a second run adds nothing', function () use ($seedOffer): void {
     $seedOffer();
-    Registry::factory()->create();
+    Registry::factory()->count(SAMPLE_OPPORTUNITIES)->create();
 
     test()->seed(QualificaSampleOpportunitySeeder::class);
     test()->seed(QualificaSampleOpportunitySeeder::class);
 
-    expect(Opportunity::query()->count())->toBe(10);
+    expect(Opportunity::query()->count())->toBe(SAMPLE_OPPORTUNITIES);
 });

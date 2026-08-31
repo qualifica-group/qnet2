@@ -4,7 +4,7 @@
   Contract-first. Le decisioni marcate [D-n] sono state prese dall'utente in fase di
   pianificazione: non vanno reinterpretate in implementazione.
 -->
-<spec id="0077-product-category-management-mode" status="draft" owner="utente" date="2026-08-03">
+<spec id="0077-product-category-management-mode" status="draft" owner="utente" date="2026-08-03" revision="2" revision_date="2026-08-31">
 
   <goal>
     Una Categoria Prodotto radice dichiara come vanno gestite le Categorie Prodotto sulle schede
@@ -89,16 +89,31 @@
     <decision id="D-7">L'azione "Duplica richiesta/opportunità" è FUORI SCOPE: spec successiva.</decision>
     <decision id="D-8">Default per le radici non configurate: `multiple`. Preserva il comportamento
       attuale e non rompe alcun record esistente.</decision>
+    <decision id="D-9" rev="2" date="2026-08-31">REQUIREMENT CHANGE. In modalità `multiple` ogni riga
+      è INDIPENDENTE: sceglie la propria Funzione aziendale e la propria Categoria Prodotto radice.
+      Cadono INV-2 e INV-1. Le due cose sono una decisione sola, non due: un discendente non può
+      sovrascrivere la Funzione aziendale che eredita
+      (`ProductCategoryService::assertNoInheritedBusinessFunction`), quindi un sottoalbero radice porta
+      esattamente una funzione e una funzione diversa è raggiungibile solo sotto un'altra radice.
+      Motivazione utente: "quando si aggiunge una nuova riga, il sistema imposta automaticamente la
+      stessa funzione aziendale della riga precedente, senza consentirne la modifica. Deve invece
+      essere possibile selezionare una funzione aziendale diversa per ogni nuova riga."</decision>
+    <decision id="D-10" rev="2" date="2026-08-31">Con righe su radici diverse la modalità della scheda
+      si risolve sulla PIÙ RESTRITTIVA: se ANCHE UNA riga risolve a una radice `single`, la scheda è
+      `single` (una riga sola). Sostituisce la risoluzione "dalla prima riga", che presupponeva
+      INV-1.</decision>
   </decisions>
 
   <invariants>
     <!-- Valgono su Gestione Richieste e Opportunità in modo identico, e solo quando la
          collezione product_lines è sottoposta a scrittura (D-5). -->
-    <invariant id="INV-1">Tutte le righe di una scheda risolvono alla STESSA Categoria Prodotto radice.
-      Senza questo la modalità della scheda sarebbe indeterminata. Vale in entrambe le modalità.</invariant>
-    <invariant id="INV-2">Tutte le righe di una scheda condividono la STESSA Funzione aziendale
-      ("una sola Categoria", lettera del brief, in entrambe le modalità).</invariant>
-    <invariant id="INV-3">Modalità `single`: la scheda ha ESATTAMENTE una riga.</invariant>
+    <invariant id="INV-1" status="revoked" rev="2">REVOCATO da D-9. Era: tutte le righe di una scheda
+      risolvono alla STESSA Categoria Prodotto radice. Le righe possono ora stare su radici diverse; la
+      modalità della scheda non resta indeterminata perché si risolve sulla più restrittiva (D-10).</invariant>
+    <invariant id="INV-2" status="revoked" rev="2">REVOCATO da D-9. Era: tutte le righe di una scheda
+      condividono la STESSA Funzione aziendale. Ogni riga sceglie ora la propria.</invariant>
+    <invariant id="INV-3">Modalità `single`: la scheda ha ESATTAMENTE una riga. Rev.2: scatta non appena
+      UNA riga risolve a una radice `single` (D-10), quali che siano le altre.</invariant>
     <invariant id="INV-4">Modalità `multiple`: N righe con Categorie Prodotto distinte (la duplicazione
       è già respinta da `ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE`).</invariant>
     <invariant id="INV-5">`management_mode` è scrivibile solo su una categoria radice
@@ -120,8 +135,9 @@
       <item>Applicazione di INV-1..INV-4 in `ProductLineSetValidator`, quindi su tutti i canali che già
         lo usano: form Opportunità, form creazione Richiesta, pannello di lavorazione, editor inline
         di cella `product_lines`.</item>
-      <item>Enforcement lato UI: in modalità `single` niente aggiunta di una seconda riga; in
-        `multiple` la Funzione aziendale delle righe successive è vincolata alla prima.</item>
+      <item>Enforcement lato UI: in modalità `single` niente aggiunta di una seconda riga. Rev.2: in
+        `multiple` la Funzione aziendale delle righe successive NON è più vincolata alla prima — riga
+        nuova vuota, select abilitato, nessuno scoping della radice sul picker categorie (D-9).</item>
       <item>Rifiuto 422 in `OpportunityProductLineCoverage` quando la modalità risolta è `single`.</item>
       <item>Nome opportunità derivato dai prodotti delle righe ricavo, ricalcolato su create/update/delete
         di un'offerta, con fallback `OPP_{id}`.</item>
@@ -194,7 +210,9 @@
 
     <endpoint method="GET" path="/api/product-categories/for-select">
       <request>
-        root_category_id: integer|null — NUOVO filtro opzionale, si aggiunge a
+        root_category_id: integer|null — filtro opzionale (rev.2: serviva a INV-1, revocato da D-9;
+        nessun client lo invia più da quando il picker legge l'albero, 2026-08-03 — resta sul server
+        senza consumatori), si aggiunge a
         `ProductCategoryForSelectRequest` accanto a `business_function_id`. Se valorizzato, restituisce
         solo le categorie selezionabili appartenenti al sottoalbero di quella radice. Serve a INV-1:
         dopo la prima riga il form deve poter offrire SOLO categorie della stessa radice, e il filtro
@@ -226,11 +244,11 @@
         Shape INVARIATA. `name` è ora il nome derivato (o `OPP_{id}` se non ci sono righe ricavo).
       </response>
       <errors>
-        422 { errors: { product_lines: [msg] } } con i nuovi messaggi:
-          - INV-3 violato: più di una riga su una categoria in modalità singola
-          - INV-2 violato: righe con Funzioni aziendali diverse
-          - INV-1 violato: righe che risolvono a radici diverse
-        I messaggi sono stringhe i18n lato frontend e testo inglese lato backend, coerenti con
+        422 { errors: { product_lines: [msg] } } con il nuovo messaggio:
+          - INV-3 violato: più di una riga quando almeno una risolve a una radice in modalità singola
+        Rev.2 (D-9): i 422 di INV-2 (Funzioni aziendali diverse) e INV-1 (radici diverse) NON esistono
+        più — le costanti `SAME_BUSINESS_FUNCTION_MESSAGE` e `SAME_ROOT_CATEGORY_MESSAGE` sono state
+        rimosse. Il messaggio è testo inglese lato backend, coerente con
         `ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE` / `BUSINESS_FUNCTION_MISMATCH_MESSAGE`.
       </errors>
     </endpoint>
@@ -293,12 +311,15 @@
       un'opportunità con UNA riga e tre prodotti di interesse di quella categoria, allora la creazione
       riesce e i tre prodotti sono associati.</criterion>
     <criterion id="AC-013">Dato una Categoria Prodotto la cui radice è `"multiple"`, quando si crea
-      un'opportunità con tre righe che condividono la Funzione aziendale e la stessa radice, allora la
-      creazione riesce con tre righe.</criterion>
-    <criterion id="AC-014">Dato modalità `"multiple"`, quando si inviano due righe con Funzioni
-      aziendali DIVERSE, allora la risposta è 422 su `product_lines` (INV-2).</criterion>
-    <criterion id="AC-015">Dato modalità `"multiple"`, quando si inviano due righe che risolvono a due
-      RADICI diverse, allora la risposta è 422 su `product_lines` (INV-1).</criterion>
+      un'opportunità con tre righe sotto quella radice, allora la creazione riesce con tre righe.</criterion>
+    <criterion id="AC-014" rev="2">Dato modalità `"multiple"`, quando si inviano due righe con Funzioni
+      aziendali DIVERSE, allora la creazione riesce e entrambe le righe persistono (D-9; era 422 in
+      rev.1).</criterion>
+    <criterion id="AC-015" rev="2">Dato modalità `"multiple"`, quando si inviano due righe che risolvono
+      a due RADICI diverse, allora la creazione riesce (D-9; era 422 in rev.1).</criterion>
+    <criterion id="AC-019" rev="2">Dato due righe di cui UNA risolve a una radice `"single"` e l'altra a
+      una `"multiple"`, quando si inviano, allora la risposta è 422 su `product_lines` con
+      `SINGLE_ROW_ONLY_MESSAGE` (D-10): la modalità più restrittiva governa la scheda.</criterion>
     <criterion id="AC-016">Dato un'opportunità storica con due righe su una categoria oggi `"single"`,
       quando si aggiorna un campo NON di righe (es. `general_notes`) senza inviare `product_lines`,
       allora il salvataggio riesce e le righe restano intatte (D-5).</criterion>
@@ -345,19 +366,21 @@
     <criterion id="AC-041">Dato il form Opportunità con una Categoria Prodotto in modalità `"single"`
       già scelta, quando si guarda la sezione righe, allora il pulsante di aggiunta riga non è
       disponibile.</criterion>
-    <criterion id="AC-042">Dato il form in modalità `"multiple"` con la prima riga compilata, quando si
-      aggiunge una seconda riga, allora la Funzione aziendale è vincolata a quella della prima riga e le
-      Categorie Prodotto selezionabili sono limitate allo stesso sottoalbero radice.</criterion>
+    <criterion id="AC-042" rev="2">Dato il form in modalità `"multiple"` con la prima riga compilata,
+      quando si aggiunge una seconda riga, allora la riga nasce VUOTA, la sua Funzione aziendale è
+      selezionabile liberamente e le Categorie Prodotto offerte sono quelle della funzione scelta su
+      TUTTO l'albero, senza confinamento alla radice della prima riga (D-9). Cambiare la Funzione
+      aziendale della prima riga non tocca le altre. Era il vincolo opposto in rev.1.</criterion>
     <criterion id="AC-043">Dato il form di creazione Richiesta, quando si applicano AC-041 e AC-042,
       allora il comportamento osservabile è identico a quello del form Opportunità.</criterion>
     <criterion id="AC-044">Dato un record storico non conforme aperto nel pannello di lavorazione, quando
       si modifica solo un campo fuori dalle righe e si salva, allora il salvataggio riesce senza errori
       di validazione sulle righe (specularmente ad AC-016).</criterion>
-    <criterion id="AC-045">Dato un'opportunità in modifica o una richiesta aperta nel pannello di
-      lavorazione, le cui righe sono CARICATE dal server e non ripescate a mano, quando la loro
-      Categoria Prodotto risolve a `single`, allora il pulsante di aggiunta riga non è disponibile e,
-      in `multiple`, la Funzione aziendale delle righe successive resta vincolata alla prima
-      (AC-041/AC-042 valgono identici in modifica e in creazione — direttiva utente 2026-08-05).
+    <criterion id="AC-045" rev="2">Dato un'opportunità in modifica o una richiesta aperta nel pannello
+      di lavorazione, le cui righe sono CARICATE dal server e non ripescate a mano, quando una loro
+      Categoria Prodotto risolve a `single`, allora il pulsante di aggiunta riga non è disponibile;
+      in `multiple` ogni riga caricata mantiene la propria Funzione aziendale editabile (AC-041/AC-042
+      valgono identici in modifica e in creazione — direttiva utente 2026-08-05).
       La modalità si risolve dall'albero categorie già in cache, non dal `meta` dell'item scelto
       nella sessione. Il grandfathering D-5 resta lato server: un record storico non conforme si salva
       finché non ne vengono reinviate le righe (AC-016/AC-044 invariati).</criterion>

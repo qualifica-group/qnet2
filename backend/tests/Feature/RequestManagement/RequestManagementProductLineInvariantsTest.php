@@ -14,11 +14,14 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Spec 0077 INV-1/INV-2/INV-3 on the SAME shared `ProductLineSetValidator`,
- * exercised through the two request-management-specific channels: the create
- * form (AC-011 — mirrors the opportunities form's AC-010) and the inline
- * cell editor (AC-018), which has no FormRequest at all and reaches the
- * validator through `RequestProductLineWriter::apply()`.
+ * Spec 0077 INV-3 on the SAME shared `ProductLineSetValidator`, exercised
+ * through the two request-management-specific channels: the create form
+ * (AC-011 — mirrors the opportunities form's AC-010) and the inline cell
+ * editor (AC-018), which has no FormRequest at all and reaches the validator
+ * through `RequestProductLineWriter::apply()`. Rev.2 revoked INV-1/INV-2, so
+ * the row cap of a `single` root is what both channels still refuse; AC-043
+ * covers the other half — rows with different business functions go through
+ * here exactly as they do on the opportunities form.
  */
 uses(RefreshDatabase::class);
 
@@ -98,4 +101,25 @@ it('AC-018: the inline cell editor refuses a second row on a single-mode root, s
         'opportunity_id' => $opportunity->id,
         'product_category_id' => $root->id,
     ]);
+});
+
+it('AC-043 rev.2: the create form accepts rows with DIFFERENT business functions, like the opportunities form', function () {
+    $actor = lineInvariantsRequestActor();
+    $registry = Registry::factory()->create();
+    $functionA = BusinessFunction::factory()->create();
+    $functionB = BusinessFunction::factory()->create();
+    $categoryA = ProductCategory::factory()->create(['business_function_id' => $functionA->id]);
+    $categoryB = ProductCategory::factory()->create(['business_function_id' => $functionB->id]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/request-management', [
+        'registry_id' => $registry->id,
+        'source_id' => Source::factory()->create()->id,
+        'product_lines' => [
+            ['business_function_id' => $functionA->id, 'product_category_id' => $categoryA->id],
+            ['business_function_id' => $functionB->id, 'product_category_id' => $categoryB->id],
+        ],
+    ])->assertCreated();
+
+    $this->assertDatabaseCount('opportunity_product_lines', 2);
 });

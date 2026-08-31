@@ -9,6 +9,7 @@ import {
 } from '@/features/contracts/api'
 import type {
   ContractDetail,
+  ReactivateContractPayload,
   ScheduleContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
@@ -16,6 +17,7 @@ import type {
 } from '@/features/contracts/types'
 import type {
   EditContractFormValues,
+  ReactivateContractFormValues,
   ScheduleContractFormValues,
   TerminateContractFormValues,
   ValidateContractFormValues,
@@ -52,10 +54,14 @@ export function buildTerminatePayload(values: TerminateContractFormValues): Term
   }
 }
 
-/** `contract_status_id` is validated non-null by the schema before this runs (the FK is NOT NULL). */
+/** `contract_status_id` is validated non-null by the schema before this runs (mandatory on the disdetto path). */
+export function buildReactivatePayload(values: ReactivateContractFormValues): ReactivateContractPayload {
+  return { contract_status_id: values.contract_status_id as number }
+}
+
+/** The status is never sent from here (user directive 2026-08-31): only the domain actions move it. */
 export function buildEditPayload(values: EditContractFormValues): UpdateContractPayload {
   return {
-    contract_status_id: values.contract_status_id as number,
     renewal_date: values.renewal_date,
     expiry_date: values.expiry_date,
     payment_notes: values.payment_notes,
@@ -108,12 +114,12 @@ export function useTerminateContract(options: ContractMutationOptions) {
   return useContractMutation(options, terminateContract)
 }
 
-/** No payload: `reactivateContract` only takes the id. */
+/** Empty payload on the suspended path, destination status on the disdetto one. */
 export function useReactivateContract({ contractId, onSuccess }: ContractMutationOptions) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => reactivateContract(contractId),
+    mutationFn: (payload: ReactivateContractPayload = {}) => reactivateContract(contractId, payload),
     onSuccess: (contract) => {
       queryClient.setQueryData(contractDetailQueryKey(contractId), (previous: unknown) =>
         previous && typeof previous === 'object' ? { ...previous, ...contract } : previous,

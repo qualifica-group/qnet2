@@ -5,7 +5,7 @@ import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-func
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { resolveRowSetManagementMode } from '@/features/product-lines/category-tree-scope'
-import type { ProductLine, ProductLineRow } from '@/features/product-lines/types'
+import { emptyProductLineRow, type ProductLine, type ProductLineRow } from '@/features/product-lines/types'
 
 type LabelMap = Record<number, string>
 
@@ -33,8 +33,10 @@ function indexKnownLabels(lines: ProductLine[]): LabelMap {
  * Owns the inline product-lines row editor (spec 0040 amendment rev.3
  * AC-106, generalized in spec 0057 for reuse outside the opportunity form):
  * "Add" appends an EMPTY row (mirrors `manager_slots`' "Add slot"), each row
- * is edited IN PLACE — picking a business function resets that row's
- * category (still scoped by it, AC-104) — and a row is removed outright.
+ * is edited IN PLACE and INDEPENDENTLY of the others (spec 0077 rev.2, user
+ * directive 2026-08-31: every row picks its own business function) — picking
+ * one resets that row's category, still scoped by it (AC-104) — and a row is
+ * removed outright.
  * Business-function labels come from two sources, merged: `knownLines`
  * (already hydrated, computed fresh every render — cheap, no fetch) and a
  * locally-fetched cache for whatever the user picks in a row (a single
@@ -52,13 +54,7 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
   const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
 
   const knownBusinessFunctionLabels = indexKnownLabels(knownLines)
-  const resolvedManagementMode = resolveRowSetManagementMode(value, categoryTree)
-  const managementMode: CategoryManagementMode | null = resolvedManagementMode?.managementMode ?? null
-  const managementModeRootCategoryId: number | null = resolvedManagementMode?.rootCategoryId ?? null
-  // INV-2, gated to the resolved-multiple case only (point 4: unknown mode
-  // stays unconstrained, current behaviour, D-5-friendly for legacy rows).
-  const lockedBusinessFunctionId: number | null =
-    managementMode === 'multiple' ? (value[0]?.business_function_id ?? null) : null
+  const managementMode: CategoryManagementMode | null = resolveRowSetManagementMode(value, categoryTree)
   // AC-041: a single-mode card has exactly one row (INV-3); the "Add" action
   // stops being available the moment that mode resolves.
   const canAddRow = managementMode !== 'single'
@@ -89,10 +85,10 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
     if (!canAddRow) {
       return
     }
-    // AC-042: from the second row on, the function is bound to the first
-    // row's (INV-2) — prefilled here rather than left for the operator to
-    // repick it.
-    onChange([...value, { business_function_id: lockedBusinessFunctionId, product_category_id: null }])
+    // AC-042 rev.2: an EMPTY row. It used to be prefilled with the first
+    // row's function and locked (INV-2); rows are independent now, so the
+    // operator picks the function of each one.
+    onChange([...value, emptyProductLineRow()])
   }
 
   const removeRow = (index: number) => {
@@ -100,17 +96,12 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
   }
 
   const setRowBusinessFunction = (index: number, businessFunctionId: number | null) => {
-    // INV-2 cascade: once multiple rows share a resolved `multiple` mode, the
-    // first row's function change is mirrored onto every other row (whose
-    // control is itself locked/disabled — see `ProductLinesField`), each
-    // losing its category (still scoped by the now-different function).
-    const cascades = index === 0 && managementMode === 'multiple' && value.length > 1
-    const next = value.map((row, rowIndex) => {
-      if (rowIndex === index || cascades) {
-        return { business_function_id: businessFunctionId, product_category_id: null }
-      }
-      return row
-    })
+    // Only the edited row changes: its category is reset (it was scoped by
+    // the previous function), every other row is left alone — the INV-2
+    // cascade onto the whole set is gone with the invariant (rev.2).
+    const next = value.map((row, rowIndex) =>
+      rowIndex === index ? { business_function_id: businessFunctionId, product_category_id: null } : row,
+    )
     onChange(next)
     if (businessFunctionId !== null && businessFunctionLabel(businessFunctionId) === undefined) {
       void resolveLabel(BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, businessFunctionId, setFetchedBusinessFunctionLabels)
@@ -134,9 +125,5 @@ export function useProductLinesField({ value, onChange, knownLines }: UseProduct
     canAddRow,
     /** The resolved mode for this row set, `null` while indeterminate (spec 0077, point 4). */
     managementMode,
-    /** The resolved mode's root category id, `null` while indeterminate. Feeds `root_category_id` on rows after the first (INV-1, AC-042). */
-    managementModeRootCategoryId,
-    /** The shared business-function id every row after the first is bound to (INV-2), `null` outside the resolved-multiple case. */
-    lockedBusinessFunctionId,
   }
 }

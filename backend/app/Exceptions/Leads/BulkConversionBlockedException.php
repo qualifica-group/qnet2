@@ -27,6 +27,9 @@ final class BulkConversionBlockedException extends RuntimeException
     /** The lead's campaign (or its project) derives no product line to seed the Opportunity with. */
     public const string BLOCKER_NOT_DERIVABLE = 'not_derivable';
 
+    /** The lead's anagrafica already owns an open Opportunity (user directive 2026-08-31). */
+    public const string BLOCKER_REGISTRY_HAS_OPEN_OPPORTUNITY = 'registry_has_open_opportunity';
+
     /**
      * @param  array<int, array{id: int, reason: string}>  $blockers
      */

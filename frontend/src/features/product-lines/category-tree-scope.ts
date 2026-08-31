@@ -10,13 +10,14 @@
  *  - the EFFECTIVE business function (own-or-inherited, spec 0040 BR-4) —
  *    `ProductCategoryTreeNode.business_function_id` is the node's OWN one, so
  *    the inheritance is walked here;
- *  - the branch-root subtree (spec 0077 INV-1, the for-select's
- *    `root_category_id` param);
  *  - the branch root's `management_mode` (spec 0077), which the for-select
  *    used to hand over as `meta` on the picked item.
+ *
+ * Spec 0077 rev.2 (user directive 2026-08-31) revoked INV-1/INV-2: rows are
+ * independent, so nothing scopes a picker to a branch root any more and the
+ * root id itself has no consumer left — only the mode survives.
  */
-import type { CategoryManagementMeta } from '@/features/product-lines/management-mode'
-import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type { CategoryManagementMode, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
@@ -45,49 +46,35 @@ export function pickableCategoryIdsFor(
   return ids
 }
 
-/** The subtree rooted at `rootCategoryId` (the root included), or `[]` when that id is not in the tree. */
-export function subtreeOf(
-  nodes: ProductCategoryTreeNode[],
-  rootCategoryId: number,
-): ProductCategoryTreeNode[] {
-  for (const node of nodes) {
-    if (node.id === rootCategoryId) {
-      return [node]
-    }
-    const found = subtreeOf(node.children, rootCategoryId)
-    if (found.length > 0) {
-      return found
-    }
-  }
-
-  return []
-}
-
 /**
- * The picked category's branch root id + its EFFECTIVE management mode — what
- * the for-select item used to carry as `meta.root_category_id` /
- * `meta.management_mode`. `management_mode` is already mirrored on every
- * descendant server-side, so it is read off the node itself; only the root id
- * needs the walk.
+ * The management mode governing a set of categories: the STRICTEST one wins
+ * (spec 0077 rev.2, D-10) — one category on a `single` root governs the whole
+ * card, whatever the others resolve to. `null` only while the tree has not
+ * loaded or no id resolves in it: the indeterminate case, left unconstrained
+ * (spec 0077 point 4).
+ *
+ * `management_mode` is already mirrored on every descendant server-side, so
+ * it is read off the node itself — no root walk needed.
  */
-export function categoryManagementMetaFor(
+export function resolveManagementMode(
   nodes: ProductCategoryTreeNode[],
-  categoryId: number,
-): CategoryManagementMeta | null {
-  for (const root of nodes) {
-    const found = findNode([root], categoryId)
-    if (found !== null) {
-      return { rootCategoryId: root.id, managementMode: found.management_mode }
+  categoryIds: number[],
+): CategoryManagementMode | null {
+  let resolved: CategoryManagementMode | null = null
+
+  for (const categoryId of categoryIds) {
+    const mode = findNode(nodes, categoryId)?.management_mode ?? null
+    if (mode === 'single') {
+      return 'single'
     }
+    resolved ??= mode
   }
 
-  return null
+  return resolved
 }
 
 /**
- * The row set's resolved policy: the meta of the first row (in order) whose
- * category is found in the tree. `null` only while the tree has not loaded or
- * no row carries a category yet — the indeterminate case, left unconstrained.
+ * The row set's resolved policy, from the categories its rows carry.
  *
  * Resolved from the tree and NOT from what the operator picked in this
  * session (user directive 2026-08-05): a row hydrated on edit — the
@@ -99,17 +86,11 @@ export function categoryManagementMetaFor(
 export function resolveRowSetManagementMode(
   rows: ProductLineRow[],
   nodes: ProductCategoryTreeNode[],
-): CategoryManagementMeta | null {
-  for (const row of rows) {
-    if (row.product_category_id !== null) {
-      const meta = categoryManagementMetaFor(nodes, row.product_category_id)
-      if (meta !== null) {
-        return meta
-      }
-    }
-  }
-
-  return null
+): CategoryManagementMode | null {
+  return resolveManagementMode(
+    nodes,
+    rows.map((row) => row.product_category_id).filter((id): id is number => id !== null),
+  )
 }
 
 /** Depth-first lookup by id. */

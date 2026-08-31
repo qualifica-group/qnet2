@@ -7,6 +7,10 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchQuote, quoteDetailQueryKey } from '@/features/quotes/api'
 import { QuoteForm, QuoteFormSkeleton } from '@/features/quotes/quote-form'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
+import {
+  QUOTE_CREATE_OPPORTUNITY_PARAM,
+  QUOTE_CREATE_PRODUCT_IDS_PARAM,
+} from '@/features/quotes/quote-create-params'
 import { parseEntityId } from '@/routes/entity-id'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
@@ -54,7 +58,8 @@ export function QuoteDetailScreen({ id }: ModuleDetailScreenProps) {
 }
 
 /**
- * Create branch reads `opportunity_id` from `mode.params` (spec 0045/0067
+ * Create branch reads `opportunity_id` (and, user directive 2026-08-31, the
+ * `product_ids` that seed the offer rows) from `mode.params` (spec 0045/0067
  * AC-050), the same single channel `OpportunityFormScreen` reads `lead_id`
  * from: the modal Sheet (opportunity detail's "Crea Offerta" panel) hands the
  * params straight through, while `ModuleFormPage` would convert a deep-link
@@ -71,14 +76,20 @@ export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   }
 
   if (mode.type === 'create') {
-    const opportunityId = parseEntityId(String(mode.params?.opportunity_id ?? ''))
-    return (
-      <QuoteForm
-        mode={{ type: 'create', params: opportunityId !== null ? { opportunity_id: opportunityId } : undefined }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
-    )
+    const opportunityId = parseEntityId(String(mode.params?.[QUOTE_CREATE_OPPORTUNITY_PARAM] ?? ''))
+    // User directive 2026-08-31: `product_ids` travels verbatim (a
+    // comma-separated string either way) — `QuoteFormBody` parses it where it
+    // seeds the offer rows, so this screen normalizes only the id it forces.
+    const productIds = mode.params?.[QUOTE_CREATE_PRODUCT_IDS_PARAM]
+    const params =
+      opportunityId !== null
+        ? {
+            [QUOTE_CREATE_OPPORTUNITY_PARAM]: opportunityId,
+            ...(productIds !== undefined ? { [QUOTE_CREATE_PRODUCT_IDS_PARAM]: productIds } : {}),
+          }
+        : undefined
+
+    return <QuoteForm mode={{ type: 'create', params }} onSuccess={handleSuccess} onCancel={onCancel} />
   }
 
   return <QuoteEditScreen quoteId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />

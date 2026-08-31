@@ -6,8 +6,12 @@ import { FIELD_GRID_CLASS, FIELD_STACK_CLASS } from '@/components/record-form/la
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
+import { ExistingOpportunityAlert } from '@/features/opportunities/existing-opportunity-alert'
 import { OpportunityRegistryField } from '@/features/opportunities/opportunity-registry-field'
-import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
+import type {
+  BlockingOpportunity,
+  OpportunityFormValues,
+} from '@/features/opportunities/use-opportunity-form'
 import type { OpportunitySelectedItems } from '@/features/opportunities/use-opportunity-selected-items'
 
 interface OpportunityClientSectionProps {
@@ -16,6 +20,8 @@ interface OpportunityClientSectionProps {
   selectedItems: OpportunitySelectedItems
   /** BR-2: keys derived from a linked Lead, forced read-only (spec 0040 MT-6; empty outside that flow). */
   lockedFields: ReadonlySet<string>
+  /** The open opportunity the chosen anagrafica already has, when the server refused the create over it (directive 2026-08-31). */
+  blockingOpportunity?: BlockingOpportunity | null
   className?: string
 }
 
@@ -35,6 +41,7 @@ export function OpportunityClientSection({
   setValue,
   selectedItems,
   lockedFields,
+  blockingOpportunity = null,
   className,
 }: OpportunityClientSectionProps) {
   const { t } = useTranslation()
@@ -63,6 +70,14 @@ export function OpportunityClientSection({
         selected={selectedItems.registry}
         forceDisabled={lockedFields.has('registry_id')}
       />
+
+      {blockingOpportunity !== null ? (
+        <ExistingOpportunityAlert
+          opportunityId={blockingOpportunity.id}
+          message={blockingOpportunity.message}
+          productIds={blockingOpportunity.productIds}
+        />
+      ) : null}
 
       <div className={FIELD_GRID_CLASS}>
         <div className={FIELD_STACK_CLASS}>

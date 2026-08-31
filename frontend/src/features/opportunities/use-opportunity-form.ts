@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -53,6 +54,35 @@ const SERVER_ERROR_FIELDS = [
   'success_probability',
   'general_notes',
 ] as const
+
+/**
+ * User directive 2026-08-31: an anagrafica carries ONE open opportunity at a
+ * time. The refusal travels as a plain 422, with the blocking opportunity's id
+ * next to the `registry_id` message (RegistryOpenOpportunityGuard) so the form
+ * can link straight to it — the API never emits frontend paths.
+ */
+const EXISTING_OPPORTUNITY_ERROR_KEY = 'existing_opportunity_id'
+
+export interface BlockingOpportunity {
+  id: number
+  /** The server's own message, already localized by the API. */
+  message: string
+  /** The refused form's own products: what the offer opened on the blocking opportunity starts from. */
+  productIds: number[]
+}
+
+/** The blocking opportunity carried by a 422, or null when the failure is any other one. */
+function readBlockingOpportunity(error: unknown, productIds: number[]): BlockingOpportunity | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
+    return null
+  }
+
+  const errors = error.response.data?.errors as Record<string, string[]> | undefined
+  const id = Number(errors?.[EXISTING_OPPORTUNITY_ERROR_KEY]?.[0])
+  const message = errors?.registry_id?.[0]
+
+  return Number.isFinite(id) && id > 0 && message ? { id, message, productIds } : null
+}
 
 export type OpportunityFormValues = CreateOpportunityFormValues
 
@@ -235,9 +265,11 @@ export function useOpportunityFormSubmit({
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [blockingOpportunity, setBlockingOpportunity] = useState<BlockingOpportunity | null>(null)
 
   const onSubmit = async (values: OpportunityFormValues) => {
     setServerError(null)
+    setBlockingOpportunity(null)
     const errorFields: Path<OpportunityFormValues>[] = [...SERVER_ERROR_FIELDS]
     try {
       if (mode.type === 'edit') {
@@ -259,11 +291,21 @@ export function useOpportunityFormSubmit({
       invalidateStats()
       onSuccess(created)
     } catch (error) {
+      // The open-opportunity refusal owns its own alert (message + link to the
+      // blocking deal), so it is NOT repeated as an inline field error.
+      const blocking = readBlockingOpportunity(error, values.products_of_interest)
+
+      if (blocking !== null) {
+        setBlockingOpportunity(blocking)
+
+        return
+      }
+
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
         setServerError(t('opportunities.form.genericError'))
       }
     }
   }
 
-  return { serverError, onSubmit }
+  return { serverError, blockingOpportunity, onSubmit }
 }

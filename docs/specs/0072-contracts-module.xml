@@ -144,6 +144,55 @@
       (data odierna). Una sospensione e successiva riattivazione, o un secondo passaggio
       in `closed_won`, non la riscrivono mai.
     </decision>
+
+    <!-- DIRETTIVA UTENTE 2026-08-31: emenda D-2 e il data_contract di "Valida"/PATCH. -->
+
+    <decision id="D-8">
+      Nuova riga di stato "Validato" (`closed_won`), di SISTEMA: system_key `validated`,
+      seconda riga di HEAD subito dopo "Da validare" (`ContractStatus::SYSTEM_HEAD_KEYS =
+      [New, Validated]`), quindi la sequenza sort_order diventa 0 / 10 per la testa, 20+
+      per le righe custom e 50/60/70 per la coda. Emenda D-2: la tabella nasceva senza
+      alcuna riga `closed_won`, cosi' un contratto validato non aveva dove atterrare.
+      Conseguenza su D-2: "Valida" NON prende piu' liberamente lo stato dal client — il
+      default e' la riga di sistema `validated` (stesso schema di "Disdici" con
+      `terminated`) e uno stato inviato dal client deve appartenere al gruppo `closed_won`
+      (422 altrimenti). "Programma" resta invece client-driven come da D-2.
+    </decision>
+    <decision id="D-9">
+      Le azioni di dominio sono gated anche sul CICLO DI VITA del contratto, non solo
+      sull'ability (`App\Services\Contracts\ContractActionAvailability`, gemello FE
+      `contract-lifecycle.ts`), sia nel dettaglio (`permissions.actions`) sia nelle row
+      action della griglia:
+        - contratto non validato -> "Valida" + "Disdici"
+        - contratto validato     -> "Programma" + "Disdici" (mai piu' "Valida")
+        - contratto disdetto     -> solo "Riattiva contratto" (nemmeno "Modifica dati")
+      "Validato" = `validated_at` valorizzato OPPURE stato nel gruppo `closed_won`.
+      "Valida" resta comunque nascosta su un contratto sospeso (l'endpoint 422). I link
+      "Visualizza preventivo"/"Apri opportunita'" non sono gated sul ciclo di vita.
+      "Programma" e' renderizzata DISABILITATA in attesa di essere ridefinita: dialog ed
+      endpoint restano intatti.
+    </decision>
+    <decision id="D-10">
+      Lo stato del contratto esce dal form "Modifica dati": lo stato lo muovono solo le
+      azioni di dominio. L'endpoint PATCH continua ad accettare `contract_status_id` (non
+      e' stato ristretto lato server), ma nessun client lo invia.
+    </decision>
+    <decision id="D-11">
+      "Riattiva contratto" serve DUE percorsi (emenda BR-2/D-3, che copriva solo il
+      sospeso):
+        - SOSPESO: invariato. Nessun body, ripristino dello stato pre-sospensione, guardia
+          sul preventivo (deve essere attualmente `closed_won`, altrimenti 422).
+        - DISDETTO: `contract_status_id` OBBLIGATORIO nel body — nessuna colonna ha mai
+          memorizzato lo stato precedente alla disdetta, quindi lo sceglie l'utente in un
+          dialog dedicato — e NON puo' appartenere al gruppo `closed_lost` (422). La
+          riattivazione azzera l'intero timbro di disdetta (`terminated_at`,
+          `termination_reason`, `terminated_by`) e NON tocca `validated_at`/`validated_by`:
+          si annulla la disdetta, non la validazione. Decisione utente: su questo percorso
+          NON si applica la guardia sul preventivo `closed_won` (la disdetta e' una
+          decisione commerciale indipendente).
+      Un contratto ne' sospeso ne' disdetto resta 422. L'activity log distingue i due
+      percorsi con la property `reactivated_from` (`suspended` | `terminated`).
+    </decision>
   </context>
 
   <scope>

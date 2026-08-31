@@ -8,6 +8,7 @@ use App\Enums\ContractStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
+use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Contracts\ContractColumnCatalog;
@@ -55,6 +56,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly ContractRelationColumns $relationColumns,
         private readonly ContractAlertResolver $alertResolver,
+        private readonly ContractActionAvailability $actionAvailability,
     ) {}
 
     public function domain(): string
@@ -235,31 +237,38 @@ class ContractsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via ContractPolicy. No
-     * `create`/`delete` action exists (D-6, BR-8): `edit` is offered only
-     * when `contracts.update` allows it (renewal/expiry/payment
-     * notes/comments — the only PATCH-able fields), and the 4 domain actions
-     * plus `change_status` are each gated on their own ability.
+     * Allowed action keys for a single row, via ContractPolicy AND the row's
+     * own lifecycle (ContractActionAvailability — the same rule the detail's
+     * action bar reads, user directive 2026-08-31, so grid and detail can
+     * never offer a different set). No `create`/`delete` action exists (D-6,
+     * BR-8): `edit` is offered only when `contracts.update` allows it
+     * (renewal/expiry/payment notes/comments — the only PATCH-able fields),
+     * and the 4 domain actions plus `change_status` are each gated on their
+     * own ability.
+     *
+     * `$row` arrives with `contractStatus` already eager-loaded (see
+     * `baseQuery()`), so the availability check never N+1s across the page.
      *
      * @return array<int, string>
      */
     public function actionsFor(User $actor, Model $row): array
     {
+        /** @var Contract $row */
         $allowed = [];
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
         }
 
-        if (Gate::forUser($actor)->allows('update', $row)) {
+        if ($this->actionAvailability->mayEdit($row) && Gate::forUser($actor)->allows('update', $row)) {
             $allowed[] = 'edit';
         }
 
-        if (Gate::forUser($actor)->allows('validate', $row)) {
+        if ($this->actionAvailability->mayValidate($row) && Gate::forUser($actor)->allows('validate', $row)) {
             $allowed[] = 'validate';
         }
 
-        if (Gate::forUser($actor)->allows('schedule', $row)) {
+        if ($this->actionAvailability->maySchedule($row) && Gate::forUser($actor)->allows('schedule', $row)) {
             $allowed[] = 'schedule';
         }
 
@@ -267,11 +276,11 @@ class ContractsTableDefinition extends AbstractTableDefinition
             $allowed[] = 'change_status';
         }
 
-        if (Gate::forUser($actor)->allows('terminate', $row)) {
+        if ($this->actionAvailability->mayTerminate($row) && Gate::forUser($actor)->allows('terminate', $row)) {
             $allowed[] = 'terminate';
         }
 
-        if (Gate::forUser($actor)->allows('reactivate', $row)) {
+        if ($this->actionAvailability->mayReactivate($row) && Gate::forUser($actor)->allows('reactivate', $row)) {
             $allowed[] = 'reactivate';
         }
 

@@ -398,7 +398,7 @@ describe('OpportunityFormBody — product lines (AC-106)', () => {
 
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
     expect(screen.getByTestId('scope-Product category 1')).toHaveTextContent(
-      JSON.stringify({ business_function_id: TEST_BUSINESS_FUNCTION, root_category_id: null }),
+      JSON.stringify({ business_function_id: TEST_BUSINESS_FUNCTION }),
     )
   })
 

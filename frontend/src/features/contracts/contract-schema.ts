@@ -96,26 +96,42 @@ export function terminateContractDefaultValues(): TerminateContractFormValues {
 }
 
 /**
- * "Modifica dati" — the PATCH-editable subset (data_contract): status,
- * dates, payment notes and comments. Per-field visibility/editability is
- * enforced by `MetaField` at render time (AC-039), not here.
- * `contract_status_id` is required: the column is NOT NULL, always prefilled
- * from the current contract, and the picker's clear action must not produce
- * an empty FK.
+ * "Riattiva contratto" sul percorso DISDETTO (direttiva utente 2026-08-31):
+ * lo stato di destinazione e' obbligatorio, perche' nessuna colonna ha mai
+ * memorizzato quello precedente alla disdetta. Il percorso SOSPESO non usa
+ * questo schema: non ha form, ripristina da solo lo stato pre-sospensione.
  */
-export function buildEditContractSchema(t: TFunction) {
+export function buildReactivateContractSchema(t: TFunction) {
   return z
     .object({
       contract_status_id: z.number().nullable(),
-      renewal_date: z.string().nullable(),
-      expiry_date: z.string().nullable(),
-      payment_notes: z.string().nullable(),
-      comments: z.string().nullable(),
     })
     .refine((value) => value.contract_status_id !== null, {
-      message: t('contracts.actions.edit.statusRequired'),
+      message: t('contracts.actions.reactivateDialog.statusRequired'),
       path: ['contract_status_id'],
     })
+}
+
+export type ReactivateContractFormValues = z.infer<ReturnType<typeof buildReactivateContractSchema>>
+
+export function reactivateContractDefaultValues(): ReactivateContractFormValues {
+  return { contract_status_id: null }
+}
+
+/**
+ * "Modifica dati" — the PATCH-editable subset (data_contract): dates,
+ * payment notes and comments. Per-field visibility/editability is enforced
+ * by `MetaField` at render time (AC-039), not here. The contract status is
+ * NOT part of this form (user directive 2026-08-31): it is driven by the
+ * domain actions alone, so nothing here can leave the NOT NULL FK empty.
+ */
+export function buildEditContractSchema() {
+  return z.object({
+    renewal_date: z.string().nullable(),
+    expiry_date: z.string().nullable(),
+    payment_notes: z.string().nullable(),
+    comments: z.string().nullable(),
+  })
 }
 
 export type EditContractFormValues = z.infer<ReturnType<typeof buildEditContractSchema>>

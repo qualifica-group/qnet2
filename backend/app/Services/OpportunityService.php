@@ -17,6 +17,7 @@ use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
+use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
@@ -81,6 +82,7 @@ class OpportunityService
         // owns the OTHER half — a submitted `product_lines` that orphans the
         // products already persisted (mirrors RequestManagementService).
         private readonly ProductCategoryCoherence $coherence,
+        private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -206,6 +208,12 @@ class OpportunityService
             if ($data->leadId !== null) {
                 $attributes = $this->applyLeadDefaults($attributes, $data->leadId);
             }
+
+            // User directive 2026-08-31: one open opportunity per anagrafica.
+            // Checked AFTER the lead derivation (the lead is what supplies
+            // `registry_id` on a conversion) and inside the transaction, so
+            // the whole create — bulk conversion included — rolls back.
+            $this->openOpportunityGuard->assertNoOpenOpportunity((int) $attributes['registry_id']);
 
             // `opportunities.name` is NOT NULL but the authoritative value
             // (spec 0057, D-5: `OPP_{id}`) depends on the row's own id — seed

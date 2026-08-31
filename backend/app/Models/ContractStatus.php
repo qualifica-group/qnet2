@@ -18,8 +18,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * DocumentLayout's exclusive `is_default` (BR-5, same invariant as
  * `DocumentLayoutDefaultManager`) and a `group` classification
  * (`App\Enums\ContractStatusGroup` — a module-specific enum, D-5, not a reuse
- * of `App\Enums\WorkflowStatusGroup`). `name` is unique; `system_key` (nullable, the FOUR
- * mandatory rows of D-2 — "Da validare"/"Sospeso"/"Annullato"/"Disdetto") is
+ * of `App\Enums\WorkflowStatusGroup`). `name` is unique; `system_key` (nullable, the FIVE
+ * mandatory rows — D-2's "Da validare"/"Sospeso"/"Annullato"/"Disdetto" plus
+ * "Validato", added by the user directive of 2026-08-31) is
  * DELIBERATELY absent from #[Fillable] — never mass-assignable, written only
  * by the create migration and
  * App\Services\Statuses\SystemStatusGuard/StatusOrderManager. `sort_order`
@@ -37,13 +38,15 @@ class ContractStatus extends BaseModel
 
     /**
      * The system rows pinned to the head of the sort_order sequence
-     * (StatusOrderManager::reorder()): a single row here, "Da validare" at 0
-     * — the array shape mirrors SYSTEM_TAIL_KEYS, which every status model
-     * shares (StatusOrderManager is generic over both).
+     * (StatusOrderManager::reorder()), in the order they must appear: "Da
+     * validare" at 0 then "Validato" at 10 — the positive-outcome row every
+     * validated contract lands on (user directive 2026-08-31), pinned so it
+     * can be neither deleted nor moved out of the `closed_won` group the
+     * detail's action bar reads.
      *
      * @var array<int, StatusSystemKey>
      */
-    public const array SYSTEM_HEAD_KEYS = [StatusSystemKey::New];
+    public const array SYSTEM_HEAD_KEYS = [StatusSystemKey::New, StatusSystemKey::Validated];
 
     /**
      * The system rows that pin to the tail of the sort_order sequence
@@ -80,8 +83,8 @@ class ContractStatus extends BaseModel
     }
 
     /**
-     * Whether this is one of the four mandatory system rows ("Da validare"/
-     * "Sospeso"/"Annullato"/"Disdetto", spec 0072 D-2) rather than a custom,
+     * Whether this is one of the five mandatory system rows ("Da validare"/
+     * "Validato"/"Sospeso"/"Annullato"/"Disdetto") rather than a custom,
      * user-created status.
      */
     public function isSystem(): bool

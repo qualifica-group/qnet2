@@ -41,6 +41,7 @@
     "This product category does not belong to the selected business function.": "Questa categoria prodotto non appartiene alla funzione aziendale selezionata.",
     "This opportunity is managed on a single product category: its offer may carry one product row only.": "Questa opportunità è gestita su una singola categoria prodotto: l'offerta può contenere una sola riga prodotto.",
     "The product category of this opportunity allows a single offer: one already exists.": "La categoria prodotto di questa opportunità ammette una sola offerta: ne esiste già una.",
+    "This registry already has an open opportunity: :opportunity. Add the offer to that one instead of creating a duplicate.": "Questa anagrafica ha già un'opportunità aperta: :opportunity. Aggiungi l'offerta a quella, invece di creare un'opportunità duplicata.",
     "This field is required.": "Questo campo è obbligatorio.",
     "A note is not accepted on this column.": "Questa colonna non accetta una nota.",
     "Column [:column] is not editable.": "La colonna [:column] non è modificabile.",

@@ -159,7 +159,10 @@ export interface ConvertLeadsResult {
 }
 
 /** Why a single lead was refused by the mass conversion (spec 0071). */
-export type LeadConversionBlockerReason = 'already_converted' | 'not_derivable'
+export type LeadConversionBlockerReason =
+  | 'already_converted'
+  | 'not_derivable'
+  | 'registry_has_open_opportunity'
 
 /** One offending lead of a refused batch. */
 export interface LeadConversionBlocker {

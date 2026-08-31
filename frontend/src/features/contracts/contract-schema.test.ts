@@ -84,26 +84,17 @@ describe('buildTerminateContractSchema', () => {
 })
 
 describe('buildEditContractSchema', () => {
-  const schema = buildEditContractSchema(i18n.t)
+  const schema = buildEditContractSchema()
 
-  it('requires a non-null contract_status_id (the FK is NOT NULL)', () => {
+  it('accepts the four editable fields, all nullable — the status is not part of the form', () => {
     expect(
       schema.safeParse({
-        contract_status_id: null,
-        renewal_date: null,
-        expiry_date: null,
-        payment_notes: null,
-        comments: null,
-      }).success,
-    ).toBe(false)
-    expect(
-      schema.safeParse({
-        contract_status_id: 1,
         renewal_date: null,
         expiry_date: null,
         payment_notes: null,
         comments: null,
       }).success,
     ).toBe(true)
+    expect(schema.safeParse({ renewal_date: '2026-12-31' }).success).toBe(false)
   })
 })

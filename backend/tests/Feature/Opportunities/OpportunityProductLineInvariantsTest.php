@@ -14,10 +14,17 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Spec 0077 INV-1/INV-2/INV-3, on the opportunities form (AC-010, AC-014,
- * AC-015, AC-016, AC-017): the same three card-level checks
- * `ProductLineSetValidator::crossRowErrors()` adds beyond the pre-existing
- * duplicate-pair/business-function-mismatch pair.
+ * Spec 0077 INV-3 on the opportunities form (AC-010, AC-014, AC-015, AC-016,
+ * AC-017): the card-level check `ProductLineSetValidator::crossRowErrors()`
+ * adds beyond the pre-existing duplicate-pair/business-function-mismatch
+ * pair.
+ *
+ * Rev.2 (user directive 2026-08-31) revoked INV-1/INV-2 — rows are
+ * independent — so AC-014 and AC-015, which used to assert a 422 on mixed
+ * business functions and mixed roots, now assert the opposite: they are the
+ * regression guard that the two rules do not creep back in. The row cap of a
+ * `single` root is the only card-level rule left, and it now applies as soon
+ * as ONE row resolves to such a root (D-10).
  */
 uses(RefreshDatabase::class);
 
@@ -69,7 +76,7 @@ it('AC-010: create with two rows under a single-mode root -> 422 on product_line
     expect(Opportunity::count())->toBe(0);
 });
 
-it('AC-014: create with rows carrying two different business functions -> 422 on product_lines', function () {
+it('AC-014 rev.2: create with rows carrying two different business functions succeeds, both persisted', function () {
     $actor = invariantsOpportunityActor();
     $functionA = BusinessFunction::factory()->create();
     $functionB = BusinessFunction::factory()->create();
@@ -77,18 +84,28 @@ it('AC-014: create with rows carrying two different business functions -> 422 on
     $categoryB = ProductCategory::factory()->create(['business_function_id' => $functionB->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/opportunities', array_merge(invariantsMandatoryOpportunityFks(), [
+    $response = $this->postJson('/api/opportunities', array_merge(invariantsMandatoryOpportunityFks(), [
         'product_lines' => [
             ['business_function_id' => $functionA->id, 'product_category_id' => $categoryA->id],
             ['business_function_id' => $functionB->id, 'product_category_id' => $categoryB->id],
         ],
         'products_of_interest' => [Product::factory()->create(['category_id' => $categoryA->id])->id],
-    ]))->assertStatus(422)->assertJsonValidationErrors('product_lines');
+    ]))->assertCreated();
 
-    expect(Opportunity::count())->toBe(0);
+    $opportunityId = $response->json('data.id');
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId,
+        'business_function_id' => $functionA->id,
+        'product_category_id' => $categoryA->id,
+    ]);
+    $this->assertDatabaseHas('opportunity_product_lines', [
+        'opportunity_id' => $opportunityId,
+        'business_function_id' => $functionB->id,
+        'product_category_id' => $categoryB->id,
+    ]);
 });
 
-it('AC-015: create with rows resolving to two different roots -> 422 on product_lines', function () {
+it('AC-015 rev.2: create with rows resolving to two different multiple-mode roots succeeds', function () {
     $actor = invariantsOpportunityActor();
     $businessFunction = BusinessFunction::factory()->create();
     $rootA = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
@@ -101,6 +118,30 @@ it('AC-015: create with rows resolving to two different roots -> 422 on product_
             ['business_function_id' => $businessFunction->id, 'product_category_id' => $rootB->id],
         ],
         'products_of_interest' => [Product::factory()->create(['category_id' => $rootA->id])->id],
+    ]))->assertCreated();
+
+    $this->assertDatabaseCount('opportunity_product_lines', 2);
+});
+
+it('D-10: one row on a single-mode root caps the card even when the other row is multiple-mode', function () {
+    $actor = invariantsOpportunityActor();
+    $businessFunction = BusinessFunction::factory()->create();
+    $singleRoot = ProductCategory::factory()->create([
+        'business_function_id' => $businessFunction->id,
+        'management_mode' => CategoryManagementMode::Single,
+    ]);
+    $multipleRoot = ProductCategory::factory()->create([
+        'business_function_id' => $businessFunction->id,
+        'management_mode' => CategoryManagementMode::Multiple,
+    ]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/opportunities', array_merge(invariantsMandatoryOpportunityFks(), [
+        'product_lines' => [
+            ['business_function_id' => $businessFunction->id, 'product_category_id' => $multipleRoot->id],
+            ['business_function_id' => $businessFunction->id, 'product_category_id' => $singleRoot->id],
+        ],
+        'products_of_interest' => [Product::factory()->create(['category_id' => $multipleRoot->id])->id],
     ]))->assertStatus(422)->assertJsonValidationErrors('product_lines');
 
     expect(Opportunity::count())->toBe(0);
@@ -128,7 +169,7 @@ it('AC-012: create with one row and three products of interest under a single-mo
         ->toEqual($products->pluck('id')->sort()->values()->all());
 });
 
-it('AC-013: create with three rows sharing the business function and root under multiple-mode succeeds, all three persisted', function () {
+it('AC-013: create with three rows under one multiple-mode root succeeds, all three persisted', function () {
     $actor = invariantsOpportunityActor();
     $businessFunction = BusinessFunction::factory()->create();
     $root = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DataObjects\Contracts\ReactivateContractData;
 use App\DataObjects\Contracts\ScheduleContractData;
 use App\DataObjects\Contracts\TerminateContractData;
 use App\DataObjects\Contracts\ValidateContractData;
@@ -33,7 +34,12 @@ class ContractActionService
     /**
      * BR-3: not repeatable (422 if already validated), refused while
      * suspended (422) — a suspended contract has no working status to
-     * validate into.
+     * validate into. The destination status defaults to the system
+     * "Validato" row (user directive 2026-08-31) and, when the client sends
+     * one, MUST belong to the closed_won group — the mirror image of
+     * terminate()'s closed_lost rule, and what makes "validato" and "stato
+     * con chiusura positiva" the same fact for the action bar
+     * (ContractActionAvailability).
      */
     public function validate(Contract $contract, ValidateContractData $data, User $actor): Contract
     {
@@ -43,12 +49,15 @@ class ContractActionService
 
             $validatedAt = $data->validatedAtSubmitted ? $data->validatedAt : now()->toDateString();
 
+            $statusId = $data->contractStatusIdSubmitted
+                ? $data->contractStatusId
+                : $this->statusResolver->systemId(StatusSystemKey::Validated);
+
+            $this->assertClosedWon($statusId);
+
             $contract->validated_at = $validatedAt;
             $contract->validated_by = $actor->id;
-
-            if ($data->contractStatusIdSubmitted) {
-                $contract->contract_status_id = $data->contractStatusId;
-            }
+            $contract->contract_status_id = $statusId;
 
             $contract->save();
 
@@ -138,32 +147,89 @@ class ContractActionService
     }
 
     /**
-     * BR-2/D-3: allowed only while suspended AND the linked quote is
-     * CURRENTLY back in a closed_won group. Restores the pre-suspension
-     * status, falling back to the active `is_default` row if that one has
-     * since been deactivated.
+     * Two paths, one action (BR-2/D-3, extended by the user directive of
+     * 2026-08-31):
+     *
+     * - SUSPENDED: allowed only while the linked quote is CURRENTLY back in
+     *   a closed_won group; restores the pre-suspension status, falling back
+     *   to the active `is_default` row if that one has since been
+     *   deactivated. Unchanged.
+     * - DISDETTO: allowed whatever the quote's current status (user
+     *   decision: the disdetta is a commercial decision of its own); the
+     *   destination status comes from the client, since nothing ever
+     *   recorded the one preceding the disdetta. Clears the whole
+     *   termination stamp so the contract stops being disdetto.
+     *
+     * A contract that is neither is refused (422).
      */
-    public function reactivate(Contract $contract): Contract
+    public function reactivate(Contract $contract, ReactivateContractData $data): Contract
     {
-        DB::transaction(function () use ($contract): void {
-            $this->assertSuspended($contract);
-            $this->assertQuoteClosedWon($contract);
+        DB::transaction(function () use ($contract, $data): void {
+            $this->assertReactivatable($contract);
 
-            $restoredStatusId = $this->restoredStatusId($contract);
-
-            $contract->contract_status_id = $restoredStatusId;
-            $contract->status_before_suspension_id = null;
-            $contract->suspended_at = null;
-            $contract->save();
-
-            activity($contract->getTable())
-                ->performedOn($contract)
-                ->event('contract.reactivated')
-                ->withProperties(['contract_status_id' => $restoredStatusId])
-                ->log('Contract reactivated');
+            $contract->terminated_at !== null
+                ? $this->reactivateTerminated($contract, $data)
+                : $this->reactivateSuspended($contract);
         });
 
         return $this->contractService->loadDetail($contract->fresh());
+    }
+
+    private function reactivateSuspended(Contract $contract): void
+    {
+        $this->assertQuoteClosedWon($contract);
+
+        $restoredStatusId = $this->restoredStatusId($contract);
+
+        $contract->contract_status_id = $restoredStatusId;
+        $contract->status_before_suspension_id = null;
+        $contract->suspended_at = null;
+        $contract->save();
+
+        $this->logReactivation($contract, $restoredStatusId, 'suspended');
+    }
+
+    private function reactivateTerminated(Contract $contract, ReactivateContractData $data): void
+    {
+        $statusId = $this->submittedReactivationStatusId($data);
+
+        $contract->contract_status_id = $statusId;
+        $contract->terminated_at = null;
+        $contract->termination_reason = null;
+        $contract->terminated_by = null;
+        $contract->save();
+
+        $this->logReactivation($contract, $statusId, 'terminated');
+    }
+
+    private function logReactivation(Contract $contract, int $statusId, string $from): void
+    {
+        activity($contract->getTable())
+            ->performedOn($contract)
+            ->event('contract.reactivated')
+            ->withProperties(['contract_status_id' => $statusId, 'reactivated_from' => $from])
+            ->log('Contract reactivated');
+    }
+
+    /**
+     * The destination status of a disdetto contract's reactivation.
+     * ReactivateContractRequest already makes it mandatory on this path and
+     * excludes the closed_lost group; re-asserted here since this method may
+     * be invoked directly by any future caller.
+     */
+    private function submittedReactivationStatusId(ReactivateContractData $data): int
+    {
+        if (! $data->contractStatusIdSubmitted || $data->contractStatusId === null) {
+            abort(422, 'A destination status is required to reactivate a terminated contract.');
+        }
+
+        $group = ContractStatus::query()->whereKey($data->contractStatusId)->value('group');
+
+        if ($group === ContractStatusGroup::ClosedLost) {
+            abort(422, 'The destination status must not belong to the closed_lost group.');
+        }
+
+        return $data->contractStatusId;
     }
 
     private function restoredStatusId(Contract $contract): int
@@ -198,10 +264,10 @@ class ContractActionService
         }
     }
 
-    private function assertSuspended(Contract $contract): void
+    private function assertReactivatable(Contract $contract): void
     {
-        if (! $contract->isSuspended()) {
-            abort(422, 'This contract is not suspended.');
+        if (! $contract->isSuspended() && $contract->terminated_at === null) {
+            abort(422, 'This contract is neither suspended nor terminated.');
         }
     }
 
@@ -211,6 +277,17 @@ class ContractActionService
 
         if ($contract->quote->quoteWorkflowStatus?->group !== WorkflowStatusGroup::ClosedWon) {
             abort(422, 'The linked quote is not currently closed_won.');
+        }
+    }
+
+    private function assertClosedWon(int $statusId): void
+    {
+        // See assertClosedLost(): Builder::value() already returns the cast
+        // enum, not a raw string.
+        $group = ContractStatus::query()->whereKey($statusId)->value('group');
+
+        if ($group !== ContractStatusGroup::ClosedWon) {
+            abort(422, 'The destination status must belong to the closed_won group.');
         }
     }
 

@@ -1,8 +1,11 @@
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 
+/** Which of the product's two prices the tab precompiles from (D-6). */
+export type QuoteLineVariant = 'revenue' | 'cost'
+
 /** A freshly-added row: every field empty, matching the schema's nullable-per-field shape. */
-const EMPTY_LINE_ROW: QuoteLineFormValues = {
+export const EMPTY_LINE_ROW: QuoteLineFormValues = {
   product_id: null,
   quantity: null,
   unit_price: null,
@@ -14,7 +17,7 @@ interface UseQuoteLinesFieldArgs {
   value: QuoteLineFormValues[]
   onChange: (rows: QuoteLineFormValues[]) => void
   /** Which of the product's own prices precompiles `unit_price` (D-6): `price` on Offer rows, `cost` on Cost rows. */
-  variant: 'revenue' | 'cost'
+  variant: QuoteLineVariant
   /**
    * Feeds the shared VAT-percent cache (`use-quote-form.ts`) so the live
    * summary preview stays accurate the moment a product is picked
@@ -22,6 +25,25 @@ interface UseQuoteLinesFieldArgs {
    * a percentage, only the product's own `meta` does.
    */
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+}
+
+/**
+ * The row values a picked product precompiles (AC-074, D-6): the price of the
+ * tab's own variant plus the product's VAT rate. Pure, so the deep-link
+ * seeding path (an offer opened with products already chosen, user directive
+ * 2026-08-31) fills its rows exactly like a manual pick does.
+ */
+export function lineValuesFromProduct(
+  item: QuoteProductForSelectItem,
+  variant: QuoteLineVariant,
+): Pick<QuoteLineFormValues, 'product_id' | 'unit_price' | 'vat_rate_id'> {
+  const priceSource = variant === 'revenue' ? item.meta.price : item.meta.cost
+
+  return {
+    product_id: item.id,
+    unit_price: priceSource !== null ? Number(priceSource) : null,
+    vat_rate_id: item.meta.vat_rate_id,
+  }
 }
 
 /**
@@ -53,9 +75,6 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
       return
     }
 
-    const priceSource = variant === 'revenue' ? item.meta.price : item.meta.cost
-    const unitPrice = priceSource !== null ? Number(priceSource) : null
-
     if (item.meta.vat_rate_id !== null && item.meta.vat_rate !== null) {
       rememberVatRatePercent(item.meta.vat_rate_id, Number(item.meta.vat_rate))
     }
@@ -63,7 +82,7 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     onChange(
       value.map((row, rowIndex) =>
         rowIndex === index
-          ? { ...row, product_id: productId, unit_price: unitPrice, vat_rate_id: item.meta.vat_rate_id, ...(commissions ? { commissions } : {}) }
+          ? { ...row, ...lineValuesFromProduct(item, variant), ...(commissions ? { commissions } : {}) }
           : row,
       ),
     )

@@ -8,6 +8,7 @@ use App\Exceptions\Leads\BulkConversionBlockedException;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
+use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,7 @@ final class ConvertLeadsToOpportunities
     public function __construct(
         private readonly ConvertLeadToOpportunity $converter,
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
+        private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
     ) {}
 
     /**
@@ -87,15 +89,49 @@ final class ConvertLeadsToOpportunities
     {
         $blockers = [];
 
+        // One query for the whole selection, never one per lead.
+        $openByRegistry = $this->openOpportunityGuard->openOpportunityIdsByRegistry(
+            $leads->pluck('registry_id')->filter()->map(intval(...))->unique()->values()->all(),
+        );
+
+        /** @var array<int, true> $claimedRegistries */
+        $claimedRegistries = [];
+
         foreach ($leads as $lead) {
-            $reason = $this->blockerFor($lead);
+            $registryId = (int) $lead->registry_id;
+
+            $reason = $this->blockerFor($lead)
+                ?? $this->registryBlockerFor($registryId, $openByRegistry, $claimedRegistries);
 
             if ($reason !== null) {
                 $blockers[] = ['id' => $lead->id, 'reason' => $reason];
+
+                continue;
             }
+
+            $claimedRegistries[$registryId] = true;
         }
 
         return $blockers;
+    }
+
+    /**
+     * User directive 2026-08-31: an anagrafica may carry one open opportunity
+     * at a time. Two convertible leads of the SAME anagrafica in one batch are
+     * the same violation — the first would create the opportunity the second
+     * then collides with — so a registry already claimed EARLIER IN THIS BATCH
+     * blocks exactly like one that is already open in the database.
+     *
+     * @param  array<int, int>  $openByRegistry
+     * @param  array<int, true>  $claimedRegistries
+     */
+    private function registryBlockerFor(int $registryId, array $openByRegistry, array $claimedRegistries): ?string
+    {
+        if (isset($openByRegistry[$registryId]) || isset($claimedRegistries[$registryId])) {
+            return BulkConversionBlockedException::BLOCKER_REGISTRY_HAS_OPEN_OPPORTUNITY;
+        }
+
+        return null;
     }
 
     /**

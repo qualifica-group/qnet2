@@ -13,9 +13,11 @@ uses(RefreshDatabase::class);
 | POST /api/contract-statuses/reorder (spec 0072, AC-026/AC-027)
 |--------------------------------------------------------------------------
 |
-| The migration seeds 3 custom rows ("Da programmare"/"Programmato"/"In
-| scadenza") alongside the 4 system rows, so `ordered_ids` must include
-| exactly those 3 (plus any extra custom row a test creates).
+| The migrations seed 3 custom rows ("Da programmare"/"Programmato"/"In
+| scadenza") alongside the 5 system rows, so `ordered_ids` must include
+| exactly those 3 (plus any extra custom row a test creates). The HEAD is
+| two rows long ("Da validare" 0, "Validato" 10, directive 2026-08-31), so
+| the first custom always lands on 20.
 */
 
 if (! function_exists('contractStatusReorderUserWith')) {
@@ -38,7 +40,7 @@ if (! function_exists('contractStatusReorderUserWith')) {
     }
 }
 
-it('reorder: a valid permutation resequences the customs, Da validare stays 0, tail stays Sospeso/Annullato/Disdetto (AC-026)', function () {
+it('reorder: a valid permutation resequences the customs, the head stays Da validare/Validato, tail stays Sospeso/Annullato/Disdetto (AC-026)', function () {
     $actor = contractStatusReorderUserWith(['update']);
     $daProgrammare = ContractStatus::where('name', 'Da programmare')->firstOrFail();
     $programmato = ContractStatus::where('name', 'Programmato')->firstOrFail();
@@ -50,19 +52,21 @@ it('reorder: a valid permutation resequences the customs, Da validare stays 0, t
     ])->assertOk();
 
     $rows = collect($response->json('data'))->keyBy('id');
-    expect($rows[$inScadenza->id]['sort_order'])->toBe(10)
-        ->and($rows[$daProgrammare->id]['sort_order'])->toBe(20)
-        ->and($rows[$programmato->id]['sort_order'])->toBe(30);
+    expect($rows[$inScadenza->id]['sort_order'])->toBe(20)
+        ->and($rows[$daProgrammare->id]['sort_order'])->toBe(30)
+        ->and($rows[$programmato->id]['sort_order'])->toBe(40);
 
     $newRow = $rows->firstWhere('system_key', 'new');
+    $validatedRow = $rows->firstWhere('system_key', 'validated');
     $suspendedRow = $rows->firstWhere('system_key', 'suspended');
     $cancelledRow = $rows->firstWhere('system_key', 'cancelled');
     $terminatedRow = $rows->firstWhere('system_key', 'terminated');
 
     expect($newRow['sort_order'])->toBe(0)
-        ->and($suspendedRow['sort_order'])->toBe(40)
-        ->and($cancelledRow['sort_order'])->toBe(50)
-        ->and($terminatedRow['sort_order'])->toBe(60);
+        ->and($validatedRow['sort_order'])->toBe(10)
+        ->and($suspendedRow['sort_order'])->toBe(50)
+        ->and($cancelledRow['sort_order'])->toBe(60)
+        ->and($terminatedRow['sort_order'])->toBe(70);
 });
 
 it('reorder: 422 when ordered_ids includes a system status id, no sort_order changes (AC-027)', function () {
@@ -78,7 +82,7 @@ it('reorder: 422 when ordered_ids includes a system status id, no sort_order cha
     ])->assertStatus(422);
 
     $this->assertDatabaseHas('contract_statuses', ['id' => $newStatus->id, 'sort_order' => 0]);
-    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 10]);
+    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 20]);
 });
 
 it('reorder: 422 when ordered_ids is missing a custom id, no sort_order changes (AC-027)', function () {
@@ -90,7 +94,7 @@ it('reorder: 422 when ordered_ids is missing a custom id, no sort_order changes 
     $this->postJson('/api/contract-statuses/reorder', ['ordered_ids' => [$daProgrammare->id, $programmato->id]])
         ->assertStatus(422);
 
-    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 10]);
+    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 20]);
 });
 
 it('reorder: 422 when ordered_ids contains a duplicate (AC-027)', function () {
@@ -121,5 +125,5 @@ it('reorder: 403 without contract-statuses.update, order unchanged', function ()
 
     $this->postJson('/api/contract-statuses/reorder', ['ordered_ids' => [$daProgrammare->id]])->assertForbidden();
 
-    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 10]);
+    $this->assertDatabaseHas('contract_statuses', ['id' => $daProgrammare->id, 'sort_order' => 20]);
 });

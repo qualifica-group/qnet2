@@ -11,8 +11,10 @@ namespace App\Enums;
  * "In attesa" (`Pending`, App\Models\RewardStatus::SYSTEM_HEAD_KEYS), plus a
  * `Won`/`Lost` tail named after the decision a buono gets — "Approvato" and
  * "Negato" (user directive 2026-08-03). Contract
- * statuses (spec 0072, D-2) carry a HEAD row, "Da validare" (`New`), plus a
- * three-row TAIL — "Sospeso" (`Suspended`), "Annullato" (`Cancelled`),
+ * statuses (spec 0072, D-2, extended by the user directive of 2026-08-31)
+ * carry a two-row HEAD, "Da validare" (`New`) then "Validato" (`Validated`,
+ * the positive-outcome row App\Services\ContractActionService::validate()
+ * lands on), plus a three-row TAIL — "Sospeso" (`Suspended`), "Annullato" (`Cancelled`),
  * "Disdetto" (`Terminated`) — App\Models\ContractStatus::SYSTEM_TAIL_KEYS, in
  * that declared order. Persisted as `pipeline_statuses.system_key`/
  * `opportunity_statuses.system_key`/`reward_statuses.system_key`/
@@ -23,6 +25,7 @@ namespace App\Enums;
 enum StatusSystemKey: string
 {
     case New = 'new';
+    case Validated = 'validated';
     case Closed = 'closed';
     case Won = 'won';
     case Lost = 'lost';

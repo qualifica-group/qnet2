@@ -61,7 +61,7 @@ it('contracts() is a HasMany relation to Contract', function () {
 });
 
 it('isSystem() distinguishes system rows from custom rows', function () {
-    // The 4 system rows already exist, seeded by the migration itself.
+    // The 5 system rows already exist, seeded by the migrations themselves.
     $system = ContractStatus::where('system_key', 'suspended')->firstOrFail();
     $custom = ContractStatus::factory()->create();
 
@@ -69,8 +69,8 @@ it('isSystem() distinguishes system rows from custom rows', function () {
         ->and($custom->isSystem())->toBeFalse();
 });
 
-it('SYSTEM_HEAD_KEYS is [New] and SYSTEM_TAIL_KEYS is [Suspended, Cancelled, Terminated] in order', function () {
-    expect(ContractStatus::SYSTEM_HEAD_KEYS)->toBe([StatusSystemKey::New])
+it('SYSTEM_HEAD_KEYS is [New, Validated] and SYSTEM_TAIL_KEYS is [Suspended, Cancelled, Terminated] in order', function () {
+    expect(ContractStatus::SYSTEM_HEAD_KEYS)->toBe([StatusSystemKey::New, StatusSystemKey::Validated])
         ->and(ContractStatus::SYSTEM_TAIL_KEYS)->toBe([
             StatusSystemKey::Suspended,
             StatusSystemKey::Cancelled,
