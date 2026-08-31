@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
@@ -37,6 +38,15 @@ use Illuminate\Validation\Rule;
  * `net_amount`/`vat_amount`/`total_amount` and the whole `summary` block are
  * `prohibited` (AC-033): server-computed, never client input.
  *
+ * `manager_slots`/`promote_managers_to_opportunity` (spec 0087, D-1/D-6):
+ * the Offerta's own Gestori Account, same ordered/gap-aware shape and cross-
+ * element rules (ValidatesManagerSlots) as the Opportunity's. The D-6
+ * appartenenza rule (every mapped user must already be a Gestore Account of
+ * the Opportunity, unless promoted) is NOT re-validated here: it needs the
+ * Opportunity's persisted managers, so it lives entirely in
+ * `App\Services\Quotes\QuoteManagerWriter::sync()` (D-4), the sole writer
+ * QuoteService delegates to.
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('create', Quote::class)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
@@ -45,6 +55,7 @@ use Illuminate\Validation\Rule;
 class StoreQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesManagerSlots;
     use ValidatesQuoteCompanySite;
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
@@ -88,8 +99,12 @@ class StoreQuoteRequest extends FormRequest
             // submitted offer lines' categories) and merges the map, and
             // surfaces as the same 422 keyed `attribute_values.<code>`.
             'attribute_values' => ['sometimes', 'array'],
+            // Spec 0087, D-6: default false — the appartenenza rule below
+            // (QuoteManagerWriter) rejects a non-GA user outright unless the
+            // client opts in.
+            'promote_managers_to_opportunity' => ['sometimes', 'boolean'],
             'summary' => ['prohibited'],
-        ], $this->quoteLinesRules(), $this->rewardsRules());
+        ], $this->managerSlotsRules(), $this->quoteLinesRules(), $this->rewardsRules());
     }
 
     public function withValidator(Validator $validator): void
@@ -102,6 +117,7 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceQuoteLayout($validator, null);
             $this->enforceSingleOfferLine($validator, null);
             $this->enforceSingleQuotePerOpportunity($validator);
+            $this->validateManagerSlots($validator);
             $this->validateQuoteWorkflowStatus($validator);
             $this->validateRewards($validator, null);
         });

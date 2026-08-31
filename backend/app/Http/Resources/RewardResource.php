@@ -98,7 +98,10 @@ class RewardResource extends JsonResource
                         'opportunity.quotes.quoteWorkflowStatus',
                         'quoteWorkflowStatus',
                         'offerLines.product.category',
-                        'supervisor.avatar',
+                        // Spec 0087, D-9/D-10: the "operator" context field
+                        // is now the Offerta's own GA2 (`operator`), not its
+                        // Supervisore.
+                        'operator.avatar',
                     ],
                 ]);
             },
@@ -205,7 +208,9 @@ class RewardResource extends JsonResource
      * different things; `workflow_status` adds what only an Offerta has, its
      * OWN working-state row (spec 0083). The categories come from the offer's
      * revenue lines (its own products), not from the Opportunita's product
-     * lines, and the operator is the offer's Supervisore (spec 0086, D-3).
+     * lines, and the operator is the offer's OWN GA2 (spec 0087, D-9/D-10;
+     * `quote.operator_id`, no longer its Supervisore — spec 0086, D-3, the
+     * two roles were split apart by D-13/D-14).
      *
      * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array<string, mixed>, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}
      */
@@ -226,7 +231,7 @@ class RewardResource extends JsonResource
                 'name' => $status->name,
                 'color' => $status->color,
             ],
-            'operator' => $this->summarizeOperator($quote->supervisor),
+            'operator' => $this->summarizeOperator($quote->operator),
         ];
     }
 

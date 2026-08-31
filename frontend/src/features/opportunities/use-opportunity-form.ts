@@ -17,7 +17,6 @@ import {
 import {
   buildCreatePayload,
   buildUpdatePayload,
-  managerSlotsFromRefs,
   normalizeDecimal,
   type CreatePayloadFromLead,
 } from '@/features/opportunities/opportunity-form-payload'
@@ -33,6 +32,7 @@ import type {
   OpportunityFormMode,
   OpportunityProductLine,
 } from '@/features/opportunities/types'
+import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 
 /** Server-side field names mapped onto the form for 422 handling. `lead_id` is never an RHF field (spec 0040 MT-6 handles it separately). */
 const SERVER_ERROR_FIELDS = [
@@ -98,12 +98,6 @@ function defaultManagerSlots(): (number | null)[] {
   return Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null)
 }
 
-/** Keeps every derived slot in place while topping the list up to the four defaults. */
-function padManagerSlots(slots: (number | null)[]): (number | null)[] {
-  return slots.length >= DEFAULT_MANAGER_SLOTS
-    ? slots
-    : [...slots, ...Array.from({ length: DEFAULT_MANAGER_SLOTS - slots.length }, () => null)]
-}
 
 /** Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape. */
 function toProductLineRows(lines: OpportunityProductLine[]): ProductLineRow[] {
@@ -223,7 +217,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
       // Account" slot, G.A. 1 coming in empty (editable/removable both), and
       // the Supervisor stays empty. Padded to the four default slots
       // (directive 2026-07-29) without ever dropping a derived one.
-      manager_slots: padManagerSlots(mode.fromLead.managerSlots),
+      manager_slots: padManagerSlots(mode.fromLead.managerSlots, DEFAULT_MANAGER_SLOTS),
       // A lead with no product line still opens on one empty row, like the
       // standalone create form.
       product_lines:

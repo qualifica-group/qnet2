@@ -45,12 +45,12 @@ if (! function_exists('worklistColumnsActor')) {
 
 if (! function_exists('worklistColumnsRequest')) {
     /** A quote the actor supervises (the module's own row scope). */
-    function worklistColumnsRequest(User $supervisor): Quote
+    function worklistColumnsRequest(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

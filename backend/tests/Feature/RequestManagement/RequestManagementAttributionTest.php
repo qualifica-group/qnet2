@@ -16,11 +16,13 @@ use Spatie\Permission\Models\Permission;
  * migrated onto the Quote by spec 0086, D-2/D-3: "Fonte" (`source_id`) stays
  * on the underlying Opportunity, "Segnalatore" (`reporter_id`) and "Sede
  * operativa" (`operational_site_id`) are now Quote columns, and the GA2
- * "Operatore" (`operator_id`) is the Offerta's own `quotes.supervisor_id`,
- * synced onto the `opportunity_user` pivot at position
- * `Opportunity::OPERATOR_MANAGER_POSITION` (D-3). Readable AND writable from
- * GET/PATCH /api/request-management/{quote}, sparse like every other key of
- * that endpoint. AC-011/013/014.
+ * "Operatore" (`operator_id`) is the Offerta's own `quotes.operator_id`
+ * (spec 0087, D-9), synced onto its OWN `quote_user` pivot at
+ * `ManagerPositions::OPERATOR` — never `quotes.supervisor_id` any more
+ * (D-13/D-14). A write PROMOTES the operator onto the Opportunity's first
+ * FREE manager slot when needed (D-6), never overwriting its existing GA2.
+ * Readable AND writable from GET/PATCH /api/request-management/{quote},
+ * sparse like every other key of that endpoint. AC-011/013/014.
  */
 uses(RefreshDatabase::class);
 
@@ -44,7 +46,7 @@ if (! function_exists('attributionActor')) {
 }
 
 if (! function_exists('attributionQuote')) {
-    function attributionQuote(User $supervisor): Quote
+    function attributionQuote(User $operator): Quote
     {
         // A decoy opportunity is created first (never used) so the
         // opportunity id and the quote id can never coincide by
@@ -53,9 +55,9 @@ if (! function_exists('attributionQuote')) {
         Opportunity::factory()->create();
 
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
@@ -78,10 +80,10 @@ it('GET exposes fonte, segnalatore and the GA2 operator', function () {
         ->assertJsonPath('data.operator.name', $actor->name);
 });
 
-it('GET reports a null operator when there is no supervisor', function () {
+it('GET reports a null operator when there is none', function () {
     $actor = attributionActor();
     $actor->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
-    $quote = Quote::factory()->create(['supervisor_id' => null]);
+    $quote = Quote::factory()->create(['operator_id' => null]);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/request-management/{$quote->id}")
@@ -163,7 +165,7 @@ it('PATCH leaves the attribution untouched when its keys are absent (sparse)', f
         ->assertJsonPath('data.operator_id', $actor->id);
 });
 
-it('PATCH operator_id moves the GA2 slot to another user', function () {
+it('PATCH operator_id writes the Offerta\'s own GA2 slot and promotes the new operator onto the Opportunity\'s first free slot, without demoting the existing GA2 (spec 0087, D-9/D-13)', function () {
     $actor = attributionActor();
     $actor->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
     $quote = attributionQuote($actor);
@@ -177,16 +179,25 @@ it('PATCH operator_id moves the GA2 slot to another user', function () {
 
     $this->assertDatabaseHas('quotes', [
         'id' => $quote->id,
-        'supervisor_id' => $newOperator->id,
+        'operator_id' => $newOperator->id,
     ]);
+    $this->assertDatabaseHas('quote_user', [
+        'quote_id' => $quote->id,
+        'user_id' => $newOperator->id,
+        'position' => 2,
+    ]);
+    // D-6/D-13: $newOperator was not yet a Gestore Account of the
+    // Opportunity, so it is PROMOTED onto its first FREE slot — slot 1, since
+    // $actor already occupies slot 2 — never overwriting the existing GA2.
     $this->assertDatabaseHas('opportunity_user', [
         'opportunity_id' => $quote->opportunity_id,
         'user_id' => $newOperator->id,
-        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
+        'position' => 1,
     ]);
-    $this->assertDatabaseMissing('opportunity_user', [
+    $this->assertDatabaseHas('opportunity_user', [
         'opportunity_id' => $quote->opportunity_id,
         'user_id' => $actor->id,
+        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
     ]);
 });
 
@@ -208,7 +219,7 @@ it('PATCH operator_id leaves the other manager slots untouched', function () {
     ]);
 });
 
-it('PATCH operator_id null empties the GA2 slot', function () {
+it('PATCH operator_id null empties the Offerta\'s own GA2 slot, leaving the Opportunity\'s team untouched (spec 0087, D-9/D-13)', function () {
     $actor = attributionActor();
     $actor->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
     $quote = attributionQuote($actor);
@@ -220,10 +231,14 @@ it('PATCH operator_id null empties the GA2 slot', function () {
 
     $this->assertDatabaseHas('quotes', [
         'id' => $quote->id,
-        'supervisor_id' => null,
+        'operator_id' => null,
     ]);
-    $this->assertDatabaseMissing('opportunity_user', [
+    // Spec 0087, D-9/D-13: clearing the Offerta's own GA2 slot never reaches
+    // the Opportunity's pivot — $actor, placed there by attributionQuote(),
+    // stays exactly where it was.
+    $this->assertDatabaseHas('opportunity_user', [
         'opportunity_id' => $quote->opportunity_id,
+        'user_id' => $actor->id,
         'position' => Opportunity::OPERATOR_MANAGER_POSITION,
     ]);
 });

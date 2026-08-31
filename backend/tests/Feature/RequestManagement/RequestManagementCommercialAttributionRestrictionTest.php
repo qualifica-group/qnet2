@@ -17,8 +17,8 @@ use Laravel\Sanctum\Sanctum;
  * "Sede operativa" (`operational_site_id`) and the GA2 "Operatore"
  * (`operator_id`) of a request — attribution is decided FOR them. Supervisor
  * and Marketing are untouched. Spec 0086, D-2/D-3: the record is now a
- * `quotes` row; both fields live there (`operator_id` -> `quotes.
- * supervisor_id`).
+ * `quotes` row; both fields live there (`operator_id` -> `quotes.operator_id`,
+ * spec 0087 D-9 — no longer `quotes.supervisor_id`).
  *
  * The restriction is seeded by TestUsersSeeder (the role matrix is the source
  * of truth, not a hard-coded rule), so it is exercised against the real seeded
@@ -38,13 +38,13 @@ if (! function_exists('restrictedCommercial')) {
     }
 }
 
-if (! function_exists('requestSupervisedBy')) {
-    function requestSupervisedBy(User $supervisor): Quote
+if (! function_exists('requestOperatedBy')) {
+    function requestOperatedBy(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
@@ -52,7 +52,7 @@ it('hides both fields from the commercial work panel envelope', function () {
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
-    $quote = requestSupervisedBy($actor);
+    $quote = requestOperatedBy($actor);
     Sanctum::actingAs($actor);
 
     $fields = $this->getJson("/api/request-management/{$quote->id}")
@@ -91,7 +91,7 @@ it('rejects the commercial PATCH of either field with a 422', function () {
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
-    $quote = requestSupervisedBy($actor);
+    $quote = requestOperatedBy($actor);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
@@ -107,14 +107,14 @@ it('rejects the commercial PATCH of either field with a 422', function () {
 
     $quote->refresh();
     expect($quote->operational_site_id)->toBeNull()
-        ->and($quote->supervisor_id)->toBe($actor->id);
+        ->and($quote->operator_id)->toBe($actor->id);
 });
 
 it('refuses the commercial bulk assignment of Sede and Operatore', function () {
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
-    $quote = requestSupervisedBy($actor);
+    $quote = requestOperatedBy($actor);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 
@@ -161,7 +161,7 @@ it('keeps the grid cells of both fields non-editable for the commercial', functi
     $this->seed(TestUsersSeeder::class);
 
     $actor = restrictedCommercial();
-    $quote = requestSupervisedBy($actor);
+    $quote = requestOperatedBy($actor);
     $site = OperationalSite::factory()->withAddress()->create();
     Sanctum::actingAs($actor);
 

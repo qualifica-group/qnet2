@@ -133,26 +133,19 @@ class UpdateRequestRequest extends FormRequest
 
     /**
      * EnforcesFieldPermissions' generic dot-path reader only understands
-     * relations/attributes declared on $model directly (spec 0008). Three of
+     * relations/attributes declared on $model directly (spec 0008). Two of
      * this endpoint's catalogued fields no longer live on the route-bound
      * Quote (spec 0086, D-2): `product_lines`/`next_callback_at` stayed
      * Opportunity-level (read through the Quote's own `opportunity`
-     * relation), and `operator_id` addresses the Quote's `supervisor_id`
-     * column — a differently-named field, mirroring the pivot-accessor
-     * precedent this same trait already documents for the pre-migration
-     * `Opportunity::operatorId()`. `source_id` needs no override: Quote's own
+     * relation). `operator_id` needs no override any more (spec 0087, D-9):
+     * it is now a real column on the Quote itself, reached by the generic
+     * reader on its own. `source_id` likewise needs no override: Quote's own
      * virtual `sourceId()` accessor (D-10) already reads through correctly.
      */
     protected function currentFieldValue(?Model $model, string $field): mixed
     {
-        if ($model instanceof Quote) {
-            if (in_array($field, ['product_lines', 'next_callback_at'], true)) {
-                return $this->traitCurrentFieldValue($model->opportunity, $field);
-            }
-
-            if ($field === 'operator_id') {
-                return $model->supervisor_id;
-            }
+        if ($model instanceof Quote && in_array($field, ['product_lines', 'next_callback_at'], true)) {
+            return $this->traitCurrentFieldValue($model->opportunity, $field);
         }
 
         return $this->traitCurrentFieldValue($model, $field);

@@ -13,8 +13,8 @@ use Spatie\Permission\Models\Role;
 // mutability (D-8), with Gate::before still granting the super-admin. Spec
 // 0086, D-9: read access is re-keyed on the Opportunity's own Offerte
 // (`RequestManagementNotable::authorizeRead()`) — an actor reads when they
-// SUPERVISE at least one Offerta of the Opportunity (D-3, `quotes.
-// supervisor_id`), not when they hold any opportunity-manager pivot slot.
+// OPERATE at least one Offerta of the Opportunity (spec 0087, D-9, `quotes.
+// operator_id`), not when they hold any opportunity-manager pivot slot.
 
 uses(RefreshDatabase::class);
 
@@ -39,10 +39,10 @@ if (! function_exists('noteActor')) {
 }
 
 if (! function_exists('noteManagedOpportunity')) {
-    function noteManagedOpportunity(User $supervisor): Opportunity
+    function noteManagedOpportunity(User $operator): Opportunity
     {
         $opportunity = Opportunity::factory()->create();
-        Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
 
         return $opportunity;
     }

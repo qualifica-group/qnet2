@@ -9,7 +9,7 @@ import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { fetchOpportunityRegistryMeta } from '@/features/opportunities/opportunity-relation-meta'
-import { managerSlotsFromRefs } from '@/features/opportunities/opportunity-form-payload'
+import { managerSlotsFromRefs } from '@/lib/utils'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 
 interface OpportunityRegistryFieldProps {

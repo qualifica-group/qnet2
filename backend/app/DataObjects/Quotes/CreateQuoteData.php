@@ -55,12 +55,23 @@ namespace App\DataObjects\Quotes;
  * collection above. Deliberately NOT inherited from the Opportunity on create
  * (user directive 2026-08-31), unlike the 3 commercial roles: a copied buono
  * would count twice for the same segnalatore in "Segnalatori premiati".
+ *
+ * `managerSlots` (spec 0087, D-1/D-5): follows the SAME null-means-not-
+ * submitted/array-means-authoritative convention as `offerLines`/`costLines`
+ * above (CreateOpportunityData::$managerSlots verbatim) — NOT the `*Submitted`
+ * pattern reserved for scalars. `null` lets QuoteService PREFILL the Offerta's
+ * GA from the Opportunity's own, at the same positions (D-5); an array (even
+ * `[]`) is the client's authoritative set. It is a pivot, synced post-insert
+ * by `App\Services\Quotes\QuoteManagerWriter` (D-4) — like every other
+ * to-many collection here, deliberately OUT of attributes(). `promoteManagersToOpportunity`
+ * (D-6) is a plain flag, defaulting false when the client omits it.
  */
 final readonly class CreateQuoteData
 {
     /**
      * @param  array<int, QuoteLineData>|null  $offerLines
      * @param  array<int, QuoteLineData>|null  $costLines
+     * @param  array<int, int|null>|null  $managerSlots
      */
     public function __construct(
         public ?string $code,
@@ -104,6 +115,11 @@ final readonly class CreateQuoteData
         // table. Null means "no rows submitted", `[]` clears every assignment.
         /** @var array<int, int>|null */
         public ?array $rewards = null,
+        // Appended after the pre-existing parameters (spec 0087) for the
+        // same positional-compat reason as every other appended field here.
+        /** @var array<int, int|null>|null */
+        public ?array $managerSlots = null,
+        public bool $promoteManagersToOpportunity = false,
     ) {}
 
     /**
@@ -139,6 +155,8 @@ final readonly class CreateQuoteData
                 ? (array) $data['attribute_values']
                 : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
+            managerSlots: array_key_exists('manager_slots', $data) ? self::normalizeManagerSlots($data['manager_slots']) : null,
+            promoteManagersToOpportunity: (bool) ($data['promote_managers_to_opportunity'] ?? false),
         );
     }
 
@@ -176,9 +194,22 @@ final readonly class CreateQuoteData
         )));
     }
 
+    /**
+     * @return array<int, int|null>
+     */
+    private static function normalizeManagerSlots(mixed $slots): array
+    {
+        return array_map(static fn ($id): ?int => $id === null ? null : (int) $id, (array) $slots);
+    }
+
     public function hasRewards(): bool
     {
         return $this->rewards !== null;
+    }
+
+    public function hasManagerSlots(): bool
+    {
+        return $this->managerSlots !== null;
     }
 
     public function hasOfferLines(): bool

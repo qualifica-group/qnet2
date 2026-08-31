@@ -90,9 +90,10 @@ final class RequestRowMapper
             // lines' products, replacing "Prodotti di interesse" on this
             // domain only (AC-021).
             ...OfferLinesColumn::project($row),
-            // "Operatore": spec 0086, D-3 — the offer's own Supervisore, a
-            // real FK on `quotes`, no longer the GA2 pivot row.
-            'operator_ga2' => $this->userSummary($row->supervisor),
+            // "Operatore": spec 0087, D-9 — the offer's own GA2 Operatore, a
+            // real FK on `quotes` (`operator_id`), denormalized from the
+            // `quote_user` pivot.
+            'operator_ga2' => $this->userSummary($row->operator),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.

@@ -14,13 +14,13 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * The `request-management` notable_types descriptor (spec 0052, D-9/D-10;
- * spec 0086, D-9): declares how the agnostic notes component may attach to
- * an Opportunity through THIS module's OWN authorization story (spec 0049)
- * — read access and the mentionable set both mirror the work panel's own
- * D-3 scope (RequestManagementScope::scopeToActor(), `request-management.
+ * spec 0086, D-9; spec 0087, D-9): declares how the agnostic notes component
+ * may attach to an Opportunity through THIS module's OWN authorization story
+ * (spec 0049) — read access and the mentionable set both mirror the work
+ * panel's own scope (RequestManagementScope::scopeToActor(), `request-management.
  * viewAll`), just re-keyed on the Opportunity's Offerte since the
- * predicate itself is a Quote one; this class never invents a separate
- * rule.
+ * predicate itself is a Quote one (`quotes.operator_id`, spec 0087 D-9);
+ * this class never invents a separate rule.
  *
  * Lives in app/RequestManagement/ (this module's own namespace, alongside
  * AttributeSetResolver et al.), NOT app/Notes/: the module declares
@@ -38,11 +38,11 @@ final class RequestManagementNotable implements NotableEntity
     }
 
     /**
-     * D-9: read access is decided by the SAME D-3 rule the work panel
+     * D-9: read access is decided by the SAME scoping rule the work panel
      * applies, but keyed on the Opportunity's Offerte (RequestManagementScope's
      * predicate is a Quote one) — an actor reads the collaborative record's
-     * notes when they supervise at least one of this Opportunity's Offerte,
-     * or hold `request-management.viewAll`.
+     * notes when they are the GA2 Operatore of at least one of this
+     * Opportunity's Offerte (spec 0087, D-9), or hold `request-management.viewAll`.
      *
      * `viewAll` short-circuits BEFORE the existence check, and must: for a
      * viewAll actor RequestManagementScope::scopeToActor() returns the query
@@ -51,7 +51,7 @@ final class RequestManagementNotable implements NotableEntity
      * zero Offerte to everyone, super-admin included. The Notes tab lives on
      * the Opportunity detail too (`/opportunities/{id}`), where zero Offerte
      * is a legitimate state; the existence check is only meaningful as the
-     * supervisor predicate, so it is confined to the non-viewAll branch.
+     * operator predicate, so it is confined to the non-viewAll branch.
      */
     public function authorizeRead(User $user, Model $record): bool
     {
@@ -71,8 +71,8 @@ final class RequestManagementNotable implements NotableEntity
 
     /**
      * D-10: active users who hold `request-management.view` AND either
-     * supervise one of this Opportunity's Offerte or hold
-     * `request-management.viewAll`, plus super-admins. A plain `whereHas`
+     * operate at least one of this Opportunity's Offerte (spec 0087, D-9) or
+     * hold `request-management.viewAll`, plus super-admins. A plain `whereHas`
      * matching the role by NAME — not the `role()` scope, which resolves the
      * name via `Role::findByName()` and THROWS `RoleDoesNotExist` if that row
      * hasn't been created yet (e.g. before `roles:create-super-admin` ever
@@ -81,19 +81,19 @@ final class RequestManagementNotable implements NotableEntity
     public function mentionableUsersQuery(Model $record): Builder
     {
         /** @var Opportunity $record */
-        $supervisorIds = Quote::query()
+        $operatorIds = Quote::query()
             ->where('opportunity_id', $record->getKey())
-            ->whereNotNull('supervisor_id')
-            ->pluck('supervisor_id');
+            ->whereNotNull('operator_id')
+            ->pluck('operator_id');
 
         return User::query()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($supervisorIds): void {
+            ->where(function (Builder $query) use ($operatorIds): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($supervisorIds): void {
+                    ->orWhere(function (Builder $canRead) use ($operatorIds): void {
                         $canRead->permission('request-management.view')
-                            ->where(function (Builder $access) use ($supervisorIds): void {
-                                $access->whereIn('id', $supervisorIds)
+                            ->where(function (Builder $access) use ($operatorIds): void {
+                                $access->whereIn('id', $operatorIds)
                                     ->orWhere(function (Builder $viewAll): void {
                                         $viewAll->permission('request-management.viewAll');
                                     });

@@ -207,6 +207,14 @@ export interface OpportunityDetail {
    * as `state` above — treat a missing key the same as `{}`.
    */
   manager_labels?: Record<string, string>
+  /**
+   * Spec 0087 (D-7): whether this opportunity's G.A. are kept identical to
+   * one of its Offerte's (bidirectional sync on the offerta-unica +
+   * gestione-singola categories), feeding `OpportunityTeamSection`'s
+   * informational banner. Optional for the same fixture-compatibility
+   * reason as `state` above — treat a missing key the same as `false`.
+   */
+  managers_synchronized?: boolean
 }
 
 /**

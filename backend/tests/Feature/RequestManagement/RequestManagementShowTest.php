@@ -94,7 +94,10 @@ it('GET as the offer supervisor returns the full work-panel shape (AC-020)', fun
         'registryCard' => $registryCard,
         'referentCard' => $referentCard,
     ] = quoteWithContacts();
-    $quote->update(['supervisor_id' => $actor->id]);
+    // `operator_id` is deliberately NOT fillable (spec 0087, D-3) — written
+    // only by QuoteManagerWriter, so a plain test fixture uses forceFill()
+    // rather than a silently-discarded update().
+    $quote->forceFill(['operator_id' => $actor->id])->save();
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/request-management/{$quote->id}")->assertOk();
@@ -173,7 +176,7 @@ it('GET on an unsupervised quote with viewAll -> 200 (AC-021)', function () {
 
 it('GET without request-management.view -> 403 even for a supervised quote (AC-021)', function () {
     $actor = requestManagementUserWith([]);
-    $quote = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->create(['operator_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/request-management/{$quote->id}")->assertForbidden();

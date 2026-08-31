@@ -72,14 +72,14 @@ if (! function_exists('inlineEditorsActorWithMatrixRow')) {
 }
 
 if (! function_exists('inlineEditorsRequest')) {
-    /** A quote supervised by $supervisor, whose client carries an anagraphic card. */
-    function inlineEditorsRequest(User $supervisor): Quote
+    /** A quote operated by $operator, whose client carries an anagraphic card. */
+    function inlineEditorsRequest(User $operator): Quote
     {
         $registry = Registry::factory()->withPersonalData()->create();
         $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
@@ -105,8 +105,9 @@ it('AC-001: every activated column advertises its own editor', function () {
         ->and($columns['operator_ga2']['editor'])->toBe('relation')
         ->and($columns['operator_ga2']['relation']['resource'])->toBe('users')
         // AC-011 corrected in execution: the migration moves only the
-        // underlying model (pivot -> quote.supervisor), never the column's
-        // sort/filter behaviour — this was wrong in the spec's first draft.
+        // underlying model (pivot -> quote.operator_id, spec 0087 D-9),
+        // never the column's sort/filter behaviour — this was wrong in the
+        // spec's first draft.
         ->and($columns['operator_ga2']['sortable'])->toBeFalse()
         ->and($columns['operator_ga2']['filterable'])->toBeFalse();
 
@@ -274,7 +275,7 @@ it('a client anagraphic value longer than the column width -> 422', function () 
 it('a request whose client has no anagraphic card -> 422, not a silent create', function () {
     $actor = inlineEditorsActor(['viewAny', 'update']);
     $opportunity = Opportunity::factory()->create(['registry_id' => Registry::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
@@ -349,10 +350,10 @@ it('AC-010: clearing phone removes the telephone row instead of leaving an empty
 });
 
 // ---------------------------------------------------------------------------
-// AC-008 — the GA2 operator (now the offer's own Supervisore, D-3)
+// AC-008 — the GA2 operator (now the offer's own operator_id, spec 0087 D-9)
 // ---------------------------------------------------------------------------
 
-it('AC-008: PATCH operator_ga2 reassigns the supervisor and syncs the GA2 pivot row', function () {
+it('AC-008: PATCH operator_ga2 reassigns the Offerta\'s GA2 Operatore and promotes onto the Opportunity\'s first free slot, never touching supervisor_id (spec 0087, D-9/D-13/D-14)', function () {
     $actor = inlineEditorsActor(['viewAny', 'update', 'viewAll']);
     $quote = inlineEditorsRequest($actor);
     $newOperator = User::factory()->create();
@@ -363,8 +364,23 @@ it('AC-008: PATCH operator_ga2 reassigns the supervisor and syncs the GA2 pivot 
         'value' => $newOperator->id,
     ])->assertOk()->assertJsonPath('data.operator_ga2.id', $newOperator->id);
 
-    expect($quote->fresh()->supervisor_id)->toBe($newOperator->id)
-        ->and($quote->opportunity->fresh()->operatorManager()?->id)->toBe($newOperator->id);
+    // D-14/AC-017: the commission-recipient column is never touched by this
+    // write path. D-13: $newOperator is promoted onto the Opportunity's
+    // first FREE slot (slot 1 here — $actor already occupies slot 2) rather
+    // than overwriting the Opportunity's own GA2, which stays $actor's.
+    expect($quote->fresh()->operator_id)->toBe($newOperator->id)
+        ->and($quote->fresh()->supervisor_id)->toBeNull()
+        ->and($quote->opportunity->fresh()->operatorManager()?->id)->toBe($actor->id);
+    $this->assertDatabaseHas('quote_user', [
+        'quote_id' => $quote->id,
+        'user_id' => $newOperator->id,
+        'position' => 2,
+    ]);
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $quote->opportunity_id,
+        'user_id' => $newOperator->id,
+        'position' => 1,
+    ]);
 });
 
 it('AC-008: an operator id the actor could not pick -> 422', function () {

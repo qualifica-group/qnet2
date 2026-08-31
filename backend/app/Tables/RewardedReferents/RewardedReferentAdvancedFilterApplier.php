@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Tables\RewardedReferents;
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Reward;
 use App\Services\Opportunities\OpportunityStatusScope;
 use App\Services\Rewards\RewardOriginScope;
 use App\Services\Table\AdvancedFilterApplier;
+use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Server-side application of the 6 `rewarded-referents` advanced filters
@@ -178,9 +181,15 @@ final class RewardedReferentAdvancedFilterApplier
     }
 
     /**
-     * `operator` — matches the source Opportunity's GA2 manager (pivot
-     * `position` = Opportunity::OPERATOR_MANAGER_POSITION), crossing the
-     * polymorphic `source`.
+     * `operator` — matches the source's OWN GA2 (spec 0087, D-10): the
+     * Offerta's `operator_id` FK directly when the buono is Offerta-born, or
+     * the Opportunity's own GA2 manager pivot slot (`position` =
+     * `ManagerPositions::OPERATOR`) when it is Opportunity-born. Deliberately
+     * NOT bridged through `RewardOriginScope::whereOpportunity()` like
+     * `opportunity`/`workflow_status` above: that bridge would evaluate every
+     * Offerta-born buono against its PARENT Opportunity's GA2 instead of its
+     * own, silently ignoring the Offerta's own team the moment the two
+     * diverge — exactly the bug this migration closes.
      *
      * @param  Builder<Referent>  $query
      */
@@ -188,19 +197,32 @@ final class RewardedReferentAdvancedFilterApplier
     {
         $ids = $this->intIds($value);
 
-        if ($ids !== []) {
-            $query->whereHas('rewards', static function (Builder $rewards) use ($ids): void {
-                RewardOriginScope::whereOpportunity(
-                    $rewards,
-                    static fn (Builder $source) => $source->whereHas(
+        if ($ids === []) {
+            return true;
+        }
+
+        $quoteAlias = Relation::getMorphAlias(Quote::class);
+
+        $query->whereHas('rewards', static function (Builder $rewards) use ($ids, $quoteAlias): void {
+            $rewards->whereHasMorph(
+                'source',
+                [Opportunity::class, Quote::class],
+                static function (Builder $source) use ($ids, $quoteAlias): void {
+                    if ($source->getModel()->getMorphClass() === $quoteAlias) {
+                        $source->whereIn('operator_id', $ids);
+
+                        return;
+                    }
+
+                    $source->whereHas(
                         'managers',
                         static fn (Builder $managers) => $managers
                             ->whereIn('users.id', $ids)
-                            ->where('opportunity_user.position', Opportunity::OPERATOR_MANAGER_POSITION),
-                    ),
-                );
-            });
-        }
+                            ->where('opportunity_user.position', ManagerPositions::OPERATOR),
+                    );
+                },
+            );
+        });
 
         return true;
     }

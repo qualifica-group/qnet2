@@ -31,12 +31,12 @@ if (! function_exists('noteMetaActor')) {
 }
 
 if (! function_exists('noteMetaOpportunity')) {
-    // Spec 0086, D-9: read access is re-keyed on the Opportunity's own
-    // Offerte (D-3, `quotes.supervisor_id`) — the GA2 pivot slot no longer
-    // grants it on its own. Callers must supervise (or grant viewAll for)
-    // at least one Offerta of the returned opportunity themselves, via
+    // Spec 0087, D-9: read access is re-keyed on the Opportunity's own
+    // Offerte (`quotes.operator_id`) — the GA2 pivot slot no longer grants
+    // it on its own. Callers must operate (or grant viewAll for) at least
+    // one Offerta of the returned opportunity themselves, via
     // noteMetaQuote(), for a read to succeed.
-    function noteMetaOpportunity(User $supervisor): Opportunity
+    function noteMetaOpportunity(User $operator): Opportunity
     {
         return Opportunity::factory()->create();
     }
@@ -57,10 +57,13 @@ it('exposes the host opportunity Offerte as meta.quotes, ordered by code', funct
     $opportunity = noteMetaOpportunity($actor);
     $second = noteMetaQuote($opportunity, 'QUO-0002', 'Seconda offerta');
     $first = noteMetaQuote($opportunity, 'QUO-0001', 'Prima offerta');
-    // D-9: read access needs the actor to supervise at least ONE of the
-    // opportunity's Offerte — supervising one does not narrow which Offerte
+    // D-9: read access needs the actor to operate at least ONE of the
+    // opportunity's Offerte — operating one does not narrow which Offerte
     // meta.quotes lists (that stays every Offerta of the opportunity).
-    $first->update(['supervisor_id' => $actor->id]);
+    // `operator_id` is deliberately NOT fillable (spec 0087, D-3), so a
+    // plain test fixture uses forceFill() rather than a silently-discarded
+    // update().
+    $first->forceFill(['operator_id' => $actor->id])->save();
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertOk();
@@ -91,7 +94,7 @@ it('never lists an Offerta of another opportunity', function () {
     $actor = noteMetaActor();
     $opportunity = noteMetaOpportunity($actor);
     $own = noteMetaQuote($opportunity, 'QUO-0001', 'Propria');
-    $own->update(['supervisor_id' => $actor->id]);
+    $own->forceFill(['operator_id' => $actor->id])->save();
     noteMetaQuote(Opportunity::factory()->create(), 'QUO-0009', 'Altrui');
     Sanctum::actingAs($actor);
 
@@ -105,7 +108,7 @@ it('keeps offering every Offerta while the list is filtered on one of them', fun
     $opportunity = noteMetaOpportunity($actor);
     $first = noteMetaQuote($opportunity, 'QUO-0001', 'Prima offerta');
     $second = noteMetaQuote($opportunity, 'QUO-0002', 'Seconda offerta');
-    $first->update(['supervisor_id' => $actor->id]);
+    $first->forceFill(['operator_id' => $actor->id])->save();
     Sanctum::actingAs($actor);
 
     $response = $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}&quote_scope={$first->id}")
@@ -119,9 +122,9 @@ it('keeps offering every Offerta while the list is filtered on one of them', fun
 it('resolves the Offerte in a single query, whatever their number', function () {
     $actor = noteMetaActor();
     $small = noteMetaOpportunity($actor);
-    Quote::factory()->for($small)->create(['supervisor_id' => $actor->id]);
+    Quote::factory()->for($small)->create(['operator_id' => $actor->id]);
     $large = noteMetaOpportunity($actor);
-    Quote::factory()->for($large)->create(['supervisor_id' => $actor->id]);
+    Quote::factory()->for($large)->create(['operator_id' => $actor->id]);
     Quote::factory()->for($large)->count(9)->create();
 
     Sanctum::actingAs($actor);

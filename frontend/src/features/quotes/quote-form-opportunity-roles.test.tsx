@@ -45,10 +45,35 @@ vi.mock('@/features/for-select/api', async () => {
   }
 })
 
+// Spec 0087 D-5: the team is prefilled from the same `meta`. Stubbed to expose
+// the raw slot array, so the assertion is on the inherited VALUE and not on how
+// the real field happens to render it.
+vi.mock('@/components/form/manager-slots-field', () => ({
+  ManagerSlotsField: ({ value }: { value: (number | null)[] }) => (
+    <div data-testid="manager-slots-value">{JSON.stringify(value)}</div>
+  ),
+}))
+
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
   actions: {},
+}
+
+/** An opportunity whose Gestori Account sit on positions 1 and 3 — a GAP is deliberate: the prefill must preserve positions, not compact them. */
+const OPPORTUNITY_WITH_MANAGERS: OpportunityForSelectItem = {
+  id: 57,
+  label: 'OPP_57',
+  meta: {
+    commercial: null,
+    reporter: null,
+    supervisor: null,
+    operational_site: null,
+    managers: [
+      { id: 21, name: 'Rita Neri', position: 1 },
+      { id: 22, name: 'Ugo Verdi', position: 3 },
+    ],
+  },
 }
 
 /** An opportunity carrying all three roles, and one carrying none. */
@@ -60,13 +85,14 @@ const OPPORTUNITY_WITH_ROLES: OpportunityForSelectItem = {
     reporter: { id: 81, name: 'Elio Fabbri' },
     supervisor: { id: 61, name: 'Ivo Bianchi' },
     operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },
+    managers: [],
   },
 }
 
 const OPPORTUNITY_WITHOUT_ROLES: OpportunityForSelectItem = {
   id: 56,
   label: 'OPP_56',
-  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null },
+  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null, managers: [] },
 }
 
 /**
@@ -97,7 +123,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
       data-params={JSON.stringify(params ?? null)}
     >
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      {[OPPORTUNITY_WITH_ROLES, OPPORTUNITY_WITHOUT_ROLES].map((item) => (
+      {[OPPORTUNITY_WITH_ROLES, OPPORTUNITY_WITHOUT_ROLES, OPPORTUNITY_WITH_MANAGERS].map((item) => (
         <button
           key={item.id}
           type="button"
@@ -203,5 +229,37 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
     await waitFor(() => expect(screen.getByTestId('value-Supervisor')).toHaveTextContent(''))
     expect(screen.getByTestId('value-Commercial')).toHaveTextContent('')
     expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
+  })
+
+  // Regression (segnalazione utente 2026-08-31): creating an Offerta showed an
+  // EMPTY team. The server inherited correctly on save (D-5), but the form
+  // never prefilled, so the operator could not see — nor adjust — what they
+  // were about to inherit. Worse: touching one slot sent an authoritative
+  // full-replace, silently dropping the rest of the Opportunity's team.
+  it('prefills the team from the opportunity, preserving positions and padding to the default card count', async () => {
+    renderCreateForm()
+
+    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_MANAGERS.id}` }).click()
+
+    // position 1 -> index 0, position 3 -> index 2, index 1 stays an empty
+    // slot, and the array is padded out to DEFAULT_MANAGER_SLOTS (4).
+    await waitFor(() =>
+      expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[21,null,22,null]'),
+    )
+  })
+
+  it('empties the team when the picked opportunity has no Gestori Account', async () => {
+    renderCreateForm()
+
+    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_MANAGERS.id}` }).click()
+    await waitFor(() =>
+      expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[21,null,22,null]'),
+    )
+
+    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITHOUT_ROLES.id}` }).click()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[null,null,null,null]'),
+    )
   })
 })

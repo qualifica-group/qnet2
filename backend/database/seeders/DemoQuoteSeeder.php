@@ -16,6 +16,7 @@ use Database\Seeders\Concerns\PicksDemoOffers;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * Development seed for the quotes module (spec 0065): one Quote per already
@@ -53,6 +54,21 @@ use Illuminate\Database\Seeder;
  * whose category resolves an effective business function: a half-built quote
  * (missing the offer line the form itself requires) is worse than none, the
  * same "nothing VALID to seed" philosophy as DemoOpportunitySeeder.
+ *
+ * Spec 0087 (AC-015/D-4/D-6): every seeded Offerta gets its own "Gestori
+ * Account" — GA1 + the GA2 "Operatore" slot, both always filled — submitted
+ * directly on `CreateQuoteData` (`managerSlots`/`promoteManagersToOpportunity`),
+ * so `QuoteService::create()`'s own writer (the SAME one POST /api/quotes
+ * uses) is the ONLY thing that ever touches `quote_user` — a second, separate
+ * post-create sync() call here would double-write the pivot within the same
+ * run and risk a position collision (a real one, caught in review). NOT a
+ * mirror of the parent Opportunity's own managers: DemoOpportunitySeeder only
+ * attaches them ~50% of the time (maybeManagerSlots()), which would leave
+ * half the demo Offerte with an empty GA2 and an empty Gestione Richieste
+ * module after a reset (D-12's stated failure mode) — so this picks its own
+ * pair of internal users instead, deterministically, and promotes them onto
+ * the Opportunity when not already a member (`promoteManagersToOpportunity:
+ * true`, D-6).
  */
 class DemoQuoteSeeder extends Seeder
 {
@@ -90,13 +106,33 @@ class DemoQuoteSeeder extends Seeder
         }
 
         $costProductIds = Product::query()->orderBy('id')->pluck('id')->all();
+        $users = User::query()->orderBy('id')->get();
 
         $faker = FakerFactory::create('it_IT');
         $faker->seed(20260729);
 
         foreach ($opportunities as $index => $opportunity) {
-            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds), $actor);
+            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds, $users), $actor);
         }
+    }
+
+    /**
+     * GA1 + the GA2 "Operatore" slot, two DISTINCT internal users (AC-015):
+     * null when the demo dataset has fewer than 2 users to draw from
+     * (defensive — DemoUsersSeeder always seeds far more than that), which
+     * falls through to CreateQuoteData's own D-5 inheritance-from-Opportunity
+     * default.
+     *
+     * @param  Collection<int, User>  $users
+     * @return array<int, int>|null
+     */
+    private function managerSlots(Generator $faker, Collection $users): ?array
+    {
+        if ($users->count() < 2) {
+            return null;
+        }
+
+        return $faker->randomElements($users->pluck('id')->all(), 2);
     }
 
     /**
@@ -117,8 +153,9 @@ class DemoQuoteSeeder extends Seeder
 
     /**
      * @param  array<int, int>  $costProductIds
+     * @param  Collection<int, User>  $users
      */
-    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds): CreateQuoteData
+    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds, Collection $users): CreateQuoteData
     {
         $offerLine = $this->offerLine($faker, $index);
 
@@ -147,6 +184,8 @@ class DemoQuoteSeeder extends Seeder
             // QuoteAttributeValueWriter validates against post-insert, so a
             // category with no assigned attribute simply yields an empty map.
             attributeValues: $this->attributeValues($faker, $offerLine->productId),
+            managerSlots: $this->managerSlots($faker, $users),
+            promoteManagersToOpportunity: true,
         );
     }
 

@@ -49,14 +49,14 @@ it('projects an Offerta origin with its code, its /quotes path and its own conte
     $status = QuoteWorkflowStatus::factory()->create([
         'name' => 'In corso', 'color' => 'blue', 'group' => WorkflowStatusGroup::Open,
     ]);
-    $supervisor = User::factory()->create(['name' => 'Mario Rossi']);
+    $operator = User::factory()->create(['name' => 'Mario Rossi']);
 
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
     $quote = Quote::factory()->create([
         'opportunity_id' => $opportunity->id,
         'code' => 'QUO-0042',
         'quote_workflow_status_id' => $status->id,
-        'supervisor_id' => $supervisor->id,
+        'operator_id' => $operator->id,
     ]);
     QuoteLine::factory()->create([
         'quote_id' => $quote->id,
@@ -79,7 +79,7 @@ it('projects an Offerta origin with its code, its /quotes path and its own conte
         ->and($item['context']['product_categories'])->toBe([['id' => $category->id, 'name' => 'Software']])
         ->and($item['context']['workflow_status'])->toBe(['id' => $status->id, 'name' => 'In corso', 'color' => 'blue'])
         ->and($item['context']['status']['entries'])->toHaveCount(1)
-        ->and($item['context']['operator'])->toMatchArray(['id' => $supervisor->id, 'name' => 'Mario Rossi']);
+        ->and($item['context']['operator'])->toMatchArray(['id' => $operator->id, 'name' => 'Mario Rossi']);
 });
 
 it('carries the counterpart record in `related`, whichever of the two the buono was born on', function () {

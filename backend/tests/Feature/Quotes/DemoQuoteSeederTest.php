@@ -10,12 +10,14 @@ use App\Models\Registry;
 use App\Models\User;
 use App\Quotes\QuoteAttributeResolver;
 use App\Services\Quotes\QuoteWorkflowResolver;
+use App\Support\ManagerPositions;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoOpportunitySeeder;
 use Database\Seeders\DemoProductCategorySeeder;
 use Database\Seeders\DemoProductSeeder;
 use Database\Seeders\DemoQuoteSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -179,6 +181,36 @@ it('AC-050: every demo quote with a QUOTE-context applicable attribute carries a
     }
 
     expect($sawAtLeastOneValue)->toBeTrue();
+});
+
+it('AC-015: every demo quote has a populated GA2 "Operatore" slot, coherent with operator_id', function (): void {
+    seedQuoteDependencies();
+
+    test()->seed(DemoQuoteSeeder::class);
+
+    $quotes = Quote::query()->with('managers')->get();
+    expect($quotes)->not->toBeEmpty();
+
+    foreach ($quotes as $quote) {
+        $operatorManager = $quote->managers->first(
+            fn ($manager): bool => (int) $manager->pivot->position === ManagerPositions::OPERATOR,
+        );
+
+        expect($operatorManager)->not->toBeNull($quote->code)
+            ->and($quote->operator_id)->toBe($operatorManager->id, $quote->code)
+            ->and($quote->managers)->toHaveCount(2, $quote->code);
+    }
+});
+
+it('AC-015: re-running is idempotent on the managers pivot too (no duplicate/orphan quote_user rows)', function (): void {
+    seedQuoteDependencies();
+
+    test()->seed(DemoQuoteSeeder::class);
+    $firstPivotCount = DB::table('quote_user')->count();
+
+    test()->seed(DemoQuoteSeeder::class);
+
+    expect(DB::table('quote_user')->count())->toBe($firstPivotCount);
 });
 
 it('seeds nothing when there is no opportunity (nor an offer to build one)', function (): void {

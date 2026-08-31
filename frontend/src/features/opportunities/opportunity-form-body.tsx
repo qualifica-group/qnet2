@@ -202,6 +202,8 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
                 // Directive 2026-07-21: supervisor_id is never required — it
                 // derives from the linked Lead's Operatore, which may be empty.
                 supervisorRequired={false}
+                // Spec 0087 (D-7): nothing to sync yet on a still-unsaved create.
+                managersSynchronized={mode.type === 'edit' ? mode.opportunity.managers_synchronized : false}
               />
 
               <OpportunityClientSection

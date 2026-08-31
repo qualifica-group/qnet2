@@ -85,7 +85,7 @@ it('AC-018: the inline cell editor refuses a second row on a single-mode root, s
         'business_function_id' => $businessFunction->id,
         'product_category_id' => $root->id,
     ]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [

@@ -8,6 +8,7 @@ use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityQuoteLimit;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -86,6 +87,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * keys are ALL numeric, which would silently turn `{"2":"Operatore"}` into
  * `["Operatore"]` on the wire. Every other array field here is already
  * 0-indexed-sequential, so this is a no-op for them.
+ *
+ * Spec 0087, D-7: `managers_synchronized` is ADDITIVE — the QuoteResource
+ * counterpart's own field, feeding the "team sincronizzato" banner on THIS
+ * side of the pair too: true when a write on either this Opportunity or its
+ * (at most one) Quote replaces the other's GA list wholesale.
  */
 #[PreserveKeys]
 class OpportunityResource extends JsonResource
@@ -124,6 +130,7 @@ class OpportunityResource extends JsonResource
             'lead' => $this->summarizeLead($this->lead),
             'managers' => $this->summarizeManagers($this->managers),
             'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($this->resource),
+            'managers_synchronized' => app(QuoteManagerSyncMode::class)->isSynchronized($this->resource),
             'start_date' => $this->start_date,
             'estimated_value' => $this->estimated_value,
             'expected_close_date' => $this->expected_close_date,

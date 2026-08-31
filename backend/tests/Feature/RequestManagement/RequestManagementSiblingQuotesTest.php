@@ -52,7 +52,7 @@ if (! function_exists('siblingQuotes')) {
      * per-Quote dimension the row projects — the shared fields (source,
      * product_categories, next_callback_at, client anagraphic) come from the
      * SAME Opportunity by construction; only what is explicitly set below
-     * (supervisor/site/lines) differs between the two.
+     * (operator/site/lines) differs between the two.
      *
      * @return array{opportunity: Opportunity, first: Quote, second: Quote}
      */
@@ -74,11 +74,11 @@ if (! function_exists('siblingQuotes')) {
         $secondSite = OperationalSite::factory()->withAddress()->create();
 
         $first = Quote::factory()->for($opportunity)->create([
-            'supervisor_id' => User::factory()->create()->id,
+            'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $firstSite->id,
         ]);
         $second = Quote::factory()->for($opportunity)->create([
-            'supervisor_id' => User::factory()->create()->id,
+            'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $secondSite->id,
         ]);
         // `is_transferred` is not fillable (D-6 system flag): set directly,

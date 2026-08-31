@@ -16,11 +16,11 @@ uses(RefreshDatabase::class);
  * checkbox column, which the generic table only shows when a bulk action is
  * reachable — bulk delete and bulk operator assignment, "come nei lead".
  * Spec 0086, D-1: the row is now a `quotes` record, and the assigned
- * Sede/Supervisore now land on `quotes.*` (D-3/D-6).
+ * Sede/GA2 Operatore now land on `quotes.*` (spec 0087, D-9).
  *
  * The load-bearing rule under test is D-2: both flows are gated by this
  * module's OWN `request-management.*` permissions, never `opportunities.*`,
- * and both respect the D-3 supervisor scope.
+ * and both respect the D-9 operator scope.
  */
 if (! function_exists('bulkActionsActor')) {
     /**
@@ -53,12 +53,12 @@ if (! function_exists('bulkActionsOperatorAtSite')) {
 }
 
 if (! function_exists('bulkActionsRequestManagedBy')) {
-    function bulkActionsRequestManagedBy(User $supervisor): Quote
+    function bulkActionsRequestManagedBy(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->attach($supervisor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+        $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
@@ -203,18 +203,29 @@ it('mode=single assigns the Sede and the GA2 operator to every selected request'
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 2);
 
+    // Spec 0087, D-9/D-14/AC-017: writes `quotes.operator_id`, never
+    // `quotes.supervisor_id`. D-13: promoted onto the Opportunity's first
+    // FREE slot — both Opportunities here were born with zero managers, so
+    // that is slot 1, not the GA2 slot `operatorManager()` reads.
     expect($first->fresh()->operational_site_id)->toBe($site->id)
-        ->and($first->fresh()->supervisor_id)->toBe($operator->id)
-        ->and($first->fresh()->opportunity->operatorManager()?->id)->toBe($operator->id)
-        ->and($second->fresh()->supervisor_id)->toBe($operator->id);
+        ->and($first->fresh()->operator_id)->toBe($operator->id)
+        ->and($first->fresh()->supervisor_id)->toBeNull()
+        ->and($first->fresh()->opportunity->operatorManager())->toBeNull()
+        ->and($second->fresh()->operator_id)->toBe($operator->id);
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $first->fresh()->opportunity_id,
+        'user_id' => $operator->id,
+        'position' => 1,
+    ]);
 });
 
-it('the assignment replaces the previous GA2 without touching the other manager slots', function () {
+it('the assignment writes the Offerta\'s own operator_id and promotes onto the Opportunity\'s first free slot, without touching any existing manager slot (spec 0087, D-9/D-13)', function () {
     $actor = bulkActionsActor(['viewAny', 'viewAll', 'update', 'assignOperator']);
     $site = OperationalSite::factory()->withAddress()->create();
     $nextOperator = bulkActionsOperatorAtSite($site);
     $accountManager = User::factory()->create();
-    $quote = bulkActionsRequestManagedBy(User::factory()->create());
+    $originalOperator = User::factory()->create();
+    $quote = bulkActionsRequestManagedBy($originalOperator);
     $quote->opportunity->managers()->attach($accountManager->id, ['position' => 1]);
     Sanctum::actingAs($actor);
 
@@ -226,9 +237,17 @@ it('the assignment replaces the previous GA2 without touching the other manager 
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
     $quote->refresh();
-    expect($quote->supervisor_id)->toBe($nextOperator->id)
-        ->and($quote->opportunity->operatorManager()?->id)->toBe($nextOperator->id)
-        ->and($quote->opportunity->managers()->wherePivot('position', 1)->first()?->id)->toBe($accountManager->id);
+    // D-13: the Opportunity's slot 1 (accountManager) AND slot 2
+    // (originalOperator, this offer's GA2) both survive untouched —
+    // $nextOperator is only APPENDED to the first free slot, 3.
+    expect($quote->operator_id)->toBe($nextOperator->id)
+        ->and($quote->opportunity->managers()->wherePivot('position', 1)->first()?->id)->toBe($accountManager->id)
+        ->and($quote->opportunity->operatorManager()?->id)->toBe($originalOperator->id);
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $quote->opportunity_id,
+        'user_id' => $nextOperator->id,
+        'position' => 3,
+    ]);
 });
 
 it('mode=balanced spreads the selected requests across the Sede operators', function () {
@@ -245,7 +264,7 @@ it('mode=balanced spreads the selected requests across the Sede operators', func
         'mode' => 'balanced',
     ])->assertOk()->assertJsonPath('data.assigned', 4);
 
-    $loads = $quotes->map(fn (Quote $quote): ?int => $quote->fresh()->supervisor_id)
+    $loads = $quotes->map(fn (Quote $quote): ?int => $quote->fresh()->operator_id)
         ->countBy()
         ->all();
 
@@ -282,7 +301,7 @@ it('the assignment skips a request outside the actor D-3 scope', function () {
         'operator_id' => $operator->id,
     ])->assertOk()->assertJsonPath('data.assigned', 1);
 
-    expect($ownRequest->fresh()->supervisor_id)->toBe($operator->id)
+    expect($ownRequest->fresh()->operator_id)->toBe($operator->id)
         ->and($outOfScope->fresh()->operational_site_id)->toBeNull();
 });
 

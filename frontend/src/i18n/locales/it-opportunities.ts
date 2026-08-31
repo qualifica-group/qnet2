@@ -156,6 +156,7 @@ export const opportunities = {
     supervisorSearch: 'Cerca supervisori…',
     managers: 'Gestori account',
     managersMax: "Un'opportunità ha al massimo {{max}} gestori.",
+    managersSyncHint: "Sincronizzato con la sua offerta: una modifica qui aggiorna anche i gestori account dell'offerta, e viceversa.",
     startDate: 'Data inizio',
     expectedCloseDate: 'Data chiusura prevista',
     estimatedValue: 'Valore stimato',

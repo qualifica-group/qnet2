@@ -40,13 +40,13 @@ if (! function_exists('requestManagementUpdaterWith')) {
     }
 }
 
-/** A quote supervised by $supervisor whose client carries a personal-data card. */
-function quoteWithClientCard(User $supervisor): Quote
+/** A quote operated by $operator whose client carries a personal-data card. */
+function quoteWithClientCard(User $operator): Quote
 {
     $registry = Registry::factory()->withPersonalData()->create();
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
 
-    return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+    return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
 }
 
 function clientCardOf(Quote $quote): PersonalData
@@ -109,7 +109,7 @@ it('GET exposes the client card identity, fiscal identifiers included', function
 it('GET returns a null client identity when the client has no card', function () {
     $actor = requestManagementUpdaterWith(['view']);
     $opportunity = Opportunity::factory()->create(['registry_id' => Registry::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/request-management/{$quote->id}")
@@ -278,7 +278,7 @@ it('PATCH client_address without line1 -> 422', function () {
 it('PATCH client_contacts on a quote whose client has no card -> 422', function () {
     $actor = requestManagementUpdaterWith(['update']);
     $opportunity = Opportunity::factory()->create(['registry_id' => Registry::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [

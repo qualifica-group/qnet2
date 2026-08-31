@@ -26,6 +26,16 @@ final class ManagerPositions
     public const int MAX = 12;
 
     /**
+     * The "Operatore" (GA2) slot — the operative owner Gestione Richieste
+     * scopes its "my rows" view on (spec 0049), now shared by the
+     * Opportunita' (`Opportunity::OPERATOR_MANAGER_POSITION`, aliased to this
+     * constant, spec 0087 D-2) and the Offerta (`Quote::managers()`, spec
+     * 0087). One neutral home rather than each side owning its own literal
+     * `2`, the same reasoning MAX already follows here.
+     */
+    public const int OPERATOR = 2;
+
+    /**
      * The subset of a `sync()` map that was genuinely ATTACHED, as
      * `userId => position` (spec 0081). A manager who merely MOVED between
      * slots comes back under sync()'s `updated` key and is deliberately left

@@ -10,6 +10,7 @@ use App\Models\Registry;
 use App\Models\RewardType;
 use App\Models\Source;
 use App\Models\User;
+use App\Support\ManagerPositions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -160,12 +161,15 @@ it('rejects a create without a source_id -> 422, no row created', function () {
 
 // ---------------------------------------------------------------------------
 // GA2 "Operatore" at creation (user directive 2026-07-29): a supervisory act,
-// gated by `request-management.assignOperator` ON TOP of `create`. Spec
-// 0086, D-3/AC-029: the SAME resolved actor lands on `quotes.supervisor_id`
-// AND the Opportunity's GA2 pivot slot.
+// gated by `request-management.assignOperator` ON TOP of `create`. Spec 0087,
+// D-9/D-13: the resolved actor lands SOLELY on `quotes.operator_id`/the
+// Offerta's own GA2 pivot slot — `quotes.supervisor_id` is untouched (D-14,
+// INV-5), and the operator is only PROMOTED onto the Opportunity's own first
+// FREE manager slot (never its GA2 specifically) to satisfy appartenenza
+// (D-6).
 // ---------------------------------------------------------------------------
 
-it('creates with operator_id -> 201, the user lands on quotes.supervisor_id AND the GA2 pivot slot (AC-029)', function () {
+it('creates with operator_id -> 201, the user lands on quotes.operator_id AND the Offerta\'s GA2 pivot slot, promoted onto the Opportunity\'s first free slot (D-9/D-13)', function () {
     $actor = requestManagementCreatorWith(['create', 'assignOperator']);
     $registry = Registry::factory()->create();
     $operator = User::factory()->create();
@@ -181,13 +185,25 @@ it('creates with operator_id -> 201, the user lands on quotes.supervisor_id AND 
 
     $quote = Quote::findOrFail($response->json('data.id'));
     $opportunity = $quote->opportunity;
-    expect($quote->supervisor_id)->toBe($operator->id);
-    expect($opportunity->operatorManager()?->id)->toBe($operator->id);
+    expect($quote->operator_id)->toBe($operator->id)
+        // D-13/D-14: the Supervisore column is never touched by this channel
+        // any more — it follows the general Opportunity-snapshot inheritance
+        // (null here, the decoy-free Opportunity carries none).
+        ->and($quote->supervisor_id)->toBeNull();
+    $this->assertDatabaseHas('quote_user', [
+        'quote_id' => $quote->id,
+        'user_id' => $operator->id,
+        'position' => ManagerPositions::OPERATOR,
+    ]);
+    // D-6/D-13: the Opportunity was born with zero Gestori Account (D-13
+    // Step 2), so the operator is promoted onto its first FREE slot — slot 1
+    // — never its GA2 specifically.
     $this->assertDatabaseHas('opportunity_user', [
         'opportunity_id' => $opportunity->id,
         'user_id' => $operator->id,
-        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
+        'position' => 1,
     ]);
+    expect($opportunity->operatorManager())->toBeNull();
 });
 
 it('rejects operator_id from an actor without request-management.assignOperator -> 403, no row created', function () {
@@ -210,7 +226,7 @@ it('rejects operator_id from an actor without request-management.assignOperator 
 // An ABSENT operator_id is not "no operator": it defaults to the creating
 // actor (user directive 2026-08-04) — see
 // RequestManagementCreateActorDefaultsTest for the whole default block.
-it('falls back to the creating actor as GA2/Supervisore when operator_id is absent', function () {
+it('falls back to the creating actor as GA2 Operatore when operator_id is absent', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     decoyOpportunity();
@@ -223,8 +239,13 @@ it('falls back to the creating actor as GA2/Supervisore when operator_id is abse
     ])->assertCreated();
 
     $quote = Quote::findOrFail($response->json('data.id'));
-    expect($quote->supervisor_id)->toBe($actor->id);
-    expect($quote->opportunity->operatorManager()?->id)->toBe($actor->id);
+    expect($quote->operator_id)->toBe($actor->id)
+        ->and($quote->supervisor_id)->toBeNull();
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $quote->opportunity_id,
+        'user_id' => $actor->id,
+        'position' => 1,
+    ]);
 });
 
 // ---------------------------------------------------------------------------

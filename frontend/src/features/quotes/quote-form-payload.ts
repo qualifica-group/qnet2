@@ -1,13 +1,9 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
-import { sameIdSet } from '@/lib/utils'
+import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
-import type {
-  CreateQuotePayload,
-  QuoteDetail,
-  UpdateQuotePayload,
-} from '@/features/quotes/types'
+import type { CreateQuotePayload, QuoteDetail, UpdateQuotePayload } from '@/features/quotes/types'
 
 /**
  * Builds the create payload. `code` is included only when set (trimmed,
@@ -31,6 +27,15 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     commercial_id: values.commercial_id,
     reporter_id: values.reporter_id,
     supervisor_id: values.supervisor_id,
+    // Spec 0087 (D-5): the create form opens on `DEFAULT_MANAGER_SLOTS` empty
+    // cards (`useQuoteForm`) — untouched, that is an all-null array of
+    // NON-zero length, so it is omitted and the server copies the
+    // Opportunity's own G.A. at the same positions. A slot the user filled,
+    // OR an explicitly emptied `[]` (every default card removed by hand),
+    // both carry real intent and travel as-is (AC-001/AC-002).
+    ...(values.manager_slots.some((slot) => slot !== null) || values.manager_slots.length === 0
+      ? { manager_slots: values.manager_slots }
+      : {}),
     company_id: values.company_id,
     company_site_id: values.company_site_id,
     operational_site_id: values.operational_site_id,
@@ -104,6 +109,12 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.supervisor_id !== original.supervisor_id) {
     payload.supervisor_id = values.supervisor_id
+  }
+  // Spec 0087 (D-1/AC-003): omitted key = untouched; any array (even `[]`) is
+  // a full-replace sync — travels only when the positional slot set actually
+  // changed from what was loaded.
+  if (!sameManagerSlots(values.manager_slots, managerSlotsFromRefs(original.managers ?? []))) {
+    payload.manager_slots = values.manager_slots
   }
   if (values.company_id !== original.company_id) {
     payload.company_id = values.company_id

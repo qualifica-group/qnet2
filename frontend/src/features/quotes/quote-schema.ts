@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
@@ -31,6 +32,20 @@ const INTERNAL_NOTES_MAX_LENGTH = 5000
 
 /** Backend per-tab row ceiling (`max:200`, AC-035). */
 const MAX_LINES_PER_TAB = 200
+
+/**
+ * Spec 0087 (D-1/D-11): the offer's own "G.A. n" manager slot ceiling,
+ * shared with `opportunity-schema.ts`/`registry-schema.ts` via the single
+ * neutral `MAX_MANAGER_SLOTS` constant so the three never drift apart.
+ */
+export const MAX_MANAGERS = MAX_MANAGER_SLOTS
+
+/**
+ * How many empty G.A. rows the quote form opens on when nothing is
+ * inherited yet (mirrors `opportunity-schema.ts`'s own default) — a UX
+ * default, INDEPENDENT of `MAX_MANAGERS`.
+ */
+export const DEFAULT_MANAGER_SLOTS = 4
 
 /** Backend `quantity` ceiling (`max:999999.99`). */
 export const QUANTITY_MAX = 999999.99
@@ -187,6 +202,18 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     // chips are attached).
     rewards: z.array(z.object({ reward_type_id: z.number() })),
     supervisor_id: z.number().nullable(),
+    // Spec 0087 (D-1/D-11): ordered, gap-aware "G.A. n" manager slots,
+    // mirrors `opportunity-schema.ts`. index+1 = G.A. number, `null` = an
+    // intentionally empty slot. At most MAX_MANAGERS filled; the D-6
+    // appartenenza rule (a slot's user must already be a G.A. of the linked
+    // Opportunity) is server-side only — the client has no candidate list to
+    // validate it against here.
+    manager_slots: z
+      .array(z.number().nullable())
+      .refine(
+        (slots) => slots.filter((slot) => slot !== null).length <= MAX_MANAGERS,
+        t('quotes.form.managersMax', { max: MAX_MANAGERS }),
+      ),
     // Societa'/Societa' Sede/Sede operativa (directive 2026-07-30): all three
     // optional. The site-belongs-to-company rule is enforced server-side
     // (ValidatesQuoteCompanySite) and mirrored here only as a UI cascade —

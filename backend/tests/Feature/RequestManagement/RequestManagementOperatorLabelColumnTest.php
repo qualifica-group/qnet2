@@ -114,7 +114,7 @@ it('inline PATCH on the operator column is unaffected — the structural lookup 
     $category = ProductCategory::factory()->create(['manager_labels' => ['2' => 'Operatore Tecnico']]);
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -123,5 +123,9 @@ it('inline PATCH on the operator column is unaffected — the structural lookup 
         'value' => $newOperator->id,
     ])->assertOk();
 
-    expect($quote->fresh()->supervisor_id)->toBe($newOperator->id);
+    // Spec 0087, D-9/D-14/AC-017: the inline editor writes `operator_id`
+    // only — `supervisor_id` (the commission-recipient column) is never
+    // touched by this write path any more.
+    expect($quote->fresh()->operator_id)->toBe($newOperator->id)
+        ->and($quote->fresh()->supervisor_id)->toBeNull();
 });

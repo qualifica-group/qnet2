@@ -6,6 +6,7 @@ namespace App\Http\Requests\Quotes;
 
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
@@ -37,6 +38,12 @@ use Illuminate\Validation\Rule;
  * (possibly changed by a submitted `offer_lines`) set. `note` (AC-023)
  * accompanies an override whose destination `requires_note`.
  *
+ * `manager_slots`/`promote_managers_to_opportunity` (spec 0087, AC-003):
+ * identical rules to StoreQuoteRequest — omitted leaves the Offerta's GA
+ * untouched, an array (even `[]`) is an authoritative full-replace via
+ * `App\Services\Quotes\QuoteManagerWriter::sync()`, which also owns the D-6
+ * appartenenza check (see StoreQuoteRequest's own docblock).
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $quote)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
@@ -45,6 +52,7 @@ use Illuminate\Validation\Rule;
 class UpdateQuoteRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use ValidatesManagerSlots;
     use ValidatesQuoteCompanySite;
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
@@ -80,8 +88,9 @@ class UpdateQuoteRequest extends FormRequest
             // Spec 0084: deep validation intentionally NOT duplicated here —
             // see StoreQuoteRequest's own docblock.
             'attribute_values' => ['sometimes', 'array'],
+            'promote_managers_to_opportunity' => ['sometimes', 'boolean'],
             'summary' => ['prohibited'],
-        ], $this->quoteLinesRules(), $this->rewardsRules());
+        ], $this->managerSlotsRules(), $this->quoteLinesRules(), $this->rewardsRules());
     }
 
     public function withValidator(Validator $validator): void
@@ -93,6 +102,7 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
             $this->enforceQuoteLayout($validator, $this->currentQuote());
             $this->enforceSingleOfferLine($validator, $this->currentQuote());
+            $this->validateManagerSlots($validator);
             $this->validateQuoteWorkflowStatus($validator, $this->currentQuote());
             $this->validateRewards($validator, $this->currentQuote());
         });

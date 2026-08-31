@@ -133,7 +133,7 @@ it('the supervisory copy carries contact, origin, destination, operators, author
     $opportunity->managers()->attach($previousOperator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
     $quote = Quote::factory()->for($opportunity)->create([
         'operational_site_id' => $originSite->id,
-        'supervisor_id' => $previousOperator->id,
+        'operator_id' => $previousOperator->id,
     ]);
     Sanctum::actingAs($actor);
 

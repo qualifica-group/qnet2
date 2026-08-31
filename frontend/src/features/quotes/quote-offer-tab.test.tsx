@@ -125,6 +125,7 @@ const EMPTY_VALUES: QuoteFormValues = {
   commercial_id: null,
   reporter_id: null,
   supervisor_id: null,
+  manager_slots: [],
   company_id: null,
   company_site_id: null,
   operational_site_id: null,

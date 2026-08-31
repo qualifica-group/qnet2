@@ -20,6 +20,7 @@ use App\Services\OpportunityService;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\QuoteService;
 use App\Services\RegistryService;
+use App\Support\ManagerPositions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -81,17 +82,26 @@ final class RequestCreationService
             // `operational-sites.viewAny` never renders them, so an absent
             // key is exactly the case this default covers. A submitted value
             // (only an actor holding those abilities gets past the
-            // controller's guards) always wins. Resolved ONCE, so the
-            // Opportunity's GA2 slot and the Offerta's own Supervisore never
-            // diverge (D-3, AC-029).
-            $supervisorId = $data->operatorId ?? $actor->id;
+            // controller's guards) always wins.
+            //
+            // Spec 0087, D-13: the operator lands SOLELY on the Offerta's
+            // own GA2 slot (Step 4 below) — the Opportunity no longer
+            // receives it from here. Appartenenza (D-6) is still guaranteed:
+            // QuoteManagerWriter's own promotion path (reused here through
+            // CreateQuoteData's `promoteManagersToOpportunity`) appends the
+            // operator to the Opportunity's first FREE manager slot, never
+            // overwriting an already-occupied one.
+            $operatorId = $data->operatorId ?? $actor->id;
             $operationalSiteId = $data->operationalSiteId ?? $this->actorOperationalSiteId($actor);
 
             // Step 2: the Opportunity, through the shared service. The
             // initial attribution (source/reporter/Sede operativa) travels
             // with it; every other relation stays unset (out of scope, D-4).
             // `rewards` is withheld (see class docblock) — Step 4 syncs them
-            // onto the Offerta instead.
+            // onto the Offerta instead. `managerSlots` is null (spec 0087,
+            // D-13): the Opportunity is born with no Gestori Account of its
+            // own from this channel — the operator is promoted onto it (if
+            // needed) only when the Offerta's own GA2 is written, Step 4.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
@@ -100,7 +110,7 @@ final class RequestCreationService
                 supervisorId: null,
                 sourceId: $data->sourceId,
                 leadId: null,
-                managerSlots: $this->operatorManagerSlots($supervisorId),
+                managerSlots: null,
                 operationalSiteId: $operationalSiteId,
                 productLines: $data->productLines,
                 // "Prodotti di interesse" (user directive 2026-07-31): already
@@ -132,9 +142,15 @@ final class RequestCreationService
             // filled any in (user directive 2026-08-07; AC-028's empty offer
             // stays the default), so coverage/aggregates/derived name are the
             // service's own concern here too, never duplicated.
-            // `supervisor_id`/`reporter_id`/`operational_site_id` are the
-            // SAME resolved values just used for the Opportunity, so the two
-            // records never disagree at creation time.
+            // `reporter_id`/`operational_site_id` are the SAME resolved
+            // values just used for the Opportunity, so the two records never
+            // disagree at creation time. `supervisor_id` is deliberately NOT
+            // one of them any more (spec 0087, D-13): it follows the general
+            // inheritance rule (applySnapshotDefaults(), like commercial and
+            // reporter), never a value this channel picks. The operator
+            // lands on the Offerta's own GA2 slot instead, via
+            // `managerSlots`, promoted onto the Opportunity's first free
+            // slot when it is not already one of its Gestori Account (D-6).
             $this->assertOfferLinesFitManagementMode($opportunity, $data);
 
             $quote = $this->quoteService->create(new CreateQuoteData(
@@ -147,12 +163,14 @@ final class RequestCreationService
                 commercialIdSubmitted: false,
                 reporterId: $data->reporterId,
                 reporterIdSubmitted: true,
-                supervisorId: $supervisorId,
-                supervisorIdSubmitted: true,
+                supervisorId: null,
+                supervisorIdSubmitted: false,
                 internalNotes: null,
                 operationalSiteId: $operationalSiteId,
                 operationalSiteIdSubmitted: true,
                 offerLines: $data->offerLines,
+                managerSlots: $this->operatorManagerSlots($operatorId),
+                promoteManagersToOpportunity: true,
             ), $actor);
 
             // Step 5: reward assignments (D-4/D-12, AC-023) — the Offerta's
@@ -247,18 +265,20 @@ final class RequestCreationService
 
     /**
      * The GA2 "Operatore" as ordered manager slots (user directive
-     * 2026-07-29): OpportunityService maps slot index+1 to the pivot
-     * `position`, so the operator sits at index 1 with GA1 left empty —
-     * Opportunity::OPERATOR_MANAGER_POSITION expressed in the slots
-     * vocabulary. Always called with an operator: the actor is the default
-     * (see create()), so a request never lands without one.
+     * 2026-07-29; spec 0087, D-13: now feeds the Offerta's OWN
+     * `manager_slots`, via `QuoteManagerWriter`, no longer the Opportunity's)
+     * — `ManagerPositions::OPERATOR` expressed in the slots vocabulary
+     * (index+1 = position), so the operator sits at the OPERATOR index with
+     * every slot before it left empty. Always called with an operator: the
+     * actor is the default (see create()), so a request never lands without
+     * one.
      *
      * @return array<int, int|null>
      */
     private function operatorManagerSlots(int $operatorId): array
     {
-        $slots = array_fill(0, Opportunity::OPERATOR_MANAGER_POSITION, null);
-        $slots[Opportunity::OPERATOR_MANAGER_POSITION - 1] = $operatorId;
+        $slots = array_fill(0, ManagerPositions::OPERATOR, null);
+        $slots[ManagerPositions::OPERATOR - 1] = $operatorId;
 
         return $slots;
     }

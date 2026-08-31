@@ -10,6 +10,7 @@ use App\Models\Referent;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,10 +30,15 @@ it('creates the quotes table with the expected columns', function () {
     expect(Schema::hasTable('quotes'))->toBeTrue();
     expect(Schema::hasColumns('quotes', [
         'id', 'code', 'title', 'opportunity_id', 'quote_workflow_status_id',
-        'commercial_id', 'reporter_id', 'supervisor_id', 'internal_notes',
+        'commercial_id', 'reporter_id', 'supervisor_id', 'operator_id', 'internal_notes',
         'revenue_net', 'revenue_vat', 'cost_net', 'cost_vat', 'margin_net',
         'created_at', 'updated_at',
     ]))->toBeTrue();
+});
+
+it('creates the quote_user pivot table (spec 0087, D-1)', function () {
+    expect(Schema::hasTable('quote_user'))->toBeTrue();
+    expect(Schema::hasColumns('quote_user', ['id', 'quote_id', 'user_id', 'position']))->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------
@@ -171,6 +177,57 @@ it('supervisor() is a BelongsTo User via supervisor_id', function () {
     expect($relation)->toBeInstanceOf(BelongsTo::class)
         ->and($relation->getRelated())->toBeInstanceOf(User::class)
         ->and($relation->getForeignKeyName())->toBe('supervisor_id');
+});
+
+// ---------------------------------------------------------------------------
+// spec 0087 (D-1/D-2/D-3): managers()/operator_id
+// ---------------------------------------------------------------------------
+
+it('managers() is a BelongsToMany User via quote_user, ordered by pivot position', function () {
+    $quote = Quote::factory()->create();
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+
+    $quote->managers()->sync([
+        $second->id => ['position' => 1],
+        $first->id => ['position' => 2],
+    ]);
+
+    $relation = $quote->managers();
+    expect($relation)->toBeInstanceOf(BelongsToMany::class);
+
+    $ordered = $quote->managers()->get();
+    expect($ordered->pluck('id')->all())->toBe([$second->id, $first->id]);
+});
+
+it('INV-1: quote_user enforces one slot per user and one user per slot', function () {
+    $quote = Quote::factory()->create();
+    $manager = User::factory()->create();
+
+    $quote->managers()->attach($manager->id, ['position' => 1]);
+
+    expect(fn () => $quote->managers()->attach($manager->id, ['position' => 2]))
+        ->toThrow(QueryException::class);
+
+    $other = User::factory()->create();
+    expect(fn () => $quote->managers()->attach($other->id, ['position' => 1]))
+        ->toThrow(QueryException::class);
+});
+
+it('operator_id is deliberately absent from #[Fillable] (D-3): mass-assigning it leaves the column untouched', function () {
+    // Quote::factory()->create() itself runs inside Model::unguarded()
+    // (Laravel core), which would silently hide a #[Fillable] gap — so the
+    // attempted write goes through a plain update() on an ALREADY persisted
+    // instance instead, the real guarded path the sole writer
+    // (QuoteManagerWriter) deliberately bypasses via forceFill() (mirrors
+    // the pre-existing source_id test's own reasoning).
+    $quote = Quote::factory()->create();
+    $operator = User::factory()->create();
+
+    $quote->update(['operator_id' => $operator->id]);
+    $quote->refresh();
+
+    expect($quote->operator_id)->toBeNull();
 });
 
 it('lines()/offerLines()/costLines() are HasMany QuoteLine, ordered by sort_order (AC-038)', function () {

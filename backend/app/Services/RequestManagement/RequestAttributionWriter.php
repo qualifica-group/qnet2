@@ -9,18 +9,19 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\RewardAssignmentWriter;
+use App\Support\ManagerPositions;
 
 /**
  * The request's ATTRIBUTION block as the work panel writes it (user directive
- * 2026-07-22, spec 0056/0059/0086): "Fonte", "Segnalatore", "Sede operativa",
- * the GA2 "Operatore"/Supervisore and the reward assignments — extracted from
+ * 2026-07-22, spec 0056/0059/0086/0087): "Fonte", "Segnalatore", "Sede
+ * operativa", the GA2 "Operatore" and the reward assignments — extracted from
  * RequestManagementService, which owns the panel's read/update lifecycle and
  * had grown past the file-size ceiling (engineering.md §6).
  *
  * One class, four entry points rather than one `apply()`: the caller
  * interleaves them with its own steps because they do not all happen at the
  * same moment — the two scalars are filled BEFORE the models are saved, while
- * the supervisor slot (a pivot row) and the rewards (their own table) are
+ * the operator slot (a pivot row) and the rewards (their own table) are
  * written AFTER. That ordering is the caller's business, the rules are this
  * class'.
  *
@@ -31,7 +32,7 @@ use App\Services\Opportunities\RewardAssignmentWriter;
 final class RequestAttributionWriter
 {
     public function __construct(
-        private readonly RequestSupervisorWriter $supervisorWriter,
+        private readonly RequestOperatorWriter $operatorWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
@@ -98,27 +99,28 @@ final class RequestAttributionWriter
     }
 
     /**
-     * The GA2 "Operatore" / Supervisore (user directive 2026-07-22; spec
-     * 0086, D-3): delegated to RequestSupervisorWriter, the ONE
-     * implementation of the supervisor-slot-sync rule shared with the bulk
-     * assignment (RequestAssignmentService) and the transfer flow
-     * (RequestTransferService).
+     * The GA2 "Operatore" (user directive 2026-07-22; spec 0087, D-9):
+     * delegated to RequestOperatorWriter, the ONE implementation of the
+     * operator-slot-sync rule shared with the bulk assignment
+     * (RequestAssignmentService) and the transfer flow
+     * (RequestTransferService). Never touches `quotes.supervisor_id`
+     * (D-13/D-14, INV-5).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    public function applySupervisor(Quote $quote, mixed $value, User $actor, array &$changed, array &$old): void
+    public function applyOperator(Quote $quote, mixed $value, User $actor, array &$changed, array &$old): void
     {
-        $this->supervisorWriter->apply($quote, $value === null ? null : (int) $value, $changed, $old);
+        $this->operatorWriter->apply($quote, $value === null ? null : (int) $value, $changed, $old);
 
         // spec 0081: only a GENUINE transition is an assignment — apply()
         // leaves `operator_id` unset in $changed when the slot already held
         // this user, which is exactly the "renamed nothing" case that must
         // notify nobody. Notified against the Opportunity: the notification
         // detail card only understands Registry/Opportunity records (D-2).
-        $newSupervisorId = $changed['operator_id'] ?? null;
+        $newOperatorId = $changed['operator_id'] ?? null;
 
-        if ($newSupervisorId === null) {
+        if ($newOperatorId === null) {
             return;
         }
 
@@ -126,11 +128,14 @@ final class RequestAttributionWriter
             $quote->opportunity,
             $actor,
             null,
-            [$newSupervisorId => Opportunity::OPERATOR_MANAGER_POSITION],
+            [$newOperatorId => ManagerPositions::OPERATOR],
             // Spec 0086, MT-04b: the deep link's request-management branch
             // must open THIS Offerta, not the Opportunity — the two ids
             // diverged since the grid row migrated onto the Quote.
             requestManagementRecordId: $quote->id,
+            // Spec 0087, D-10: the detail card's "operator" field reads THIS
+            // Offerta's own GA2, not the parent Opportunity's.
+            requestManagementQuote: $quote,
         );
     }
 

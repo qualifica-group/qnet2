@@ -56,12 +56,12 @@ if (! function_exists('transferRequestManagedBy')) {
     /**
      * @param  array<string, mixed>  $attributes
      */
-    function transferRequestManagedBy(User $supervisor, array $attributes = []): Quote
+    function transferRequestManagedBy(User $operator, array $attributes = []): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->attach($supervisor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
+        $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id, ...$attributes]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id, ...$attributes]);
     }
 }
 
@@ -84,10 +84,20 @@ it('transfers a single request: Sede, GA2 operator and is_transferred all change
     ])->assertOk()->assertJsonPath('data.transferred', 1);
 
     $quote->refresh();
+    // Spec 0087, D-9/D-14: writes `quotes.operator_id`, never
+    // `quotes.supervisor_id`. D-13: promoted onto the Opportunity's first
+    // FREE slot — born with zero managers here, so slot 1, not the GA2 slot
+    // `operatorManager()` reads.
     expect($quote->operational_site_id)->toBe($destinationSite->id)
-        ->and($quote->supervisor_id)->toBe($newOperator->id)
-        ->and($quote->opportunity->operatorManager()?->id)->toBe($newOperator->id)
+        ->and($quote->operator_id)->toBe($newOperator->id)
+        ->and($quote->supervisor_id)->toBeNull()
+        ->and($quote->opportunity->operatorManager())->toBeNull()
         ->and($quote->is_transferred)->toBeTrue();
+    $this->assertDatabaseHas('opportunity_user', [
+        'opportunity_id' => $quote->opportunity_id,
+        'user_id' => $newOperator->id,
+        'position' => 1,
+    ]);
 });
 
 it('records the ORIGIN Sede the request had before the transfer (AC-002)', function () {
@@ -343,7 +353,7 @@ it('transferring to the ALREADY current Sede and operator is not a silent no-op:
     $operator = User::factory()->create();
     $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
-    $quote = Quote::factory()->for($opportunity)->create(['operational_site_id' => $site->id, 'supervisor_id' => $operator->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operational_site_id' => $site->id, 'operator_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/transfer', [
@@ -353,8 +363,12 @@ it('transferring to the ALREADY current Sede and operator is not a silent no-op:
     ])->assertOk()->assertJsonPath('data.transferred', 1);
 
     $quote->refresh();
+    // The transfer targets the SAME operator already assigned: apply()'s
+    // early-return means the writer never runs, so the Opportunity's
+    // pre-existing GA2 (set up above) is untouched either way.
     expect($quote->is_transferred)->toBeTrue()
-        ->and($quote->supervisor_id)->toBe($operator->id)
+        ->and($quote->operator_id)->toBe($operator->id)
+        ->and($quote->supervisor_id)->toBeNull()
         ->and($quote->opportunity->operatorManager()?->id)->toBe($operator->id);
 
     $entries = Activity::query()

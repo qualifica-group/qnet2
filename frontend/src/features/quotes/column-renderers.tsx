@@ -1,7 +1,7 @@
 import { Briefcase, Building, Building2, Handshake, MapPin, UserRound } from 'lucide-react'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import { CodeBadgeCell, CurrencyCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
-import { UserCell } from '@/features/table/user-cell'
+import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -19,7 +19,9 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * (directive 2026-07-30) are relations too — the last one projected as
  * `{id, label}` (the site has no name), the exact shape
  * `opportunityColumnRenderers.operational_site` already renders with the same
- * `RelationCell`.
+ * `RelationCell`. `managers` (spec 0087) is the offer's own G.A. avatar
+ * stack, appended last — the exact `UserStackCell` renderer
+ * `opportunityColumnRenderers.managers` already uses.
  */
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
@@ -28,6 +30,7 @@ export const quoteColumnRenderers: TableRendererMap = {
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   reporter: (params) => <RelationCell {...params} icon={UserRound} />,
   supervisor: (params) => <UserCell {...params} />,
+  managers: (params) => <UserStackCell {...params} />,
   revenue_net: (params) => <CurrencyCell {...params} />,
   cost_net: (params) => <CurrencyCell {...params} />,
   margin_net: (params) => <CurrencyCell {...params} />,

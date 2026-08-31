@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\DB;
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
  * split, engineering.md §6): `opportunity`/`quote_workflow_status`/
  * `commercial`/`reporter`/`supervisor`/`company`/`company_site` (own-FK,
- * simple relation-label columns) — a
- * `whereHas` set filter (allow-listed columns only, never orderByRaw/
- * whereRaw on raw input — backend.md §8), a correlated subquery sort, and
- * Excel-like distinct values (spec 0004/0005), mirroring
- * OpportunityRelationColumns.
+ * simple relation-label columns) and `managers` (`quote_user` pivot,
+ * to-many, spec 0087 D-1/T-10) — a `whereHas` set filter (allow-listed
+ * columns only, never orderByRaw/whereRaw on raw input — backend.md §8), a
+ * correlated subquery sort for the simple relations, and Excel-like distinct
+ * values (spec 0004/0005), mirroring OpportunityRelationColumns.
  */
 final class QuoteRelationColumns
 {
@@ -57,7 +57,8 @@ final class QuoteRelationColumns
 
     /**
      * Handle every derived column's `set` filter via `whereHas` on the
-     * related row's name. Returns false for any other column id (falls
+     * related row's name, PLUS the `managers` (`quote_user` pivot, to-many)
+     * set filter the same way. Returns false for any other column id (falls
      * through to the generic engine).
      *
      * @param  Builder<Model>  $query
@@ -65,6 +66,18 @@ final class QuoteRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
+        if ($columnId === 'managers') {
+            $values = $this->filterValues($filter);
+
+            if ($values !== []) {
+                $query->whereHas('managers', static function (Builder $relatedQuery) use ($values): void {
+                    $relatedQuery->whereIn('name', $values);
+                });
+            }
+
+            return true;
+        }
+
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
@@ -85,7 +98,9 @@ final class QuoteRelationColumns
     }
 
     /**
-     * ORDER BY the related row's name via a correlated subquery.
+     * ORDER BY the related row's name via a correlated subquery. `managers`
+     * is NOT sortable (returns false — no single related row to order by,
+     * mirrors OpportunityRelationColumns).
      *
      * @param  Builder<Model>  $query
      */
@@ -108,14 +123,19 @@ final class QuoteRelationColumns
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005): the related row's name,
-     * scoped to the rows matching $query.
+     * Excel-like distinct values (spec 0004/0005): the related row's name for
+     * the simple-relation derived columns, plus the `managers` pivot's user
+     * names, scoped to the rows matching $query.
      *
      * @param  Builder<Model>  $query
      * @return array<int, string>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === 'managers') {
+            return $this->distinctManagerNames($search, $query, $limit);
+        }
+
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
@@ -134,6 +154,34 @@ final class QuoteRelationColumns
             ->orderBy($label)
             ->limit($limit)
             ->pluck($label)
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
+    }
+
+    /**
+     * Distinct account-manager names among the offers matching $query, via a
+     * join through the `quote_user` pivot — scoped by every OTHER active
+     * filter (Excel-like distinct values, spec 0004/0005), mirrors
+     * OpportunityRelationColumns::distinctManagerNames() verbatim over the
+     * Offerta's own pivot.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<int, string>
+     */
+    private function distinctManagerNames(?string $search, Builder $query, int $limit): array
+    {
+        $quoteIds = (clone $query)->select('quotes.id');
+
+        return DB::table('users')
+            ->join('quote_user', 'quote_user.user_id', '=', 'users.id')
+            ->whereIn('quote_user.quote_id', $quoteIds)
+            ->when($search !== null && $search !== '', function ($builder) use ($search): void {
+                $builder->where('users.name', 'like', '%'.$this->escapeLike($search).'%');
+            })
+            ->distinct()
+            ->orderBy('users.name')
+            ->limit($limit)
+            ->pluck('users.name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
     }

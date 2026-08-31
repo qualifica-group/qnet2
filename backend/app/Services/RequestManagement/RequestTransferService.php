@@ -21,7 +21,7 @@ use Spatie\Permission\Models\Permission;
  * Business logic for POST /api/request-management/transfer (spec 0079;
  * migrated onto the Quote by spec 0086, AC-034/AC-035): moves one or many
  * offers to another Sede operativa, assigning that site's own GA2
- * "Operatore"/Supervisore in the same call, tracked by two Quote columns
+ * "Operatore" in the same call (spec 0087, D-9), tracked by two Quote columns
  * (`is_transferred`/`transferred_from_operational_site_id`, D-6 — per-offer
  * rather than per-deal from now on) and audited by ONE explicit Activity Log
  * entry per offer, anchored on the Opportunity (D-9).
@@ -45,13 +45,13 @@ final class RequestTransferService
      * The permission whose holders are copied on every transfer (spec 0081,
      * decisione utente 2026-08-04). It replaces the `supervisor` ROLE this
      * service used to look up, and it is never the Offerta's own
-     * `supervisor_id`, which is a different concept entirely (see spec 0079
-     * context).
+     * `supervisor_id`/`operator_id`, which are different concepts entirely
+     * (see spec 0079 context; spec 0087, D-13/D-14 for the two-column split).
      */
     private const string TRANSFER_NOTIFICATION_PERMISSION = 'request-management.receiveTransferNotifications';
 
     public function __construct(
-        private readonly RequestSupervisorWriter $supervisorWriter,
+        private readonly RequestOperatorWriter $operatorWriter,
     ) {}
 
     /**
@@ -135,8 +135,8 @@ final class RequestTransferService
 
     /**
      * One offer: capture its state BEFORE the write, apply the Sede plus the
-     * transfer flags plus the Supervisore, then the ONE explicit Activity Log
-     * entry that is this transfer's audit trail — anchored on the
+     * transfer flags plus the GA2 Operatore, then the ONE explicit Activity
+     * Log entry that is this transfer's audit trail — anchored on the
      * Opportunity (D-9).
      *
      * @param  array<int, string>  $originLabels
@@ -146,7 +146,7 @@ final class RequestTransferService
         // Step 1: capture the origin/old state before overwriting anything.
         $originSiteId = $quote->operational_site_id;
         $wasTransferred = (bool) $quote->is_transferred;
-        $previousSupervisor = $quote->supervisor;
+        $previousOperator = $quote->operator;
 
         // Step 2: write the destination Sede plus the transfer flags. The
         // automatic model log is suspended here (instance-scoped) —
@@ -162,18 +162,19 @@ final class RequestTransferService
         $quote->transferred_from_operational_site_id = $originSiteId;
         $quote->save();
 
-        // Step 3: the Supervisore (Quote column + GA2 pivot sync) — never
-        // reaches the Opportunity's automatic model log either way.
-        // `operator_id` is SEEDED here rather than left to apply()'s own
-        // early-return: a transfer always ASSIGNS an operator, changed or
-        // not (spec 0079 IDEMPOTENZA), unlike updateWork()/
-        // RequestAssignmentService, which only report a genuine transition —
-        // apply() is shared with both and must keep that behaviour for them.
-        // When the operator DOES change, apply() overwrites both keys with
-        // the same values already seeded here, so the diff stays consistent.
+        // Step 3: the GA2 Operatore (Quote column + `quote_user` pivot slot
+        // sync, spec 0087 D-9) — never reaches the Opportunity's automatic
+        // model log either way. `operator_id` is SEEDED here rather than
+        // left to apply()'s own early-return: a transfer always ASSIGNS an
+        // operator, changed or not (spec 0079 IDEMPOTENZA), unlike
+        // updateWork()/RequestAssignmentService, which only report a genuine
+        // transition — apply() is shared with both and must keep that
+        // behaviour for them. When the operator DOES change, apply()
+        // overwrites both keys with the same values already seeded here, so
+        // the diff stays consistent.
         $changed = ['operational_site_id' => $operationalSiteId, 'is_transferred' => true, 'operator_id' => $operatorId];
-        $old = ['operational_site_id' => $originSiteId, 'is_transferred' => $wasTransferred, 'operator_id' => $previousSupervisor?->id];
-        $this->supervisorWriter->apply($quote, $operatorId, $changed, $old);
+        $old = ['operational_site_id' => $originSiteId, 'is_transferred' => $wasTransferred, 'operator_id' => $previousOperator?->id];
+        $this->operatorWriter->apply($quote, $operatorId, $changed, $old);
 
         // Step 4: the ONE explicit Activity Log entry for this transfer,
         // anchored on the Opportunity (D-9).
@@ -191,8 +192,8 @@ final class RequestTransferService
             requestId: $quote->id,
             contactLabel: $quote->opportunity->name,
             originSiteLabel: $originSiteId === null ? null : ($originLabels[$originSiteId] ?? null),
-            previousOperatorName: $previousSupervisor?->name,
-            previousOperatorId: $previousSupervisor?->id,
+            previousOperatorName: $previousOperator?->name,
+            previousOperatorId: $previousOperator?->id,
             // Spec 0086, MT-04b: the deep link's `/opportunities/:id` branch
             // needs this DISTINCT id — `requestId` now names the Quote.
             opportunityId: $quote->opportunity_id,

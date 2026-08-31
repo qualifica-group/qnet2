@@ -46,12 +46,12 @@ if (! function_exists('productInterestActor')) {
 }
 
 if (! function_exists('productInterestQuote')) {
-    function productInterestQuote(User $supervisor): Quote
+    function productInterestQuote(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

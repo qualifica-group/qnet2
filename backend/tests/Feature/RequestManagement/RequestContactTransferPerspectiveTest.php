@@ -42,7 +42,7 @@ if (! function_exists('transferPerspectiveRequest')) {
 
         return Quote::factory()->for($opportunity)->create([
             'operational_site_id' => $originSite?->id,
-            'supervisor_id' => $operator?->id,
+            'operator_id' => $operator?->id,
         ]);
     }
 }

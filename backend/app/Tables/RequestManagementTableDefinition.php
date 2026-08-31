@@ -41,8 +41,8 @@ use Illuminate\Support\Facades\Auth;
  *    QuotePolicy -> `quotes.viewAny`, the WRONG permission for this domain. A
  *    direct `request-management.viewAny` permission check replaces it
  *    (fail-closed: no permission registered -> false, never fail-open).
- *  - `baseQuery()` scopes to the actor's own supervised offers
- *    (`quotes.supervisor_id`, D-3) UNLESS they hold
+ *  - `baseQuery()` scopes to the offers the actor is the GA2 Operatore of
+ *    (`quotes.operator_id`, spec 0087 D-9) UNLESS they hold
  *    `request-management.viewAll` — delegated to
  *    `App\Services\RequestManagement\RequestManagementScope::scopeToActor()`,
  *    THE single implementation of this rule shared by every one of the six
@@ -187,9 +187,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             'opportunity.source',
             'opportunity.productLines.productCategory', 'opportunity.productLines.businessFunction',
             'opportunity.registry.personalData.contacts',
-            // `supervisor.avatar` (D-3): the "Operatore" (GA2) column's
-            // inline avatar for the shared UserCell, no per-row query.
-            'supervisor.avatar',
+            // `operator.avatar` (spec 0087, D-9): the "Operatore" (GA2)
+            // column's inline avatar for the shared UserCell, no per-row
+            // query.
+            'operator.avatar',
             // Spec 0056/0086, D-6: operationalSite's address+city for the
             // composed label (site has no own name) — now the OFFER's own FK.
             'operationalSite.addresses.city',
@@ -320,7 +321,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * permission), never QuotePolicy: `Gate::allows('view', $row)` would
      * resolve QuotePolicy (`quotes.view`), the wrong permission for this
      * domain — same reason `activity` reads `request-management.viewActivity`
-     * directly (the endpoint re-checks it plus the D-3 supervisor scope via
+     * directly (the endpoint re-checks it plus the D-9 operator scope via
      * RequestManagementActivityAuthorizer).
      *
      * @return array<int, string>

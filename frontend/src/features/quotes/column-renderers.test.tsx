@@ -79,9 +79,32 @@ describe('quoteColumnRenderers money columns', () => {
 })
 
 describe('quoteColumnRenderers wiring', () => {
-  it('maps supervisor and created_at to the shared cells', () => {
+  it('maps supervisor, managers and created_at to the shared cells', () => {
     expect(quoteColumnRenderers.supervisor).toBeTypeOf('function')
+    expect(quoteColumnRenderers.managers).toBeTypeOf('function')
     expect(quoteColumnRenderers.created_at).toBeTypeOf('function')
+  })
+})
+
+/** Spec 0087 (AC-014): the offer's G.A. avatar stack, mirrors `opportunityColumnRenderers.managers`. */
+describe('quoteColumnRenderers.managers', () => {
+  it('renders one avatar per filled G.A. slot', () => {
+    renderCell('managers', [
+      { id: 12, name: 'Mario Rossi', avatar_url: null },
+      { id: 7, name: 'Anna Bianchi', avatar_url: null },
+    ])
+    expect(screen.getByText('MR')).toBeInTheDocument()
+    expect(screen.getByText('AB')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when there is no G.A. yet', () => {
+    renderCell('managers', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for a null value (mirrors the other relation columns)', () => {
+    renderCell('managers', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
 

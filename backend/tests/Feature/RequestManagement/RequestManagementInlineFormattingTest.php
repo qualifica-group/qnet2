@@ -30,13 +30,13 @@ if (! function_exists('inlineFormattingActor')) {
 }
 
 if (! function_exists('inlineFormattingRequest')) {
-    function inlineFormattingRequest(User $supervisor): Quote
+    function inlineFormattingRequest(User $operator): Quote
     {
         $registry = Registry::factory()->withPersonalData()->create();
         $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

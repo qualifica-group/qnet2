@@ -44,12 +44,12 @@ if (! function_exists('siteInlineEditActor')) {
 
 if (! function_exists('siteInlineEditRequest')) {
     /** A quote the actor supervises (the module's own row scope, D-3). */
-    function siteInlineEditRequest(User $supervisor): Quote
+    function siteInlineEditRequest(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

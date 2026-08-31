@@ -2,30 +2,14 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { categoryManagerLabelsQueryKey, fetchCategoryManagerLabels } from '@/features/opportunities/api'
 import type { ProductLineRow } from '@/features/product-lines/types'
-
-/** Two resolved label maps are the SAME set when every position resolves to the identical string (order-independent). */
-function sameManagerLabels(a: Record<string, string>, b: Record<string, string>): boolean {
-  const aKeys = Object.keys(a)
-  const bKeys = Object.keys(b)
-  return aKeys.length === bKeys.length && aKeys.every((key) => a[key] === b[key])
-}
+import { resolveManagerLabels } from '@/lib/utils'
 
 /**
- * The `OpportunityManagerLabelResolver` univocity rule (spec 0080, decision
- * 1), mirrored client-side so the form's labels react live to the product
- * lines being edited instead of only to what the server resolved at load:
- * zero categories -> `{}`; one -> its own effective labels; several -> the
- * shared result ONLY when every one of them resolves to the IDENTICAL set
- * (compared on the resolved labels, not on the category id — two different
- * categories defining the same labels is not a conflict); otherwise `{}`.
+ * Re-exported from its shared home so this hook stays the single import
+ * surface for the Opportunita' label path — the rule itself is shared with
+ * the Offerta hook (spec 0087 D-8) and must not be duplicated.
  */
-export function resolveManagerLabels(perCategory: Record<string, string>[]): Record<string, string> {
-  if (perCategory.length === 0) {
-    return {}
-  }
-  const [first, ...rest] = perCategory
-  return rest.every((labels) => sameManagerLabels(labels, first)) ? first : {}
-}
+export { resolveManagerLabels }
 
 /** Distinct, non-null `product_category_id`s of the form's current product lines — the resolver's own input set. */
 function distinctCategoryIds(productLines: ProductLineRow[]): number[] {

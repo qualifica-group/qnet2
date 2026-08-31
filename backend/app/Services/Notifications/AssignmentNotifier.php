@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Enums\AssignmentRoleEnum;
+use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Support\Notifications\RecordDetails;
@@ -50,6 +51,20 @@ final class AssignmentNotifier
      *                                           request-management) falls
      *                                           back to $record's id, the
      *                                           pre-0086 behaviour.
+     * @param  ?Quote  $requestManagementQuote  spec 0087, D-10: when this
+     *                                          write is a request-management
+     *                                          one, the SAME Offerta
+     *                                          $requestManagementRecordId
+     *                                          names — the detail card's
+     *                                          "operator" field must read
+     *                                          THIS Offerta's own GA2
+     *                                          Operatore, not the parent
+     *                                          Opportunity's (the two can
+     *                                          diverge, D-1). Null (every
+     *                                          caller outside
+     *                                          request-management) falls
+     *                                          back to $record's own GA2, the
+     *                                          pre-0087 behaviour.
      */
     public function notify(
         Model $record,
@@ -57,6 +72,7 @@ final class AssignmentNotifier
         ?int $supervisorId,
         array $managerPositions,
         ?int $requestManagementRecordId = null,
+        ?Quote $requestManagementQuote = null,
     ): void {
         // Step 1: drop the actor from both roles.
         if ($actor !== null) {
@@ -73,7 +89,7 @@ final class AssignmentNotifier
         $target = RecordDetails::targetFor($record);
         $recordId = (int) $record->getKey();
         $recordLabel = (string) $record->getAttribute('name');
-        $details = RecordDetails::for($record);
+        $details = RecordDetails::for($record, $requestManagementQuote);
         $actorName = $actor?->name ?? __('The system');
 
         // Step 3: dispatch only once the write is durable — a notification

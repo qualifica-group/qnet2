@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -82,6 +83,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * = Quote), so an Opportunity-keyed subject would resolve the wrong offer or
  * 404. Additive and inert for the Offerte module itself: it declares no
  * protected fields in `config/field-change-requests.php`.
+ *
+ * `operator_id` (spec 0087, D-3): a DENORMALIZED projection of the
+ * `quote_user` pivot's GA2 "Operatore" slot (`App\Support\ManagerPositions::
+ * OPERATOR`), null when that slot is empty. Written by exactly ONE point,
+ * `App\Services\Quotes\QuoteManagerWriter` (D-4) — DELIBERATELY absent from
+ * #[Fillable], the same discipline as `code`/the 5 aggregates. Replaces
+ * `supervisor_id` as the Gestione Richieste ownership column (D-9); the
+ * former column keeps its own commission-recipient role only (D-13/D-14).
  */
 #[Fillable([
     'title',
@@ -175,11 +184,44 @@ class Quote extends BaseModel
     }
 
     /**
-     * The snapshot internal User supervisor (D-3), via its own FK.
+     * The snapshot internal User supervisor (D-3), via its own FK. Spec
+     * 0087, D-13/D-14: this is now EXCLUSIVELY a commission-recipient role
+     * (`CommissionRecipientRole::Supervisor`) — no authorization path reads
+     * it any more (INV-5), that role having moved to `operator_id`/
+     * `managers()` below.
      */
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    /**
+     * The internal users managing this Offerta ("Gestori Account", spec
+     * 0087 D-1): a byte-for-byte mirror of `Opportunity::managers()`, over
+     * the `quote_user` pivot instead of `opportunity_user`. Outside
+     * synchronized categories (`App\Services\Quotes\QuoteManagerSyncMode`),
+     * every entry here must also be a manager of `opportunity` (D-6) — the
+     * sole writer, `App\Services\Quotes\QuoteManagerWriter`, enforces that.
+     * The GA2 "Operatore" slot (`App\Support\ManagerPositions::OPERATOR`) is
+     * additionally projected onto `operator_id` (D-3) — the request-management
+     * module's own ownership column (D-9).
+     */
+    public function managers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'quote_user')
+            ->withPivot('position')
+            ->orderByPivot('position');
+    }
+
+    /**
+     * The denormalized GA2 "Operatore" (spec 0087, D-3/D-9), via its own FK
+     * (`operator_id`) — the request-management module's ownership column,
+     * kept in sync with `managers()`'s OPERATOR slot by the sole writer,
+     * `App\Services\Quotes\QuoteManagerWriter`.
+     */
+    public function operator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'operator_id');
     }
 
     /**

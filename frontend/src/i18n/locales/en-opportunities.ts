@@ -156,6 +156,7 @@ export const opportunities = {
     supervisorSearch: 'Search supervisors…',
     managers: 'Account managers',
     managersMax: 'An opportunity has at most {{max}} managers.',
+    managersSyncHint: 'Synced with its quote: a change here updates the quote’s account managers too, and vice versa.',
     startDate: 'Start date',
     expectedCloseDate: 'Expected close date',
     estimatedValue: 'Estimated value',

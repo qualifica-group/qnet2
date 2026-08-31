@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tables\RequestManagement;
 
-use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
+use App\Support\ManagerPositions;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
@@ -364,10 +364,16 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     }
 
     /**
-     * The scoped category's EFFECTIVE label for
-     * `Opportunity::OPERATOR_MANAGER_POSITION` (GA2), or null when there is
-     * no scope, the category no longer exists, or it defines no label for
-     * that position.
+     * The scoped category's EFFECTIVE label for `ManagerPositions::OPERATOR`
+     * (GA2), or null when there is no scope, the category no longer exists,
+     * or it defines no label for that position.
+     *
+     * Spec 0087, D-10: reads `ManagerPositions::OPERATOR` directly rather
+     * than the `Opportunity::OPERATOR_MANAGER_POSITION` alias — the label
+     * this column now names belongs to the OFFERTA's own "operator_ga2"
+     * column (D-9), not the Opportunity's; the two constants carry the same
+     * numeric value (D-2), so this is a semantic correction, not a
+     * behavioural one.
      */
     private function scopedOperatorLabel(): ?string
     {
@@ -381,6 +387,6 @@ class RequestManagementScopedTableDefinition implements TableDefinition
             return null;
         }
 
-        return $this->productCategoryService->effectiveManagerLabels($category)[Opportunity::OPERATOR_MANAGER_POSITION] ?? null;
+        return $this->productCategoryService->effectiveManagerLabels($category)[ManagerPositions::OPERATOR] ?? null;
     }
 }

@@ -4,23 +4,29 @@ import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { toast } from 'sonner'
+import { useConfirm } from '@/components/confirm-dialog-context'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { managerSlotsFromRefs } from '@/lib/utils'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
 import {
   buildCreateQuoteSchema,
   buildUpdateQuoteSchema,
+  DEFAULT_MANAGER_SLOTS,
   type QuoteFormValues,
 } from '@/features/quotes/quote-schema'
 import { useQuoteFormContext } from '@/features/quotes/use-quote-form-context'
 import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
+  CreateQuotePayload,
   QuoteDetail,
   QuoteFormMode,
   QuoteWorkflowStatusRef,
+  UpdateQuotePayload,
 } from '@/features/quotes/types'
 
 /** Hoisted so the schema memo keeps a stable dependency in create mode (no set resolved yet). */
@@ -39,6 +45,7 @@ const SERVER_ERROR_FIELDS = [
   'commercial_id',
   'reporter_id',
   'supervisor_id',
+  'manager_slots',
   'company_id',
   'company_site_id',
   'operational_site_id',
@@ -61,6 +68,36 @@ function initialVatRatePercents(mode: QuoteFormMode): Record<number, number> {
     return {}
   }
   return vatRatePercentsFromLines([...mode.quote.offer_lines, ...mode.quote.cost_lines])
+}
+
+/**
+ * The create form's G.A. slots: one empty card per assignable position, up
+ * through `DEFAULT_MANAGER_SLOTS` (mirrors `useOpportunityForm`'s own
+ * `defaultManagerSlots`) — a UX default, independent of `MAX_MANAGERS`. D-5's
+ * actual inheritance from the Opportunity happens server-side once the form
+ * submits this untouched (`buildCreatePayload` omits the key).
+ */
+function defaultManagerSlots(): (number | null)[] {
+  return Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null)
+}
+
+/**
+ * Spec 0087 (D-6/AC-004): the create/update 422 is the "not a G.A. of the
+ * Opportunity yet" refusal when the error bag carries a `manager_slots` (or
+ * `manager_slots.<n>`) key — the client never rejects it earlier (MAX is the
+ * only client-side rule), so a 422 landing there past that point is this
+ * violation. Returns the server's own message (AC-004 names the user) or
+ * `null` when the failure is unrelated.
+ */
+function managerSlotsMembershipMessage(error: unknown): string | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
+    return null
+  }
+  const errors = error.response.data?.errors as Record<string, string[]> | undefined
+  const key = Object.keys(errors ?? {}).find(
+    (field) => field === 'manager_slots' || field.startsWith('manager_slots.'),
+  )
+  return key ? (errors as Record<string, string[]>)[key][0] : null
 }
 
 interface UseQuoteFormArgs {
@@ -115,6 +152,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         commercial_id: quote.commercial_id,
         reporter_id: quote.reporter_id,
         supervisor_id: quote.supervisor_id,
+        manager_slots: managerSlotsFromRefs(quote.managers ?? []),
         company_id: quote.company_id,
         company_site_id: quote.company_site_id,
         operational_site_id: quote.operational_site_id,
@@ -141,6 +179,10 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       commercial_id: null,
       reporter_id: null,
       supervisor_id: null,
+      // Spec 0087 (D-5): left on the UX default (empty cards); the actual
+      // Opportunity inheritance happens server-side once submitted untouched
+      // (`buildCreatePayload` then omits the key).
+      manager_slots: defaultManagerSlots(),
       company_id: null,
       company_site_id: null,
       operational_site_id: null,
@@ -221,24 +263,65 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     [vatRatePercentById],
   )
 
-  const onSubmit = async (values: QuoteFormValues) => {
-    setServerError(null)
-    const errorFields: Path<QuoteFormValues>[] = [...SERVER_ERROR_FIELDS]
-    try {
+  const confirm = useConfirm()
+
+  /** One create/update attempt; `promoteManagers` rides the retry after the D-6 dialog is accepted. */
+  const submit = useCallback(
+    async (values: QuoteFormValues, promoteManagers: boolean) => {
       if (mode.type === 'edit') {
-        const saved = await updateQuote(mode.quote.id, buildUpdatePayload(values, mode.quote))
+        const payload: UpdateQuotePayload = buildUpdatePayload(values, mode.quote)
+        const saved = await updateQuote(
+          mode.quote.id,
+          promoteManagers ? { ...payload, promote_managers_to_opportunity: true } : payload,
+        )
         queryClient.setQueryData(quoteDetailQueryKey(mode.quote.id), saved)
         toast.success(t('quotes.form.updated'))
         onSuccess(saved)
         return
       }
-
-      const created = await createQuote(buildCreatePayload(values))
+      const payload: CreateQuotePayload = buildCreatePayload(values)
+      const created = await createQuote(
+        promoteManagers ? { ...payload, promote_managers_to_opportunity: true } : payload,
+      )
       toast.success(t('quotes.form.created'))
       onSuccess(created)
+    },
+    [mode, queryClient, t, onSuccess],
+  )
+
+  const onSubmit = async (values: QuoteFormValues) => {
+    setServerError(null)
+    const errorFields: Path<QuoteFormValues>[] = [...SERVER_ERROR_FIELDS]
+    try {
+      await submit(values, false)
     } catch (error) {
-      if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('quotes.form.genericError'))
+      const membershipMessage = managerSlotsMembershipMessage(error)
+      if (membershipMessage === null) {
+        if (!applyServerValidationErrors(error, form.setError, errorFields)) {
+          setServerError(t('quotes.form.genericError'))
+        }
+        return
+      }
+      // Spec 0087 (D-6): a picked G.A. is not yet a G.A. of the linked
+      // Opportunity. Ask before widening the Opportunity's own team; a
+      // decline cancels the save outright (user directive 2026-08-31) — no
+      // generic error, the dialog already explained why.
+      const promote = await confirm({
+        tone: 'warning',
+        title: t('quotes.form.managersPromoteDialog.title'),
+        description: membershipMessage,
+        confirmLabel: t('quotes.form.managersPromoteDialog.confirm'),
+        cancelLabel: t('common.cancel'),
+      })
+      if (!promote) {
+        return
+      }
+      try {
+        await submit(values, true)
+      } catch (retryError) {
+        if (!applyServerValidationErrors(retryError, form.setError, errorFields)) {
+          setServerError(t('quotes.form.genericError'))
+        }
       }
     }
   }

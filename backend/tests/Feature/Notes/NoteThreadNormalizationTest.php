@@ -37,11 +37,11 @@ if (! function_exists('noteActor')) {
 
 if (! function_exists('noteManagedOpportunity')) {
     // Spec 0086, D-9: read/mention access is re-keyed on the Opportunity's
-    // own Offerte (D-3, `quotes.supervisor_id`), not the GA2 pivot slot.
-    function noteManagedOpportunity(User $supervisor): Opportunity
+    // own Offerte (spec 0087, D-9, `quotes.operator_id`), not the GA2 pivot slot.
+    function noteManagedOpportunity(User $operator): Opportunity
     {
         $opportunity = Opportunity::factory()->create();
-        Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
 
         return $opportunity;
     }

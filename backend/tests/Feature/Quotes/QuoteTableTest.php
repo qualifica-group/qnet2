@@ -59,12 +59,16 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
 
     // The 2026-07-30 directive appends company/company_site/operational_site
     // LAST on purpose: inserting them mid-list would shift every user's
-    // persisted column layout (spec 0001).
+    // persisted column layout (spec 0001). `managers` (spec 0087) is the
+    // deliberate exception — user directive 2026-08-31 puts it right after
+    // `supervisor`, where the two read together as "chi segue questa offerta";
+    // appended last it was buried off the right edge. Safe because the stored
+    // preference delta is keyed by column ID, so only DEFAULT layouts move.
     $ids = $columns->pluck('id')->all();
     expect($ids)->toBe([
         'id', 'code', 'title', 'opportunity', 'quote_workflow_status', 'commercial',
-        'reporter', 'supervisor', 'revenue_net', 'cost_net', 'margin_net', 'created_at',
-        'company', 'company_site', 'operational_site',
+        'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
+        'created_at', 'company', 'company_site', 'operational_site',
     ]);
 });
 

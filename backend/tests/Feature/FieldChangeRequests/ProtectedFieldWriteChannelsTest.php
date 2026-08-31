@@ -42,12 +42,12 @@ if (! function_exists('sourceProtectedActor')) {
 }
 
 if (! function_exists('quoteSupervisedBy')) {
-    function quoteSupervisedBy(User $supervisor): Quote
+    function quoteSupervisedBy(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-        $opportunity->managers()->sync([$supervisor->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

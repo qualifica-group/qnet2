@@ -57,17 +57,17 @@ if (! function_exists('inlineLinesCategory')) {
 
 if (! function_exists('inlineLinesRequest')) {
     /** A quote the actor supervises, already classified with $category. */
-    function inlineLinesRequest(User $supervisor, ProductCategory $category): Quote
+    function inlineLinesRequest(User $operator, ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
         OpportunityProductLine::factory()->create([
             'opportunity_id' => $opportunity->id,
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

@@ -3,6 +3,103 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTORI ACCOUNT SULL'OFFERTA (spec 0087) (2026-08-31) — COMPLETA E VERDE, NON COMMITTATA
+
+**Direttiva utente.** I GA arrivano anche sull'Offerta (label per categoria, precompilati
+dall'Opportunita'). Il **GA2 dell'Offerta e' l'owner della gestione account**: ogni controllo
+prima su `quotes.supervisor_id` passa a lui. Il **Supervisore esce COMPLETAMENTE dalla gestione
+account** (ribadito esplicitamente) e sopravvive solo come `CommissionRecipientRole::Supervisor`.
+GA su Offerta non presenti in Opportunita' -> il sistema chiede se aggiungerli anche li'; rifiuto =
+aggiunta annullata. Categorie con offerta-unica AND gestione-singola -> sincronizzazione
+**bidirezionale sostitutiva**. Colonna GA anche su /quotes.
+
+**Spec.** `docs/specs/0087-quote-account-managers.xml` — 14 decisioni, 5 invarianti, 17 AC, 14 microtask.
+
+**VERIFICATO ESEGUENDO (gate finale, eseguito dal lead, non solo riportato).**
+- Backend `XDEBUG_MODE=off php artisan test`: **5439 test, 5438 passed, 1 skipped, 0 failed**,
+  23048 assertions (baseline pre-feature: 5378).
+- **Pint EXIT 0.**
+- Frontend `npx tsc -b --force --pretty false`: **EXIT 0**.
+- Frontend `npx vitest run`: **511 file, 3643 test, 0 failed**.
+- **INV-5 verificata per grep**: in `app/Services/RequestManagement/`, `app/RequestManagement/`,
+  `app/Tables/RequestManagement/` e `app/Policies/` NON esiste piu' una sola LETTURA di
+  `quotes.supervisor_id` — le occorrenze rimaste sono tutte commenti storici.
+
+**Architettura finale (le scelte non ovvie, col loro perche').**
+- **`quotes.operator_id` denormalizzata** (D-3), proiezione dello slot GA2 di `quote_user`.
+  Motivo misurato: `RequestManagementScope::scopeToActor()` e' un confronto di COLONNA su ogni riga
+  della lista, e `mode=balanced` un `groupBy`. Il pivot li' avrebbe imposto un whereHas correlato +
+  un join con GROUP BY. Prezzo: obbligo di coerenza, contenuto da UN SOLO writer
+  (`QuoteManagerWriter`, 4 step, non rientrante) + INV-2 testata su tutti i percorsi.
+- **`RequestSupervisorWriter` CANCELLATO** -> `RequestOperatorWriter`, che delega a
+  `QuoteManagerWriter::sync()` con `promoteToOpportunity: true`: nessuna duplicazione della logica
+  di appartenenza/promozione.
+- **I due setting di categoria sono DISTINTI** (`single_quote_per_opportunity` = quante OFFERTE;
+  `management_mode` = quante RIGHE CATEGORIA). Nessun punto del codice li combinava prima: l'AND
+  vive SOLO in `QuoteManagerSyncMode`.
+- **Label dell'Offerta** (D-8) da `quote_lines.product_id -> products.category_id`
+  (quote_lines NON ha `product_category_id`, spec 0065 D-7), **con fallback alle categorie
+  dell'Opportunita' quando non ci sono ancora righe REVENUE** — senza fallback le label sarebbero
+  di default proprio mentre l'utente compila il team alla create.
+- **Il numero di slot NON e' category-driven**: e' sempre 1..12, la categoria guida solo le label.
+  La premessa iniziale dell'utente diceva il contrario: chiarito, non implementato.
+- **D-13**: `RequestCreationService` non imposta piu' `supervisorId` sull'operatore; l'Opportunita'
+  non riceve piu' lo slot GA2 e l'operatore viene promosso sul primo slot LIBERO (mai sovrascrivere
+  un GA2 esistente).
+
+**BUG PREESISTENTE TROVATO E CHIUSO (D-14).** `quotes.supervisor_id` portava DUE significati:
+autorizzazione di riga E destinatario della commissione SUPERVISOR
+(`CommissionRecipientResolver:30,35`). `RequestSupervisorWriter:77` la riscriveva, e i suoi tre
+chiamanti erano atti OPERATIVI (inline edit, bulk assign, trasferimento contatto): ciascuno
+riassegnava il commissionabile. Silenzioso perche' il ricalcolo commissioni scatta solo su
+`QuoteService:234` (flag `*Submitted`), che quei percorsi non attraversano, e perche' i chiamanti
+fanno `disableLogging()` prima. Verificato riga per riga. Ora chiuso: i test di
+`RequestManagementBulkActionsTest:212` e `RequestContactTransferTest:93,371` asseriscono
+esplicitamente che `supervisor_id` resta null dopo una riassegnazione dell'operatore.
+
+**Igiene strutturale.** `QuoteService` era arrivato a 499/500 (hard limit): due split a confine
+semantico -> **394 righe** (106 di margine), con `QuoteLineCoverageWriter` (88) e
+`QuoteWorkflowStatusAssigner` (78). Zero cambi di comportamento: 607/607 verdi senza toccare un
+test. Sul frontend, `managerSlotsFromRefs`/`sameManagerSlots`/`resolveManagerLabels` consolidate in
+**`@/lib/utils`**, seguendo il precedente di `sameIdSet`: nessuna copia divergente.
+
+**Test aggiornati perche' IL REQUISITO E' CAMBIATO (non per farli passare).** ~60 file, per
+categoria: (1) rename della chiave di scope `supervisor_id` -> `operator_id` nelle factory;
+(2) `->update(['supervisor_id'...])` -> `->forceFill(['operator_id'...])->save()` perche'
+`operator_id` e' deliberatamente NON fillable; (3) asserzioni AC-017 invertite (ora verificano che
+il commissionabile NON cambi); (4) promozione sul primo slot libero invece che sullo slot 2;
+(5) gate note legato a `quote.operator_id`; (6) `managers` in coda alle colonne attese.
+
+**DEBITO NOTO, non bloccante.** `app/Authorization/RequestManagementAuthorization.php` (~righe
+71-80) ha un commento che cita ancora `RequestSupervisorWriter`/`quotes.supervisor_id`: obsoleto,
+zero impatto funzionale. Da correggere quando si tocchera' quel file.
+
+**CORREZIONE POST-VERIFICA UTENTE (2026-08-31).** Segnalazione: "creando un'offerta non
+precompila il team dei gestori account". Reale, e buco della spec: D-5 era implementata SOLO
+server-side (a save time, quando `manager_slots` e' assente dal payload), mentre nel FORM il team
+restava vuoto — a differenza di commerciale/segnalatore/supervisore/sede operativa, tutti
+precompilati da `applyInheritedRoleValues()` (quote-form-body.tsx). Trappola conseguente: se
+l'utente toccava anche un solo slot, l'array partiva come full-replace autoritativo e il team
+dell'Opportunita' spariva senza che fosse mai stato visibile.
+Causa: `OpportunityForSelectResource.meta` non esponeva `managers` (a differenza di
+`RegistryForSelectResource.meta.managers:42`, che alimenta gia' l'identico prefill
+Anagrafica -> Opportunita' in `opportunity-registry-field.tsx:74`).
+Fix, mirror esatto di quel precedente: `meta.managers` `{id,name,position}` + eager load
+`managers:id,name` in `OpportunityService::forSelectBaseQuery()`; lato FE `applyInheritedRoleValues()`
+scrive anche `manager_slots` via `padManagerSlots(managerSlotsFromRefs(meta?.managers ?? []), DEFAULT_MANAGER_SLOTS)`.
+`padManagerSlots` spostata in `@/lib/utils` (era locale e non esportata in use-opportunity-form.ts:102)
+per non duplicarla: prende `size` come parametro perche' ogni feature ha il proprio DEFAULT_MANAGER_SLOTS.
+Le POSIZIONI SI CONSERVANO CON I LORO BUCHI (GA1+GA3 -> `[21,null,22,null]`): compattarle
+sposterebbe silenziosamente le persone di livello.
+Test di regressione: 2 in `quote-form-opportunity-roles.test.tsx` (prefill con gap + svuotamento su
+opportunita' senza GA), 2 in `OpportunityForSelectTest.php` (meta.managers con posizioni, e `[]`).
+
+**Gate finale dopo la correzione (eseguito):** backend **5441 test, 5440 passed, 1 skipped,
+0 failed**; **Pint EXIT 0**; frontend **tsc -b --force EXIT 0**, **vitest 511 file / 3645 test,
+0 failed**, **ESLint 0 errori**.
+
+**Prossimo passo.** Nessuno in sospeso. Da committare su richiesta esplicita dell'utente.
+
 ## SUPERVISORE OFFERTA — RIMOSSO IL VINCOLO "GESTORE ACCOUNT" (2026-08-31) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "Il supervisore verra' SEMPRE ereditato dal supervisore dell'opportunita'."

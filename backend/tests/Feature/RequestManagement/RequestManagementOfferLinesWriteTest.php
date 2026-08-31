@@ -68,16 +68,16 @@ if (! function_exists('offerLineCategory')) {
 
 if (! function_exists('offerLineRequest')) {
     /** A request (Offerta) whose Opportunity carries one product line on $category. */
-    function offerLineRequest(User $supervisor, ProductCategory $category): Quote
+    function offerLineRequest(User $operator, ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
         OpportunityProductLine::factory()->for($opportunity)->create([
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

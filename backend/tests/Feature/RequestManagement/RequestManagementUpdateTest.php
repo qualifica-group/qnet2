@@ -34,12 +34,12 @@ if (! function_exists('requestManagementUpdaterWith')) {
 }
 
 if (! function_exists('managedOpportunity')) {
-    function managedOpportunity(User $supervisor): Quote
+    function managedOpportunity(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

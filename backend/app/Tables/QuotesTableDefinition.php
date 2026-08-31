@@ -3,7 +3,6 @@
 namespace App\Tables;
 
 use App\Models\Company;
-use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
@@ -83,16 +82,18 @@ class QuotesTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         // Eager-load every relation mapRow touches to avoid N+1 across the page.
-        // supervisor pulls its avatar relation too, so the row can project the
-        // inline avatar (data URI) without a per-row query — mirrors
-        // OpportunitiesTableDefinition's own supervisor.avatar eager-load.
+        // supervisor/managers pull their avatar relation too, so the row can
+        // project the inline avatar (data URI) without a per-row query —
+        // mirrors OpportunitiesTableDefinition's own supervisor.avatar/
+        // managers.avatar eager-loads. Spec 0087, D-10: the `notes` action
+        // gate now reads the OFFERTA's own `operator_id` column directly (no
+        // relation to eager-load for it any more — was `opportunity.managers`
+        // before this migration).
         return Quote::query()->with([
             'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
-            // Spec 0085: il gate dell'azione `notes` legge il GA2 Operatore
-            // dell'Opportunita' padre per ogni riga — senza questo eager-load
-            // sarebbe una query per riga (mirrors OpportunitiesTableDefinition,
-            // che carica `managers` per la stessa ragione).
-            'opportunity.managers',
+            // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
+            // rendered as an avatar stack by the `managers` column.
+            'managers.avatar',
             'company', 'companySite',
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
@@ -180,6 +181,12 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'company_site' => $this->summarize($row->companySite),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             'notes_count' => (int) ($row->notes_count ?? 0),
+            // "Gestori Account" (spec 0087, D-1/T-10): the avatar stack —
+            // ordered by pivot position (Quote::managers()), no `position`
+            // in the cell itself (mirrors OpportunitiesTableDefinition's own
+            // `managers` projection). Never null at the column level: an
+            // empty array when the Offerta has no team yet.
+            'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
         ];
     }
 
@@ -266,7 +273,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
         }
 
         /** @var Quote $row */
-        if ($this->allowsNotes($actor, $row->opportunity)) {
+        if ($this->allowsNotes($actor, $row)) {
             $allowed[] = 'notes';
         }
 
@@ -279,17 +286,23 @@ class QuotesTableDefinition extends AbstractTableDefinition
      * Opportunity: spec 0085 keeps the note attached to the Opportunity and
      * only scopes it with `quote_id`, so reading an Offerta's notes is
      * reading its Opportunity's thread — never a `quotes.*` permission.
-     * Mirrors OpportunitiesTableDefinition::allowsNotes verbatim; this action
-     * is an affordance only, the endpoint authorizes for real.
+     *
+     * Spec 0087, D-10: the gate evaluates the OFFERTA's own GA2 Operatore
+     * (`quote.operator_id`, a real column — no eager-load needed), not the
+     * parent Opportunity's — the two can diverge since the Offerta acquired
+     * its own team (D-1). Was `$opportunity->operatorManager()?->id` before
+     * this migration; mirrors OpportunitiesTableDefinition::allowsNotes'
+     * shape, not its source any more. This action is an affordance only, the
+     * endpoint authorizes for real.
      */
-    private function allowsNotes(User $actor, ?Opportunity $opportunity): bool
+    private function allowsNotes(User $actor, Quote $quote): bool
     {
-        if ($opportunity === null || ! $actor->can('request-management.view')) {
+        if (! $actor->can('request-management.view')) {
             return false;
         }
 
         return $actor->can('request-management.viewAll')
-            || $opportunity->operatorManager()?->id === $actor->id;
+            || $quote->operator_id === $actor->id;
     }
 
     /**

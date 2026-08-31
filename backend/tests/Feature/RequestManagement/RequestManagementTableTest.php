@@ -55,19 +55,19 @@ if (! function_exists('createNoteOn')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-010 — scoped to the actor's own SUPERVISED offers for a viewAny-but-not-
-// viewAll user (spec 0086, D-3: `quotes.supervisor_id`, no longer the GA2
-// opportunity-manager pivot slot — being ANY opportunity manager, GA1 or GA2,
-// is not enough on its own any more).
+// AC-010 — scoped to the actor's own OPERATED offers for a viewAny-but-not-
+// viewAll user (spec 0087, D-9: `quotes.operator_id`, no longer
+// `quotes.supervisor_id` and no longer the Opportunity's own GA2 pivot slot
+// — being ANY opportunity manager, GA1 or GA2, is not enough on its own).
 // ---------------------------------------------------------------------------
 
-it('rows: a user with viewAny but without viewAll sees only offers they supervise (AC-010)', function () {
+it('rows: a user with viewAny but without viewAll sees only offers they operate (AC-010)', function () {
     $actor = requestManagementUserWith(['viewAny']);
-    $supervised = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $operated = Quote::factory()->create(['operator_id' => $actor->id]);
     // Being a manager of the underlying opportunity (any slot) is NOT the
-    // scoping rule any more (D-3) — only the offer's own supervisor_id is.
-    $managedButNotSupervised = Quote::factory()->create();
-    $managedButNotSupervised->opportunity->managers()->attach($actor->id, ['position' => 1]);
+    // scoping rule any more (D-9) — only the offer's own operator_id is.
+    $managedButNotOperator = Quote::factory()->create();
+    $managedButNotOperator->opportunity->managers()->attach($actor->id, ['position' => 1]);
     $unrelated = Quote::factory()->create();
 
     Sanctum::actingAs($actor);
@@ -75,8 +75,8 @@ it('rows: a user with viewAny but without viewAll sees only offers they supervis
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids->all())->toBe([$supervised->id])
-        ->and($ids->all())->not->toContain($managedButNotSupervised->id)
+    expect($ids->all())->toBe([$operated->id])
+        ->and($ids->all())->not->toContain($managedButNotOperator->id)
         ->and($ids->all())->not->toContain($unrelated->id);
 });
 
@@ -84,17 +84,17 @@ it('rows: a user with viewAny but without viewAll sees only offers they supervis
 // AC-011 — viewAll sees every offer, no scope filter
 // ---------------------------------------------------------------------------
 
-it('rows: a user with viewAll sees every offer, supervised or not (AC-011)', function () {
+it('rows: a user with viewAll sees every offer, operated or not (AC-011)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $supervised = Quote::factory()->create(['supervisor_id' => $actor->id]);
-    $notSupervised = Quote::factory()->create();
+    $operated = Quote::factory()->create(['operator_id' => $actor->id]);
+    $notOperated = Quote::factory()->create();
 
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $ids = collect($response->json('items'))->pluck('id');
 
-    expect($ids->all())->toContain($supervised->id, $notSupervised->id);
+    expect($ids->all())->toContain($operated->id, $notOperated->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -245,7 +245,7 @@ it('rows: operator_ga2 + client anagraphic columns surface, no workflow_status k
 
     $operator = User::factory()->create(['name' => 'Giulia Bianchi']);
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $operator->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
 
     Sanctum::actingAs($actor);
 

@@ -40,12 +40,12 @@ if (! function_exists('managedQuote')) {
     /**
      * @param  array<string, mixed>  $opportunityAttributes
      */
-    function managedQuote(User $supervisor, array $opportunityAttributes = []): Quote
+    function managedQuote(User $operator, array $opportunityAttributes = []): Quote
     {
         $opportunity = Opportunity::factory()->create($opportunityAttributes);
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

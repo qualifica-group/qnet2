@@ -8,6 +8,7 @@ use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
+use App\Support\ManagerPositions;
 use Database\Factories\OpportunityFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -201,9 +202,16 @@ class Opportunity extends BaseModel
     /**
      * The Account Manager pivot `position` that designates the "Operatore"
      * (GA2) — the operative owner the request-management module (spec 0049)
-     * uses both for the "my requests" scope and the "Operatore" column.
+     * used both for the "my requests" scope and the "Operatore" column,
+     * before spec 0087 moved that ownership to the Offerta's own GA2
+     * (`Quote::managers()`/`quotes.operator_id`).
+     *
+     * ALIAS of `ManagerPositions::OPERATOR` (spec 0087, D-2), not renamed:
+     * this constant keeps its own name so every one of its 15 existing call
+     * sites stays untouched (engineering.md §1.6, blast radius). `Quote`
+     * reads `ManagerPositions::OPERATOR` directly instead of this alias.
      */
-    public const int OPERATOR_MANAGER_POSITION = 2;
+    public const int OPERATOR_MANAGER_POSITION = ManagerPositions::OPERATOR;
 
     /**
      * The internal users managing this opportunity ("Gestori Account", max

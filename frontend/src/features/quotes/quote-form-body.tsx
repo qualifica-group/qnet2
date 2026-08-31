@@ -25,6 +25,7 @@ import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
 import { QuoteReporterField } from '@/features/quotes/quote-reporter-field'
+import { QuoteTeamSection } from '@/features/quotes/quote-team-section'
 import { QuoteSitesSection } from '@/features/quotes/quote-sites-section'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
@@ -36,6 +37,8 @@ import { useQuoteForm } from '@/features/quotes/use-quote-form'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteDetail, QuoteFormMode } from '@/features/quotes/types'
+import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
+import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 
 interface QuoteFormBodyProps {
   mode: QuoteFormMode
@@ -105,6 +108,12 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
       // terms as the three roles above (the server applies the same rule when
       // the key is absent — QuoteService::applySnapshotDefaults).
       form.setValue('operational_site_id', meta?.operational_site?.id ?? null, { shouldDirty: true })
+      // Spec 0087, D-5: the team is prefilled on the same terms as the roles
+      // above. Padded to the standard card count so an opportunity with fewer
+      // managers still opens on a full, editable set of slots.
+      form.setValue('manager_slots', padManagerSlots(managerSlotsFromRefs(meta?.managers ?? []), DEFAULT_MANAGER_SLOTS), {
+        shouldDirty: true,
+      })
     },
     [form],
   )
@@ -299,6 +308,8 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
               />
             </div>
           </FormSection>
+
+          <QuoteTeamSection control={form.control} original={original} />
 
           <QuoteWorkflowStatusField
             control={form.control}

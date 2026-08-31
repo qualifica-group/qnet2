@@ -11,8 +11,9 @@ use Spatie\Permission\Models\Permission;
 
 // Spec 0080, data_contract (B): the work panel's manager_labels field, so the
 // "Operatore (GA2)" field/column can be rietichettata with the request's
-// category-resolved level-2 label. operator_id/operator stay untouched
-// (spec 0086, D-2: now read from `quote.supervisor`).
+// category-resolved level-2 label. operator_id/operator are unaffected by
+// which label wins (spec 0087, D-9: now read from `quote.operator_id`/
+// `quote.operator`, the Offerta's own GA2 — no longer `quote.supervisor`).
 
 uses(RefreshDatabase::class);
 
@@ -42,7 +43,7 @@ it('the work panel exposes manager_labels resolved from the request\'s category,
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create(['product_category_id' => $category->id]);
     $operator = User::factory()->create();
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $operator->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/request-management/{$quote->id}")

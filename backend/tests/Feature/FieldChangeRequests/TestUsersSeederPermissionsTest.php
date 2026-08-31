@@ -65,7 +65,7 @@ it('still lets a commercial read the request they proposed, page permissions asi
     $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $commercial->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $commercial->id]);
 
     Sanctum::actingAs($commercial);
 
@@ -102,7 +102,7 @@ it('AC-052: a commercial gets 422 writing the Fonte directly and 201 proposing a
     $commercial = User::query()->where('email', 'campania@commerciale.com')->firstOrFail();
     $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
     $opportunity->managers()->sync([$commercial->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-    $quote = Quote::factory()->for($opportunity)->create(['supervisor_id' => $commercial->id]);
+    $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $commercial->id]);
     $otherSource = Source::factory()->create();
 
     Sanctum::actingAs($commercial);

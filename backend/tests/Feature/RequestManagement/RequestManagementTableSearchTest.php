@@ -115,7 +115,10 @@ it('rows: a blank search term is a no-op', function () {
 it('rows: the search never escapes the GA2 scope of a viewAny-only actor', function () {
     $actor = requestManagementUserWith(['viewAny']);
     $mine = requestWithClient('Mario', 'Rossi', 'RSSMRA80A01H501U', '+39 02 1234567');
-    $mine->update(['supervisor_id' => $actor->id]);
+    // `operator_id` is deliberately NOT fillable (spec 0087, D-3) — written
+    // only by QuoteManagerWriter, so a plain test fixture uses forceFill()
+    // rather than a silently-discarded update().
+    $mine->forceFill(['operator_id' => $actor->id])->save();
     $foreign = requestWithClient('Mario', 'Verdi', 'VRDMRA70A01H501U', '+39 02 9999999');
 
     Sanctum::actingAs($actor);

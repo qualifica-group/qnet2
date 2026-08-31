@@ -17,6 +17,7 @@ export const quotes = {
     commercial: 'Commercial',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
+    managers: 'Account managers',
     revenueNet: 'Net revenue',
     costNet: 'Net cost',
     marginNet: 'Net margin',
@@ -94,6 +95,13 @@ export const quotes = {
     },
     supervisor: 'Supervisor',
     supervisorSearch: 'Search supervisors…',
+    managers: 'Account managers',
+    managersMax: 'A quote has at most {{max}} managers.',
+    managersSyncHint: 'Synced with the opportunity: a change here updates its account managers too, and vice versa.',
+    managersPromoteDialog: {
+      title: 'Add to the opportunity too?',
+      confirm: 'Add and save',
+    },
     company: 'Company',
     companySearch: 'Search companies…',
     companySite: 'Company site',
@@ -130,6 +138,10 @@ export const quotes = {
       identity: {
         title: 'Quote',
         description: 'Code, title, linked opportunity and commercial team.',
+      },
+      team: {
+        title: 'Team',
+        description: 'Account managers for this quote.',
       },
       sites: {
         title: 'Company and sites',

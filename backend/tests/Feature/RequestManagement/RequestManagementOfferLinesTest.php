@@ -71,7 +71,7 @@ it('AC-008: the config exposes offer_lines, read-only, and no longer products_of
 
 it("AC-007: offer_lines projects the REVENUE products only, never a COST line's product", function () {
     $actor = offerLinesActor();
-    $quote = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->create(['operator_id' => $actor->id]);
     $revenueA = Product::factory()->create(['name' => 'Fibra 1000']);
     $revenueB = Product::factory()->create(['name' => 'ADSL 20']);
     $cost = Product::factory()->create(['name' => 'Costo interno']);
@@ -90,7 +90,7 @@ it("AC-007: offer_lines projects the REVENUE products only, never a COST line's 
 
 it('AC-021/AC-022: PATCH refuses offer_lines — 422, not editable, before any write path is reached', function () {
     $actor = offerLinesActor(canUpdate: true);
-    $quote = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $quote = Quote::factory()->create(['operator_id' => $actor->id]);
     $product = Product::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -102,8 +102,8 @@ it('AC-021/AC-022: PATCH refuses offer_lines — 422, not editable, before any w
 
 it('filters the rows by offer_lines product name and enumerates its distinct values', function () {
     $actor = offerLinesActor();
-    $matching = Quote::factory()->create(['supervisor_id' => $actor->id]);
-    $other = Quote::factory()->create(['supervisor_id' => $actor->id]);
+    $matching = Quote::factory()->create(['operator_id' => $actor->id]);
+    $other = Quote::factory()->create(['operator_id' => $actor->id]);
     $wanted = Product::factory()->create(['name' => 'Fibra 1000']);
     $unwanted = Product::factory()->create(['name' => 'ADSL 20']);
     offerLine($matching, $wanted, QuoteLineType::Revenue);

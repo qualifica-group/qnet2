@@ -12,10 +12,13 @@ use App\Quotes\QuoteAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
+use App\Services\Quotes\QuoteManagerLabelResolver;
+use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Attributes\PreserveKeys;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -69,7 +72,28 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `quotes.reporter_id` — the SAME block, same shape, OpportunityResource
  * emits (SummarizesRewards), so the shared `ReporterRewardsField` hydrates
  * identically from either record.
+ *
+ * Spec 0087: `managers`/`operator_id` are ADDITIVE — `managers` mirrors
+ * OpportunityResource's own `{id, name, position}` shape (ordered by
+ * position); `manager_labels` is the QuoteManagerLabelResolver counterpart
+ * of OpportunityResource's own field (D-8), `{}` when not resolvable;
+ * `operator_id` is the persisted projection of the GA2 "Operatore" slot
+ * (D-3), read directly off the column — no resolver needed.
+ * `managers_synchronized` (D-7) feeds the FE's informational banner: true
+ * when a write on either side of this Offerta's Opportunita' replaces the
+ * other's GA list wholesale. Relies on QuoteService::DETAIL_RELATIONS having
+ * eager-loaded `managers`, `offerLines.product.category` and (D-8's
+ * fallback) `opportunity.productLines.productCategory`, so none of this
+ * N+1s.
+ *
+ * #[PreserveKeys]: `manager_labels` is a sparse position("1".."n")->label
+ * map — JsonResource's default filter() reindexes any NESTED array whose
+ * keys are ALL numeric, which would silently turn `{"2":"Operatore"}` into
+ * `["Operatore"]` on the wire (same reasoning as OpportunityResource's own
+ * attribute). Every other array field here is already 0-indexed-sequential,
+ * so this is a no-op for them.
  */
+#[PreserveKeys]
 class QuoteResource extends JsonResource
 {
     use SummarizesRewards;
@@ -97,6 +121,10 @@ class QuoteResource extends JsonResource
             'reporter' => $this->summarizeByName($this->reporter),
             'supervisor_id' => $this->supervisor_id,
             'supervisor' => $this->summarizeByName($this->supervisor),
+            'managers' => $this->summarizeManagers($this->managers),
+            'manager_labels' => app(QuoteManagerLabelResolver::class)->resolve($this->resource),
+            'operator_id' => $this->operator_id,
+            'managers_synchronized' => app(QuoteManagerSyncMode::class)->isSynchronized($this->opportunity),
             'company_id' => $this->company_id,
             'company' => $this->summarizeCompany($this->company),
             'company_site_id' => $this->company_site_id,
@@ -146,6 +174,20 @@ class QuoteResource extends JsonResource
     private function summarizeCompany(?Company $company): ?array
     {
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, position: int}>
+     */
+    private function summarizeManagers(iterable $managers): array
+    {
+        return collect($managers)
+            ->map(fn (Model $manager): array => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+                'position' => (int) $manager->pivot->position,
+            ])
+            ->all();
     }
 
     /**

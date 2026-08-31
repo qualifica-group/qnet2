@@ -18,6 +18,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     commercial_id: null,
     reporter_id: null,
     supervisor_id: null,
+    manager_slots: [],
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
@@ -148,6 +149,21 @@ describe('buildCreatePayload', () => {
     expect(payload.offer_lines).toEqual([])
     expect(payload.cost_lines).toEqual([])
   })
+
+  it('omits manager_slots when left on the untouched all-null default (D-5: server inherits from the opportunity)', () => {
+    const payload = buildCreatePayload(formValues({ manager_slots: [null, null, null, null] }))
+    expect('manager_slots' in payload).toBe(false)
+  })
+
+  it('sends manager_slots when at least one slot is filled (AC-002)', () => {
+    const payload = buildCreatePayload(formValues({ manager_slots: [12, null, 7, null] }))
+    expect(payload.manager_slots).toEqual([12, null, 7, null])
+  })
+
+  it('sends an explicit empty array when every slot was removed by hand (AC-002)', () => {
+    const payload = buildCreatePayload(formValues({ manager_slots: [] }))
+    expect(payload.manager_slots).toEqual([])
+  })
 })
 
 describe('buildUpdatePayload', () => {
@@ -193,6 +209,24 @@ describe('buildUpdatePayload', () => {
     const original = detail({ layout_id: 3, layout: { id: 3, name: 'Layout A' } })
     const payload = buildUpdatePayload(formValues({ layout_id: null }), original)
     expect(payload.layout_id).toBeNull()
+  })
+
+  it('omits manager_slots when the positional slot set is unchanged (AC-003)', () => {
+    const original = detail({ managers: [{ id: 12, name: 'Mario Rossi', position: 1 }] })
+    const payload = buildUpdatePayload(formValues({ manager_slots: [12] }), original)
+    expect('manager_slots' in payload).toBe(false)
+  })
+
+  it('includes manager_slots as a full replace when the slot set changed (AC-003)', () => {
+    const original = detail({ managers: [{ id: 12, name: 'Mario Rossi', position: 1 }] })
+    const payload = buildUpdatePayload(formValues({ manager_slots: [12, 7] }), original)
+    expect(payload.manager_slots).toEqual([12, 7])
+  })
+
+  it('includes an empty manager_slots array when every G.A. was removed (AC-003)', () => {
+    const original = detail({ managers: [{ id: 12, name: 'Mario Rossi', position: 1 }] })
+    const payload = buildUpdatePayload(formValues({ manager_slots: [] }), original)
+    expect(payload.manager_slots).toEqual([])
   })
 
   it('omits offer_lines when the row set is unchanged (D-8/AC-037)', () => {

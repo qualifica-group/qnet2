@@ -38,12 +38,12 @@ if (! function_exists('requestManagementInlineEditActor')) {
 }
 
 if (! function_exists('managedOpportunityForInlineEdit')) {
-    function managedOpportunityForInlineEdit(User $supervisor): Quote
+    function managedOpportunityForInlineEdit(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

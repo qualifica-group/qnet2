@@ -119,20 +119,20 @@ it('row.actions omits notes for an actor without request-management.view, howeve
     expect($items->firstWhere('id', $quote->id)['actions'])->not->toContain('notes');
 });
 
-it('row.actions offers notes only on the Offerte whose parent thread the actor can read (GA2 scope)', function () {
-    // Without `request-management.viewAll` the note endpoints authorize only
-    // the opportunities where the actor is the GA2 Operatore — the row action
-    // must not promise more than that, or the dialog 403s.
+it('row.actions offers notes only on the Offerte whose own GA2 Operatore is the actor (spec 0087, D-10)', function () {
+    // Without `request-management.viewAll` the row-action gate now reads the
+    // OFFERTA's OWN `operator_id` column directly (D-10) — no longer the
+    // parent Opportunity's GA2 pivot slot, which can diverge since the
+    // Offerta acquired its own team (D-1).
     $actor = quoteNotesActionUserWith(['viewAny', 'view'], ['view']);
 
+    $readable = Quote::factory()->create(['operator_id' => $actor->id]);
+
+    // The actor manages the PARENT Opportunity, even at its own GA2 slot —
+    // but THIS Offerta's own operator is unset: out of scope.
     $ownedOpportunity = Opportunity::factory()->create();
     $ownedOpportunity->managers()->attach($actor->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
-    $readable = Quote::factory()->create(['opportunity_id' => $ownedOpportunity->id]);
-
-    // GA1 (position 1) is NOT the operator slot: out of scope.
-    $otherRoleOpportunity = Opportunity::factory()->create();
-    $otherRoleOpportunity->managers()->attach($actor->id, ['position' => 1]);
-    $notReadable = Quote::factory()->create(['opportunity_id' => $otherRoleOpportunity->id]);
+    $notReadable = Quote::factory()->create(['opportunity_id' => $ownedOpportunity->id]);
 
     $unrelated = Quote::factory()->create();
 

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Users } from 'lucide-react'
+import { Info, Users } from 'lucide-react'
 import { useWatch, type Control } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { ManagerSlotsField } from '@/components/form/manager-slots-field'
@@ -15,6 +15,13 @@ interface OpportunityTeamSectionProps {
   selectedItems: OpportunitySelectedItems
   /** Create-only requirement; existing opportunities may keep a null supervisor. */
   supervisorRequired: boolean
+  /**
+   * Spec 0087 (D-7): whether this opportunity's G.A. are kept identical to
+   * one of its Offerte's (bidirectional sync on the offerta-unica +
+   * gestione-singola categories) — `undefined`/`false` on a still-unsaved
+   * create, where there is nothing to sync yet.
+   */
+  managersSynchronized?: boolean
   className?: string
 }
 
@@ -37,6 +44,7 @@ export function OpportunityTeamSection({
   control,
   selectedItems,
   supervisorRequired,
+  managersSynchronized,
   className,
 }: OpportunityTeamSectionProps) {
   const { t } = useTranslation()
@@ -51,6 +59,13 @@ export function OpportunityTeamSection({
       description={t('opportunities.form.sections.team.description')}
       className={className}
     >
+      {managersSynchronized ? (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info aria-hidden="true" className="size-3.5 shrink-0" />
+          {t('opportunities.form.managersSyncHint')}
+        </p>
+      ) : null}
+
       <RelationSelectField
         control={control}
         name="supervisor_id"

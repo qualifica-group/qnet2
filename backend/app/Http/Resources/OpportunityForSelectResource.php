@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Opportunity;
+use App\Models\User;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -20,6 +21,13 @@ use Illuminate\Http\Request;
  * opportunity has none. Mirrors RegistryForSelectResource. The site is a
  * `{id, label}` ref (OperationalSiteLabel), not `{id, name}`: it has no name
  * column of its own.
+ *
+ * `managers` (spec 0087, D-5) carries the opportunity's own Gestori Account as
+ * `{id, name, position}`, ordered by position and `[]` when it has none — the
+ * Offerta form prefills its team from them on selection, the same way the
+ * Opportunity form prefills from RegistryForSelectResource.meta.managers.
+ * QuoteService applies the identical copy server-side when `manager_slots` is
+ * absent from the payload, so the two paths cannot disagree.
  *
  * `supervisor` is a plain copy like the other two roles (user directive
  * 2026-08-31, superseding 2026-08-06): it is no longer filtered to the
@@ -43,6 +51,13 @@ class OpportunityForSelectResource extends ForSelectResource
                 'reporter' => $this->relationRef($this->reporter),
                 'supervisor' => $this->relationRef($this->supervisor),
                 'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
+                'managers' => $this->managers
+                    ->map(static fn (User $manager): array => [
+                        'id' => $manager->id,
+                        'name' => $manager->name,
+                        'position' => (int) $manager->pivot->position,
+                    ])
+                    ->all(),
             ],
         ];
     }

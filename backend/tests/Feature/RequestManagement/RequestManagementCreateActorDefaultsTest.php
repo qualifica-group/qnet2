@@ -3,6 +3,7 @@
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,12 +54,15 @@ it('defaults the GA2 operator to the creating actor when operator_id is absent',
 
     $response = $this->postJson('/api/request-management', aMinimalRequestPayload())->assertCreated();
 
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager()?->id)->toBe($actor->id);
+    // Spec 0087, D-13: `data.id` is the OFFERTA's own id — the default lands
+    // SOLELY on its GA2 slot, promoted onto the Opportunity's first FREE
+    // manager slot (1, born with none), never its GA2 specifically.
+    $quote = Quote::findOrFail($response->json('data.id'));
+    expect($quote->operator_id)->toBe($actor->id);
     $this->assertDatabaseHas('opportunity_user', [
-        'opportunity_id' => $opportunity->id,
+        'opportunity_id' => $quote->opportunity_id,
         'user_id' => $actor->id,
-        'position' => Opportunity::OPERATOR_MANAGER_POSITION,
+        'position' => 1,
     ]);
 });
 
@@ -84,9 +88,9 @@ it('applies both defaults for an actor who may not submit either field', functio
 
     $response = $this->postJson('/api/request-management', aMinimalRequestPayload())->assertCreated();
 
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager()?->id)->toBe($actor->id)
-        ->and($opportunity->operational_site_id)->toBe($site->id);
+    $quote = Quote::findOrFail($response->json('data.id'));
+    expect($quote->operator_id)->toBe($actor->id)
+        ->and($quote->opportunity->operational_site_id)->toBe($site->id);
 });
 
 it('leaves the Sede null when the actor has no employment Sede, still defaulting the operator', function () {
@@ -95,9 +99,9 @@ it('leaves the Sede null when the actor has no employment Sede, still defaulting
 
     $response = $this->postJson('/api/request-management', aMinimalRequestPayload())->assertCreated();
 
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operational_site_id)->toBeNull()
-        ->and($opportunity->operatorManager()?->id)->toBe($actor->id);
+    $quote = Quote::findOrFail($response->json('data.id'));
+    expect($quote->operational_site_id)->toBeNull()
+        ->and($quote->operator_id)->toBe($actor->id);
 });
 
 it('keeps a submitted operator/Sede over the actor defaults', function () {
@@ -113,7 +117,7 @@ it('keeps a submitted operator/Sede over the actor defaults', function () {
         'operational_site_id' => $otherSite->id,
     ])->assertCreated();
 
-    $opportunity = Opportunity::findOrFail($response->json('data.id'));
-    expect($opportunity->operatorManager()?->id)->toBe($otherOperator->id)
-        ->and($opportunity->operational_site_id)->toBe($otherSite->id);
+    $quote = Quote::findOrFail($response->json('data.id'));
+    expect($quote->operator_id)->toBe($otherOperator->id)
+        ->and($quote->operational_site_id)->toBe($otherSite->id);
 });

@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0087 — Gestori Account sull'Offerta.
+  Contract-first: le shape sotto sono CONGELATE prima del dispatch dei teammate.
+  Mirror strutturale di 0080 (label GA per categoria) e 0065 (ereditarieta' Opportunita' -> Offerta).
+-->
+<spec id="0087-quote-account-managers" status="draft" owner="utente" date="2026-08-31">
+
+  <goal>
+    L'Offerta acquisisce i propri Gestori Account (GA), speculari a quelli dell'Opportunita':
+    slot ordinati con label che dipendono dalla categoria prodotto, precompilati dall'Opportunita'
+    alla creazione ed editabili. Il GA2 dell'Offerta diventa l'OWNER della Gestione Richieste:
+    ogni controllo che oggi passa da `quotes.supervisor_id` passa a lui. Il Supervisore
+    dell'Offerta RESTA invariato nel suo ruolo di destinatario di commissione.
+  </goal>
+
+  <context>
+    Nomi reali verificati nel codebase (NON ipotizzare, riusare esatti).
+
+    GA OGGI — non sono colonne. Sono righe del pivot `opportunity_user`
+    (opportunity_id, user_id, position 1-based; unique su [opportunity_id,user_id] e
+    [opportunity_id,position]) -> `Opportunity::managers()` (Opportunity.php:215-220,
+    withPivot('position')->orderByPivot('position')). Campo API di scrittura: `manager_slots`,
+    array ordinato gap-aware, index+1 = posizione, null = slot vuoto persistente
+    (ValidatesManagerSlots). Cap unico: `App\Support\ManagerPositions::MAX = 12`.
+    Il sync vive INLINE in OpportunityService::managerSyncMap() (:400-411) + sync() (:226-229,
+    :295-298); non esiste un ManagerWriter dedicato.
+    Semantica codificata: `Opportunity::OPERATOR_MANAGER_POSITION = 2` (Opportunity.php:206),
+    letta da `operatorManager()` (:231-240) e riesposta come attributo virtuale
+    `operator_id` (:249-252) — NON e' una colonna.
+
+    LABEL GA PER CATEGORIA (spec 0080) — `product_categories.manager_labels` (json) +
+    `inherits_manager_labels` (bool). Risoluzione:
+    `CategoryManagerLabelResolver::effectiveManagerLabels()` (merge per posizione, most-specific-wins,
+    tronca alla prima barriera); `OpportunityManagerLabelResolver::resolve()` applica la regola di
+    UNICITA' (categorie distinte dalle productLines; risultato solo se tutte risolvono al set
+    IDENTICO, altrimenti []). Esposto come `manager_labels` (mappa sparsa chiavi stringa "1".."n").
+    ATTENZIONE: richiede `#[PreserveKeys]` sulla Resource, altrimenti JsonResource reindicizza
+    {"2":"X"} in ["X"]. Presente su OpportunityResource:90, RequestManagementResource:63,
+    ProductCategoryResource:21. ASSENTE su QuoteResource — va aggiunto.
+
+    IL NUMERO DI SLOT NON DIPENDE DALLA CATEGORIA. Verificato: sempre 1..MAX. La categoria
+    guida SOLO le label. Il FE parte da DEFAULT_MANAGER_SLOTS = 4 (opportunity-schema.ts:28) e
+    l'utente aggiunge/rimuove slot a mano fino a MAX_MANAGER_SLOTS = 12
+    (manager-slots-limits.ts:11). Questa spec NON cambia quel comportamento.
+
+    CATEGORIA DI UN'OFFERTA — `quote_lines` NON ha `product_category_id` (decisione D-7 della
+    spec 0065, verificata: zero occorrenze su tutte le migrazioni di quote_lines). Il percorso e'
+    `quote_lines.product_id -> products.category_id` (products migration :39). Le righe rilevanti
+    sono le REVENUE (`Quote::offerLines()`, Quote.php:280), coerentemente con
+    RewardResource::contextForQuote.
+
+    I DUE SETTING DI CATEGORIA SONO DISTINTI E INDIPENDENTI:
+      - `product_categories.single_quote_per_opportunity` (bool, root-owned via
+        SingleQuotePerOpportunityInheritance) -> quante OFFERTE per Opportunita'.
+        Letto da `OpportunityQuoteLimit::isSingleQuoteBranch()` (:63).
+      - `product_categories.management_mode` (string(16), enum
+        `App\Enums\CategoryManagementMode` Single|Multiple, root-owned via
+        CategoryManagementModeInheritance) -> quante RIGHE CATEGORIA per scheda.
+        Mode effettiva di un'Opportunita': `OpportunityProductLineCoverage::managementModeOf()`
+        (:53), strictest-wins sulle radici delle sue productLines.
+      VERIFICATO: nessun punto del codice combina oggi i due valori in una condizione.
+      L'AND e' costruito ex novo da questa spec.
+
+    SUPERVISORE DELL'OFFERTA — `quotes.supervisor_id` (FK users, restrictOnDelete). E' un vero
+    destinatario di commissione: `CommissionRecipientRole::Supervisor`, risolto in
+    `CommissionRecipientResolver` (:30,:35). NON puo' essere riusato come specchio del GA2:
+    supervisore e owner sono due persone distinte con due ruoli distinti (decisione utente
+    2026-08-31). Il campo resta nel form, invariato.
+
+    CHI LEGGE OGGI `quotes.supervisor_id` PER AUTORIZZARE (censimento completo):
+      - RequestManagementScope: isSupervisorOf() :54-57, scopeToActor() :74-85 (where di colonna),
+        assertInScope() :35-46. Nove call site: RequestManagementTableDefinition:237,
+        RequestManagementController:134|155|217, RequestManagementNotable:69,
+        RequestManagementActivityAuthorizer:42, RequestAssignmentService:92,
+        RequestTransferService:109, RequestCategoryTabsResolver:44.
+      - RequestManagementNotable:84-87 — set menzionabile nelle note (pluck supervisor_id).
+      - RequestAssignmentService:122-129 — carico per `mode=balanced` (groupBy supervisor_id).
+      - UpdateRequestRequest:153-155 — diff field-permission: il campo `operator_id` legge
+        `$model->supervisor_id`.
+      - RequestRowMapper:95 — valore della colonna `operator_ga2` (userSummary($row->supervisor)).
+      - RequestSupervisorWriter:69-83 — scrive ENTRAMBE le meta': la colonna e il pivot
+        `opportunity_user` pos.2 (syncOperatorManagerSlot :108-125, deliberatamente attach/detach
+        e non sync() per non distruggere GA1/GA3/GA4). Tre chiamanti:
+        RequestAttributionWriter:112, RequestAssignmentService:152, RequestTransferService:176.
+
+    CHI LEGGE OGGI IL GA2 DELL'OPPORTUNITA' (pivot pos.2) — cambiano SEMANTICA, non solo sorgente:
+      - QuotesTableDefinition:286-293 — gate azione `notes` su una OFFERTA, valutato oggi sul
+        `operatorManager()` dell'OPPORTUNITA' padre.
+      - RecordDetails:106 — campo `notifications.fields.operator`.
+      - RewardedReferentAdvancedFilterApplier:199 — filtro operatore sui buoni.
+      - RequestManagementScopedTableDefinition:384 — label della colonna operator_ga2 per categoria.
+      (OpportunitiesTableDefinition:311-316 legge il GA2 dell'Opportunita' per le note
+       DELL'OPPORTUNITA': resta invariato, non e' nello scope.)
+
+    COLONNA `operator_ga2` — non e' una colonna DB: e' un id di colonna tabellare,
+    RequestColumnCatalog:262-274, con `editableField: 'operator_id'`. VINCOLO BLOCCANTE:
+    `editableField` deve restare `operator_id` — rinominarlo in `supervisor_id` ha gia' causato
+    un bug di produzione (200 senza scrittura, perche' updateWork() riconosce solo `operator_id`).
+
+    TABELLA OFFERTE — QuotesTableDefinition (391 righe), QuoteColumnCatalog (210),
+    QuoteRelationColumns (193). Il catalogo ha gia' `supervisor` (:56, via derivedColumn()) e la
+    TableDefinition ha gia' l'helper `userSummary()` (:225-236) e gia' fa eager load di
+    `opportunity.managers` (:93-96). Le colonne nuove si APPENDONO in fondo: inserirle in mezzo
+    sposta i layout colonna persistiti degli utenti (spec 0001).
+    Mirror della colonna aggregata su Opportunita': OpportunityColumnCatalog:68-79 (`managers`,
+    sortable:false, filterType set), proiezione OpportunitiesTableDefinition:196, filtro e
+    distinct OpportunityRelationColumns:80-92 e :203-219, renderer FE
+    opportunities/column-renderers.tsx:103 -> `UserStackCell` da `@/features/table/user-cell`
+    (gia' condiviso, usato anche da business-functions: riuso puro, nessun componente nuovo).
+
+    VINCOLO DI DIMENSIONE — `QuoteService` e' a 475 righe su hard limit 500. Il sync dei GA NON
+    puo' entrare li' dentro: va in un writer dedicato. Punto di ereditarieta' degli scalari:
+    `applySnapshotDefaults()` (:310-324), chiamato da create() :134.
+
+    FE OFFERTE — quote-form-body.tsx (405 righe): i ruoli sono campi PIATTI dentro l'unica
+    FormSection `identity` (:228-232), non c'e' un blocco team. Supervisore :289-299
+    (RelationSelectField, USERS_FOR_SELECT_RESOURCE, showAvatar). L'ereditarieta' dall'Opportunita'
+    e' scritta da `applyInheritedRoleValues()` :99-110 (commercial_id, reporter_id, supervisor_id,
+    operational_site_id), innescata da handleOpportunityItemChange :111-118 e dall'effetto :145-151.
+    Mirror da imitare su Opportunita': opportunity-team-section.tsx:78-84 monta il condiviso
+    ManagerSlotsField passando `labels={slotLabels}`, alimentate da
+    use-opportunity-manager-labels.ts:48-64 (useQueries su
+    GET /product-categories/{id}/effective-manager-labels, staleTime 5min, {} finche' non settled,
+    poi la regola di unicita' client-side).
+  </context>
+
+  <scope>
+    <in>
+      <item>Pivot `quote_user` + relazione Quote::managers() + payload `manager_slots` sull'Offerta.</item>
+      <item>Colonna denormalizzata `quotes.operator_id` (proiezione dello slot GA2) + backfill reversibile.</item>
+      <item>Ereditarieta' dei GA dall'Opportunita' alla creazione dell'Offerta, editabile.</item>
+      <item>Label GA dell'Offerta risolte dalle categorie dei prodotti delle righe REVENUE.</item>
+      <item>Vincolo di appartenenza GA Offerta ⊆ GA Opportunita', con promozione esplicita.</item>
+      <item>Modalita' sincronizzata bidirezionale per categorie offerta-unica + gestione-singola.</item>
+      <item>Spostamento dell'ownership Gestione Richieste da `quotes.supervisor_id` a `quotes.operator_id`.</item>
+      <item>Colonna `managers` nella tabella Offerte (/quotes).</item>
+      <item>Sezione team nel form Offerta + banner informativo in modalita' sincronizzata.</item>
+    </in>
+    <out>
+      <item>Il Supervisore dell'Offerta: resta ESATTAMENTE com'e' (ruolo commissione). Nessuna
+            modifica a CommissionRecipientResolver ne' al campo nel form.</item>
+      <item>I GA dell'Opportunita': struttura, validazione, form e colonna restano invariati.
+            Cambia solo che una scrittura sull'Offerta puo' propagarsi (D-6, D-7).</item>
+      <item>Il numero di slot NON diventa category-driven (ne' su Offerta ne' su Opportunita').</item>
+      <item>Anagrafiche (registry_user): non si toccano.</item>
+      <item>OpportunitiesTableDefinition:311-316 (note dell'Opportunita'): fuori scope.</item>
+      <item>Nessun nuovo permesso, nessuna nuova dipendenza.</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <d id="D-1" title="Pivot `quote_user`, mirror esatto di `opportunity_user`">
+      Nuova tabella `quote_user` (quote_id, user_id, position unsignedInteger), FK entrambe
+      cascadeOnDelete, unique [quote_id,user_id] e unique [quote_id,position].
+      `Quote::managers(): BelongsToMany` con withPivot('position')->orderByPivot('position').
+      Motivo del mirror: `manager_slots`, ValidatesManagerSlots, ManagerPositions::attachedPositions()
+      e ManagerSlotsField funzionano tutti su questa forma. Una forma diversa costringerebbe a
+      duplicarli.
+    </d>
+    <d id="D-2" title="La posizione dell'operatore risale a ManagerPositions">
+      `ManagerPositions::OPERATOR = 2` (nuova costante, stessa casa neutra di MAX).
+      `Opportunity::OPERATOR_MANAGER_POSITION` diventa un alias di quella costante e NON viene
+      rinominata: i suoi 15 call site restano intatti (blast radius minimo, engineering.md §1.6).
+      Quote usa `ManagerPositions::OPERATOR` direttamente.
+    </d>
+    <d id="D-3" title="`quotes.operator_id` denormalizzata, fonte di verita' il pivot">
+      Nuova colonna `quotes.operator_id` nullable FK users nullOnDelete + index, che proietta
+      l'occupante dello slot `ManagerPositions::OPERATOR` di `quote_user`.
+      PERCHE' denormalizzare invece di leggere il pivot: `RequestManagementScope::scopeToActor()`
+      resta un confronto di colonna invece di diventare un whereHas correlato su ogni riga della
+      lista Gestione Richieste, e `mode=balanced` resta un groupBy semplice
+      (RequestAssignmentService:122-129) invece di un join con GROUP BY su pivot. In piu' la wire
+      key `operator_id` e' GIA' quella che l'inline editor usa (RequestColumnCatalog:262-274) e che
+      UpdateRequestRequest:153-155 gia' interroga: la colonna fa combaciare nome e sostanza.
+      OBBLIGO DI COERENZA: la colonna e' scritta da un SOLO punto (D-4). Nessun altro codice la
+      scrive. Un test dedicato asserisce l'invariante INV-2 su tutti i percorsi di scrittura.
+      nullOnDelete e' coerente col cascadeOnDelete del pivot: utente cancellato -> riga pivot
+      sparita -> colonna a null, le due meta' restano allineate.
+    </d>
+    <d id="D-4" title="`QuoteManagerWriter`, unico proprietario della scrittura">
+      Nuovo `App\Services\Quotes\QuoteManagerWriter`. Metodo di orchestrazione
+      `sync(Quote $quote, array $slots, bool $promoteToOpportunity): void` con `// Step N`:
+        Step 1 valida l'appartenenza (D-6) o promuove;
+        Step 2 sync() del pivot `quote_user` dallo slot map;
+        Step 3 riscrive `quotes.operator_id` dallo slot OPERATOR (null se vuoto);
+        Step 4 se la modalita' e' sincronizzata (D-7), replica gli stessi slot su `opportunity_user`.
+      Motivo dell'estrazione: QuoteService e' a 475/500 righe, non c'e' spazio; e la scrittura ha
+      quattro effetti che devono restare atomici e in un solo posto.
+      NOTA per l'implementatore: OpportunityService fa lo stesso lavoro inline (:226-229, :295-298,
+      :400-411). NON rifattorizzarlo in questa spec — e' fuori scope; si segnala e basta.
+    </d>
+    <d id="D-5" title="Ereditarieta' alla create: prefill, non vincolo">
+      Alla create di un'Offerta, se `manager_slots` NON e' presente nel payload, i GA vengono
+      copiati dall'Opportunita' con le STESSE posizioni. Se e' presente (anche `[]`), vince
+      l'utente. Stessa semantica gia' in uso per gli scalari (`*Submitted`,
+      applySnapshotDefaults:310-324) e per le collezioni (null = non inviato, array = autoritativo).
+      I GA sono un pivot: la copia avviene DOPO l'insert, come righe e buoni, non dentro
+      applySnapshotDefaults() che tratta solo colonne.
+    </d>
+    <d id="D-6" title="Appartenenza: GA Offerta ⊆ GA Opportunita', con promozione esplicita">
+      Un utente puo' occupare uno slot GA dell'Offerta solo se e' gia' GA della sua Opportunita'.
+      Violazione -> 422 (nessun silenzio). Unica via d'uscita: il payload porta
+      `promote_managers_to_opportunity: true`, e allora gli utenti mancanti vengono AGGIUNTI ai GA
+      dell'Opportunita' nel primo slot libero (append, mai sovrascrittura di uno slot occupato:
+      promuovere qualcuno non deve degradare qualcun altro).
+      Decisione utente 2026-08-31: se l'operatore risponde NO alla domanda, l'aggiunta si annulla.
+      Il flag e' quindi l'UNICA strada, e il 422 e' il comportamento corretto in sua assenza.
+      In modalita' sincronizzata (D-7) la regola e' inerte: le due liste sono identiche per
+      costruzione.
+    </d>
+    <d id="D-7" title="Modalita' sincronizzata: bidirezionale, sostitutiva">
+      Predicato: l'Opportunita' e' sincronizzata quando
+      `OpportunityQuoteLimit::isSingleQuoteBranch($opp)` AND
+      `OpportunityProductLineCoverage::managementModeOf($opp) === CategoryManagementMode::Single`.
+      Incapsulato in un servizio nuovo e minimo, `App\Services\Quotes\QuoteManagerSyncMode`,
+      con `isSynchronized(Opportunity): bool`. E' l'unico punto che combina i due setting.
+      In questa modalita' i GA non si AGGIUNGONO: si SOSTITUISCONO. Scrivere i GA sull'Offerta
+      rimpiazza in blocco quelli dell'Opportunita', e viceversa (bidirezionale, decisione utente
+      2026-08-31). Le due liste restano identiche da qualunque lato si scriva.
+      NON RIENTRANZA: ciascun writer sincronizza la controparte con un sync() diretto e non
+      richiama l'altro writer. E' il vincolo che tiene la bidirezionalita' finita.
+      L'utente vede un avviso informativo (D-11): l'operazione si propaga.
+    </d>
+    <d id="D-8" title="Label GA dell'Offerta: dalle sue righe, con fallback all'Opportunita'">
+      Nuovo `App\Services\Quotes\QuoteManagerLabelResolver`, gemello di
+      OpportunityManagerLabelResolver: stessa regola di UNICITA' (categorie distinte; risultato solo
+      se tutte risolvono al set IDENTICO, altrimenti []), stessa delega a
+      CategoryManagerLabelResolver::effectiveManagerLabels().
+      SORGENTE DELLE CATEGORIE, in quest'ordine:
+        1. le categorie dei prodotti delle righe REVENUE dell'Offerta, via
+           `offerLines.product.category` (quote_lines NON porta la categoria: spec 0065 D-7,
+           il percorso e' quote_lines.product_id -> products.category_id);
+        2. FALLBACK, se l'Offerta non ha ancora righe REVENUE: le categorie delle productLines
+           della sua Opportunita'.
+      Il fallback non e' un dettaglio: alla create i GA sono gia' precompilati dall'Opportunita'
+      (D-5) ma le righe non esistono ancora. Senza fallback l'utente vedrebbe le label di default
+      proprio nel momento in cui compila il team, e le vedrebbe cambiare dopo aver scelto il primo
+      prodotto. Con il fallback l'Offerta parte dalle label dell'Opportunita' e le affina quando
+      acquisisce contenuto proprio.
+      Richiede l'eager load di `offerLines.product` in QuoteService::DETAIL_RELATIONS per non
+      violare Model::preventLazyLoading().
+    </d>
+    <d id="D-9" title="L'ownership della Gestione Richieste passa a `quotes.operator_id`">
+      Sostituzione uno-a-uno, `quotes.supervisor_id` -> `quotes.operator_id`, in:
+      RequestManagementScope (isSupervisorOf -> isOperatorOf, scopeToActor, assertInScope),
+      RequestManagementNotable:84-87, RequestAssignmentService:122-129, UpdateRequestRequest:153-155,
+      RequestRowMapper:95 (userSummary($row->operator)).
+      `RequestSupervisorWriter` -> `RequestOperatorWriter`: scrive lo slot OPERATOR di `quote_user`
+      e la colonna `quotes.operator_id` (via QuoteManagerWriter, D-4), NON piu' `quotes.supervisor_id`.
+      Continua a garantire D-6 promuovendo l'operatore fra i GA dell'Opportunita' se assente
+      (append su slot libero), NON sovrascrivendo lo slot 2 dell'Opportunita': quel comportamento
+      odierno era una conseguenza del vecchio accoppiamento, non un requisito.
+      La chiave wire `operator_id` in $changed/$old resta invariata: era gia' quella.
+      `editableField: 'operator_id'` in RequestColumnCatalog:262-274 resta invariato (vincolo
+      bloccante) e ora punta a una colonna reale.
+    </d>
+    <d id="D-10" title="I quattro punti che cambiano SEMANTICA">
+      Passano dal GA2 dell'OPPORTUNITA' al GA2 dell'OFFERTA:
+        QuotesTableDefinition:286-293 (gate note su un'Offerta),
+        RecordDetails:106 (campo operator nelle notifiche di contesto Offerta),
+        RewardedReferentAdvancedFilterApplier:199 (filtro operatore sui buoni),
+        RequestManagementScopedTableDefinition:384 (label operator_ga2 per categoria: la categoria
+        va risolta dall'Offerta, D-8, non dall'Opportunita').
+      Vanno chiamati per nome nei test: sono i punti dove un utente puo' vedere cambiare cosa gli
+      e' visibile.
+    </d>
+    <d id="D-11" title="FE: sezione team sull'Offerta, riuso puro">
+      Nuovo `frontend/src/features/quotes/quote-team-section.tsx`, gemello di
+      opportunity-team-section.tsx: monta il CONDIVISO `ManagerSlotsField` (nessun componente
+      nuovo) dentro una FormSection propria, sotto i campi identity.
+      Nuovo `use-quote-manager-labels.ts`, gemello di use-opportunity-manager-labels.ts, che
+      risolve le categorie dai prodotti selezionati nelle righe REVENUE e riusa l'endpoint
+      esistente /product-categories/{id}/effective-manager-labels.
+      VERIFICATO 2026-08-31, nessuna modifica backend necessaria: `category_id` e' gia' esposto in
+      `ProductForSelectResource:40` (spec 0075 D-5) ed esiste gia' il lettore tipizzato
+      `productCategoryIdOf(item)` in `frontend/src/features/products/for-select-api.ts:25-29` — si
+      usa quello e non si tocca alcun tipo. Il fallback di D-8 ha gia' il suo input pronto in
+      `quote-offer-tab.tsx:66-72` (`scopedCategoryIds`, categorie dell'Opportunita' selezionata).
+      TRAPPOLA da evitare: NON aggiungere `category_id` a `QuoteLineFormValues` — finirebbe nel
+      payload via `toLineInputs` (quote-line-values.ts:55-77) e nel diff `linesChanged`. Tenere una
+      mappa productId -> categoryId in stato locale del tab.
+      In modalita' sincronizzata: banner informativo sopra la sezione + stessa informazione nel
+      form Opportunita'. Colonna `managers` su /quotes: riuso di UserStackCell.
+    </d>
+    <d id="D-12" title="Backfill semplice: non esistono dati in produzione">
+      Direttiva utente 2026-08-31: i dati vivono solo in locale, la produzione e' vuota.
+      Il backfill non ha quindi alcun contratto di preservazione del comportamento da rispettare
+      e NON va sovra-ingegnerizzato. Migrazione minima, best-effort, reversibile:
+        - copia i GA dell'Opportunita' in `quote_user` alle stesse posizioni;
+        - dove `quotes.supervisor_id` e' valorizzato, imposta lo slot OPERATOR su quell'utente
+          (rimuovendolo da altre posizioni per rispettare le due unique) e
+          `quotes.operator_id` di conseguenza;
+        - down() svuota il pivot e droppa la colonna.
+      Nessun criterio di accettazione sulla continuita' di visibilita': non c'e' nulla da
+      preservare. Il percorso che conta davvero e' invece il SEED:
+      `DemoQuoteSeeder` deve produrre Offerte con GA popolati e slot OPERATOR coerente, altrimenti
+      il modulo Gestione Richieste risulta vuoto in locale dopo il reset. Questo si' va testato.
+    </d>
+    <d id="D-13" title="Gestione Richieste non tocca piu' il Supervisore, in nessun punto">
+      Direttiva utente 2026-08-31, ribadita: il Supervisore e' SOSTITUITO dal GA2 dell'Offerta in
+      tutto cio' che riguarda la gestione account. Non va piu' messo in mezzo: nessun percorso del
+      modulo Gestione Richieste lo legge, lo scrive o lo deduce.
+      Conseguenze puntuali:
+        - `RequestCreationService:150-151` smette di impostare `supervisorId` sull'operatore
+          scelto. Passa `supervisorIdSubmitted: false`: il Supervisore dell'Offerta segue la
+          regola generale di ereditarieta' dall'Opportunita' (applySnapshotDefaults:310-324),
+          esattamente come commerciale e segnalatore. Nessuna regola speciale per questo canale.
+        - `RequestCreationService:100,103`: l'Opportunita' non riceve piu' lo slot GA2 da qui.
+          L'appartenenza (D-6) resta garantita perche' il writer PROMUOVE l'operatore fra i GA
+          dell'Opportunita' nel primo slot LIBERO — append, non sovrascrittura dello slot 2, che
+          degraderebbe il GA2 gia' presente.
+        - L'operatore scelto finisce SOLO nello slot GA2 dell'Offerta.
+      Il Supervisore sopravvive unicamente come `CommissionRecipientRole::Supervisor`
+      (CommissionRecipientResolver:30,:35): un ruolo commerciale, editabile nel form Offerta,
+      senza alcun potere autorizzativo (INV-5).
+    </d>
+    <d id="D-14" title="Effetto collaterale: si chiude un bug preesistente sul destinatario di commissione">
+      VERIFICATO riga per riga, non ipotizzato. Oggi `quotes.supervisor_id` porta DUE significati
+      incompatibili sulla stessa colonna: autorizzazione di riga (RequestManagementScope:56,:84) e
+      destinatario della commissione `SUPERVISOR` (CommissionRecipientResolver:30,:35;
+      QuoteCommissionInitializer:34 con fallback `?? $quote?->supervisor_id`).
+      `RequestSupervisorWriter:77` fa `$quote->update(['supervisor_id' => ...])` e ha tre chiamanti
+      che sono tutti atti OPERATIVI, non commerciali: inline edit / work panel
+      (RequestAttributionWriter:112), assegnazione bulk anche in mode=balanced
+      (RequestAssignmentService:152), trasferimento contatto (RequestTransferService:176).
+      Ciascuno riscrive quindi il commissionabile. Ed e' silenzioso per due motivi indipendenti:
+      il ricalcolo commissioni scatta solo sul canale Offerte (QuoteService:234, sui flag
+      `*Submitted`) che questi percorsi non attraversano; e i chiamanti fanno
+      `$quote->disableLogging()` prima (RequestAssignmentService:148, RequestTransferService:159),
+      quindi non resta nemmeno una entry di activity log attribuibile al cambio.
+      Un responsabile che ribilancia 200 richieste riassegna il commissionabile di 200 Offerte
+      senza vederlo.
+      Separando i due significati (D-3) questo smette di accadere. E' una CORREZIONE, non una
+      regressione. Nessun impatto su dati esistenti: la produzione e' vuota (D-12).
+      Corollario: `UpdateRequestRequest:153-155` (`if ($field === 'operator_id') return
+      $model->supervisor_id;`) si CANCELLA — `operator_id` diventa una colonna reale che il
+      lettore generico dei permessi di campo raggiunge da solo. Oggi quella riga fa si' che il
+      ceiling del campo Operatore governi di fatto anche il destinatario del pagamento.
+    </d>
+  </decisions>
+
+  <invariants>
+    <inv id="INV-1">Ogni riga di `quote_user` ha una `position` fra 1 e ManagerPositions::MAX; un utente occupa al massimo uno slot per Offerta; uno slot ospita al massimo un utente (garantito dalle due unique).</inv>
+    <inv id="INV-2">`quotes.operator_id` e' SEMPRE uguale all'occupante dello slot ManagerPositions::OPERATOR di `quote_user`, o NULL se lo slot e' vuoto. Vale dopo ogni percorso di scrittura: form Offerta, inline edit operator_ga2, work panel, assegnazione bulk, trasferimento contatto, creazione Richiesta.</inv>
+    <inv id="INV-3">Fuori dalla modalita' sincronizzata, ogni GA di un'Offerta e' anche GA della sua Opportunita'.</inv>
+    <inv id="INV-4">In modalita' sincronizzata, l'insieme (utente, posizione) dei GA dell'Offerta e quello della sua Opportunita' coincidono dopo ogni scrittura su uno dei due lati.</inv>
+    <inv id="INV-5">`quotes.supervisor_id` non e' MAI letto per autorizzare: dopo questa spec e' esclusivamente un destinatario di commissione.</inv>
+  </invariants>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/quotes">
+      <request><![CDATA[
+        {
+          "manager_slots": [12, 7, null, 30] | [] ,        // assente = eredita dall'Opportunita' (D-5)
+          "promote_managers_to_opportunity": true | false   // default false (D-6)
+        }
+      ]]></request>
+      <rules>
+        'manager_slots'   => ['sometimes','array','max:'.ManagerPositions::MAX],   // trait ValidatesManagerSlots
+        'manager_slots.*' => ['nullable','integer', Rule::exists('users','id')],
+        'promote_managers_to_opportunity' => ['sometimes','boolean'],
+        + cross-element gia' nel trait: max MAX filled, nessun utente in due slot;
+        + nuova regola D-6: ogni utente non-GA dell'Opportunita' -> 422 se il flag e' assente/false.
+      </rules>
+      <authz>QuotePolicy invariata. Nuovo campo di permesso `manager_slots` (multiselect) in
+        QuotesAuthorization::fields() + ceiling, stesso trattamento di `manager_slots` in
+        OpportunitiesAuthorization:74,:110.</authz>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/quotes/{quote}">
+      <request>identica alla POST. `manager_slots` assente = intoccati; array (anche vuoto) = sync autoritativo full-replace.</request>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response status="200"><![CDATA[
+        // QuoteResource, ADDITIVO — nessuna chiave esistente cambia:
+        "managers": [ {"id": 7, "name": "Mario Rossi", "position": 1} ],   // ordinati per position
+        "manager_labels": { "1": "Commerciale", "2": "Operatore" },         // {} se non risolvibile
+        "operator_id": 12 | null,                                          // proiezione slot GA2
+        "managers_synchronized": true | false                              // D-7, alimenta il banner
+      ]]></response>
+      <note>QuoteResource DEVE guadagnare `#[PreserveKeys]`, altrimenti manager_labels viene
+        reindicizzato e il contratto si rompe in silenzio. `supervisor_id` e `supervisor` restano
+        invariati.</note>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <response status="200"><![CDATA[
+        "managers_synchronized": true | false    // ADDITIVO, per il banner sul lato Opportunita'
+      ]]></response>
+    </endpoint>
+
+    <table id="quotes">
+      <column id="managers" appended="true">
+        label `quotes.columns.managers`, type text, visible true, sortable FALSE
+        (un to-many non ha chiave d'ordine singola), filterable true, filterType set.
+        Valore: array di {id, name, avatar_url} ordinato per position — la cella NON porta
+        `position` (mirror esatto di OpportunitiesTableDefinition:196). Mai null a livello colonna:
+        array vuoto.
+        Eager load: aggiungere `managers.avatar` alla lista `with` di QuotesTableDefinition:89-100.
+        Filtro e valori distinti: mirror di OpportunityRelationColumns:80-92 e :203-219, su
+        `users.name`, con il join su `quote_user`.
+        APPESA IN FONDO al catalogo: inserirla in mezzo sposta i layout colonna persistiti.
+      </column>
+    </table>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">Creando un'Offerta senza `manager_slots`, i GA dell'Opportunita' compaiono sull'Offerta alle stesse posizioni.</ac>
+    <ac id="AC-002">Creando un'Offerta CON `manager_slots`, vince il payload; `[]` lascia l'Offerta senza GA.</ac>
+    <ac id="AC-003">PATCH senza `manager_slots` non tocca i GA; con array e' un full-replace.</ac>
+    <ac id="AC-004">Un `manager_slots` che contiene un utente non-GA dell'Opportunita' senza il flag -> 422 con messaggio che nomina l'utente.</ac>
+    <ac id="AC-005">Lo stesso payload con `promote_managers_to_opportunity: true` -> 201/200, e l'utente compare fra i GA dell'Opportunita' nel primo slot libero, senza spostare nessun altro.</ac>
+    <ac id="AC-006">`quotes.operator_id` combacia con lo slot 2 dopo: create, update, inline edit di operator_ga2, work panel, assegnazione bulk, trasferimento contatto, creazione Richiesta (INV-2, un test per percorso).</ac>
+    <ac id="AC-007">Su categoria offerta-unica + gestione-singola, scrivere i GA sull'Offerta sostituisce quelli dell'Opportunita'; scriverli sull'Opportunita' sostituisce quelli dell'Offerta (INV-4).</ac>
+    <ac id="AC-008">Su categoria che non soddisfa ENTRAMBI i setting, nessuna propagazione: si applica invece il vincolo di appartenenza (INV-3).</ac>
+    <ac id="AC-009">Un utente che e' GA2 di un'Offerta vede quella riga in Gestione Richieste; chi era supervisore ma non e' GA2 non la vede piu' (salvo `request-management.viewAll`).</ac>
+    <ac id="AC-010">`mode=balanced` distribuisce sul carico calcolato per `operator_id`.</ac>
+    <ac id="AC-011">Il gate delle note su un'Offerta (QuotesTableDefinition:286-293) valuta il GA2 dell'OFFERTA.</ac>
+    <ac id="AC-012">Le label GA dell'Offerta seguono la categoria dei prodotti delle righe REVENUE; con categorie che risolvono a label diverse si torna ai default.</ac>
+    <ac id="AC-013">GET /api/quotes/{id} espone manager_labels come mappa sparsa NON reindicizzata (test diretto su #[PreserveKeys]).</ac>
+    <ac id="AC-014">La colonna `managers` su /quotes mostra lo stack di avatar, filtra per nome e non e' ordinabile; i layout colonna salvati prima della modifica continuano a rendere le stesse colonne nello stesso ordine.</ac>
+    <ac id="AC-015">Dopo `db:seed --class=DemoDataSeeder`, le Offerte demo hanno GA popolati e `operator_id` coerente con lo slot 2, e il modulo Gestione Richieste mostra righe scopate correttamente (D-12).</ac>
+    <ac id="AC-017">Riassegnare l'operatore (inline edit, bulk assign, trasferimento contatto) NON modifica piu' `quotes.supervisor_id` ne' il destinatario della commissione SUPERVISOR (D-14). Test su tutti e tre i percorsi.</ac>
+    <ac id="AC-016">`quotes.supervisor_id` non compare in nessun percorso di autorizzazione (INV-5, verificabile per grep).</ac>
+  </acceptance_criteria>
+
+  <microtasks>
+    <task id="T-01" lane="database" depends="">Migrazione `quote_user` + colonna `quotes.operator_id` + index. Reversibile.</task>
+    <task id="T-02" lane="database" depends="T-01">Migrazione di backfill conservativa (D-12) + test che asserisce AC-015 su un dataset con supervisor valorizzato e nullo.</task>
+    <task id="T-03" lane="backend" depends="T-01">`ManagerPositions::OPERATOR` + alias su Opportunity; `Quote::managers()`; `#[PreserveKeys]` su QuoteResource.</task>
+    <task id="T-04" lane="backend" depends="T-03">`QuoteManagerSyncMode` (D-7) + `QuoteManagerLabelResolver` (D-8) + eager load in DETAIL_RELATIONS. Test unitari propri.</task>
+    <task id="T-05" lane="backend" depends="T-03,T-04">`QuoteManagerWriter` (D-4) con i 4 step. E' il cuore: test per ogni step e per INV-2/INV-3/INV-4.</task>
+    <task id="T-06" lane="backend" depends="T-05">Cablaggio Store/UpdateQuoteRequest (trait + regola D-6 + flag), DataObject, QuoteService (create eredita, update sincronizza), QuotesAuthorization.</task>
+    <task id="T-07" lane="backend" depends="T-05">Propagazione dal lato Opportunita' in modalita' sincronizzata (OpportunityService) + `managers_synchronized` su entrambe le Resource.</task>
+    <task id="T-08" lane="backend" depends="T-06">D-9 + D-13: RequestManagementScope (i 9 call site di scopeToActor NON cambiano: verificato), Notable, AssignmentService, UpdateRequestRequest, RequestRowMapper, RequestSupervisorWriter -> RequestOperatorWriter.</task>
+    <task id="T-09" lane="backend" depends="T-08">D-10: i quattro punti che cambiano semantica, ciascuno con il proprio test.</task>
+    <task id="T-10" lane="backend" depends="T-06">Colonna `managers` in QuoteColumnCatalog (in fondo) + eager + mapRow + filtro/distinct in QuoteRelationColumns.</task>
+    <task id="T-11" lane="frontend" depends="T-06">Verifica category_id nel select prodotto (D-11), `use-quote-manager-labels.ts`, `quote-team-section.tsx`, schema/types/payload/idratazione.</task>
+    <task id="T-12" lane="frontend" depends="T-11">Dialog di promozione (D-6) sul 422, banner modalita' sincronizzata su entrambi i form, i18n it/en.</task>
+    <task id="T-13" lane="frontend" depends="T-10">Renderer colonna `managers` su /quotes + test.</task>
+    <task id="T-14" lane="verifier" depends="T-09,T-12,T-13">Gate finale: Pest completo, vitest, tsc -b --force, Pint, e riproduzione di AC-001..AC-016.</task>
+  </microtasks>
+
+  <risks>
+    <r id="R-1">La denormalizzazione di `operator_id` introduce un obbligo di coerenza permanente. Mitigazione: un solo writer (D-4) e AC-006 che copre tutti e sette i percorsi di scrittura.</r>
+    <r id="R-2">La bidirezionalita' (D-7) puo' rientrare all'infinito se i due writer si chiamano a vicenda. Mitigazione: sync() diretto sulla controparte, mai chiamata all'altro writer. Da verificare in review, non solo nei test.</r>
+    <r id="R-3">RIENTRATO. Il cambio di visibilita' di AC-009 non ha impatto: nessun dato in
+      produzione (D-12). Resta solo la correttezza della regola nuova, coperta dai test.</r>
+    <r id="R-4">QuoteService e' a 475/500 righe: T-06 deve aggiungere il minimo indispensabile o splittare. Se lo split serve, e' un microtask a se', non un'aggiunta silenziosa.</r>
+  </risks>
+
+</spec>

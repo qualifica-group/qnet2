@@ -119,7 +119,7 @@ it('denies the request-management activity log to an actor outside the D-3 scope
 
     // Same actor, same record: supervising ONE of its Offerte is enough, no
     // viewAll needed — the panel's own boundary, verbatim (D-3/D-9).
-    Quote::factory()->for($opportunity)->create(['supervisor_id' => $actor->id]);
+    Quote::factory()->for($opportunity)->create(['operator_id' => $actor->id]);
 
     $this->getJson("/api/activity-log/request-management/{$opportunity->id}")->assertOk();
 });

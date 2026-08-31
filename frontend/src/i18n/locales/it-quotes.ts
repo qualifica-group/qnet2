@@ -17,6 +17,7 @@ export const quotes = {
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
+    managers: 'Gestori account',
     revenueNet: 'Ricavo netto',
     costNet: 'Costo netto',
     marginNet: 'Margine netto',
@@ -94,6 +95,13 @@ export const quotes = {
     },
     supervisor: 'Supervisore',
     supervisorSearch: 'Cerca supervisori…',
+    managers: 'Gestori account',
+    managersMax: "Un'offerta ha al massimo {{max}} gestori.",
+    managersSyncHint: "Sincronizzato con l'opportunità: una modifica qui aggiorna anche i suoi gestori account, e viceversa.",
+    managersPromoteDialog: {
+      title: "Aggiungerlo anche all'opportunità?",
+      confirm: 'Aggiungi e salva',
+    },
     company: 'Società',
     companySearch: 'Cerca società…',
     companySite: 'Società sede',
@@ -130,6 +138,10 @@ export const quotes = {
       identity: {
         title: 'Dati offerta',
         description: "Codice, titolo, opportunità collegata e team commerciale.",
+      },
+      team: {
+        title: 'Team',
+        description: "Gestori account di questa offerta.",
       },
       sites: {
         title: 'Società e sedi',

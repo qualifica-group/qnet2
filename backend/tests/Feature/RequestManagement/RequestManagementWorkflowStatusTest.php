@@ -54,12 +54,12 @@ if (! function_exists('requestWorkflowQuote')) {
      * resolved set is deterministically the GLOBAL default one, so a status
      * minted with `global()` always belongs to it.
      */
-    function requestWorkflowQuote(User $supervisor): Quote
+    function requestWorkflowQuote(User $operator): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 

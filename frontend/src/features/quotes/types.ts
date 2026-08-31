@@ -77,6 +77,16 @@ export interface QuoteRelationRef {
 }
 
 /**
+ * A manager ref carrying its static "G.A. n" `position` (1-based) on top of
+ * the person ref (spec 0087, mirrors `OpportunityManagerRef`).
+ */
+export interface QuoteManagerRef {
+  id: number
+  name: string
+  position: number
+}
+
+/**
  * The linked sede operativa's identity, as exposed by
  * `QuoteResource.operational_site` (mirrors `ProjectOperationalSiteRef`):
  * `operational_sites` has no `name` column — the site IS its primary address,
@@ -196,6 +206,32 @@ export interface QuoteDetail {
   reporter: QuoteRelationRef | null
   supervisor_id: number | null
   supervisor: QuoteRelationRef | null
+  /**
+   * Spec 0087: the offer's own filled G.A. slots, ordered `{id, name,
+   * position}` cards, mirrors `OpportunityDetail.managers`. Optional for the
+   * same fixture-compatibility reason as `OpportunityDetail`'s own additive
+   * fields — treat a missing key the same as `[]`.
+   */
+  managers?: QuoteManagerRef[]
+  /**
+   * Spec 0087 (D-8): G.A. labels resolved from the offer's own REVENUE-line
+   * product categories, falling back to the Opportunity's while it has none
+   * yet. `{}` when not resolvable. Optional, same convention as above.
+   */
+  manager_labels?: Record<string, string>
+  /**
+   * Spec 0087 (D-3): the G.A.2 slot's occupant, denormalized — the Gestione
+   * Richieste ownership key (`RequestManagementScope`). Optional, same
+   * convention as above; treat a missing key the same as `null`.
+   */
+  operator_id?: number | null
+  /**
+   * Spec 0087 (D-7): whether this offer's G.A. are kept identical to its
+   * Opportunity's (bidirectional sync on the offerta-unica + gestione-singola
+   * categories), feeding the informational banner. Optional, same convention
+   * as above; treat a missing key the same as `false`.
+   */
+  managers_synchronized?: boolean
   company_id: number | null
   company: QuoteRelationRef | null
   company_site_id: number | null
@@ -291,6 +327,19 @@ export interface CreateQuotePayload {
   commercial_id?: number | null
   reporter_id?: number | null
   supervisor_id?: number | null
+  /**
+   * Spec 0087 (D-1/D-5/D-11): ordered, gap-aware G.A. slots — index+1 = G.A.
+   * n, `null` = empty slot. On create, omitted means "inherit the
+   * Opportunity's own G.A. at the same positions"; on update, omitted means
+   * "leave untouched" and any array (even `[]`) is a full-replace sync.
+   */
+  manager_slots?: (number | null)[]
+  /**
+   * Spec 0087 (D-6): confirms widening the Opportunity's own G.A. with
+   * whoever the offer picked outside it, after a 422 appartenenza refusal.
+   * Default false.
+   */
+  promote_managers_to_opportunity?: boolean
   company_id?: number | null
   company_site_id?: number | null
   /** When omitted, inherited from the opportunity server-side (directive 2026-07-30), like the 3 roles above. */

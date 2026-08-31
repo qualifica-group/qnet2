@@ -242,7 +242,9 @@ it('reassigning the operator to the user already holding the slot notifies nobod
     Opportunity::factory()->create();
     $actor = assignmentActorWith(['request-management.view', 'request-management.viewAll', 'request-management.update', 'request-management.assignOperator']);
     $operator = User::factory()->create();
-    $quote = Quote::factory()->create(['supervisor_id' => $operator->id]);
+    // Spec 0087, D-9: the slot the "already holding it" no-op checks is now
+    // `quotes.operator_id`, no longer `quotes.supervisor_id`.
+    $quote = Quote::factory()->create(['operator_id' => $operator->id]);
     $quote->opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
     Sanctum::actingAs($actor);
 

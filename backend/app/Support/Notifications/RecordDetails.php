@@ -6,6 +6,7 @@ namespace App\Support\Notifications;
 
 use App\Enums\AssignmentTargetEnum;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -51,13 +52,23 @@ final class RecordDetails
     ];
 
     /**
+     * @param  ?Quote  $requestManagementQuote  spec 0087, D-10: when $record
+     *                                          is an Opportunity notified
+     *                                          about on behalf of one of its
+     *                                          Offerte (a request-management
+     *                                          write), the "operator" field
+     *                                          reads THIS Offerta's own GA2
+     *                                          Operatore instead of the
+     *                                          Opportunity's — the two can
+     *                                          diverge (D-1). Ignored for
+     *                                          Registry records.
      * @return array<string, string>
      */
-    public static function for(Model $record): array
+    public static function for(Model $record, ?Quote $requestManagementQuote = null): array
     {
         return match (true) {
             $record instanceof Registry => self::forRegistry($record),
-            $record instanceof Opportunity => self::forOpportunity($record),
+            $record instanceof Opportunity => self::forOpportunity($record, $requestManagementQuote),
             default => [],
         };
     }
@@ -88,9 +99,10 @@ final class RecordDetails
     }
 
     /**
+     * @param  ?Quote  $requestManagementQuote  see for()'s own docblock.
      * @return array<string, string>
      */
-    private static function forOpportunity(Opportunity $opportunity): array
+    private static function forOpportunity(Opportunity $opportunity, ?Quote $requestManagementQuote): array
     {
         $opportunity->loadMissing(self::OPPORTUNITY_RELATIONS);
 
@@ -103,8 +115,24 @@ final class RecordDetails
             'notifications.fields.status' => self::statusLabel($opportunity),
             'notifications.fields.source' => $opportunity->source?->name,
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
-            'notifications.fields.operator' => $opportunity->operatorManager()?->name,
+            'notifications.fields.operator' => self::operatorName($opportunity, $requestManagementQuote),
         ]);
+    }
+
+    /**
+     * The "operator" field's holder (spec 0087, D-10): the OFFERTA's own GA2
+     * Operatore when this notification is a request-management one, else the
+     * Opportunity's own GA2 pivot slot — unchanged for every OTHER caller of
+     * this class (OpportunitiesTableDefinition's own notes/notifications
+     * stay out of this spec's scope).
+     */
+    private static function operatorName(Opportunity $opportunity, ?Quote $requestManagementQuote): ?string
+    {
+        if ($requestManagementQuote !== null) {
+            return $requestManagementQuote->operator?->name;
+        }
+
+        return $opportunity->operatorManager()?->name;
     }
 
     /**

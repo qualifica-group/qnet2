@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -375,5 +375,84 @@ describe('QuoteFormBody (spec 0065)', () => {
 
     expect(costsTab.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(section.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // Spec 0087 D-6/AC-004/AC-005: a picked G.A. that is not yet a G.A. of the
+  // linked Opportunity is refused with a 422 on `manager_slots`. The form
+  // must ask before widening the Opportunity's own team, and only retry with
+  // `promote_managers_to_opportunity: true` on an explicit confirm.
+  describe('manager promotion dialog (spec 0087 D-6)', () => {
+    function membershipError(message: string) {
+      return { isAxiosError: true, response: { status: 422, data: { errors: { manager_slots: [message] } } } }
+    }
+
+    it('asks for confirmation and retries with the promote flag when accepted (AC-005)', async () => {
+      const quote = quoteFixture()
+      vi.mocked(updateQuote)
+        .mockRejectedValueOnce(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
+        .mockResolvedValueOnce(quote)
+
+      render(
+        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+        </ResourcePermissionsProvider>,
+        { wrapper: wrapper() },
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      const dialog = await screen.findByRole('alertdialog')
+      expect(
+        within(dialog).getByText('Anna Bianchi is not yet an account manager of the opportunity.'),
+      ).toBeInTheDocument()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Add and save' }))
+
+      await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(2))
+      expect(vi.mocked(updateQuote).mock.calls[1][1]).toMatchObject({ promote_managers_to_opportunity: true })
+    })
+
+    it('cancels the save outright on decline, without retrying (user directive 2026-08-31)', async () => {
+      const quote = quoteFixture()
+      vi.mocked(updateQuote).mockRejectedValue(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
+      const onSuccess = vi.fn()
+
+      render(
+        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={onSuccess} onCancel={vi.fn()} />
+        </ResourcePermissionsProvider>,
+        { wrapper: wrapper() },
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      const dialog = await screen.findByRole('alertdialog')
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1)
+      expect(onSuccess).not.toHaveBeenCalled()
+    })
+
+    it('does not open the dialog for an unrelated 422 (e.g. commercial_id)', async () => {
+      const quote = quoteFixture()
+      vi.mocked(updateQuote).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 422, data: { errors: { commercial_id: ['The selected commercial is invalid.'] } } },
+      })
+
+      render(
+        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+        </ResourcePermissionsProvider>,
+        { wrapper: wrapper() },
+      )
+
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Updated title' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
   })
 })

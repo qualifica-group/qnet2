@@ -54,6 +54,25 @@ final class QuoteColumnCatalog
             self::derivedColumn('commercial', 'quotes.columns.commercial'),
             self::derivedColumn('reporter', 'quotes.columns.reporter'),
             self::derivedColumn('supervisor', 'quotes.columns.supervisor'),
+            // "Gestori Account" (spec 0087, D-1/T-10) — mirrors
+            // OpportunityColumnCatalog's own `managers` entry: a to-many
+            // rendered as an avatar stack, not sortable (no single sort key),
+            // filterable via whereHas on the manager's name.
+            // Sits beside the Supervisore (user directive 2026-08-31): the two
+            // read together as "chi segue questa offerta", and appending it
+            // last buried it off the right edge of the grid. Deliberately
+            // breaks the append-only convention (spec 0001) — safe here because
+            // the stored preference delta is keyed by column ID, so a user's
+            // saved layout keeps its own order and only DEFAULT layouts move.
+            [
+                'id' => 'managers',
+                'label' => 'quotes.columns.managers',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
             [
                 'id' => 'revenue_net',
                 'label' => 'quotes.columns.revenueNet',

@@ -7,8 +7,8 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\RequestAttributeResolver;
-use App\Services\Opportunities\OpportunityManagerLabelResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Support\OperationalSiteLabel;
@@ -110,15 +110,19 @@ class RequestManagementResource extends JsonResource
             'is_transferred' => (bool) $quote->is_transferred,
             'transferred_from' => OperationalSiteLabel::summarize($quote->transferredFromOperationalSite),
             // Wire keys stay `operator_id`/`operator` (D-2: the frontend
-            // still calls it "operatore"); the value is the Offerta's own
-            // Supervisore (AC-020).
-            'operator_id' => $quote->supervisor_id,
-            'operator' => $this->summarizeByName($quote->supervisor),
-            // Spec 0080: ADDITIVE — the "Gestore Account" label overrides
-            // resolved from the opportunity's product line(s), so the panel
-            // can rietichettare "Operatore (GA2)" with the level-2 label when
-            // the category defines one. `{}` when not resolvable.
-            'manager_labels' => app(OpportunityManagerLabelResolver::class)->resolve($opportunity),
+            // still calls it "operatore"); the value is now the Offerta's
+            // own GA2 Operatore (spec 0087, D-9) — `quotes.operator_id`, a
+            // real column denormalized from `quote_user`. No longer
+            // `quotes.supervisor_id` (D-13/D-14, INV-5).
+            'operator_id' => $quote->operator_id,
+            'operator' => $this->summarizeByName($quote->operator),
+            // Spec 0080/0087 D-8: the "Gestore Account" label overrides,
+            // resolved from the OFFERTA's own team (its REVENUE lines'
+            // categories, falling back to the Opportunity's product lines
+            // while the Offerta has none yet) — so the panel can
+            // rietichettare "Operatore (GA2)" with the level-2 label when the
+            // category defines one. `{}` when not resolvable.
+            'manager_labels' => app(QuoteManagerLabelResolver::class)->resolve($quote),
             'status' => app(OpportunityStatusResolver::class)->resolve($opportunity),
             'product_lines' => $this->summarizeProductLines($opportunity->productLines),
             // Spec 0086, D-7/AC-021: replaces `products_of_interest` — the

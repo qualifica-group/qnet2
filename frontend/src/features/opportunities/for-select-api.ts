@@ -1,5 +1,6 @@
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { OpportunityManagerRef } from '@/features/opportunities/types'
 
 /** Resource segment for the opportunities for-select endpoint (ADR 0011). */
 export const OPPORTUNITIES_FOR_SELECT_RESOURCE = 'opportunities'
@@ -20,6 +21,8 @@ export interface OpportunityForSelectMeta {
   reporter: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   operational_site: { id: number; label: string } | null
+  /** The opportunity's own Gestori Account (spec 0087, D-5), ordered by position, `[]` when it has none. */
+  managers: OpportunityManagerRef[]
 }
 
 /** The three role keys of `OpportunityForSelectMeta` — the `{id, name}` refs a role field can hydrate from. */

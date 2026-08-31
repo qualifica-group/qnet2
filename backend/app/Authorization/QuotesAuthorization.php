@@ -31,6 +31,11 @@ use Illuminate\Database\Eloquent\Model;
  * permissive fallback (anything not catalogued is allowed). Here it is a
  * first-class field with the same visible/editable-when-may-write ceiling as
  * every other one.
+ *
+ * `manager_slots` (spec 0087, D-1): the Offerta's own Gestori Account, same
+ * `multiselect`, non-mandatory ceiling as `manager_slots` on
+ * OpportunitiesAuthorization — visible+editable when the actor may write,
+ * else visible+readonly, no contextual exception.
  */
 class QuotesAuthorization extends AbstractResourceAuthorization
 {
@@ -67,6 +72,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // valid before the payment modality is agreed.
             new FieldDefinition('payment_method_id', 'select'),
             new FieldDefinition('internal_notes', 'textarea'),
+            new FieldDefinition('manager_slots', 'multiselect'),
             new FieldDefinition('offer_lines', 'lines'),
             new FieldDefinition('cost_lines', 'lines'),
             new FieldDefinition('attribute_values', 'custom'),
@@ -111,6 +117,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'layout_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_method_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

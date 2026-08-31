@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { WORKFLOW_STATUS_OPEN, WORKFLOW_STATUS_REQUIRES_NOTE } from '@/features/quotes/quote-fixtures'
 import i18n from '@/i18n'
-import { buildCreateQuoteSchema, buildUpdateQuoteSchema } from '@/features/quotes/quote-schema'
+import { buildCreateQuoteSchema, buildUpdateQuoteSchema, MAX_MANAGERS } from '@/features/quotes/quote-schema'
 
 /**
  * Spec 0065 AC-070/075: create requires the identity fields; each
@@ -30,6 +30,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     commercial_id: null,
     reporter_id: null,
     supervisor_id: null,
+    manager_slots: [],
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
@@ -104,6 +105,20 @@ describe('buildCreateQuoteSchema', () => {
     const schema = buildCreateQuoteSchema(i18n.t)
     const lines = Array.from({ length: 201 }, () => validLine())
     const result = schema.safeParse(baseValues({ offer_lines: lines }))
+    expect(result.success).toBe(false)
+  })
+
+  it(`accepts exactly ${MAX_MANAGERS} filled manager slots (spec 0087 D-1)`, () => {
+    const schema = buildCreateQuoteSchema(i18n.t)
+    const filled = Array.from({ length: MAX_MANAGERS }, (_, index) => index + 1)
+    const result = schema.safeParse(baseValues({ manager_slots: filled }))
+    expect(result.success).toBe(true)
+  })
+
+  it(`rejects more than ${MAX_MANAGERS} filled manager slots (spec 0087 D-1)`, () => {
+    const schema = buildCreateQuoteSchema(i18n.t)
+    const overflowing = Array.from({ length: MAX_MANAGERS + 1 }, (_, index) => index + 1)
+    const result = schema.safeParse(baseValues({ manager_slots: overflowing }))
     expect(result.success).toBe(false)
   })
 

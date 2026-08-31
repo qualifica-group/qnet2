@@ -15,6 +15,7 @@ const COLUMN_KEYS = [
   'commercial',
   'reporter',
   'supervisor',
+  'managers',
   'revenueNet',
   'costNet',
   'marginNet',

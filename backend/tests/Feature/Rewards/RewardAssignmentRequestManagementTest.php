@@ -49,16 +49,16 @@ if (! function_exists('rewardAssignmentRmActor')) {
 
 if (! function_exists('rewardAssignmentRmSupervisedQuote')) {
     /**
-     * A quote the actor supervises (D-3), whose own `reporter_id` (D-4) is
-     * the reward beneficiary — mirrors RequestManagementUpdateTest's own
-     * precedent.
+     * A quote the actor operates (spec 0087, D-9), whose own `reporter_id`
+     * (D-4) is the reward beneficiary — mirrors RequestManagementUpdateTest's
+     * own precedent.
      */
-    function rewardAssignmentRmSupervisedQuote(User $supervisor, ?int $reporterId = null): Quote
+    function rewardAssignmentRmSupervisedQuote(User $operator, ?int $reporterId = null): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id, 'reporter_id' => $reporterId]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id, 'reporter_id' => $reporterId]);
     }
 }
 

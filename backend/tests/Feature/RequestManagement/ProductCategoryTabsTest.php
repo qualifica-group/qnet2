@@ -98,12 +98,15 @@ it('an operator without viewAll only sees the category of the offers they superv
     $categoryA = ProductCategory::factory()->create(['name' => 'Category A']);
     $categoryB = ProductCategory::factory()->create(['name' => 'Category B']);
 
+    // `operator_id` is deliberately NOT fillable (spec 0087, D-3) — written
+    // only by QuoteManagerWriter, so a plain test fixture uses forceFill()
+    // rather than a silently-discarded update().
     $ownRequest = quoteWithCategory($categoryA);
-    $ownRequest->update(['supervisor_id' => $actor->id]);
+    $ownRequest->forceFill(['operator_id' => $actor->id])->save();
 
     // Someone else's offer on a DIFFERENT category — must not leak in.
     $otherRequest = quoteWithCategory($categoryB);
-    $otherRequest->update(['supervisor_id' => User::factory()->create()->id]);
+    $otherRequest->forceFill(['operator_id' => User::factory()->create()->id])->save();
 
     Sanctum::actingAs($actor);
 

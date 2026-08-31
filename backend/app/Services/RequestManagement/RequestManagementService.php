@@ -28,8 +28,9 @@ use Illuminate\Validation\ValidationException;
  * Each field lands on the model it lives on (D-2): "Fonte", planned
  * callback, the product-line classification and the client anagraphic block
  * are Opportunity-level (`quote.opportunity`); "Segnalatore", "Sede
- * operativa", the GA2 "Operatore"/Supervisore, the reward assignments and the
- * offer's own REVENUE rows are Quote-level (D-3/D-4/D-7).
+ * operativa", the GA2 "Operatore", the reward assignments and the
+ * offer's own REVENUE rows are Quote-level (D-3/D-4/D-7; spec 0087, D-9 for
+ * the GA2 Operatore).
  *
  * This class ORCHESTRATES that sequence; the rules of each block live in a
  * writer of its own (RequestAttributionWriter, RequestProductLineWriter,
@@ -75,7 +76,7 @@ final class RequestManagementService
         'opportunity.referent.personalData.contacts',
         'opportunity.commercial',
         // Attribution block (user directive 2026-07-22): "Fonte" stays on the
-        // Opportunity (D-2); "Segnalatore"/Sede operativa/Supervisore ride on
+        // Opportunity (D-2); "Segnalatore"/Sede operativa/GA2 Operatore ride on
         // the Quote itself, below.
         'opportunity.source',
         'opportunity.quotes.quoteWorkflowStatus',
@@ -90,7 +91,10 @@ final class RequestManagementService
         // never lazy-loads it (Model::preventLazyLoading() outside
         // production).
         'transferredFromOperationalSite.addresses.city',
-        'supervisor',
+        // Spec 0087, D-9: the GA2 Operatore, now a real FK on `quotes` —
+        // `quotes.supervisor_id` is no longer read by this panel at all
+        // (INV-5).
+        'operator',
         // Spec 0086, D-7: "Linee dell'offerta" — the Offerta's own REVENUE
         // lines, replacing "prodotti di interesse" in this module's panel and
         // editable from it since the user directive 2026-08-07. Also one half
@@ -204,10 +208,10 @@ final class RequestManagementService
             $opportunity->save();
             $quote->save();
 
-            // Step 3: the GA2 "Operatore" / Supervisore (D-3) — a pivot row
-            // plus a Quote column, written after both models are saved.
+            // Step 3: the GA2 "Operatore" (spec 0087, D-9) — a pivot row plus
+            // a Quote column, written after both models are saved.
             if (array_key_exists('operator_id', $data)) {
-                $this->attributionWriter->applySupervisor($quote, $data['operator_id'], $actor, $changed, $old);
+                $this->attributionWriter->applyOperator($quote, $data['operator_id'], $actor, $changed, $old);
             }
 
             // Step 4: reward assignments (spec 0059, AC-023; D-4/D-12) —
@@ -279,7 +283,7 @@ final class RequestManagementService
 
     /**
      * Explicit query when the relation is not already loaded — never a bare
-     * lazy-loaded property access, mirroring RequestSupervisorWriter's own
+     * lazy-loaded property access, mirroring RequestOperatorWriter's own
      * discipline (Model::preventLazyLoading() outside production).
      */
     private function resolveOpportunity(Quote $quote): Opportunity

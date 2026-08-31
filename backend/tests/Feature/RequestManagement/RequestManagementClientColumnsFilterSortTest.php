@@ -191,7 +191,10 @@ it('rows: a LIKE wildcard in a client filter is escaped, never a match-everythin
 it('rows: a client filter never escapes the GA2 scope of a viewAny-only actor', function () {
     $actor = requestManagementUserWith(['viewAny']);
     $mine = clientColumnRequest('Mario', 'Rossi', 'RSSMRA80A01H501U');
-    $mine->update(['supervisor_id' => $actor->id]);
+    // `operator_id` is deliberately NOT fillable (Quote model docblock,
+    // spec 0087 D-3) — written only by QuoteManagerWriter, so a plain test
+    // fixture uses forceFill() rather than a silently-discarded update().
+    $mine->forceFill(['operator_id' => $actor->id])->save();
     $foreign = clientColumnRequest('Mario', 'Verdi', 'VRDMRA70A01H501U');
 
     Sanctum::actingAs($actor);

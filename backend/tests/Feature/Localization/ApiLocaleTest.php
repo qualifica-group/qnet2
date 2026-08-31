@@ -47,17 +47,17 @@ if (! function_exists('localeCategory')) {
 }
 
 if (! function_exists('localeRequest')) {
-    function localeRequest(User $supervisor, ProductCategory $category): Quote
+    function localeRequest(User $operator, ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
         OpportunityProductLine::factory()->create([
             'opportunity_id' => $opportunity->id,
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
@@ -159,7 +159,10 @@ it('translates the shared envelope messages (403 and 404)', function () {
     // Without the update ability the same cell is a 403.
     $reader = User::factory()->create();
     $reader->givePermissionTo('request-management.viewAny');
-    $quote->update(['supervisor_id' => $reader->id]);
+    // `operator_id` is deliberately NOT fillable (spec 0087, D-3) — written
+    // only by QuoteManagerWriter, so a plain test fixture uses forceFill()
+    // rather than a silently-discarded update().
+    $quote->forceFill(['operator_id' => $reader->id])->save();
     Sanctum::actingAs($reader);
 
     localePatch($quote, [[

@@ -112,6 +112,40 @@ it('exposes meta.commercial/meta.reporter/meta.supervisor as null when unset', f
     expect($item['meta'])->toMatchArray(['commercial' => null, 'reporter' => null, 'supervisor' => null]);
 });
 
+// meta.managers (spec 0087, D-5): the Offerta form prefills its own Gestori
+// Account from here on selection, the same way the Opportunity form prefills
+// from RegistryForSelectResource.meta.managers. Positions are preserved with
+// their gaps: the slot array is positional, compacting it would silently move
+// people between G.A. levels.
+it('exposes meta.managers with their positions, gaps preserved', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $target = Opportunity::factory()->create();
+    $first = User::factory()->create();
+    $third = User::factory()->create();
+    $target->managers()->attach($first->id, ['position' => 1]);
+    $target->managers()->attach($third->id, ['position' => 3]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/opportunities/for-select?ids[]={$target->id}")->assertOk();
+    $item = collect($response->json('items'))->firstWhere('id', $target->id);
+
+    expect($item['meta']['managers'])->toBe([
+        ['id' => $first->id, 'name' => $first->name, 'position' => 1],
+        ['id' => $third->id, 'name' => $third->name, 'position' => 3],
+    ]);
+});
+
+it('exposes meta.managers as an empty array when the opportunity has none', function () {
+    $actor = opportunityForSelectUserWith(['viewAny']);
+    $target = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson("/api/opportunities/for-select?ids[]={$target->id}")->assertOk();
+    $item = collect($response->json('items'))->firstWhere('id', $target->id);
+
+    expect($item['meta']['managers'])->toBe([]);
+});
+
 it('ids[] hydrates an opportunity present even though it does not match the search', function () {
     $actor = opportunityForSelectUserWith(['viewAny']);
     $hydrated = Opportunity::factory()->create();

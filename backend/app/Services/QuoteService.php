@@ -5,29 +5,23 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DataObjects\Quotes\CreateQuoteData;
-use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Enums\DocumentLayoutModule;
-use App\Enums\QuoteLineType;
-use App\Enums\WorkflowStatusSystemKey;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
-use App\Models\Product;
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
-use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\OpportunityTitleBuilder;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Quotes\QuoteAttributeValueWriter;
-use App\Services\Quotes\QuoteLineWriter;
+use App\Services\Quotes\QuoteLineCoverageWriter;
+use App\Services\Quotes\QuoteManagerInheritance;
+use App\Services\Quotes\QuoteManagerWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
-use App\Services\Quotes\QuoteWorkflowResolver;
-use App\Services\Quotes\QuoteWorkflowStatusWriter;
-use Illuminate\Support\Collection;
+use App\Services\Quotes\QuoteWorkflowStatusAssigner;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -54,24 +48,25 @@ class QuoteService
     private const string CODE_COLUMN = 'code';
 
     /**
-     * The error field a REVENUE line's coverage failure is reported under
-     * (OpportunityProductLineCoverage::ensure()'s $errorField) — distinct from
-     * the opportunities picker's own `products_of_interest` key.
-     */
-    private const string COVERAGE_ERROR_FIELD = 'offer_lines';
-
-    /**
      * Relations eager-loaded for the detail read tree (QuoteResource), so a
      * single query never N+1s.
      *
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
-        'opportunity',
+        // Spec 0087, D-8: deepened from a bare `opportunity` to cover
+        // QuoteManagerLabelResolver's fallback source (an Offerta with no
+        // revenue line yet reads its Opportunita's own product lines'
+        // categories) — `offerLines.product.category` below covers the
+        // resolver's PRIMARY source.
+        'opportunity.productLines.productCategory',
         'quoteWorkflowStatus',
         'commercial',
         'reporter',
         'supervisor',
+        // Spec 0087, D-3/T-04: the Offerta's own "Gestori Account"
+        // (QuoteResource::summarizeManagers).
+        'managers',
         'company',
         'companySite',
         // The site has no own name: its label is composed from the primary
@@ -93,16 +88,16 @@ class QuoteService
     ];
 
     public function __construct(
-        private readonly QuoteLineWriter $lineWriter,
+        private readonly QuoteLineCoverageWriter $lineCoverageWriter,
         private readonly QuoteTotalsCalculator $totalsCalculator,
-        private readonly OpportunityProductLineCoverage $coverage,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly ContractLifecycleManager $contractLifecycleManager,
         private readonly OpportunityTitleBuilder $titleBuilder,
-        private readonly QuoteWorkflowResolver $workflowResolver,
-        private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
+        private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
+        private readonly QuoteManagerWriter $managerWriter,
+        private readonly QuoteManagerInheritance $managerInheritance,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -145,12 +140,21 @@ class QuoteService
             // D-7) are persisted.
             $quote = new Quote($attributes);
             $quote->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
-            $quote->quote_workflow_status_id = $this->globalDefaultOpenStatusId();
+            $quote->quote_workflow_status_id = $this->workflowStatusAssigner->globalDefaultOpenStatusId();
             $quote->save();
+
+            // Step 3b (spec 0087, D-4/D-5): the Offerta's own Gestori
+            // Account — a submitted set wins outright, otherwise PREFILL
+            // from the Opportunity's own GA at the same positions.
+            $this->managerWriter->sync(
+                $quote,
+                $data->hasManagerSlots() ? $data->managerSlots : $this->managerInheritance->fromOpportunity($opportunity),
+                $data->promoteManagersToOpportunity,
+            );
 
             // Step 4: write the submitted line sets (full-replace, D-8) and
             // cover the opportunity for REVENUE lines only (D-7).
-            $this->writeSubmittedLines($quote, $opportunity, $data->offerLines, $data->costLines);
+            $this->lineCoverageWriter->writeSubmitted($quote, $opportunity, $data->offerLines, $data->costLines);
 
             // Step 4b (spec 0084, D-5): "Informazioni aggiuntive" — written
             // AFTER the offer lines, so the applicable set validated against
@@ -181,7 +185,7 @@ class QuoteService
             // working status now that its criteria are final; an explicit
             // client choice advances FROM that resolved baseline, note-gated
             // when its destination `requires_note`.
-            $this->assignWorkflowStatus($quote, $data->workflowStatusId, $data->note, $actor);
+            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusId, $data->note, $actor);
             $quote->save();
 
             // Step 7: Contract lifecycle automation (spec 0072, BR-1) — a
@@ -224,7 +228,14 @@ class QuoteService
                 $this->rewardAssignmentWriter->sync($quote, $data->rewards);
             }
 
-            $this->writeSubmittedLines(
+            // Spec 0087, AC-003/D-6: omitted leaves the Offerta's GA
+            // untouched; a submitted array (even []) is an authoritative
+            // full-replace via the sole writer.
+            if ($data->hasManagerSlots()) {
+                $this->managerWriter->sync($quote, $data->managerSlots, $data->promoteManagersToOpportunity);
+            }
+
+            $this->lineCoverageWriter->writeSubmitted(
                 $quote,
                 $data->hasOfferLines() ? Opportunity::findOrFail($quote->opportunity_id) : null,
                 $data->offerLines,
@@ -259,7 +270,7 @@ class QuoteService
             // spec 0083 (AC-020..026): re-resolve the baseline against the
             // (possibly changed by a submitted `offer_lines`) criteria, then
             // apply an explicit client choice on top, note-gated.
-            $this->assignWorkflowStatus($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor);
+            $this->workflowStatusAssigner->assign($quote, $data->workflowStatusIdSubmitted ? $data->workflowStatusId : null, $data->note, $actor);
             $quote->save();
 
             // Contract lifecycle automation (spec 0072, BR-1).
@@ -344,98 +355,6 @@ class QuoteService
             ->where('is_active', true)
             ->where('is_default', true)
             ->value('id');
-    }
-
-    /**
-     * The single write-side entry point for `quote_workflow_status_id`
-     * (spec 0083, D-1/D-8): resolves the baseline the criteria-matched
-     * workflow set (or the global default) assigns THIS offer right now
-     * (AC-020/022, verbatim/system_key/open precedence — see
-     * QuoteWorkflowResolver::targetStatus()), then — when the client
-     * explicitly submitted a DIFFERENT status — advances onto it through
-     * QuoteWorkflowStatusWriter, the ONE choke point that enforces
-     * set-membership (AC-021) and the mandatory-note rule (AC-023/024/025).
-     */
-    private function assignWorkflowStatus(Quote $quote, ?int $submittedStatusId, ?string $note, User $actor): void
-    {
-        $workflow = $this->workflowResolver->resolve($quote);
-        $quote->quote_workflow_status_id = $this->workflowResolver->targetStatus($quote, $workflow)->id;
-
-        if ($submittedStatusId !== null && $submittedStatusId !== $quote->quote_workflow_status_id) {
-            $this->workflowStatusWriter->apply($quote, $submittedStatusId, $actor, $note);
-        }
-    }
-
-    /**
-     * The `open` row of the GLOBAL default set (`quote_workflow_id` null) —
-     * the bootstrap placeholder create() inserts a brand-new Quote with
-     * before its own criteria (the REVENUE offer lines) are persisted.
-     * Sharing this row's `system_key` is what lets
-     * QuoteWorkflowResolver::targetStatus() correctly remap it onto the
-     * FINAL resolved set right after (system_key match, never a hardcoded
-     * assumption).
-     */
-    private function globalDefaultOpenStatusId(): int
-    {
-        $id = QuoteWorkflowStatus::query()
-            ->whereNull('quote_workflow_id')
-            ->where('system_key', WorkflowStatusSystemKey::Open->value)
-            ->value('id');
-
-        if ($id === null) {
-            // Defense in depth: the global set is always seeded with its
-            // `open` row (AC-004/AC-005) — should never happen.
-            abort(500, 'The global default quote workflow status set has no open system row.');
-        }
-
-        return (int) $id;
-    }
-
-    /**
-     * Writes whichever of $offerLines/$costLines is non-null (the caller's
-     * "was this key submitted" signal) — $offerLines additionally covers
-     * $opportunity's product lines (D-7) before the REVENUE rows are
-     * written, so a coverage failure leaves NOTHING persisted for this tab.
-     *
-     * @param  array<int, QuoteLineData>|null  $offerLines
-     * @param  array<int, QuoteLineData>|null  $costLines
-     */
-    private function writeSubmittedLines(Quote $quote, ?Opportunity $opportunity, ?array $offerLines, ?array $costLines): void
-    {
-        if ($offerLines !== null) {
-            $this->coverOpportunity($opportunity, $offerLines);
-            $this->lineWriter->sync($quote, QuoteLineType::Revenue, $offerLines);
-        }
-
-        if ($costLines !== null) {
-            $this->lineWriter->sync($quote, QuoteLineType::Cost, $costLines);
-        }
-    }
-
-    /**
-     * Resolves the products referenced by $lines (with their category) and
-     * ensures $opportunity's `opportunity_product_lines` cover every one of
-     * them (D-7, shared OpportunityProductLineCoverage — AC-050/051/052/053).
-     * COST lines never call this (D-7): only REVENUE lines can trigger it,
-     * enforced by the single call site in writeSubmittedLines().
-     *
-     * @param  array<int, QuoteLineData>  $lines
-     */
-    private function coverOpportunity(?Opportunity $opportunity, array $lines): void
-    {
-        if ($opportunity === null || $lines === []) {
-            return;
-        }
-
-        $productIds = array_values(array_unique(array_map(
-            static fn (QuoteLineData $line): int => $line->productId,
-            $lines,
-        )));
-
-        /** @var Collection<int, Product> $products */
-        $products = Product::query()->with('category')->whereIn('id', $productIds)->get();
-
-        $this->coverage->ensure($opportunity, $products, self::COVERAGE_ERROR_FIELD);
     }
 
     /**

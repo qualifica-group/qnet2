@@ -19,6 +19,7 @@ use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\Opportunities\RewardAssignmentWriter;
+use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -34,6 +35,13 @@ use Illuminate\Validation\ValidationException;
  * Spec 0082: the Opportunity carries NO status FK any more — its status is
  * computed from its quotes by App\Services\Opportunities\OpportunityStatusResolver,
  * so nothing is defaulted, validated or synced here for it.
+ *
+ * Spec 0087, D-7: a submitted `manager_slots` on update(), when the
+ * opportunity's category is "sincronizzata" (`QuoteManagerSyncMode`),
+ * additionally REPLACES its (at most one, `OpportunityQuoteLimit::
+ * isSingleQuoteBranch()`) Quote's own GA list — see
+ * propagateManagersToQuote(). create() never propagates: a brand-new
+ * opportunity carries no quote yet to replicate onto.
  */
 class OpportunityService
 {
@@ -83,6 +91,7 @@ class OpportunityService
         // products already persisted (mirrors RequestManagementService).
         private readonly ProductCategoryCoherence $coherence,
         private readonly RegistryOpenOpportunityGuard $openOpportunityGuard,
+        private readonly QuoteManagerSyncMode $syncMode,
     ) {}
 
     public function loadDetail(Opportunity $opportunity): Opportunity
@@ -151,6 +160,7 @@ class OpportunityService
             ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
             ->with([
                 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
+                'managers:id,name',
                 // The sede operativa's label is composed from its primary
                 // address + city (it has no name column of its own).
                 'operationalSite.addresses.city',
@@ -295,6 +305,7 @@ class OpportunityService
             if ($data->hasManagerSlots()) {
                 $syncMap = $this->managerSyncMap($data->managerSlots);
                 $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
+                $this->propagateManagersToQuote($opportunity, $syncMap);
             }
 
             if ($data->hasProductLines()) {
@@ -408,5 +419,48 @@ class OpportunityService
         }
 
         return $map;
+    }
+
+    /**
+     * D-7/R-2: in a "sincronizzata" category, a write of $opportunity's own
+     * GA replicates the SAME $syncMap onto its Quote's `quote_user` pivot —
+     * a DIRECT sync(), never a call into
+     * `App\Services\Quotes\QuoteManagerWriter::sync()`. That writer's own
+     * Step 4 already replicates FROM the quote's side back onto the
+     * opportunity; calling into it here would let the bidirectionality
+     * re-enter without ever terminating. `quotes.operator_id` is written
+     * alongside it for the same denormalization-coherence reason
+     * QuoteManagerWriter writes it (D-3) — this method is the ONE other
+     * place allowed to touch that column (INV-2 still holds: both writers
+     * derive it from the very map they just synced, never independently).
+     *
+     * @param  array<int, array{position: int}>  $syncMap
+     */
+    private function propagateManagersToQuote(Opportunity $opportunity, array $syncMap): void
+    {
+        if (! $this->syncMode->isSynchronized($opportunity)) {
+            return;
+        }
+
+        $quote = $opportunity->quotes()->first();
+
+        if ($quote === null) {
+            return;
+        }
+
+        $quote->managers()->sync($syncMap);
+        $quote->unsetRelation('managers');
+
+        $operatorId = null;
+
+        foreach ($syncMap as $userId => $pivot) {
+            if ($pivot['position'] === ManagerPositions::OPERATOR) {
+                $operatorId = (int) $userId;
+
+                break;
+            }
+        }
+
+        $quote->forceFill(['operator_id' => $operatorId])->save();
     }
 }

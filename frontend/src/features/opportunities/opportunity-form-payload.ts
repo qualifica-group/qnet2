@@ -1,8 +1,7 @@
-import { sameIdSet } from '@/lib/utils'
+import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type {
   CreateOpportunityPayload,
   OpportunityDetail,
-  OpportunityManagerRef,
   OpportunityProductLineInput,
   UpdateOpportunityPayload,
 } from '@/features/opportunities/types'
@@ -147,7 +146,7 @@ export function buildUpdatePayload(
   }
   // Manager slots are ORDER- and GAP-sensitive (a slot's G.A. position is
   // meaningful), so compare positionally, not as an unordered set.
-  if (!sameSlots(values.manager_slots, managerSlotsFromRefs(original.managers))) {
+  if (!sameManagerSlots(values.manager_slots, managerSlotsFromRefs(original.managers))) {
     payload.manager_slots = values.manager_slots
   }
   if (values.start_date !== original.start_date) {
@@ -208,32 +207,6 @@ function sameProductLines(a: OpportunityProductLineInput[], b: OpportunityProduc
   return true
 }
 
-/**
- * `OpportunityDetail.managers` (spec 0040) carries hydrated `{id, name,
- * position}` refs, not the gap-aware slot array the form edits — unlike
- * registries, there is no dedicated `manager_slots` field on the detail
- * response. Rebuilds the positional, gap-aware slot array from the sparse
- * `managers` list so it can be compared against the form's current slots.
- */
-export function managerSlotsFromRefs(managers: OpportunityManagerRef[]): (number | null)[] {
-  const highestPosition = managers.reduce((max, manager) => Math.max(max, manager.position), 0)
-  const slots: (number | null)[] = new Array(highestPosition).fill(null)
-  managers.forEach((manager) => {
-    slots[manager.position - 1] = manager.id
-  })
-  return slots
-}
-
-/** Positional (order- and gap-sensitive) comparison of two G.A. slot arrays. */
-function sameSlots(a: (number | null)[], b: (number | null)[]): boolean {
-  const length = Math.max(a.length, b.length)
-  for (let index = 0; index < length; index += 1) {
-    if ((a[index] ?? null) !== (b[index] ?? null)) {
-      return false
-    }
-  }
-  return true
-}
 
 /** Normalizes `estimated_value` (may be a decimal string from the backend) to a comparable number. */
 export function normalizeDecimal(value: string | number | null): number | null {

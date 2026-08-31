@@ -44,17 +44,17 @@ if (! function_exists('productLineActor')) {
 
 if (! function_exists('productLineRequest')) {
     /** A quote the actor supervises, carrying one product line. */
-    function productLineRequest(User $supervisor, ProductCategory $category): Quote
+    function productLineRequest(User $operator, ProductCategory $category): Quote
     {
         $opportunity = Opportunity::factory()->create();
-        $opportunity->managers()->sync([$supervisor->id => ['position' => 2]]);
+        $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
         OpportunityProductLine::factory()->create([
             'opportunity_id' => $opportunity->id,
             'business_function_id' => $category->business_function_id,
             'product_category_id' => $category->id,
         ]);
 
-        return Quote::factory()->for($opportunity)->create(['supervisor_id' => $supervisor->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
     }
 }
 
