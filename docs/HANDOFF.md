@@ -129,10 +129,65 @@ Nuovi test: `tests/Feature/Quotes/QuoteRewardAssignmentTest.php` (8),
 blocco rewards in `quote-detail.test.tsx` (2), blocco "Offerta origin" in
 `reward-detail-renderer.test.tsx` (1). Fixture aggiornate (`rewards: []` / `related: []`).
 
+**Filtro "Offerta" + endpoint for-select (2° giro, direttiva "3 ok").**
+- Nuovo `GET /api/quotes/for-select` (ADR 0011): `QuoteForSelectController` +
+  `QuoteForSelectRequest` + `QuoteForSelectResource` (label = `code — title`: un'Offerta non ha
+  una colonna descrittiva unica, e il solo codice non distingue due offerte a colpo d'occhio) +
+  **`App\Services\Quotes\QuoteForSelectService`** — classe a se' e NON un metodo su
+  `QuoteService`, che e' gia' a ridosso del limite di 500 righe. Rotta dichiarata SOPRA
+  `quotes/{quote}` (il segmento letterale deve vincere sul wildcard).
+- `RewardOriginScope::whereQuote()` — specchio di `whereOpportunity()` — e il filtro avanzato
+  `quote` (order 3) nel catalogo `rewarded-referents`: matcha i buoni nati sull'Offerta E quelli
+  nati sull'Opportunita' che la contiene. Nessuna modifica FE oltre la label i18n: il widget
+  `async_search` risolve `source.resource` a runtime e chiama `/{resource}/for-select`.
+
+## CONTATORI "PENDING"/"APPROVATI" + REFRESH GRIGLIA (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Totale buoni ok, buoni attivi rimettimelo in buoni in pending (tutti i
+buoni con stato in pending), buoni completati invece tutti i buoni approvati." +
+"quando cambio stato deve reinderizzare anche sulla tabella, ora devo ricaricare la pagina".
+Emendamento **A-02 della spec 0059** (AC-045/046/047, SUPERSEDE AC-007).
+
+**Semantica cambiata (non un rename cosmetico).** I due contatori NON derivano piu' dallo stato
+commerciale dell'ORIGINE (spec 0059 D-2) ma dallo stato PROPRIO del buono (`reward_statuses`,
+spec 0060 D-5). Colonne rinominate — tenere `active`/`completed` su una semantica
+"pending"/"approvato" sarebbe naming drift:
+`active_rewards_count` -> **`pending_rewards_count`** ("Buoni in pending"),
+`completed_rewards_count` -> **`approved_rewards_count`** ("Buoni approvati").
+Il match e' per **GRUPPO** (`reward_statuses.group`: `pending` / `closed_won`), NON per
+`system_key`: una riga custom del configuratore in quel gruppo conta come quella di sistema.
+Il gruppo `closed_lost` ("Negato") non conta in nessuna delle due -> l'invariante e'
+`rewards_count >= pending + approved`, non un'uguaglianza.
+File toccati: `RewardedReferentsTableDefinition` (nuovo helper privato `countByStatusGroup()`;
+`OpportunityStatusScope`/`RewardOriginScope` non servono piu' ai contatori — restano ai FILTRI),
+`RewardedReferentRowMapper`, `RewardedReferentColumnCatalog`, FE `types.ts`/`column-renderers.tsx`
+e le due i18n.
+
+**Refresh della griglia dopo il cambio stato inline.** Le righe SSRM vivono nello store di AG
+Grid, **non** in React Query: `invalidateQueries` sulla lista di dettaglio non poteva raggiungere
+i contatori della riga master, per questo servivano un reload della pagina.
+`reward-detail-renderer.tsx` ora chiama `api.refreshServerSide({ purge: false })` nell'`onSuccess`
+della mutation. **Perche' `purge: false`:** ricarica i blocchi gia' caricati tenendo a schermo le
+righe correnti (e il pannello aperto), invece di svuotare tutto.
+**Cambio in `components/data-table/data-table.tsx`: `getRowId` e' ora INCONDIZIONATO** (prima era
+cablato solo con `enableSelection`). E' cio' che fa atterrare i dati aggiornati sullo STESSO nodo
+invece di ricrearlo — senza, un refresh lanciato da dentro un pannello di dettaglio lo
+smonterebbe. Tocca tutte le griglie: e' comunque la raccomandazione di AG Grid per l'SSRM.
+
+**Verifica eseguita.** Backend `XDEBUG_MODE=off php artisan test`: **5385 test, 5384 passed,
+1 skipped, 0 failed**. Frontend `npx vitest run`: **509 file, 3618 test** verdi.
+`npx tsc -b --force`, Pint ed ESLint puliti.
+Test modificati per REQUISITO CAMBIATO (dichiarato): AC-007 in
+`RewardedReferentsTableTest` riscritto sui gruppi di stato del buono (+ un caso per la riga
+custom), e il contatore in `RewardQuoteOriginTest`. Nuovi: `QuoteForSelectTest` (4), filtro
+`quote` in `RewardQuoteOriginTest`, e in `reward-detail-renderer.test.tsx` il caso
+"refreshes the SSRM rows" — **verificato che fallisce rimuovendo la chiamata**, non solo che
+passa.
+
 **Prossimi passi / segnalazioni.** (1) `QuoteService` 487/500 righe: split obbligato al prossimo
-intervento. (2) I filtri avanzati della pagina buoni restano intitolati "Opportunita'": ora
-matchano anche i buoni nati su Offerta, ma non esiste un filtro "Offerta" dedicato — da valutare
-se serve. (3) Resta aperto il drift gia' segnalato su `allowsNotes()` di
+intervento. (2) `getRowId` incondizionato in `data-table.tsx` tocca OGNI griglia: se una
+regressione di selezione/scroll comparisse altrove, guardare li' per prima cosa. (3) Resta aperto
+il drift gia' segnalato su `allowsNotes()` di
 `OpportunitiesTableDefinition`/`QuotesTableDefinition`.
 
 ## GRIGLIA GESTIONE RICHIESTE: COLONNE FLESSIBILI + STATO OFFERTA (2026-08-31) — VERDE, NON COMMITTATO

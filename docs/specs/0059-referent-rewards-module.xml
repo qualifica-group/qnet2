@@ -674,6 +674,62 @@
         modulo (`quotes` per un'Offerta, `opportunities` per un'Opportunita'), e su origine
         Offerta lo stato computato e' intitolato "Stato opportunita'", non "Stato
         commerciale" (A-D5).</criterion>
+      <criterion id="AC-043">Esiste `GET /api/quotes/for-select` (ADR 0011): ricerca su `code` E
+        `title`, ordinamento per `code`, idratazione degli `ids[]` senza gonfiare il `total`,
+        gated dal solo `auth:sanctum` come `opportunities/for-select`.</criterion>
+      <criterion id="AC-044">Il filtro avanzato `quote` di `rewarded-referents` seleziona i
+        referenti con un buono che appartiene a QUELL'Offerta, sia che il buono sia nato
+        sull'Offerta sia che sia nato sull'Opportunita' che la contiene.</criterion>
+    </acceptance_criteria>
+  </amendment>
+
+  <!-- ==================================================================== -->
+  <!-- EMENDAMENTO 2026-08-31 (b) — I CONTATORI LEGGONO LO STATO DEL BUONO  -->
+  <!-- ==================================================================== -->
+  <amendment id="A-02" date="2026-08-31" origin="direttiva utente">
+    <directive>
+      "Sulla tabella rewarded-referents voglio che mi cambi delle colonne: totale buoni ok,
+      buoni attivi rimettimelo in buoni in pending (quindi tutti i buoni con stato in pending),
+      buoni completati invece tutti i buoni approvati." E poi: "quando cambio stato deve
+      reinderizzare anche sulla tabella, ora devo ricaricare la pagina per vedere le modifiche
+      effettive."
+    </directive>
+
+    <decisions>
+      <item id="B-D1">**SUPERSEDE D-2 sui due contatori.** `active_rewards_count` e
+        `completed_rewards_count` — derivati dallo STATO COMMERCIALE DELL'ORIGINE — diventano
+        `pending_rewards_count` e `approved_rewards_count`, derivati dallo stato PROPRIO del
+        buono (`reward_statuses`, spec 0060 D-5). Le colonne rispondono a "a che punto e' ogni
+        buono nel suo iter di approvazione", che e' lo scopo della pagina. `rewards_count`
+        resta invariato. D-2 continua a valere per `context` della card (li' lo stato
+        dell'origine e' proprio l'informazione richiesta).</item>
+      <item id="B-D2">Il match e' per GRUPPO (`reward_statuses.group`: `pending` /
+        `closed_won`), non per `system_key`: cosi' una riga CUSTOM aggiunta dal configuratore a
+        quel gruppo conta esattamente come quella di sistema — la stessa regola con cui ogni
+        altro gate del codebase ragiona sugli stati. Il gruppo `closed_lost` ("Negato") non
+        conta in nessuna delle due colonne, quindi l'invariante e'
+        `rewards_count >= pending + approved`, non un'uguaglianza.</item>
+      <item id="B-D3">I nomi delle colonne sono rinominati, non riusati: tenere
+        `active`/`completed` addosso a una semantica "pending"/"approvato" sarebbe naming drift
+        (engineering.md §1.2).</item>
+      <item id="B-D4">Dopo il cambio di stato inline nella card, il renderer chiama
+        `api.refreshServerSide({ purge: false })`: le righe SSRM vivono nello store di AG Grid,
+        NON in React Query, quindi l'invalidazione della query di dettaglio non poteva
+        raggiungere i contatori della riga master. `getRowId` in `data-table.tsx` diventa
+        INCONDIZIONATO (prima era cablato solo con la selezione attiva): e' cio' che fa atterrare
+        i dati aggiornati sullo STESSO nodo invece di ricrearlo, tenendo aperto il pannello di
+        dettaglio da cui l'utente ha appena agito.</item>
+    </decisions>
+
+    <acceptance_criteria>
+      <criterion id="AC-045">`pending_rewards_count` conta i buoni del referente il cui stato sta
+        nel gruppo `pending`, `approved_rewards_count` quelli nel gruppo `closed_won`; un buono
+        `closed_lost` non entra in nessuno dei due. **SUPERSEDE AC-007.**</criterion>
+      <criterion id="AC-046">Una riga di stato CUSTOM (senza `system_key`) conta come quella di
+        sistema del suo stesso gruppo.</criterion>
+      <criterion id="AC-047">Cambiando lo stato di un buono dal pannello di dettaglio, i
+        contatori della riga master si aggiornano senza ricaricare la pagina e senza chiudere il
+        pannello.</criterion>
     </acceptance_criteria>
   </amendment>
 
