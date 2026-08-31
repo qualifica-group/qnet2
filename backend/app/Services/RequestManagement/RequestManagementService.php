@@ -11,6 +11,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestAttributeResolver;
+use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteWorkflowStatusWriter;
@@ -119,6 +120,7 @@ final class RequestManagementService
         private readonly RequestAttributeResolver $attributeResolver,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
+        private readonly ContractLifecycleManager $contractLifecycleManager,
     ) {}
 
     /**
@@ -149,6 +151,10 @@ final class RequestManagementService
             // reporter_id in-memory, so applyRewards() can tell a genuine
             // change apart from an untouched/no-op submission.
             $previousReporterId = $quote->reporter_id;
+            // Spec 0072, BR-1: same reason, for the OTHER automation this
+            // panel can trigger — the offer's status group as persisted
+            // right now, so the contract sync below sees the real transition.
+            $previousStatusId = $quote->quote_workflow_status_id;
 
             // Step 0: attribution — "Fonte" on the Opportunity (D-2),
             // "Segnalatore"/Sede operativa on the Quote (D-3/D-4).
@@ -207,6 +213,15 @@ final class RequestManagementService
 
             $opportunity->save();
             $quote->save();
+
+            // Step 2-quater: Contract lifecycle automation (spec 0072,
+            // BR-1) — this panel is the SECOND write path for
+            // `quote_workflow_status_id` (user directive 2026-08-07), so it
+            // owes the same closed_won transition handling QuoteService
+            // already does: without it an offer accepted from Gestione
+            // Richieste never grows its Contratto, and one moved back out
+            // never gets suspended.
+            $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
 
             // Step 3: the GA2 "Operatore" (spec 0087, D-9) — a pivot row plus
             // a Quote column, written after both models are saved.

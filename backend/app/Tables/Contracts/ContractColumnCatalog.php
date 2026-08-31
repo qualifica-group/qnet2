@@ -32,6 +32,14 @@ namespace App\Tables\Contracts;
  * `alert` (BR-6/D-4) is calculated at read time by ContractAlertResolver,
  * never a real column: `set`-filterable over its 2 possible values, never
  * sortable (a derived qualitative flag, not a meaningful ordering axis).
+ *
+ * `managers` (user directive 2026-08-31) is the offer's G.A. team, a to-many
+ * through `quote.managers`: `set`-filterable on the manager's name, never
+ * sortable (no single related row to order by).
+ *
+ * `commercial`/`supervisor`/`managers` ship HIDDEN by default (same
+ * directive): available in the column picker, just not in the opening
+ * layout.
  */
 final class ContractColumnCatalog
 {
@@ -65,9 +73,28 @@ final class ContractColumnCatalog
             ],
             self::relationColumn('registry', 'contracts.columns.registry'),
             self::relationColumn('opportunity', 'contracts.columns.opportunity'),
-            self::relationColumn('commercial', 'contracts.columns.commercial'),
+            self::relationColumn('commercial', 'contracts.columns.commercial', visible: false),
             self::relationColumn('reporter', 'contracts.columns.reporter'),
-            self::relationColumn('supervisor', 'contracts.columns.supervisor'),
+            self::relationColumn('supervisor', 'contracts.columns.supervisor', visible: false),
+            // "Gestori Account" (user directive 2026-08-31) — the same
+            // avatar-stack column the Offerte grid carries (spec 0087
+            // D-1/T-10), read through the 1-1 `quote` like every other
+            // display column of this domain (D-1): a to-many, so never
+            // sortable, `set`-filterable on the manager's name.
+            // Beside the Supervisore, the two reading together as "chi segue
+            // questo contratto" — same placement directive the Offerte grid
+            // got, and same deliberate break of spec 0001's append-only
+            // convention (the stored preference delta is keyed by column ID,
+            // so only DEFAULT layouts move).
+            [
+                'id' => 'managers',
+                'label' => 'contracts.columns.managers',
+                'type' => 'text',
+                'visible' => false,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
             self::relationColumn('contract_status', 'contracts.columns.contractStatus'),
             [
                 'id' => 'quote_date',
@@ -170,15 +197,20 @@ final class ContractColumnCatalog
      * Excel-like Set widget and sortable (a correlated subquery, resolved by
      * ContractRelationColumns).
      *
+     * `$visible` false leaves the column out of the DEFAULT layout while
+     * keeping it fully available in the column picker (spec 0001): the grid
+     * opens on the commercial data that identifies a contract, and the
+     * people columns are opt-in (user directive 2026-08-31).
+     *
      * @return array<string, mixed>
      */
-    private static function relationColumn(string $id, string $label): array
+    private static function relationColumn(string $id, string $label, bool $visible = true): array
     {
         return [
             'id' => $id,
             'label' => $label,
             'type' => 'text',
-            'visible' => true,
+            'visible' => $visible,
             'sortable' => true,
             'filterable' => true,
             'filterType' => 'set',
@@ -198,6 +230,7 @@ final class ContractColumnCatalog
             ['columnId' => 'commercial', 'type' => 'set'],
             ['columnId' => 'reporter', 'type' => 'set'],
             ['columnId' => 'supervisor', 'type' => 'set'],
+            ['columnId' => 'managers', 'type' => 'set'],
             ['columnId' => 'contract_status', 'type' => 'set'],
             ['columnId' => 'quote_date', 'type' => 'date'],
             ['columnId' => 'accepted_at', 'type' => 'date'],

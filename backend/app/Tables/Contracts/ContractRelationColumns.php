@@ -29,6 +29,10 @@ use Illuminate\Support\Facades\DB;
  *    a `whereHas` dot-path set filter, a correlated-subquery sort and
  *    Excel-like distinct values (spec 0004/0005), mirroring
  *    QuoteRelationColumns.
+ *  - `managers` (user directive 2026-08-31): the offer's G.A. team, a
+ *    to-many through the `quote_user` pivot — a `whereHas` set filter and
+ *    Excel-like distinct values, never a sort (no single related row to
+ *    order by), mirroring QuoteRelationColumns' own `managers` entry.
  *  - QUOTE_SCALAR_COLUMNS: `code`/`title`/`quote_date`(`quotes.created_at`)/
  *    `revenue_net`/`revenue_vat` — plain `quotes` columns with no relation
  *    label at all, reached via the SAME `quote` relation. Filtering reuses
@@ -65,6 +69,11 @@ final class ContractRelationColumns
         'commercial' => 'quote.commercial',
         'reporter' => 'quote.reporter',
         'supervisor' => 'quote.supervisor',
+        // To-many (the `quote_user` pivot): filterable through the same
+        // `whereHas` on the related row's name, but deliberately absent from
+        // both FK maps below — it has no single row to sort by or to collect
+        // distinct ids from, so it takes the dedicated pivot path instead.
+        'managers' => 'quote.managers',
         'contract_status' => 'contractStatus',
     ];
 
@@ -233,6 +242,10 @@ final class ContractRelationColumns
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === 'managers') {
+            return $this->distinctManagerNames($search, $query, $limit);
+        }
+
         [$table, $ids] = $this->idsFor($columnId, $query);
 
         if ($table === null || $ids === null) {
@@ -248,6 +261,31 @@ final class ContractRelationColumns
             ->orderBy(self::LABEL_COLUMN)
             ->limit($limit)
             ->pluck(self::LABEL_COLUMN)
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
+    }
+
+    /**
+     * Distinct account-manager names among the contracts matching $query,
+     * joined through `quote_user` on their offers — scoped by every OTHER
+     * active filter (Excel-like distinct values, spec 0004/0005), mirroring
+     * QuoteRelationColumns::distinctManagerNames() one hop further out.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<int, string>
+     */
+    private function distinctManagerNames(?string $search, Builder $query, int $limit): array
+    {
+        return DB::table('users')
+            ->join('quote_user', 'quote_user.user_id', '=', 'users.id')
+            ->whereIn('quote_user.quote_id', $this->quoteIds($query))
+            ->when($search !== null && $search !== '', function (QueryBuilder $builder) use ($search): void {
+                $builder->where('users.'.self::LABEL_COLUMN, 'like', '%'.$this->escapeLike($search).'%');
+            })
+            ->distinct()
+            ->orderBy('users.'.self::LABEL_COLUMN)
+            ->limit($limit)
+            ->pluck('users.'.self::LABEL_COLUMN)
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
     }

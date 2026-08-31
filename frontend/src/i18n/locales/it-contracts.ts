@@ -16,6 +16,7 @@ export const contracts = {
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
     supervisor: 'Supervisore',
+    managers: 'Gestori account',
     contractStatus: 'Stato contratto',
     quoteDate: 'Data offerta',
     acceptedAt: 'Accettazione',

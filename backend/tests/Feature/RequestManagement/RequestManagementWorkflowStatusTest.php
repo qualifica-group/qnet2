@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Contract;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\Quote;
@@ -196,4 +197,68 @@ it('PATCH without request-management.update -> 403, status unchanged', function 
     ])->assertForbidden();
 
     expect($quote->fresh()->quote_workflow_status_id)->toBe($originalStatusId);
+});
+
+// ---------------------------------------------------------------------------
+// Contract lifecycle (spec 0072, BR-1) — this panel is the SECOND write path
+// for `quote_workflow_status_id`, so it owes the same automation the
+// /api/quotes endpoints do (ContractLifecycleTest covers that channel).
+// ---------------------------------------------------------------------------
+
+it('PATCH into a closed_won status creates the Contratto', function () {
+    $actor = requestWorkflowActor();
+    $quote = requestWorkflowQuote($actor);
+    $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    Sanctum::actingAs($actor);
+
+    expect(Contract::where('quote_id', $quote->id)->exists())->toBeFalse();
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedWon->id,
+    ])->assertOk();
+
+    $contract = Contract::where('quote_id', $quote->id)->sole();
+
+    expect($contract->accepted_at->toDateString())->toBe(now()->toDateString())
+        ->and($contract->isSuspended())->toBeFalse();
+});
+
+it('PATCH back OUT of closed_won suspends the Contratto instead of deleting it', function () {
+    $actor = requestWorkflowActor();
+    $quote = requestWorkflowQuote($actor);
+    $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    $open = requestWorkflowGlobalStatus();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedWon->id,
+    ])->assertOk();
+
+    $statusBefore = Contract::where('quote_id', $quote->id)->value('contract_status_id');
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $open->id,
+    ])->assertOk();
+
+    $contract = Contract::where('quote_id', $quote->id)->sole();
+
+    expect($contract->isSuspended())->toBeTrue()
+        ->and($contract->status_before_suspension_id)->toBe($statusBefore);
+});
+
+it('PATCH of another field on an already closed_won request does not duplicate the Contratto', function () {
+    $actor = requestWorkflowActor();
+    $quote = requestWorkflowQuote($actor);
+    $closedWon = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'closed_won')->sole();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedWon->id,
+    ])->assertOk();
+
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'quote_workflow_status_id' => $closedWon->id,
+    ])->assertOk();
+
+    expect(Contract::where('quote_id', $quote->id)->count())->toBe(1);
 });

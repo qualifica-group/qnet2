@@ -84,7 +84,7 @@ if (! function_exists('makeLabelledContract')) {
 // AC-029 — declared columns, in the frozen order
 // ---------------------------------------------------------------------------
 
-it('AC-029: GET /api/tables/contracts/columns declares the 18 columns in the exact frozen order', function () {
+it('AC-029: GET /api/tables/contracts/columns declares the 19 columns in the exact frozen order', function () {
     $actor = contractTableUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
@@ -99,7 +99,7 @@ it('AC-029: GET /api/tables/contracts/columns declares the 18 columns in the exa
 
     expect($ids)->toBe([
         'id', 'code', 'title', 'registry', 'opportunity', 'commercial', 'reporter',
-        'supervisor', 'contract_status', 'quote_date', 'accepted_at', 'validated_at',
+        'supervisor', 'managers', 'contract_status', 'quote_date', 'accepted_at', 'validated_at',
         'renewal_date', 'expiry_date', 'terminated_at', 'revenue_net', 'revenue_vat',
         'revenue_gross', 'alert',
     ]);
@@ -277,4 +277,102 @@ it('AC-036: POST /api/exports/contracts exports the visible columns', function (
 
     expect($rows[0])->toBe(['Code', 'Title'])
         ->and($rows[1])->toBe(['QUO-9001', 'Contratto esportato']);
+});
+
+// ---------------------------------------------------------------------------
+// `managers` — the offer's G.A. team on the contracts grid (user directive
+// 2026-08-31), mirroring the Offerte module's own column; plus the three
+// people columns that ship hidden by default.
+// ---------------------------------------------------------------------------
+
+it('hides commercial/supervisor/managers from the DEFAULT layout, leaving every other column visible', function () {
+    $actor = contractTableUserWith(['viewAny']);
+    Sanctum::actingAs($actor);
+
+    $columns = collect($this->getJson('/api/tables/contracts/columns')->assertOk()->json('data.columns'));
+
+    // `id` is the generic engine's own hidden row-key column, not a catalogue entry.
+    expect($columns->reject->visible->pluck('id')->all())->toBe(['id', 'commercial', 'supervisor', 'managers']);
+});
+
+it('declares `managers` beside the supervisor: filterable as a set, never sortable', function () {
+    $actor = contractTableUserWith(['viewAny']);
+    Sanctum::actingAs($actor);
+
+    $data = $this->getJson('/api/tables/contracts/columns')->assertOk()->json('data');
+    $managers = collect($data['columns'])->firstWhere('id', 'managers');
+    $ids = collect($data['columns'])->pluck('id')->all();
+
+    expect($managers['sortable'])->toBeFalse()
+        ->and($managers['filterable'])->toBeTrue()
+        ->and($managers['filterType'])->toBe('set')
+        ->and($ids[array_search('supervisor', $ids, true) + 1])->toBe('managers')
+        ->and(collect($data['filters'])->firstWhere('columnId', 'managers')['type'])->toBe('set');
+});
+
+it('projects the offer G.A. team on the row, ordered by pivot position', function () {
+    $actor = contractTableUserWith(['viewAny', 'view']);
+    $contract = makeLabelledContract('Reg', 'Opp', 'Comm', 'Rep', 'Sup', 'QUO-7001', 'Con GA');
+    $first = User::factory()->create(['name' => 'Anna Prima']);
+    $second = User::factory()->create(['name' => 'Bruno Secondo']);
+    $contract->quote->managers()->sync([$second->id => ['position' => 2], $first->id => ['position' => 1]]);
+
+    Sanctum::actingAs($actor);
+
+    $row = collect($this->postJson('/api/tables/contracts/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()
+        ->json('items'))
+        ->firstWhere('id', $contract->id);
+
+    expect(array_column($row['managers'], 'name'))->toBe(['Anna Prima', 'Bruno Secondo']);
+});
+
+it('projects an empty G.A. array when the offer has no team', function () {
+    $actor = contractTableUserWith(['viewAny', 'view']);
+    $contract = makeLabelledContract('Reg', 'Opp', 'Comm', 'Rep', 'Sup', 'QUO-7002', 'Senza GA');
+
+    Sanctum::actingAs($actor);
+
+    $row = collect($this->postJson('/api/tables/contracts/rows', ['startRow' => 0, 'endRow' => 25])
+        ->assertOk()
+        ->json('items'))
+        ->firstWhere('id', $contract->id);
+
+    expect($row['managers'])->toBe([]);
+});
+
+it('filters the grid by G.A. name', function () {
+    $actor = contractTableUserWith(['viewAny', 'view']);
+    $wanted = makeLabelledContract('Reg A', 'Opp A', 'Comm A', 'Rep A', 'Sup A', 'QUO-7003', 'Con GA');
+    $other = makeLabelledContract('Reg B', 'Opp B', 'Comm B', 'Rep B', 'Sup B', 'QUO-7004', 'Altro GA');
+    $manager = User::factory()->create(['name' => 'Carla Gestore']);
+    $wanted->quote->managers()->sync([$manager->id => ['position' => 1]]);
+    $other->quote->managers()->sync([User::factory()->create(['name' => 'Dario Gestore'])->id => ['position' => 1]]);
+
+    Sanctum::actingAs($actor);
+
+    $ids = collect($this->postJson('/api/tables/contracts/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['managers' => ['filterType' => 'set', 'values' => ['Carla Gestore']]],
+    ])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($ids)->toBe([$wanted->id]);
+});
+
+it('offers the distinct G.A. names of the matching contracts as filter values', function () {
+    $actor = contractTableUserWith(['viewAny', 'view']);
+    $contract = makeLabelledContract('Reg C', 'Opp C', 'Comm C', 'Rep C', 'Sup C', 'QUO-7005', 'Con GA');
+    $contract->quote->managers()->sync([
+        User::factory()->create(['name' => 'Zeta Gestore'])->id => ['position' => 1],
+        User::factory()->create(['name' => 'Alfa Gestore'])->id => ['position' => 2],
+    ]);
+    // An offer with no contract: its manager must NOT show up.
+    Quote::factory()->create()->managers()->sync([User::factory()->create(['name' => 'Escluso Gestore'])->id => ['position' => 1]]);
+
+    Sanctum::actingAs($actor);
+
+    $values = $this->postJson('/api/tables/contracts/values', ['columnId' => 'managers'])->assertOk()->json('data.values');
+
+    expect($values)->toBe(['Alfa Gestore', 'Zeta Gestore']);
 });

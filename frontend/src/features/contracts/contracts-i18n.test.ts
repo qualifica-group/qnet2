@@ -68,6 +68,7 @@ const BACKEND_COLUMN_LABEL_KEYS = [
   'contracts.columns.commercial',
   'contracts.columns.reporter',
   'contracts.columns.supervisor',
+  'contracts.columns.managers',
   'contracts.columns.contractStatus',
   'contracts.columns.quoteDate',
   'contracts.columns.acceptedAt',

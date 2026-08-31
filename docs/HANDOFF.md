@@ -3,7 +3,81 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## LABEL G.A. DELLA CATEGORIA "FORMAZIONE" NEL SEED PRODUZIONE (2026-08-31) — VERDE, NON COMMITTATO
+## COLONNA G.A. SUI CONTRATTI + COLONNE PERSONE NASCOSTE (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Nella tabella Contratti aggiungere la colonna GA come nelle Offerte,
+accanto a Supervisore. Poi (cambio in corsa): nascondere di DEFAULT Commerciale, Supervisore e GA.
+
+**Backend.**
+- `ContractColumnCatalog::columns()` — nuova voce `managers` SUBITO DOPO `supervisor`
+  (`type: text`, `visible: false`, `sortable: false`, `filterable: true`, `filterType: set`,
+  label `contracts.columns.managers`). `relationColumn()` prende ora un parametro `bool $visible = true`;
+  `commercial` e `supervisor` lo passano `false`. Nessun'altra colonna cambia.
+- `ContractColumnCatalog::filters()` — `['columnId' => 'managers', 'type' => 'set']` dopo supervisor.
+- `ContractRelationColumns` — `RELATION_PATHS['managers'] = 'quote.managers'` (filtro set via
+  `whereHas` sul `name`); NON e' nelle due mappe FK, quindi `subqueryFor()` torna null e la colonna
+  resta non ordinabile; nuovo `distinctManagerNames()` (join `quote_user` su `quoteIds($query)`),
+  dispatchato in cima a `distinctValues()`.
+- `ContractsTableDefinition` — eager-load `quote.managers.avatar`; `mapRow` proietta
+  `'managers' => $quote?->managers->map(userSummary)->all() ?? []` (ordinato per pivot position,
+  array vuoto mai null).
+
+**Frontend.**
+- `contractColumnRenderers.managers` -> `UserStackCell` (lo stesso delle Offerte/Opportunita').
+- i18n `contracts.columns.managers`: it "Gestori account" / en "Account managers".
+
+**Nota su spec 0001.** L'inserimento in mezzo (non in coda) rompe volutamente la convenzione
+append-only, come gia' fatto sulle Offerte: il delta di preferenza e' chiavato per column ID,
+quindi solo i layout DEFAULT si spostano, i layout salvati dagli utenti restano.
+
+**Test.** `tests/Feature/Contracts/ContractTableTest.php`: aggiornata l'asserzione dell'ordine
+colonne (18 -> 19, `managers` dopo `supervisor`) + 6 casi nuovi (default nascosti = `id`,
+`commercial`, `supervisor`, `managers`; shape della colonna e posizione; proiezione ordinata per
+position; array vuoto senza team; filtro set per nome GA; distinct values scopati ai contratti).
+`frontend/src/features/contracts/column-renderers.test.tsx` +3 casi (stack, em dash su [] e null).
+Aggiornata la lista chiavi in `contracts-i18n.test.ts`.
+**Eseguiti**: Pest `tests/Feature/Contracts` 88 passed / 393 assertions; `tests/Feature/Table` +
+`tests/Feature/Quotes` 487 passed / 2264 assertions. Vitest `src/features/contracts/` 87 passed.
+`npx tsc -b --force` EXIT=0. Pint pulito.
+
+**Prossimo passo.** Chiedere all'utente se committare.
+
+## CONTRATTO NON CREATO DA GESTIONE RICHIESTE (2026-08-31) — VERDE, NON COMMITTATO
+
+**Sintomo.** `/quotes/1` (QUO-0001) ha stato di lavorazione "Associato SI _ NOI"
+(group `closed_won`) ma non compare nei Contratti: nessuna riga `contracts` per quel `quote_id`.
+
+**Root cause.** L'automazione spec 0072 BR-1 (`ContractLifecycleManager::syncOnStatusChange()`)
+era agganciata SOLO a `QuoteService::create()/update()`. Dalla direttiva 2026-08-07 esiste un
+SECONDO percorso di scrittura di `quotes.quote_workflow_status_id` —
+`RequestManagementService::updateWork()` step 2-ter (pannello di lavoro Gestione Richieste +
+inline edit della griglia via `WritesInlineEditableCells`) — che non chiamava l'automazione.
+Confermato sul dato reale: activity #2341, `opportunity#16`, `quote_workflow_status_id` 30 -> 48
+alle 15:02:45 con log_name `opportunities` (= `logOperationalChange`, D-9), cioe' il canale
+Gestione Richieste. Effetto simmetrico: uscendo da closed_won il contratto non veniva nemmeno
+sospeso.
+
+**Fix.** `app/Services/RequestManagement/RequestManagementService.php`:
+`ContractLifecycleManager` iniettato nel costruttore; `$previousStatusId` catturato a inizio
+transazione accanto a `$previousReporterId`; nuovo step 2-quater che chiama
+`syncOnStatusChange($quote, $previousStatusId)` dopo `$opportunity->save()`/`$quote->save()`,
+dentro la STESSA transazione (come fa QuoteService).
+
+**Test.** `tests/Feature/RequestManagement/RequestManagementWorkflowStatusTest.php` +3 casi:
+PATCH in closed_won crea il Contratto con `accepted_at` = oggi; PATCH fuori da closed_won lo
+SOSPENDE (non lo cancella) salvando `status_before_suspension_id`; ri-PATCH sullo stesso stato
+non duplica. **Verificati rossi senza il fix** (2 errori + 1 failure) e verdi con il fix.
+Suite `tests/Feature/Contracts` + `tests/Feature/RequestManagement`: **476 passed / 1802
+assertions**. Pint pulito.
+
+**DATO ESISTENTE ANCORA ROTTO.** Il fix vale per le transizioni future: QUO-0001 e' gia' in
+closed_won, quindi nessuna transizione la ri-scattera' (closed_won -> closed_won e' no-op).
+Serve un backfill una-tantum per le offerte gia' in closed_won senza `contracts` — DA
+AUTORIZZARE dall'utente, non ancora eseguito.
+
+**Prossimo passo.** Chiedere all'utente se committare e se eseguire il backfill.
+
+## LABEL G.A. DELLA CATEGORIA "FORMAZIONE" NEL SEED PRODUZIONE (2026-08-31) — COMMITTATO (85eee15)
 
 **Richiesta utente.** Nel seed di produzione, alla creazione della categoria "Formazione"
 devono esserci anche le impostazioni dei Gestori Account: 1 Tutor, 2 Operatore,

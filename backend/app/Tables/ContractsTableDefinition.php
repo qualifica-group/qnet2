@@ -25,9 +25,9 @@ use Illuminate\Support\Facades\Gate;
  *
  * D-1: `contracts` owns almost none of the data it shows — `code`/`title`/
  * `registry`/`opportunity`/`commercial`/`reporter`/`supervisor`/`quote_date`/
- * `revenue_net`/`revenue_vat` are all projected live off the eager-loaded
- * `quote` tree (delegated to ContractRelationColumns, file-size split,
- * engineering.md §6). `contract_status` is the one own-FK relation.
+ * `revenue_net`/`revenue_vat`/`managers` are all projected live off the
+ * eager-loaded `quote` tree (delegated to ContractRelationColumns, file-size
+ * split, engineering.md §6). `contract_status` is the one own-FK relation.
  * `accepted_at`/`validated_at`/`renewal_date`/`expiry_date`/`terminated_at`
  * are real `contracts` columns, handled entirely by the generic engine.
  *
@@ -90,6 +90,11 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'quote.commercial',
             'quote.reporter',
             'quote.supervisor.avatar',
+            // "Gestori Account" (user directive 2026-08-31): the offer's own
+            // team, rendered as an avatar stack — `.avatar` for the same
+            // reason `supervisor` pulls it, so the inline data URI costs no
+            // per-row query.
+            'quote.managers.avatar',
             'contractStatus',
         ]);
     }
@@ -170,6 +175,11 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'commercial' => $this->summarize($quote?->commercial),
             'reporter' => $this->summarize($quote?->reporter),
             'supervisor' => $this->userSummary($quote?->supervisor),
+            // Ordered by pivot position (Quote::managers()), no `position` in
+            // the cell itself — the exact projection QuotesTableDefinition
+            // makes. An empty array (never null) when the offer has no team,
+            // or when the contract has somehow lost its quote.
+            'managers' => $quote?->managers->map(fn (User $user): array => $this->userSummary($user))->all() ?? [],
             'contract_status' => $this->summarizeContractStatus($row->contractStatus),
             'quote_date' => $quote?->created_at,
             'accepted_at' => $row->accepted_at,

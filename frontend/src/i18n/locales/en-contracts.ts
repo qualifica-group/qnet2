@@ -16,6 +16,7 @@ export const contracts = {
     commercial: 'Commercial',
     reporter: 'Reporter',
     supervisor: 'Supervisor',
+    managers: 'Account managers',
     contractStatus: 'Contract status',
     quoteDate: 'Offer date',
     acceptedAt: 'Accepted at',

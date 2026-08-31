@@ -73,3 +73,25 @@ describe('contractColumnRenderers.alert (AC-049)', () => {
     expect(container.textContent).toBe('')
   })
 })
+
+/** The offer's G.A. avatar stack on the contracts grid (user directive 2026-08-31). */
+describe('contractColumnRenderers.managers', () => {
+  it('renders one avatar per filled G.A. slot', () => {
+    renderCell('managers', [
+      { id: 12, name: 'Mario Rossi', avatar_url: null },
+      { id: 7, name: 'Anna Bianchi', avatar_url: null },
+    ])
+    expect(screen.getByText('MR')).toBeInTheDocument()
+    expect(screen.getByText('AB')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the offer has no G.A. yet', () => {
+    renderCell('managers', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for a null value', () => {
+    renderCell('managers', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
