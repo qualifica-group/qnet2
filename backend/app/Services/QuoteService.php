@@ -60,6 +60,17 @@ class QuoteService
         // categories) — `offerLines.product.category` below covers the
         // resolver's PRIMARY source.
         'opportunity.productLines.productCategory',
+        // Richiesta utente 2026-08-31: il dettaglio Offerta mostra
+        // l'anagrafica e il referente del record padre
+        // (QuoteResource::registry/referent), che sono una PROIEZIONE
+        // dell'Opportunita' — nessuna colonna propria su `quotes`.
+        'opportunity.registry',
+        'opportunity.referent',
+        // Richiesta utente 2026-08-31: fonte, funzioni aziendali/categorie
+        // prodotto e note generali del record padre, mostrate nel Contesto
+        // dell'Offerta. `productLines.productCategory` e' gia' sopra.
+        'opportunity.source',
+        'opportunity.productLines.businessFunction',
         'quoteWorkflowStatus',
         'commercial',
         'reporter',

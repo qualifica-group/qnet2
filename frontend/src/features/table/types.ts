@@ -57,7 +57,13 @@ export interface EnumBadge {
 export type FilterType = 'text' | 'number' | 'date' | 'set' | 'boolean'
 
 /** How a row action should be rendered. */
-export type ActionType = 'link' | 'action' | 'danger'
+/**
+ * How an action reads: a plain navigation/edit (`link`/`action`), one that
+ * closes positively (`success`), one that closes negatively (`danger`). The
+ * server's action catalog assigns it; `features/table/action-tone.ts` turns it
+ * into the single colour used by both the grid and the record actions bars.
+ */
+export type ActionType = 'link' | 'action' | 'success' | 'danger'
 
 /**
  * A single primary contact as carried by a row's `primary_contact` cell value

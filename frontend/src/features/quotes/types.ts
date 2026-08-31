@@ -12,6 +12,7 @@
  */
 
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { ProductLine } from '@/features/product-lines/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -196,6 +197,20 @@ export interface QuoteDetail {
   title: string
   opportunity_id: number
   opportunity: QuoteRelationRef
+  /**
+   * Read-only projection of the parent Opportunity (user directive
+   * 2026-08-31): its anagrafica, referente, fonte, righe
+   * funzione-aziendale/categoria-prodotto and note generali. `quotes` carries
+   * no such column and none of them is writable from the offer — the detail
+   * only displays them as the context of the record it belongs to. Optional
+   * for the same fixture-compatibility reason as the other additive fields
+   * below; treat a missing key the same as `null`/`[]`.
+   */
+  registry?: QuoteRelationRef | null
+  referent?: QuoteRelationRef | null
+  source?: QuoteRelationRef | null
+  product_lines?: ProductLine[]
+  general_notes?: string | null
   quote_workflow_status_id: number
   quote_workflow_status: QuoteWorkflowStatusRef
   /** The set resolved by the backend for THIS quote: the select never offers anything outside it (AC-050). */

@@ -12,6 +12,11 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+        // Controparte positiva di `destructive`, stesso identico trattamento:
+        // un'azione di dominio che chiude bene (valida, riattiva) si legge come
+        // quella che chiude male, solo di segno opposto.
+        success:
+          "bg-success text-white hover:bg-success/90 focus-visible:ring-success/20 dark:bg-success/60 dark:focus-visible:ring-success/40",
         // Filled rather than transparent: an outline button laid directly on the
         // page body would otherwise take the body's own background and read as
         // "missing". It carries the raised surface (`--card`) plus the hairline,

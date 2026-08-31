@@ -39,6 +39,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * third as `{id, label}` via OperationalSiteLabel — the site has no own name
  * column, exactly as on ProjectResource/OpportunityResource.
  *
+ * `registry`/`referent`/`source`/`product_lines`/`general_notes` (user
+ * directive 2026-08-31) are a READ-ONLY projection of the parent Opportunity:
+ * `quotes` carries no such column and none of them is writable from here — the
+ * offer detail only displays them as the context of the record it belongs to,
+ * so they are additive output, not fields of QuotesAuthorization.
+ * `product_lines` reuses OpportunityResource's own row shape verbatim, so the
+ * shared read-only list renders either record identically. Relies on
+ * QuoteService::DETAIL_RELATIONS eager-loading `opportunity.registry`,
+ * `opportunity.referent`, `opportunity.source` and
+ * `opportunity.productLines.{businessFunction,productCategory}`.
+ *
  * `layout`/`layout_id` (spec 0070) and `payment_method`/`payment_method_id`
  * (user directive 2026-07-30) follow the standard `{id, name}` ref shape
  * (`summarizeByName`), additive alongside every pre-existing key.
@@ -112,6 +123,15 @@ class QuoteResource extends JsonResource
             'title' => $this->title,
             'opportunity_id' => $this->opportunity_id,
             'opportunity' => $this->summarizeByName($this->opportunity),
+            // Proiezione READ-ONLY del record padre (richiesta utente
+            // 2026-08-31): l'anagrafica e il suo referente non hanno colonna
+            // propria su `quotes` e non sono scrivibili da qui — il dettaglio
+            // Offerta le mostra soltanto, come fa la scheda Opportunita'.
+            'registry' => $this->summarizeByName($this->opportunity?->registry),
+            'referent' => $this->summarizeByName($this->opportunity?->referent),
+            'source' => $this->summarizeByName($this->opportunity?->source),
+            'product_lines' => $this->summarizeProductLines($this->opportunity?->productLines ?? []),
+            'general_notes' => $this->opportunity?->general_notes,
             'quote_workflow_status_id' => $this->quote_workflow_status_id,
             'quote_workflow_status' => $this->summarizeWorkflowStatus($this->quoteWorkflowStatus),
             'quote_workflow_statuses' => $this->resolveWorkflowStatuses(),
@@ -174,6 +194,23 @@ class QuoteResource extends JsonResource
     private function summarizeCompany(?Company $company): ?array
     {
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
+    }
+
+    /**
+     * The parent Opportunity's funzione-aziendale + categoria-prodotto rows,
+     * in OpportunityResource's own shape (spec 0040 amendment rev.3).
+     *
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductLines(iterable $lines): array
+    {
+        return collect($lines)
+            ->map(fn (Model $line): array => [
+                'id' => $line->id,
+                'business_function' => $this->summarizeByName($line->businessFunction),
+                'product_category' => $this->summarizeByName($line->productCategory),
+            ])
+            ->all();
     }
 
     /**

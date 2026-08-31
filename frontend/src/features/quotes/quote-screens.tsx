@@ -31,7 +31,7 @@ import type { QuoteDetail } from '@/features/quotes/types'
  * screens directly for `new`/`:id`/`:id/edit`; only the list route
  * (`/quotes`) stays declared by hand in `router.tsx`, same as every module.
  */
-export function QuoteDetailScreen({ id }: ModuleDetailScreenProps) {
+export function QuoteDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: quote,
@@ -54,7 +54,7 @@ export function QuoteDetailScreen({ id }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <QuoteDetailView quote={quote} />
+  return <QuoteDetailView quote={quote} onEdit={onEdit} />
 }
 
 /**
@@ -137,4 +137,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.quotes',
   DetailScreen: QuoteDetailScreen,
   FormScreen: QuoteFormScreen,
+  // The record card's own identity band carries the Edit button (next to
+  // "Download quote"), same as `opportunities`: the generic page header must
+  // not render a second one.
+  detailOwnsEditAction: true,
 }

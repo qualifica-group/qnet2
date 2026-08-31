@@ -22,6 +22,7 @@ import {
   resolveActionIcon,
   type ActionIconMap,
 } from '@/features/table/action-icon-map'
+import { ACTION_ICON_CLASS, actionMenuVariant } from '@/features/table/action-tone'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 /**
@@ -167,10 +168,7 @@ function RowActions({
                   aria-label={count !== null ? `${label} (${count})` : label}
                   disabled={busy}
                   onClick={() => handleSelect(action)}
-                  className={cn(
-                    'relative',
-                    action.type === 'danger' && 'text-destructive hover:text-destructive',
-                  )}
+                  className={cn('relative', ACTION_ICON_CLASS[action.type])}
                 >
                   <Icon aria-hidden="true" />
                   {count !== null && <ActionCountBadge count={count} />}
@@ -201,7 +199,7 @@ function RowActions({
               return (
                 <DropdownMenuItem
                   key={action.key}
-                  variant={action.type === 'danger' ? 'destructive' : 'default'}
+                  variant={actionMenuVariant(action.type)}
                   onSelect={() => handleSelect(action)}
                 >
                   <Icon aria-hidden="true" />

@@ -4,12 +4,12 @@ import { toast } from 'sonner'
 import { BadgeCheck, CalendarClock, Pencil, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
+import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { ContractValidateDialog } from '@/features/contracts/contract-validate-dialog'
 import { ContractScheduleDialog } from '@/features/contracts/contract-schedule-dialog'
 import { ContractTerminateDialog } from '@/features/contracts/contract-terminate-dialog'
 import { ContractChangeStatusDialog } from '@/features/contracts/contract-change-status-dialog'
 import { ContractEditDialog } from '@/features/contracts/contract-edit-dialog'
-import { ContractRelatedLinks } from '@/features/contracts/contract-related-links'
 import { ContractReactivateDialog } from '@/features/contracts/contract-reactivate-dialog'
 import { contractLifecycleActions, isContractClosedLost } from '@/features/contracts/contract-lifecycle'
 import { useReactivateContract } from '@/features/contracts/use-contract-mutations'
@@ -35,11 +35,18 @@ interface ContractActionsBarProps {
  * "Riattiva contratto" is the one action a closed-lost contract keeps: on
  * that path it opens a dialog asking for the destination status, while the
  * suspended path (D-3/AC-048) keeps its plain confirm — there the
- * pre-suspension status is restored server-side. "Visualizza preventivo" and
- * "Apri opportunità" are not lifecycle-gated and open a MODAL, never another
- * page (see `ContractRelatedLinks`).
- * "Visualizza preventivo"/"Apri opportunità" are plain gated links, not
- * mutations, and stay available through the whole lifecycle.
+ * pre-suspension status is restored server-side.
+ *
+ * This bar carries MUTATIONS only: reaching the Offerta or the Opportunità is
+ * not an action but a link on the field that names them, in
+ * `ContractDetailSections` (user directive 2026-08-31).
+ *
+ * Every button takes its look from `ACTION_BUTTON_VARIANT` keyed on the SAME
+ * `type` the server's action catalog gives that key
+ * (`ContractColumnCatalog::actions()`), so the grid's actions column and this
+ * bar can never colour the same action differently (user directive
+ * 2026-08-31): green for a positive closure (valida, riattiva), red for the
+ * negative one (disdici), neutral outline for everything else.
  */
 export function ContractActionsBar({ contract, onChanged }: ContractActionsBarProps) {
   const { t } = useTranslation()
@@ -73,9 +80,13 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b px-6 py-3">
+    // Direttiva utente 2026-08-31: le azioni PRENDONO il posto della striscia
+    // KPI, e con esso il suo vestito — la banda tinta (`border-y bg-muted/40`)
+    // subito sotto l'header della record card, che e' anche l'unico spazio in
+    // cui sei bottoni gated ci stanno davvero.
+    <div className="flex flex-wrap items-center gap-2 border-y bg-muted/40 px-4 py-3">
       {lifecycle.validate && contract.permissions.actions.validate ? (
-        <Button type="button" variant="secondary" size="sm" onClick={() => setOpenDialog('validate')}>
+        <Button type="button" variant={ACTION_BUTTON_VARIANT.success} size="sm" onClick={() => setOpenDialog('validate')}>
           <BadgeCheck aria-hidden="true" />
           {t('contracts.actions.validate')}
         </Button>
@@ -84,7 +95,8 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
       {lifecycle.schedule && contract.permissions.actions.schedule ? (
         <Button
           type="button"
-          variant="secondary"
+          variant={ACTION_BUTTON_VARIANT.action}
+          className="bg-card"
           size="sm"
           disabled
           title={t('contracts.actions.scheduleUnavailable')}
@@ -96,7 +108,7 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
       ) : null}
 
       {lifecycle.terminate && contract.permissions.actions.terminate ? (
-        <Button type="button" variant="secondary" size="sm" onClick={() => setOpenDialog('terminate')}>
+        <Button type="button" variant={ACTION_BUTTON_VARIANT.danger} size="sm" onClick={() => setOpenDialog('terminate')}>
           <XOctagon aria-hidden="true" />
           {t('contracts.actions.terminate')}
         </Button>
@@ -105,7 +117,7 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
       {lifecycle.reactivate && contract.permissions.actions.reactivate ? (
         <Button
           type="button"
-          variant="secondary"
+          variant={ACTION_BUTTON_VARIANT.success}
           size="sm"
           onClick={() => (closedLost ? setOpenDialog('reactivate') : void handleReactivate())}
           disabled={reactivateMutation.isPending}
@@ -116,20 +128,18 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
       ) : null}
 
       {lifecycle.edit && contract.permissions.resource.update ? (
-        <Button type="button" variant="outline" className="bg-card" size="sm" onClick={() => setOpenDialog('edit')}>
+        <Button type="button" variant={ACTION_BUTTON_VARIANT.link} className="bg-card" size="sm" onClick={() => setOpenDialog('edit')}>
           <Pencil aria-hidden="true" />
           {t('contracts.actions.edit.title')}
         </Button>
       ) : null}
 
       {lifecycle.changeStatus && contract.permissions.actions.change_status ? (
-        <Button type="button" variant="outline" className="bg-card" size="sm" onClick={() => setOpenDialog('change-status')}>
+        <Button type="button" variant={ACTION_BUTTON_VARIANT.action} className="bg-card" size="sm" onClick={() => setOpenDialog('change-status')}>
           <Shuffle aria-hidden="true" />
           {t('contracts.actions.changeStatus')}
         </Button>
       ) : null}
-
-      <ContractRelatedLinks contract={contract} />
 
       <ContractValidateDialog
         open={openDialog === 'validate'}

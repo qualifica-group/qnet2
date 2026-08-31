@@ -15,6 +15,13 @@ import type {
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const CONTRACTS_DOMAIN = 'contracts'
 
+/**
+ * Polymorphic owner alias of a contract (`config('attachments.attachable_types')`),
+ * sent as `attachable_type` by the documents surface — singular, NOT the plural
+ * domain key above. Mirrors `OPPORTUNITY_ATTACHABLE_ALIAS`.
+ */
+export const CONTRACT_ATTACHABLE_ALIAS = 'contract'
+
 /** Query key of a single contract's detail (fresh-on-open pattern, mirrors `quoteDetailQueryKey`). */
 export function contractDetailQueryKey(id: number | null) {
   return ['contracts', 'detail', id] as const

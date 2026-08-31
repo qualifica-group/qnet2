@@ -237,7 +237,11 @@ final class ContractColumnCatalog
                 'key' => 'validate',
                 'label' => 'contracts.actions.validate',
                 'icon' => 'check-circle',
-                'type' => 'action',
+                // Chiusura POSITIVA del contratto: `success` e' la controparte
+                // di `danger` (direttiva utente 2026-08-31) — il frontend ne
+                // deriva un unico colore, in griglia e nella barra azioni della
+                // scheda (features/table/action-tone.ts).
+                'type' => 'success',
                 'confirm' => true,
                 'permission' => 'contracts.validate',
             ],
@@ -269,7 +273,9 @@ final class ContractColumnCatalog
                 'key' => 'reactivate',
                 'label' => 'contracts.actions.reactivate',
                 'icon' => 'rotate-ccw',
-                'type' => 'action',
+                // Rimette in vita un contratto chiuso: positiva quanto la
+                // validazione, stessa tinta.
+                'type' => 'success',
                 'confirm' => true,
                 'permission' => 'contracts.reactivate',
             ],

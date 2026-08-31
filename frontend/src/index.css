@@ -65,6 +65,12 @@
   --accent: hsl(216 18% 76%);
   --accent-foreground: hsl(218 31% 27%);
   --destructive: hsl(0 84.2% 60.2%);
+  /* Esito positivo di un'azione di dominio (valida, riattiva), la controparte
+     di `--destructive`: un'unica tinta per TUTTE le azioni positive, in griglia
+     e nelle barre azioni delle schede. Scelta scura (33) perche' regge sia da
+     riempimento con testo bianco (5.6:1) sia da colore di icona sulla card
+     (5.6:1) — nessuna delle due resa e' sacrificata all'altra. */
+  --success: hsl(142 71% 33%);
   /* Rung 4: darker than card (100), surface (90), body (81) and the muted tint
      (79) alike, so a card edge is visible against the page (1.25:1) and a panel
      edge against the surface. One line colour for card edges and grid
@@ -124,6 +130,11 @@
   --accent: hsl(220 14% 44%);
   --accent-foreground: hsl(0 0% 98%);
   --destructive: hsl(0 62.8% 30.6%);
+  /* Chiara, non scura come la controparte light: qui la card e' gia' a 23, e un
+     verde scuro come icona ci sparirebbe sopra. A 48 tiene 3:1 sulla card come
+     colore di icona, e da riempimento passa comunque per `bg-success/60` (come
+     fa `--destructive`), che la riporta a un verde medio sotto il testo bianco. */
+  --success: hsl(142 55% 48%);
   /* Rung 4: lighter than body (4), surface (16), card (23) and tint (31) alike. */
   --border: hsl(223 18% 38%);
   --input: hsl(223 18% 38%);
@@ -167,6 +178,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-field: var(--field);

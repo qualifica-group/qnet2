@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Award, Building2, Contact, Users } from 'lucide-react'
+import { Building2, Contact, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import {
   RecordField,
@@ -10,10 +10,10 @@ import {
 import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
 import { UserAvatar } from '@/components/user-avatar'
 import { UserProfileHoverCard, type UserProfileSummary } from '@/components/user-profile-hover-card'
-import { RewardChip } from '@/features/rewards/reward-chip'
+import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
+import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
 import type {
   OpportunityDetailWithPermissions as OpportunityDetailData,
-  OpportunityProductLine,
   OpportunityProductOfInterest,
 } from '@/features/opportunities/types'
 import { managerPositionLabel } from '@/features/shared/manager-position-label'
@@ -50,23 +50,6 @@ function TeamPerson({ user }: { user: UserProfileSummary }) {
       <UserAvatar name={user.name} src={user.avatar_url ?? null} className="size-7 shrink-0" />
       <span className="truncate text-sm text-foreground">{user.name}</span>
     </UserProfileHoverCard>
-  )
-}
-
-/** Read-only list of the opportunity's business-function + product-category rows (spec 0040 amendment rev.3, AC-101). */
-function ProductLinesList({ lines }: { lines: OpportunityProductLine[] }) {
-  if (lines.length === 0) {
-    return <DetailEmpty />
-  }
-  return (
-    <ul className="flex flex-col gap-1">
-      {lines.map((line) => (
-        <li key={line.id}>
-          <span className="font-medium">{line.business_function.name}</span>
-          <span className="text-muted-foreground"> — {line.product_category.name}</span>
-        </li>
-      ))}
-    </ul>
   )
 }
 
@@ -158,7 +141,7 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
             {opportunity.source?.name ?? <DetailEmpty />}
           </RecordField>
           <RecordField label={t('opportunities.form.sections.productLines.title')}>
-            <ProductLinesList lines={opportunity.product_lines} />
+            <ProductLinesReadOnlyList lines={opportunity.product_lines} />
           </RecordField>
           <RecordField label={t('products.ofInterest.sectionTitle')}>
             <ProductsOfInterestList
@@ -204,15 +187,10 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
         </RecordFieldList>
       </RecordSection>
 
-      {rewards.length > 0 ? (
-        <RecordSection title={t('opportunities.detail.rewards')} icon={<Award />}>
-          <div className="flex flex-wrap gap-1.5">
-            {rewards.map((reward) => (
-              <RewardChip key={reward.id} rewardType={reward.reward_type} />
-            ))}
-          </div>
-        </RecordSection>
-      ) : null}
+      {/* La STESSA sezione che rende la scheda Offerta (richiesta utente
+          2026-08-31): un solo componente, cosi' i due record non possono
+          divergere sul blocco buoni. */}
+      <RewardChipsSection title={t('opportunities.detail.rewards')} rewards={rewards} />
     </RecordSectionsGrid>
   )
 }

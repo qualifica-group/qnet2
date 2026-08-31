@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
@@ -99,13 +100,18 @@ beforeEach(() => {
 })
 
 /**
- * Spec 0085: il dettaglio Offerta monta ora la sezione Note, che usa React
- * Query. Un client NUOVO per ogni render (non uno condiviso a livello di file)
- * cosi' la cache di un test non puo' influenzarne un altro.
+ * Spec 0085: il dettaglio Offerta monta la sezione Note, che usa React Query.
+ * Un client NUOVO per ogni render (non uno condiviso a livello di file) cosi'
+ * la cache di un test non puo' influenzarne un altro. Il `MemoryRouter` serve
+ * al link verso l'Opportunita' padre nella sezione Contesto.
  */
 function renderDetail(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 describe('QuoteDetailView — Download quote button (AC-304)', () => {
@@ -178,9 +184,12 @@ describe('QuoteDetailView — rewards', () => {
     expect(screen.getByText('Carburante')).toBeInTheDocument()
   })
 
-  it('shows the empty placeholder when the offer has no reward', () => {
+  // Richiesta utente 2026-08-31: i buoni sono una SEZIONE propria (la stessa
+  // che rende la scheda Opportunita'), non piu' una riga di "Anagrafica e
+  // contatti" — e una sezione senza dati non si rende affatto.
+  it('renders no rewards section when the offer has no reward', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
-    expect(detailValueFor('Rewards')).toBe('—')
+    expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
   })
 })
 

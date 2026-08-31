@@ -28,6 +28,7 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: (
 
 vi.mock('@/features/contracts/api', () => ({
   CONTRACTS_DOMAIN: 'contracts',
+  CONTRACT_ATTACHABLE_ALIAS: 'contract',
   contractDetailQueryKey: (id: number | null) => ['contracts', 'detail', id],
   fetchContract: vi.fn(),
   updateContract: vi.fn(),

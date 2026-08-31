@@ -1,115 +1,164 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Building, Building2, CreditCard, Handshake, MapPin, UserRound } from 'lucide-react'
-import { DetailEmpty, DetailField, DetailGrid, DetailSection } from '@/components/detail/detail-panel'
-import type { ContractDetail } from '@/features/contracts/types'
+import { Building2, CalendarClock, Contact, CreditCard } from 'lucide-react'
+import { DetailEmpty } from '@/components/detail/detail-panel'
+import {
+  RecordField,
+  RecordFieldList,
+  RecordSection,
+  RecordSectionsGrid,
+} from '@/components/detail/record-panel'
+import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import {
+  ContractOpportunityLink,
+  ContractQuoteLink,
+  NoOpportunityText,
+} from '@/features/contracts/contract-related-links'
+import type { ContractDetail, ContractRelationRef } from '@/features/contracts/types'
 import { formatDate } from '@/lib/formatting/date-display'
 
-/** Identity/relations section: the same relations the quote projects, never duplicated on `contracts` (AC-040). */
-export function ContractIdentitySection({ contract }: { contract: ContractDetail }) {
-  const { t } = useTranslation()
+/** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
+const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
+
+/**
+ * A lifecycle date plus, when there is one, the person who stamped it — the
+ * pairing "validated at / by" and "terminated at / by" both need, and the only
+ * shape in this section that is not a bare date.
+ */
+function StampedDate({ date, by }: { date: string | null; by: ContractRelationRef | null }) {
+  const formatted = formatDate(date)
+
+  if (!formatted) {
+    return <DetailEmpty />
+  }
 
   return (
-    <DetailSection title={t('contracts.detail.sections.identity')}>
-      <DetailGrid>
-        <DetailField label={t('contracts.detail.registry')} icon={<Building2 />}>
-          {contract.registry ? contract.registry.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.opportunity')} icon={<Handshake />}>
-          {contract.opportunity ? contract.opportunity.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.company')}>
-          {contract.company ? contract.company.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.companySite')}>
-          {contract.company_site ? contract.company_site.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.operationalSite')} icon={<MapPin />}>
-          {contract.operational_site ? contract.operational_site.label : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.commercial')} icon={<UserRound />}>
-          {contract.commercial ? contract.commercial.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.reporter')} icon={<UserRound />}>
-          {contract.reporter ? contract.reporter.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.supervisor')} icon={<UserRound />}>
-          {contract.supervisor ? contract.supervisor.name : <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.paymentMethod')} icon={<Building />}>
-          {contract.payment_method ? contract.payment_method.name : <DetailEmpty />}
-        </DetailField>
-      </DetailGrid>
-    </DetailSection>
+    <>
+      {formatted}
+      {by ? <span className="text-muted-foreground"> — {by.name}</span> : null}
+    </>
   )
 }
 
-/** Lifecycle dates section: quote date through termination, plus who validated/terminated it. */
-export function ContractLifecycleSection({ contract }: { contract: ContractDetail }) {
-  const { t } = useTranslation()
+/** A date row that falls back to the kit's empty placeholder — most of the lifecycle section. */
+function DateField({ label, value }: { label: string; value: string | null }) {
+  return <RecordField label={label}>{formatDate(value) || <DetailEmpty />}</RecordField>
+}
 
+/** A relation row that falls back to the kit's empty placeholder. */
+function RelationField({
+  label,
+  icon,
+  relation,
+}: {
+  label: string
+  icon?: ReactNode
+  relation: { name: string } | null
+}) {
   return (
-    <DetailSection title={t('contracts.detail.sections.lifecycle')}>
-      <DetailGrid>
-        <DetailField label={t('contracts.detail.quoteDate')}>
-          {formatDate(contract.quote.created_at) || <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.acceptedAt')}>
-          {formatDate(contract.accepted_at) || <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.validatedAt')}>
-          {contract.validated_at ? (
-            <>
-              {formatDate(contract.validated_at)}
-              {contract.validated_by ? (
-                <span className="text-muted-foreground"> — {contract.validated_by.name}</span>
-              ) : null}
-            </>
-          ) : (
-            <DetailEmpty />
-          )}
-        </DetailField>
-        <DetailField label={t('contracts.detail.renewalDate')}>
-          {formatDate(contract.renewal_date) || <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.expiryDate')}>
-          {formatDate(contract.expiry_date) || <DetailEmpty />}
-        </DetailField>
-        <DetailField label={t('contracts.detail.terminatedAt')}>
-          {contract.terminated_at ? (
-            <>
-              {formatDate(contract.terminated_at)}
-              {contract.terminated_by ? (
-                <span className="text-muted-foreground"> — {contract.terminated_by.name}</span>
-              ) : null}
-            </>
-          ) : (
-            <DetailEmpty />
-          )}
-        </DetailField>
-        {contract.termination_reason ? (
-          <DetailField label={t('contracts.detail.terminationReason')} full>
-            <span className="whitespace-pre-wrap">{contract.termination_reason}</span>
-          </DetailField>
-        ) : null}
-      </DetailGrid>
-    </DetailSection>
+    <RecordField label={label} icon={icon}>
+      {relation ? relation.name : <DetailEmpty />}
+    </RecordField>
   )
 }
 
-/** Free-text section: payment notes and comments, both PATCH-editable via "Modifica dati". */
-export function ContractNotesSection({ contract }: { contract: ContractDetail }) {
+interface ContractDetailSectionsProps {
+  contract: ContractDetail
+}
+
+/**
+ * The contract record's `RecordSectionsGrid` body, on the same kit as
+ * `QuoteDetailSections` (user directive 2026-08-31: the contract wants the
+ * offer's view): comments callout, Cliente e opportunita', Societa' e sedi,
+ * Ciclo di vita, Documento e pagamento.
+ *
+ * Deliberately NOT shown here (same directive): the whole Team block —
+ * Supervisore, Commerciale, Segnalatore. The values are not removed —
+ * `commercial`/`reporter`/`supervisor` stay on the payload, this screen just
+ * does not render them.
+ *
+ * Every relation here is a LIVE projection through the quote (BR-7/AC-040):
+ * nothing below is a persisted column on `contracts`.
+ */
+export function ContractDetailSections({ contract }: ContractDetailSectionsProps) {
   const { t } = useTranslation()
 
   return (
-    <DetailSection title={t('contracts.detail.sections.notes')} icon={<CreditCard />}>
-      <DetailGrid>
-        <DetailField label={t('contracts.detail.paymentNotes')} full>
-          <span className="whitespace-pre-wrap">{contract.payment_notes ?? <DetailEmpty />}</span>
-        </DetailField>
-        <DetailField label={t('contracts.detail.comments')} full>
-          <span className="whitespace-pre-wrap">{contract.comments ?? <DetailEmpty />}</span>
-        </DetailField>
-      </DetailGrid>
-    </DetailSection>
+    <RecordSectionsGrid>
+      {/* Lo STESSO callout dell'Offerta e dell'Opportunita': il testo libero del
+          record si legge PRIMA dei campi strutturati, e si rende da se' nullo
+          quando non c'e'. */}
+      <GeneralNotesCallout
+        title={t('contracts.detail.comments')}
+        notes={contract.comments}
+        className={FULL_WIDTH_SECTION_CLASS}
+      />
+
+      <RecordSection title={t('contracts.detail.sections.identity')} icon={<Contact />}>
+        <RecordFieldList>
+          <RelationField label={t('contracts.detail.registry')} relation={contract.registry} />
+          {/* I due record correlati sono raggiungibili DAL campo che li nomina
+              (direttiva utente 2026-08-31), non da bottoni nella barra azioni.
+              Aprono comunque una MODALE, mai un'altra pagina. */}
+          <RecordField label={t('contracts.detail.opportunity')}>
+            {contract.opportunity ? (
+              <ContractOpportunityLink id={contract.opportunity.id} name={contract.opportunity.name} />
+            ) : (
+              <NoOpportunityText />
+            )}
+          </RecordField>
+          <RecordField label={t('contracts.detail.quote')}>
+            <ContractQuoteLink quoteId={contract.quote_id} title={contract.quote.title} />
+          </RecordField>
+        </RecordFieldList>
+      </RecordSection>
+
+      <RecordSection title={t('contracts.detail.sections.company')} icon={<Building2 />}>
+        <RecordFieldList>
+          <RelationField label={t('contracts.detail.company')} relation={contract.company} />
+          <RelationField label={t('contracts.detail.companySite')} relation={contract.company_site} />
+          <RecordField label={t('contracts.detail.operationalSite')}>
+            {contract.operational_site ? contract.operational_site.label : <DetailEmpty />}
+          </RecordField>
+        </RecordFieldList>
+      </RecordSection>
+
+      <RecordSection title={t('contracts.detail.sections.lifecycle')} icon={<CalendarClock />}>
+        <RecordFieldList>
+          {/* D-1: `quotes` non ha una colonna data propria — la data preventivo
+              E' il suo `created_at`. */}
+          <DateField label={t('contracts.detail.quoteDate')} value={contract.quote.created_at} />
+          <DateField label={t('contracts.detail.acceptedAt')} value={contract.accepted_at} />
+          <RecordField label={t('contracts.detail.validatedAt')}>
+            <StampedDate date={contract.validated_at} by={contract.validated_by} />
+          </RecordField>
+          <DateField label={t('contracts.detail.renewalDate')} value={contract.renewal_date} />
+          <DateField label={t('contracts.detail.expiryDate')} value={contract.expiry_date} />
+          <RecordField label={t('contracts.detail.terminatedAt')}>
+            <StampedDate date={contract.terminated_at} by={contract.terminated_by} />
+          </RecordField>
+          {contract.termination_reason ? (
+            <RecordField label={t('contracts.detail.terminationReason')}>
+              <span className="whitespace-pre-wrap">{contract.termination_reason}</span>
+            </RecordField>
+          ) : null}
+        </RecordFieldList>
+      </RecordSection>
+
+      <RecordSection title={t('contracts.detail.sections.payment')} icon={<CreditCard />}>
+        <RecordFieldList>
+          <RelationField label={t('contracts.detail.paymentMethod')} relation={contract.payment_method} />
+          <RecordField label={t('contracts.detail.paymentNotes')}>
+            {contract.payment_notes ? (
+              <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">
+                {contract.payment_notes}
+              </p>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordField>
+        </RecordFieldList>
+      </RecordSection>
+    </RecordSectionsGrid>
   )
 }

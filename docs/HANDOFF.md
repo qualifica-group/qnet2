@@ -3,6 +3,350 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DETTAGLIO OFFERTA `/quotes/:id` — RESA CRM (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Refactoring VISIVO di `/quotes/:id` prendendo a modello `/opportunities/:id`
+("quasi le stesse info") e le convenzioni dei CRM enterprise. Poi, per iterazioni successive:
+righe/totali dentro la card principale senza sezione propria; strip Offerta|Costi, tabella righe e
+riepilogo nella STESSA banda senza filetti; Team = solo Supervisore e G.A.; nuova sezione
+"Anagrafica e contatti" come sull'Opportunita'; buoni in una sezione propria su ENTRAMBI i record.
+
+**Struttura finale della pagina.** Kit record `components/detail/record-panel.tsx` — lo STESSO di
+`OpportunityDetailView`; il vecchio kit `detail-panel.tsx` non e' piu' usato qui.
+
+- **Colonna sinistra, UNA sola `RecordCard`:**
+  1. `QuoteDetailHeader` — monogramma, titolo, `code`, pill dello stato di lavorazione, azioni
+     "Download quote" + "Modifica" in alto a destra.
+  2. `QuoteDetailStats` — striscia KPI sul `summary` PERSISTITO: ricavi netti, costi netti, margine
+     netto (`text-destructive` se negativo), totale provvigioni (assente se il campo `commissions`
+     non e' visibile). Hint col lordo sotto i due netti.
+  3. `QuoteDetailSections` — callout note interne, poi le sezioni: **Contesto** (Opportunita' come
+     link, Fonte, Funzioni aziendali e categorie prodotto, Note generali dell'Opportunita' —
+     NIENTE Stato, e' gia' la pill dell'header) · **Anagrafica e contatti** (Anagrafica, Referente,
+     Commerciale, Segnalatore) · **Team** (SOLO Supervisore + G.A.) · **Buoni** (sezione propria,
+     assente se vuota) · **Societa' e sedi** · **Documento e pagamento** ·
+     **Informazioni aggiuntive**.
+  4. `QuoteDetailLines` — banda di chiusura SENZA card ne' titolo propri: strip Offerta|Costi,
+     tabella righe e `QuoteSummary` tutti nella STESSA banda (`border-t` solo in cima, nessun
+     filetto interno). Il riepilogo sta dentro `Tabs` ma fuori da ogni `TabsContent`, quindi resta
+     visibile su entrambe le tab — stessa collocazione che il form da' alla sua preview live.
+- **Colonna destra:** card collaborazione, strip **Note | Documenti opportunita' | Attivita'**. I
+  documenti sono quelli del record padre, montati READ-ONLY (`canUpload`/`canDelete` false) esatta-
+  mente come li monta il Contratto (spec 0072 AC-047, richiesta utente "quelli che trovo in
+  contratti"): un'Offerta non possiede allegati propri, quindi non offre di aggiungerne.
+- **Footer:** `RecordMeta` con creato/aggiornato.
+
+**Contratto API — aggiunta ADDITIVA.** `QuoteResource` espone ora `registry`, `referent`, `source`
+(`{id,name}|null`), `product_lines` (stessa shape riga di `OpportunityResource`) e `general_notes`
+(`string|null`): **proiezione READ-ONLY del record padre** (`$this->opportunity->...`). `quotes`
+non ha colonne proprie per nessuno di questi e non sono scrivibili dall'Offerta, quindi NON sono
+campi di `QuotesAuthorization`. `QuoteService::DETAIL_RELATIONS` eager-loada
+`opportunity.registry`, `opportunity.referent`, `opportunity.source` e
+`opportunity.productLines.{businessFunction,productCategory}` (niente N+1). Lato FE sono opzionali
+su `QuoteDetail` (stessa convenzione fixture-compat degli altri campi additivi).
+
+**Decisioni da rispettare.**
+- Il campo Opportunita' e' un `Link` a `/opportunities/{opportunity_id}` — per questo
+  `quote-detail.test.tsx` monta un `MemoryRouter`.
+- `moduleScreen.detailOwnsEditAction: true` per `quotes`, come `opportunities`: il bottone Modifica
+  vive nell'header della card, `ModuleDetailPage` non ne rende un secondo. `QuoteDetailScreen`
+  inoltra `onEdit`.
+- L'**Attivita'** non e' un permesso nuovo: `QuotesAuthorization::actions()` dichiarava gia'
+  `view_activity` e `config/activity-log.php` registra gia' la risorsa `quotes` — era solo non
+  montata. Tab assente quando `permissions.actions.view_activity` e' falso.
+- Le Note restano quelle di prima: thread dell'Opportunita' padre, `lockedQuoteId` (spec 0085 D-1).
+- **Buoni = `features/rewards/reward-chips-section.tsx` (`RewardChipsSection`)**, UN solo componente
+  usato sia da `QuoteDetailSections` sia da `OpportunityDetailSections` (direttiva "rendere tutto
+  simile"): sezione con icona `Award`, chips, e **assente quando non c'e' nessun buono**. Il titolo
+  arriva per prop dal namespace del modulo. Non re-implementare il blocco altrove.
+- **Righe funzione/categoria = `features/product-lines/product-lines-read-only-list.tsx`
+  (`ProductLinesReadOnlyList`)**, estratto dal locale `ProductLinesList` dell'Opportunita' e ora
+  usato da entrambi i record. Non re-implementare la resa "Funzione — Categoria" altrove.
+- Nuovo `features/quote-workflows/workflow-status-badge.tsx` (`WorkflowStatusBadge`,
+  presentazionale, senza tipi di dominio) — il pill di stato fuori dalla griglia; la griglia resta
+  su `StatusBadgeCell`.
+- `QuoteDetailAttributes` -> `QuoteDetailAttributesSection` (rende una `RecordSection`); i formatter
+  per `type` sono invariati.
+- Note interne rese con `GeneralNotesCallout` (stesso componente/colore del form).
+- i18n: rimossa `quotes.detail.notes` (non piu' referenziata); aggiunte `quotes.detail.updatedAt`,
+  `quotes.detail.registry`, `quotes.detail.referent`,
+  `quotes.detail.sections.{context,identity,document}`,
+  `quotes.detail.stats.{commissions,grossHint}`, `quotes.detail.source`,
+  `quotes.detail.productLines`, `quotes.detail.opportunityGeneralNotes`,
+  `quotes.detail.tabs.opportunityDocuments` in en+it.
+  `quotes.detail.workflowStatus` NON e' piu' usata dai componenti ma resta: `quotes-i18n.test.ts`
+  ne asserisce la presenza come contratto ("translates the detail status field").
+
+**Test modificato (requisito cambiato, dichiarato).** `quote-detail.test.tsx`: l'asserzione
+"placeholder em-dash quando non ci sono buoni" e' diventata "nessuna sezione Buoni renderizzata" —
+i buoni non sono piu' una riga `dt/dd` ma una sezione che si omette quando vuota.
+
+**File toccati.**
+BE: `app/Http/Resources/QuoteResource.php`, `app/Services/QuoteService.php`.
+FE: `features/quotes/{quote-detail.tsx (riscritto), quote-detail-header.tsx (nuovo),
+quote-detail-sections.tsx (nuovo), quote-detail-attributes.tsx, quote-screens.tsx, types.ts,
+quote-detail.test.tsx}`; `features/quote-workflows/workflow-status-badge.tsx` (nuovo);
+`features/rewards/reward-chips-section.tsx` (nuovo);
+`features/product-lines/product-lines-read-only-list.tsx` (nuovo);
+`features/opportunities/opportunity-detail-sections.tsx`; `i18n/locales/{en,it}-quotes.ts`.
+
+**Verifica eseguita.** `npx tsc -b --force` EXIT=0 · eslint pulito sulle aree toccate (resta solo il
+warning preesistente `react-hooks/incompatible-library` in
+`opportunity-products-of-interest-coherence.test.tsx`) · `npx vitest run`: **511 file / 3648 test
+verdi** · `pint --dirty` passed · `pest --filter=Quote`: **548 test / 1975 asserzioni verdi**.
+
+**Prossimi passi.** Verifica visiva a 375/768/1024 su `/quotes/20` (la tabella righe ha
+`min-w-[760px]` in `overflow-x-auto`: nella colonna 7fr scorre orizzontalmente dentro il proprio
+contenitore, mai la pagina). `contracts/contract-detail.tsx` dichiara nel commento di rispecchiare
+"`QuoteDetailView`'s shell": e' rimasto sul kit vecchio (fuori scope) — candidato successivo.
+
+## DETTAGLIO CONTRATTO `/contracts/:id` — STESSA VIEW DELL'OFFERTA (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Voglio la stessa view delle offerte, i bottoni adattati alla nuova view",
+poi per iterazioni successive: link ai record correlati sui campi invece che bottoni; parola
+"preventivo" -> "offerta"; via Team/Commerciale/Segnalatore; via la striscia KPI, al suo posto le
+azioni; via il riepilogo economico; bottoni colorati per azione positiva/negativa, coerenti con la
+griglia.
+
+**Struttura finale.** Kit record `components/detail/record-panel.tsx`, come `QuoteDetailView`.
+
+- **Colonna sinistra, UNA sola `RecordCard`:**
+  1. `ContractDetailHeader` (nuovo) — monogramma + titolo/codice dell'OFFERTA (D-1: il contratto non
+     ne ha di propri) + le tre pill (stato, sospeso, alert). Nessuna striscia KPI.
+  2. `ContractActionsBar` — prende il POSTO e il vestito della striscia KPI: banda tinta
+     (`border-y bg-muted/40 px-4 py-3`) subito sotto l'header. E' anche l'unico spazio in cui sei
+     bottoni gated ci stanno davvero.
+  3. `ContractDetailSections` (ex `contract-detail-fields.tsx`, riscritto) — callout Commenti
+     (`GeneralNotesCallout`), poi **Cliente e opportunita'** (Cliente, Opportunita', Offerta,
+     entrambe come LINK) · **Societa' e sedi** · **Ciclo di vita** · **Documento e pagamento**.
+  4. Banda di chiusura: solo `QuoteLinesReadOnlyList`, read-only.
+- **Colonna destra:** card collaborazione, strip **Documenti contratto | Documenti opportunita' |
+  Attivita'**. Il contratto non ha un thread note proprio.
+- **Footer:** `RecordMeta` con creato/aggiornato.
+
+**FUORI dalla scheda per direttiva esplicita (i valori restano sul payload, non sono rimossi):**
+Team/Supervisore, Commerciale, Segnalatore; la striscia KPI ricavi/costi/margine; il riepilogo
+economico `ContractSummaryPanel` (**file cancellato**, non aveva altri call site — i tipi
+`ContractSummary`/`ContractAmountBreakdown` restano, sono la shape che il backend continua a
+mandare).
+
+**Colore delle azioni — nuovo vocabolario CONDIVISO (non solo contratti).**
+- `ActionType` passa da `'link' | 'action' | 'danger'` a `'link' | 'action' | 'success' | 'danger'`.
+- Nuovo token `--success` in `index.css` (light `hsl(142 71% 33%)`, dark `hsl(142 55% 48%)`, piu'
+  `--color-success` nel blocco `@theme`) e nuova variante `success` del `Button`, speculare a
+  `destructive` (`dark:bg-success/60` compreso). La light e' scura e la dark e' chiara di proposito:
+  la stessa tinta deve reggere sia da riempimento con testo bianco sia da colore d'icona sulla card.
+- **`features/table/action-tone.ts` e' l'UNICO posto in cui un `type` diventa un colore**
+  (`ACTION_BUTTON_VARIANT`, `ACTION_ICON_CLASS`, `actionMenuVariant`). Lo usano sia
+  `features/table/row-actions.tsx` (griglia) sia `ContractActionsBar` (scheda), quindi la stessa
+  azione non puo' avere due colori. Non re-implementare la mappatura altrove.
+- La CLASSIFICAZIONE resta server-side: `ContractColumnCatalog::actions()` marca ora `validate` e
+  `reactivate` come `'success'` (`terminate` era gia' `'danger'`). Per colorare una nuova azione si
+  cambia il `type` nel catalogo, non il frontend.
+- Resa: verde pieno = chiusura positiva (Valida, Riattiva) · rosso pieno = chiusura negativa
+  (Disdici) · outline `bg-card` = neutre (Modifica dati, Modifica stato, Programma).
+
+**Decisioni da rispettare.**
+- **Opportunita' e Offerta sono LINK sul campo che le nomina** (`RelatedRecordLink` in
+  `contract-related-links.tsx`), non bottoni nella barra azioni. Restano `<button>`, non `<a>`:
+  aprono una MODALE (`forceMode: 'modal'`), mai un'altra pagina — il contratto non si abbandona
+  (direttiva 2026-08-31). Senza il permesso il nome si vede lo stesso, solo non e' cliccabile:
+  nascondere il nome del record padre toglierebbe informazione, non un'azione.
+- Nuova costante `CONTRACT_ATTACHABLE_ALIAS` in `features/contracts/api.ts` (era `'contract'`
+  inline), speculare a `OPPORTUNITY_ATTACHABLE_ALIAS`.
+- Lessico: "preventivo" -> "offerta" in `contracts.detail.quoteDate` ('Data offerta') e
+  `suspendedReason`. Nuova chiave `contracts.detail.quote` ('Offerta').
+- i18n `contracts.detail`: aggiunte `updatedAt`, `quote`, `sections.company`, `sections.payment`;
+  rimosse `sections.notes`, `sections.summary`, `tabs.products`, `contracts.actions.viewQuote`,
+  `contracts.actions.openOpportunity` (nessuna piu' referenziata). `commercial`/`reporter`/
+  `supervisor` rimosse con la sezione Team.
+
+**Test toccati (requisito cambiato, dichiarato).** `contract-detail.test.tsx`: AC-043 riscritto sul
+nuovo set di campi (titolo via `getByRole('heading')`, i due record correlati via
+`getByRole('button', {name: <nome record>})`), piu' un test nuovo che verifica che Societa'/sedi ci
+siano e il Team no; i due test sui bottoni "View quote"/"Open opportunity" ora interrogano i link
+sui campi. `contract-actions-refresh.test.tsx`: aggiunto `CONTRACT_ATTACHABLE_ALIAS` al mock di
+`@/features/contracts/api` (harness, nessuna asserzione toccata).
+
+**File toccati.**
+BE: `app/Tables/Contracts/ContractColumnCatalog.php` (solo i due `type`).
+FE: `features/contracts/{contract-detail.tsx (riscritto), contract-detail-header.tsx (nuovo),
+contract-detail-fields.tsx (riscritto), contract-related-links.tsx (riscritto),
+contract-actions-bar.tsx, api.ts, contract-summary-panel.tsx (CANCELLATO),
+contract-detail.test.tsx, contract-actions-refresh.test.tsx}`;
+`features/table/{action-tone.ts (nuovo), row-actions.tsx, types.ts}`;
+`components/ui/button.tsx`; `index.css`; `i18n/locales/{en,it}-contracts.ts`.
+
+**Verifica eseguita.** `npx tsc -b --force` EXIT=0 · eslint pulito sulle aree toccate (restano 2
+errori PREESISTENTI in `referent-form-metadata.test.tsx`/`registry-form-metadata.test.tsx`, file mai
+toccati) · `npx vitest run`: **511 file / 3649 test verdi** · `pint --dirty` passed ·
+`pest --filter=Contract`: **185 test / 1489 asserzioni verdi**.
+
+**Prossimi passi.** Verifica visiva a 375/768/1024 su `/contracts/1`. Il token `--success` e' ora
+disponibile a tutto il design system: se altri moduli hanno azioni "positive" (es. approvazioni),
+basta marcarle `'success'` nel loro catalogo e prendono lo stesso colore senza altro codice.
+
+## DETTAGLIO OFFERTA `/quotes/:id` — RESA CRM (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Refactoring VISIVO di `/quotes/:id` prendendo a modello `/opportunities/:id`
+("quasi le stesse info") e le convenzioni dei CRM enterprise. Poi, per iterazioni successive:
+righe/totali dentro la card principale senza sezione propria; strip Offerta|Costi, tabella righe e
+riepilogo nella STESSA banda senza filetti; Team = solo Supervisore e G.A.; nuova sezione
+"Anagrafica e contatti" come sull'Opportunita'; buoni in una sezione propria su ENTRAMBI i record.
+
+**Struttura finale della pagina.** Kit record `components/detail/record-panel.tsx` — lo STESSO di
+`OpportunityDetailView`; il vecchio kit `detail-panel.tsx` non e' piu' usato qui.
+
+- **Colonna sinistra, UNA sola `RecordCard`:**
+  1. `QuoteDetailHeader` — monogramma, titolo, `code`, pill dello stato di lavorazione, azioni
+     "Download quote" + "Modifica" in alto a destra.
+  2. `QuoteDetailStats` — striscia KPI sul `summary` PERSISTITO: ricavi netti, costi netti, margine
+     netto (`text-destructive` se negativo), totale provvigioni (assente se il campo `commissions`
+     non e' visibile). Hint col lordo sotto i due netti.
+  3. `QuoteDetailSections` — callout note interne, poi le sezioni: **Contesto** (Opportunita' come
+     link, Fonte, Funzioni aziendali e categorie prodotto, Note generali dell'Opportunita' —
+     NIENTE Stato, e' gia' la pill dell'header) · **Anagrafica e contatti** (Anagrafica, Referente,
+     Commerciale, Segnalatore) · **Team** (SOLO Supervisore + G.A.) · **Buoni** (sezione propria,
+     assente se vuota) · **Societa' e sedi** · **Documento e pagamento** ·
+     **Informazioni aggiuntive**.
+  4. `QuoteDetailLines` — banda di chiusura SENZA card ne' titolo propri: strip Offerta|Costi,
+     tabella righe e `QuoteSummary` tutti nella STESSA banda (`border-t` solo in cima, nessun
+     filetto interno). Il riepilogo sta dentro `Tabs` ma fuori da ogni `TabsContent`, quindi resta
+     visibile su entrambe le tab — stessa collocazione che il form da' alla sua preview live.
+- **Colonna destra:** card collaborazione, strip **Note | Documenti opportunita' | Attivita'**. I
+  documenti sono quelli del record padre, montati READ-ONLY (`canUpload`/`canDelete` false) esatta-
+  mente come li monta il Contratto (spec 0072 AC-047, richiesta utente "quelli che trovo in
+  contratti"): un'Offerta non possiede allegati propri, quindi non offre di aggiungerne.
+- **Footer:** `RecordMeta` con creato/aggiornato.
+
+**Contratto API — aggiunta ADDITIVA.** `QuoteResource` espone ora `registry`, `referent`, `source`
+(`{id,name}|null`), `product_lines` (stessa shape riga di `OpportunityResource`) e `general_notes`
+(`string|null`): **proiezione READ-ONLY del record padre** (`$this->opportunity->...`). `quotes`
+non ha colonne proprie per nessuno di questi e non sono scrivibili dall'Offerta, quindi NON sono
+campi di `QuotesAuthorization`. `QuoteService::DETAIL_RELATIONS` eager-loada
+`opportunity.registry`, `opportunity.referent`, `opportunity.source` e
+`opportunity.productLines.{businessFunction,productCategory}` (niente N+1). Lato FE sono opzionali
+su `QuoteDetail` (stessa convenzione fixture-compat degli altri campi additivi).
+
+**Decisioni da rispettare.**
+- Il campo Opportunita' e' un `Link` a `/opportunities/{opportunity_id}` — per questo
+  `quote-detail.test.tsx` monta un `MemoryRouter`.
+- `moduleScreen.detailOwnsEditAction: true` per `quotes`, come `opportunities`: il bottone Modifica
+  vive nell'header della card, `ModuleDetailPage` non ne rende un secondo. `QuoteDetailScreen`
+  inoltra `onEdit`.
+- L'**Attivita'** non e' un permesso nuovo: `QuotesAuthorization::actions()` dichiarava gia'
+  `view_activity` e `config/activity-log.php` registra gia' la risorsa `quotes` — era solo non
+  montata. Tab assente quando `permissions.actions.view_activity` e' falso.
+- Le Note restano quelle di prima: thread dell'Opportunita' padre, `lockedQuoteId` (spec 0085 D-1).
+- **Buoni = `features/rewards/reward-chips-section.tsx` (`RewardChipsSection`)**, UN solo componente
+  usato sia da `QuoteDetailSections` sia da `OpportunityDetailSections` (direttiva "rendere tutto
+  simile"): sezione con icona `Award`, chips, e **assente quando non c'e' nessun buono**. Il titolo
+  arriva per prop dal namespace del modulo. Non re-implementare il blocco altrove.
+- **Righe funzione/categoria = `features/product-lines/product-lines-read-only-list.tsx`
+  (`ProductLinesReadOnlyList`)**, estratto dal locale `ProductLinesList` dell'Opportunita' e ora
+  usato da entrambi i record. Non re-implementare la resa "Funzione — Categoria" altrove.
+- Nuovo `features/quote-workflows/workflow-status-badge.tsx` (`WorkflowStatusBadge`,
+  presentazionale, senza tipi di dominio) — il pill di stato fuori dalla griglia; la griglia resta
+  su `StatusBadgeCell`.
+- `QuoteDetailAttributes` -> `QuoteDetailAttributesSection` (rende una `RecordSection`); i formatter
+  per `type` sono invariati.
+- Note interne rese con `GeneralNotesCallout` (stesso componente/colore del form).
+- i18n: rimossa `quotes.detail.notes` (non piu' referenziata); aggiunte `quotes.detail.updatedAt`,
+  `quotes.detail.registry`, `quotes.detail.referent`,
+  `quotes.detail.sections.{context,identity,document}`,
+  `quotes.detail.stats.{commissions,grossHint}`, `quotes.detail.source`,
+  `quotes.detail.productLines`, `quotes.detail.opportunityGeneralNotes`,
+  `quotes.detail.tabs.opportunityDocuments` in en+it.
+  `quotes.detail.workflowStatus` NON e' piu' usata dai componenti ma resta: `quotes-i18n.test.ts`
+  ne asserisce la presenza come contratto ("translates the detail status field").
+
+**Test modificato (requisito cambiato, dichiarato).** `quote-detail.test.tsx`: l'asserzione
+"placeholder em-dash quando non ci sono buoni" e' diventata "nessuna sezione Buoni renderizzata" —
+i buoni non sono piu' una riga `dt/dd` ma una sezione che si omette quando vuota.
+
+**File toccati.**
+BE: `app/Http/Resources/QuoteResource.php`, `app/Services/QuoteService.php`.
+FE: `features/quotes/{quote-detail.tsx (riscritto), quote-detail-header.tsx (nuovo),
+quote-detail-sections.tsx (nuovo), quote-detail-attributes.tsx, quote-screens.tsx, types.ts,
+quote-detail.test.tsx}`; `features/quote-workflows/workflow-status-badge.tsx` (nuovo);
+`features/rewards/reward-chips-section.tsx` (nuovo);
+`features/product-lines/product-lines-read-only-list.tsx` (nuovo);
+`features/opportunities/opportunity-detail-sections.tsx`; `i18n/locales/{en,it}-quotes.ts`.
+
+**Verifica eseguita.** `npx tsc -b --force` EXIT=0 · eslint pulito sulle aree toccate (resta solo il
+warning preesistente `react-hooks/incompatible-library` in
+`opportunity-products-of-interest-coherence.test.tsx`) · `npx vitest run`: **511 file / 3648 test
+verdi** · `pint --dirty` passed · `pest --filter=Quote`: **548 test / 1975 asserzioni verdi**.
+
+**Prossimi passi.** Verifica visiva a 375/768/1024 su `/quotes/20` (la tabella righe ha
+`min-w-[760px]` in `overflow-x-auto`: nella colonna 7fr scorre orizzontalmente dentro il proprio
+contenitore, mai la pagina). `contracts/contract-detail.tsx` dichiara nel commento di rispecchiare
+"`QuoteDetailView`'s shell": e' rimasto sul kit vecchio (fuori scope) — candidato successivo.
+
+## DETTAGLIO CONTRATTO `/contracts/:id` — STESSA VIEW DELL'OFFERTA (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Anche contratti, voglio la stessa view delle offerte, i bottoni che ci sono
+attualmente ovviamente saranno adattati alla nuova view." Refactoring VISIVO: nessun cambio di
+contratto API, nessun campo nuovo, nessuna azione aggiunta o tolta.
+
+**Struttura finale.** Kit record `components/detail/record-panel.tsx`, identico a
+`QuoteDetailView`; il vecchio kit `detail-panel.tsx` non e' piu' usato qui.
+
+- **Colonna sinistra, UNA sola `RecordCard`:**
+  1. `ContractDetailHeader` (nuovo, `contract-detail-header.tsx`) — monogramma + titolo/codice del
+     PREVENTIVO (D-1: il contratto non ne ha di propri) + le tre pill (stato, sospeso, alert).
+  2. `ContractActionsBar` — **invariata nella logica** (stessi bottoni, stesso gating
+     lifecycle+permessi, stessi dialog), solo ri-vestita: da barra `border-b px-6 py-3` a banda
+     interna alla card `px-4 py-3` senza filetto proprio (la striscia KPI sotto porta gia' il suo
+     `border-y`). Sta fra header e KPI perche' i bottoni sono troppi e troppo condizionali per lo
+     slot azioni dell'header.
+  3. `ContractDetailStats` — striscia KPI: ricavi netti, costi netti, margine netto (rosso se
+     negativo). **TRE tile, non quattro** (`@2xl:grid-cols-3`): il `ContractSummary` non porta dati
+     provvigioni, che e' la quarta tile dell'Offerta. Le date restano al Ciclo di vita — nessuna
+     duplicazione.
+  4. `ContractDetailSections` (ex `contract-detail-fields.tsx`, riscritto) — callout Commenti
+     (`GeneralNotesCallout`, come le note interne dell'Offerta), poi **Cliente e opportunita'**
+     (Cliente, Opportunita', Commerciale, Segnalatore) · **Team** (Supervisore) ·
+     **Societa' e sedi** · **Ciclo di vita** (data preventivo, accettazione, validazione +chi,
+     rinnovo, scadenza, disdetta +chi, motivazione) · **Documento e pagamento** (modalita' + note).
+  5. Banda di chiusura senza card ne' titolo: `QuoteLinesReadOnlyList` + `ContractSummaryPanel`
+     nella STESSA banda, `border-t` solo in cima. Nessuna tab strip: qui c'e' UNA sola collezione
+     (le righe di ricavo del preventivo, BR-7), non due come sull'Offerta.
+- **Colonna destra:** card collaborazione, strip **Documenti contratto | Documenti opportunita' |
+  Attivita'**. Il contratto non ha un thread note proprio, quindi al posto di "Note" ci sono i suoi
+  documenti. Gating invariato: documenti del contratto su `attachments.create`/`delete`, documenti
+  dell'opportunita' SEMPRE read-only (AC-047), Attivita' su `permissions.actions.view_activity`.
+- **Footer:** `RecordMeta` con creato/aggiornato.
+
+**Decisioni da rispettare.**
+- **Nessun link di navigazione** verso preventivo/opportunita' nelle sezioni: si aprono in MODALE
+  dai bottoni di `ContractRelatedLinks` (direttiva 2026-08-31) — il contratto non si abbandona mai.
+  Questa e' la differenza voluta rispetto all'Offerta, dove il campo Opportunita' E' un link.
+- Nuova costante `CONTRACT_ATTACHABLE_ALIAS` in `features/contracts/api.ts` (era la stringa
+  `'contract'` inline), speculare a `OPPORTUNITY_ATTACHABLE_ALIAS`.
+- i18n `contracts.detail`: aggiunte `updatedAt`, `sections.team`, `sections.company`,
+  `sections.payment`; rimosse `sections.notes`, `sections.summary`, `tabs.products` (nessuna piu'
+  referenziata: le prime due erano titoli di sezione ora assorbiti, la terza la tab Prodotti che
+  non esiste piu').
+
+**Test toccato (harness, non asserzioni).** `contract-actions-refresh.test.tsx` mocka
+`@/features/contracts/api` per intero: aggiunto `CONTRACT_ATTACHABLE_ALIAS` al mock. Nessuna
+asserzione di `contract-detail.test.tsx` e' stata modificata — AC-043/044/046/047/048 passano tutte
+sulla nuova view cosi' com'erano.
+
+**File toccati.** FE soltanto: `features/contracts/{contract-detail.tsx (riscritto),
+contract-detail-header.tsx (nuovo), contract-detail-fields.tsx (riscritto), contract-actions-bar.tsx
+(solo le classi del contenitore), api.ts, contract-actions-refresh.test.tsx}`;
+`i18n/locales/{en,it}-contracts.ts`.
+
+**Verifica eseguita.** `npx tsc -b --force` EXIT=0 · eslint pulito sulle aree toccate ·
+`npx vitest run`: **511 file / 3648 test verdi**.
+
+**Prossimi passi.** Verifica visiva a 375/768/1024 su `/contracts/1`, con attenzione alla banda
+azioni: fino a 6 bottoni + 2 link vanno a capo su colonna stretta (`flex-wrap`, gia' previsto). Se
+diventasse troppo affollata, il passo successivo e' tenere in vista le 2 azioni primarie e spostare
+il resto in un overflow `⋯` (`INLINE_ACTION_LIMIT`, stessa regola della griglia).
+
 ## GESTORI ACCOUNT SULL'OFFERTA (spec 0087) (2026-08-31) — COMPLETA E VERDE, NON COMMITTATA
 
 **Direttiva utente.** I GA arrivano anche sull'Offerta (label per categoria, precompilati

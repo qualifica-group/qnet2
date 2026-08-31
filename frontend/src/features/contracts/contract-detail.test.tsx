@@ -18,10 +18,10 @@ import type { ContractDetailWithPermissions } from '@/features/contracts/types'
  * badge with the reactivate action gated on `contracts.reactivate`.
  */
 
-// `ContractRelatedLinks` mounts `useModuleOpener`, whose mode resolution
-// reads the authenticated user. The bar forces `modal` anyway (the links must
-// never navigate away), so the preference lookup is stubbed rather than
-// wrapping every render in an AuthProvider.
+// The related-record links mount `useModuleOpener`, whose mode resolution
+// reads the authenticated user. They force `modal` anyway (they must never
+// navigate away), so the preference lookup is stubbed rather than wrapping
+// every render in an AuthProvider.
 vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
 }))
@@ -173,12 +173,17 @@ function formatExpectedDate(value: string): string {
   return formatDate(value)
 }
 
-describe('ContractDetailView — fields (AC-043)', () => {
-  it('shows every field the criterion lists: title, quote code, status badge, client, company/site, opportunity, roles, every lifecycle date, payment notes and comments', () => {
+/**
+ * Direttiva utente 2026-08-31 (resa CRM): la scheda NON mostra piu' il blocco
+ * Team — Supervisore, Commerciale, Segnalatore — mentre Societa'/sedi resta. I
+ * valori dei tre ruoli restano sul payload, la view semplicemente non li rende.
+ * La sezione "Cliente e opportunita'" porta ora il link all'Offerta. Le date del ciclo
+ * di vita, le note di pagamento e i commenti restano quelli di AC-043.
+ */
+describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', () => {
+  it('shows title, quote code, status badge, client, the two related-record links, every lifecycle date, payment notes and comments', () => {
     renderView(
       contract({
-        company: { id: 60, name: 'Acme Holding S.r.l.' },
-        company_site: { id: 61, name: 'Sede di Milano' },
         validated_at: '2026-01-15',
         validated_by: { id: 70, name: 'Elena Conti' },
         renewal_date: '2026-06-01',
@@ -191,35 +196,44 @@ describe('ContractDetailView — fields (AC-043)', () => {
     )
 
     // Title, quote code (D-1: no code of its own), status badge, client.
-    expect(screen.getByText('Accordo Acme')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Accordo Acme' })).toBeInTheDocument()
     expect(screen.getByText('QUO-0003')).toBeInTheDocument()
     expect(screen.getByText('Da validare')).toBeInTheDocument()
     expect(screen.getByText('Acme S.p.A.')).toBeInTheDocument()
 
-    // Company/site.
-    expect(screen.getByText('Acme Holding S.r.l.')).toBeInTheDocument()
-    expect(screen.getByText('Sede di Milano')).toBeInTheDocument()
-
-    // Opportunity, commercial, reporter, supervisor.
-    expect(screen.getByText('Fornitura 2026')).toBeInTheDocument()
-    expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
-    expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
-    expect(screen.getByText('Paolo Blu')).toBeInTheDocument()
+    // Opportunita' e Offerta: raggiungibili DAL campo che le nomina.
+    expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
 
     // Quote date (quote.created_at), acceptance, validation (+ who), renewal,
     // expiry, termination (+ who) — every lifecycle date AC-043 requires.
     expect(screen.getByText(formatExpectedDate('2026-01-05T00:00:00Z'))).toBeInTheDocument()
     expect(screen.getByText(formatExpectedDate('2026-01-10'))).toBeInTheDocument()
-    expect(screen.getByText(formatExpectedDate('2026-01-15'))).toBeInTheDocument()
+    expect(screen.getByText(formatExpectedDate('2026-01-15'), { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Elena Conti', { exact: false })).toBeInTheDocument()
     expect(screen.getByText(formatExpectedDate('2026-06-01'))).toBeInTheDocument()
     expect(screen.getByText(formatExpectedDate('2026-12-31'))).toBeInTheDocument()
-    expect(screen.getByText(formatExpectedDate('2027-01-05'))).toBeInTheDocument()
+    expect(screen.getByText(formatExpectedDate('2027-01-05'), { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Marco Neri', { exact: false })).toBeInTheDocument()
 
     // Payment notes and comments.
     expect(screen.getByText('Bonifico a 30 giorni data fattura')).toBeInTheDocument()
     expect(screen.getByText('Nota interna di prova')).toBeInTheDocument()
+  })
+
+  it('mostra Societa\' e sedi ma non il Team (Commerciale, Segnalatore, Supervisore)', () => {
+    renderView(
+      contract({
+        company: { id: 60, name: 'Acme Holding S.r.l.' },
+        company_site: { id: 61, name: 'Sede di Milano' },
+      }),
+    )
+
+    expect(screen.getByText('Acme Holding S.r.l.')).toBeInTheDocument()
+    expect(screen.getByText('Sede di Milano')).toBeInTheDocument()
+    expect(screen.queryByText('Luca Verdi')).not.toBeInTheDocument()
+    expect(screen.queryByText('Giulia Neri')).not.toBeInTheDocument()
+    expect(screen.queryByText('Paolo Blu')).not.toBeInTheDocument()
   })
 })
 
@@ -317,8 +331,9 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
-    // I due bottoni verso preventivo/opportunita' non sono gated sul ciclo di vita.
-    expect(screen.getByRole('button', { name: 'View quote' })).toBeInTheDocument()
+    // I due link verso Offerta/Opportunita' non sono gated sul ciclo di vita.
+    expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()
   })
 
   it('chiede lo stato di ripartenza riattivando un contratto chiuso, invece del confirm inline', async () => {
@@ -356,12 +371,15 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.getByRole('button', { name: 'Reactivate contract' })).toBeInTheDocument()
   })
 
-  it('apre preventivo e opportunita in modale: sono bottoni, non link di navigazione', () => {
+  // Direttiva utente 2026-08-31: non piu' bottoni nella barra azioni ma link
+  // SUL campo che nomina il record. Restano `<button>`, non `<a>`: aprono una
+  // modale, non navigano via dal contratto.
+  it('apre Offerta e Opportunita in modale dai rispettivi campi, non da bottoni della barra azioni', () => {
     renderView(contract())
-    expect(screen.getByRole('button', { name: 'View quote' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open opportunity' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'View quote' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Open opportunity' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Accordo Acme' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fornitura 2026' })).not.toBeInTheDocument()
   })
 })
 

@@ -1,160 +1,171 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, History, Package, Paperclip } from 'lucide-react'
-import {
-  DetailField,
-  DetailHero,
-  DetailMeta,
-  DetailMonogram,
-  DetailPanel,
-  DetailSection,
-} from '@/components/detail/detail-panel'
-import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { History, Paperclip } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contracts/api'
+import { ContractActionsBar } from '@/features/contracts/contract-actions-bar'
+import { ContractDetailHeader } from '@/features/contracts/contract-detail-header'
+import { ContractDetailSections } from '@/features/contracts/contract-detail-fields'
+import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
-import { ContractActionsBar } from '@/features/contracts/contract-actions-bar'
-import {
-  ContractIdentitySection,
-  ContractLifecycleSection,
-  ContractNotesSection,
-} from '@/features/contracts/contract-detail-fields'
-import { ContractSummaryPanel } from '@/features/contracts/contract-summary-panel'
-import {
-  ContractAlertBadge,
-  ContractStatusBadge,
-  ContractSuspendedBadge,
-} from '@/features/contracts/contract-status-badges'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
-const PRODUCTS_TAB = 'products'
 const CONTRACT_DOCUMENTS_TAB = 'contract-documents'
 const OPPORTUNITY_DOCUMENTS_TAB = 'opportunity-documents'
 const ACTIVITY_TAB = 'activity'
+
+/** Compact trigger sizing of the collaboration strip, the same the offer record uses. */
+const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
+
+/**
+ * Two-column body, the same rule the Offerta and the Opportunita' records
+ * follow. Each column is its OWN `@container` so the section/field grids inside
+ * break on the COLUMN's width, not the canvas'.
+ */
+const BODY_GRID_CLASS =
+  'grid grid-cols-1 items-start gap-4 @5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
+const COLUMN_CLASS = '@container flex min-w-0 flex-col gap-4'
 
 interface ContractDetailViewProps {
   contract: ContractDetailWithPermissions
 }
 
 /**
- * Read-only detail of a single contract (spec 0072, AC-043): the identity
- * relations, the lifecycle dates and the economic summary — all live
- * projections through the quote (BR-7/AC-040, nothing is duplicated on
- * `contracts`) — plus a tab strip for the read-only product lines and the
- * two documents surfaces (contract vs. opportunity, the latter always
- * read-only, AC-047). Domain actions (validate/schedule/terminate/reactivate/
- * edit) live in `ContractActionsBar`, each gated on its own permission
- * (AC-044). Mirrors `QuoteDetailView`'s shell, mixed with
- * `OpportunityDetailView`'s Documents/Activity tabs.
+ * The contract's collaboration card: Documenti contratto | Documenti
+ * opportunità | Attività — the offer's card with the surfaces a contract
+ * actually has (it owns no notes thread of its own).
+ *
+ * The contract's own documents honour the actor's attachment abilities; the
+ * opportunity's are ALWAYS read-only (AC-047): they belong to another record,
+ * this screen only shows them. Attività is gated on its own action flag.
  */
-export function ContractDetailView({ contract: initialContract }: ContractDetailViewProps) {
+function ContractDetailCollaboration({ contract }: { contract: ContractDetailWithPermissions }) {
   const { t } = useTranslation()
   const { can } = useAbilities()
-  const [contract, setContract] = useState(initialContract)
-  // Controlled, so the tab strip can hand the selection over to its select
-  // fallback when the tabs no longer fit.
-  const [activeTab, setActiveTab] = useState(PRODUCTS_TAB)
-
-  const createdAt = formatDateTime(contract.created_at)
   const canViewActivity = contract.permissions.actions.view_activity
 
   return (
-    <ResourcePermissionsProvider permissions={contract.permissions}>
-      <DetailPanel>
-        <DetailHero
-          media={<DetailMonogram name={contract.quote.title} icon={<FileText />} />}
-          title={contract.quote.title}
-          subtitle={contract.quote.code}
-          badges={
-            <>
-              <ContractStatusBadge status={contract.contract_status} />
-              {contract.is_suspended ? (
-                <ContractSuspendedBadge
-                  suspendedAt={contract.suspended_at}
-                  previousStatus={contract.status_before_suspension}
-                />
-              ) : null}
-              <ContractAlertBadge alert={contract.alert} />
-            </>
-          }
-        />
-
-        <ContractActionsBar contract={contract} onChanged={setContract} />
-
-        <ContractIdentitySection contract={contract} />
-        <ContractLifecycleSection contract={contract} />
-        <ContractNotesSection contract={contract} />
-
-        <DetailSection title={t('contracts.detail.sections.summary')}>
-          <ContractSummaryPanel summary={contract.summary} />
-        </DetailSection>
-
-        <DetailSection>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-3">
-            <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-              <TabsTrigger value={PRODUCTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-                <Package aria-hidden="true" />
-                {t('contracts.detail.tabs.products')}
-              </TabsTrigger>
-              <TabsTrigger value={CONTRACT_DOCUMENTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-                <Paperclip aria-hidden="true" />
-                {t('contracts.detail.tabs.contractDocuments')}
-              </TabsTrigger>
-              <TabsTrigger value={OPPORTUNITY_DOCUMENTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-                <Paperclip aria-hidden="true" />
-                {t('contracts.detail.tabs.opportunityDocuments')}
-              </TabsTrigger>
-              {canViewActivity ? (
-                <TabsTrigger value={ACTIVITY_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-                  <History aria-hidden="true" />
-                  {t('activityLog.title')}
-                </TabsTrigger>
-              ) : null}
-            </FormTabStrip>
-
-            <TabsContent value={PRODUCTS_TAB}>
-              <QuoteLinesReadOnlyList lines={contract.offer_lines} />
-            </TabsContent>
-
-            <TabsContent value={CONTRACT_DOCUMENTS_TAB}>
-              <DocumentsSection
-                resource="contract"
-                id={contract.id}
-                canUpload={can('attachments.create')}
-                canDelete={can('attachments.delete')}
-              />
-            </TabsContent>
-
-            <TabsContent value={OPPORTUNITY_DOCUMENTS_TAB}>
-              {contract.opportunity ? (
-                <DocumentsSection
-                  resource="opportunity"
-                  id={contract.opportunity.id}
-                  canUpload={false}
-                  canDelete={false}
-                />
-              ) : (
-                <DetailField label={t('contracts.detail.opportunity')}>
-                  {t('contracts.detail.noOpportunity')}
-                </DetailField>
-              )}
-            </TabsContent>
-
+    <RecordCard>
+      <Tabs defaultValue={CONTRACT_DOCUMENTS_TAB} className="gap-0">
+        <div className="px-4 py-3">
+          <TabsList>
+            <TabsTrigger value={CONTRACT_DOCUMENTS_TAB} className={TRIGGER_CLASS}>
+              <Paperclip className="size-3.5" aria-hidden="true" />
+              {t('contracts.detail.tabs.contractDocuments')}
+            </TabsTrigger>
+            <TabsTrigger value={OPPORTUNITY_DOCUMENTS_TAB} className={TRIGGER_CLASS}>
+              <Paperclip className="size-3.5" aria-hidden="true" />
+              {t('contracts.detail.tabs.opportunityDocuments')}
+            </TabsTrigger>
             {canViewActivity ? (
-              <TabsContent value={ACTIVITY_TAB}>
-                <ActivityLogSection resource={CONTRACTS_DOMAIN} id={contract.id} />
-              </TabsContent>
+              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
+                <History className="size-3.5" aria-hidden="true" />
+                {t('activityLog.title')}
+              </TabsTrigger>
             ) : null}
-          </Tabs>
-        </DetailSection>
+          </TabsList>
+        </div>
+        <div className="border-t" />
+        <div className="min-w-0 p-4">
+          <TabsContent value={CONTRACT_DOCUMENTS_TAB}>
+            <DocumentsSection
+              resource={CONTRACT_ATTACHABLE_ALIAS}
+              id={contract.id}
+              canUpload={can('attachments.create')}
+              canDelete={can('attachments.delete')}
+            />
+          </TabsContent>
 
-        {createdAt ? <DetailMeta label={t('contracts.detail.createdAt')}>{createdAt}</DetailMeta> : null}
-      </DetailPanel>
+          <TabsContent value={OPPORTUNITY_DOCUMENTS_TAB}>
+            {contract.opportunity ? (
+              <DocumentsSection
+                resource={OPPORTUNITY_ATTACHABLE_ALIAS}
+                id={contract.opportunity.id}
+                canUpload={false}
+                canDelete={false}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">{t('contracts.detail.noOpportunity')}</p>
+            )}
+          </TabsContent>
+
+          {canViewActivity ? (
+            <TabsContent value={ACTIVITY_TAB}>
+              <ActivityLogSection resource={CONTRACTS_DOMAIN} id={contract.id} />
+            </TabsContent>
+          ) : null}
+        </div>
+      </Tabs>
+    </RecordCard>
+  )
+}
+
+/**
+ * Read-only detail of a single contract (spec 0072, AC-043), rendered on the
+ * same `RecordCanvas` kit as `/quotes/:id` (user directive 2026-08-31): on the
+ * left ONE card carrying identity + domain actions + titled sections and, as
+ * its closing band, the read-only product lines; the collaboration card (documenti, attività) on
+ * the right; a metadata footer below.
+ *
+ * Every field is a live projection through the quote (BR-7/AC-040, nothing is
+ * duplicated on `contracts`); the domain actions
+ * (validate/schedule/terminate/reactivate/edit/change-status) live in
+ * `ContractActionsBar`, each gated on its own permission and on the lifecycle
+ * (AC-044).
+ */
+export function ContractDetailView({ contract: initialContract }: ContractDetailViewProps) {
+  const { t } = useTranslation()
+  const [contract, setContract] = useState(initialContract)
+  const createdAt = formatDateTime(contract.created_at)
+  const updatedAt = formatDateTime(contract.updated_at)
+
+  return (
+    <ResourcePermissionsProvider permissions={contract.permissions}>
+      <RecordCanvas>
+        <div className={BODY_GRID_CLASS}>
+          <div className={COLUMN_CLASS}>
+            <RecordCard>
+              <ContractDetailHeader contract={contract} />
+              <ContractActionsBar contract={contract} onChanged={setContract} />
+              <ContractDetailSections contract={contract} />
+
+              {/* Banda di chiusura: le sole righe di ricavo del preventivo
+                  (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
+                  non due come sull'Offerta) e nessun riepilogo economico —
+                  ricavi/costi/margine attesi sono usciti dalla scheda per
+                  direttiva utente 2026-08-31. */}
+              <div className="min-w-0 border-t p-4">
+                <QuoteLinesReadOnlyList lines={contract.offer_lines} />
+              </div>
+            </RecordCard>
+          </div>
+
+          <div className={COLUMN_CLASS}>
+            <ContractDetailCollaboration contract={contract} />
+          </div>
+        </div>
+
+        <RecordMeta>
+          {createdAt ? (
+            <span>
+              <span className="font-medium">{t('contracts.detail.createdAt')}</span>{' '}
+              <span aria-hidden="true">·</span> {createdAt}
+            </span>
+          ) : null}
+          {updatedAt ? (
+            <span>
+              <span className="font-medium">{t('contracts.detail.updatedAt')}</span>{' '}
+              <span aria-hidden="true">·</span> {updatedAt}
+            </span>
+          ) : null}
+        </RecordMeta>
+      </RecordCanvas>
     </ResourcePermissionsProvider>
   )
 }

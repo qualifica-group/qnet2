@@ -1,7 +1,8 @@
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
-import { DetailEmpty, DetailField, DetailGrid, DetailSection } from '@/components/detail/detail-panel'
+import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ApplicableAttributeSummary } from '@/features/quotes/types'
 
@@ -59,23 +60,28 @@ function formatAttributeScalar(
   }
 }
 
-interface QuoteDetailAttributesProps {
+interface QuoteDetailAttributesSectionProps {
   attributes: ApplicableAttributeSummary[]
   values: Record<string, unknown>
+  className?: string
 }
 
 /**
- * Read-only "Informazioni aggiuntive" on the quote detail (spec 0084): one
- * field per applicable Attribute, its value formatted per `type` — the same
- * denomination and the same formatting vocabulary the form section uses, so
- * what the operator typed reads back identically.
+ * Read-only "Informazioni aggiuntive" on the quote record (spec 0084): one
+ * `RecordSection` row per applicable Attribute, its value formatted per
+ * `type` — the same denomination and the same formatting vocabulary the form
+ * section uses, so what the operator typed reads back identically.
  *
  * Absent entirely when the quote's offer lines resolve no applicable Attribute
  * (D-5: no product picked, or those categories configure none). Unlike the
  * form, there is no empty-state card here: on a read-only view an empty
  * section carries no information the reader can act on.
  */
-export function QuoteDetailAttributes({ attributes, values }: QuoteDetailAttributesProps) {
+export function QuoteDetailAttributesSection({
+  attributes,
+  values,
+  className,
+}: QuoteDetailAttributesSectionProps) {
   const { t } = useTranslation()
 
   if (attributes.length === 0) {
@@ -83,14 +89,18 @@ export function QuoteDetailAttributes({ attributes, values }: QuoteDetailAttribu
   }
 
   return (
-    <DetailSection title={t('quotes.detail.additionalInformation')} icon={<ClipboardList />}>
-      <DetailGrid>
+    <RecordSection
+      title={t('quotes.detail.additionalInformation')}
+      icon={<ClipboardList />}
+      className={className}
+    >
+      <RecordFieldList>
         {attributes.map((attribute) => (
-          <DetailField key={attribute.id} label={attribute.name}>
+          <RecordField key={attribute.id} label={attribute.name}>
             {formatAttributeValue(attribute, values[attribute.code], t) ?? <DetailEmpty />}
-          </DetailField>
+          </RecordField>
         ))}
-      </DetailGrid>
-    </DetailSection>
+      </RecordFieldList>
+    </RecordSection>
   )
 }
