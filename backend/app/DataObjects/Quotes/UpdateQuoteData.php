@@ -33,6 +33,11 @@ namespace App\DataObjects\Quotes;
  * — it is NEVER part of submittedAttributes() (never mass-assigned, always
  * written by the resolver/writer). `note` (AC-023) accompanies an override
  * whose destination `requires_note`.
+ *
+ * `rewards` (spec 0059 D-3, extended to the Offerta origin) follows the same
+ * null-means-untouched convention as the line sets: absent leaves the
+ * persisted assignments alone, `[]` clears them all. Never in
+ * submittedAttributes() — RewardAssignmentWriter owns its own table.
  */
 final readonly class UpdateQuoteData
 {
@@ -79,6 +84,10 @@ final readonly class UpdateQuoteData
         // positional-compat reason as every other appended field here.
         /** @var array<string, mixed>|null */
         public ?array $attributeValues = null,
+        // Appended after the pre-existing parameters (spec 0059 D-3, extended
+        // to the Offerta origin), same positional-compat reason as above.
+        /** @var array<int, int>|null */
+        public ?array $rewards = null,
     ) {}
 
     /**
@@ -117,6 +126,7 @@ final readonly class UpdateQuoteData
             attributeValues: array_key_exists('attribute_values', $data)
                 ? (array) $data['attribute_values']
                 : null,
+            rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
         );
     }
 
@@ -129,6 +139,25 @@ final readonly class UpdateQuoteData
             static fn (array $row): QuoteLineData => QuoteLineData::fromValidated($row),
             (array) $rows,
         );
+    }
+
+    /**
+     * The submitted `{reward_type_id}` rows flattened to the plain, deduped
+     * id list RewardAssignmentWriter::sync() consumes.
+     *
+     * @return array<int, int>
+     */
+    private static function normalizeRewardTypeIds(mixed $rows): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['reward_type_id'],
+            (array) $rows,
+        )));
+    }
+
+    public function hasRewards(): bool
+    {
+        return $this->rewards !== null;
     }
 
     public function hasOfferLines(): bool

@@ -31,12 +31,10 @@ use App\Models\QuoteWorkflowStatus;
  * pipeline statuses table is a single flat set, no per-workflow
  * replication).
  *
- * `opportunity`'s `source: {resource: 'opportunities'}` has NO backing
- * `opportunities/for-select` route today (spec 0040 left it out of scope) —
- * the server-side filter logic below is correct and independent of that
- * gap, but the frontend widget has no live autocomplete source until a
- * future task adds it (flagged to the team, out of this module's write
- * surface).
+ * `opportunity` and `quote` are the two ORIGIN filters: both resolve the
+ * record the buono ultimately belongs to, whichever of the two it was born on
+ * (RewardOriginScope). Their `source` resources are backed by the real
+ * `opportunities/for-select` and `quotes/for-select` routes.
  *
  * `reward_status` (spec 0060 §5) is a plain, direct-column set filter on the
  * `rewards` row itself — same shape as `reward_type`, MIRRORED exactly (id
@@ -72,6 +70,22 @@ final class RewardedReferentAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => false,
                 'source' => ['resource' => 'opportunities'],
+                'target' => 'source_id',
+            ],
+            [
+                // Spec 0059 amendment A-01: the counterpart of `opportunity`,
+                // now that a buono can be born on an Offerta. It matches on
+                // the OFFERTA the buono ultimately belongs to, whichever of
+                // the two it was actually born on.
+                'name' => 'quote',
+                'label' => 'rewardedReferents.advancedFilters.quote',
+                'type' => AdvancedFilterType::AsyncSearch,
+                'order' => 3,
+                'required' => false,
+                'visible' => true,
+                'width' => 'md',
+                'multiple' => false,
+                'source' => ['resource' => 'quotes'],
                 'target' => 'source_id',
             ],
             [

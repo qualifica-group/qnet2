@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Enums\FormMode;
+use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Quote;
 use App\Quotes\QuoteAttributeResolver;
@@ -62,9 +63,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `null` when no contributing category configures one (flat rendering).
  * Relies on QuoteService::DETAIL_RELATIONS already eager-loading
  * `offerLines.product.category`, so resolving all three never N+1s.
+ *
+ * `rewards` (spec 0059 D-3, extended to the Offerta origin by the 2026-08-31
+ * directive): the offer's own "abbinamento buono" chips, beneficiary
+ * `quotes.reporter_id` — the SAME block, same shape, OpportunityResource
+ * emits (SummarizesRewards), so the shared `ReporterRewardsField` hydrates
+ * identically from either record.
  */
 class QuoteResource extends JsonResource
 {
+    use SummarizesRewards;
+
     /**
      * @return array<string, mixed>
      */
@@ -99,6 +108,7 @@ class QuoteResource extends JsonResource
             'payment_method_id' => $this->payment_method_id,
             'payment_method' => $this->summarizeByName($this->paymentMethod),
             'internal_notes' => $this->internal_notes,
+            'rewards' => $this->summarizeRewards($this->rewards),
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
             // Cast to object, non array: un array PHP vuoto serializza come `[]`,

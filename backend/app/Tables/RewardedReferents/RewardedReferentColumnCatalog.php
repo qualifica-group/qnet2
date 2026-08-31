@@ -22,9 +22,11 @@ namespace App\Tables\RewardedReferents;
  * columns). `rewards_count`/`last_assigned_at` are `withCount`/`withMax`
  * ALIASES: sortable via the generic ORDER BY, but their FILTER is DERIVED
  * (MySQL cannot see a SELECT-list alias from WHERE) — delegated to
- * RewardedReferentDerivedColumns. `active_rewards_count`/
- * `completed_rewards_count` are sortable-only aliases (D-2 derived counters,
- * no filter declared in the contract).
+ * RewardedReferentDerivedColumns. `pending_rewards_count`/
+ * `approved_rewards_count` are sortable-only aliases (no filter declared in
+ * the contract): user directive 2026-08-31, they count by the buono's OWN
+ * status group — `pending` and `closed_won` ("Approvato") — superseding the
+ * origin-derived "attivi"/"completati" of spec 0059 D-2.
  *
  * No `actions()`: the module has no row-action beyond AG Grid's own
  * master/detail expand (D-4, a frontend affordance, not a declared table
@@ -95,16 +97,16 @@ final class RewardedReferentColumnCatalog
                 'filterType' => 'number',
             ],
             [
-                'id' => 'active_rewards_count',
-                'label' => 'rewardedReferents.columns.activeRewardsCount',
+                'id' => 'pending_rewards_count',
+                'label' => 'rewardedReferents.columns.pendingRewardsCount',
                 'type' => 'number',
                 'visible' => true,
                 'sortable' => true,
                 'filterable' => false,
             ],
             [
-                'id' => 'completed_rewards_count',
-                'label' => 'rewardedReferents.columns.completedRewardsCount',
+                'id' => 'approved_rewards_count',
+                'label' => 'rewardedReferents.columns.approvedRewardsCount',
                 'type' => 'number',
                 'visible' => true,
                 'sortable' => true,

@@ -21,7 +21,8 @@ import {
   type ValidateContractFormValues,
 } from '@/features/contracts/contract-schema'
 import { buildValidatePayload, useValidateContract } from '@/features/contracts/use-contract-mutations'
-import type { ContractDetail } from '@/features/contracts/types'
+import { POSITIVE_GROUP_PARAMS } from '@/features/contracts/contract-lifecycle'
+import type { ContractDetail, ContractDetailWithPermissions } from '@/features/contracts/types'
 
 const SERVER_ERROR_FIELDS = ['validated_at', 'contract_status_id'] as const
 
@@ -29,10 +30,15 @@ interface ContractValidateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contract: ContractDetail
-  onValidated: (contract: ContractDetail) => void
+  onValidated: (contract: ContractDetailWithPermissions) => void
 }
 
-/** "Valida contratto" (BR-3, AC-009/010/011/017): date defaults to today (never future), destination status optional. */
+/**
+ * "Valida contratto" (BR-3, AC-009/010/011/017): date defaults to today
+ * (never future); the destination status is optional — left empty the server
+ * lands the contract on the system "Validato" row — and the picker offers
+ * ONLY the `closed_won` group (directive 2026-08-31 rev.2).
+ */
 export function ContractValidateDialog({
   open,
   onOpenChange,
@@ -110,7 +116,11 @@ export function ContractValidateDialog({
               label={t('contracts.actions.validateDialog.status')}
               resource="contract-statuses"
               searchPlaceholder={t('contracts.actions.statusSearch')}
-              selected={contract.contract_status}
+              // Only positive-closure statuses: validating closes the
+              // contract on the won side (directive 2026-08-31 rev.2).
+              params={POSITIVE_GROUP_PARAMS}
+              // The current status is open/pending, never a valid choice here.
+              selected={null}
               required={false}
               placeholder={t('contracts.actions.statusPlaceholder')}
               emptyLabel={t('contracts.actions.statusEmpty')}

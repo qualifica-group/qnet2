@@ -85,7 +85,7 @@ interface AsyncPaginatedMultiSelectProps {
    * Changing it starts a fresh paginated query. An array value is serialized
    * as repeated `key[]=` params (Laravel convention).
    */
-  params?: Record<string, string | number | number[]>
+  params?: Record<string, string | number | string[] | number[]>
 }
 
 /**

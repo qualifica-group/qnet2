@@ -139,6 +139,16 @@ export interface ScheduleContractPayload {
 }
 
 /**
+ * Payload for POST /contracts/{id}/change-status ("Modifica stato",
+ * direttiva 2026-08-31 rev.2): the destination status is mandatory and must
+ * belong to the `open`/`pending` groups — this action moves a contract
+ * within its working phase, never across a closure.
+ */
+export interface ChangeContractStatusPayload {
+  contract_status_id: number
+}
+
+/**
  * Payload for POST /contracts/{id}/reactivate (BR-2). `contract_status_id`
  * is mandatory when the contract is disdetto (nothing recorded the status
  * preceding the disdetta, so the user picks it) and must not belong to the

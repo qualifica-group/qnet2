@@ -140,7 +140,16 @@ describe('ContractTerminateDialog — validation (AC-045)', () => {
   })
 
   it('submits when both date and reason are provided', async () => {
-    vi.mocked(terminateContract).mockResolvedValue(contract({ terminated_at: '2026-01-15' }))
+    // The endpoint answers with the refreshed `permissions` envelope too
+    // (the action flags follow the new status group).
+    vi.mocked(terminateContract).mockResolvedValue({
+      ...contract({ terminated_at: '2026-01-15' }),
+      permissions: {
+        resource: { view: true, create: false, update: true, delete: false, export: true, import: false },
+        fields: {},
+        actions: { validate: false, schedule: false, terminate: false, reactivate: true, change_status: false, export: true, view_activity: true },
+      },
+    })
 
     renderDialog()
 

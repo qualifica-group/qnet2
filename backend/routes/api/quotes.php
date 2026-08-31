@@ -4,6 +4,7 @@ use App\Http\Controllers\Quotes\QuoteCommissionDefaultsController;
 use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
 use App\Http\Controllers\Quotes\QuoteController;
 use App\Http\Controllers\Quotes\QuoteDocumentController;
+use App\Http\Controllers\Quotes\QuoteForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('quotes/next-code', [QuoteController::class, 'nextCode']);
+// for-select (spec 0059 amendment A-01): feeds the `rewarded-referents`
+// "Offerta" advanced filter. Declared ABOVE quotes/{quote} for the same
+// literal-segment-wins reason as next-code.
+Route::get('quotes/for-select', QuoteForSelectController::class);
 Route::post('quotes/commission-defaults', QuoteCommissionDefaultsController::class);
 Route::post('quotes/commission-recipients', QuoteCommissionRecipientsController::class);
 // Spec 0084, D-5: live preview of the dynamic "Informazioni aggiuntive" the

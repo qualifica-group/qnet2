@@ -93,7 +93,7 @@ interface AsyncPaginatedSelectProps {
    * already accepted by `useForSelect`/`fetchForSelect` and by the
    * `AsyncPaginatedMultiSelect` sibling.
    */
-  params?: Record<string, string | number | number[]>
+  params?: Record<string, string | number | string[] | number[]>
 }
 
 /**

@@ -20,7 +20,8 @@ import {
   type ReactivateContractFormValues,
 } from '@/features/contracts/contract-schema'
 import { buildReactivatePayload, useReactivateContract } from '@/features/contracts/use-contract-mutations'
-import type { ContractDetail } from '@/features/contracts/types'
+import { WORKING_GROUP_PARAMS } from '@/features/contracts/contract-lifecycle'
+import type { ContractDetail, ContractDetailWithPermissions } from '@/features/contracts/types'
 
 const SERVER_ERROR_FIELDS = ['contract_status_id'] as const
 
@@ -28,16 +29,15 @@ interface ContractReactivateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contract: ContractDetail
-  onReactivated: (contract: ContractDetail) => void
+  onReactivated: (contract: ContractDetailWithPermissions) => void
 }
 
 /**
  * "Riattiva contratto" sul percorso DISDETTO (direttiva utente 2026-08-31):
  * la disdetta viene annullata per intero (data, motivazione, autore) e il
  * contratto riparte dallo stato scelto qui — obbligatorio, perche' nessuna
- * colonna ha mai memorizzato quello precedente. Il picker offre la stessa
- * lista di stati attivi delle altre azioni (il for-select non ha filtro per
- * gruppo) e il server rifiuta un gruppo `closed_lost`.
+ * colonna ha mai memorizzato quello precedente. Il picker offre solo i
+ * gruppi Aperto/Pending e il server rifiuta qualsiasi altro gruppo.
  *
  * Il percorso SOSPESO non passa di qui: resta il confirm inline della barra
  * azioni, che non chiede nulla (BR-2/D-3).
@@ -105,8 +105,10 @@ export function ContractReactivateDialog({
               label={t('contracts.actions.reactivateDialog.status')}
               resource="contract-statuses"
               searchPlaceholder={t('contracts.actions.statusSearch')}
-              // Nothing to preselect: the current status is "Disdetto", the
-              // very one the action is leaving.
+              // Back to the working phase only (directive 2026-08-31 rev.2).
+              params={WORKING_GROUP_PARAMS}
+              // Nothing to preselect: the current status is the closure the
+              // action is leaving.
               selected={null}
               required
               placeholder={t('contracts.actions.statusPlaceholder')}

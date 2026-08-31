@@ -39,9 +39,11 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 const LABELS: RewardCardLabels = {
   assignedAt: 'Assigned on',
   sourceRemoved: 'Origin no longer available',
+  sourceTypes: { opportunity: 'Opportunity', quote: 'Quote' },
   client: 'Client',
   categories: 'Categories',
   commercialStatus: 'Commercial status',
+  opportunityStatus: 'Opportunity status',
   workflowStatus: 'Workflow status',
   operator: 'Operator',
   status: 'Status',
@@ -59,6 +61,7 @@ const FULL_REWARD: RewardDetailItem = {
   notes: 'Handed over at the trade fair.',
   reward_type: { id: 1, name: 'Amazon voucher', color: 'blue' },
   source: { type: 'opportunity', id: 42, name: 'Big Deal', path: '/opportunities/42' },
+  related: [{ type: 'quote', id: 7, name: 'QUO-0007', path: '/quotes/7' }],
   context: {
     registry: { id: 5, name: 'Acme Srl' },
     product_categories: [
@@ -78,6 +81,7 @@ const NULL_FIELDS_REWARD: RewardDetailItem = {
   notes: null,
   reward_type: { id: 1, name: 'Amazon voucher', color: 'blue' },
   source: null,
+  related: [],
   context: null,
   reward_status: null,
 }
@@ -110,17 +114,30 @@ describe('RewardCard', () => {
     expect(screen.getByText(/01\/07\/2026/)).toBeInTheDocument()
   })
 
-  it('renders the origin as an open-mode button (not a link) when onOpenSource is given', () => {
-    const onOpenSource = vi.fn()
+  it('renders every linked record as an open-mode button (not a link) when onOpenRecord is given', () => {
+    const onOpenRecord = vi.fn()
     render(
       <MemoryRouter>
-        <RewardCard reward={FULL_REWARD} labels={LABELS} onOpenSource={onOpenSource} />
+        <RewardCard reward={FULL_REWARD} labels={LABELS} onOpenRecord={onOpenRecord} />
       </MemoryRouter>,
     )
 
     expect(screen.queryByRole('link', { name: /Big Deal/ })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Big Deal/ }))
-    expect(onOpenSource).toHaveBeenCalledTimes(1)
+    expect(onOpenRecord).toHaveBeenCalledWith(FULL_REWARD.source)
+
+    fireEvent.click(screen.getByRole('button', { name: /QUO-0007/ }))
+    expect(onOpenRecord).toHaveBeenCalledWith(FULL_REWARD.related[0])
+  })
+
+  // User directive 2026-08-31: "il riferimento all'offerta e non solo in
+  // opportunita'" — both records are on the card, each under its own caption.
+  it('shows the origin AND its cross-reference, each captioned by its type', () => {
+    renderCard(FULL_REWARD)
+
+    expect(screen.getByText('Opportunity')).toBeInTheDocument()
+    expect(screen.getByText('Quote')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /QUO-0007/ })).toHaveAttribute('href', '/quotes/7')
   })
 
   it('handles every nullable field without crashing or leaving dangling rows', () => {

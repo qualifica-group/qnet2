@@ -12,7 +12,7 @@ import {
   EmptyCell,
   badgeColorClass,
 } from '@/features/table/cell-renderers'
-import { BooleanBadgeCell, RefNamesCell, RelationCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -108,6 +108,9 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
  * (spec 0052) reuses the shared `DateTimeCell` in its `optionalTime` mode: the
  * hour is optional (user directive 2026-07-31), so a callback planned without
  * one shows as a plain date instead of a misleading "00:00".
+ * `quote_workflow_status` (user directive 2026-08-31) reuses the shared
+ * `StatusBadgeCell` — the same colored dot + pill the Offerte grid already
+ * paints for this very relation.
  */
 export const requestManagementColumnRenderers: TableRendererMap = {
   source: (params) => <RelationCell {...params} icon={Radio} />,
@@ -126,4 +129,5 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   tax_code: (params) => <TextCell {...params} />,
   phone: (params) => <TextCell {...params} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
+  quote_workflow_status: (params) => <StatusBadgeCell {...params} />,
 }

@@ -11,7 +11,7 @@ import { badgeColorClass } from '@/features/table/cell-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { OpportunityStatusBadge } from '@/features/opportunities/opportunity-status-badge'
 import { RewardChip } from '@/features/rewards/reward-chip'
-import type { RewardDetailItem } from '@/features/rewards/types'
+import type { RewardDetailItem, RewardSourceRef } from '@/features/rewards/types'
 
 /**
  * For-select resource segment behind the inline status picker (spec 0060
@@ -20,6 +20,9 @@ import type { RewardDetailItem } from '@/features/rewards/types'
  * intentionally never imported here — only its resource name is needed.
  */
 const REWARD_STATUS_RESOURCE = 'reward-statuses'
+
+/** Morph alias of the Offerta origin — the one that captions `context.status` differently. */
+const QUOTE_SOURCE_TYPE = 'quote'
 
 /**
  * Field labels the caller passes already translated (this component takes no
@@ -32,9 +35,28 @@ export interface RewardCardLabels {
   sourceRemoved: string
   client: string
   categories: string
+  /**
+   * Caption of `context.status` for an OPPORTUNITA' origin: the status
+   * computed from its own quotes (spec 0082).
+   */
   commercialStatus: string
+  /**
+   * Caption of the SAME `context.status` for an OFFERTA origin (user
+   * directive 2026-08-31): there the value is the PARENT opportunity's
+   * computed status, so calling it "stato commerciale" on an offer card would
+   * name the wrong record.
+   */
+  opportunityStatus: string
+  /** Caption of `context.workflow_status` — the Offerta's OWN working state. */
   workflowStatus: string
   operator: string
+  /**
+   * Caption of each linked record, keyed by its morph alias
+   * (`opportunity`/`quote`) — the origin AND every cross-reference use it, so
+   * a card that carries both reads unambiguously. An alias absent from the map
+   * captions itself rather than borrowing an unrelated label.
+   */
+  sourceTypes: Record<string, string>
   /** Term label for the reward's own status field, and the select's trigger aria-label. */
   status: string
   statusPlaceholder: string
@@ -50,12 +72,13 @@ interface RewardCardProps {
   labels: RewardCardLabels
   className?: string
   /**
-   * Opens the reward's origin. When provided, the origin name renders as an
-   * action button (the caller decides modal vs page via the module open mode)
-   * instead of a plain router `Link`. Omitted, the card stays a self-contained
-   * `Link` — keeping this component free of any module/open-mode dependency.
+   * Opens one of the reward's linked records — its origin or a
+   * cross-reference. When provided, each name renders as an action button (the
+   * caller decides modal vs page via the module open mode) instead of a plain
+   * router `Link`. Omitted, the card stays a self-contained `Link` — keeping
+   * this component free of any module/open-mode dependency.
    */
-  onOpenSource?: () => void
+  onOpenRecord?: (record: RewardSourceRef) => void
   /**
    * Whether the current user may change the reward's own status inline
    * (spec 0060 D-1/D-8: `rewarded-referents.update` permission, checked by
@@ -91,6 +114,44 @@ function StatusBadge({ name, color }: { name: string; color: string | null }) {
       {dotClass ? <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden="true" /> : null}
       <span className="truncate">{name}</span>
     </Badge>
+  )
+}
+
+/**
+ * One linked record: an action button when the caller knows how to open it,
+ * a plain router `Link` when it only has a path, plain text when it has
+ * neither (an alias with no module page).
+ */
+function RecordLink({
+  record,
+  onOpen,
+}: {
+  record: RewardSourceRef
+  onOpen?: (record: RewardSourceRef) => void
+}) {
+  const label = (
+    <>
+      <span className="truncate">{record.name}</span>
+      <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
+    </>
+  )
+
+  if (onOpen) {
+    return (
+      <button type="button" onClick={() => onOpen(record)} className={SOURCE_LINK_CLASS}>
+        {label}
+      </button>
+    )
+  }
+
+  if (record.path === null) {
+    return <span className="truncate text-sm font-medium">{record.name}</span>
+  }
+
+  return (
+    <Link to={record.path} className={SOURCE_LINK_CLASS}>
+      {label}
+    </Link>
   )
 }
 
@@ -159,7 +220,7 @@ export function RewardCard({
   reward,
   labels,
   className,
-  onOpenSource,
+  onOpenRecord,
   canEditStatus = false,
   onStatusChange,
   isStatusUpdating = false,
@@ -171,6 +232,11 @@ export function RewardCard({
   const hasStatus = hasComputedStatus || Boolean(context?.workflow_status)
   const hasMeta = Boolean(context?.registry) || categories.length > 0 || Boolean(context?.operator)
   const hasOwnStatus = canEditStatus || Boolean(reward.reward_status)
+  // The same `context.status` reads as a different thing depending on the
+  // origin: the Opportunita's own computed status, or — on an Offerta card —
+  // that of the opportunity it belongs to.
+  const computedStatusLabel =
+    reward.source?.type === QUOTE_SOURCE_TYPE ? labels.opportunityStatus : labels.commercialStatus
 
   return (
     <Card className={cn('gap-3 py-3', className)}>
@@ -196,17 +262,16 @@ export function RewardCard({
         ) : null}
 
         {reward.source ? (
-          onOpenSource ? (
-            <button type="button" onClick={onOpenSource} className={SOURCE_LINK_CLASS}>
-              <span className="truncate">{reward.source.name}</span>
-              <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
-            </button>
-          ) : (
-            <Link to={reward.source.path} className={SOURCE_LINK_CLASS}>
-              <span className="truncate">{reward.source.name}</span>
-              <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
-            </Link>
-          )
+          <div className="flex flex-wrap gap-3">
+            {[reward.source, ...(reward.related ?? [])].map((record) => (
+              <Field
+                key={`${record.type}:${record.id}`}
+                term={labels.sourceTypes[record.type] ?? record.type}
+              >
+                <RecordLink record={record} onOpen={onOpenRecord} />
+              </Field>
+            ))}
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground">{labels.sourceRemoved}</span>
         )}
@@ -214,7 +279,7 @@ export function RewardCard({
         {hasStatus ? (
           <div className="flex flex-wrap gap-3">
             {hasComputedStatus ? (
-              <Field term={labels.commercialStatus}>
+              <Field term={computedStatusLabel}>
                 <OpportunityStatusBadge summary={context?.status} />
               </Field>
             ) : null}

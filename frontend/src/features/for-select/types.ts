@@ -51,5 +51,5 @@ export interface ForSelectParams {
    * as repeated `key[]=` params (Laravel convention) — e.g.
    * `{ category_ids: [3, 7] }` scoping the products picker.
    */
-  params?: Record<string, string | number | number[]>
+  params?: Record<string, string | number | string[] | number[]>
 }

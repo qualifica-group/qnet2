@@ -51,11 +51,11 @@ class TableController extends BaseApiController
     /**
      * GET /api/tables/{domain}/columns — resolved table schema for the actor,
      * with their saved column preferences (order/width/visibility) merged in.
-     * `product_category_id` (spec 0064; spec 0084 dropped its `attr.*`-column
-     * effect) narrows `request-management`'s `operator_ga2` column label to
-     * that category's level-2 "Gestore Account" (spec 0080); absent for every
-     * other domain, and for `request-management` itself with no category
-     * (D-3). `opportunity_id` (spec 0067) scopes `quotes`' ROWS to one
+     * `product_category_id` (spec 0064) narrows `request-management`'s
+     * response to that category's `attr.*` columns (restored by the user
+     * directive 2026-08-31) and its `operator_ga2` column label (spec 0080);
+     * absent for every other domain, and for `request-management` itself with
+     * no category (D-3). `opportunity_id` (spec 0067) scopes `quotes`' ROWS to one
      * Opportunity; this response's SHAPE never changes (D-1/AC-009).
      */
     public function columns(TableColumnsRequest $request, string $domain): JsonResponse
@@ -132,6 +132,7 @@ class TableController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
+            $this->scopeToAllProductCategories($definition);
 
             $this->filters->save($definition, $actor, $request->filterModel(), $request->advancedFilters());
 
@@ -181,10 +182,10 @@ class TableController extends BaseApiController
 
     /**
      * POST /api/tables/{domain}/rows — SSRM page of rows + total (paginated).
-     * `productCategoryId` (spec 0064; spec 0084 dropped its `attr.*`-column
-     * effect) scopes `request-management` to that category's rows (D-2
-     * EXISTS on the row's product lines); every other domain, and this one
-     * with no category, ignores it. `opportunityId` (spec 0067) scopes
+     * `productCategoryId` (spec 0064) scopes `request-management` to that
+     * category's rows (D-2 EXISTS on the row's product lines) and its
+     * `attr.*` columns; every other domain, and this one with no category,
+     * ignores it. `opportunityId` (spec 0067) scopes
      * `quotes` to one Opportunity's Offerte, in AND with every other filter/search/advanced filter (D-6);
      * every other domain, and this one with no value, ignores it (AC-002,
      * AC-011).
@@ -253,9 +254,8 @@ class TableController extends BaseApiController
      * POST /api/tables/{domain}/values — distinct values for a single column
      * (Excel-like set filter), scoped by the filters active on every OTHER
      * column (the target column never auto-restricts its own list).
-     * `productCategoryId` (spec 0064) is accepted for `request-management`
-     * (validated by TableValuesRequest) but no longer shape-dependent (spec
-     * 0084 dropped the `attr.*` columns it used to resolve).
+     * `productCategoryId` (spec 0064) is required to resolve an `attr.*`
+     * `columnId` for `request-management` (validated by TableValuesRequest).
      * `opportunityId` (spec 0067) scopes `quotes`' distinct values to one
      * Opportunity's Offerte.
      */
@@ -331,15 +331,28 @@ class TableController extends BaseApiController
     }
 
     /**
-     * Spec 0064 (spec 0084: narrowed to row-filtering + the GA2 relabel,
-     * the `attr.*`-column effect is gone): narrows a
-     * `RequestManagementScopedTableDefinition` (only `request-management`)
-     * to one product category. A no-op for every other domain.
+     * Spec 0064: narrows a `RequestManagementScopedTableDefinition` (only
+     * `request-management`) to one product category — its rows, its `attr.*`
+     * columns and the GA2 relabel. A no-op for every other domain.
      */
     private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
     {
         if ($definition instanceof RequestManagementScopedTableDefinition) {
             $definition->scopeToProductCategory($productCategoryId);
+        }
+    }
+
+    /**
+     * Spec 0064, D-4 (restored with the `attr.*` columns, user directive
+     * 2026-08-31): widens a `RequestManagementScopedTableDefinition`'s SSRM
+     * allow-lists to the union of every category's `attr.*` columns, so
+     * saving filter preferences from any tab never 422s. A no-op for every
+     * other domain.
+     */
+    private function scopeToAllProductCategories(TableDefinition $definition): void
+    {
+        if ($definition instanceof RequestManagementScopedTableDefinition) {
+            $definition->scopeToAllProductCategories();
         }
     }
 

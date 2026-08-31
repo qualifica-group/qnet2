@@ -152,14 +152,16 @@ it('reactivating a disdetto contract without a contract_status_id is 422', funct
     expect($contract->fresh()->terminated_at)->not->toBeNull();
 });
 
-it('reactivating a disdetto contract onto a closed_lost status is 422', function () {
+it('reactivating a disdetto contract onto anything but an open/pending status is 422', function () {
     $contract = terminatedContractForReactivation();
     $actor = contractActionsUserWith(['reactivate']);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/contracts/{$contract->id}/reactivate", [
-        'contract_status_id' => ContractStatus::where('system_key', 'cancelled')->sole()->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('contract_status_id');
+    foreach (['cancelled', 'validated'] as $systemKey) {
+        $this->postJson("/api/contracts/{$contract->id}/reactivate", [
+            'contract_status_id' => ContractStatus::where('system_key', $systemKey)->sole()->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('contract_status_id');
+    }
 
     expect($contract->fresh()->terminated_at)->not->toBeNull();
 });
@@ -218,9 +220,17 @@ it('AC-009: validating an unvalidated contract stamps validated_at/validated_by 
         ->and($activity->properties['contract_status_id'])->toBe($contract->contract_status_id);
 });
 
-it('AC-010: validating an already-validated contract is 422, nothing changes', function () {
+it('AC-010: validating a contract already sitting on a closed_won status is 422, nothing changes', function () {
+    // The refusal is driven by the GROUP of the current status (directive
+    // 2026-08-31 rev.2), not by the `validated_at` stamp: a contract that
+    // was validated, disdetto and then riattivato is back on an open status
+    // and must be validatable again (see the sibling test below).
     $validator = User::factory()->create();
-    $contract = Contract::factory()->create(['validated_at' => now()->subDay(), 'validated_by' => $validator->id]);
+    $contract = Contract::factory()->create([
+        'validated_at' => now()->subDay(),
+        'validated_by' => $validator->id,
+        'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
+    ]);
     $actor = contractActionsUserWith(['validate']);
     Sanctum::actingAs($actor);
 
@@ -229,6 +239,31 @@ it('AC-010: validating an already-validated contract is 422, nothing changes', f
     $contract->refresh();
     expect($contract->validated_at->toDateString())->toBe(now()->subDay()->toDateString())
         ->and($contract->validated_by)->toBe($validator->id);
+});
+
+it('re-validates a contract that carries an old validated_at but is back on an open status', function () {
+    $contract = Contract::factory()->create([
+        'validated_at' => now()->subMonths(3),
+        'contract_status_id' => ContractStatus::where('system_key', 'new')->sole()->id,
+    ]);
+    $actor = contractActionsUserWith(['validate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")
+        ->assertOk()
+        ->assertJsonPath('data.contract_status.group', 'closed_won');
+
+    expect($contract->fresh()->validated_at->toDateString())->toBe(now()->toDateString());
+});
+
+it('validating a contract closed on the negative side is 422 (reactivate it first)', function () {
+    $contract = Contract::factory()->create([
+        'contract_status_id' => ContractStatus::where('system_key', 'terminated')->sole()->id,
+    ]);
+    $actor = contractActionsUserWith(['validate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")->assertStatus(422);
 });
 
 it('AC-011: validating without contracts.validate is 403, nothing written', function () {

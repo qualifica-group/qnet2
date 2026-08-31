@@ -10,8 +10,8 @@ use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
-use App\Http\Requests\Concerns\ValidatesQuoteSupervisor;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Quote;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -49,8 +49,8 @@ class UpdateQuoteRequest extends FormRequest
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
-    use ValidatesQuoteSupervisor;
     use ValidatesQuoteWorkflowStatus;
+    use ValidatesRewards;
 
     public function authorize(): bool
     {
@@ -81,7 +81,7 @@ class UpdateQuoteRequest extends FormRequest
             // see StoreQuoteRequest's own docblock.
             'attribute_values' => ['sometimes', 'array'],
             'summary' => ['prohibited'],
-        ], $this->quoteLinesRules());
+        ], $this->quoteLinesRules(), $this->rewardsRules());
     }
 
     public function withValidator(Validator $validator): void
@@ -91,10 +91,10 @@ class UpdateQuoteRequest extends FormRequest
             $this->enforceCommissionFieldPermissions($validator, $this->currentQuote());
             $this->enforceCommissionRecipients($validator, $this->currentQuote());
             $this->enforceCompanySiteBelongsToCompany($validator, $this->currentQuote());
-            $this->enforceSupervisorIsOpportunityManager($validator, $this->currentQuote());
             $this->enforceQuoteLayout($validator, $this->currentQuote());
             $this->enforceSingleOfferLine($validator, $this->currentQuote());
             $this->validateQuoteWorkflowStatus($validator, $this->currentQuote());
+            $this->validateRewards($validator, $this->currentQuote());
         });
     }
 

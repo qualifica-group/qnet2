@@ -80,11 +80,14 @@ export interface TableColumn {
   type: ColumnType
   /**
    * Present and `'custom'` when the column is a universal custom field
-   * (`custom.<key>`, spec 0021): a backend-driven, dynamic id no per-id
-   * renderer can be registered for, so the grid picks a generic fallback
-   * cell/filter by `type`/`filterType` instead. Absent for native columns.
+   * (`custom.<key>`, spec 0021), or `'attribute'` when it is a Product
+   * Category flexible attribute (`attr.<code>`, spec 0064, request-management
+   * only, appended by the backend only when a category tab is selected). Both
+   * ids are backend-driven and dynamic, so no per-id renderer can be
+   * registered for them: the grid picks a generic fallback cell/filter by
+   * `type`/`filterType` instead. Absent for native columns.
    */
-  source?: 'custom'
+  source?: 'custom' | 'attribute'
   /**
    * AG Grid filter type advertised per column in the config catalog. When
    * present it drives the filter component; otherwise it falls back to `type`.

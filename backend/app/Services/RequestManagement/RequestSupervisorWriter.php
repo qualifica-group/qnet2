@@ -12,11 +12,13 @@ use App\Models\Quote;
  * `quotes.supervisor_id` AND synchronizes the GA2 "Operatore" slot — the
  * single `opportunity_user` row at pivot position
  * `Opportunity::OPERATOR_MANAGER_POSITION` — of the offer's opportunity onto
- * the SAME user. The sync is not an extra: it is what keeps
- * `ValidatesQuoteSupervisor::enforceSupervisorIsOpportunityManager()`
- * satisfied for free (that trait accepts any Gestore Account of the
- * opportunity, any position) WITHOUT that trait being touched or loosened
- * (AC-017).
+ * the SAME user. The pivot half is what the request-management module reads
+ * as its "Operatore": RequestManagementScope's "my rows" and the
+ * `operator_ga2` column both resolve through position 2, so writing the
+ * Quote column alone would leave that slot pointing at the previous person.
+ * (It also used to satisfy the write-side guard that required an offer's
+ * Supervisore to be a Gestore Account; user directive 2026-08-31 revoked that
+ * rule, but the pivot sync stands on the scoping requirement alone.)
  *
  * Only the position-2 slot is touched — the other manager positions belong
  * to the opportunities form and must survive a write from this module, so

@@ -159,18 +159,12 @@
       (422 altrimenti). "Programma" resta invece client-driven come da D-2.
     </decision>
     <decision id="D-9">
-      Le azioni di dominio sono gated anche sul CICLO DI VITA del contratto, non solo
-      sull'ability (`App\Services\Contracts\ContractActionAvailability`, gemello FE
-      `contract-lifecycle.ts`), sia nel dettaglio (`permissions.actions`) sia nelle row
-      action della griglia:
-        - contratto non validato -> "Valida" + "Disdici"
-        - contratto validato     -> "Programma" + "Disdici" (mai piu' "Valida")
-        - contratto disdetto     -> solo "Riattiva contratto" (nemmeno "Modifica dati")
-      "Validato" = `validated_at` valorizzato OPPURE stato nel gruppo `closed_won`.
-      "Valida" resta comunque nascosta su un contratto sospeso (l'endpoint 422). I link
-      "Visualizza preventivo"/"Apri opportunita'" non sono gated sul ciclo di vita.
-      "Programma" e' renderizzata DISABILITATA in attesa di essere ridefinita: dialog ed
-      endpoint restano intatti.
+      SUPERATA da D-12 (direttiva 2026-08-31 rev.2): il gating delle azioni non si legge piu'
+      su `validated_at`/`terminated_at` ma sul GRUPPO dello stato corrente. Resta valido il
+      principio: le azioni sono gated sul ciclo di vita oltre che sull'ability, sia nel
+      dettaglio (`permissions.actions`) sia nelle row action della griglia, tramite
+      `App\Services\Contracts\ContractActionAvailability` e il gemello FE
+      `contract-lifecycle.ts`.
     </decision>
     <decision id="D-10">
       Lo stato del contratto esce dal form "Modifica dati": lo stato lo muovono solo le
@@ -192,6 +186,44 @@
           decisione commerciale indipendente).
       Un contratto ne' sospeso ne' disdetto resta 422. L'activity log distingue i due
       percorsi con la property `reactivated_from` (`suspended` | `terminated`).
+    </decision>
+    <decision id="D-12">
+      Flusso di gestione del contratto per GRUPPO dello stato corrente (direttiva utente
+      2026-08-31 rev.2, supera D-9):
+        - Aperto | Pending -> "Modifica dati", "Modifica stato", "Valida", "Disdici"
+        - Chiuso positivo  -> SOLO "Disdici" e "Programma" (quest'ultimo visibile ma
+          DISABILITATO in attesa del nuovo flusso)
+        - Chiuso negativo  -> SOLO "Riattiva"
+      Ogni select di stato offre esclusivamente il gruppo che l'azione puo' raggiungere,
+      via il nuovo parametro `status_groups[]` di GET /api/contract-statuses/for-select
+      (additivo su ForSelectQuery, consumato solo da ContractStatusService::forSelect):
+      "Valida" -> closed_won, "Disdici" -> closed_lost, "Modifica stato"/"Riattiva" ->
+      open+pending. Il server ricontrolla il gruppo su ogni endpoint: il filtro e' una
+      affordance, non la difesa.
+      Conseguenza sulle regole di rifiuto: "Valida" e' respinta in base al GRUPPO corrente
+      (gia' closed_won -> 422; closed_lost -> 422 "riattiva prima"), non piu' in base al
+      timbro `validated_at` — un contratto disdetto e poi riattivato torna Aperto e DEVE
+      poter essere rivalidato.
+      La SOSPENSIONE resta un asse ortogonale che la direttiva non cita: un contratto
+      sospeso sta su "Sospeso" (pending), quindi mantiene "Riattiva" (BR-2/D-3) e perde
+      "Valida" (l'endpoint la rifiuta comunque).
+      Le row action della griglia seguono lo stesso gating, con un'icona distinta per
+      azione (`CONTRACT_ACTION_ICONS` in `contracts-table.tsx`: il map condiviso non
+      conosceva check-circle/calendar-clock/shuffle/ban/rotate-ccw e le rendeva tutte con
+      il glifo neutro di fallback).
+    </decision>
+    <decision id="D-13">
+      "Modifica stato" ha finalmente un endpoint proprio: POST
+      /api/contracts/{contract}/change-status (ability `contracts.changeStatus`, che aveva
+      Policy e row action ma nessuna rotta). `contract_status_id` obbligatorio, ristretto ai
+      gruppi open/pending, e il contratto deve essere a sua volta open/pending: l'azione
+      sposta DENTRO la fase di lavorazione, non apre e non chiude. PATCH /contracts/{id}
+      continua ad accettare `contract_status_id` (nessun client lo invia, vedi D-10).
+    </decision>
+    <decision id="D-14">
+      "Visualizza preventivo" e "Apri opportunita'" aprono il record in MODALE, mai
+      navigando via dal contratto: `useModuleOpener(..., { forceMode: 'modal' })` (spec 0067
+      D-3), estratti in `contract-related-links.tsx`. Non sono gated sul ciclo di vita.
     </decision>
   </context>
 

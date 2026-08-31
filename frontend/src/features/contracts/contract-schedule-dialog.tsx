@@ -21,7 +21,7 @@ import {
   type ScheduleContractFormValues,
 } from '@/features/contracts/contract-schema'
 import { buildSchedulePayload, useScheduleContract } from '@/features/contracts/use-contract-mutations'
-import type { ContractDetail } from '@/features/contracts/types'
+import type { ContractDetail, ContractDetailWithPermissions } from '@/features/contracts/types'
 
 const SERVER_ERROR_FIELDS = ['expiry_date', 'renewal_date', 'contract_status_id'] as const
 
@@ -29,7 +29,7 @@ interface ContractScheduleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contract: ContractDetail
-  onScheduled: (contract: ContractDetail) => void
+  onScheduled: (contract: ContractDetailWithPermissions) => void
 }
 
 /** "Programma contratto": expiry date + destination status are mandatory (D-2), renewal date optional and never after expiry. */

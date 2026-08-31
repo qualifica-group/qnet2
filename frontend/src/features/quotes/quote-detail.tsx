@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, Download, FileText, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
+import { Award, CreditCard, Download, FileText, Handshake, MapPin, NotebookText, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
 import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
@@ -17,6 +17,7 @@ import {
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { NotesSection } from '@/features/notes/notes-section'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { RewardChip } from '@/features/rewards/reward-chip'
 import { QuoteDetailAttributes } from '@/features/quotes/quote-detail-attributes'
 import { QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
@@ -45,6 +46,7 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
   // fallback when the tabs no longer fit.
   const [activeTab, setActiveTab] = useState(OFFER_TAB)
   const createdAt = formatDateTime(quote.created_at)
+  const rewards = quote.rewards ?? []
   const totals = totalsFromPersistedSummary(quote.summary)
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
   const canGenerateDocument = quote.permissions.actions.generate_document
@@ -98,6 +100,18 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           </DetailField>
           <DetailField label={t('quotes.detail.layout')} icon={<FileText />}>
             {quote.layout ? quote.layout.name : <DetailEmpty />}
+          </DetailField>
+          {/* Spec 0059 D-3, Offerta origin: the buoni assigned to THIS offer's Segnalatore. */}
+          <DetailField label={t('quotes.detail.rewards')} icon={<Award />}>
+            {rewards.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {rewards.map((reward) => (
+                  <RewardChip key={reward.id} rewardType={reward.reward_type} />
+                ))}
+              </div>
+            ) : (
+              <DetailEmpty />
+            )}
           </DetailField>
         </DetailGrid>
       </DetailSection>

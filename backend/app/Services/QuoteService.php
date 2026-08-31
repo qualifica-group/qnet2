@@ -21,6 +21,7 @@ use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\Opportunities\OpportunityTitleBuilder;
+use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Quotes\QuoteAttributeValueWriter;
 use App\Services\Quotes\QuoteLineWriter;
 use App\Services\Quotes\QuoteTotalsCalculator;
@@ -82,6 +83,9 @@ class QuoteService
         'offerLines.quote',
         'offerLines.vatRate',
         'offerLines.commissions.recipient',
+        // Spec 0059 D-3 (Offerta origin): the reward chips the edit form
+        // rehydrates its "abbinamento buono" control from.
+        'rewards.rewardType',
         'costLines.product.category',
         'costLines.quote',
         'costLines.vatRate',
@@ -98,6 +102,7 @@ class QuoteService
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly QuoteWorkflowStatusWriter $workflowStatusWriter,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
+        private readonly RewardAssignmentWriter $rewardAssignmentWriter,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -158,6 +163,13 @@ class QuoteService
                 $quote->save();
             }
 
+            // Step 4c (spec 0059 D-3, Offerta origin): `reporter_id` is part
+            // of the insert above, so a sync here already targets the right
+            // beneficiary — no retarget() step, unlike update().
+            if ($data->hasRewards()) {
+                $this->rewardAssignmentWriter->sync($quote, $data->rewards);
+            }
+
             // Step 5: persist the recalculated aggregates (D-9).
             $this->persistAggregates($quote);
 
@@ -200,6 +212,17 @@ class QuoteService
             // Unconditional save: mirrors OpportunityService/ProjectService's
             // own update() — a clean save runs no UPDATE query.
             $quote->fill($data->submittedAttributes())->save();
+
+            // Spec 0059 D-3/AC-022: a genuine `reporter_id` change retargets
+            // every existing reward row of THIS offer, whether or not
+            // `rewards` itself travelled in the same request.
+            if ($data->reporterIdSubmitted && $quote->wasChanged('reporter_id')) {
+                $this->rewardAssignmentWriter->retarget($quote);
+            }
+
+            if ($data->hasRewards()) {
+                $this->rewardAssignmentWriter->sync($quote, $data->rewards);
+            }
 
             $this->writeSubmittedLines(
                 $quote,
@@ -275,6 +298,12 @@ class QuoteService
      * `company_id`/`company_site_id` are NOT here: the Opportunity has no
      * such columns to inherit from.
      *
+     * `supervisor_id` is a plain copy like the other three (user directive
+     * 2026-08-31, superseding 2026-08-06): it is no longer filtered to the
+     * opportunity's Gestori Account. That filter silently produced null for
+     * every opportunity whose Supervisore held no GA slot — the whole
+     * dataset — so the documented inheritance never actually fired.
+     *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */
@@ -286,30 +315,12 @@ class QuoteService
         $attributes['reporter_id'] = $data->reporterIdSubmitted ? $data->reporterId : $opportunity->reporter_id;
         $attributes['supervisor_id'] = $data->supervisorIdSubmitted
             ? $data->supervisorId
-            : $this->inheritedSupervisorId($opportunity);
+            : $opportunity->supervisor_id;
         $attributes['operational_site_id'] = $data->operationalSiteIdSubmitted
             ? $data->operationalSiteId
             : $opportunity->operational_site_id;
 
         return $attributes;
-    }
-
-    /**
-     * The Opportunity's own Supervisore, but ONLY when they are also one of
-     * its Gestori Account (user directive 2026-08-06): on an offer the
-     * Supervisore can be nobody else, so inheriting a non-GA would seed the
-     * quote with a value the write side (ValidatesQuoteSupervisor) rejects on
-     * the very next edit. Nothing to inherit in that case.
-     */
-    private function inheritedSupervisorId(Opportunity $opportunity): ?int
-    {
-        $supervisorId = $opportunity->supervisor_id;
-
-        if ($supervisorId === null) {
-            return null;
-        }
-
-        return $opportunity->managers()->whereKey($supervisorId)->exists() ? $supervisorId : null;
     }
 
     /**

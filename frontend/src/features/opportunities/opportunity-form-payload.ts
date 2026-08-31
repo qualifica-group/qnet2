@@ -1,3 +1,4 @@
+import { sameIdSet } from '@/lib/utils'
 import type {
   CreateOpportunityPayload,
   OpportunityDetail,
@@ -188,16 +189,6 @@ function completeProductLines(rows: OpportunityFormValues['product_lines']): Opp
 /** Order-independent key of a product-line pair, for set comparison. */
 function productLineKey(line: OpportunityProductLineInput): string {
   return `${line.business_function_id}:${line.product_category_id}`
-}
-
-/** Order-independent, duplicate-safe comparison of two product-line collections. */
-/** Unordered set comparison of two id collections (products of interest). */
-function sameIdSet(a: number[], b: number[]): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-  const setB = new Set(b)
-  return a.every((id) => setB.has(id))
 }
 
 function sameProductLines(a: OpportunityProductLineInput[], b: OpportunityProductLineInput[]): boolean {

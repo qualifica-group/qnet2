@@ -8,9 +8,9 @@ use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Reward;
 use App\Services\Opportunities\OpportunityStatusScope;
+use App\Services\Rewards\RewardOriginScope;
 use App\Services\Table\AdvancedFilterApplier;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Server-side application of the 6 `rewarded-referents` advanced filters
@@ -19,14 +19,15 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * ...)` on the current Referent query — it narrows WHICH referents appear,
  * never what a row displays (`<advanced_filters>` note).
  *
- * `opportunity_status`/`workflow_status`/`operator` additionally cross the
- * POLYMORPHIC `Reward::source()` via `whereHasMorph('source',
- * [Opportunity::class], ...)`: this is what makes D-2's "the constraint
- * applies only to origins that possess a state" hold automatically — a
- * future non-Opportunity origin simply never matches these 3 (its rewards
- * still count toward `reward_type`/`assigned_at`, which stay on the `rewards`
- * row itself). `whereHasMorph` resolves the morph ALIAS through
- * `AppServiceProvider`'s strict `enforceMorphMap()`, never a raw FQCN.
+ * `opportunity`/`quote`/`workflow_status`/`operator` additionally cross the
+ * POLYMORPHIC `Reward::source()` via RewardOriginScope: BOTH origins answer
+ * them — an Opportunita' directly, an Offerta through its parent (user
+ * directive 2026-08-31). Before that bridge existed these three closed on
+ * `[Opportunity::class]` alone, so every Offerta-born buono silently dropped
+ * out of them; the rewards themselves still count toward
+ * `reward_type`/`assigned_at`, which stay on the `rewards` row itself.
+ * `whereHasMorph` resolves the morph ALIAS through `AppServiceProvider`'s
+ * strict `enforceMorphMap()`, never a raw FQCN.
  *
  * `MAX_FILTER_VALUES` caps the WHERE IN cardinality (defence in depth);
  * every value is bound, never interpolated (backend.md §8: `whereRaw`/
@@ -48,6 +49,7 @@ final class RewardedReferentAdvancedFilterApplier
             'reward_type' => $this->applyRewardType($query, $value),
             'reward_status' => $this->applyRewardStatus($query, $value),
             'opportunity' => $this->applyOpportunity($query, $value),
+            'quote' => $this->applyQuote($query, $value),
             'workflow_status' => $this->applyWorkflowStatus($query, $value),
             'operator' => $this->applyOperator($query, $value),
             'assigned_at' => $this->applyAssignedAt($query, $descriptor, $value),
@@ -96,9 +98,11 @@ final class RewardedReferentAdvancedFilterApplier
     }
 
     /**
-     * `opportunity` — matches the reward's own polymorphic pointer directly
-     * (`source_type`+`source_id`), never the related Opportunity's columns,
-     * so a plain column match suffices (no `whereHasMorph` needed).
+     * `opportunity` — the Opportunita' the buono ultimately comes from: the
+     * origin itself when it IS one, its parent when the origin is an Offerta
+     * (user directive 2026-08-31). No longer a plain `source_type`/`source_id`
+     * column match: that answered only half of the origins, silently dropping
+     * every Offerta-born buono of the very opportunity being filtered for.
      *
      * @param  Builder<Referent>  $query
      */
@@ -109,10 +113,37 @@ final class RewardedReferentAdvancedFilterApplier
         }
 
         $opportunityId = (int) $value;
-        $alias = Relation::getMorphAlias(Opportunity::class);
 
-        $query->whereHas('rewards', static function (Builder $rewards) use ($alias, $opportunityId): void {
-            $rewards->where('source_type', $alias)->where('source_id', $opportunityId);
+        $query->whereHas('rewards', static function (Builder $rewards) use ($opportunityId): void {
+            RewardOriginScope::whereOpportunity(
+                $rewards,
+                static fn (Builder $source) => $source->whereKey($opportunityId),
+            );
+        });
+
+        return true;
+    }
+
+    /**
+     * `quote` — the mirror of applyOpportunity(): the OFFERTA the buono
+     * ultimately belongs to, be it the origin itself or the single offer of
+     * the origin Opportunita' (spec 0059 amendment A-01).
+     *
+     * @param  Builder<Referent>  $query
+     */
+    private function applyQuote(Builder $query, mixed $value): bool
+    {
+        if (! is_numeric($value)) {
+            return true;
+        }
+
+        $quoteId = (int) $value;
+
+        $query->whereHas('rewards', static function (Builder $rewards) use ($quoteId): void {
+            RewardOriginScope::whereQuote(
+                $rewards,
+                static fn (Builder $source) => $source->whereKey($quoteId),
+            );
         });
 
         return true;
@@ -136,9 +167,8 @@ final class RewardedReferentAdvancedFilterApplier
 
         if ($names !== []) {
             $query->whereHas('rewards', static function (Builder $rewards) use ($names): void {
-                $rewards->whereHasMorph(
-                    'source',
-                    [Opportunity::class],
+                RewardOriginScope::whereOpportunity(
+                    $rewards,
                     static fn (Builder $source) => OpportunityStatusScope::whereNameIn($source, $names),
                 );
             });
@@ -160,9 +190,8 @@ final class RewardedReferentAdvancedFilterApplier
 
         if ($ids !== []) {
             $query->whereHas('rewards', static function (Builder $rewards) use ($ids): void {
-                $rewards->whereHasMorph(
-                    'source',
-                    [Opportunity::class],
+                RewardOriginScope::whereOpportunity(
+                    $rewards,
                     static fn (Builder $source) => $source->whereHas(
                         'managers',
                         static fn (Builder $managers) => $managers

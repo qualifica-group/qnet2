@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ContractStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
@@ -9,15 +10,16 @@ use Spatie\Permission\Models\Permission;
 
 /**
  * Lifecycle gating of the contract domain actions (user directive
- * 2026-08-31), as exposed by `permissions.actions` on GET
- * /api/contracts/{contract} and by the grid's row actions:
+ * 2026-08-31 rev.2), driven by the GROUP of the current status and exposed
+ * by `permissions.actions` on GET /api/contracts/{contract} plus the grid's
+ * row actions:
  *
- * - not validated yet → validate + terminate
- * - validated         → schedule + terminate (never validate again)
- * - disdetto          → none of the three, only reactivate
+ * - open | pending → edit, change_status, validate, terminate
+ * - closed_won     → terminate, schedule
+ * - closed_lost    → reactivate
  *
  * The actor below holds EVERY ability, so what changes between the cases is
- * the contract's state alone (App\Services\Contracts\ContractActionAvailability).
+ * the contract's status alone (App\Services\Contracts\ContractActionAvailability).
  */
 uses(RefreshDatabase::class);
 
@@ -37,78 +39,90 @@ if (! function_exists('contractAvailabilityActor')) {
     }
 }
 
-it('offers validate and terminate, never schedule, on a contract that is not validated yet', function () {
-    $contract = Contract::factory()->create();
+if (! function_exists('contractOnSystemStatus')) {
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    function contractOnSystemStatus(string $systemKey, array $overrides = []): Contract
+    {
+        return Contract::factory()->create([
+            'contract_status_id' => ContractStatus::where('system_key', $systemKey)->sole()->id,
+            ...$overrides,
+        ]);
+    }
+}
+
+/**
+ * @return array<string, bool>
+ */
+function contractActionFlags(Contract $contract): array
+{
     Sanctum::actingAs(contractAvailabilityActor());
 
-    $this->getJson("/api/contracts/{$contract->id}")
-        ->assertOk()
-        ->assertJsonPath('permissions.actions.validate', true)
-        ->assertJsonPath('permissions.actions.terminate', true)
-        ->assertJsonPath('permissions.actions.schedule', false);
+    /** @var array<string, bool> $actions */
+    $actions = test()->getJson("/api/contracts/{$contract->id}")->assertOk()->json('permissions.actions');
+
+    return $actions;
+}
+
+it('offers edit, change_status, validate and terminate on an OPEN contract', function () {
+    $flags = contractActionFlags(contractOnSystemStatus('new'));
+
+    expect($flags['validate'])->toBeTrue()
+        ->and($flags['terminate'])->toBeTrue()
+        ->and($flags['change_status'])->toBeTrue()
+        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('offers schedule and terminate, never validate, once the contract is validated', function () {
-    $contract = Contract::factory()->create([
-        'validated_at' => now()->subDay(),
-        'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
-    ]);
-    Sanctum::actingAs(contractAvailabilityActor());
+it('behaves the same on a PENDING contract', function () {
+    $pending = ContractStatus::where('name', 'Programmato')->sole();
+    $flags = contractActionFlags(Contract::factory()->create(['contract_status_id' => $pending->id]));
 
-    $this->getJson("/api/contracts/{$contract->id}")
-        ->assertOk()
-        ->assertJsonPath('permissions.actions.validate', false)
-        ->assertJsonPath('permissions.actions.schedule', true)
-        ->assertJsonPath('permissions.actions.terminate', true);
+    expect($pending->group)->toBe(ContractStatusGroup::Pending)
+        ->and($flags['validate'])->toBeTrue()
+        ->and($flags['terminate'])->toBeTrue()
+        ->and($flags['change_status'])->toBeTrue()
+        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('treats a contract sitting on a closed_won status as validated even without a validated_at stamp', function () {
-    $contract = Contract::factory()->create([
-        'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
-    ]);
-    Sanctum::actingAs(contractAvailabilityActor());
+it('offers only terminate and schedule on a CLOSED_WON contract', function () {
+    $flags = contractActionFlags(contractOnSystemStatus('validated', ['validated_at' => now()->subDay()]));
 
-    $this->getJson("/api/contracts/{$contract->id}")
-        ->assertOk()
-        ->assertJsonPath('permissions.actions.validate', false)
-        ->assertJsonPath('permissions.actions.schedule', true);
+    expect($flags['terminate'])->toBeTrue()
+        ->and($flags['schedule'])->toBeTrue()
+        ->and($flags['validate'])->toBeFalse()
+        ->and($flags['change_status'])->toBeFalse()
+        ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('offers only "Riattiva contratto" once the contract is disdetto', function () {
-    $contract = Contract::factory()->create([
-        'validated_at' => now()->subMonth(),
+it('offers only reactivate on a CLOSED_LOST contract', function () {
+    $flags = contractActionFlags(contractOnSystemStatus('terminated', [
         'terminated_at' => now()->subDay(),
         'termination_reason' => 'Recesso del cliente',
-        'contract_status_id' => ContractStatus::where('system_key', 'terminated')->sole()->id,
-    ]);
-    Sanctum::actingAs(contractAvailabilityActor());
+    ]));
 
-    $this->getJson("/api/contracts/{$contract->id}")
-        ->assertOk()
-        ->assertJsonPath('permissions.actions.validate', false)
-        ->assertJsonPath('permissions.actions.schedule', false)
-        ->assertJsonPath('permissions.actions.terminate', false)
-        ->assertJsonPath('permissions.actions.reactivate', true);
+    expect($flags['reactivate'])->toBeTrue()
+        ->and($flags['validate'])->toBeFalse()
+        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['terminate'])->toBeFalse()
+        ->and($flags['change_status'])->toBeFalse();
 });
 
-it('never offers validate on a suspended contract (the endpoint would always 422)', function () {
-    $contract = Contract::factory()->create([
-        'suspended_at' => now(),
-        'contract_status_id' => ContractStatus::where('system_key', 'suspended')->sole()->id,
-    ]);
-    Sanctum::actingAs(contractAvailabilityActor());
+it('keeps reactivate and drops validate on a SUSPENDED contract, which sits on a pending status', function () {
+    $flags = contractActionFlags(contractOnSystemStatus('suspended', ['suspended_at' => now()]));
 
-    $this->getJson("/api/contracts/{$contract->id}")
-        ->assertOk()
-        ->assertJsonPath('permissions.actions.validate', false)
-        ->assertJsonPath('permissions.actions.reactivate', true);
+    expect($flags['reactivate'])->toBeTrue()
+        ->and($flags['validate'])->toBeFalse()
+        ->and($flags['terminate'])->toBeTrue()
+        ->and($flags['change_status'])->toBeTrue();
 });
 
 it('drops the lifecycle-refused keys from the grid row actions too', function () {
-    $terminated = Contract::factory()->create([
+    $terminated = contractOnSystemStatus('terminated', [
         'terminated_at' => now()->subDay(),
         'termination_reason' => 'Recesso del cliente',
-        'contract_status_id' => ContractStatus::where('system_key', 'terminated')->sole()->id,
     ]);
     Sanctum::actingAs(contractAvailabilityActor());
 
@@ -120,6 +134,7 @@ it('drops the lifecycle-refused keys from the grid row actions too', function ()
         ->and($row['actions'])->not->toContain('validate')
         ->and($row['actions'])->not->toContain('schedule')
         ->and($row['actions'])->not->toContain('terminate')
+        ->and($row['actions'])->not->toContain('change_status')
         ->and($row['actions'])->not->toContain('edit')
         ->and($row['actions'])->toContain('view')
         ->and($row['actions'])->toContain('reactivate');

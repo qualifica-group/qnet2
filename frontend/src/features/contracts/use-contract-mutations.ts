@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  changeContractStatus,
   contractDetailQueryKey,
   reactivateContract,
   scheduleContract,
@@ -8,7 +9,8 @@ import {
   validateContract,
 } from '@/features/contracts/api'
 import type {
-  ContractDetail,
+  ChangeContractStatusPayload,
+  ContractDetailWithPermissions,
   ReactivateContractPayload,
   ScheduleContractPayload,
   TerminateContractPayload,
@@ -16,6 +18,7 @@ import type {
   ValidateContractPayload,
 } from '@/features/contracts/types'
 import type {
+  ChangeContractStatusFormValues,
   EditContractFormValues,
   ReactivateContractFormValues,
   ScheduleContractFormValues,
@@ -54,6 +57,11 @@ export function buildTerminatePayload(values: TerminateContractFormValues): Term
   }
 }
 
+/** `contract_status_id` is validated non-null by the schema before this runs. */
+export function buildChangeStatusPayload(values: ChangeContractStatusFormValues): ChangeContractStatusPayload {
+  return { contract_status_id: values.contract_status_id as number }
+}
+
 /** `contract_status_id` is validated non-null by the schema before this runs (mandatory on the disdetto path). */
 export function buildReactivatePayload(values: ReactivateContractFormValues): ReactivateContractPayload {
   return { contract_status_id: values.contract_status_id as number }
@@ -71,7 +79,12 @@ export function buildEditPayload(values: EditContractFormValues): UpdateContract
 
 interface ContractMutationOptions {
   contractId: number
-  onSuccess?: (contract: ContractDetail) => void
+  /**
+   * Receives the contract WITH its refreshed `permissions`: the action flags
+   * follow the contract's status group, so a caller merging only `data` would
+   * keep rendering the previous state's buttons until a reload.
+   */
+  onSuccess?: (contract: ContractDetailWithPermissions) => void
 }
 
 /**
@@ -83,7 +96,7 @@ interface ContractMutationOptions {
  */
 function useContractMutation<TPayload>(
   { contractId, onSuccess }: ContractMutationOptions,
-  mutationFn: (id: number, payload: TPayload) => Promise<ContractDetail>,
+  mutationFn: (id: number, payload: TPayload) => Promise<ContractDetailWithPermissions>,
 ) {
   const queryClient = useQueryClient()
 
@@ -100,6 +113,10 @@ function useContractMutation<TPayload>(
 
 export function useUpdateContract(options: ContractMutationOptions) {
   return useContractMutation(options, updateContract)
+}
+
+export function useChangeContractStatus(options: ContractMutationOptions) {
+  return useContractMutation(options, changeContractStatus)
 }
 
 export function useValidateContract(options: ContractMutationOptions) {

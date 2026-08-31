@@ -24,6 +24,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     layout_id: null,
     payment_method_id: null,
     internal_notes: null,
+    rewards: [],
     attribute_values: {},
     offer_lines: [],
     cost_lines: [],
@@ -60,6 +61,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     payment_method_id: null,
     payment_method: null,
     internal_notes: null,
+    rewards: [],
     attribute_values: {},
     offer_lines: [],
     cost_lines: [],
@@ -300,5 +302,49 @@ describe('buildUpdatePayload', () => {
       original,
     )
     expect(payload.attribute_values).toEqual({ urgent: true, colour: null })
+  })
+})
+
+/**
+ * "Segnalatore diritto al buono" on the Offerta (user directive 2026-08-31):
+ * the `rewards` key is a full-replace SET, so it must travel only when the set
+ * actually changed — and `[]` is a legitimate payload, it clears them.
+ */
+describe('rewards', () => {
+  const AMAZON = { id: 1, reward_type: { id: 7, name: 'Amazon', color: 'blue' }, assigned_at: '2026-08-01', notes: null }
+  const CARBURANTE = { id: 2, reward_type: { id: 9, name: 'Carburante', color: 'amber' }, assigned_at: '2026-08-01', notes: null }
+
+  it('omits the key on create when no reward is picked', () => {
+    expect(buildCreatePayload(formValues())).not.toHaveProperty('rewards')
+  })
+
+  it('sends the picked reward-type ids on create', () => {
+    const payload = buildCreatePayload(formValues({ rewards: [{ reward_type_id: 7 }] }))
+
+    expect(payload.rewards).toEqual([{ reward_type_id: 7 }])
+  })
+
+  it('omits the key on update when the SET is unchanged, whatever the order', () => {
+    const payload = buildUpdatePayload(
+      formValues({ rewards: [{ reward_type_id: 9 }, { reward_type_id: 7 }] }),
+      detail({ rewards: [AMAZON, CARBURANTE] }),
+    )
+
+    expect(payload).not.toHaveProperty('rewards')
+  })
+
+  it('sends the new set when a reward is added', () => {
+    const payload = buildUpdatePayload(
+      formValues({ rewards: [{ reward_type_id: 7 }, { reward_type_id: 9 }] }),
+      detail({ rewards: [AMAZON] }),
+    )
+
+    expect(payload.rewards).toEqual([{ reward_type_id: 7 }, { reward_type_id: 9 }])
+  })
+
+  it('sends an empty array when every reward is removed (clears them server-side)', () => {
+    const payload = buildUpdatePayload(formValues({ rewards: [] }), detail({ rewards: [AMAZON] }))
+
+    expect(payload.rewards).toEqual([])
   })
 })

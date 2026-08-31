@@ -30,15 +30,16 @@ export interface RewardStatusRef {
 }
 
 /**
- * The polymorphic origin of a reward, resolved server-side to a display name
- * and a direct link. `type` is the morph-map alias (e.g. "opportunity"),
- * never a FQCN.
+ * One record a reward points at, resolved server-side to a display name and a
+ * direct link: its ORIGIN (`RewardDetailItem.source`) or a cross-reference
+ * (`RewardDetailItem.related`). `type` is the morph-map alias — "opportunity"
+ * or "quote" — never a FQCN; `path` is null for an alias with no module page.
  */
 export interface RewardSourceRef {
   type: string
   id: number
   name: string
-  path: string
+  path: string | null
 }
 
 /**
@@ -49,9 +50,14 @@ export interface RewardSourceRef {
 export interface RewardContext {
   registry: { id: number; name: string } | null
   product_categories: { id: number; name: string }[]
-  /** Spec 0082: the origin Opportunity's COMPUTED status (its quotes' statuses). */
+  /** Spec 0082: the origin Opportunity's COMPUTED status (its own, or its parent's for an Offerta origin). */
   status: OpportunityStatusSummary
-  workflow_status: { id: number; name: string; color: string | null } | null
+  /**
+   * The Offerta origin's OWN working-state row (spec 0083). Absent entirely
+   * for an Opportunita' origin — it has no status of its own, `status` above
+   * is computed from its quotes (spec 0083 D-2).
+   */
+  workflow_status?: { id: number; name: string; color: string | null } | null
   operator: { id: number; name: string; avatar_url: string | null } | null
 }
 
@@ -66,6 +72,14 @@ export interface RewardDetailItem {
   notes: string | null
   reward_type: RewardTypeRef
   source: RewardSourceRef | null
+  /**
+   * The records linked to the origin, shown alongside it (user directive
+   * 2026-08-31: the card must carry the Offerta reference too, not only the
+   * Opportunita'). One Opportunita' holds at most one Offerta, so this is the
+   * counterpart of whichever of the two the buono was born on. Empty when the
+   * origin has none, or was deleted.
+   */
+  related: RewardSourceRef[]
   context: RewardContext | null
   /**
    * The persisted status of the reward itself (spec 0060 D-1/D-5), NOT

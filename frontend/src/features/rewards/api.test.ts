@@ -19,6 +19,7 @@ const RESPONSE_REWARD: RewardDetailItem = {
   notes: null,
   reward_type: { id: 1, name: 'Amazon voucher', color: 'blue' },
   source: null,
+  related: [],
   context: null,
   reward_status: { id: 5, name: 'Approved', color: 'green' },
 }

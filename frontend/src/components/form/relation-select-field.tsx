@@ -53,8 +53,10 @@ interface RelationSelectFieldProps<
    * Extra, resource-specific query parameters forwarded to the for-select
    * request (spec 0032 `dependency.param`, e.g. `{ registry_id }` to scope a
    * referent picker, spec 0040 BR-4). Omitted for a plain, unscoped picker.
+   * An array value is serialized as repeated `key[]=` params (Laravel
+   * convention), e.g. `{ status_groups: ['open', 'pending'] }`.
    */
-  params?: Record<string, string | number>
+  params?: Record<string, string | number | string[] | number[]>
   placeholder: string
   emptyLabel: string
   errorLabel: string

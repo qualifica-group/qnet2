@@ -45,6 +45,7 @@ const SERVER_ERROR_FIELDS = [
   'layout_id',
   'payment_method_id',
   'internal_notes',
+  'rewards',
   'offer_lines',
   'cost_lines',
 ] as const
@@ -120,6 +121,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         layout_id: quote.layout_id,
         payment_method_id: quote.payment_method_id,
         internal_notes: quote.internal_notes,
+        rewards: (quote.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
         offer_lines: linesToFormValues(quote.offer_lines),
         cost_lines: linesToFormValues(quote.cost_lines),
       }
@@ -150,6 +152,10 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       // starts with no payment method until the user picks one.
       payment_method_id: null,
       internal_notes: null,
+      // Directive 2026-08-31: a new Offerta starts with NO buono — the
+      // Opportunita's own assignments are deliberately not copied over, or
+      // the same segnalatore would be counted twice in "Segnalatori premiati".
+      rewards: [],
       offer_lines: [],
       cost_lines: [],
     }

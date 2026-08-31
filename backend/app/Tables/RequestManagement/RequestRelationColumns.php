@@ -24,6 +24,12 @@ use Illuminate\Support\Facades\DB;
  *  - AGGREGATED_RELATIONS: `product_categories` — to-many via
  *    `opportunity.productLines.productCategory`; filterable (`whereHas`
  *    dot-path, no SQL change needed) but never sortable.
+ *  - QUOTE_RELATIONS: `quote_workflow_status` — an OWN FK on the row's own
+ *    table (`quotes.quote_workflow_status_id`, user directive 2026-08-31):
+ *    no `opportunity` hop at all, so both the `whereHas` and the correlated
+ *    subquery address `quotes` directly, exactly as
+ *    `App\Tables\Quotes\QuoteRelationColumns` does for the same relation on
+ *    the Offerte grid.
  *  - OPPORTUNITY_SCALAR_COLUMNS: `general_notes`/`next_callback_at` — real
  *    `opportunities` columns with no relation label, reached via the SAME
  *    `opportunity` relation: filtering scopes the generic FilterApplier
@@ -64,6 +70,16 @@ final class RequestRelationColumns
     ];
 
     /**
+     * Simple (single-hop) relation-name columns whose FK lives on `quotes`
+     * itself — no `opportunity` hop (user directive 2026-08-31).
+     *
+     * @var array<string, array{relation: string, table: string, fk: string}>
+     */
+    private const array QUOTE_RELATIONS = [
+        'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
+    ];
+
+    /**
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
     private const array AGGREGATED_RELATIONS = [
@@ -93,6 +109,7 @@ final class RequestRelationColumns
         }
 
         $config = self::OPPORTUNITY_RELATIONS[$columnId]
+            ?? self::QUOTE_RELATIONS[$columnId]
             ?? self::AGGREGATED_RELATIONS[$columnId]
             ?? null;
 
@@ -136,9 +153,27 @@ final class RequestRelationColumns
             return $this->opportunityScalarSubquery($columnId);
         }
 
+        $ownConfig = self::QUOTE_RELATIONS[$columnId] ?? null;
+
+        if ($ownConfig !== null) {
+            return $this->quoteRelationSubquery($ownConfig['table'], $ownConfig['fk']);
+        }
+
         $throughConfig = self::OPPORTUNITY_RELATIONS[$columnId] ?? null;
 
         return $throughConfig === null ? null : $this->opportunityRelationSubquery($throughConfig['table'], $throughConfig['fk']);
+    }
+
+    /**
+     * ORDER BY an OWN-FK relation's `name`: correlated against `quotes`
+     * itself, with no `opportunities` join to hop through.
+     */
+    private function quoteRelationSubquery(string $table, string $fk): QueryBuilder
+    {
+        return DB::table($table)
+            ->select("{$table}.name")
+            ->whereColumn("{$table}.id", "quotes.{$fk}")
+            ->limit(1);
     }
 
     private function opportunityRelationSubquery(string $table, string $fk): QueryBuilder
@@ -160,8 +195,9 @@ final class RequestRelationColumns
 
     /**
      * Excel-like distinct values (spec 0004/0005): `source`'s related row
-     * name, plus `product_categories` via a join through
-     * `opportunity_product_lines` — scoped to the rows matching $query.
+     * name, `quote_workflow_status`'s own-FK related row name, plus
+     * `product_categories` via a join through `opportunity_product_lines` —
+     * scoped to the rows matching $query.
      * OPPORTUNITY_SCALAR_COLUMNS are never reached here (they declare
      * `hasFilterValues: false`, so TableService never calls this for them).
      *
@@ -172,6 +208,14 @@ final class RequestRelationColumns
     {
         if (array_key_exists($columnId, self::AGGREGATED_RELATIONS)) {
             return $this->distinctAggregatedValues(self::AGGREGATED_RELATIONS[$columnId], $search, $query, $limit);
+        }
+
+        $ownConfig = self::QUOTE_RELATIONS[$columnId] ?? null;
+
+        if ($ownConfig !== null) {
+            $relatedIds = (clone $query)->whereNotNull("quotes.{$ownConfig['fk']}")->select("quotes.{$ownConfig['fk']}");
+
+            return $this->distinctNames($ownConfig['table'], $relatedIds, $search, $limit);
         }
 
         $throughConfig = self::OPPORTUNITY_RELATIONS[$columnId] ?? null;

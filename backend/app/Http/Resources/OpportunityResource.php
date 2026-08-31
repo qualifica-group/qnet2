@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Opportunity;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityManagerLabelResolver;
@@ -89,6 +90,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 #[PreserveKeys]
 class OpportunityResource extends JsonResource
 {
+    use SummarizesRewards;
+
     /**
      * @return array<string, mixed>
      */
@@ -185,30 +188,6 @@ class OpportunityResource extends JsonResource
                 'product_category' => $this->summarizeByName($product->category),
             ])
             ->values()
-            ->all();
-    }
-
-    /**
-     * Reward assignments (spec 0059), ordered by `reward_type.name` (data
-     * contract).
-     *
-     * @return array<int, array{id: int, reward_type: array{id: int, name: string, color: string}, assigned_at: string|null, notes: string|null}>
-     */
-    private function summarizeRewards(iterable $rewards): array
-    {
-        return collect($rewards)
-            ->sortBy(fn (Model $reward): string => $reward->rewardType->name)
-            ->values()
-            ->map(fn (Model $reward): array => [
-                'id' => $reward->id,
-                'reward_type' => [
-                    'id' => $reward->rewardType->id,
-                    'name' => $reward->rewardType->name,
-                    'color' => $reward->rewardType->color,
-                ],
-                'assigned_at' => $reward->assigned_at?->toDateString(),
-                'notes' => $reward->notes,
-            ])
             ->all();
     }
 

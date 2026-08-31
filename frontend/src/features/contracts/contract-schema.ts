@@ -96,6 +96,24 @@ export function terminateContractDefaultValues(): TerminateContractFormValues {
 }
 
 /**
+ * "Modifica stato" (direttiva 2026-08-31 rev.2): un solo campo, lo stato di
+ * destinazione, obbligatorio e ristretto ai gruppi Aperto/Pending dal picker
+ * e dal server.
+ */
+export function buildChangeContractStatusSchema(t: TFunction) {
+  return z
+    .object({
+      contract_status_id: z.number().nullable(),
+    })
+    .refine((value) => value.contract_status_id !== null, {
+      message: t('contracts.actions.changeStatusDialog.statusRequired'),
+      path: ['contract_status_id'],
+    })
+}
+
+export type ChangeContractStatusFormValues = z.infer<ReturnType<typeof buildChangeContractStatusSchema>>
+
+/**
  * "Riattiva contratto" sul percorso DISDETTO (direttiva utente 2026-08-31):
  * lo stato di destinazione e' obbligatorio, perche' nessuna colonna ha mai
  * memorizzato quello precedente alla disdetta. Il percorso SOSPESO non usa

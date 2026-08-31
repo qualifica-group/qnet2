@@ -22,7 +22,8 @@ import {
   type TerminateContractFormValues,
 } from '@/features/contracts/contract-schema'
 import { buildTerminatePayload, useTerminateContract } from '@/features/contracts/use-contract-mutations'
-import type { ContractDetail } from '@/features/contracts/types'
+import { NEGATIVE_GROUP_PARAMS } from '@/features/contracts/contract-lifecycle'
+import type { ContractDetail, ContractDetailWithPermissions } from '@/features/contracts/types'
 
 const SERVER_ERROR_FIELDS = ['terminated_at', 'termination_reason', 'contract_status_id'] as const
 
@@ -30,15 +31,14 @@ interface ContractTerminateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contract: ContractDetail
-  onTerminated: (contract: ContractDetail) => void
+  onTerminated: (contract: ContractDetailWithPermissions) => void
 }
 
 /**
  * "Disdici contratto" (BR-4, AC-014/015/016/017): date and motivation are
- * mandatory, the destination status optional and restricted server-side to
- * `closed_lost` (the frozen for-select contract has no group filter, so the
- * picker offers the same active-status list as "Programma" and the server is
- * the final authority).
+ * mandatory, the destination status optional (empty = the system "Disdetto"
+ * row) and restricted to the `closed_lost` group on BOTH ends — the picker
+ * asks the for-select for that group alone, the server re-checks it.
  */
 export function ContractTerminateDialog({
   open,
@@ -131,7 +131,10 @@ export function ContractTerminateDialog({
               label={t('contracts.actions.terminateDialog.status')}
               resource="contract-statuses"
               searchPlaceholder={t('contracts.actions.statusSearch')}
-              selected={contract.contract_status}
+              // Only negative-closure statuses (directive 2026-08-31 rev.2):
+              // the server enforces the same group, this narrows the picker.
+              params={NEGATIVE_GROUP_PARAMS}
+              selected={null}
               required={false}
               placeholder={t('contracts.actions.statusPlaceholder')}
               emptyLabel={t('contracts.actions.statusEmpty')}

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
-use App\Models\Opportunity;
+use App\Enums\RewardStatusGroup;
 use App\Models\Referent;
 use App\Models\User;
-use App\Services\Opportunities\OpportunityStatusScope;
 use App\Tables\RewardedReferents\RewardedReferentAdvancedFilterApplier;
 use App\Tables\RewardedReferents\RewardedReferentAdvancedFilterCatalog;
 use App\Tables\RewardedReferents\RewardedReferentColumnCatalog;
 use App\Tables\RewardedReferents\RewardedReferentDerivedColumns;
 use App\Tables\RewardedReferents\RewardedReferentRowMapper;
 use App\Tables\RewardedReferents\RewardedReferentSearch;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -42,11 +42,15 @@ use Illuminate\Database\Eloquent\Model;
  * `baseQuery()` scopes to referents with `whereHas('rewards')` (AC-005),
  * eager-loads `personalData.contacts`/`registries` (no N+1, AC-013), and
  * adds the three counters + last-assignment date as `withCount`/`withMax`
- * SELECT-list aliases — all ONE query regardless of row/reward count (D-2's
- * "active"/"completed" split additionally crosses the polymorphic
- * `Reward::source()` via `whereHasMorph`, so only Opportunity-origin rewards
- * ever increment them, per the acceptance criteria's accepted invariant
- * `rewards_count >= active + completed`).
+ * SELECT-list aliases — all ONE query regardless of row/reward count.
+ *
+ * User directive 2026-08-31: the two split counters read the buono's OWN
+ * persisted status (`reward_statuses.group`, spec 0060 D-5) — "in pending"
+ * and "approvati" — NOT, as spec 0059 D-2 originally had it, the ORIGIN's
+ * commercial state. They are about where each buono stands in its own
+ * approval flow, which is what the page is for. `rewards_count >= pending +
+ * approved` still holds: the `closed_lost` group ("Negato") belongs to
+ * neither.
  */
 class RewardedReferentsTableDefinition extends AbstractTableDefinition
 {
@@ -88,28 +92,28 @@ class RewardedReferentsTableDefinition extends AbstractTableDefinition
             ->whereHas('rewards')
             ->with(['personalData.contacts', 'registries'])
             ->withCount('rewards')
-            ->withCount(['rewards as active_rewards_count' => function (Builder $rewards): void {
-                $rewards->whereHasMorph(
-                    'source',
-                    [Opportunity::class],
-                    // Spec 0082: the opportunity's status is COMPUTED from its
-                    // quotes (working state as fallback) — "attive" is every
-                    // displayed status still outside a terminal outcome.
-                    static function (Builder $source): void {
-                        OpportunityStatusScope::whereGroupIn($source, OpportunityStatusScope::ACTIVE_GROUPS);
-                    },
-                );
-            }])
-            ->withCount(['rewards as completed_rewards_count' => function (Builder $rewards): void {
-                $rewards->whereHasMorph(
-                    'source',
-                    [Opportunity::class],
-                    static function (Builder $source): void {
-                        OpportunityStatusScope::whereGroupIn($source, OpportunityStatusScope::CLOSED_GROUPS);
-                    },
-                );
-            }])
+            ->withCount(['rewards as pending_rewards_count' => self::countByStatusGroup(RewardStatusGroup::Pending)])
+            ->withCount(['rewards as approved_rewards_count' => self::countByStatusGroup(RewardStatusGroup::ClosedWon)])
             ->withMax(['rewards as last_assigned_at'], 'assigned_at');
+    }
+
+    /**
+     * The constraint behind one counter: the buono's OWN persisted status
+     * (spec 0060 D-5), matched by GROUP — not by `system_key`, so a custom
+     * row the configurator adds to that group counts exactly like the system
+     * one, the same way every other gate in this codebase reasons about
+     * statuses.
+     *
+     * @return Closure(Builder<Model>): void
+     */
+    private static function countByStatusGroup(RewardStatusGroup $group): Closure
+    {
+        return static function (Builder $rewards) use ($group): void {
+            $rewards->whereHas(
+                'rewardStatus',
+                static fn (Builder $status) => $status->where('group', $group->value),
+            );
+        };
     }
 
     /**
@@ -199,7 +203,7 @@ class RewardedReferentsTableDefinition extends AbstractTableDefinition
      * `registries` (aggregated to-many), `rewards_count` and
      * `last_assigned_at` (both SELECT-list aliases MySQL cannot WHERE
      * against) are DERIVED — delegated to RewardedReferentDerivedColumns.
-     * `active_rewards_count`/`completed_rewards_count` declare no filter
+     * `pending_rewards_count`/`approved_rewards_count` declare no filter
      * (`filterable: false`) so this hook is never reached for them; `name`
      * is a real, plain column handled entirely by the generic engine.
      *

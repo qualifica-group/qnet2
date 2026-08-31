@@ -48,6 +48,13 @@ namespace App\DataObjects\Quotes;
  * validated/merged by QuoteAttributeValueWriter AFTER the offer lines are
  * synced, i.e. against the applicable set those lines' categories produce
  * (the same set the form rendered its fields from).
+ *
+ * `rewards` (spec 0059 D-3, extended to the Offerta origin): the reward-type
+ * ids to assign to the offer's OWN Segnalatore, synced by
+ * RewardAssignmentWriter. Same null-means-untouched convention as every
+ * collection above. Deliberately NOT inherited from the Opportunity on create
+ * (user directive 2026-08-31), unlike the 3 commercial roles: a copied buono
+ * would count twice for the same segnalatore in "Segnalatori premiati".
  */
 final readonly class CreateQuoteData
 {
@@ -90,6 +97,13 @@ final readonly class CreateQuoteData
         // same positional-compat reason.
         /** @var array<string, mixed>|null */
         public ?array $attributeValues = null,
+        // Appended after the pre-existing parameters (spec 0059 D-3, extended
+        // to the Offerta origin) for the same positional-compat reason. Out of
+        // attributes() like every other collection here: `rewards` has no
+        // column on `quotes` at all — RewardAssignmentWriter writes its own
+        // table. Null means "no rows submitted", `[]` clears every assignment.
+        /** @var array<int, int>|null */
+        public ?array $rewards = null,
     ) {}
 
     /**
@@ -124,6 +138,7 @@ final readonly class CreateQuoteData
             attributeValues: array_key_exists('attribute_values', $data)
                 ? (array) $data['attribute_values']
                 : null,
+            rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
         );
     }
 
@@ -145,6 +160,25 @@ final readonly class CreateQuoteData
             static fn (array $row): QuoteLineData => QuoteLineData::fromValidated($row),
             (array) $rows,
         );
+    }
+
+    /**
+     * The submitted `{reward_type_id}` rows flattened to the plain, deduped
+     * id list RewardAssignmentWriter::sync() consumes.
+     *
+     * @return array<int, int>
+     */
+    private static function normalizeRewardTypeIds(mixed $rows): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['reward_type_id'],
+            (array) $rows,
+        )));
+    }
+
+    public function hasRewards(): bool
+    {
+        return $this->rewards !== null;
     }
 
     public function hasOfferLines(): bool

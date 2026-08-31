@@ -172,39 +172,24 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
     expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
   })
 
-  // Directive 2026-08-06: the Supervisore can only be a Gestore Account of
-  // the picked Opportunita', so its picker is locked until one is chosen and
-  // then scoped to it (`opportunity_id` dependency param).
-  it('locks the Supervisor picker until an opportunity is picked, then scopes it to that opportunity', async () => {
+  // User directive 2026-08-31 (supersedes 2026-08-06): the Supervisore is no
+  // longer restricted to the opportunity's Gestori Account, so its picker is
+  // neither locked nor scoped — it lists every user, opportunity or not.
+  it('leaves the Supervisor picker unlocked and unscoped before any opportunity is picked', () => {
     renderCreateForm()
 
-    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false')
     expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-params', 'null')
-
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
-
-    await waitFor(() =>
-      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false'),
-    )
-    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute(
-      'data-params',
-      JSON.stringify({ opportunity_id: OPPORTUNITY_WITH_ROLES.id }),
-    )
   })
 
-  it('re-locks the Supervisor picker when the opportunity is cleared', async () => {
+  it('keeps the Supervisor picker unscoped after an opportunity is picked', async () => {
     renderCreateForm()
 
     screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
-    await waitFor(() =>
-      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false'),
-    )
 
-    screen.getByRole('button', { name: 'clear Opportunity' }).click()
-
-    await waitFor(() =>
-      expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'true'),
-    )
+    await waitFor(() => expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('61'))
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-params', 'null')
   })
 
   it('clears the three when the opportunity itself is cleared', async () => {

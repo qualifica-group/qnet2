@@ -21,9 +21,16 @@ import type { TableRow } from '@/features/table/types'
  */
 const REWARDED_REFERENTS_UPDATE_PERMISSION = 'rewarded-referents.update'
 
-/** Origin type whose module page/modal we know how to open (spec 0059: only Opportunity today). */
-const OPPORTUNITY_SOURCE_TYPE = 'opportunity'
-const OPPORTUNITIES_DOMAIN = 'opportunities'
+/**
+ * The module each linked-record morph alias opens into (user directive
+ * 2026-08-31: a buono can be born on an Offerta, and every card carries both
+ * references). An alias absent from this map falls back to the card's own
+ * router `Link`.
+ */
+const SOURCE_DOMAINS: Record<string, string> = {
+  opportunity: 'opportunities',
+  quote: 'quotes',
+}
 
 /** Skeleton placeholder mirroring the card grid's shape while the lazy fetch is in flight. */
 function DetailLoadingState() {
@@ -77,10 +84,16 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
   const { t } = useTranslation()
   const referentId = typeof data?.id === 'number' ? data.id : null
 
-  // Opening the origin honors the Opportunity module's open mode (spec 0042):
-  // modal mounts the Sheet returned here, page mode navigates. Hooks stay
-  // unconditional (rules-of-hooks) — the early returns below come after.
-  const { openView, sheet } = useModuleOpener(OPPORTUNITIES_DOMAIN)
+  // Opening a linked record honors ITS module's open mode (spec 0042): modal
+  // mounts the Sheet returned here, page mode navigates. One opener per
+  // module, both mounted unconditionally (rules-of-hooks) — the early returns
+  // below come after.
+  const opportunityOpener = useModuleOpener(SOURCE_DOMAINS.opportunity)
+  const quoteOpener = useModuleOpener(SOURCE_DOMAINS.quote)
+  const openers: Record<string, (row: TableRow) => void> = {
+    opportunity: opportunityOpener.openView,
+    quote: quoteOpener.openView,
+  }
 
   const { data: rewards, isPending, isError, refetch } = useReferentRewards(referentId ?? 0, {
     enabled: referentId != null,
@@ -97,6 +110,16 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
       if (referentId != null) {
         void queryClient.invalidateQueries({ queryKey: rewardedReferentsKeys.rewards(referentId) })
       }
+      // The MASTER row's counters ("Buoni in pending"/"Buoni approvati") are
+      // computed server-side from this very status, so moving a buono changes
+      // the row this panel hangs off. SSRM rows live in AG Grid's own store,
+      // not in React Query, so invalidating above cannot reach them — without
+      // this the counters only caught up on a full page reload (user report
+      // 2026-08-31). `purge: false` reloads the loaded blocks while keeping
+      // the current rows (and this open detail panel) on screen; the grid's
+      // stable `getRowId` is what lets the refreshed data land on the SAME
+      // node instead of a recreated one.
+      api?.refreshServerSide({ purge: false })
     },
   })
 
@@ -151,6 +174,7 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
     client: t('rewardedReferents.detail.client'),
     categories: t('rewardedReferents.detail.categories'),
     commercialStatus: t('rewardedReferents.detail.commercialStatus'),
+    opportunityStatus: t('rewardedReferents.detail.opportunityStatus'),
     workflowStatus: t('rewardedReferents.detail.workflowStatus'),
     operator: t('rewardedReferents.detail.operator'),
     status: t('rewardedReferents.detail.status'),
@@ -160,6 +184,10 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
     statusError: t('rewardedReferents.detail.statusError'),
     statusClearLabel: t('rewardedReferents.detail.statusClearLabel'),
     statusRetry: t('rewardedReferents.detail.statusRetry'),
+    sourceTypes: {
+      opportunity: t('rewardedReferents.detail.sourceTypes.opportunity'),
+      quote: t('rewardedReferents.detail.sourceTypes.quote'),
+    },
   }
 
   return (
@@ -171,11 +199,6 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
     <div ref={contentRef} className="max-h-[28rem] overflow-y-auto">
       <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {rewards.map((reward) => {
-          const source = reward.source
-          const onOpenSource =
-            source?.type === OPPORTUNITY_SOURCE_TYPE
-              ? () => openView({ id: source.id } as TableRow)
-              : undefined
           const isStatusUpdating =
             updateStatus.isPending && updateStatus.variables?.rewardId === reward.id
           return (
@@ -183,7 +206,7 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
               key={reward.id}
               reward={reward}
               labels={labels}
-              onOpenSource={onOpenSource}
+              onOpenRecord={(record) => openers[record.type]?.({ id: record.id } as TableRow)}
               canEditStatus={canEditStatus}
               onStatusChange={(rewardStatusId) =>
                 updateStatus.mutate({ rewardId: reward.id, rewardStatusId })
@@ -193,7 +216,8 @@ export function RewardDetailRenderer({ data, node, api }: ICellRendererParams<Ta
           )
         })}
       </div>
-      {sheet}
+      {opportunityOpener.sheet}
+      {quoteOpener.sheet}
     </div>
   )
 }

@@ -60,13 +60,15 @@ vi.mock('@/api/client', () => ({
 
 // The open-mode resolution (modal Sheet vs page navigation) lives in
 // `useModuleOpener` and is covered by its own tests; here we only assert the
-// panel wires the origin's id into `openView`, so the hook is mocked to keep
-// this a focused unit test (no AuthProvider / module registry needed).
-const openViewMock = vi.fn()
+// panel wires each linked record's id into the opener of ITS OWN module, so
+// the hook is mocked (no AuthProvider / module registry needed). The domain is
+// recorded alongside the row: an Offerta reference must never open the
+// Opportunita' module, and vice versa.
+const openViewMock = vi.fn<(domain: string, row: TableRow) => void>()
 
 vi.mock('@/features/modules/use-module-opener', () => ({
-  useModuleOpener: () => ({
-    openView: openViewMock,
+  useModuleOpener: (domain: string) => ({
+    openView: (row: TableRow) => openViewMock(domain, row),
     openCreate: vi.fn(),
     openCreateWith: vi.fn(),
     openEdit: vi.fn(),
@@ -81,6 +83,7 @@ const REWARD: RewardDetailItem = {
   notes: 'Consegnato a mano.',
   reward_type: { id: 1, name: 'Amazon voucher', color: 'blue' },
   source: { type: 'opportunity', id: 42, name: 'Fornitura uffici', path: '/opportunities/42' },
+  related: [],
   context: {
     registry: { id: 5, name: 'Acme S.p.A.' },
     product_categories: [{ id: 1, name: 'Elettronica' }],
@@ -89,6 +92,19 @@ const REWARD: RewardDetailItem = {
     operator: { id: 7, name: 'Mario Rossi', avatar_url: null },
   },
   reward_status: { id: 1, name: 'In attesa', color: 'amber' },
+}
+
+/**
+ * The same buono born on the OFFERTA instead (user directive 2026-08-31):
+ * `context.status` then carries the PARENT opportunity's computed status, so
+ * the card captions it "Opportunity status", and `related` carries the
+ * opportunity itself.
+ */
+const QUOTE_ORIGIN_REWARD: RewardDetailItem = {
+  ...REWARD,
+  id: 11,
+  source: { type: 'quote', id: 7, name: 'QUO-0007', path: '/quotes/7' },
+  related: [{ type: 'opportunity', id: 42, name: 'Fornitura uffici', path: '/opportunities/42' }],
 }
 
 const ROW: TableRow = { id: 1, actions: [] }
@@ -130,7 +146,7 @@ describe('RewardDetailRenderer — lazy load and caching (AC-026)', () => {
     // The origin opens via the module opener (open-mode aware), not a raw link.
     const sourceButton = screen.getByRole('button', { name: /Fornitura uffici/ })
     fireEvent.click(sourceButton)
-    expect(openViewMock).toHaveBeenCalledWith({ id: 42 })
+    expect(openViewMock).toHaveBeenCalledWith('opportunities', { id: 42 })
     expect(screen.getByText('In corso')).toBeInTheDocument()
     expect(screen.getByText('In lavorazione')).toBeInTheDocument()
     expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
@@ -266,5 +282,59 @@ describe('RewardDetailRenderer — inline status edit (spec 0060 AC-029/AC-030)'
     )
     // Invalidation refetches the still-mounted, active query (spec 0060 AC-029).
     await waitFor(() => expect(fetchReferentRewardsMock).toHaveBeenCalledTimes(2))
+  })
+
+  /**
+   * User report 2026-08-31: "quando cambio stato deve reinderizzare anche
+   * sulla tabella, ora devo ricaricare la pagina". The MASTER row's counters
+   * are computed server-side from this very status, and SSRM rows live in AG
+   * Grid's store, not in React Query — invalidating the detail query alone
+   * cannot reach them.
+   */
+  it('refreshes the SSRM rows so the master counters catch up, without purging the open panel', async () => {
+    canMock.mockReturnValue(true)
+    fetchReferentRewardsMock.mockResolvedValue([REWARD])
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: {
+        success: true,
+        message: 'ok',
+        data: { ...REWARD, reward_status: { id: 5, name: 'Approvato', color: 'green' } },
+      },
+    })
+    const refreshServerSide = vi.fn()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client, { api: { refreshServerSide } as unknown as ICellRendererParams<TableRow>['api'] })
+
+    await waitFor(() => expect(screen.getByText('Amazon voucher')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('combobox', { name: 'Status' }))
+
+    await waitFor(() => expect(refreshServerSide).toHaveBeenCalledWith({ purge: false }))
+  })
+})
+
+/**
+ * User directive 2026-08-31: "Anche nella pagina dedicata ai buoni voglio che
+ * ci sia il riferimento all'offerta e non solo in opportunita'".
+ */
+describe('RewardDetailRenderer — Offerta origin', () => {
+  it('opens each linked record in its OWN module and captions the computed status as the opportunity one', async () => {
+    fetchReferentRewardsMock.mockResolvedValue([QUOTE_ORIGIN_REWARD])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderDetail(client)
+
+    await waitFor(() => expect(screen.getByText('QUO-0007')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /QUO-0007/ }))
+    expect(openViewMock).toHaveBeenCalledWith('quotes', { id: 7 })
+
+    fireEvent.click(screen.getByRole('button', { name: /Fornitura uffici/ }))
+    expect(openViewMock).toHaveBeenCalledWith('opportunities', { id: 42 })
+
+    expect(screen.getByText('Opportunity status')).toBeInTheDocument()
+    expect(screen.queryByText('Commercial status')).not.toBeInTheDocument()
+    // The offer's own working state keeps its label (spec 0083).
+    expect(screen.getByText('Workflow status')).toBeInTheDocument()
   })
 })

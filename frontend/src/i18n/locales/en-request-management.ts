@@ -27,6 +27,7 @@ export const requestManagement = {
     createdAt: 'Created at',
     nextCallbackAt: 'Next callback',
     transferred: 'Transferred',
+    quoteWorkflowStatus: 'Working status',
   },
   pendingChangeRequests: {
     alert_one: '{{count}} pending change request',

@@ -28,6 +28,7 @@ export const requestManagement = {
     createdAt: 'Caricato il',
     nextCallbackAt: 'Prossimo richiamo',
     transferred: 'Trasferito',
+    quoteWorkflowStatus: 'Stato di lavorazione',
   },
   pendingChangeRequests: {
     alert_one: '{{count}} richiesta di modifica in attesa',

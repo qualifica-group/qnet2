@@ -27,16 +27,17 @@ namespace App\DataObjects\Shared;
  *   ProductCategoryService::forSelect (product-categories/for-select scoped
  *   to a branch root's subtree, INV-1) — same retrocompatible pattern as
  *   `businessFunctionId`.
- * - `opportunityId` (directive 2026-08-06): ADDITIVE, consumed ONLY by
- *   UserService::forSelect (users/for-select restricted to that
- *   opportunity's Gestori Account) — same retrocompatible pattern as
- *   `operationalSiteId`.
+ * - `statusGroups` (directive 2026-08-31 rev.2): ADDITIVE, consumed ONLY by
+ *   ContractStatusService::forSelect (contract-statuses/for-select narrowed
+ *   to the groups a given contract action may move to) — empty means no
+ *   filter, so every other consumer is unaffected.
  */
 final readonly class ForSelectQuery
 {
     /**
      * @param  array<int, int>  $ids
      * @param  array<int, int>  $categoryIds
+     * @param  array<int, string>  $statusGroups
      */
     public function __construct(
         public ?string $search,
@@ -47,7 +48,7 @@ final readonly class ForSelectQuery
         public ?int $operationalSiteId = null,
         public array $categoryIds = [],
         public ?int $rootCategoryId = null,
-        public ?int $opportunityId = null,
+        public array $statusGroups = [],
     ) {}
 
     /**
@@ -71,6 +72,12 @@ final readonly class ForSelectQuery
             (array) ($data['category_ids'] ?? []),
         )));
 
+        /** @var array<int, string> $statusGroups */
+        $statusGroups = array_values(array_unique(array_map(
+            static fn ($group): string => (string) $group,
+            (array) ($data['status_groups'] ?? []),
+        )));
+
         return new self(
             search: ($search === null || $search === '') ? null : $search,
             offset: (int) ($data['offset'] ?? 0),
@@ -80,13 +87,18 @@ final readonly class ForSelectQuery
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             categoryIds: $categoryIds,
             rootCategoryId: isset($data['root_category_id']) ? (int) $data['root_category_id'] : null,
-            opportunityId: isset($data['opportunity_id']) ? (int) $data['opportunity_id'] : null,
+            statusGroups: $statusGroups,
         );
     }
 
     public function hasCategoryIds(): bool
     {
         return $this->categoryIds !== [];
+    }
+
+    public function hasStatusGroups(): bool
+    {
+        return $this->statusGroups !== [];
     }
 
     public function hasSearch(): bool

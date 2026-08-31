@@ -82,7 +82,11 @@ it('source opens the worklist and advertises a relation editor over sources', fu
         ->and($source['order'])->toBeLessThan($columns['product_categories']['order']);
 });
 
-it('general_notes sits right after offer_lines and stays display-only', function () {
+// User directive 2026-08-31: `quote_workflow_status` ("Stato di lavorazione")
+// now sits BETWEEN the two — the operator reads what the offer contains, then
+// where it stands. `general_notes` keeps its place right after that block, and
+// its display-only contract is untouched.
+it('general_notes follows the offer_lines block and stays display-only', function () {
     Sanctum::actingAs(worklistColumnsActor(['viewAny', 'update']));
 
     $columns = worklistColumns();
@@ -91,7 +95,8 @@ it('general_notes sits right after offer_lines and stays display-only', function
     expect($notes['editable'])->toBeFalse()
         ->and($notes)->not->toHaveKey('editor')
         ->and($notes['filterType'])->toBe('text')
-        ->and($notes['order'])->toBe($columns['offer_lines']['order'] + 1);
+        ->and($columns['quote_workflow_status']['order'])->toBe($columns['offer_lines']['order'] + 1)
+        ->and($notes['order'])->toBe($columns['quote_workflow_status']['order'] + 1);
 });
 
 // ---------------------------------------------------------------------------

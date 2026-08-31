@@ -10,7 +10,7 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  */
 export const rewardedReferentColumnRenderers: TableRendererMap = {
   rewards_count: CountCell,
-  active_rewards_count: CountCell,
-  completed_rewards_count: CountCell,
+  pending_rewards_count: CountCell,
+  approved_rewards_count: CountCell,
   last_assigned_at: DateCell,
 }

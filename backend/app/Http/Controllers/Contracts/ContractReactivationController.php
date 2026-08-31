@@ -11,7 +11,7 @@ use App\Http\Requests\Contracts\ReactivateContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\User;
-use App\Services\ContractActionService;
+use App\Services\Contracts\ContractReactivator;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -28,7 +28,7 @@ class ContractReactivationController extends BaseApiController
     use AuthorizesRequests;
 
     public function __construct(
-        private readonly ContractActionService $service,
+        private readonly ContractReactivator $reactivator,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
@@ -38,7 +38,7 @@ class ContractReactivationController extends BaseApiController
         try {
             $this->authorize('reactivate', $contract);
 
-            $contract = $this->service->reactivate($contract, $request->toData());
+            $contract = $this->reactivator->reactivate($contract, $request->toData());
 
             /** @var User $actor */
             $actor = $request->user();

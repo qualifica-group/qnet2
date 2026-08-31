@@ -13,6 +13,7 @@
 
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
@@ -218,6 +219,14 @@ export interface QuoteDetail {
   payment_method_id: number | null
   payment_method: QuoteRelationRef | null
   internal_notes: string | null
+  /**
+   * Spec 0059 D-3, extended to the Offerta origin (directive 2026-08-31): the
+   * buoni assigned to THIS offer's Segnalatore (`reporter_id`), ordered by
+   * `reward_type.name`. Same shape the Opportunita' emits, so the shared
+   * `ReporterRewardsField` hydrates identically from either record. Optional
+   * for fixture compatibility, exactly like `OpportunityDetail.rewards`.
+   */
+  rewards?: RewardAssignmentRef[]
   /** Spec 0084: i valori raccolti, uno per `code` applicabile. `{}` quando vuoto. */
   attribute_values: Record<string, CustomFieldValue>
   /** Il set risolto dalle categorie dei prodotti delle righe offerta, contesto `quote`. */
@@ -258,6 +267,11 @@ export interface QuoteLineInput {
   commissions?: QuoteLineCommissionInput[]
 }
 
+/** One `rewards` row of the create/update payload (spec 0059 §4): only the type id travels — the beneficiary and the date are server-derived. */
+export interface QuoteRewardInput {
+  reward_type_id: number
+}
+
 /**
  * Payload for POST /quotes (create). `code` mirrors the product/project
  * pattern (D-13/D-1b): omitted/empty falls back to server-side sequential
@@ -286,6 +300,13 @@ export interface CreateQuotePayload {
   /** No server-side default: omitted means "no payment method" (directive 2026-07-30). */
   payment_method_id?: number | null
   internal_notes?: string | null
+  /**
+   * Spec 0059 `sync_semantics`: a full-replace SET of reward-type ids for the
+   * offer's Segnalatore. Omitted leaves the persisted assignments untouched,
+   * `[]` clears them all. Never inherited from the Opportunita' on create
+   * (directive 2026-08-31).
+   */
+  rewards?: QuoteRewardInput[]
   /** Full-replace, max 200 rows (D-8/AC-035); always sent in full on create. */
   offer_lines?: QuoteLineInput[]
   cost_lines?: QuoteLineInput[]

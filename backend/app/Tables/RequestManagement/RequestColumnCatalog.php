@@ -28,6 +28,13 @@ use App\Tables\Shared\OfferLinesColumn;
  *  - `offer_lines` ("Linee di prodotto", spec 0086 D-7) — the offer's own
  *    REVENUE lines' products (`quote.offerLines.product`), read-only
  *    (AC-021/AC-022), replacing `products_of_interest` on this domain ONLY.
+ *  - `quote_workflow_status` ("Stato di lavorazione", user directive
+ *    2026-08-31) — the OFFER's own working state (`quote.quoteWorkflowStatus`,
+ *    a real FK on `quotes`), sortable + set-filterable via
+ *    RequestRelationColumns' QUOTE_RELATIONS and inline-editable through the
+ *    same `note`-carrying path spec 0054 D-5 built for the Opportunity's
+ *    former `workflow_status` column (removed by spec 0083 D-2 with the
+ *    dimension it addressed, restored here on the record this module now IS).
  *  - `operator_ga2` ("Operatore") — spec 0086, D-3: the offer's own
  *    Supervisore (`quote.supervisor`, a real FK on `quotes`), no longer the
  *    GA2 pivot row. `editableField` stays `operator_id` (unchanged: the ONE
@@ -125,6 +132,51 @@ final class RequestColumnCatalog
             // Read-only (AC-021/AC-022): the offer's lines are written
             // exclusively by the Offerte module.
             OfferLinesColumn::declaration('requestManagement.columns.offerLines'),
+            [
+                // "Stato di lavorazione" (user directive 2026-08-31, position
+                // fixed by the same directive): right AFTER "Linee di
+                // prodotto" — the operator reads what the offer contains, then
+                // where it stands. Inserting it mid-catalogue shifts the
+                // default order of every column after it (spec 0001's
+                // persisted layout is a sparse delta over this baseline): an
+                // accepted, explicitly requested cost, not an oversight.
+                //
+                // The DISPLAYED id (`quote_workflow_status`, the relation the
+                // cell renders) differs from the WRITTEN field
+                // (`quote_workflow_status_id`, the only key present in
+                // RequestManagementAuthorization and the one
+                // RequestManagementService::updateWork() recognizes), hence
+                // `editableField` — the same convention `operator_ga2` uses.
+                // The write goes through WritesInlineEditableCells into
+                // updateWork(), the single choke point that enforces
+                // set-membership against the workflow resolved for THIS offer
+                // AND the mandatory-note rule of a `requires_note`
+                // destination (QuoteWorkflowStatusWriter, spec 0083 T-04) —
+                // never a plain `$row->update()`.
+                //
+                // `notable: true` is this engine's ONLY column allowing a
+                // `note` in the PATCH payload (spec 0054 D-5,
+                // TableCellUpdateService): the grid collects it in the cell
+                // note dialog when the picked option carries `requires_note`.
+                // `editor: 'select'` (not the text editor `type` would imply)
+                // is what tells CellValueValidator this cell's value is an id,
+                // resolved from the options optionsFor() emits.
+                //
+                // NOT nullable: updateWork() has no "clear the status"
+                // semantics (an Offerta always carries a working state), so
+                // `value: null` 422s rather than silently no-op-ing.
+                'id' => 'quote_workflow_status',
+                'label' => 'requestManagement.columns.quoteWorkflowStatus',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'select',
+                'editableField' => 'quote_workflow_status_id',
+                'notable' => true,
+            ],
             // "Note generali" (user directive 2026-07-31): the opportunity's
             // own `general_notes` free text, right beside the products the
             // operator reads it against. Spec 0086, D-11: this is a real DB
@@ -380,93 +432,5 @@ final class RequestColumnCatalog
                 static fn (array $column): bool => ($column['filterable'] ?? false) === true,
             ),
         ));
-    }
-
-    /**
-     * `view` ("Lavora") and `documents` — no edit/delete (the CRUD boundary
-     * stays on `opportunities.*`, never request-management). `documents`
-     * reuses the polymorphic Attachment subsystem on the same Opportunity
-     * record as the opportunities module, but is gated by this module's OWN
-     * permission (`request-management.viewDocuments`, D-2) and carries the
-     * per-row `documents_count` badge. `activity` (D-7, amended) opens this
-     * module's OWN activity surface: the generic framework used to resolve its
-     * Policy by MODEL CLASS (Opportunity), which is why the action did not
-     * exist — it now goes through RequestManagementActivityAuthorizer, gated by
-     * `request-management.viewActivity`. Declared LAST on purpose: with the
-     * shared `INLINE_ACTION_LIMIT`, the fourth action falls into the overflow
-     * (three-dots) menu, which is where consultation belongs.
-     * `notes` (spec 0052 B4b) opens the collaborative-notes dialog: gated by
-     * `request-management.view`, NOT a notes permission — reading a record's
-     * notes is inherited from the ability to open the record (D-6), while
-     * writing is separately authorized server-side by `notes.create` inside
-     * the dialog itself. `count_field` (spec 0052 B4c, reversing the earlier
-     * "out of scope" call) carries `notes_count` — dalla direttiva utente
-     * 2026-08-07 le note della SINGOLA Offerta della riga, roots AND replies,
-     * soft-deleted escluse: esattamente il thread che il dialog apre
-     * (`lockedQuoteId`), come per le Offerte — mirroring `documents`'
-     * `documents_count` badge.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public static function actions(): array
-    {
-        return [
-            [
-                'key' => 'view',
-                'label' => 'actions.view',
-                'icon' => 'eye',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'request-management.view',
-            ],
-            [
-                'key' => 'documents',
-                'label' => 'actions.documents',
-                'icon' => 'paperclip',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'request-management.viewDocuments',
-                'count_field' => 'documents_count',
-            ],
-            [
-                'key' => 'notes',
-                'label' => 'actions.notes',
-                'icon' => 'messages-square',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'request-management.view',
-                'count_field' => 'notes_count',
-            ],
-            // "Trasferisci contatto" (spec 0079): declared AFTER the first
-            // three so it falls into the overflow (three-dots) menu
-            // (INLINE_ACTION_LIMIT = 3, row-actions.tsx:33) — not frequent
-            // enough for an inline slot. Opens AssignOperatorsDialog in its
-            // `lockedMode="single"` shape, gated by its OWN ability
-            // (transferContact), on top of `request-management.update`.
-            [
-                'key' => 'transfer-contact',
-                'label' => 'actions.transferContact',
-                'icon' => 'arrow-right-left',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'request-management.transferContact',
-            ],
-            [
-                'key' => 'delete',
-                'label' => 'actions.delete',
-                'icon' => 'trash',
-                'type' => 'danger',
-                'confirm' => true,
-                'permission' => 'request-management.delete',
-            ],
-            [
-                'key' => 'activity',
-                'label' => 'actions.activity',
-                'icon' => 'history',
-                'type' => 'action',
-                'confirm' => false,
-                'permission' => 'request-management.viewActivity',
-            ],
-        ];
     }
 }

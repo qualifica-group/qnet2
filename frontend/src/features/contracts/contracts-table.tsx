@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from 'react'
+import { BadgeCheck, Ban, CalendarClock, RotateCcw, Shuffle } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { contractColumnRenderers } from '@/features/contracts/column-renderers'
 import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
@@ -18,6 +20,21 @@ import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
  * detail, where the actual gated action button/dialog is.
  */
 const ACTIONS_OPENING_DETAIL = new Set(['edit', 'change_status', 'validate', 'schedule', 'terminate', 'reactivate'])
+
+/**
+ * The icon names `ContractColumnCatalog::actions()` advertises that the
+ * shared `defaultActionIconMap` does not know (it only covers the generic
+ * CRUD ones). Without them every contract domain action fell back to the
+ * same neutral three-dots glyph, so the row read as five identical buttons
+ * (direttiva utente 2026-08-31 rev.2: "icone diverse per ogni action").
+ */
+const CONTRACT_ACTION_ICONS: ActionIconMap = {
+  'check-circle': BadgeCheck,
+  'calendar-clock': CalendarClock,
+  shuffle: Shuffle,
+  ban: Ban,
+  'rotate-ccw': RotateCcw,
+}
 
 /**
  * Thin Contracts adapter over the generic table (spec 0072, mirrors
@@ -60,6 +77,7 @@ export function ContractsTable() {
         ref={tableRef}
         domain={CONTRACTS_DOMAIN}
         renderers={contractColumnRenderers}
+        iconMap={CONTRACT_ACTION_ICONS}
         onAction={handleAction}
       />
 

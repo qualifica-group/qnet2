@@ -96,6 +96,15 @@ export const contracts = {
     statusError: 'Unable to load statuses. Please try again.',
     viewQuote: 'View quote',
     openOpportunity: 'Open opportunity',
+    changeStatusDialog: {
+      description: 'Move the contract to another working status (open or pending).',
+      status: 'New status',
+      statusRequired: 'The new status is required.',
+      confirm: 'Save',
+      saving: 'Saving…',
+      success: 'Contract status updated.',
+      genericError: 'Unable to update the contract status. Please try again.',
+    },
     validateDialog: {
       description: 'Record the validation date: the contract moves to the "Validato" status unless another one is picked.',
       date: 'Validation date',

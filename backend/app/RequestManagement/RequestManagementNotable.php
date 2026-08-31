@@ -43,11 +43,24 @@ final class RequestManagementNotable implements NotableEntity
      * predicate is a Quote one) — an actor reads the collaborative record's
      * notes when they supervise at least one of this Opportunity's Offerte,
      * or hold `request-management.viewAll`.
+     *
+     * `viewAll` short-circuits BEFORE the existence check, and must: for a
+     * viewAll actor RequestManagementScope::scopeToActor() returns the query
+     * unrestricted, so `exists()` would still answer "does this Opportunity
+     * have any Offerta at all" — denying the thread of an Opportunity with
+     * zero Offerte to everyone, super-admin included. The Notes tab lives on
+     * the Opportunity detail too (`/opportunities/{id}`), where zero Offerte
+     * is a legitimate state; the existence check is only meaningful as the
+     * supervisor predicate, so it is confined to the non-viewAll branch.
      */
     public function authorizeRead(User $user, Model $record): bool
     {
         if (! $user->can('request-management.view')) {
             return false;
+        }
+
+        if ($user->can('request-management.viewAll')) {
+            return true;
         }
 
         /** @var Opportunity $record */

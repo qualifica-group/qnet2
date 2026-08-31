@@ -13,7 +13,7 @@ export const forSelectKeys = {
    * supplied, so the common, param-less for-select keeps its original,
    * unchanged key shape.
    */
-  list: (resource: string, search: string, params?: Record<string, string | number | number[]>) =>
+  list: (resource: string, search: string, params?: Record<string, string | number | string[] | number[]>) =>
     params && Object.keys(params).length > 0
       ? (['for-select', resource, { search, params }] as const)
       : (['for-select', resource, { search }] as const),
@@ -25,7 +25,7 @@ export const forSelectKeys = {
    * server, leaving the others showing `#id`). Ids are pre-sorted by the caller
    * so key identity is order-independent.
    */
-  labels: (resource: string, ids: number[], params?: Record<string, string | number | number[]>) =>
+  labels: (resource: string, ids: number[], params?: Record<string, string | number | string[] | number[]>) =>
     params && Object.keys(params).length > 0
       ? (['for-select', resource, 'labels', { ids, params }] as const)
       : (['for-select', resource, 'labels', { ids }] as const),

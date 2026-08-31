@@ -373,9 +373,13 @@ export function DataTable({
         // cap and see the layout snap back on the next load.
         maxWidth: MAX_COLUMN_WIDTH,
       },
-      // Stable row ids are required for SSRM selection to survive block
-      // reloads; only wired when selection is actually enabled.
-      getRowId: enableSelection ? getRowId : undefined,
+      // Stable row ids, ALWAYS wired (AG Grid's own SSRM recommendation): they
+      // let a `refreshServerSide` land on the existing nodes instead of
+      // recreating them, which is what keeps selection AND an open
+      // master/detail panel alive across a block reload. Previously wired only
+      // with selection on, so a refresh from inside a detail panel tore the
+      // panel down (rewarded-referents inline status edit, 2026-08-31).
+      getRowId,
       rowSelection,
       // The checkbox column defaults to unpinned: with the actions column pinned
       // left it would otherwise land to its RIGHT, in the scrollable section.
@@ -400,7 +404,6 @@ export function DataTable({
     [
       datasource,
       blockSize,
-      enableSelection,
       getRowId,
       rowSelection,
       handleCellValueChanged,

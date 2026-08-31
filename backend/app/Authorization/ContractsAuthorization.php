@@ -95,7 +95,7 @@ class ContractsAuthorization extends AbstractResourceAuthorization
             'validate' => $model instanceof Contract && $this->actionAvailability->mayValidate($model) && $actor->can('contracts.validate'),
             'terminate' => $model instanceof Contract && $this->actionAvailability->mayTerminate($model) && $actor->can('contracts.terminate'),
             'schedule' => $model instanceof Contract && $this->actionAvailability->maySchedule($model) && $actor->can('contracts.schedule'),
-            'change_status' => $model !== null && $actor->can('contracts.changeStatus'),
+            'change_status' => $model instanceof Contract && $this->actionAvailability->mayChangeStatus($model) && $actor->can('contracts.changeStatus'),
             'reactivate' => $model instanceof Contract && $this->actionAvailability->mayReactivate($model) && $actor->can('contracts.reactivate'),
             'export' => $actor->can('contracts.export'),
             'view_activity' => $model !== null && $actor->can('contracts.viewActivity'),

@@ -158,3 +158,28 @@ describe('QuoteDetailView — Layout field (AC-314)', () => {
     expect(detailValueFor('Layout')).toBe('—')
   })
 })
+
+/**
+ * User directive 2026-08-31: the Offerta carries its own "Segnalatore diritto
+ * al buono", so the read-only detail shows the assigned chips just as the
+ * Opportunita' detail does.
+ */
+describe('QuoteDetailView — rewards', () => {
+  it('renders a chip per assigned reward', () => {
+    const quote = quoteFixture({
+      rewards: [
+        { id: 1, reward_type: { id: 3, name: 'Amazon 10€', color: 'blue' }, assigned_at: '2026-08-01', notes: null },
+        { id: 2, reward_type: { id: 4, name: 'Carburante', color: 'amber' }, assigned_at: '2026-08-01', notes: null },
+      ],
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByText('Amazon 10€')).toBeInTheDocument()
+    expect(screen.getByText('Carburante')).toBeInTheDocument()
+  })
+
+  it('shows the empty placeholder when the offer has no reward', () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
+    expect(detailValueFor('Rewards')).toBe('—')
+  })
+})

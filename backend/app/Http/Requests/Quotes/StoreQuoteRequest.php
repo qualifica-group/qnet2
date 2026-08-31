@@ -10,8 +10,8 @@ use App\Http\Requests\Concerns\ValidatesQuoteCompanySite;
 use App\Http\Requests\Concerns\ValidatesQuoteLayout;
 use App\Http\Requests\Concerns\ValidatesQuoteLineCommissions;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
-use App\Http\Requests\Concerns\ValidatesQuoteSupervisor;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
+use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Http\Requests\Concerns\ValidatesSingleQuotePerOpportunity;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -49,8 +49,8 @@ class StoreQuoteRequest extends FormRequest
     use ValidatesQuoteLayout;
     use ValidatesQuoteLineCommissions;
     use ValidatesQuoteLines;
-    use ValidatesQuoteSupervisor;
     use ValidatesQuoteWorkflowStatus;
+    use ValidatesRewards;
     use ValidatesSingleQuotePerOpportunity;
 
     public function authorize(): bool
@@ -89,7 +89,7 @@ class StoreQuoteRequest extends FormRequest
             // surfaces as the same 422 keyed `attribute_values.<code>`.
             'attribute_values' => ['sometimes', 'array'],
             'summary' => ['prohibited'],
-        ], $this->quoteLinesRules());
+        ], $this->quoteLinesRules(), $this->rewardsRules());
     }
 
     public function withValidator(Validator $validator): void
@@ -99,11 +99,11 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceCommissionFieldPermissions($validator, null);
             $this->enforceCommissionRecipients($validator, null);
             $this->enforceCompanySiteBelongsToCompany($validator, null);
-            $this->enforceSupervisorIsOpportunityManager($validator, null);
             $this->enforceQuoteLayout($validator, null);
             $this->enforceSingleOfferLine($validator, null);
             $this->enforceSingleQuotePerOpportunity($validator);
             $this->validateQuoteWorkflowStatus($validator);
+            $this->validateRewards($validator, null);
         });
     }
 

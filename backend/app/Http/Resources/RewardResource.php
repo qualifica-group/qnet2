@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Reward;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * @mixin Reward
@@ -23,13 +25,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * value persisted on `rewards` itself (spec 0060 D-5) — the one exception to
  * "no status lives here".
  *
- * Extensibility of `context` (today only Opportunity, morph alias
- * 'opportunity'): buildContext()/resolveSourcePath() dispatch on the morph
- * map ALIAS (`getMorphClass()`, never a FQCN — `morph_map_is_strict`). A
- * second source type tomorrow adds one more `match` arm plus one more
- * `contextForX()` private method, without touching the rest of the
- * resource — not a speculative interface/strategy for a single real use
- * case today (engineering.md §1.3).
+ * Two origins today (user directive 2026-08-31): `opportunity` and `quote`
+ * — buildContext()/summarizeSource()/buildRelated() all dispatch on the
+ * morph map ALIAS (`getMorphClass()`, never a FQCN — `morph_map_is_strict`),
+ * one `match` arm each. `related` carries the OTHER of the two (an
+ * Opportunita' holds at most one Offerta), so the card always shows both
+ * references, whichever one the buono was born on.
+ *
+ * `context.workflow_status` is emitted ONLY by the Offerta arm: it is the
+ * offer's own working-state row (spec 0083), and an Opportunita' has none of
+ * its own — its status is COMPUTED from its quotes (`context.status`, spec
+ * 0082), which both arms carry.
  *
  * Relies on the caller having eager-loaded `eagerLoad()`'s relations
  * (`rewardType`/`rewardStatus`/`source` with the Opportunity's own
@@ -56,6 +62,7 @@ class RewardResource extends JsonResource
             'reward_type' => $this->summarizeRewardType($this->rewardType),
             'reward_status' => $this->summarizeRewardStatus($this->rewardStatus),
             'source' => $this->summarizeSource($source),
+            'related' => $this->buildRelated($source),
             'context' => $this->buildContext($source),
         ];
     }
@@ -82,6 +89,16 @@ class RewardResource extends JsonResource
                         // global default `open` row when there are none).
                         'quotes.quoteWorkflowStatus',
                         'managers.avatar',
+                    ],
+                    // The Offerta origin (2026-08-31 directive): its own
+                    // context chain, plus the parent Opportunity the card
+                    // shows as the cross-reference (`related`).
+                    Quote::class => [
+                        'opportunity.registry',
+                        'opportunity.quotes.quoteWorkflowStatus',
+                        'quoteWorkflowStatus',
+                        'offerLines.product.category',
+                        'supervisor.avatar',
                     ],
                 ]);
             },
@@ -126,12 +143,43 @@ class RewardResource extends JsonResource
         return [
             'type' => $alias,
             'id' => $source->id,
-            'name' => $source->name,
+            // An Offerta has no `name` column at all: its human identity is
+            // the sequential `code` (QUO-0001), the same label every other
+            // surface shows it under.
+            'name' => match ($alias) {
+                'quote' => (string) $source->code,
+                default => (string) $source->name,
+            },
             'path' => match ($alias) {
                 'opportunity' => "/opportunities/{$source->id}",
+                'quote' => "/quotes/{$source->id}",
                 default => null,
             },
         ];
+    }
+
+    /**
+     * The records linked to the origin that the card shows ALONGSIDE it
+     * (user directive 2026-08-31: "il riferimento all'offerta e non solo
+     * in opportunita'"). One Opportunita' carries at most one Offerta
+     * (ValidatesSingleQuotePerOpportunity), so this is the counterpart of
+     * whichever of the two the reward was born on — never the origin itself,
+     * which `source` already carries.
+     *
+     * @return array<int, array{type: string, id: int, name: string, path: string|null}>
+     */
+    private function buildRelated(?Model $source): array
+    {
+        $counterparts = match ($source?->getMorphClass()) {
+            'opportunity' => $source->quotes->all(),
+            'quote' => array_filter([$source->opportunity]),
+            default => [],
+        };
+
+        return array_values(array_filter(array_map(
+            fn (Model $related): ?array => $this->summarizeSource($related),
+            $counterparts,
+        )));
     }
 
     /**
@@ -145,8 +193,41 @@ class RewardResource extends JsonResource
 
         return match ($source->getMorphClass()) {
             'opportunity' => $this->contextForOpportunity($source),
+            'quote' => $this->contextForQuote($source),
             default => null,
         };
+    }
+
+    /**
+     * The Offerta origin's live context. `status` stays the parent
+     * Opportunita's COMPUTED commercial status — the same field, resolved
+     * the same way, as an Opportunity-origin card, so the two never read as
+     * different things; `workflow_status` adds what only an Offerta has, its
+     * OWN working-state row (spec 0083). The categories come from the offer's
+     * revenue lines (its own products), not from the Opportunita's product
+     * lines, and the operator is the offer's Supervisore (spec 0086, D-3).
+     *
+     * @return array{registry: array{id: int, name: string}|null, product_categories: array<int, array{id: int, name: string}>, status: array<string, mixed>, workflow_status: array{id: int, name: string, color: string|null}|null, operator: array{id: int, name: string, avatar_url: string|null}|null}
+     */
+    private function contextForQuote(Quote $quote): array
+    {
+        $status = $quote->quoteWorkflowStatus;
+
+        return [
+            'registry' => $this->summarizeByName($quote->opportunity?->registry),
+            'product_categories' => $this->summarizeCategories(
+                collect($quote->offerLines)->map(static fn (Model $line): ?Model => $line->product?->category),
+            ),
+            'status' => $quote->opportunity === null
+                ? ['source' => 'none', 'distinct_count' => 0, 'entries' => []]
+                : app(OpportunityStatusResolver::class)->resolve($quote->opportunity),
+            'workflow_status' => $status === null ? null : [
+                'id' => $status->id,
+                'name' => $status->name,
+                'color' => $status->color,
+            ],
+            'operator' => $this->summarizeOperator($quote->supervisor),
+        ];
     }
 
     /**
@@ -178,8 +259,22 @@ class RewardResource extends JsonResource
      */
     private function summarizeProductCategories(iterable $productLines): array
     {
-        return collect($productLines)
-            ->map(fn (Model $line): ?Model => $line->productCategory)
+        return $this->summarizeCategories(
+            collect($productLines)->map(static fn (Model $line): ?Model => $line->productCategory),
+        );
+    }
+
+    /**
+     * Shared tail of both origins' category projection: an Opportunity reads
+     * them off its `product_lines` pivot, an Offerta off its revenue lines'
+     * products — two different paths to the same `{id, name}` list.
+     *
+     * @param  Collection<int, Model|null>  $categories
+     * @return array<int, array{id: int, name: string}>
+     */
+    private function summarizeCategories(Collection $categories): array
+    {
+        return $categories
             ->filter()
             ->unique('id')
             ->map(fn (Model $category): array => ['id' => $category->id, 'name' => $category->name])

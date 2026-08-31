@@ -154,7 +154,8 @@ class ContractStatusService
 
     /**
      * Minimal, searchable, paginated contract status list for the for-select
-     * standard (ADR 0011). Only `is_active = true` rows are eligible,
+     * standard (ADR 0011), optionally narrowed to a set of groups
+     * (`status_groups[]`). Only `is_active = true` rows are eligible,
      * ordered by `sort_order` first so the select mirrors the table's
      * display order — a deactivated status stays visible on contracts
      * already assigned to it, but is never (re-)selectable.
@@ -162,6 +163,12 @@ class ContractStatusService
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         $base = ContractStatus::query()->select(['id', 'name', 'system_key'])->where('is_active', true);
+
+        // Directive 2026-08-31 rev.2: each contract action offers only the
+        // groups it may move to (`status_groups[]`).
+        if ($query->hasStatusGroups()) {
+            $base->whereIn('group', $query->statusGroups);
+        }
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');

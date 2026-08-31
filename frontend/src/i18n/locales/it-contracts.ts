@@ -98,6 +98,15 @@ export const contracts = {
     statusError: 'Impossibile caricare gli stati. Riprova.',
     viewQuote: 'Visualizza preventivo',
     openOpportunity: 'Apri opportunità',
+    changeStatusDialog: {
+      description: 'Sposta il contratto su un altro stato di lavorazione (Aperto o Pending).',
+      status: 'Nuovo stato',
+      statusRequired: 'Il nuovo stato è obbligatorio.',
+      confirm: 'Salva',
+      saving: 'Salvataggio…',
+      success: 'Stato del contratto aggiornato.',
+      genericError: 'Impossibile aggiornare lo stato del contratto. Riprova.',
+    },
     validateDialog: {
       description: 'Registra la data di validazione: il contratto passa allo stato «Validato», salvo scelta diversa.',
       date: 'Data di validazione',

@@ -179,6 +179,13 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     note: z.string().max(INTERNAL_NOTES_MAX_LENGTH, t('quotes.form.noteMax')).nullable(),
     commercial_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
+    // Spec 0059 D-3, extended to the Offerta origin (directive 2026-08-31):
+    // reward assignments for the Segnalatore, the chips under the reporter
+    // field. The "non-empty requires a reporter" rule is NOT mirrored here:
+    // the control is only mounted once there IS one, and the server owns the
+    // 422 for the one case that can still reach it (a reporter cleared while
+    // chips are attached).
+    rewards: z.array(z.object({ reward_type_id: z.number() })),
     supervisor_id: z.number().nullable(),
     // Societa'/Societa' Sede/Sede operativa (directive 2026-07-30): all three
     // optional. The site-belongs-to-company rule is enforced server-side

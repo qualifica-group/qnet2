@@ -18,12 +18,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Sede-filtered Operatore select and the "Assegna operatori" popup. It rides
  * ForSelectQuery::operationalSiteId (fromValidated picks it up automatically),
  * consumed only by UserService::forSelect.
- *
- * `opportunity_id` (directive 2026-08-06, ADDITIVE): restricts the list to
- * that opportunity's Gestori Account (`opportunity_user` pivot) — feeds the
- * Offerta form's Supervisore select, whose value must be one of them
- * (ValidatesQuoteSupervisor enforces the same rule on write). Rides
- * ForSelectQuery::opportunityId, same mechanism as `operational_site_id`.
  */
 class UserForSelectRequest extends FormRequest
 {
@@ -47,7 +41,6 @@ class UserForSelectRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'operational_site_id' => ['sometimes', 'integer', 'exists:operational_sites,id'],
-            'opportunity_id' => ['sometimes', 'integer', 'exists:opportunities,id'],
         ];
     }
 

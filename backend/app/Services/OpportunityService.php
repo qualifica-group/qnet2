@@ -151,10 +151,6 @@ class OpportunityService
             ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
             ->with([
                 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
-                // The Gestori Account decide whether the Supervisore is
-                // inheritable at all (user directive 2026-08-06) — see
-                // OpportunityForSelectResource.
-                'managers:id',
                 // The sede operativa's label is composed from its primary
                 // address + city (it has no name column of its own).
                 'operationalSite.addresses.city',

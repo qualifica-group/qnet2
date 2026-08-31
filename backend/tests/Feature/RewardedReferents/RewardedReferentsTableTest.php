@@ -1,11 +1,10 @@
 <?php
 
-use App\Enums\WorkflowStatusGroup;
+use App\Enums\RewardStatusGroup;
 use App\Models\Opportunity;
-use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Reward;
+use App\Models\RewardStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -94,22 +93,26 @@ it('rows: a referent with 4 rewards yields ONE row with rewards_count = 4 (AC-00
 });
 
 // ---------------------------------------------------------------------------
-// AC-007 — active/completed counters derived from the origin's COMPUTED status
-// group (spec 0082: the quotes' statuses, working state as fallback)
+// AC-007 — pending/approved counters, derived from the BUONO's OWN status
+// group (`reward_statuses.group`). REQUISITO CAMBIATO, user directive
+// 2026-08-31: the counters used to be derived from the ORIGIN's computed
+// commercial state (spec 0059 D-2, the two columns being "Buoni attivi"/
+// "Buoni completati"); they now answer "where does each buono stand in its
+// OWN approval flow" — "Buoni in pending" / "Buoni approvati".
 // ---------------------------------------------------------------------------
 
-it('rows: active_rewards_count/completed_rewards_count are derived from the origin status group (AC-007)', function () {
+it('rows: pending_rewards_count/approved_rewards_count are derived from the reward status group (AC-007)', function () {
     $actor = rewardedReferentUserWith(['viewAny']);
     $referent = Referent::factory()->create();
 
-    $openStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Open]);
-    $pendingStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::Pending]);
-    $closedStatus = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::ClosedLost]);
+    $pending = RewardStatus::factory()->create(['group' => RewardStatusGroup::Pending]);
+    $approved = RewardStatus::factory()->create(['group' => RewardStatusGroup::ClosedWon]);
+    $denied = RewardStatus::factory()->create(['group' => RewardStatusGroup::ClosedLost]);
 
-    foreach ([$openStatus, $pendingStatus, $closedStatus] as $quoteStatus) {
-        $opportunity = Opportunity::factory()->create();
-        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $quoteStatus->id]);
-        rewardForOpportunity($referent, $opportunity);
+    foreach ([$pending, $pending, $approved, $denied] as $status) {
+        rewardForOpportunity($referent, Opportunity::factory()->create(), [
+            'reward_status_id' => $status->id,
+        ]);
     }
 
     Sanctum::actingAs($actor);
@@ -117,9 +120,34 @@ it('rows: active_rewards_count/completed_rewards_count are derived from the orig
     $response = $this->postJson('/api/tables/rewarded-referents/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('id', $referent->id);
 
-    expect($row['rewards_count'])->toBe(3)
-        ->and($row['active_rewards_count'])->toBe(2)
-        ->and($row['completed_rewards_count'])->toBe(1);
+    // The `closed_lost` ("Negato") buono counts toward neither: the accepted
+    // invariant is `rewards_count >= pending + approved`, not equality.
+    expect($row['rewards_count'])->toBe(4)
+        ->and($row['pending_rewards_count'])->toBe(2)
+        ->and($row['approved_rewards_count'])->toBe(1);
+});
+
+it('rows: a CUSTOM status counts like the system row of its own group (AC-007)', function () {
+    $actor = rewardedReferentUserWith(['viewAny']);
+    $referent = Referent::factory()->create();
+
+    // No `system_key`: a row the configurator added. Counting by GROUP is what
+    // makes it behave like the system one — counting by `system_key` would
+    // silently drop it.
+    $customPending = RewardStatus::factory()->create([
+        'group' => RewardStatusGroup::Pending,
+        'system_key' => null,
+    ]);
+    rewardForOpportunity($referent, Opportunity::factory()->create(), [
+        'reward_status_id' => $customPending->id,
+    ]);
+
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/rewarded-referents/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('id', $referent->id);
+
+    expect($row['pending_rewards_count'])->toBe(1);
 });
 
 // ---------------------------------------------------------------------------

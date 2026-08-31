@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 /**
  * Row projection for the `rewarded-referents` domain (spec 0059): turns an
  * eager-loaded Referent (baseQuery: `personalData.contacts`, `registries`,
- * plus the `rewards_count`/`active_rewards_count`/`completed_rewards_count`/
+ * plus the `rewards_count`/`pending_rewards_count`/`approved_rewards_count`/
  * `last_assigned_at` aggregate aliases) into the SSRM row payload — every
  * value resolved from memory, never a fresh query (AC-013).
  *
@@ -41,8 +41,8 @@ final class RewardedReferentRowMapper
             'phone' => $this->primaryValue($contacts, ContactTypeEnum::Phone)
                 ?? $this->primaryValue($contacts, ContactTypeEnum::Mobile),
             'rewards_count' => (int) ($row->rewards_count ?? 0),
-            'active_rewards_count' => (int) ($row->active_rewards_count ?? 0),
-            'completed_rewards_count' => (int) ($row->completed_rewards_count ?? 0),
+            'pending_rewards_count' => (int) ($row->pending_rewards_count ?? 0),
+            'approved_rewards_count' => (int) ($row->approved_rewards_count ?? 0),
             'last_assigned_at' => $this->isoDate($row->last_assigned_at),
         ];
     }

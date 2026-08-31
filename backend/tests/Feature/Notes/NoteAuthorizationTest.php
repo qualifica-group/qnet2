@@ -81,14 +81,31 @@ it('a user without request-management.view -> 403 (AC-030)', function () {
 it('a user with request-management.viewAll reads notes on ANY record (AC-030)', function () {
     $actor = noteActor(['request-management.view', 'request-management.viewAll']);
     $opportunity = Opportunity::factory()->create();
-    // D-9: read access is re-keyed on the Opportunity's own Offerte — an
-    // Opportunity with zero Offerte has no `request-management` record to
-    // speak of any more (D-1: a row is always a Quote), so it needs at least
-    // one (unsupervised is fine: viewAll ignores the supervisor filter).
+    // Unsupervised Offerta: viewAll ignores the supervisor filter.
     Quote::factory()->for($opportunity)->create();
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertOk();
+});
+
+// The Notes tab also lives on the Opportunity detail (`/opportunities/{id}`),
+// where zero Offerte is a legitimate state. Keying read on "the scoped Offerta
+// query has rows" denied that thread to EVERY actor, super-admin included,
+// because an unrestricted query over an empty set still has no rows.
+it('a user with request-management.viewAll reads notes on an Opportunity with ZERO Offerte (AC-030)', function () {
+    $actor = noteActor(['request-management.view', 'request-management.viewAll']);
+    $opportunity = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertOk();
+});
+
+it('a user WITHOUT viewAll still gets 403 on an Opportunity with ZERO Offerte (AC-030)', function () {
+    $actor = noteActor(['request-management.view']);
+    $opportunity = Opportunity::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/notes?entity_type=request-management&entity_id={$opportunity->id}")->assertForbidden();
 });
 
 // ---------------------------------------------------------------------------

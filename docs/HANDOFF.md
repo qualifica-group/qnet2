@@ -3,6 +3,307 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SUPERVISORE OFFERTA — RIMOSSO IL VINCOLO "GESTORE ACCOUNT" (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Il supervisore verra' SEMPRE ereditato dal supervisore dell'opportunita'."
+Revoca la direttiva 2026-08-06 ("il Supervisore di un'Offerta puo' essere solo un Gestore Account
+della sua Opportunita'"). Scelta esplicita dell'utente: rimuovere il filtro GA su TUTTE le
+superfici, picker incluso.
+
+**Movente misurato (non ipotesi).** Sul DB reale: 10 opportunita' con supervisore, di cui 10 con
+supervisore NON tra i propri Gestori Account. Il filtro annullava quindi l'ereditarieta' nel 100%
+dei casi — il campo Supervisore dell'Offerta si precompilava sempre vuoto, e la regola D-3/AC-020
+della spec 0065 era di fatto inerte.
+
+**Cosa NON e' cambiato (era gia' implementato, verificato prima di toccare).** Anagrafica ->
+Opportunita' eredita commerciale/segnalatore/supervisore/GA (spec 0040 BR-4+A-5,
+`RegistryForSelectResource.meta` -> `opportunity-registry-field.tsx:74-77`); Opportunita' ->
+Offerta eredita commerciale/segnalatore (spec 0065 D-3). Tutte prefill editabili: `*Submitted`
+sui DataObject distingue "chiave assente" (eredita) da "chiave inviata a null" (vince l'utente).
+
+**Rimosso (codice morto dopo la revoca).** `ValidatesQuoteSupervisor` (trait + chiamate su
+Store/UpdateQuoteRequest) e le chiavi i18n `quotes.supervisor_not_manager` (it/en);
+`QuoteService::inheritedSupervisorId()`; `OpportunityForSelectResource::supervisorAsManager()` +
+eager load `managers:id` in `OpportunityService::forSelectBaseQuery()`; il parametro
+`opportunity_id` di `users/for-select` in tutta la catena (`ForSelectQuery::opportunityId`,
+`UserForSelectRequest`, filtro in `UserService::forSelect`) e `User::managedOpportunities()`, che
+di quel filtro era l'unico chiamante. Lato FE: `forceDisabled` + `params` sul picker Supervisore e
+il `useWatch` `selectedOpportunityId` che li alimentava (`quote-form-body.tsx`).
+
+**Mantenuto di proposito.** `RequestSupervisorWriter` continua a sincronizzare lo slot GA2: quella
+sincronizzazione serve a `operator_ga2` e allo scope "le mie righe" di `RequestManagementScope`
+(posizione 2), non solo al guard rimosso. Docblock riscritto di conseguenza. Le Opportunita' non
+sono toccate: `opportunities.supervisor_id` era gia' libero.
+
+**Test aggiornati perche' il requisito e' cambiato (non per farli passare).**
+`QuoteSupervisorManagerTest` -> sostituito da `tests/Feature/Quotes/QuoteSupervisorInheritanceTest.php`
+(10 test: ereditarieta' incondizionata, submitted che vince, picker non scoped, nessun 422);
+`DemoQuoteSeederTest` ora asserisce `quote.supervisor_id === opportunity.supervisor_id`;
+`quote-form-opportunity-roles.test.tsx` asserisce il picker sbloccato e non-scoped.
+`DemoQuoteSeeder` torna a `supervisorIdSubmitted: false`.
+
+**Spec.** `docs/specs/0065-quotes-module.xml`: nuovo `<amendment date="2026-08-31" status="applied">`;
+quello 2026-08-06 marcato `status="superseded-by-2026-08-31"` e lasciato a documentare lo stato
+precedente.
+
+**Verificato (eseguito).** Backend `php artisan test`: 5378/5378 passed, 1 skipped, 0 failed.
+Pint pulito. Frontend `npx vitest run`: 3617/3617 su 509 file; `npx tsc -b --force` EXIT=0;
+ESLint su `src/features/quotes` pulito. NOTA: una prima run completa aveva mostrato
+`TestUsersSeederTest` (upload allegati) in 404 — NON riproducibile: passa isolato e nelle due run
+complete successive. Flake ordine-dipendente su `Storage::fake`, preesistente e senza relazione con
+questa modifica.
+
+**Prossimo passo.** Nessuno in sospeso. Da committare su richiesta esplicita.
+
+## BUONI SULL'OFFERTA + RIFERIMENTO OFFERTA NELLA PAGINA BUONI (2026-08-31) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Segnalatore diritto al buono anche su offerta, cosi' come opportunita'
+voglio che venga fatto anche su offerta. Anche nella pagina dedicata ai buoni voglio che ci sia il
+riferimento all'offerta e non solo in opportunita'." + "per offerta non ci sia uno stato
+commerciale ma stato opportunita', e poi stato di lavorazione sarebbe lo stato dell'offerta".
+Emendamento **A-01 di `docs/specs/0059-referent-rewards-module.xml`** (AC-036..AC-042).
+
+**Scelte confermate in sessione.** (1) I buoni NON si ereditano dall'Opportunita' alla create di
+un'Offerta — a differenza di Commerciale/Segnalatore/Supervisore/Sede operativa: un buono copiato
+conterebbe DUE volte lo stesso segnalatore in "Segnalatori premiati". (2) La card del buono mostra
+SEMPRE Opportunita' + Offerta (l'origine come link principale, la controparte accanto).
+
+**Punto di partenza.** L'infrastruttura era gia' generalizzata dalla spec 0086 D-12 (`HasRewards`
+su Quote, `RewardAssignmentWriter`/`ValidatesRewards` tipizzati `Opportunity|Quote`): mancava il
+cablaggio nel MODULO Offerte e tutto il ramo `quote` di `RewardResource`. Un buono con origine
+Offerta usciva con `name`, `path` e `context` NULL — la card faceva `<Link to={null}>`.
+In DB `rewards` era vuota (reset spec 0086 D-8), quindi il bug non era mai emerso.
+
+**Backend.**
+- `StoreQuoteRequest`/`UpdateQuoteRequest`: `use ValidatesRewards` + `rewardsRules()` +
+  `validateRewards()`. Le due invarianti D-3 valgono identiche all'Opportunita'.
+- `CreateQuoteData`/`UpdateQuoteData`: `rewards` (ids dedup) + `hasRewards()`, appesi in coda ai
+  parametri per compat posizionale, FUORI da `attributes()`/`submittedAttributes()`.
+- `QuoteService`: inietta `RewardAssignmentWriter`; create -> `sync()` dopo l'insert (il reporter
+  e' gia' nell'insert, nessun retarget); update -> `retarget()` su `wasChanged('reporter_id')`
+  SUBITO dopo il save, poi `sync()`. **Il file e' a 487 righe: hard limit 500.** Il prossimo che
+  ci aggiunge qualcosa deve splittare, non infilare.
+- `QuoteResource`: nuova chiave `rewards`; `summarizeRewards` estratto nel trait condiviso
+  `App\Http\Resources\Concerns\SummarizesRewards`, usato anche da `OpportunityResource`.
+  `QuoteService::DETAIL_RELATIONS` += `rewards.rewardType`.
+- `RewardResource`: ramo `quote` (`source.name` = `code` — una Quote NON ha colonna `name`;
+  `path` = `/quotes/{id}`; `contextForQuote` con categorie dalle righe REVENUE e operatore =
+  `quotes.supervisor_id`), nuova chiave **`related`** (la controparte Opportunita'/Offerta:
+  1 offerta max per opportunita'), `eagerLoad()` con il `morphWith` di Quote.
+  `context.workflow_status` esiste SOLO sul ramo quote (stato di lavorazione proprio
+  dell'offerta); sul ramo opportunity resta assente (spec 0083 D-2).
+- **`App\Services\Rewards\RewardOriginScope`** (nuovo): l'unico ponte "buono -> Opportunita' di
+  riferimento" (diretta, o via `quotes.opportunity_id`). Consumato da
+  `RewardedReferentsTableDefinition` (contatori active/completed) e da
+  `RewardedReferentAdvancedFilterApplier` (`opportunity`/`workflow_status`/`operator`), che prima
+  chiudevano su `[Opportunity::class]` e perdevano in silenzio ogni buono nato su un'Offerta.
+  **Trappola trovata:** il `$type` che `whereHasMorph` passa alla closure e' il FQCN, NON l'alias
+  morph — il ramo si sceglie su `$source->getModel()->getMorphClass()`.
+
+**Frontend.**
+- `quotes`: `types.ts` (`rewards` su QuoteDetail + `QuoteRewardInput` sui payload),
+  `quote-schema.ts`, `use-quote-form.ts` (idratazione + default `[]`), `quote-form-payload.ts`
+  (create: omesso se vuoto; update: diff per SET via `sameIdSet`).
+- Nuovo `features/quotes/quote-reporter-field.tsx` — gemello di `opportunity-reporter-field.tsx`
+  meno il contact recap; monta il condiviso `ReporterRewardsField`, prefisso i18n
+  `quotes.form.rewards`. `quote-form-body.tsx` sostituisce il vecchio `RelationSelectField` del
+  Segnalatore con questo componente.
+- `quote-detail.tsx`: campo "Buoni" con i `RewardChip`.
+- `sameIdSet` spostata da `opportunity-form-payload.ts` a **`@/lib/utils`** (2 call site reali).
+- Pagina buoni: `RewardDetailItem.related`, `RewardSourceRef.path` ora `string | null`,
+  `RewardContext.workflow_status` opzionale. `RewardCard` sostituisce `onOpenSource` con
+  **`onOpenRecord(record)`** e rende origine + collegati come `Field` intitolati per tipo
+  (`labels.sourceTypes`). `reward-detail-renderer.tsx` monta DUE `useModuleOpener`
+  (`opportunities` e `quotes`) e apre ogni record nel modulo suo.
+- **Etichette (direttiva):** su origine Offerta lo stesso `context.status` si intitola
+  "Stato opportunita'" (`labels.opportunityStatus`), non "Stato commerciale" — li' il valore
+  appartiene all'opportunita' padre. "Stato di lavorazione" resta lo stato proprio dell'offerta.
+
+**Verifica eseguita.** Backend `php artisan test`: **5379 test, 5378 passed, 1 skipped, 0 failed**
+(usare `XDEBUG_MODE=off`: con Xdebug attivo il runner parallelo va in SIGSEGV — problema
+d'ambiente, non del codice). Frontend `npx vitest run`: **509 file, 3617 test, tutti verdi**.
+`npx tsc -b --force`, Pint ed ESLint puliti.
+Nuovi test: `tests/Feature/Quotes/QuoteRewardAssignmentTest.php` (8),
+`tests/Feature/Rewards/RewardQuoteOriginTest.php` (4),
+`quote-reporter-field.test.tsx` (4), blocco `rewards` in `quote-form-payload.test.ts` (5),
+blocco rewards in `quote-detail.test.tsx` (2), blocco "Offerta origin" in
+`reward-detail-renderer.test.tsx` (1). Fixture aggiornate (`rewards: []` / `related: []`).
+
+**Prossimi passi / segnalazioni.** (1) `QuoteService` 487/500 righe: split obbligato al prossimo
+intervento. (2) I filtri avanzati della pagina buoni restano intitolati "Opportunita'": ora
+matchano anche i buoni nati su Offerta, ma non esiste un filtro "Offerta" dedicato — da valutare
+se serve. (3) Resta aperto il drift gia' segnalato su `allowsNotes()` di
+`OpportunitiesTableDefinition`/`QuotesTableDefinition`.
+
+## GRIGLIA GESTIONE RICHIESTE: COLONNE FLESSIBILI + STATO OFFERTA (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** La tabella Gestione richieste non aveva ne' le colonne flessibili della categoria
+(`attr.*`) ne' la colonna dello stato dell'offerta. Entrambe erano gia' presenti nel PANNELLO
+(direttiva 2026-08-07: `RequestManagementAuthorization` dichiara `attribute_values` e
+`quote_workflow_status_id`, `updateWork()` li scrive, la Resource li espone): mancava solo la GRIGLIA.
+
+**Decisioni utente (2026-08-31).**
+- Colonne `attr.*`: EDITABILI in-cell, come spec 0064.
+- Colonna stato: EDITABILE in-cell con tutto il flusso — destinazioni ammesse per riga e nota
+  OBBLIGATORIA quando lo stato di destinazione la richiede.
+- Posizione della colonna stato: subito DOPO `offer_lines` ("Linee di prodotto"), non in coda.
+
+**A — `quote_workflow_status` ("Stato di lavorazione").**
+Colonna derivata su FK propria di `quotes` (`quoteWorkflowStatus`), sortable + set-filter + distinct
+values via il nuovo gruppo `QUOTE_RELATIONS` di `RequestRelationColumns` (subquery correlata su
+`quotes`, senza hop su `opportunities`). Editor `select`, `editableField
+= quote_workflow_status_id`, `notable: true`: `optionsFor()` (in `WritesInlineEditableCells`) emette
+il catalogo con `color` + `requires_note`, e `RequestRowMapper` proietta per riga
+`quote_workflow_status_options` (ids ammessi dal workflow risolto per QUELLA offerta,
+`QuoteWorkflowResolver` iniettato una volta per request e memoizzato → nessun N+1; per questo
+`baseQuery()` ora eager-loada `offerLines.product.category` e `opportunity.customFieldValueRow`).
+Il FE aveva gia' tutto: `SelectCellEditor` restringe con `<columnId>_options`, `useTableCellEdit`
+apre `CellNoteDialog` quando l'opzione ha `requires_note` e manda `{column, value, note}`.
+La regola vera resta server-side in `QuoteWorkflowStatusWriter` (set risolto + nota obbligatoria).
+
+**B — colonne `attr.<code>`.**
+Ripristinate le classi cancellate da 5a14cf7, ritarget sull'Offerta: `AttributeColumnBuilder`,
+`AttributeDateFilterApplier`, `AttributeScopeResolver` (ora `AttributeContext::Quote`),
+`Concerns/WritesAttributeCells` (scrive via `updateWork()` -> `QuoteAttributeValueWriter`).
+NUOVO collaboratore `AttributeGridColumns` (lato lettura: shape colonne, valori riga, hook
+filter/sort/distinct sul JSON `quotes.attribute_values`), cosi' che
+`RequestManagementScopedTableDefinition` resti nei limiti di file. Ripristinati anche
+`scopeToAllProductCategories()` (union allow-list D-4) in `TableController::saveFilters()` e
+`TableFilterStateRequest`. FE: `TableColumn['source']` torna `'custom' | 'attribute'` e
+`isDynamicColumn` in `column-defaults.tsx` lo riconosce.
+
+**Nomi/contratti da rispettare.**
+- Column id `quote_workflow_status` (DISPLAY) vs field key `quote_workflow_status_id` (WRITE): sono
+  diversi di proposito, `editableField` fa il remap — non unificarli.
+- `attr.` e' il prefisso degli id dinamici; `AttributeColumnBuilder::EDITABLE_FIELD` =
+  `attribute_values` e' l'UNICA chiave di field-permission per tutto il blocco.
+- Tab "Tutte" (nessuno scope) = ZERO colonne `attr.*`, per costruzione.
+
+**Split di file.** `RequestColumnCatalog` superava le 500 righe: `actions()` estratto in
+`RequestActionCatalog` (nessun cambio di comportamento).
+
+**Test cambiato per requisito cambiato.** `RequestManagementSourceAndNotesColumnsTest`:
+"general_notes sits right after offer_lines" non vale piu' — ora tra i due c'e'
+`quote_workflow_status` (posizione decisa dall'utente). Il test asserisce la nuova sequenza.
+
+**Verificato.** `php artisan test` completo: 5368 test, 5366 passati. L'unico rosso e'
+`QuoteDocumentPdfTest::it leaves no workspace behind in the system temp dir`, FLAKY e non correlato
+(passa 5/5 in isolamento; e' un workspace temporaneo docx->pdf lasciato da un'altra esecuzione).
+Nuovi test: `RequestManagementWorkflowStatusColumnTest` (11), `RequestManagementAttributeColumnsTest`
+(28), `RequestManagementAttributeWritesTest` (7), `RequestManagementAttributeDateFilterTest` (7).
+Pint pulito. FE: `npx vitest run` 3604/3604, `npx tsc -b --force` EXIT=0, ESLint pulito.
+
+**Prossimi passi.** Verifica manuale in app: tab categoria -> comparsa colonne `attr.*` ed editing
+in cella; cambio stato in griglia su una destinazione `requires_note` -> dialog nota obbligatoria.
+Nessun commit eseguito (CLAUDE.md §3.6).
+
+## NOTE SU OPPORTUNITA' SENZA OFFERTE — 403 (2026-08-31) — VERDE, NON COMMITTATO
+
+**Bug segnalato.** `/opportunities/24` -> tab Note vuota, `GET /api/notes?entity_type=request-management&entity_id=24`
+rispondeva 403 "Non hai i permessi per questa azione." anche al super-admin.
+
+**Root cause.** `RequestManagementNotable::authorizeRead()` chiudeva su
+`RequestManagementScope::scopeToActor(Quote::where('opportunity_id', $id), $user)->exists()`. Per un
+attore con `request-management.viewAll` lo scope restituisce la query INVARIATA, quindi `exists()`
+non stava piu' rispondendo "supervisiono un'Offerta?" ma "questa Opportunita' ha almeno un'Offerta?".
+L'opportunita' 24 (OPP_24) ha ZERO offerte -> nessuno poteva leggere il thread, super-admin incluso.
+Il thread e' raggiungibile anche dal dettaglio Opportunita' (`/opportunities/{id}`), dove zero
+offerte e' uno stato legittimo, non solo dal pannello Gestione richieste (dove una riga E' un Quote).
+
+**Fix.** `viewAll` corto-circuita PRIMA della `exists()` (`app/RequestManagement/RequestManagementNotable.php`):
+`view` obbligatorio -> `viewAll` = true -> altrimenti predicato supervisore invariato. Nessun
+allentamento: chi non ha `viewAll` e non supervisiona offerte resta 403 (spec 0085, "nessun
+allentamento di authorizeRead" continua a valere per il ramo non-viewAll).
+
+**Verificato.** `php artisan test tests/Feature/Notes/` 61/61; `OpportunityTableActionsTest` +
+`QuoteNotesActionTest` + `tests/Feature/RequestManagement/` 352/352; Pint pulito. Su DB reale
+`authorizeRead(opp 24)`: TRUE per gli utenti #1-#4 (viewAll), false per #5/#6 (commerciali senza
+viewAll ne' offerte supervisionate) e #7 (senza `request-management.view`) — corretto.
+Due test di regressione aggiunti in `tests/Feature/Notes/NoteAuthorizationTest.php` (viewAll legge
+un'Opportunita' a zero offerte; non-viewAll resta 403 sullo stesso record).
+
+**Drift preesistente segnalato, NON toccato (fuori scope).** `OpportunitiesTableDefinition::allowsNotes()`
+e `QuotesTableDefinition::allowsNotes()` dichiarano di replicare `authorizeRead` ma usano ancora la
+vecchia regola pivot `$row->operatorManager()?->id === $actor->id` (spec 0049), non il supervisore
+di Offerta (`quotes.supervisor_id`, spec 0086 D-3). Sono solo affordance di riga (l'endpoint
+autorizza davvero), ma per un attore senza `viewAll` l'azione "Note" puo' comparire su righe il cui
+thread e' 403, e mancare su righe leggibili. Da allineare in un task dedicato.
+
+## CONTRATTI — FLUSSO AZIONI PER GRUPPO DI STATO (2026-08-31 rev.2) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Gating per GRUPPO dello stato corrente: Aperto/Pending -> "Modifica dati",
+"Modifica stato", "Valida", "Disdici"; Chiuso positivo -> SOLO "Disdici" + "Programma"
+(disabilitato); Chiuso negativo -> SOLO "Riattiva". Ogni select deve offrire solo il gruppo di
+destinazione dell'azione. Stesso flusso sulle row action della griglia, con icone diverse per
+azione. "Visualizza preventivo"/"Apri opportunita'" devono aprire una MODALE, non navigare.
+Supera la lettura precedente basata su `validated_at`/`terminated_at`.
+
+**Regola unica.** `App\Services\Contracts\ContractActionAvailability` (BE) +
+`frontend/src/features/contracts/contract-lifecycle.ts` (FE), entrambe sul gruppo:
+`open|pending` -> edit + change_status + validate + terminate; `closed_won` -> terminate +
+schedule; `closed_lost` -> reactivate. Consumata da `ContractsAuthorization::actionPermissions()`
+e da `ContractsTableDefinition::actionsFor()`. **La sospensione resta un asse ortogonale**: un
+contratto sospeso sta su "Sospeso" (pending), quindi tiene "Riattiva" (BR-2/D-3) e perde
+"Valida". Non toccare questa eccezione senza rileggere AC-048.
+
+**Rifiuti lato server ora sul gruppo.** `ContractActionService::assertNotClosed()` sostituisce
+`assertNotAlreadyValidated()`: si rifiuta di validare un contratto gia' `closed_won` (422) o
+`closed_lost` (422, "riattiva prima"), NON in base al timbro `validated_at`. Serve perche' un
+contratto disdetto e riattivato torna Aperto e deve essere rivalidabile. `ContractReactivator`
+sceglie il percorso sul gruppo `closed_lost`, non sul timbro (copre anche "Annullato").
+
+**Nuovo endpoint.** POST `/api/contracts/{contract}/change-status` (`ContractStatusChangeController`
++ `ChangeContractStatusRequest`/`Data` + `ContractActionService::changeStatus()`): stato
+obbligatorio nei gruppi open/pending, contratto a sua volta open/pending, activity
+`contract.status_changed`. E' l'endpoint che mancava all'ability `contracts.changeStatus`.
+
+**Filtro gruppi sul for-select.** GET `/api/contract-statuses/for-select` accetta
+`status_groups[]` (additivo su `ForSelectQuery`, consumato solo da
+`ContractStatusService::forSelect`). FE: costanti `WORKING_GROUP_PARAMS` /
+`POSITIVE_GROUP_PARAMS` / `NEGATIVE_GROUP_PARAMS` in `contract-lifecycle.ts`, passate come
+`params` ai picker di Valida (closed_won), Disdici (closed_lost), Modifica stato e Riattiva
+(open+pending). Per farlo ho allargato il tipo `params` a `string[]` in
+`relation-select-field`, `async-paginated-select`, `async-paginated-multi-select`,
+`for-select/types|use-for-select|query-keys` (prima ammetteva solo `number[]`).
+
+**Split di file (engineering.md §6).** `ContractActionService` aveva superato le 300 righe: la
+riattivazione (due percorsi) e' ora in `App\Services\Contracts\ContractReactivator`
+(253 + 145 righe). Il controller di reactivate inietta il nuovo servizio.
+
+**Griglia.** `CONTRACT_ACTION_ICONS` in `contracts-table.tsx` mappa
+check-circle/calendar-clock/shuffle/ban/rotate-ccw: il `defaultActionIconMap` condiviso non le
+conosceva e tutte le azioni di dominio uscivano con lo stesso glifo neutro di fallback. Le row
+action continuano ad aprire il dettaglio (scelta gia' documentata), non duplicano i dialog.
+
+**Modali.** `contract-related-links.tsx` (nuovo): "Visualizza preventivo"/"Apri opportunita'"
+usano `useModuleOpener(dominio, { forceMode: 'modal' })`, quindi ignorano sia il defaultMode del
+modulo sia la preferenza utente. Nei test il preference-lookup e' stubbato
+(`vi.mock('@/features/modules/use-module-open-mode')`) invece di montare un AuthProvider.
+
+**Verifica eseguita.** Backend `php artisan test`: 5314 passed / 1 skipped / 0 failed (5315).
+Frontend `npx vitest run`: 3604 passed su 508 file (col fix dei permessi sotto). `npx tsc -b --force`, Pint ed ESLint puliti.
+Test modificati per requisito cambiato (dichiarato): AC-010 ora mette il contratto su "Validato"
+(il rifiuto e' sul gruppo), `ContractActionAvailabilityTest` riscritto sulla matrice a tre gruppi,
+blocco "gating per gruppo" in `contract-detail.test.tsx`. Nuovo `ContractChangeStatusTest`
+(endpoint + filtro `status_groups[]`).
+
+**Fix successivo — i bottoni non si aggiornavano senza reload (segnalazione utente).** Le
+funzioni in `features/contracts/api.ts` restituivano solo `data.data` e SCARTAVANO il blocco
+`permissions` che ogni endpoint contratto invia (`okWithPermissions`). Siccome la barra fa
+`lifecycle.X && permissions.actions.X`, dopo un'azione i flag restavano quelli del gruppo
+precedente e i bottoni cambiavano solo ricaricando. Ora tutte e cinque le scritture
+(validate/change-status/schedule/terminate/reactivate) piu' la PATCH tornano
+`ContractDetailWithPermissions` via l'helper `withPermissions()`, e la catena
+mutation -> dialog -> `onChanged` -> `setContract` propaga anche i permessi (anche nella cache
+React Query). **Regola da non riperdere: qualunque nuova azione contratto deve restituire
+l'envelope completo, non solo `data`.** Due test di regressione: `contracts/api.test.ts` (il
+client conserva `permissions`; verificato che fallisce se si torna a `data.data`) e
+`contract-actions-refresh.test.tsx` (la barra si ridisegna dopo "Valida" senza reload).
+
+**Prossimi passi.** Definire il nuovo flusso di "Programma" (endpoint e test esistono, il bottone
+e' disabilitato). Valutare se PATCH /contracts/{id} debba smettere di accettare
+`contract_status_id` ora che esiste change-status.
+
 ## CONTRATTI — AZIONI PER STATO E STATO "VALIDATO" (2026-08-31) — VERDE, NON COMMITTATO
 
 **Direttiva utente.** "Quando il contratto non e' su uno stato con chiusura positiva ci deve stare

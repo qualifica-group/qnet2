@@ -6,7 +6,44 @@
 -->
 <spec id="0065-quotes-module" status="draft" owner="utente" date="2026-07-29">
 
-  <amendment date="2026-08-06" status="applied">
+  <amendment date="2026-08-31" status="applied">
+    REVOCATA LA RESTRIZIONE "IL SUPERVISORE DI UN'OFFERTA DEVE ESSERE UN GESTORE ACCOUNT"
+    (decisione utente 2026-08-31). Supera integralmente l'emendamento 2026-08-06 qui sotto, che
+    resta a documentare lo stato precedente. Il Supervisore dell'Offerta e' SEMPRE ereditato da
+    `opportunities.supervisor_id`, senza filtri, e la popolazione ammessa torna l'intera tabella
+    `users`.
+
+    Movente: sul dataset reale il filtro annullava l'ereditarieta' in 10 casi su 10 — nessuna
+    opportunita' con supervisore aveva quel supervisore anche fra i propri GA — quindi il prefill
+    documentato in D-3/AC-020 non e' mai scattato e il campo si presentava sempre vuoto.
+
+    Le tre superfici tornano allineate sull'assenza della regola:
+    - LISTA: `GET /api/users/for-select` non accetta piu' `opportunity_id`; `ForSelectQuery::opportunityId`,
+      il filtro in `UserService::forSelect` e la relazione `User::managedOpportunities()` (suo unico
+      chiamante) sono rimossi. Nel form il picker Supervisore non e' piu' ne' bloccato ne' scoped:
+      niente cascata Opportunita' -> Supervisore.
+    - SCRITTURA: `ValidatesQuoteSupervisor` e le chiavi i18n `quotes.supervisor_not_manager`
+      (it/en) sono rimossi; Store/UpdateQuoteRequest non hanno piu' alcun vincolo sul destinatario.
+    - EREDITARIETA' (AC-020): `QuoteService::applySnapshotDefaults` copia `opportunities.supervisor_id`
+      incondizionatamente, come gia' fa per Commerciale e Segnalatore; `OpportunityForSelectResource`
+      espone `meta.supervisor` come copia diretta. L'eager load `managers:id` della for-select cade.
+
+    NON toccato: `RequestSupervisorWriter` continua a sincronizzare lo slot GA2 (spec 0086 D-3).
+    Quella sincronizzazione ora si regge solo sul proprio motivo originario — `operator_ga2` e lo
+    scope "le mie righe" di RequestManagementScope risolvono per posizione 2 — non piu' anche sul
+    guard di scrittura rimosso. Le Opportunita' restano invariate: `opportunities.supervisor_id`
+    era gia' libero e lo resta, e l'ereditarieta' Anagrafica -> Opportunita' non cambia.
+
+    Seeder: `DemoQuoteSeeder` torna a ereditare (`supervisorIdSubmitted: false`); il suo helper
+    `supervisorId()` e l'eager load `managers:id` sono rimossi.
+
+    Test AGGIORNATI perche' il requisito e' cambiato (non per farli passare):
+    `QuoteSupervisorManagerTest` e' sostituito da `tests/Feature/Quotes/QuoteSupervisorInheritanceTest.php`,
+    che asserisce l'ereditarieta' incondizionata e l'assenza del guard; lato frontend
+    `quote-form-opportunity-roles.test.tsx` asserisce il picker sbloccato e non-scoped.
+  </amendment>
+
+  <amendment date="2026-08-06" status="superseded-by-2026-08-31">
     IL SUPERVISORE DI UN'OFFERTA PUO' ESSERE SOLO UN GESTORE ACCOUNT DELLA SUA OPPORTUNITA'
     (decisione utente 2026-08-06). La popolazione ammessa non e' piu' l'intera tabella `users` ma
     il pivot `opportunity_user` (`Opportunity::managers()`, i "G.A. n"). Restringe D-3 sul solo

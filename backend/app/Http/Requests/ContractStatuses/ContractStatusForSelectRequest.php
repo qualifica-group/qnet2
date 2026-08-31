@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests\ContractStatuses;
 
 use App\DataObjects\Shared\ForSelectQuery;
+use App\Enums\ContractStatusGroup;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/contract-statuses/for-select (ADR 0011,
@@ -37,6 +39,8 @@ class ContractStatusForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'status_groups' => ['sometimes', 'array'],
+            'status_groups.*' => [Rule::enum(ContractStatusGroup::class)],
         ];
     }
 

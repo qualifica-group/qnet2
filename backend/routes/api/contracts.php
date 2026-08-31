@@ -3,6 +3,7 @@
 use App\Http\Controllers\Contracts\ContractController;
 use App\Http\Controllers\Contracts\ContractReactivationController;
 use App\Http\Controllers\Contracts\ContractScheduleController;
+use App\Http\Controllers\Contracts\ContractStatusChangeController;
 use App\Http\Controllers\Contracts\ContractTerminationController;
 use App\Http\Controllers\Contracts\ContractValidationController;
 use Illuminate\Support\Facades\Route;
@@ -27,10 +28,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('contracts/{contract}', [ContractController::class, 'show']);
 Route::match(['put', 'patch'], 'contracts/{contract}', [ContractController::class, 'update']);
 
-// The 4 domain-action routes (spec 0072, BR-2/3/4). Authorization
-// (contracts.validate/schedule/terminate/reactivate) is enforced
-// server-side via ContractPolicy on every endpoint.
+// The 5 domain-action routes (spec 0072, BR-2/3/4, plus "Modifica stato" —
+// user directive 2026-08-31 rev.2). Authorization (contracts.validate/
+// schedule/terminate/reactivate/changeStatus) is enforced server-side via
+// ContractPolicy on every endpoint.
 Route::post('contracts/{contract}/validate', ContractValidationController::class);
 Route::post('contracts/{contract}/schedule', ContractScheduleController::class);
 Route::post('contracts/{contract}/terminate', ContractTerminationController::class);
 Route::post('contracts/{contract}/reactivate', ContractReactivationController::class);
+Route::post('contracts/{contract}/change-status', ContractStatusChangeController::class);

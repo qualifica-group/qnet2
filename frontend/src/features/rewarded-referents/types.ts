@@ -24,8 +24,10 @@ export interface RewardedReferentRow {
   email: string | null
   phone: string | null
   rewards_count: number
-  active_rewards_count: number
-  completed_rewards_count: number
+  /** Buoni whose OWN status sits in the `pending` group (user directive 2026-08-31). */
+  pending_rewards_count: number
+  /** Buoni whose OWN status sits in the `closed_won` ("Approvato") group. */
+  approved_rewards_count: number
   /** ISO date, or null when never assigned (unreachable in practice: every listed referent has ≥1 reward). */
   last_assigned_at: string | null
 }

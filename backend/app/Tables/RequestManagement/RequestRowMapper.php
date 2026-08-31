@@ -9,7 +9,9 @@ use App\Models\Contact;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Quote;
+use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +27,15 @@ use Illuminate\Support\Collection;
  * single concern (query building: scoping, filters, sorts, distinct values)
  * and the per-row presentation lives here. Every value is resolved from
  * relations already loaded by the definition's baseQuery — this mapper never
- * queries.
+ * queries, EXCEPT `quote_workflow_status_options` (user directive
+ * 2026-08-31, restoring spec 0054 D-9's precedent on the record this module
+ * now IS): the valid-destination set is resolved PER OFFER (spec 0083's
+ * workflow criteria), so `GET /columns`' domain-wide `options` alone cannot
+ * tell the frontend which of them apply to THIS row. `$workflowResolver` is
+ * injected once per request and MEMOIZES its own domain-wide queries
+ * (activeWorkflows()/statusesFor()), so a page of N rows costs at most one
+ * query for the candidate workflows plus one per DISTINCT resolved workflow
+ * on the page — never N.
  *
  * D-9: `opportunity_id` rides along as the record the `documents`/`notes`/
  * `activity` row actions and the field-change-request "current value" for
@@ -38,6 +48,8 @@ use Illuminate\Support\Collection;
  */
 final class RequestRowMapper
 {
+    public function __construct(private readonly QuoteWorkflowResolver $workflowResolver) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -97,7 +109,44 @@ final class RequestRowMapper
             // Hidden column, drives the default "most recently loaded first"
             // sort only — the OFFER's own `created_at` now (AC-014).
             'created_at' => $row->created_at,
+            // "Stato di lavorazione" (user directive 2026-08-31): the OFFER's
+            // own working state. `color` rides along so the cell paints the
+            // very dot the work panel's picker and the Offerte grid already
+            // show for that status.
+            'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
+            // The ids THIS offer may actually be moved to (the workflow spec
+            // 0083 resolves for it), so the select editor narrows the
+            // domain-wide `options` of GET /columns down to what is valid
+            // here — the 422 QuoteWorkflowStatusWriter raises stays the
+            // security net, this is the UX layer on top of it.
+            'quote_workflow_status_options' => $this->allowedWorkflowStatusIds($row),
         ];
+    }
+
+    /**
+     * The destination ids the select editor offers for this row: the ordered
+     * set of the workflow QuoteWorkflowResolver resolves for THIS offer.
+     *
+     * @return array<int, int>
+     */
+    private function allowedWorkflowStatusIds(Quote $row): array
+    {
+        return $this->workflowResolver
+            ->statusesFor($this->workflowResolver->resolve($row))
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * The working-state summary the badge cell renders and the inline select
+     * pre-selects: the same `{id, name, color}` projection
+     * QuotesTableDefinition emits for this very relation.
+     *
+     * @return array{id: int, name: string, color: string|null}|null
+     */
+    private function summarizeWorkflowStatus(?QuoteWorkflowStatus $status): ?array
+    {
+        return $status === null ? null : ['id' => $status->id, 'name' => $status->name, 'color' => $status->color];
     }
 
     /**

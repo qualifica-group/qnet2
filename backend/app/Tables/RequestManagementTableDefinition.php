@@ -13,6 +13,7 @@ use App\Services\RequestManagement\RequestManagementScope;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Tables\RequestManagement\Concerns\WritesInlineEditableCells;
+use App\Tables\RequestManagement\RequestActionCatalog;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
 use App\Tables\RequestManagement\RequestClientColumns;
 use App\Tables\RequestManagement\RequestColumnCatalog;
@@ -193,8 +194,18 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
             // composed label (site has no own name) — now the OFFER's own FK.
             'operationalSite.addresses.city',
             // "Linee di prodotto" (spec 0086, D-7): the offer's own REVENUE
-            // lines' products (App\Tables\Shared\OfferLinesColumn).
-            'offerLines.product',
+            // lines' products (App\Tables\Shared\OfferLinesColumn). The
+            // `.category` hop and `opportunity.customFieldValueRow` below are
+            // what QuoteWorkflowResolver reads to resolve each row's own
+            // destination set (RequestRowMapper's
+            // `quote_workflow_status_options`): eager-loaded here so its
+            // `loadMissing()` is a no-op and the page costs no per-row query.
+            'offerLines.product.category',
+            'opportunity.customFieldValueRow',
+            // "Stato di lavorazione" (user directive 2026-08-31): the OFFER's
+            // own working state, a real FK on `quotes` — eager-loaded so the
+            // badge cell and its inline select never fire a per-row query.
+            'quoteWorkflowStatus',
             // The single-record GET/PATCH response's `transferred_from`
             // reuses this SAME baseQuery() (mirrors D-10's
             // `FieldChangeRequestValueResolver::record()` precedent).
@@ -247,7 +258,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      */
     public function actions(): array
     {
-        return RequestColumnCatalog::actions();
+        return RequestActionCatalog::actions();
     }
 
     /**

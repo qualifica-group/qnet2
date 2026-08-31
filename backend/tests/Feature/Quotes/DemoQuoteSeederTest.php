@@ -77,27 +77,24 @@ it('goes through QuoteService: aggregates persisted and offer categories cover t
     }
 });
 
-it('gives every demo quote a supervisor drawn from its opportunity Gestori Account (directive 2026-08-06)', function (): void {
+it('inherits every demo quote supervisor from its opportunity (directive 2026-08-31)', function (): void {
     seedQuoteDependencies();
 
     test()->seed(DemoQuoteSeeder::class);
 
-    $quotes = Quote::query()->with('opportunity.managers:id')->get();
+    $quotes = Quote::query()->with('opportunity')->get();
     $sawAtLeastOneSupervisor = false;
 
     foreach ($quotes as $quote) {
-        $managerIds = $quote->opportunity->managers->pluck('id')->all();
+        // An unconditional copy: no Gestore Account filter any more, so the
+        // two columns match even when the supervisor holds no manager slot.
+        expect($quote->supervisor_id)->toBe($quote->opportunity->supervisor_id, $quote->code);
 
-        if ($quote->supervisor_id === null) {
-            continue;
-        }
-
-        $sawAtLeastOneSupervisor = true;
-        expect($quote->supervisor_id)->toBeIn($managerIds, $quote->code);
+        $sawAtLeastOneSupervisor = $sawAtLeastOneSupervisor || $quote->supervisor_id !== null;
     }
 
-    // A dataset where NO quote got a supervisor would make the assertion above
-    // vacuous: DemoOpportunitySeeder attaches manager slots to ~half the batch.
+    // A dataset where NO opportunity carries a supervisor would make the
+    // assertion above vacuous: DemoOpportunitySeeder fills the column.
     expect($sawAtLeastOneSupervisor)->toBeTrue();
 });
 

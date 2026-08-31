@@ -1,6 +1,7 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { originalLineInputs, sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
+import { sameIdSet } from '@/lib/utils'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type {
   CreateQuotePayload,
@@ -36,6 +37,9 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
     layout_id: values.layout_id,
     payment_method_id: values.payment_method_id,
     internal_notes: values.internal_notes,
+    // Spec 0059 `sync_semantics`: omitted when empty — a create has nothing
+    // persisted to clear, so sending `[]` would only be noise.
+    ...(values.rewards.length > 0 ? { rewards: values.rewards } : {}),
     offer_lines: toLineInputs(values.offer_lines),
     cost_lines: toLineInputs(values.cost_lines),
   }
@@ -118,6 +122,15 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.internal_notes !== original.internal_notes) {
     payload.internal_notes = values.internal_notes
+  }
+
+  // Spec 0059 `sync_semantics`: the key is a full-replace, so it travels only
+  // when the SET of reward-type ids actually changed (the chip row's order
+  // carries no meaning). `[]` is a legitimate payload here: it clears them.
+  const rewardTypeIds = values.rewards.map((reward) => reward.reward_type_id)
+  const originalRewardTypeIds = (original.rewards ?? []).map((reward) => reward.reward_type.id)
+  if (!sameIdSet(rewardTypeIds, originalRewardTypeIds)) {
+    payload.rewards = values.rewards
   }
 
   const offerLines = toLineInputs(values.offer_lines)

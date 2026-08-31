@@ -40,11 +40,11 @@ function formatCustomNumber(value: unknown): string {
 
 /**
  * Whether a column is the dynamic, backend-driven kind that carries no per-id
- * renderer: `custom.<key>` (spec 0021), sharing the generic formatting
- * fallbacks below.
+ * renderer: `custom.<key>` (spec 0021) or `attr.<code>` (spec 0064), both
+ * sharing the generic formatting fallbacks below.
  */
 function isDynamicColumn(column: TableColumn): boolean {
-  return column.source === 'custom'
+  return column.source === 'custom' || column.source === 'attribute'
 }
 
 /**

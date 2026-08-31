@@ -595,4 +595,86 @@
       quel momento (CLAUDE.md §3.6). Allo stato verde si aggiorna `docs/HANDOFF.md` e ci si ferma.</item>
   </constraints>
 
+  <!-- ==================================================================== -->
+  <!-- EMENDAMENTO 2026-08-31 — L'OFFERTA COME ORIGINE DI PRIMA CLASSE      -->
+  <!-- ==================================================================== -->
+  <amendment id="A-01" date="2026-08-31" origin="direttiva utente">
+    <directive>
+      "Segnalatore diritto al buono anche su offerta, cosi' come opportunita' voglio che venga
+      fatto anche su offerta. Anche nella pagina dedicata ai buoni voglio che ci sia il
+      riferimento all'offerta e non solo in opportunita'." Chiarimento successivo: "per offerta
+      non ci sia uno stato commerciale ma stato opportunita', e poi stato di lavorazione sarebbe
+      lo stato dell'offerta".
+    </directive>
+
+    <decisions>
+      <item id="A-D1">Il modulo `quotes` (Offerta) espone il blocco "abbinamento buono" sotto il
+        campo Segnalatore, ESATTAMENTE come il form Opportunita' e il work panel Gestione
+        Richieste: stesso componente condiviso (`ReporterRewardsField`), stessa wire shape
+        `rewards` (`{reward_type_id}`), stesso writer (`RewardAssignmentWriter`). Il beneficiario
+        e' sempre `quotes.reporter_id`.</item>
+      <item id="A-D2">I buoni NON si ereditano dall'Opportunita' alla create di un'Offerta
+        (scelta utente), a differenza di Commerciale/Segnalatore/Supervisore/Sede operativa: un
+        buono copiato conterebbe DUE volte lo stesso segnalatore in "Segnalatori premiati".</item>
+      <item id="A-D3">`RewardResource` acquisisce il ramo `quote`: `source.name` e' il `code`
+        dell'offerta (una Quote non ha colonna `name`), `source.path` e' `/quotes/{id}`, e
+        `context` risolve registry/categorie/operatore dall'Offerta (categorie dalle sue righe
+        REVENUE, operatore = `quotes.supervisor_id`, spec 0086 D-3).</item>
+      <item id="A-D4">Nuova chiave `related` nell'item di
+        `GET /api/referents/{referent}/rewards`: i record collegati all'origine, mostrati
+        ACCANTO ad essa. Poiche' un'Opportunita' porta al massimo un'Offerta
+        (ValidatesSingleQuotePerOpportunity), e' sempre la controparte dell'origine — cosi' la
+        card mostra SEMPRE entrambi i riferimenti, su qualunque dei due il buono sia nato.</item>
+      <item id="A-D5">`context.workflow_status` torna, ma SOLO sul ramo `quote`: e' lo stato di
+        lavorazione PROPRIO dell'Offerta (spec 0083). Sul ramo `opportunity` resta assente
+        (spec 0083 D-2): l'Opportunita' non ha uno stato suo, `context.status` e' computato dalle
+        sue offerte. Di conseguenza la card intitola lo STESSO `context.status` "Stato
+        commerciale" su origine Opportunita' e "Stato opportunita'" su origine Offerta — li'
+        il valore appartiene all'opportunita' padre, non all'offerta.</item>
+      <item id="A-D6">`RewardOriginScope` (`App\Services\Rewards`) e' l'UNICO ponte
+        "buono -> Opportunita' di riferimento" (diretta per un'origine Opportunita', via
+        `quotes.opportunity_id` per un'origine Offerta). Consumato dai contatori
+        `active_rewards_count`/`completed_rewards_count` e dai filtri avanzati
+        `opportunity`/`workflow_status`/`operator` del modulo `rewarded-referents`: prima
+        chiudevano su `[Opportunity::class]` e ogni buono nato su un'Offerta usciva in silenzio
+        da conteggi e filtri.</item>
+    </decisions>
+
+    <contract_delta>
+      <item>POST/PATCH `/api/quotes[/{quote}]` accettano `rewards: [{reward_type_id}]` con la
+        stessa semantica sparsa di `products_of_interest` (assente = intatto, `[]` = svuota) e le
+        stesse due invarianti D-3 (`ValidatesRewards`): un set non vuoto richiede un Segnalatore;
+        il Segnalatore non si puo' azzerare mentre ci sono buoni attaccati.</item>
+      <item>`QuoteResource` emette `rewards` con la shape identica a `OpportunityResource`
+        (trait condiviso `SummarizesRewards`), ordinata per `reward_type.name`.</item>
+      <item>`RewardResource` emette `related: [{type, id, name, path}]` e `source.path` puo' ora
+        valere `/quotes/{id}`; `source.path` resta nullable per un alias senza pagina di modulo.</item>
+    </contract_delta>
+
+    <acceptance_criteria>
+      <criterion id="AC-036">POST `/api/quotes` con `rewards` non vuoto crea righe `rewards` con
+        `source_type` = `quote`, `source_id` = id dell'offerta e `referent_id` =
+        `quotes.reporter_id`.</criterion>
+      <criterion id="AC-037">POST `/api/quotes` su un'Opportunita' che HA gia' dei buoni non ne
+        copia nessuno sull'Offerta appena creata (A-D2).</criterion>
+      <criterion id="AC-038">PATCH `/api/quotes/{quote}` che cambia `reporter_id` riassegna ogni
+        buono dell'offerta al nuovo Segnalatore (salvataggio per-model, activity log preservato);
+        `rewards: []` li cancella tutti; la chiave assente li lascia intatti.</criterion>
+      <criterion id="AC-039">Un buono con origine Offerta esce da
+        `GET /api/referents/{referent}/rewards` con `source.name` = `code`, `source.path` =
+        `/quotes/{id}`, `context` popolato e `related` contenente l'Opportunita' padre; un buono
+        con origine Opportunita' porta l'Offerta in `related`.</criterion>
+      <criterion id="AC-040">I contatori `active_rewards_count`/`completed_rewards_count` e i
+        filtri avanzati `opportunity`/`workflow_status`/`operator` contano/matchano anche i buoni
+        con origine Offerta, attraverso l'Opportunita' padre (A-D6).</criterion>
+      <criterion id="AC-041">Nel form Offerta il blocco buoni compare solo dopo aver scelto un
+        Segnalatore, resta montato (con l'hint) se il Segnalatore viene azzerato mentre restano
+        chip, e in edit si idrata dai `rewards` persistiti dell'offerta.</criterion>
+      <criterion id="AC-042">Nella card della pagina buoni ogni record collegato apre il PROPRIO
+        modulo (`quotes` per un'Offerta, `opportunities` per un'Opportunita'), e su origine
+        Offerta lo stato computato e' intitolato "Stato opportunita'", non "Stato
+        commerciale" (A-D5).</criterion>
+    </acceptance_criteria>
+  </amendment>
+
 </spec>

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DataObjects\Contracts\ReactivateContractData;
+use App\DataObjects\Contracts\ChangeContractStatusData;
 use App\DataObjects\Contracts\ScheduleContractData;
 use App\DataObjects\Contracts\TerminateContractData;
 use App\DataObjects\Contracts\ValidateContractData;
 use App\Enums\ContractStatusGroup;
 use App\Enums\StatusSystemKey;
-use App\Enums\WorkflowStatusGroup;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\User;
@@ -18,8 +17,11 @@ use App\Services\Contracts\ContractStatusResolver;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The 4 domain actions on a contract (spec 0072, BR-2/3/4): validate,
- * schedule, terminate, reactivate. Each is a single, small write inside its
+ * The domain actions that move a contract FORWARD (spec 0072, BR-3/BR-4,
+ * plus "Modifica stato" — user directive 2026-08-31 rev.2): validate,
+ * schedule, changeStatus, terminate. "Riattiva contratto", the only action
+ * with two paths, lives in its own class
+ * (App\Services\Contracts\ContractReactivator). Each is a single, small write inside its
  * own transaction, followed by the SAME detail read ContractController::show
  * uses (ContractService::loadDetail()), so every action's response is
  * identical in shape to a plain GET.
@@ -44,7 +46,7 @@ class ContractActionService
     public function validate(Contract $contract, ValidateContractData $data, User $actor): Contract
     {
         DB::transaction(function () use ($contract, $data, $actor): void {
-            $this->assertNotAlreadyValidated($contract);
+            $this->assertNotClosed($contract);
             $this->assertNotSuspended($contract);
 
             $validatedAt = $data->validatedAtSubmitted ? $data->validatedAt : now()->toDateString();
@@ -107,6 +109,31 @@ class ContractActionService
     }
 
     /**
+     * "Modifica stato" (user directive 2026-08-31 rev.2): moves a WORKING
+     * contract onto another open/pending status. Both ends are constrained —
+     * the destination by ChangeContractStatusRequest, the current state here
+     * — so this action can never open or close a contract: those transitions
+     * belong to "Valida"/"Disdici"/"Riattiva" alone.
+     */
+    public function changeStatus(Contract $contract, ChangeContractStatusData $data): Contract
+    {
+        DB::transaction(function () use ($contract, $data): void {
+            $this->assertWorking($contract);
+
+            $contract->contract_status_id = $data->contractStatusId;
+            $contract->save();
+
+            activity($contract->getTable())
+                ->performedOn($contract)
+                ->event('contract.status_changed')
+                ->withProperties(['contract_status_id' => $data->contractStatusId])
+                ->log('Contract status changed');
+        });
+
+        return $this->contractService->loadDetail($contract->fresh());
+    }
+
+    /**
      * BR-4: not repeatable (422 if already disdetto). Default destination is
      * the system 'terminated' row (D-2); a client-provided one MUST belong
      * to the closed_lost group — enforced by TerminateContractRequest's
@@ -147,106 +174,33 @@ class ContractActionService
     }
 
     /**
-     * Two paths, one action (BR-2/D-3, extended by the user directive of
-     * 2026-08-31):
-     *
-     * - SUSPENDED: allowed only while the linked quote is CURRENTLY back in
-     *   a closed_won group; restores the pre-suspension status, falling back
-     *   to the active `is_default` row if that one has since been
-     *   deactivated. Unchanged.
-     * - DISDETTO: allowed whatever the quote's current status (user
-     *   decision: the disdetta is a commercial decision of its own); the
-     *   destination status comes from the client, since nothing ever
-     *   recorded the one preceding the disdetta. Clears the whole
-     *   termination stamp so the contract stops being disdetto.
-     *
-     * A contract that is neither is refused (422).
+     * A contract can only be validated while it is still working (open or
+     * pending). Refusing on the GROUP rather than on the `validated_at`
+     * stamp is what makes the flow of the 2026-08-31 rev.2 directive
+     * consistent: a contract disdetto and then riattivato lands back on an
+     * open/pending status and must be validatable again, even though it
+     * carries the stamp of its first validation.
      */
-    public function reactivate(Contract $contract, ReactivateContractData $data): Contract
+    private function assertNotClosed(Contract $contract): void
     {
-        DB::transaction(function () use ($contract, $data): void {
-            $this->assertReactivatable($contract);
+        $contract->loadMissing('contractStatus');
+        $group = $contract->contractStatus?->group;
 
-            $contract->terminated_at !== null
-                ? $this->reactivateTerminated($contract, $data)
-                : $this->reactivateSuspended($contract);
-        });
-
-        return $this->contractService->loadDetail($contract->fresh());
-    }
-
-    private function reactivateSuspended(Contract $contract): void
-    {
-        $this->assertQuoteClosedWon($contract);
-
-        $restoredStatusId = $this->restoredStatusId($contract);
-
-        $contract->contract_status_id = $restoredStatusId;
-        $contract->status_before_suspension_id = null;
-        $contract->suspended_at = null;
-        $contract->save();
-
-        $this->logReactivation($contract, $restoredStatusId, 'suspended');
-    }
-
-    private function reactivateTerminated(Contract $contract, ReactivateContractData $data): void
-    {
-        $statusId = $this->submittedReactivationStatusId($data);
-
-        $contract->contract_status_id = $statusId;
-        $contract->terminated_at = null;
-        $contract->termination_reason = null;
-        $contract->terminated_by = null;
-        $contract->save();
-
-        $this->logReactivation($contract, $statusId, 'terminated');
-    }
-
-    private function logReactivation(Contract $contract, int $statusId, string $from): void
-    {
-        activity($contract->getTable())
-            ->performedOn($contract)
-            ->event('contract.reactivated')
-            ->withProperties(['contract_status_id' => $statusId, 'reactivated_from' => $from])
-            ->log('Contract reactivated');
-    }
-
-    /**
-     * The destination status of a disdetto contract's reactivation.
-     * ReactivateContractRequest already makes it mandatory on this path and
-     * excludes the closed_lost group; re-asserted here since this method may
-     * be invoked directly by any future caller.
-     */
-    private function submittedReactivationStatusId(ReactivateContractData $data): int
-    {
-        if (! $data->contractStatusIdSubmitted || $data->contractStatusId === null) {
-            abort(422, 'A destination status is required to reactivate a terminated contract.');
+        if ($group === ContractStatusGroup::ClosedWon) {
+            abort(422, 'This contract has already been validated.');
         }
-
-        $group = ContractStatus::query()->whereKey($data->contractStatusId)->value('group');
 
         if ($group === ContractStatusGroup::ClosedLost) {
-            abort(422, 'The destination status must not belong to the closed_lost group.');
+            abort(422, 'This contract is closed: reactivate it first.');
         }
-
-        return $data->contractStatusId;
     }
 
-    private function restoredStatusId(Contract $contract): int
+    private function assertWorking(Contract $contract): void
     {
-        $previousId = $contract->status_before_suspension_id;
+        $contract->loadMissing('contractStatus');
 
-        if ($previousId !== null && ContractStatus::query()->whereKey($previousId)->where('is_active', true)->exists()) {
-            return $previousId;
-        }
-
-        return $this->statusResolver->defaultActiveId();
-    }
-
-    private function assertNotAlreadyValidated(Contract $contract): void
-    {
-        if ($contract->validated_at !== null) {
-            abort(422, 'This contract has already been validated.');
+        if (! in_array($contract->contractStatus?->group, [ContractStatusGroup::Open, ContractStatusGroup::Pending], true)) {
+            abort(422, 'The status of a closed contract cannot be changed directly.');
         }
     }
 
@@ -261,22 +215,6 @@ class ContractActionService
     {
         if ($contract->terminated_at !== null) {
             abort(422, 'This contract has already been terminated.');
-        }
-    }
-
-    private function assertReactivatable(Contract $contract): void
-    {
-        if (! $contract->isSuspended() && $contract->terminated_at === null) {
-            abort(422, 'This contract is neither suspended nor terminated.');
-        }
-    }
-
-    private function assertQuoteClosedWon(Contract $contract): void
-    {
-        $contract->loadMissing('quote.quoteWorkflowStatus');
-
-        if ($contract->quote->quoteWorkflowStatus?->group !== WorkflowStatusGroup::ClosedWon) {
-            abort(422, 'The linked quote is not currently closed_won.');
         }
     }
 

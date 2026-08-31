@@ -6,25 +6,51 @@ namespace App\Tables\RequestManagement;
 
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\User;
 use App\Services\ProductCategoryService;
+use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Decorator that scopes the `request-management` domain to a single product
- * category (spec 0064's category tab strip) and relabels the `operator_ga2`
- * column for it (spec 0080) — spec 0084's successor to the removed
- * `AttributeScopedTableDefinition`, stripped of everything that decorator
- * did around `attr.*` dynamic columns (D-1: the "Informazioni aggiuntive"
- * section moved to the Offerta): no column injection, no SSRM allow-list
- * widening (`scopeToAllProductCategories()` is GONE — the native columns'
- * sortable/filterable shape never varied by category to begin with), no
- * value read/write. What is left is TWO concerns only: WHICH rows the tab
- * shows (`baseQuery()`), and WHAT the `operator_ga2` column is called
- * (`resolveConfig()`).
+ * category (spec 0064's category tab strip), appends that category's
+ * `attr.<code>` flexible columns, and relabels the `operator_ga2` column for
+ * it (spec 0080).
+ *
+ * The `attr.*` half was removed by spec 0084 D-1, which moved "Informazioni
+ * aggiuntive" from the Opportunity to the Offerta, and is RESTORED by the
+ * user directive 2026-08-31 on the record this grid IS since spec 0086 — the
+ * Offerta itself. The column shapes, the JSON storage hooks and the
+ * `role_field_permissions` gate are the ones spec 0064 froze; only the
+ * subject changed (`quotes.attribute_values`, `AttributeContext::Quote`), so
+ * the tab's columns show exactly the set the work panel and the Offerte form
+ * already resolve.
+ *
+ * THREE scope-driven concerns: WHICH rows the tab shows (`baseQuery()`),
+ * WHICH flexible columns it carries (`resolveConfig()`/`mapRow()` and the
+ * derived filter/sort/distinct hooks, delegated to AttributeGridColumns),
+ * and WHAT the `operator_ga2` column is called (`resolveConfig()`).
+ *
+ * TWO independent scope concepts, set explicitly by the caller
+ * (`TableController` for the request-scoped case, the Table FormRequests for
+ * their own independently-resolved definition instance):
+ *  - `scopeToProductCategory(?id)` — ONE category (or none): drives the
+ *    request-facing shape AND, unless `scopeToAllProductCategories()` was
+ *    also called, the SSRM allow-lists.
+ *  - `scopeToAllProductCategories()` — the UNION across every category
+ *    (D-4): ONLY widens the SSRM allow-lists, used exclusively by the
+ *    column-preferences/filter-state persistence endpoints, whose saved
+ *    layout must never 422 depending on which tab was open when it was saved.
+ *
+ * `columns()`/`defaultColumnLayout()` are UNSCOPED by design (always the
+ * union): they back `TableCellUpdateService`'s structural PATCH lookup and
+ * the preferences default baseline, neither of which is a per-tab concept.
  *
  * Composed OUTSIDE `CustomFieldAwareTableDefinition` in
  * `TableRegistry::resolve()` (`request-management` is custom-fieldable,
@@ -41,25 +67,60 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RequestManagementScopedTableDefinition implements TableDefinition
 {
-    use DelegatesUnaugmentedTableMethods;
+    use DelegatesUnaugmentedTableMethods, WritesAttributeCells {
+        // Both traits declare editableColumnIds()/updateCell(): the
+        // passthrough from DelegatesUnaugmentedTableMethods is the WRONG one
+        // here (spec 0064 §M4 augments both for `attr.*` columns) —
+        // WritesAttributeCells wins, and it delegates to $this->inner itself
+        // for every non-`attr.*` column, so the passthrough behaviour is
+        // preserved either way.
+        WritesAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
+        WritesAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
+    }
 
     /** The pre-existing `operator_ga2` column's id — never changes, only its `label` does. */
     private const string OPERATOR_COLUMN_ID = 'operator_ga2';
 
     private ?int $categoryScope = null;
 
+    private bool $allowListUnion = false;
+
+    /**
+     * Set by `WritesAttributeCells::updateCell()` right after a successful
+     * `attr.<code>` write, so the SAME definition instance's immediately
+     * following `mapRow()` call (TableCellUpdateService's row remap) exposes
+     * `attr.*` — the PATCH endpoint carries no category-scope param of its
+     * own, so the row's OWN applicable attributes stand in for it.
+     *
+     * @var Collection<int, array<string, mixed>>|null
+     */
+    private ?Collection $rowAttributesOverride = null;
+
     public function __construct(
         private readonly TableDefinition $inner,
         private readonly ProductCategoryService $productCategoryService,
+        private readonly AttributeGridColumns $attributeColumns,
+        private readonly RequestManagementService $service,
     ) {}
 
     /**
-     * Narrows `baseQuery()`/the GA2 relabel to ONE product category's rows
-     * (null = D-3 "Tutte", every row).
+     * Narrows `baseQuery()`, the `attr.*` columns and the GA2 relabel to ONE
+     * product category (null = D-3 "Tutte", every row and zero `attr.*`
+     * columns).
      */
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    /**
+     * Widens the SSRM allow-lists (sort/filter column ids) to the UNION of
+     * every category's attributes (D-4) — used by the preferences/filter
+     * persistence endpoints only.
+     */
+    public function scopeToAllProductCategories(): void
+    {
+        $this->allowListUnion = true;
     }
 
     /**
@@ -87,11 +148,20 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     }
 
     /**
+     * UNSCOPED by design (see class docblock): the union's RAW declarations,
+     * the shape TableCellUpdateService looks a submitted `attr.<code>` up in.
+     *
      * @return array<int, array<string, mixed>>
      */
     public function columns(): array
     {
-        return $this->inner->columns();
+        $attributes = $this->attributeColumns->union();
+
+        if ($attributes->isEmpty()) {
+            return $this->inner->columns();
+        }
+
+        return [...$this->inner->columns(), ...$this->attributeColumns->rawColumns($attributes)];
     }
 
     /**
@@ -99,17 +169,25 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function mapRow(User $actor, Model $row): array
     {
-        return $this->inner->mapRow($actor, $row);
+        $mapped = $this->inner->mapRow($actor, $row);
+        $attributes = $this->rowAttributesOverride ?? $this->categoryAttributes();
+
+        if ($attributes->isEmpty()) {
+            return $mapped;
+        }
+
+        /** @var Quote $row */
+        return [...$mapped, ...$this->attributeColumns->rowValues($row, $attributes)];
     }
 
     public function sortableColumnIds(): array
     {
-        return $this->inner->sortableColumnIds();
+        return [...$this->inner->sortableColumnIds(), ...$this->attributeColumns->columnIds($this->allowListedAttributes())];
     }
 
     public function filterableColumnIds(): array
     {
-        return $this->inner->filterableColumnIds();
+        return array_keys($this->filterableColumnMap());
     }
 
     public function searchableColumnIds(): array
@@ -131,6 +209,20 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     {
         $config = $this->inner->resolveConfig($actor);
         $config['columns'] = $this->relabelOperatorColumn($config['columns']);
+        $attributes = $this->categoryAttributes();
+
+        if ($attributes->isEmpty()) {
+            return $config;
+        }
+
+        $config['columns'] = [
+            ...$config['columns'],
+            ...$this->attributeColumns->resolvedColumns(
+                $attributes,
+                count($config['columns']),
+                $this->attributeColumns->valuesEditable($actor),
+            ),
+        ];
 
         return $config;
     }
@@ -140,7 +232,21 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function defaultColumnLayout(): array
     {
-        return $this->inner->defaultColumnLayout();
+        $layout = $this->inner->defaultColumnLayout();
+        $attributes = $this->attributeColumns->union();
+
+        if ($attributes->isEmpty()) {
+            return $layout;
+        }
+
+        $order = count($layout);
+
+        foreach ($this->attributeColumns->rawColumns($attributes) as $column) {
+            $order++;
+            $layout[$column['id']] = ['visible' => false, 'width' => null, 'order' => $order];
+        }
+
+        return $layout;
     }
 
     /**
@@ -148,7 +254,13 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function filterableColumnMap(): array
     {
-        return $this->inner->filterableColumnMap();
+        $map = $this->inner->filterableColumnMap();
+
+        foreach ($this->attributeColumns->rawColumns($this->allowListedAttributes()) as $column) {
+            $map[$column['id']] = $column;
+        }
+
+        return $map;
     }
 
     /**
@@ -158,7 +270,15 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        return $this->inner->applyDerivedFilter($query, $columnId, $columnConfig, $filter);
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+
+        if ($attributeRow === null) {
+            return $this->inner->applyDerivedFilter($query, $columnId, $columnConfig, $filter);
+        }
+
+        $this->attributeColumns->applyFilter($query, $attributeRow, $filter);
+
+        return true;
     }
 
     /**
@@ -166,7 +286,15 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        return $this->inner->applyDerivedSort($query, $columnId, $direction);
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+
+        if ($attributeRow === null) {
+            return $this->inner->applyDerivedSort($query, $columnId, $direction);
+        }
+
+        $this->attributeColumns->applySort($query, $attributeRow, $direction);
+
+        return true;
     }
 
     /**
@@ -176,7 +304,13 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
-        return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
+        $attributeRow = $this->attributeColumns->attributeRowFor($columnId, $this->categoryAttributes());
+
+        if ($attributeRow === null) {
+            return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
+        }
+
+        return $this->attributeColumns->distinctValues($query, $attributeRow, $search, $limit);
     }
 
     /**
@@ -185,6 +319,27 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
     {
         return $this->inner->applyDerivedSearch($query, $columnId, $pattern);
+    }
+
+    /**
+     * The scoped category's effective attributes ("Tutte" -> none).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function categoryAttributes(): Collection
+    {
+        return $this->attributeColumns->forCategory($this->categoryScope);
+    }
+
+    /**
+     * The set the SSRM allow-lists are built from: the union (D-4) when the
+     * caller asked for it, the scoped category's own set otherwise.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function allowListedAttributes(): Collection
+    {
+        return $this->allowListUnion ? $this->attributeColumns->union() : $this->categoryAttributes();
     }
 
     /**

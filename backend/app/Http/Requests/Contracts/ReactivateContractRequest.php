@@ -18,9 +18,9 @@ use Illuminate\Validation\Rule;
  * ever recorded the status it sat on before the disdetta, so the destination
  * comes from the dialog — and irrelevant on the suspended path, which
  * restores the pre-suspension status by itself (D-3). Whatever the path, a
- * submitted status must be ACTIVE and must NOT belong to the `closed_lost`
- * group: reactivating onto a negative-outcome status is the very state the
- * action is leaving.
+ * submitted status must be ACTIVE and must belong to the `open`/`pending`
+ * groups (directive 2026-08-31 rev.2): a reactivated contract goes back to
+ * the working phase, never onto another closure.
  *
  * Authorization stays in the controller (ContractPolicy::reactivate).
  */
@@ -43,7 +43,10 @@ class ReactivateContractRequest extends FormRequest
                 $presence,
                 'integer',
                 Rule::exists('contract_statuses', 'id')->where(
-                    fn ($query) => $query->where('is_active', true)->where('group', '!=', ContractStatusGroup::ClosedLost->value)
+                    fn ($query) => $query->where('is_active', true)->whereIn('group', [
+                        ContractStatusGroup::Open->value,
+                        ContractStatusGroup::Pending->value,
+                    ])
                 ),
             ],
         ];
