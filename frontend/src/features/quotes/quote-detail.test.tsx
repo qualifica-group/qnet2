@@ -183,3 +183,45 @@ describe('QuoteDetailView — rewards', () => {
     expect(detailValueFor('Rewards')).toBe('—')
   })
 })
+
+/**
+ * Spec 0087 (richiesta utente 2026-08-31): il dettaglio Offerta mostra il suo
+ * team, con le etichette risolte dalla categoria prodotto invece del "G.A. n"
+ * generico.
+ */
+describe('QuoteDetailView — Gestori Account', () => {
+  it('lists the managers ordered by slot, using the category-resolved labels', () => {
+    const quote = quoteFixture({
+      managers: [
+        { id: 22, name: 'Ugo Verdi', position: 3 },
+        { id: 21, name: 'Rita Neri', position: 1 },
+      ],
+      manager_labels: { '1': 'Commerciale', '3': 'Consulente' },
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    // Risolte dalla categoria, e in ordine di slot benche' il server li abbia
+    // restituiti al contrario.
+    const labels = screen.getAllByText(/Commerciale|Consulente/).map((node) => node.textContent)
+    expect(labels).toEqual(['Commerciale', 'Consulente'])
+    expect(screen.getByText('Rita Neri')).toBeInTheDocument()
+    expect(screen.getByText('Ugo Verdi')).toBeInTheDocument()
+  })
+
+  it('falls back to the generic slot label when the category configures none', () => {
+    const quote = quoteFixture({
+      managers: [{ id: 21, name: 'Rita Neri', position: 2 }],
+      manager_labels: {},
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByText('Account manager 2')).toBeInTheDocument()
+  })
+
+  it('shows the empty placeholder when the offer has no managers', () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture({ managers: [] })} />)
+
+    expect(screen.getByText('Account managers')).toBeInTheDocument()
+  })
+})
+

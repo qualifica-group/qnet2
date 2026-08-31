@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import { Award, Building2, Contact, Users } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import {
@@ -17,6 +16,7 @@ import type {
   OpportunityProductLine,
   OpportunityProductOfInterest,
 } from '@/features/opportunities/types'
+import { managerPositionLabel } from '@/features/shared/manager-position-label'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
@@ -31,16 +31,6 @@ const PERSON_ROW_CLASS = '@md:items-center'
 /** Stable empty defaults (spec 0049 D-8): a missing key on older fixtures reads the same as `[]`/`{}`. */
 const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
 
-/**
- * The manager row's visible role label (spec 0080): the opportunity's own
- * resolved override for that `position` when configured, otherwise the same
- * shared default `ManagerSlotsField` falls back to — VISIBLE text, not a
- * `title`-only tooltip (a hover affordance is invisible on touch and
- * unreliable for screen readers).
- */
-function managerPositionLabel(t: TFunction, position: number, labels: Record<string, string> | undefined): string {
-  return labels?.[String(position)] ?? t('registries.form.managerSlotLabel', { n: position })
-}
 
 /**
  * A team member's row: avatar + name, wrapped in the app's shared

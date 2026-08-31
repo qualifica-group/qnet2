@@ -24,6 +24,7 @@ import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { managerPositionLabel } from '@/features/shared/manager-position-label'
 
 const OFFER_TAB = 'offer'
 const COSTS_TAB = 'costs'
@@ -42,6 +43,9 @@ interface QuoteDetailViewProps {
  */
 export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
   const { t } = useTranslation()
+  // Ordinati per slot, non per come il server li ha restituiti: la posizione
+  // E' il ruolo, quindi l'ordine di lettura deve seguirla.
+  const sortedManagers = [...(quote.managers ?? [])].sort((a, b) => a.position - b.position)
   // Controlled, so the tab strip can hand the selection over to its select
   // fallback when the tabs no longer fit.
   const [activeTab, setActiveTab] = useState(OFFER_TAB)
@@ -89,6 +93,28 @@ export function QuoteDetailView({ quote }: QuoteDetailViewProps) {
           <DetailField label={t('quotes.detail.supervisor')}>
             {quote.supervisor ? quote.supervisor.name : <DetailEmpty />}
           </DetailField>
+          {/*
+            Spec 0087: i Gestori Account dell'Offerta, subito dopo il
+            Supervisore — l'ordine che la tabella /quotes usa gia', e che li
+            fa leggere insieme come "chi segue questa offerta". L'etichetta di
+            ogni riga e' quella risolta dalla categoria prodotto (spec 0080),
+            non un "G.A. n" generico. `position` e' la chiave, non `id`: e' lo
+            slot a essere unico, la stessa persona puo' occuparne due.
+          */}
+          {sortedManagers.length > 0 ? (
+            sortedManagers.map((manager) => (
+              <DetailField
+                key={manager.position}
+                label={managerPositionLabel(t, manager.position, quote.manager_labels)}
+              >
+                {manager.name}
+              </DetailField>
+            ))
+          ) : (
+            <DetailField label={t('quotes.form.managers')}>
+              <DetailEmpty />
+            </DetailField>
+          )}
           <DetailField label={t('quotes.detail.company')}>
             {quote.company ? quote.company.name : <DetailEmpty />}
           </DetailField>
