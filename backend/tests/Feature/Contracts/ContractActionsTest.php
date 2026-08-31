@@ -179,7 +179,46 @@ it('reactivating a disdetto contract does NOT require the quote to be closed_won
         ->assertJsonPath('data.contract_status_id', $destination->id);
 });
 
-it('reactivating a contract that is neither suspended nor disdetto is 422', function () {
+it('reopening a CLOSED_WON contract lands it back on the chosen working status, keeping the validation stamp', function () {
+    // Directive 2026-08-31 rev.3: the positive closure is reopened through
+    // the same endpoint as the negative one; only the validation stamp is
+    // deliberately kept, exactly as reopening a disdetta already did.
+    $contract = Contract::factory()->create([
+        'validated_at' => now()->subMonth(),
+        'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
+    ]);
+    $destination = ContractStatus::where('name', 'Programmato')->sole();
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", ['contract_status_id' => $destination->id])
+        ->assertOk()
+        ->assertJsonPath('data.contract_status_id', $destination->id);
+
+    $contract->refresh();
+    expect($contract->contract_status_id)->toBe($destination->id)
+        ->and($contract->validated_at)->not->toBeNull();
+
+    $activity = Activity::where('subject_id', $contract->id)->where('event', 'contract.reactivated')->first();
+    expect($activity->properties['reactivated_from'])->toBe('validated');
+});
+
+it('reopening a CLOSED_WON contract without a contract_status_id is 422', function () {
+    $contract = Contract::factory()->create([
+        'validated_at' => now()->subMonth(),
+        'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
+    ]);
+    $actor = contractActionsUserWith(['reactivate']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('contract_status_id');
+
+    expect($contract->fresh()->contractStatus->system_key)->toBe('validated');
+});
+
+it('reactivating a contract that is neither suspended nor closed is 422', function () {
     $contract = Contract::factory()->create();
     $actor = contractActionsUserWith(['reactivate']);
     Sanctum::actingAs($actor);

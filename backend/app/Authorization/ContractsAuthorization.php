@@ -23,7 +23,8 @@ use Illuminate\Database\Eloquent\Model;
  * (ContractActionAvailability, user directive 2026-08-31), not on the
  * ability alone: offering an action the current state refuses would let a
  * client invoke an endpoint that always 422s. `reactivate` (BR-2/D-3) is
- * offered on a suspended OR a disdetto contract.
+ * offered on a suspended OR a closed contract, whichever side it closed on
+ * (user directive 2026-08-31 rev.3).
  */
 class ContractsAuthorization extends AbstractResourceAuthorization
 {

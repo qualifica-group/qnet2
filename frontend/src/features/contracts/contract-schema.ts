@@ -114,10 +114,11 @@ export function buildChangeContractStatusSchema(t: TFunction) {
 export type ChangeContractStatusFormValues = z.infer<ReturnType<typeof buildChangeContractStatusSchema>>
 
 /**
- * "Riattiva contratto" sul percorso DISDETTO (direttiva utente 2026-08-31):
- * lo stato di destinazione e' obbligatorio, perche' nessuna colonna ha mai
- * memorizzato quello precedente alla disdetta. Il percorso SOSPESO non usa
- * questo schema: non ha form, ripristina da solo lo stato pre-sospensione.
+ * "Riapri contratto" sul percorso CHIUSO — disdetto o validato (direttiva
+ * utente 2026-08-31, estesa in rev.3): lo stato di destinazione e'
+ * obbligatorio, perche' nessuna colonna ha mai memorizzato quello precedente
+ * alla chiusura. Il percorso SOSPESO non usa questo schema: non ha form,
+ * ripristina da solo lo stato pre-sospensione.
  */
 export function buildReactivateContractSchema(t: TFunction) {
   return z

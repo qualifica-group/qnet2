@@ -13,7 +13,7 @@ use App\Services\ContractService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * "Riattiva contratto" — the only action with TWO paths, split out of
+ * "Riapri contratto" — the only action with TWO paths, split out of
  * ContractActionService (engineering.md §6: that class crossed the 300-line
  * soft limit once the directive of 2026-08-31 grew it):
  *
@@ -21,15 +21,19 @@ use Illuminate\Support\Facades\DB;
  *   back in a closed_won group; restores the pre-suspension status, falling
  *   back to the active `is_default` row if that one has since been
  *   deactivated. No payload.
- * - CLOSED_LOST (user directive 2026-08-31): allowed whatever the quote's
- *   current status — the disdetta is a commercial decision of its own — and
- *   the destination status comes from the client, since nothing ever
- *   recorded the one preceding the closure. Clears the whole termination
- *   stamp so the contract stops being disdetto.
+ * - CLOSED (user directive 2026-08-31, extended rev.3 to the POSITIVE
+ *   closure): allowed whatever the quote's current status — closing a
+ *   contract is a commercial decision of its own — and the destination
+ *   status comes from the client, since nothing ever recorded the one
+ *   preceding the closure. Clears the whole termination stamp so the
+ *   contract stops being disdetto; the validation stamp is deliberately
+ *   KEPT, exactly as it already was when reopening a disdetta, so the
+ *   history of the first validation survives.
  *
- * A contract that is neither is refused (422). The negative closure is read
- * on the status GROUP, not on the `terminated_at` stamp: "Annullato" closes
- * a contract just as "Disdetto" does, and both leave through here.
+ * A contract that is neither is refused (422). The closure is read on the
+ * status GROUP, not on the `terminated_at`/`validated_at` stamps:
+ * "Annullato" closes a contract just as "Disdetto" does, and both leave
+ * through here.
  */
 class ContractReactivator
 {
@@ -43,7 +47,7 @@ class ContractReactivator
         DB::transaction(function () use ($contract, $data): void {
             $this->assertReactivatable($contract);
 
-            $this->isClosedLost($contract)
+            $this->isClosed($contract)
                 ? $this->reactivateClosed($contract, $data)
                 : $this->reactivateSuspended($contract);
         });
@@ -68,6 +72,7 @@ class ContractReactivator
     private function reactivateClosed(Contract $contract, ReactivateContractData $data): void
     {
         $statusId = $this->submittedStatusId($data);
+        $from = $this->group($contract) === ContractStatusGroup::ClosedWon ? 'validated' : 'terminated';
 
         $contract->contract_status_id = $statusId;
         $contract->terminated_at = null;
@@ -75,7 +80,7 @@ class ContractReactivator
         $contract->terminated_by = null;
         $contract->save();
 
-        $this->logReactivation($contract, $statusId, 'terminated');
+        $this->logReactivation($contract, $statusId, $from);
     }
 
     private function logReactivation(Contract $contract, int $statusId, string $from): void
@@ -121,16 +126,21 @@ class ContractReactivator
 
     private function assertReactivatable(Contract $contract): void
     {
-        if (! $contract->isSuspended() && ! $this->isClosedLost($contract)) {
+        if (! $contract->isSuspended() && ! $this->isClosed($contract)) {
             abort(422, 'This contract is neither suspended nor closed.');
         }
     }
 
-    private function isClosedLost(Contract $contract): bool
+    private function isClosed(Contract $contract): bool
+    {
+        return in_array($this->group($contract), [ContractStatusGroup::ClosedWon, ContractStatusGroup::ClosedLost], true);
+    }
+
+    private function group(Contract $contract): ?ContractStatusGroup
     {
         $contract->loadMissing('contractStatus');
 
-        return $contract->contractStatus?->group === ContractStatusGroup::ClosedLost;
+        return $contract->contractStatus?->group;
     }
 
     private function assertQuoteClosedWon(Contract $contract): void

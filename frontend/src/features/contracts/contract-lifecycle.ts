@@ -5,8 +5,8 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  * utente 2026-08-31 rev.2):
  *
  * - Aperto | Pending    → "Modifica dati", "Modifica stato", "Valida", "Disdici"
- * - Chiuso positivo     → "Disdici" e "Programma", nient'altro
- * - Chiuso negativo     → "Riattiva", nient'altro
+ * - Chiuso positivo     → "Disdici", "Programma" e "Riapri contratto", nient'altro
+ * - Chiuso negativo     → "Riapri contratto", nient'altro
  *
  * Mirrors `App\Services\Contracts\ContractActionAvailability` verbatim: the
  * server is the authority (it gates `permissions.actions` with the same rule
@@ -16,8 +16,8 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  *
  * La SOSPENSIONE e' un asse ortogonale che la direttiva non cita e il flusso
  * BR-2/D-3 deve continuare a funzionare: un contratto sospeso sta sulla riga
- * `pending` "Sospeso", quindi tiene "Riattiva" e perde "Valida" (l'endpoint
- * lo rifiuta comunque).
+ * `pending` "Sospeso", quindi tiene "Riapri contratto" e perde "Valida"
+ * (l'endpoint lo rifiuta comunque).
  */
 export interface ContractLifecycleActions {
   validate: boolean
@@ -44,9 +44,14 @@ function isWorking(contract: ContractDetail): boolean {
   return WORKING_GROUPS.includes(contract.contract_status.group)
 }
 
-/** A closed contract (either side) can only be reopened through "Riattiva contratto". */
-export function isContractClosedLost(contract: ContractDetail): boolean {
-  return contract.contract_status.group === 'closed_lost'
+/**
+ * A closed contract — su ENTRAMBI i lati (direttiva utente 2026-08-31
+ * rev.3) — torna in lavorazione solo con "Riapri contratto", e solo quel
+ * percorso chiede lo stato di ripartenza: la sospensione lo ripristina da
+ * sola.
+ */
+export function isContractClosed(contract: ContractDetail): boolean {
+  return contract.contract_status.group === 'closed_lost' || contract.contract_status.group === 'closed_won'
 }
 
 export function contractLifecycleActions(contract: ContractDetail): ContractLifecycleActions {
@@ -59,6 +64,6 @@ export function contractLifecycleActions(contract: ContractDetail): ContractLife
     terminate: working || closedWon,
     edit: working,
     changeStatus: working,
-    reactivate: isContractClosedLost(contract) || contract.is_suspended,
+    reactivate: isContractClosed(contract) || contract.is_suspended,
   }
 }

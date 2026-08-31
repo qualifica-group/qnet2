@@ -28,7 +28,7 @@ export const permissions = {
     terminate: 'Terminate',
     schedule: 'Schedule',
     changeStatus: 'Change status',
-    reactivate: 'Reactivate',
+    reactivate: 'Reopen',
     viewAll: 'View all',
     viewDocuments: 'View documents',
     // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2

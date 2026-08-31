@@ -301,7 +301,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit data' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
 
   it('si comporta allo stesso modo su uno stato PENDING', () => {
@@ -313,19 +313,30 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
   })
 
-  it('su CHIUSO POSITIVO lascia solo Disdici e Programma, quest ultimo disabilitato', () => {
+  it('su CHIUSO POSITIVO lascia Disdici, Programma (disabilitato) e Riapri', () => {
+    // Direttiva utente 2026-08-31 rev.3: anche la chiusura positiva si riapre.
     renderView(validatedContract())
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Schedule contract' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate contract' })).not.toBeInTheDocument()
   })
 
-  it('su CHIUSO NEGATIVO lascia solo Riattiva', () => {
+  it('su CHIUSO POSITIVO la riapertura chiede lo stato di ripartenza, non il confirm inline', async () => {
+    renderView(validatedContract())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen contract' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Restart status')).toBeInTheDocument()
+    expect(confirmMock).not.toHaveBeenCalled()
+  })
+
+  it('su CHIUSO NEGATIVO lascia solo Riapri', () => {
     renderView(terminatedContract())
-    expect(screen.getByRole('button', { name: 'Reactivate contract' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
@@ -339,7 +350,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
   it('chiede lo stato di ripartenza riattivando un contratto chiuso, invece del confirm inline', async () => {
     renderView(terminatedContract())
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reactivate contract' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen contract' }))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Restart status')).toBeInTheDocument()
@@ -347,13 +358,13 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(confirmMock).not.toHaveBeenCalled()
   })
 
-  it('omette Riattiva su un contratto chiuso senza contracts.reactivate', () => {
+  it('omette Riapri su un contratto chiuso senza contracts.reactivate', () => {
     renderView(
       terminatedContract({
         permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, reactivate: false } },
       }),
     )
-    expect(screen.queryByRole('button', { name: 'Reactivate contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
 
   it('omette Modifica stato senza contracts.changeStatus', () => {
@@ -368,7 +379,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
   it('non offre Valida su un contratto sospeso, ma ne offre la riattivazione', () => {
     renderView(contract({ is_suspended: true, suspended_at: '2026-02-01T10:00:00Z' }))
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reactivate contract' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
   })
 
   // Direttiva utente 2026-08-31: non piu' bottoni nella barra azioni ma link
@@ -423,7 +434,7 @@ describe('ContractDetailView — documents (AC-047)', () => {
 })
 
 describe('ContractDetailView — suspended (AC-048)', () => {
-  it('shows the "Sospeso" badge and gates "Riattiva contratto" on contracts.reactivate', () => {
+  it('shows the "Sospeso" badge and gates "Riapri contratto" on contracts.reactivate', () => {
     renderView(
       contract({
         is_suspended: true,
@@ -432,10 +443,10 @@ describe('ContractDetailView — suspended (AC-048)', () => {
       }),
     )
     expect(screen.getByText('Suspended')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reactivate contract' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
   })
 
-  it('omits "Riattiva contratto" without contracts.reactivate even when suspended', () => {
+  it('omits "Riapri contratto" without contracts.reactivate even when suspended', () => {
     renderView(
       contract({
         is_suspended: true,
@@ -444,12 +455,12 @@ describe('ContractDetailView — suspended (AC-048)', () => {
         permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, reactivate: false } },
       }),
     )
-    expect(screen.queryByRole('button', { name: 'Reactivate contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
 
-  it('does not show the "Sospeso" badge nor "Riattiva contratto" when not suspended', () => {
+  it('does not show the "Sospeso" badge nor "Riapri contratto" when not suspended', () => {
     renderView(contract())
     expect(screen.queryByText('Suspended')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reactivate contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
 })

@@ -14,10 +14,13 @@ use Illuminate\Validation\Rule;
  * Validates the payload for POST /api/contracts/{contract}/reactivate (spec
  * 0072, BR-2, extended by the user directive of 2026-08-31).
  *
- * `contract_status_id` is REQUIRED when the contract is disdetto — nothing
- * ever recorded the status it sat on before the disdetta, so the destination
- * comes from the dialog — and irrelevant on the suspended path, which
- * restores the pre-suspension status by itself (D-3). Whatever the path, a
+ * `contract_status_id` is REQUIRED when the contract is CLOSED, on either
+ * side — nothing ever recorded the status it sat on before the closure, so
+ * the destination comes from the dialog — and irrelevant on the suspended
+ * path, which restores the pre-suspension status by itself (D-3). The
+ * positive closure joined this path with the user directive of 2026-08-31
+ * rev.3, and is recognised on the status GROUP, the same reading
+ * ContractReactivator uses to pick its branch. Whatever the path, a
  * submitted status must be ACTIVE and must belong to the `open`/`pending`
  * groups (directive 2026-08-31 rev.2): a reactivated contract goes back to
  * the working phase, never onto another closure.
@@ -36,7 +39,7 @@ class ReactivateContractRequest extends FormRequest
      */
     public function rules(): array
     {
-        $presence = $this->currentContract()->terminated_at !== null ? 'required' : 'sometimes';
+        $presence = $this->isClosed($this->currentContract()) ? 'required' : 'sometimes';
 
         return [
             'contract_status_id' => [
@@ -66,5 +69,15 @@ class ReactivateContractRequest extends FormRequest
         $contract = $this->route('contract');
 
         return $contract;
+    }
+
+    private function isClosed(Contract $contract): bool
+    {
+        $contract->loadMissing('contractStatus');
+
+        return in_array($contract->contractStatus?->group, [
+            ContractStatusGroup::ClosedWon,
+            ContractStatusGroup::ClosedLost,
+        ], true);
     }
 }

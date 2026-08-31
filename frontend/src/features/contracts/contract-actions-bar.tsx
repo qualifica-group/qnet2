@@ -11,7 +11,7 @@ import { ContractTerminateDialog } from '@/features/contracts/contract-terminate
 import { ContractChangeStatusDialog } from '@/features/contracts/contract-change-status-dialog'
 import { ContractEditDialog } from '@/features/contracts/contract-edit-dialog'
 import { ContractReactivateDialog } from '@/features/contracts/contract-reactivate-dialog'
-import { contractLifecycleActions, isContractClosedLost } from '@/features/contracts/contract-lifecycle'
+import { contractLifecycleActions, isContractClosed } from '@/features/contracts/contract-lifecycle'
 import { useReactivateContract } from '@/features/contracts/use-contract-mutations'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
@@ -28,14 +28,15 @@ interface ContractActionsBarProps {
  * absent entirely when the actor lacks the ability, never merely disabled.
  * On top of the ability, each one is gated on the contract's LIFECYCLE
  * (`contractLifecycleActions`, user directive 2026-08-31): "Valida"+"Disdici"
- * before the validation, "Programma"+"Disdici" after it, nothing at all once
- * the contract is disdetto. "Programma" is rendered DISABLED for now (same
- * directive: the action will be repurposed).
+ * before the validation, "Programma"+"Disdici"+"Riapri" after it, only
+ * "Riapri" once the contract is disdetto. "Programma" is rendered DISABLED
+ * for now (same directive: the action will be repurposed).
  *
- * "Riattiva contratto" is the one action a closed-lost contract keeps: on
- * that path it opens a dialog asking for the destination status, while the
- * suspended path (D-3/AC-048) keeps its plain confirm — there the
- * pre-suspension status is restored server-side.
+ * "Riapri contratto" is the one action a CLOSED contract keeps, on either
+ * side of the closure (user directive 2026-08-31 rev.3): on that path it
+ * opens a dialog asking for the destination status, while the suspended
+ * path (D-3/AC-048) keeps its plain confirm — there the pre-suspension
+ * status is restored server-side.
  *
  * This bar carries MUTATIONS only: reaching the Offerta or the Opportunità is
  * not an action but a link on the field that names them, in
@@ -45,15 +46,16 @@ interface ContractActionsBarProps {
  * `type` the server's action catalog gives that key
  * (`ContractColumnCatalog::actions()`), so the grid's actions column and this
  * bar can never colour the same action differently (user directive
- * 2026-08-31): green for a positive closure (valida, riattiva), red for the
- * negative one (disdici), neutral outline for everything else.
+ * 2026-08-31): green for the positive closure (valida), red for the
+ * negative one (disdici), neutral outline for everything else — riapertura
+ * inclusa, che non e' un esito ma un ritorno in lavorazione (rev.3).
  */
 export function ContractActionsBar({ contract, onChanged }: ContractActionsBarProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const [openDialog, setOpenDialog] = useState<OpenDialog>('none')
   const lifecycle = contractLifecycleActions(contract)
-  const closedLost = isContractClosedLost(contract)
+  const closed = isContractClosed(contract)
 
   const reactivateMutation = useReactivateContract({
     contractId: contract.id,
@@ -117,9 +119,10 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
       {lifecycle.reactivate && contract.permissions.actions.reactivate ? (
         <Button
           type="button"
-          variant={ACTION_BUTTON_VARIANT.success}
+          variant={ACTION_BUTTON_VARIANT.action}
+          className="bg-card"
           size="sm"
-          onClick={() => (closedLost ? setOpenDialog('reactivate') : void handleReactivate())}
+          onClick={() => (closed ? setOpenDialog('reactivate') : void handleReactivate())}
           disabled={reactivateMutation.isPending}
         >
           <RotateCcw aria-hidden="true" />

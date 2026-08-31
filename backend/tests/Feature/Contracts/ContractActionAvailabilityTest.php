@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Permission;
  * row actions:
  *
  * - open | pending → edit, change_status, validate, terminate
- * - closed_won     → terminate, schedule
+ * - closed_won     → terminate, schedule, reactivate
  * - closed_lost    → reactivate
  *
  * The actor below holds EVERY ability, so what changes between the cases is
@@ -87,14 +87,16 @@ it('behaves the same on a PENDING contract', function () {
         ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('offers only terminate and schedule on a CLOSED_WON contract', function () {
+it('offers terminate, schedule and reactivate on a CLOSED_WON contract', function () {
+    // Directive 2026-08-31 rev.3: a positively closed contract must be
+    // reopenable too, so `reactivate` joins the two it already had.
     $flags = contractActionFlags(contractOnSystemStatus('validated', ['validated_at' => now()->subDay()]));
 
     expect($flags['terminate'])->toBeTrue()
         ->and($flags['schedule'])->toBeTrue()
+        ->and($flags['reactivate'])->toBeTrue()
         ->and($flags['validate'])->toBeFalse()
-        ->and($flags['change_status'])->toBeFalse()
-        ->and($flags['reactivate'])->toBeFalse();
+        ->and($flags['change_status'])->toBeFalse();
 });
 
 it('offers only reactivate on a CLOSED_LOST contract', function () {

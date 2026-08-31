@@ -225,6 +225,23 @@
       navigando via dal contratto: `useModuleOpener(..., { forceMode: 'modal' })` (spec 0067
       D-3), estratti in `contract-related-links.tsx`. Non sono gated sul ciclo di vita.
     </decision>
+    <decision id="D-15">
+      Riapertura anche dalla CHIUSURA POSITIVA (direttiva utente 2026-08-31 rev.3, emenda
+      D-11 e D-12):
+        - Chiuso positivo -> "Disdici", "Programma" (disabilitato) E "Riapri contratto".
+        - L'azione conserva chiave (`reactivate`), rotta, ability e payload: cambiano solo
+          il gruppo ammesso a monte e l'ETICHETTA. Il percorso closed_won usa lo stesso
+          dialog del disdetto (`contract_status_id` obbligatorio, ristretto a open/pending)
+          e lascia INTATTO il timbro di validazione, come gia' faceva riaprendo una
+          disdetta: si annulla la chiusura, non la storia. `reactivated_from` vale
+          `validated` su questo percorso (`suspended` | `terminated` | `validated`).
+        - ETICHETTA e TINTA: l'azione non si chiama piu' "Riattiva" ma "Riapri contratto"
+          ("Reopen contract"), e il suo `type` nel catalogo passa da `success` ad `action`
+          (outline neutro, non verde): riportare in lavorazione non e' un esito. La
+          rinomina vale su tutte le superfici — barra azioni del dettaglio, row action
+          della griglia, matrice permessi — perche' l'etichetta viene da un'unica chiave
+          i18n (`contracts.actions.reactivate`).
+    </decision>
   </context>
 
   <scope>

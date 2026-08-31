@@ -13,8 +13,8 @@ use App\Models\Contract;
  * `validated_at`/`terminated_at` reading):
  *
  * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici"
- * - closed_won     → "Disdici" and "Programma", nothing else
- * - closed_lost    → "Riattiva", nothing else
+ * - closed_won     → "Disdici", "Programma" and "Riapri contratto", nothing else
+ * - closed_lost    → "Riapri contratto", nothing else
  *
  * Single source of truth for both surfaces that offer those actions —
  * App\Authorization\ContractsAuthorization (the detail's
@@ -25,7 +25,7 @@ use App\Models\Contract;
  *
  * SUSPENSION is an orthogonal axis the directive does not mention, and the
  * pre-existing flow (BR-2/D-3) must keep working: a suspended contract sits
- * on the `pending` system row "Sospeso", so it KEEPS "Riattiva contratto"
+ * on the `pending` system row "Sospeso", so it KEEPS "Riapri contratto"
  * and loses "Valida" — the validate endpoint refuses a suspended contract
  * outright, so offering it would be a dead affordance.
  */
@@ -59,12 +59,20 @@ class ContractActionAvailability
     }
 
     /**
-     * "Riattiva contratto" is the only way out of a negative closure, and the
-     * pre-existing way out of a suspension (BR-2/D-3).
+     * "Riapri contratto" is the only way out of a closure — negative
+     * (disdetta/annullamento) or positive (user directive 2026-08-31 rev.3:
+     * a validated contract must be reopenable too) — and the pre-existing
+     * way out of a suspension (BR-2/D-3).
      */
     public function mayReactivate(Contract $contract): bool
     {
-        return $this->group($contract) === ContractStatusGroup::ClosedLost || $contract->isSuspended();
+        return $this->isClosed($contract) || $contract->isSuspended();
+    }
+
+    /** Either closure has happened: the contract is no longer in the working phase. */
+    private function isClosed(Contract $contract): bool
+    {
+        return in_array($this->group($contract), [ContractStatusGroup::ClosedWon, ContractStatusGroup::ClosedLost], true);
     }
 
     /** Still in the working phase: neither closure has happened yet. */

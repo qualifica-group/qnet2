@@ -85,7 +85,7 @@ export const contracts = {
     validate: 'Valida contratto',
     schedule: 'Programma contratto',
     terminate: 'Disdici contratto',
-    reactivate: 'Riattiva contratto',
+    reactivate: 'Riapri contratto',
     changeStatus: 'Cambia stato',
     // "Programma" resta a schermo ma disabilitato: l'azione sara' ripensata
     // (direttiva utente 2026-08-31).
@@ -159,15 +159,19 @@ export const contracts = {
     reactivateDialog: {
       // Percorso SOSPESO: conferma inline, nessuna scelta da fare.
       description: 'Il contratto tornerà allo stato precedente alla sospensione.',
-      // Percorso DISDETTO: dialog con scelta dello stato di destinazione.
+      // Percorso CHIUSO NEGATIVO: dialog con scelta dello stato di destinazione.
       terminatedDescription:
         'La disdetta verrà annullata (data, motivazione e autore) e il contratto ripartirà dallo stato scelto.',
+      // Percorso CHIUSO POSITIVO: nessuna disdetta da annullare, la
+      // validazione registrata resta nello storico.
+      validatedDescription:
+        'Il contratto tornerà in lavorazione e ripartirà dallo stato scelto. La validazione registrata resta nello storico.',
       status: 'Stato di ripartenza',
       statusRequired: 'Lo stato di ripartenza è obbligatorio.',
-      confirm: 'Riattiva',
-      saving: 'Riattivazione…',
-      success: 'Contratto riattivato con successo.',
-      genericError: 'Impossibile riattivare il contratto. Riprova.',
+      confirm: 'Riapri',
+      saving: 'Riapertura…',
+      success: 'Contratto riaperto con successo.',
+      genericError: 'Impossibile riaprire il contratto. Riprova.',
     },
   },
 }

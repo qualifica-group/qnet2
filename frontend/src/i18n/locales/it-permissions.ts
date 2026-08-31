@@ -28,7 +28,7 @@ export const permissions = {
     terminate: 'Termina',
     schedule: 'Programma',
     changeStatus: 'Cambia stato',
-    reactivate: 'Riattiva',
+    reactivate: 'Riapri',
     viewAll: 'Visualizza tutti',
     viewDocuments: 'Visualizza documenti',
     // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare

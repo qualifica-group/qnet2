@@ -110,9 +110,9 @@ export async function terminateContract(
 }
 
 /**
- * "Riattiva contratto" (BR-2): empty body on a suspended contract (the
+ * "Riapri contratto" (BR-2): empty body on a suspended contract (the
  * pre-suspension status is restored server-side), destination status on a
- * disdetto one.
+ * closed one — su entrambi i lati della chiusura (rev.3).
  */
 export async function reactivateContract(
   id: number,

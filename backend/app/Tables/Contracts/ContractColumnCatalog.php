@@ -306,9 +306,10 @@ final class ContractColumnCatalog
                 'key' => 'reactivate',
                 'label' => 'contracts.actions.reactivate',
                 'icon' => 'rotate-ccw',
-                // Rimette in vita un contratto chiuso: positiva quanto la
-                // validazione, stessa tinta.
-                'type' => 'success',
+                // Riporta un contratto chiuso in lavorazione: non e' un esito,
+                // ne' positivo ne' negativo, quindi tinta neutra e non verde
+                // (direttiva utente 2026-08-31 rev.3).
+                'type' => 'action',
                 'confirm' => true,
                 'permission' => 'contracts.reactivate',
             ],

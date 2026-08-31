@@ -85,7 +85,7 @@ export const contracts = {
     validate: 'Validate contract',
     schedule: 'Schedule contract',
     terminate: 'Terminate contract',
-    reactivate: 'Reactivate contract',
+    reactivate: 'Reopen contract',
     changeStatus: 'Change status',
     scheduleUnavailable: 'Not available yet',
 
@@ -158,12 +158,14 @@ export const contracts = {
       description: 'The contract will return to the status it had before suspension.',
       terminatedDescription:
         'The termination will be undone (date, reason and author) and the contract will restart from the status you pick.',
+      validatedDescription:
+        'The contract goes back to the working phase and restarts from the status you pick. The recorded validation stays in its history.',
       status: 'Restart status',
       statusRequired: 'The restart status is required.',
-      confirm: 'Reactivate',
-      saving: 'Reactivating…',
-      success: 'Contract reactivated successfully.',
-      genericError: 'Unable to reactivate the contract. Please try again.',
+      confirm: 'Reopen',
+      saving: 'Reopening…',
+      success: 'Contract reopened successfully.',
+      genericError: 'Unable to reopen the contract. Please try again.',
     },
   },
 }

@@ -3,6 +3,54 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "RIAPRI CONTRATTO" ANCHE SULLA CHIUSURA POSITIVA (2026-08-31 rev.3) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Su uno stato con esito positivo (`closed_won`), oltre a "Programma", deve
+comparire anche l'azione di riattivazione; il bottone NON si chiama piu' "Riattiva" ma "Riapri
+contratto", e NON e' verde.
+
+**Decisione.** Nessuna azione nuova: e' la stessa `reactivate` (rotta, ability
+`contracts.reactivate`, payload invariati), estesa di un gruppo e rinominata. La rinomina vale su
+TUTTE le superfici perche' l'etichetta viene da un'unica chiave i18n
+(`contracts.actions.reactivate`): barra azioni del dettaglio, row action della griglia, matrice
+permessi. Identificatori (chiave azione, rotta, permesso) restano `reactivate` — cambia solo cio'
+che l'utente legge. Spec 0072 aggiornata con D-15 (emenda D-11 e D-12).
+
+**Backend.**
+- `ContractActionAvailability::mayReactivate()` -> `isClosed()` (closed_won OR closed_lost) OR
+  sospeso; nuovo helper privato `isClosed()`.
+- `ContractReactivator` — `isClosedLost()` -> `isClosed()` + nuovo `group()`; il ramo
+  `reactivateClosed()` serve entrambe le chiusure e logga `reactivated_from` = `validated` sulla
+  positiva, `terminated` sulla negativa (`suspended` invariato). Il timbro di validazione NON si
+  azzera, come gia' riaprendo una disdetta.
+- `ReactivateContractRequest` — la presenza di `contract_status_id` non si legge piu' da
+  `terminated_at` ma dal GRUPPO dello stato (stessa lettura del Reactivator): `required` su
+  qualunque chiusura, `sometimes` sul sospeso. Senza questa modifica un closed_won senza stato
+  sarebbe uscito con un 422 grezzo invece che con l'errore di validazione sul campo.
+- `ContractColumnCatalog::actions()` — `reactivate.type` da `success` ad `action` (outline neutro).
+
+**Frontend.**
+- `contract-lifecycle.ts` — `isContractClosedLost()` -> `isContractClosed()` (entrambi i gruppi);
+  `reactivate: isContractClosed(...) || is_suspended`.
+- `contract-actions-bar.tsx` — bottone su `ACTION_BUTTON_VARIANT.action` + `className="bg-card"`
+  (frontend.md §9: mai un outline trasparente sul body); apre il dialog su qualunque chiusura,
+  confirm inline solo sul sospeso.
+- `contract-reactivate-dialog.tsx` — descrizione scelta sul gruppo: nuova
+  `reactivateDialog.validatedDescription` per la chiusura positiva (niente disdetta da annullare).
+- i18n it/en: `contracts.actions.reactivate` = "Riapri contratto"/"Reopen contract"; dialog
+  confirm/saving/success/genericError riscritti su "riapri"; `permissions.abilities.reactivate` =
+  "Riapri"/"Reopen".
+
+**Test.** Pest: `ContractActionAvailabilityTest` — il caso CLOSED_WON ora attende anche
+`reactivate: true`; `ContractActionsTest` +2 casi (riapertura closed_won sullo stato scelto con
+timbro di validazione intatto e `reactivated_from = validated`; 422 di validazione senza
+`contract_status_id`). Vitest: `contract-detail.test.tsx` — etichetta "Reopen contract", il caso
+CHIUSO POSITIVO ora attende il bottone, +1 caso che verifica che apra il dialog e non il confirm.
+**Eseguiti**: Pest `--filter=Contract` 193 passed / 1514 assertions; Vitest completo 3654 passed /
+511 file; `npx tsc -b --force` EXIT=0; ESLint e Pint puliti.
+
+**Prossimo passo.** Chiedere all'utente se committare.
+
 ## COLONNA G.A. SUI CONTRATTI + COLONNE PERSONE NASCOSTE (2026-08-31) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Nella tabella Contratti aggiungere la colonna GA come nelle Offerte,

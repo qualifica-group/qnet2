@@ -33,11 +33,12 @@ interface ContractReactivateDialogProps {
 }
 
 /**
- * "Riattiva contratto" sul percorso DISDETTO (direttiva utente 2026-08-31):
- * la disdetta viene annullata per intero (data, motivazione, autore) e il
+ * "Riapri contratto" sul percorso CHIUSO, su entrambi i lati della chiusura
+ * (direttiva utente 2026-08-31, estesa in rev.3 alla chiusura positiva): il
  * contratto riparte dallo stato scelto qui — obbligatorio, perche' nessuna
- * colonna ha mai memorizzato quello precedente. Il picker offre solo i
- * gruppi Aperto/Pending e il server rifiuta qualsiasi altro gruppo.
+ * colonna ha mai memorizzato quello precedente — e la disdetta, se c'era,
+ * viene annullata per intero (data, motivazione, autore). Il picker offre
+ * solo i gruppi Aperto/Pending e il server rifiuta qualsiasi altro gruppo.
  *
  * Il percorso SOSPESO non passa di qui: resta il confirm inline della barra
  * azioni, che non chiede nulla (BR-2/D-3).
@@ -50,6 +51,12 @@ export function ContractReactivateDialog({
 }: ContractReactivateDialogProps) {
   const { t } = useTranslation()
   const schema = buildReactivateContractSchema(t)
+  // La chiusura positiva non ha una disdetta da annullare: cambia solo il
+  // testo, il payload e il percorso server sono gli stessi.
+  const descriptionKey =
+    contract.contract_status.group === 'closed_won'
+      ? 'contracts.actions.reactivateDialog.validatedDescription'
+      : 'contracts.actions.reactivateDialog.terminatedDescription'
 
   const form = useForm<ReactivateContractFormValues>({
     resolver: zodResolver(schema),
@@ -89,7 +96,7 @@ export function ContractReactivateDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('contracts.actions.reactivate')}</DialogTitle>
-          <DialogDescription>{t('contracts.actions.reactivateDialog.terminatedDescription')}</DialogDescription>
+          <DialogDescription>{t(descriptionKey)}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
