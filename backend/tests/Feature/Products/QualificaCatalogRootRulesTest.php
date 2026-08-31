@@ -3,6 +3,7 @@
 use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\ProductCategories\CategoryManagerLabelResolver;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -15,6 +16,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * directive 2026-08-03 for the line, 2026-08-07 for the offer); "Consulenza"
  * stays unconstrained on both. Both rules are realigned on every run and
  * cascade to the whole branch, third-level GOL regions included.
+ *
+ * The root also carries the four G.A. labels of a training deal (user
+ * directive 2026-08-31, spec 0080). Those are not mirrored on the subtree:
+ * descendants resolve them by climbing to the root.
  */
 uses(RefreshDatabase::class);
 
@@ -119,4 +124,44 @@ it('realigns a "Formazione" branch seeded before the one-offer directive, cascad
         ->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('single_quote_per_opportunity'))->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('single_quote_per_opportunity'))->toBeTruthy();
+});
+
+it('seeds the four "Formazione" G.A. labels on the root, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: realigned, not duplicated.
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+
+    expect($formazione->manager_labels)->toBe([
+        1 => 'Tutor',
+        2 => 'Operatore',
+        3 => 'Partner commerciale',
+        4 => 'Segnalatore',
+    ]);
+});
+
+it('resolves the "Formazione" G.A. labels on the whole branch, third-level GOL regions included', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+
+    expect(app(CategoryManagerLabelResolver::class)->effectiveManagerLabels($molise))
+        ->toBe([1 => 'Tutor', 2 => 'Operatore', 3 => 'Partner commerciale', 4 => 'Segnalatore']);
+});
+
+it('leaves "Consulenza" without its own G.A. labels', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('manager_labels'))
+        ->toBeEmpty();
+});
+
+it('realigns a "Formazione" root seeded before the G.A. label directive', function (): void {
+    // The state of an installation seeded before the directive.
+    ProductCategory::factory()->create(['name' => 'Formazione', 'manager_labels' => null]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('manager_labels'))
+        ->toBe([1 => 'Tutor', 2 => 'Operatore', 3 => 'Partner commerciale', 4 => 'Segnalatore']);
 });

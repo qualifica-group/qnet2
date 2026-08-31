@@ -22,18 +22,35 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * opportunity is a single course sold once, never a basket of alternatives.
  * "Consulenza" stays unconstrained on both — listed explicitly rather than
  * left to the column defaults so a re-run realigns it too.
+ *
+ * `manager_labels` (spec 0080) rides along on the same root write but is NOT
+ * mirrored on the subtree: descendants resolve it by climbing the tree
+ * (CategoryManagerLabelResolver), so authoring it on the root alone is what
+ * gives the whole branch its G.A. names. Only "Formazione" declares them
+ * (user directive 2026-08-31); "Consulenza" omits the key entirely rather
+ * than realigning to null, which would wipe labels configured from the UI.
  */
 final class CatalogRootRules
 {
     /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
-     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool}>
+     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, manager_labels?: array<string, string>}>
      */
     private const array RULES = [
         'Formazione' => [
             'management_mode' => CategoryManagementMode::Single,
             'single_quote_per_opportunity' => true,
+            // The four G.A. levels of a training deal (user directive
+            // 2026-08-31). Position 2 stays "Operatore": it is the level
+            // Gestione Richieste has hard-coded semantics for
+            // (Opportunity::OPERATOR_MANAGER_POSITION).
+            'manager_labels' => [
+                '1' => 'Tutor',
+                '2' => 'Operatore',
+                '3' => 'Partner commerciale',
+                '4' => 'Segnalatore',
+            ],
         ],
         'Consulenza' => [
             'management_mode' => CategoryManagementMode::Multiple,

@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## LABEL G.A. DELLA CATEGORIA "FORMAZIONE" NEL SEED PRODUZIONE (2026-08-31) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Nel seed di produzione, alla creazione della categoria "Formazione"
+devono esserci anche le impostazioni dei Gestori Account: 1 Tutor, 2 Operatore,
+3 Partner commerciale, 4 Segnalatore.
+
+**Dove.** `Database\Seeders\QualificaCatalog\CatalogRootRules` — la classe che gia' scrive
+le regole root-owned dei due root del catalogo, invocata da `QualificaCatalogSeeder::seedCatalog()`
+(quindi anche da `QualificaProductionDataSeeder`, step 2). Aggiunta la chiave
+`manager_labels` (spec 0080, colonna JSON su `product_categories`) alla sola entry
+'Formazione' della const `RULES`: `{"1":"Tutor","2":"Operatore","3":"Partner commerciale","4":"Segnalatore"}`.
+
+**Perche' solo sul root.** `manager_labels` NON e' mirrorata sul sottoalbero come
+`management_mode` / `single_quote_per_opportunity`: i discendenti la risolvono risalendo
+l'albero (`CategoryManagerLabelResolver`, barriera `inherits_manager_labels` default true).
+Scriverla sul root basta a dare i nomi G.A. a tutto il ramo, GOL regionali compresi.
+'Consulenza' NON dichiara la chiave (niente realign a null: cancellerebbe label configurate da UI).
+Posizione 2 resta "Operatore" perche' e' il livello con semantica codificata
+(`Opportunity::OPERATOR_MANAGER_POSITION`, Gestione Richieste).
+
+**Test.** `tests/Feature/Products/QualificaCatalogRootRulesTest.php` +4 casi: label sul root
+(idempotente su doppio seed), risoluzione effettiva su `GOL - Molise`, 'Consulenza' senza label
+proprie, realign di un root seedato prima della direttiva. **Eseguiti**: 40 passed / 173 assertions
+su `QualificaCatalogRootRulesTest` + `QualificaCatalogSeederTest` + `QualificaProductionDataSeederTest`.
+Pint pulito. Nessuna modifica frontend necessaria (le label viaggiano gia' via
+`manager_labels` nelle Resource -> `managerPositionLabel`).
+
+**Prossimo passo.** Chiedere all'utente se committare.
+
 ## DETTAGLIO OFFERTA `/quotes/:id` — RESA CRM (2026-08-31) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Refactoring VISIVO di `/quotes/:id` prendendo a modello `/opportunities/:id`
