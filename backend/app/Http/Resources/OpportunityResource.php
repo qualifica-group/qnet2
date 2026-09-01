@@ -47,11 +47,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * OpportunityService::DETAIL_RELATIONS eager-loading
  * `operationalSite.addresses.city`.
  *
- * Spec 0047: `state`/`state_id` is the Regione (D1), freely editable — it no
- * longer resolves any working-state dimension of the Opportunity itself
- * (spec 0083), but stays a criterion the Quote's own workflow resolver
- * inherits from it (D-7).
- *
  * Spec 0084, D-1: the former `attribute_values`/`applicable_attributes`/
  * `attribute_layout` trio (spec 0049/user directive 2026-08-05) is REMOVED —
  * the dynamic "Informazioni aggiuntive" section moved to the Offerta (Quote),
@@ -121,8 +116,6 @@ class OpportunityResource extends JsonResource
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             'status' => app(OpportunityStatusResolver::class)->resolve($this->resource),
-            'state_id' => $this->state_id,
-            'state' => $this->summarizeByName($this->state),
             'product_lines' => $this->summarizeProductLines($this->productLines),
             'products_of_interest' => $this->summarizeProductsOfInterest($this->productsOfInterest),
             'rewards' => $this->summarizeRewards($this->rewards),

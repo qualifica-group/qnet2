@@ -16,6 +16,7 @@ use App\Tables\CommissionConfigurations\CommissionConfigurationAdvancedFilterCat
 use App\Tables\CommissionConfigurations\CommissionConfigurationColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -32,7 +33,11 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         'value' => 'value',
         'priority' => 'priority',
         'status' => 'status',
+        'recipient' => 'recipient_id',
     ];
+
+    /** Every morph alias a rule's recipient may carry (spec 0089 D-1). */
+    private const array RECIPIENT_MORPH_ALIASES = ['referent', 'user', 'registry'];
 
     public function __construct(
         private readonly CommissionConfigurationService $service,
@@ -51,7 +56,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
 
     public function baseQuery(): Builder
     {
-        return CommissionConfiguration::query()->with(['productCategory', 'product']);
+        return CommissionConfiguration::query()->with(['productCategory', 'product', 'recipient']);
     }
 
     public function columns(): array
@@ -134,6 +139,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             'priority' => $row->priority,
             'status' => $row->status->value,
             'updated_at' => $row->updated_at,
+            'recipient' => $row->recipient?->name,
         ];
 
         foreach (self::COLUMN_FIELDS as $column => $field) {
@@ -160,6 +166,10 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
 
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === 'recipient') {
+            return $this->applyRecipientFilter($query, $filter);
+        }
+
         $relation = match ($columnId) {
             'category' => 'productCategory',
             'product' => 'product',
@@ -174,6 +184,33 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         if ($values !== []) {
             $query->whereHas($relation, fn (Builder $related) => $related->whereIn('name', array_slice($values, 0, 200)));
         }
+
+        return true;
+    }
+
+    /**
+     * Matches rows whose recipient's NAME (across the three possible
+     * recipient tables) is one of the filtered values — the same shape
+     * `distinctValues()` below hands back for this column's `set` filter.
+     */
+    private function applyRecipientFilter(Builder $query, array $filter): bool
+    {
+        $names = array_values(array_filter((array) ($filter['values'] ?? []), 'is_string'));
+
+        if ($names === []) {
+            return true;
+        }
+
+        $names = array_slice($names, 0, 200);
+
+        $query->where(function (Builder $recipientQuery) use ($names): void {
+            foreach ($this->recipientTables() as $morphAlias => $table) {
+                $recipientQuery->orWhere(function (Builder $branch) use ($morphAlias, $table, $names): void {
+                    $branch->where('recipient_type', $morphAlias)
+                        ->whereIn('recipient_id', DB::table($table)->whereIn('name', $names)->select('id'));
+                });
+            }
+        });
 
         return true;
     }
@@ -209,6 +246,10 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         Builder $query,
         int $limit,
     ): ?array {
+        if ($columnId === 'recipient') {
+            return $this->distinctRecipientValues($actor, $search, $query, $limit);
+        }
+
         [$table, $foreignKey] = match ($columnId) {
             'category' => ['product_categories', 'product_category_id'],
             'product' => ['products', 'product_id'],
@@ -233,6 +274,55 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             ->pluck('name')
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
+    }
+
+    /**
+     * Only the recipients ACTUALLY referenced by a rule (spec 0089 D-11), one
+     * lookup per recipient table, merged and re-limited — there is no single
+     * FK to drive a one-shot query across three different tables.
+     *
+     * @return array<int, string>
+     */
+    private function distinctRecipientValues(User $actor, ?string $search, Builder $query, int $limit): array
+    {
+        if (! $this->fieldVisible($actor, new CommissionConfiguration, 'recipient_id')) {
+            return [];
+        }
+
+        $names = collect();
+
+        foreach ($this->recipientTables() as $morphAlias => $table) {
+            $ids = (clone $query)->where('recipient_type', $morphAlias)->whereNotNull('recipient_id')->pluck('recipient_id');
+
+            if ($ids->isEmpty()) {
+                continue;
+            }
+
+            $names = $names->merge(
+                DB::table($table)
+                    ->whereIn('id', $ids)
+                    ->when($search !== null && $search !== '', fn ($builder) => $builder->where('name', 'like', '%'.$this->escapeLike($search).'%'))
+                    ->pluck('name'),
+            );
+        }
+
+        return $names->unique()->sort()->values()->take($limit)
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
+    }
+
+    /** @return array<string, string> morph alias => table name */
+    private function recipientTables(): array
+    {
+        $tables = [];
+
+        foreach (self::RECIPIENT_MORPH_ALIASES as $alias) {
+            /** @var class-string<Model> $class */
+            $class = Relation::getMorphedModel($alias);
+            $tables[$alias] = (new $class)->getTable();
+        }
+
+        return $tables;
     }
 
     public function deleteModel(Model $model): void

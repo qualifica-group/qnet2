@@ -30,12 +30,12 @@ interface OpportunityAttributionSectionProps {
  * ownership sit right after the levers acted on at every touch and before the
  * client's own data. Replaces the former "Classificazione" card.
  *
- * Sede operativa and Regione are NOT rendered here (user directive
- * 2026-08-05: "oscurare sede operativa e regione, servono solo in gestione
- * richieste"). Hidden, not dropped: `operational_site_id`/`state_id` stay
- * form values, so a value inherited from the Lead or already persisted
- * survives the save untouched — the picker is simply no longer part of this
- * form's surface. Gestione Richieste keeps both.
+ * Sede operativa is NOT rendered here (user directive 2026-08-05: "oscurare
+ * sede operativa e regione, servono solo in gestione richieste"). Hidden, not
+ * dropped: `operational_site_id` stays a form value, so a value inherited
+ * from the Lead or already persisted survives the save untouched — the picker
+ * is simply no longer part of this form's surface. The Regione is gone
+ * outright (user directive 2026-09-01).
  */
 export function OpportunityAttributionSection({
   control,

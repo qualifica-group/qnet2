@@ -20,14 +20,15 @@ use InvalidArgumentException;
  * duplicated at either call site (anti-SQLi: `field`/`existsTable()` values
  * only ever come from THIS registry, never from raw request input).
  *
- * D-7: the set of allow-listed fields is UNCHANGED from spec 0047, but two
- * fields now resolve differently — `product_category_id`/
- * `business_function_id` are resolved from the Quote's own REVENUE offer
- * lines (`Quote::offerLines`, never `cost_lines`), while `state_id`/
- * `source_id` and every custom `relation` field have NO counterpart on the
- * Quote at all: they are resolved by INHERITANCE from the parent Opportunity
- * (`quote.opportunity`). `inherited` in the catalogue shape (AC-016) marks
- * exactly this split, so the client can tell the two apart.
+ * D-7: `product_category_id`/`business_function_id` are resolved from the
+ * Quote's own REVENUE offer lines (`Quote::offerLines`, never `cost_lines`),
+ * while `source_id` and every custom `relation` field have NO counterpart on
+ * the Quote at all: they are resolved by INHERITANCE from the parent
+ * Opportunity (`quote.opportunity`). `inherited` in the catalogue shape
+ * (AC-016) marks exactly this split, so the client can tell the two apart.
+ *
+ * The former `state_id` (Regione) criterion is GONE with the Opportunity's
+ * own Regione column (user directive 2026-09-01).
  *
  * Custom field DEFINITIONS still come from the `opportunities` entity_type
  * (D-7: "il set dei criteri configurabili resta identico a oggi") — only
@@ -44,12 +45,6 @@ final class QuoteCriterionFieldRegistry
      * @var array<string, array{for_select_resource: string, table: string, multi_valued: bool, inherited: bool}>
      */
     private const array NATIVE_FIELDS = [
-        'state_id' => [
-            'for_select_resource' => 'states',
-            'table' => 'states',
-            'multi_valued' => false,
-            'inherited' => true,
-        ],
         'source_id' => [
             'for_select_resource' => 'sources',
             'table' => 'sources',

@@ -15,8 +15,6 @@ export interface OpportunitySelectedItems {
   source: RelationFieldRef | null
   /** Spec 0056: the operational site's `{id,label}` ref, converted to `{id,name}` — from the loaded opportunity in edit mode, or inherited from the lead on a conversion (directive 2026-07-23). */
   operationalSite: RelationFieldRef | null
-  /** Spec 0047 (D1): the Regione's hydrated ref, edit mode only (never known before a create-from-lead is saved). */
-  state: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   managers: ForSelectItem[]
 }
@@ -28,7 +26,6 @@ const EMPTY_SELECTED_ITEMS: OpportunitySelectedItems = {
   reporter: null,
   source: null,
   operationalSite: null,
-  state: null,
   supervisor: null,
   managers: [],
 }
@@ -68,7 +65,6 @@ export function useOpportunitySelectedItems(
         reporter: opportunity.reporter,
         source: opportunity.source,
         operationalSite: toRelationFieldRef(opportunity.operational_site ?? null),
-        state: opportunity.state ?? null,
         supervisor: opportunity.supervisor,
         managers: opportunity.managers.map((manager) => ({ id: manager.id, label: manager.name })),
       }

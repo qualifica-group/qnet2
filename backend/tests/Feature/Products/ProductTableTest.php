@@ -2,7 +2,6 @@
 
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\State;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -49,7 +48,7 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['code', 'name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'state', 'product_type', 'created_at']);
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'product_type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -63,8 +62,6 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($columns['code']['filterType'])->toBe('text')
         ->and($columns['description']['sortable'])->toBeFalse()
         ->and($columns['category']['filterType'])->toBe('set')
-        ->and($columns['state']['filterType'])->toBe('set')
-        ->and($columns['state']['sortable'])->toBeTrue()
         ->and($columns['product_type']['type'])->toBe('badge')
         ->and($columns['product_type']['filterType'])->toBe('set');
 });
@@ -221,66 +218,4 @@ it('filter: category set filter narrows the rows via whereHas', function () {
 
     $names = collect($response->json('items'))->pluck('name')->all();
     expect($names)->toBe(['Laptop']);
-});
-
-// ---------------------------------------------------------------------------
-// derived `state` (Regione) column — geo reference data, localized to Italian
-// ---------------------------------------------------------------------------
-
-it('rows: state shows the Italian localized name, null when unset', function () {
-    $actor = productUserWith(['viewAny']);
-    $state = State::factory()->create(['name' => 'Lombardy']);
-    Product::factory()->create(['name' => 'WithState', 'state_id' => $state->id]);
-    Product::factory()->create(['name' => 'WithoutState']);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-    $rows = collect($response->json('items'))->keyBy('name');
-
-    expect($rows['WithState']['state'])->toBe(['id' => $state->id, 'name' => 'Lombardia'])
-        ->and($rows['WithoutState']['state'])->toBeNull();
-});
-
-it('filter: state set filter matches the Italian display name against the English DB name', function () {
-    $actor = productUserWith(['viewAny']);
-    $lombardy = State::factory()->create(['name' => 'Lombardy']);
-    $tuscany = State::factory()->create(['name' => 'Tuscany']);
-    Product::factory()->create(['name' => 'InLombardy', 'state_id' => $lombardy->id]);
-    Product::factory()->create(['name' => 'InTuscany', 'state_id' => $tuscany->id]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/rows', [
-        'startRow' => 0, 'endRow' => 25,
-        'filterModel' => ['state' => ['filterType' => 'set', 'values' => ['Lombardia']]],
-    ])->assertOk();
-
-    expect(collect($response->json('items'))->pluck('name')->all())->toBe(['InLombardy']);
-});
-
-it('sort: rows ordered by the derived state name', function () {
-    $actor = productUserWith(['viewAny']);
-    $stateA = State::factory()->create(['name' => 'Zebra State']);
-    $stateB = State::factory()->create(['name' => 'Alpha State']);
-    Product::factory()->create(['name' => 'FromZebraState', 'state_id' => $stateA->id]);
-    Product::factory()->create(['name' => 'FromAlphaState', 'state_id' => $stateB->id]);
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/rows', [
-        'startRow' => 0, 'endRow' => 25,
-        'sortModel' => [['colId' => 'state', 'sort' => 'asc']],
-    ])->assertOk();
-
-    $names = collect($response->json('items'))->pluck('name')->all();
-    expect($names)->toBe(['FromAlphaState', 'FromZebraState']);
-});
-
-it('values: state → distinct Italian localized names', function () {
-    $actor = productUserWith(['viewAny']);
-    $state = State::factory()->create(['name' => 'Lombardy']);
-    Product::factory()->create(['state_id' => $state->id]);
-    Product::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $response = $this->postJson('/api/tables/products/values', ['columnId' => 'state'])->assertOk();
-    expect($response->json('data.values'))->toBe(['Lombardia']);
 });

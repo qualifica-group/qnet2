@@ -225,6 +225,7 @@ export const quotes = {
     lineProductHeader: 'Prodotto',
     lineCodeHeader: 'Codice',
     lineQuantityHeader: 'Quantità',
+    lineUnitOfMeasureHeader: 'Unita',
     lineUnitPriceHeader: 'Prezzo unitario',
     lineVatRateHeader: 'IVA',
     lineNetHeader: 'Imponibile',
@@ -281,7 +282,7 @@ export const quotes = {
       regenerateDescription: 'Il cambio prodotto sostituisce sia le commissioni automatiche sia le modifiche manuali della riga.',
       regenerateConfirm: 'Sostituisci commissioni',
       roles: { COMMERCIAL: 'Commerciale', REPORTER: 'Segnalatore', SUPERVISOR: 'Supervisore', SUPPLIER: 'Fornitore' },
-      origins: { PRODUCT: 'Prodotto', PRODUCT_CATEGORY: 'Categoria', MANUAL_OVERRIDE: 'Modifica manuale' },
+      origins: { PRODUCT: 'Prodotto', PRODUCT_CATEGORY: 'Categoria', RECIPIENT: 'Regola personale', MANUAL_OVERRIDE: 'Modifica manuale' },
     },
   },
 }

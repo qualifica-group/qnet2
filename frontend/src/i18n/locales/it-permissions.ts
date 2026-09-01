@@ -86,6 +86,7 @@ export const permissions = {
     sectors: 'Settori',
     sources: 'Fonti',
     tags: 'Tag',
+    'units-of-measure': 'Unita di Misura',
     'vat-rates': 'IVA',
   },
   areas: {

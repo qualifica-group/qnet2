@@ -10,6 +10,7 @@ return [
     'scopes' => [
         'product_category' => 'Product category',
         'product' => 'Product',
+        'recipient' => 'Recipient',
     ],
     'types' => [
         'fixed_amount' => 'Fixed amount',
@@ -25,4 +26,5 @@ return [
     'recipient_not_selected' => 'The commission recipient must be the person selected on the quote for this role.',
     'role_without_recipient' => 'No recipient is selected on the quote for this role, so it cannot be commissioned.',
     'invalid_quote_line_id' => 'A submitted quote line does not belong to this quote or line type.',
+    'recipient_role_changed' => 'The role changed recipient type: provide the new recipient or clear it.',
 ];

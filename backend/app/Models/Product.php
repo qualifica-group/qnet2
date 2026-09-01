@@ -26,8 +26,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * PRD-0001 sequential fallback) and permanently read-only afterwards, so
  * ProductService assigns it directly AFTER mass-assignment, mirroring
  * Project/Campaign (spec 0025).
+ *
+ * `unit_of_measure_id` (spec 0088, D-4) is NOT NULL: when absent/null from a
+ * write, ProductService resolves the default unit (`code='unit'`) so the
+ * column is always populated without being a `mandatory` field-permission.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'state_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -61,8 +65,8 @@ class Product extends BaseModel
         return $this->belongsTo(Registry::class, 'supplier_id');
     }
 
-    public function state(): BelongsTo
+    public function unitOfMeasure(): BelongsTo
     {
-        return $this->belongsTo(State::class);
+        return $this->belongsTo(UnitOfMeasure::class);
     }
 }

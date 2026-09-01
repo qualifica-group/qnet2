@@ -28,7 +28,7 @@ function baseValues() {
     product_type: 'SERVICE' as const,
     vat_rate_id: null,
     supplier_id: null,
-    state_id: null,
+    unit_of_measure_id: null,
     custom_fields: {},
     attribute_values: {},
   }

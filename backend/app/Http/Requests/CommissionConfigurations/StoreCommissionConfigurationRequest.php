@@ -26,7 +26,10 @@ class StoreCommissionConfigurationRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(fn (Validator $validator) => $this->enforceFieldPermissions($validator));
+        $validator->after(function (Validator $validator): void {
+            $this->enforceFieldPermissions($validator);
+            $this->validateRecipient($validator, null);
+        });
     }
 
     protected function authorizationResource(): string

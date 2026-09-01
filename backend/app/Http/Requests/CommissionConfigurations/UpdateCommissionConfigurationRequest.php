@@ -3,6 +3,7 @@
 namespace App\Http\Requests\CommissionConfigurations;
 
 use App\DataObjects\CommissionConfigurations\UpdateCommissionConfigurationData;
+use App\Enums\CommissionRecipientRole;
 use App\Http\Requests\CommissionConfigurations\Concerns\CommissionConfigurationRules;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\CommissionConfiguration;
@@ -42,6 +43,9 @@ class UpdateCommissionConfigurationRequest extends FormRequest
             if ($scope === 'PRODUCT_CATEGORY' && ($categoryId === null || $productId !== null)) {
                 $validator->errors()->add('application_scope', __('commission_configurations.invalid_scope'));
             }
+            if ($scope === 'RECIPIENT' && ($categoryId !== null || $productId !== null)) {
+                $validator->errors()->add('application_scope', __('commission_configurations.invalid_scope'));
+            }
 
             $validFrom = (string) $this->input('valid_from', $model->valid_from->format('Y-m-d'));
             $validUntil = $this->exists('valid_until')
@@ -51,7 +55,32 @@ class UpdateCommissionConfigurationRequest extends FormRequest
             if ($validUntil !== null && $validUntil < $validFrom) {
                 $validator->errors()->add('valid_until', __('validation.after_or_equal', ['date' => 'valid from']));
             }
+
+            $this->guardRecipientRoleChange($validator, $model);
+            $this->validateRecipient($validator, $model);
         });
+    }
+
+    /**
+     * Spec 0089 D-9: changing `recipient_role` toward a role whose
+     * `recipientType()` differs from the persisted `recipient_type`, without
+     * resubmitting `recipient_id`, would silently re-point that id at a
+     * different table (e.g. a `referents` id reinterpreted as a `users` id)
+     * or silently drop the recipient. Both are refused; the caller must
+     * either resubmit a valid `recipient_id` for the new role or clear it
+     * explicitly with `null` (AC-012, AC-013).
+     */
+    private function guardRecipientRoleChange(Validator $validator, CommissionConfiguration $model): void
+    {
+        if (! $this->exists('recipient_role') || $model->recipient_type === null || $this->exists('recipient_id')) {
+            return;
+        }
+
+        $newRole = CommissionRecipientRole::tryFrom((string) $this->input('recipient_role'));
+
+        if ($newRole !== null && $newRole->recipientType() !== $model->recipient_type) {
+            $validator->errors()->add('recipient_id', __('commission_configurations.recipient_role_changed'));
+        }
     }
 
     protected function authorizationResource(): string
@@ -66,6 +95,9 @@ class UpdateCommissionConfigurationRequest extends FormRequest
 
     public function toData(): UpdateCommissionConfigurationData
     {
-        return UpdateCommissionConfigurationData::fromValidated($this->validated());
+        /** @var CommissionConfiguration $model */
+        $model = $this->route('commissionConfiguration');
+
+        return UpdateCommissionConfigurationData::fromValidated($this->validated(), $model);
     }
 }

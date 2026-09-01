@@ -17,6 +17,7 @@ final readonly class CreateCommissionConfigurationData
         public CommissionApplicationScope $applicationScope,
         public ?int $productCategoryId,
         public ?int $productId,
+        public ?int $recipientId,
         public CommissionType $commissionType,
         public string $value,
         public int $priority,
@@ -35,6 +36,7 @@ final readonly class CreateCommissionConfigurationData
             applicationScope: CommissionApplicationScope::from($data['application_scope']),
             productCategoryId: isset($data['product_category_id']) ? (int) $data['product_category_id'] : null,
             productId: isset($data['product_id']) ? (int) $data['product_id'] : null,
+            recipientId: isset($data['recipient_id']) ? (int) $data['recipient_id'] : null,
             commissionType: CommissionType::from($data['commission_type']),
             value: (string) $data['value'],
             priority: (int) $data['priority'],
@@ -54,6 +56,11 @@ final readonly class CreateCommissionConfigurationData
             'application_scope' => $this->applicationScope,
             'product_category_id' => $this->productCategoryId,
             'product_id' => $this->productId,
+            // Spec 0089 D-7: never accepted from the client, always derived
+            // from recipient_role — the only way to avoid an incoherent
+            // pairing (e.g. a COMMERCIAL rule pointing at a `users` row).
+            'recipient_type' => $this->recipientId === null ? null : $this->recipientRole->recipientType(),
+            'recipient_id' => $this->recipientId,
             'commission_type' => $this->commissionType,
             'value' => $this->value,
             'priority' => $this->priority,

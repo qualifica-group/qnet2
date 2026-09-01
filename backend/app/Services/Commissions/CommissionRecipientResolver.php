@@ -30,15 +30,15 @@ final class CommissionRecipientResolver
         ?int $supervisorId,
     ): array {
         return [
-            CommissionRecipientRole::Commercial->value => $this->recipient('referent', $commercialId),
-            CommissionRecipientRole::Reporter->value => $this->recipient('referent', $reporterId),
-            CommissionRecipientRole::Supervisor->value => $this->recipient('user', $supervisorId),
-            CommissionRecipientRole::Supplier->value => $this->recipient('registry', $product->supplier_id),
+            CommissionRecipientRole::Commercial->value => $this->recipient(CommissionRecipientRole::Commercial, $commercialId),
+            CommissionRecipientRole::Reporter->value => $this->recipient(CommissionRecipientRole::Reporter, $reporterId),
+            CommissionRecipientRole::Supervisor->value => $this->recipient(CommissionRecipientRole::Supervisor, $supervisorId),
+            CommissionRecipientRole::Supplier->value => $this->recipient(CommissionRecipientRole::Supplier, $product->supplier_id),
         ];
     }
 
-    private function recipient(string $type, ?int $id): ?CommissionRecipient
+    private function recipient(CommissionRecipientRole $role, ?int $id): ?CommissionRecipient
     {
-        return $id === null ? null : new CommissionRecipient($type, $id);
+        return $id === null ? null : new CommissionRecipient($role->recipientType(), $id);
     }
 }

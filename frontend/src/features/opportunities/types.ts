@@ -127,21 +127,11 @@ export interface OpportunityDetail {
   source: OpportunityRelationRef | null
   /**
    * Spec 0056: the operational site, facoltativa, never lead-derived (no BR-1
-   * inheritance, no `locked_fields` entry). Optional for the same
-   * fixture-compatibility reason as `state` below — treat a missing key the
-   * same as `null`.
+   * inheritance, no `locked_fields` entry). Optional for
+   * fixture compatibility — treat a missing key the same as `null`.
    */
   operational_site_id?: number | null
   operational_site?: OpportunityOperationalSiteRef | null
-  /**
-   * Spec 0047 (D1, AC-003): the Regione, ereditata dal lead alla conversione
-   * ma sempre editabile (mai BR-2-locked). Optional so every pre-existing
-   * `OpportunityDetail` fixture across this feature's test suites keeps
-   * type-checking unchanged (mirrors `LeadDetail.opportunity`); treat a
-   * missing key the same as `null`.
-   */
-  state_id?: number | null
-  state?: OpportunityRelationRef | null
   /** Amendment rev.3: replaces the former single `product_category`/`business_function` pair (AC-101). */
   product_lines: OpportunityProductLine[]
   /**
@@ -248,8 +238,6 @@ export interface CreateOpportunityPayload {
   source_id?: number | null
   /** Spec 0056: facoltativa, never BR-2-locked (no server-side inheritance from another entity). */
   operational_site_id?: number | null
-  /** Spec 0047 (D1): the Regione, freely settable on a standalone create; never locked, even from a lead. */
-  state_id?: number | null
   lead_id?: number | null
   /** Ordered, gap-aware G.A. slots: index+1 = G.A. n, `null` = empty slot. */
   manager_slots?: (number | null)[]

@@ -57,7 +57,7 @@ final class QuoteWorkflowResolver
     {
         // Step 1: make sure offerLines.product.category (business_function_id/
         // product_category_id, D-7) and opportunity(+customFieldValueRow)
-        // (the inherited state_id/source_id/custom.* criteria, D-7) are
+        // (the inherited source_id/custom.* criteria, D-7) are
         // available without triggering a query per workflow candidate.
         $quote->loadMissing(['offerLines.product.category', 'opportunity.customFieldValueRow']);
 

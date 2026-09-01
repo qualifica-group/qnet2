@@ -72,17 +72,14 @@ it('isSystem() is true only for a row carrying a system_key', function () {
 
 // ============ AC-022 (partial): QuoteCriterionFieldRegistry allow-list ============
 
-it('allowedFields() returns the 4 native fields (source native) with correct for_select_resource (AC-022/AC-027)', function () {
+it('allowedFields() returns the 3 native fields (source native) with correct for_select_resource (AC-022/AC-027)', function () {
     $fields = criterionFieldRegistry()->allowedFields();
 
-    expect($fields)->toHaveCount(4);
+    expect($fields)->toHaveCount(3);
 
     $byField = collect($fields)->keyBy('field');
 
-    expect($byField['state_id']['for_select_resource'])->toBe('states')
-        ->and($byField['state_id']['multi_valued'])->toBeFalse()
-        ->and($byField['state_id']['source'])->toBe('native')
-        ->and($byField['source_id']['for_select_resource'])->toBe('sources')
+    expect($byField['source_id']['for_select_resource'])->toBe('sources')
         ->and($byField['source_id']['multi_valued'])->toBeFalse()
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()
@@ -98,9 +95,8 @@ it('allowedFields() returns the 4 native fields (source native) with correct for
 it('isAllowed()/existsTable() are consistent with the allow-list', function () {
     $registry = criterionFieldRegistry();
 
-    expect($registry->isAllowed('state_id'))->toBeTrue()
+    expect($registry->isAllowed('source_id'))->toBeTrue()
         ->and($registry->isAllowed('not_a_field'))->toBeFalse()
-        ->and($registry->existsTable('state_id'))->toBe('states')
         ->and($registry->existsTable('source_id'))->toBe('sources')
         ->and($registry->existsTable('business_function_id'))->toBe('business_functions')
         ->and($registry->existsTable('product_category_id'))->toBe('product_categories');
@@ -112,14 +108,17 @@ it('existsTable() rejects a field outside the allow-list', function () {
 
 // ============ quoteValues() — D-7: inherited vs. offer-line-derived ============
 
-it('quoteValues() reads the INHERITED value from the parent opportunity for state_id/source_id, empty when null (D-7)', function () {
+it('quoteValues() reads the INHERITED value from the parent opportunity for source_id, empty when null (D-7)', function () {
     $source = Source::factory()->create();
-    $opportunity = Opportunity::factory()->create(['source_id' => $source->id, 'state_id' => null]);
+    $opportunity = Opportunity::factory()->create(['source_id' => $source->id]);
     $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
     $quote->load('opportunity');
 
+    $bare = Quote::factory()->create(['opportunity_id' => Opportunity::factory()->create(['source_id' => null])->id]);
+    $bare->load('opportunity');
+
     expect(criterionFieldRegistry()->quoteValues($quote, 'source_id'))->toBe([$source->id])
-        ->and(criterionFieldRegistry()->quoteValues($quote, 'state_id'))->toBe([]);
+        ->and(criterionFieldRegistry()->quoteValues($bare, 'source_id'))->toBe([]);
 });
 
 it('quoteValues() extracts distinct values from the OFFER lines for business_function_id/product_category_id (AC-013 groundwork, D-7)', function () {

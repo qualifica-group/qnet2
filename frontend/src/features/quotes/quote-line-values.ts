@@ -28,6 +28,9 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
       id: line.id,
       product_id: line.product_id,
       quantity: Number(line.quantity),
+      // Read-only display value (spec 0088, D-5): NOT part of `QuoteLineInput`,
+      // so `toLineInputs`/`sameLines` below never need to know about it.
+      unit_of_measure: line.unit_of_measure,
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
       ...(withCommissions

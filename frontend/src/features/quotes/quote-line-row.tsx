@@ -184,6 +184,10 @@ export function QuoteLineRow({
         ) : null}
       </div>
 
+      <span className="truncate pt-2 text-xs text-muted-foreground">
+        {row.unit_of_measure?.symbol ?? '—'}
+      </span>
+
       <div className="flex flex-col gap-1">
         <Input
           type="number"

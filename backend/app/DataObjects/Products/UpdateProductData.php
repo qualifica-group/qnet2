@@ -18,6 +18,11 @@ use App\Enums\ProductType;
  * mirrors `attributes` on UpdateProductCategoryData: an array or absent,
  * never a legitimate literal null, so `hasAttributeValues()` alone
  * disambiguates without a `*Submitted` flag.
+ *
+ * `unitOfMeasureId` (spec 0088, D-4) follows the SAME `*Submitted` pattern:
+ * absent leaves the persisted FK untouched; submitted as null resets it to
+ * the default unit, resolved by ProductService (the column is NOT NULL, so a
+ * literal null can never actually reach the database).
  */
 final readonly class UpdateProductData
 {
@@ -40,8 +45,8 @@ final readonly class UpdateProductData
         public bool $vatRateIdSubmitted = false,
         public ?int $supplierId = null,
         public bool $supplierIdSubmitted = false,
-        public ?int $stateId = null,
-        public bool $stateIdSubmitted = false,
+        public ?int $unitOfMeasureId = null,
+        public bool $unitOfMeasureIdSubmitted = false,
         public ?array $attributeValues = null,
     ) {}
 
@@ -68,8 +73,8 @@ final readonly class UpdateProductData
             vatRateIdSubmitted: array_key_exists('vat_rate_id', $data),
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
             supplierIdSubmitted: array_key_exists('supplier_id', $data),
-            stateId: array_key_exists('state_id', $data) && $data['state_id'] !== null ? (int) $data['state_id'] : null,
-            stateIdSubmitted: array_key_exists('state_id', $data),
+            unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
+            unitOfMeasureIdSubmitted: array_key_exists('unit_of_measure_id', $data),
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
     }
@@ -121,8 +126,8 @@ final readonly class UpdateProductData
             $attributes['supplier_id'] = $this->supplierId;
         }
 
-        if ($this->stateIdSubmitted) {
-            $attributes['state_id'] = $this->stateId;
+        if ($this->unitOfMeasureIdSubmitted) {
+            $attributes['unit_of_measure_id'] = $this->unitOfMeasureId;
         }
 
         return $attributes;

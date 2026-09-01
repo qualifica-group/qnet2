@@ -25,7 +25,7 @@ import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSectio
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
-import { STATES_FOR_SELECT_RESOURCE } from '@/features/geo/state-for-select-api'
+import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
 import type { ProductDetail, ProductFormMode, ProductType } from '@/features/products/types'
 
 /** Hoisted so the create-mode memo keeps a stable reference across renders. */
@@ -100,7 +100,7 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
   // `{id, name}` projections, already the shape `RelationSelectField` expects.
   const selectedVatRate = mode.type === 'edit' ? mode.product.vat_rate : null
   const selectedSupplier = mode.type === 'edit' ? mode.product.supplier : null
-  const selectedState = mode.type === 'edit' ? mode.product.state : null
+  const selectedUnitOfMeasure = mode.type === 'edit' ? mode.product.unit_of_measure : null
 
   const identityVisible =
     fieldPermission('code').visible ||
@@ -112,7 +112,7 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
     fieldPermission('product_type').visible ||
     fieldPermission('vat_rate_id').visible ||
     fieldPermission('supplier_id').visible ||
-    fieldPermission('state_id').visible
+    fieldPermission('unit_of_measure_id').visible
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -299,15 +299,15 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
 
               <RelationSelectField
                 control={form.control}
-                name="state_id"
-                metaKey="state_id"
-                label={t('products.form.state')}
-                resource={STATES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('products.form.stateSearch')}
-                selected={selectedState}
-                placeholder={t('products.form.statePlaceholder')}
-                emptyLabel={t('products.form.stateEmpty')}
-                errorLabel={t('products.form.stateError')}
+                name="unit_of_measure_id"
+                metaKey="unit_of_measure_id"
+                label={t('products.form.unitOfMeasure')}
+                resource={UNITS_OF_MEASURE_FOR_SELECT_RESOURCE}
+                searchPlaceholder={t('products.form.unitOfMeasureSearch')}
+                selected={selectedUnitOfMeasure}
+                placeholder={t('products.form.unitOfMeasurePlaceholder')}
+                emptyLabel={t('products.form.unitOfMeasureEmpty')}
+                errorLabel={t('products.form.unitOfMeasureError')}
                 clearLabel={t('common.clear')}
                 retryLabel={t('common.retry')}
               />

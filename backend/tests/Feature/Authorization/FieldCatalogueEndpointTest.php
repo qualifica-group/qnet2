@@ -117,6 +117,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // optional, BR-5; ContractsAuthorization: the Contracts module
         // resource, editable-field surface only, D-6 — no create/delete).
         'contract-statuses', 'contracts',
+        // spec 0088 `units-of-measure` (UnitsOfMeasureAuthorization: the
+        // "Unita di Misura" lookup — name/symbol mandatory, `code` writable
+        // only on create, D-1).
+        'units-of-measure',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

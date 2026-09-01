@@ -8,6 +8,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Models\CommissionConfiguration;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /** @extends Factory<CommissionConfiguration> */
@@ -31,5 +32,29 @@ class CommissionConfigurationFactory extends Factory
             'status' => CommissionConfigurationStatus::Active,
             'internal_note' => null,
         ];
+    }
+
+    /**
+     * Scope 0089 D-1/D-2: a rule for one specific recipient. Clears
+     * product/category so the scope check accepts a RECIPIENT rule as-is;
+     * pass a non-RECIPIENT $scope to keep the destination orthogonal
+     * (personal + PRODUCT / personal + PRODUCT_CATEGORY, D-2).
+     */
+    public function forRecipient(
+        string $recipientType,
+        int $recipientId,
+        CommissionApplicationScope $scope = CommissionApplicationScope::Recipient,
+    ): static {
+        return $this->state(fn (): array => [
+            'application_scope' => $scope,
+            'product_category_id' => $scope === CommissionApplicationScope::ProductCategory
+                ? ProductCategory::factory()
+                : null,
+            'product_id' => $scope === CommissionApplicationScope::Product
+                ? Product::factory()
+                : null,
+            'recipient_type' => $recipientType,
+            'recipient_id' => $recipientId,
+        ]);
     }
 }

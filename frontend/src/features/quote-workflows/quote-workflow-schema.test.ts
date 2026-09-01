@@ -12,7 +12,7 @@ beforeAll(async () => {
 const VALID_PAYLOAD = {
   name: 'EMEA workflow',
   is_active: true,
-  criteria: [{ field: 'state_id', value_id: 1 }],
+  criteria: [{ field: 'business_function_id', value_id: 1 }],
 }
 
 describe('buildCreateQuoteWorkflowSchema', () => {
@@ -52,7 +52,7 @@ describe('buildCreateQuoteWorkflowSchema', () => {
     const schema = buildCreateQuoteWorkflowSchema(i18n.t)
     const result = schema.safeParse({
       ...VALID_PAYLOAD,
-      criteria: [{ field: 'state_id', value_id: null }],
+      criteria: [{ field: 'business_function_id', value_id: null }],
     })
     expect(result.success).toBe(false)
   })
@@ -62,8 +62,8 @@ describe('buildCreateQuoteWorkflowSchema', () => {
     const result = schema.safeParse({
       ...VALID_PAYLOAD,
       criteria: [
-        { field: 'state_id', value_id: 1 },
-        { field: 'state_id', value_id: 2 },
+        { field: 'business_function_id', value_id: 1 },
+        { field: 'business_function_id', value_id: 2 },
       ],
     })
     expect(result.success).toBe(false)
@@ -74,7 +74,7 @@ describe('buildCreateQuoteWorkflowSchema', () => {
     const result = schema.safeParse({
       ...VALID_PAYLOAD,
       criteria: [
-        { field: 'state_id', value_id: 1 },
+        { field: 'business_function_id', value_id: 1 },
         { field: 'source_id', value_id: 2 },
       ],
     })

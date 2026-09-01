@@ -15,6 +15,7 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
       application_scope: z.enum(COMMISSION_SCOPES),
       product_category_id: z.number().nullable(),
       product_id: z.number().nullable(),
+      recipient_id: z.number().nullable(),
       commission_type: z.enum(COMMISSION_TYPES),
       value: z.number().min(0, t('commissionConfigurations.form.errors.valueInvalid')),
       priority: z.number().int(t('commissionConfigurations.form.errors.priorityInvalid')),
@@ -36,6 +37,13 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
           code: 'custom',
           path: ['product_id'],
           message: t('commissionConfigurations.form.errors.productRequired'),
+        })
+      }
+      if (values.application_scope === 'RECIPIENT' && values.recipient_id === null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['recipient_id'],
+          message: t('commissionConfigurations.form.errors.recipientRequired'),
         })
       }
       if (values.valid_until && values.valid_until < values.valid_from) {

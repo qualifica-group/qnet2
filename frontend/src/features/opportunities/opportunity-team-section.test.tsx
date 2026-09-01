@@ -45,7 +45,6 @@ const EMPTY_SELECTED_ITEMS = {
   reporter: null,
   source: null,
   operationalSite: null,
-  state: null,
   supervisor: null,
   managers: [],
 }

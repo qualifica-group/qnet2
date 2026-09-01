@@ -80,7 +80,7 @@ export const opportunities = {
     sections: {
       classification: {
         title: 'Classification',
-        description: 'Source, operational site and region.',
+        description: 'Source and operational site.',
       },
       lead: {
         title: 'Originating lead',
@@ -130,8 +130,6 @@ export const opportunities = {
     sourceSearch: 'Search sources…',
     operationalSite: 'Operational site',
     operationalSiteSearch: 'Search sites…',
-    state: 'Region',
-    stateSearch: 'Search regions…',
     workflowStatus: 'Working status',
     workflowStatusHint:
       'The internal working status, distinct from the Opportunity Status: limited to the set resolved for this opportunity.',

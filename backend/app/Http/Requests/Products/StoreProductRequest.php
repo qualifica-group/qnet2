@@ -55,7 +55,11 @@ class StoreProductRequest extends FormRequest
             'product_type' => ['required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['nullable', 'integer', 'exists:registries,id'],
-            'state_id' => ['nullable', 'integer', 'exists:states,id'],
+            // Spec 0088, D-4: absent/null falls back to the default unit in
+            // ProductService, so `sometimes` (not `nullable` alone) matters —
+            // it is what lets CreateProductData tell "not submitted" from
+            // "submitted null" apart via array_key_exists().
+            'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

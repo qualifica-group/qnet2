@@ -18,10 +18,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `net_amount`/`vat_amount`/`total_amount` ARE persisted and frozen (D-10/
  * D-12): computed server-side from `quantity` * `unit_price` (+ the VAT rate
  * snapshot at that moment), rounded half-up to 2 decimals, so a later change
- * to `vat_rates.rate` never alters an already-saved Quote. No activity log on
- * this row (pure child collection of the Quote, which already logs its own
- * changes — mirrors OpportunityProductLine): it is written exclusively by
- * the quote service's full-replace (D-8), never directly by a client.
+ * to `vat_rates.rate` never alters an already-saved Quote. `unit_of_measure_id`
+ * (spec 0088, D-5) EMENDS D-7 for this one field only: it is frozen from the
+ * Product at write time (QuoteLineWriter::sync()) because it qualifies the
+ * already-frozen `quantity` — reading it live would let 10 Kg silently become
+ * 10 Grammi after a later product edit. No activity log on this row (pure
+ * child collection of the Quote, which already logs its own changes — mirrors
+ * OpportunityProductLine): it is written exclusively by the quote service's
+ * full-replace (D-8), never directly by a client.
  */
 #[Fillable([
     'quote_id',
@@ -30,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'quantity',
     'unit_price',
     'vat_rate_id',
+    'unit_of_measure_id',
     'net_amount',
     'vat_amount',
     'total_amount',
@@ -69,6 +74,16 @@ class QuoteLine extends BaseModel
     public function vatRate(): BelongsTo
     {
         return $this->belongsTo(VatRate::class);
+    }
+
+    /**
+     * The unit of measure frozen onto this row at write time (spec 0088,
+     * D-5) — nullable: a historic line predating the module reads as null,
+     * and QuoteLineResource falls back to the product's CURRENT unit.
+     */
+    public function unitOfMeasure(): BelongsTo
+    {
+        return $this->belongsTo(UnitOfMeasure::class);
     }
 
     public function commissions(): HasMany

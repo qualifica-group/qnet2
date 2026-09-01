@@ -93,9 +93,6 @@ class UpdateOpportunityRequest extends FormRequest
             // "Note generali" (user directive 2026-07-27): free text, same
             // 5000-char ceiling as the lead `notes` it is inherited from.
             'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            // spec 0047: state_id (Regione, D1) is freely editable on the
-            // standalone opportunity.
-            'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines`' own partial-PATCH shape — the key may
             // be omitted (untouched), but never cleared to `[]`. A product

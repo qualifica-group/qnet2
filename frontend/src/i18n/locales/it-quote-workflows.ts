@@ -21,7 +21,6 @@ export const quoteWorkflows = {
     updatedAt: 'Aggiornato il',
   },
   criterionFields: {
-    state_id: 'Regione',
     source_id: 'Fonte',
     business_function_id: 'Funzione aziendale',
     product_category_id: 'Categoria prodotto',

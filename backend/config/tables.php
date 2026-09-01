@@ -33,6 +33,7 @@ use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
 use App\Tables\SourcesTableDefinition;
 use App\Tables\TagsTableDefinition;
+use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
 
@@ -97,6 +98,7 @@ return [
         'reward-statuses' => RewardStatusesTableDefinition::class,
         'rewarded-referents' => RewardedReferentsTableDefinition::class,
         'vat-rates' => VatRatesTableDefinition::class,
+        'units-of-measure' => UnitsOfMeasureTableDefinition::class,
     ],
 
 ];

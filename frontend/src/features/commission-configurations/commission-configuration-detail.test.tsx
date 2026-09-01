@@ -31,6 +31,9 @@ describe('CommissionConfigurationDetailView permissions', () => {
       product_category: null,
       product_id: 9,
       product: { id: 9, name: 'Secret product' },
+      recipient_type: 'referent',
+      recipient_id: 5,
+      recipient: { id: 5, name: 'Secret recipient' },
       commission_type: 'PERCENTAGE',
       value: '12.5000',
       priority: 99,
@@ -48,6 +51,7 @@ describe('CommissionConfigurationDetailView permissions', () => {
           recipient_role: hidden,
           application_scope: hidden,
           product_id: hidden,
+          recipient_id: hidden,
           commission_type: hidden,
           value: hidden,
           priority: hidden,
@@ -65,6 +69,7 @@ describe('CommissionConfigurationDetailView permissions', () => {
     expect(screen.getByText('Commission configuration')).toBeInTheDocument()
     expect(screen.queryByText('Secret commission rule')).not.toBeInTheDocument()
     expect(screen.queryByText('Secret product')).not.toBeInTheDocument()
+    expect(screen.queryByText('Secret recipient')).not.toBeInTheDocument()
     expect(screen.queryByText('Secret internal note')).not.toBeInTheDocument()
     expect(screen.queryByText('Recipient and scope')).not.toBeInTheDocument()
     expect(screen.queryByText('Calculation')).not.toBeInTheDocument()
@@ -76,6 +81,7 @@ describe('CommissionConfigurationDetailView permissions', () => {
       scope: 'PRODUCT' as const,
       product: { id: 9, name: 'Router Pro' },
       product_category: null,
+      recipient: null,
       type: 'PERCENTAGE' as const,
       value: '12.5000',
       status: 'ACTIVE' as const,
@@ -86,16 +92,29 @@ describe('CommissionConfigurationDetailView permissions', () => {
       scope: 'PRODUCT_CATEGORY' as const,
       product: null,
       product_category: { id: 4, name: 'Networking' },
+      recipient: null,
       type: 'FIXED_AMOUNT' as const,
       value: '25',
       status: 'SUSPENDED' as const,
       expectedRelation: 'Networking',
       expectedValue: '25.00',
     },
+    {
+      scope: 'RECIPIENT' as const,
+      product: null,
+      product_category: null,
+      recipient: { id: 6, name: 'Jane Referent' },
+      type: 'PERCENTAGE' as const,
+      value: '3.0000',
+      status: 'ACTIVE' as const,
+      expectedRelation: 'Jane Referent',
+      expectedValue: '3%',
+    },
   ])('renders a complete visible $scope rule', ({
     scope,
     product,
     product_category,
+    recipient,
     type,
     value,
     status,
@@ -111,6 +130,9 @@ describe('CommissionConfigurationDetailView permissions', () => {
       product_category,
       product_id: product?.id ?? null,
       product,
+      recipient_type: recipient ? 'referent' : null,
+      recipient_id: recipient?.id ?? null,
+      recipient,
       commission_type: type,
       value,
       priority: 3,

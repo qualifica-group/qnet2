@@ -10,7 +10,7 @@ class CommissionConfigurationService
 {
     public function loadDetail(CommissionConfiguration $configuration): CommissionConfiguration
     {
-        return $configuration->load(['productCategory', 'product']);
+        return $configuration->load(['productCategory', 'product', 'recipient']);
     }
 
     public function create(CreateCommissionConfigurationData $data): CommissionConfiguration

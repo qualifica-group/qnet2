@@ -36,6 +36,11 @@ class QuoteLineFactory extends Factory
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'vat_rate_id' => null,
+            // Nullable (spec 0088, D-5): null here exercises the SAME
+            // fallback-to-the-product's-current-unit path a historic,
+            // pre-module row takes in QuoteLineResource. A test that needs
+            // the frozen value explicitly overrides it.
+            'unit_of_measure_id' => null,
             'net_amount' => $netAmount,
             'vat_amount' => 0,
             'total_amount' => $netAmount,

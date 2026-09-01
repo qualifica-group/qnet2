@@ -24,8 +24,7 @@ interface OpportunityDetailHeaderProps {
 
 /**
  * Identity band: monogram, name, registry subtitle, pipeline/working-status
- * badges, edit action. The Regione badge is hidden with the rest of the
- * Regione/Sede surface (user directive 2026-08-05).
+ * badges, edit action.
  */
 export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDetailHeaderProps) {
   const { t } = useTranslation()

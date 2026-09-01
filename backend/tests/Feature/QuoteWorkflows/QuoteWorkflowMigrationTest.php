@@ -38,9 +38,16 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (15th), `2026_08_31_100000_add_validated_contract_status` (16th), and
     // spec 0087's `2026_08_31_110000_create_quote_user_table` (17th),
     // `2026_08_31_110100_add_operator_id_to_quotes_table` (18th) and
-    // `2026_08_31_120000_backfill_quote_managers_from_opportunity` (19th).
+    // `2026_08_31_120000_backfill_quote_managers_from_opportunity` (19th),
+    // `2026_09_01_100000_create_units_of_measure_table` (20th),
+    // `2026_09_01_100100_add_unit_of_measure_id_to_products_table` (21st),
+    // `2026_09_01_100200_add_unit_of_measure_id_to_quote_lines_table` (22nd),
+    // `2026_09_01_110000_add_recipient_to_commission_configurations_table`
+    // (23rd) and
+    // `2026_09_01_120000_drop_state_id_from_opportunities_and_products_tables`
+    // (24th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 19]);
+    Artisan::call('migrate:rollback', ['--step' => 24]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -55,7 +62,7 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         // migration's down(): structure is reversible, its rows are not.
         ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue();
 
-    Artisan::call('migrate', ['--step' => 19]);
+    Artisan::call('migrate', ['--step' => 24]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()

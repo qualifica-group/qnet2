@@ -30,6 +30,8 @@ function payload(values: CommissionConfigurationFormValues): CommissionConfigura
     product_category_id:
       values.application_scope === 'PRODUCT_CATEGORY' ? values.product_category_id : null,
     product_id: values.application_scope === 'PRODUCT' ? values.product_id : null,
+    // recipient_id is orthogonal to application_scope (D-2): sent as-is, whichever scope is active.
+    recipient_id: values.recipient_id,
     valid_until: values.valid_until || null,
     internal_note: values.internal_note || null,
   }
@@ -50,6 +52,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
             application_scope: mode.configuration.application_scope,
             product_category_id: mode.configuration.product_category_id,
             product_id: mode.configuration.product_id,
+            recipient_id: mode.configuration.recipient_id ?? null,
             commission_type: mode.configuration.commission_type,
             value: Number(mode.configuration.value),
             priority: mode.configuration.priority,
@@ -64,6 +67,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
             application_scope: 'PRODUCT_CATEGORY',
             product_category_id: null,
             product_id: null,
+            recipient_id: null,
             commission_type: 'PERCENTAGE',
             value: 0,
             priority: 0,
@@ -98,6 +102,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
           'application_scope',
           'product_category_id',
           'product_id',
+          'recipient_id',
           'commission_type',
           'value',
           'priority',

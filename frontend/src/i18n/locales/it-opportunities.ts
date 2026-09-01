@@ -80,7 +80,7 @@ export const opportunities = {
     sections: {
       classification: {
         title: 'Classificazione',
-        description: 'Fonte, sede operativa e regione.',
+        description: 'Fonte e sede operativa.',
       },
       lead: {
         title: 'Lead di origine',
@@ -130,8 +130,6 @@ export const opportunities = {
     sourceSearch: 'Cerca fonti…',
     operationalSite: 'Sede operativa',
     operationalSiteSearch: 'Cerca sedi…',
-    state: 'Regione',
-    stateSearch: 'Cerca regioni…',
     workflowStatus: 'Stato di lavorazione',
     workflowStatusHint:
       'Lo stato di lavorazione interno, distinto dallo Stato Opportunità: limitato al set di stati risolto per questa opportunità.',

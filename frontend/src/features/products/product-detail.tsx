@@ -65,8 +65,10 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
           {product.supplier && (
             <DetailField label={t('products.form.supplier')}>{product.supplier.name}</DetailField>
           )}
-          {product.state && (
-            <DetailField label={t('products.form.state')}>{product.state.name}</DetailField>
+          {product.unit_of_measure && (
+            <DetailField label={t('products.form.unitOfMeasure')}>
+              {product.unit_of_measure.name}
+            </DetailField>
           )}
         </DetailGrid>
       </DetailSection>

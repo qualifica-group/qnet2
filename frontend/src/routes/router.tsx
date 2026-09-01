@@ -33,6 +33,7 @@ const ProductDetailPage = lazy(() => import('@/pages/product-detail-page'))
 const ProductFormPage = lazy(() => import('@/pages/product-form-page'))
 const SourcesPage = lazy(() => import('@/pages/sources-page'))
 const VatRatesPage = lazy(() => import('@/pages/vat-rates-page'))
+const UnitsOfMeasurePage = lazy(() => import('@/pages/units-of-measure-page'))
 const PaymentMethodsPage = lazy(() => import('@/pages/payment-methods-page'))
 const TagsPage = lazy(() => import('@/pages/tags-page'))
 const PipelineStatusesPage = lazy(() => import('@/pages/pipeline-statuses-page'))
@@ -182,6 +183,10 @@ export const router = createBrowserRouter([
           {
             path: 'vat-rates',
             element: <VatRatesPage />,
+          },
+          {
+            path: 'units-of-measure',
+            element: <UnitsOfMeasurePage />,
           },
           {
             path: 'payment-methods',

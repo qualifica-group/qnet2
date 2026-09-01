@@ -85,6 +85,7 @@ export const permissions = {
     sectors: 'Sectors',
     sources: 'Sources',
     tags: 'Tags',
+    'units-of-measure': 'Units of Measure',
     'vat-rates': 'VAT',
   },
   areas: {

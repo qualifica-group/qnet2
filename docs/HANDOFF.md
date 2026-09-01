@@ -3,6 +3,265 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0088 — MODULO UNITA DI MISURA (2026-09-01) — VERDE, NON COMMITTATO
+
+**Cosa.** Nuovo lookup `units-of-measure` (name/symbol/description + `code`), campo
+`unit_of_measure_id` su Prodotti, unita congelata sulle righe Offerta accanto alla Quantita.
+Spec: `docs/specs/0088-units-of-measure-module.xml`.
+
+**Decisioni da non re-litigare.**
+- `code` e un campo IN PIU rispetto ai tre chiesti: serve un ancoraggio stabile per risolvere
+  la riga di default anche se l'utente rinomina nome o simbolo. Unique, immutabile dopo la
+  create (pattern D-3 di PaymentMethod). Riga di default: `code=unit`, name `Unita`, symbol `pz`.
+- La riga di default la crea la MIGRATION, non il seeder: le migration girano prima dei seeder
+  ed e l'unico modo per associare i prodotti preesistenti (D-2).
+- `UnitOfMeasureSeeder` sta nel SEED PULITO (`DatabaseSeeder`), senza prefisso `Demo`, a
+  differenza di `DemoVatRateSeeder`/`DemoPaymentMethodSeeder`. Scelta utente: sono reference
+  data, una installazione di produzione deve avere kg/litri senza lanciare il seeder demo (D-3).
+- `products.unit_of_measure_id` e NOT NULL ma NON e `mandatory` nel catalogo field-permissions:
+  resta restringibile dalla matrice ruoli, e quando il campo non arriva nel payload
+  `ProductService` risolve la default unit (D-4).
+- Il model dichiara `protected $table = 'units_of_measure'`: la pluralizzazione di Eloquent
+  darebbe `unit_of_measures`. Non rimuoverlo.
+
+**D-5 — la parte delicata, emenda D-7 della spec 0065.** Le righe offerta NON denormalizzano
+nulla del prodotto (D-7: nome/codice/categoria si leggono vivi); l'unita di misura e
+l'ECCEZIONE, perche qualifica la quantita gia congelata sulla riga e leggerla viva renderebbe
+falsa una riga storica (10 Kg che diventa 10 Grammi).
+**Il congelamento avviene SOLO alla creazione della riga o al cambio del prodotto della riga.**
+Popolare il campo a ogni save e un BUG: `offer_lines`/`cost_lines` seguono il full-replace (D-8),
+quindi ogni edit successivo dell'offerta risottometterebbe tutte le righe e le ri-sincronizzerebbe
+all'unita corrente, azzerando il freeze. Questo bug e stato scritto, trovato dal verifier e
+corretto il 2026-09-01 — `QuoteLineWriter.php:70`, guardia `$isNew || $productChanged`.
+Regressione coperta da AC-054 (resave invariato) e AC-055 (cambio prodotto sulla riga).
+Righe storiche con NULL: `QuoteLineResource` fa fallback al prodotto corrente (AC-053).
+
+**Fuori scope, dichiarato.** Documento Word (l'allow-list ColumnKey resta invariata);
+Opportunita (`OpportunityProductLine` non ha ne prodotto ne quantita); `is_active`/`sort_order`/
+reorder; import legacy.
+
+**Difetti PREESISTENTI segnalati e NON corretti qui.**
+- `VatRateService::delete()` non ha guard: cancellare un'aliquota usata da una riga d'offerta
+  da un 5xx invece di un 409, perche `quote_lines.vat_rate_id` e `restrictOnDelete`. Nessun test.
+- La matrice permessi-campi mostra un token umanizzato per `unit_of_measure_id`, come gia per
+  `vat_rate_id` e `supplier_id`: `fieldPermissionLabel()` cerca `{resource}.form.{campo_snake_case}`
+  e nessuno dei tre ha quella chiave. Va sistemato per tutti e tre insieme o per nessuno.
+- `backend/app/Services/ProductService.php` e a 326 righe, sopra il soft limit di 300.
+
+**Nota ambiente.** `./vendor/bin/pest` sull'intera suite va in SEGFAULT (exit 139) con Xdebug
+attivo. Non e il codice: `php -d xdebug.mode=off ./vendor/bin/pest` passa. Se vedi 139, e questo.
+
+**Stato verificato dal lead (non riferito).** Backend 5532 passed / 1 skipped / 0 failed;
+`pint --test` passed; frontend `tsc -b --force` EXIT 0; vitest 518 file / 3704 test tutti verdi.
+Migration applicate su MariaDB 11.3.2 reale: 0 prodotti senza unita (il backfill dell'AC-003
+finora era provato solo su SQLite).
+
+## COMMISSIONI PER DESTINATARIO SPECIFICO (2026-09-01, spec 0089) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Estendere le commissioni dal solo RUOLO (commerciale, segnalatore,
+supervisore, fornitore) al singolo DESTINATARIO: "se ci sono commissioni per utente specifico non
+si guardano le commissioni per ruolo". Precompilazione sulle Offerte e modificabilita' invariate.
+
+**Perche' e' stato semplice.** Per la decisione del 2026-07-30 (piu' in basso in questo file) il
+destinatario di una commissione NON si sceglie: lo risolve `CommissionRecipientResolver` dalla
+testata Offerta e dal fornitore del prodotto. Quindi al momento della risoluzione e' gia' noto e la
+regola personale si aggancia da sola. Nessun selettore nuovo lato Offerta, nessuna modifica a
+`quote_line_commissions`.
+
+### Regola nuova (spec 0089, emenda la decisione 2 della spec 0066)
+
+`commission_configurations` guadagna `recipient_type` (alias morph `referent`|`user`|`registry`) +
+`recipient_id`, e `application_scope` guadagna `RECIPIENT` (regola personale valida su qualsiasi
+prodotto). Il destinatario resta ORTOGONALE allo scope: valgono anche destinatario+PRODUCT e
+destinatario+PRODUCT_CATEGORY.
+
+Catena in `CommissionRuleResolver`, per ruolo, primo colpo vince:
+1. destinatario+PRODUCT -> 2. destinatario+PRODUCT_CATEGORY -> 3. destinatario+RECIPIENT ->
+4. ruolo+PRODUCT -> 5. ruolo+PRODUCT_CATEGORY.
+Gradini 1-3 saltati se il ruolo non ha destinatario. Il tie-break (priority, valid_from, id) opera
+DENTRO un gradino, mai fra gradini.
+
+**IL PUNTO PIU' FRAGILE, da non rompere mai:** i gradini 4-5 filtrano `whereNull('recipient_type')`
+(`CommissionRuleResolver::firstMatch()`). Senza quel filtro una regola personale intestata a un
+ALTRO destinatario vincerebbe come se fosse una regola di ruolo — commissioni sbagliate in
+silenzio. Coperto da AC-005/INV-3 in `CommissionRecipientResolutionTest`.
+
+### Decisioni da rispettare
+
+- `recipient_type` NON si accetta dal payload: il server lo DERIVA da `recipient_role` via
+  `CommissionRecipientRole::recipientType()` (unica fonte di verita'; la vecchia mappa duplicata
+  `QuoteLineCommissionWriter::ROLE_TYPES` e' stata CANCELLATA).
+- Cambiare `recipient_role` su una regola che ha gia' un destinatario di tipo diverso, senza
+  rimandare `recipient_id`, e' 422 `commission_configurations.recipient_role_changed`. Non si
+  ri-punta l'id a un'altra tabella in silenzio.
+- `CommissionOrigin::Recipient` marca le commissioni nate dai gradini 1-3, qualunque loro scope.
+  Lato FE serve anche nello `z.enum` di `quote-schema.ts`, non solo nella union dei tipi: senza,
+  la riga viene scartata dal parse in silenzio.
+- Campo non editabile -> 422 (trait `EnforcesFieldPermissions`), NON 403: il 403 vale per l'ability
+  di risorsa mancante. Campo non visibile -> le tre chiavi recipient sono OMESSE, non a null.
+- Colonna di griglia `recipient` APPESA IN FONDO al catalogo: inserirla in mezzo sposta i layout
+  colonna gia' salvati dagli utenti.
+- Retrocompatibilita' totale, nessun backfill: le regole esistenti hanno recipient nullo e restano
+  regole di ruolo. `CommissionRuleResolverTest` preesistente passa con ZERO modifiche.
+
+### Bug preesistente trovato e corretto (fuori spec)
+
+`CommissionConfigurationColumnCatalog::column()` filtrava con `array_filter()`, che scarta anche i
+`false`: la chiave `sortable: false` spariva, ma `ResolvesColumnConfig::resolveColumn()` la legge
+senza `??` -> 500 su `GET /columns`. Ora le chiavi strutturali (id/label/type/visible/sortable/
+filterable) sono sempre emesse; solo filterType/searchable passano dal filtro opzionale. Output
+delle colonne preesistenti invariato, verificato.
+
+### Stato verificato (verifier indipendente)
+
+`php artisan test` intero: 5530 test, 5529 passati, 1 skipped, ZERO failure. `--filter=Commission`
+47/47. `--filter=QuoteCommission` 18/18. Vitest su commission-configurations + quotes: 261 test su
+38 file. `tsc -b --force` EXIT=0. Pint pulito. Migrazione `2026_09_01_110000_add_recipient_...`
+verificata reversibile in isolamento su SQLite (il DB mysql di sviluppo NON e' stato toccato:
+c'erano altre sessioni attive).
+
+### Da tenere d'occhio
+
+`CommissionConfigurationsTableDefinition.php` e' a 365 righe (soft limit 300, hard 500): al
+prossimo intervento valutare lo split, non aggiungere e basta.
+
+### Documentazione allineata
+
+`docs/api/0006-commission-configurator-and-quote-integration.md` (enum, payload, Resource, catena a
+5 gradini) e nota di emendamento sulla decisione 2 di `docs/specs/0066-commission-configurator.md`.
+
+---
+
+## RIMOZIONE CAMPO REGIONE DA OPPORTUNITA E PRODOTTO (2026-09-01) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Eliminare campo regione sia in opportunita che in categoria prodotto che in
+prodotto." Rimozione COMPLETA scelta esplicitamente (drop colonna, non solo UI).
+
+**Categoria prodotto: nessun campo regione esiste** — `ProductCategory` non ha `state_id`, ne
+colonna di griglia, ne campo form, ne chiave i18n. Confermato con l'utente: niente da fare li'.
+
+**Decisione.** Migrazione `2026_09_01_120000_drop_state_id_from_opportunities_and_products_tables`:
+droppa `opportunities.state_id` e `products.state_id`, e nello stesso passo cancella le due
+famiglie di righe che restavano orfane — `quote_workflow_criteria` con `field='state_id'` e
+`role_field_permissions` su `products.state_id`. `down()` ripristina la sola STRUTTURA (precedente:
+`2026_08_05_120400`). Spec 0047 emendata (AMENDMENT 2026-09-01): D1 ritirato per l'Opportunita',
+AC-002/AC-003/AC-026 ritirati per quella parte.
+
+**Coupling non ovvio (motivo per cui la migrazione cancella righe).** Il `state_id`
+dell'Opportunita' era uno dei 4 campi-criterio nativi dei Quote Workflow
+(`QuoteCriterionFieldRegistry::NATIVE_FIELDS`), risolto per EREDITARIETA' da `quote.opportunity`
+dopo spec 0083 D-7. Droppata la colonna, il criterio non e' risolvibile: l'allow-list nativa scende
+a 3 (`source_id`, `business_function_id`, `product_category_id`). Un workflow che si reggeva su
+quel criterio diventa meno specifico.
+
+**Backend.** Model `Opportunity` (#[Fillable] + `state()`), `Product` (#[Fillable] + `state()`);
+`OpportunityResource`/`ProductResource` (campi + `stateSummary()`); Store/Update FormRequest di
+entrambi; DTO `CreateOpportunityData`/`UpdateOpportunityData`/`CreateProductData`/
+`UpdateProductData` (`stateId`, `stateIdSubmitted`, `attributes()`); `ProductService`
+(`HYDRATED_RELATIONS` + insert); `OpportunityService::DETAIL_RELATIONS`;
+`LeadOpportunityDefaultsResolver` + `LeadOpportunityDefaults` + `ConvertLeadToOpportunity`
+(ereditarieta' dal Lead alla conversione); `ProductsAuthorization` (FieldDefinition + ceiling);
+`ProductColumnCatalog` + `ProductsTableDefinition` (colonna derivata `state`: mapRow, set-filter
+localizzato, sort per subquery, distinct-values — rimossi con `GeoNameLocalizer`/`State` ormai
+inutilizzati li'); `ProductFactory`.
+
+**Frontend.** `products`: types (`ProductStateSummary`), schema, `use-product-form`,
+`product-form-payload` (create + diff PATCH), `product-form-body` (RelationSelectField Regione),
+`product-detail`, `column-renderers`. `opportunities`: types, schema, `use-opportunity-form`,
+`opportunity-form-payload`, `use-opportunity-selected-items`, fixtures. i18n: chiavi
+`products.columns.state`/`products.form.state*`, `opportunities.form.state*`,
+`quoteWorkflows.criterionFields.state_id` (it+en); la descrizione della sezione Classificazione
+Opportunita' diventa "Fonte e sede operativa". `STATES_FOR_SELECT_RESOURCE` NON e' morto: resta in
+uso su `leads/lead-form-body.tsx`. La chiave `state_id` in `*-activity-log.ts` RESTA — e' la mappa
+di label condivisa da leads/campaigns/projects/indirizzi.
+
+**Test.** Rimossi `tests/Feature/Opportunities/OpportunityStateInheritanceTest.php` (interamente
+sulla D1 ritirata) e i blocchi `state_id` di `ProductCrudTest`/`ProductTableTest`. Aggiornati:
+`Foundation0047Test` e `QuoteWorkflowMetaTest` (4 campi nativi -> 3),
+`QuoteWorkflowResolverTest` (il caso "2 criteri battono 1" ora usa
+`source_id` + `product_category_id` con una riga d'offerta), `QuoteWorkflowCrudTest` (firma
+criteri duplicata), `QuoteWorkflowCustomFieldCriteriaTest` (5->4, 4->3). Frontend: le fixture
+`quote-workflows` che usavano `state_id` come campo-criterio generico passano a
+`source_id`/`business_function_id`.
+
+**Verifica eseguita.** Pest 5524 test, 5521 passati; Pint pulito; `tsc -b --force` EXIT=0; Vitest
+518 file / 3703 test tutti verdi; ESLint pulito sui file toccati.
+
+**DUE FALLIMENTI PRE-ESISTENTI, NON introdotti qui, da sistemare a parte** (entrambi ricadute del
+lavoro units-of-measure del 2026-09-01):
+1. `FieldCatalogueEndpointTest` — l'elenco atteso delle risorse non include `units-of-measure`,
+   aggiunta da `UnitsOfMeasureAuthorization`.
+2. `ProductCodeTest` AC-008 — il commento del test dice "nessuna migrazione successiva altera
+   `products`", ma `2026_09_01_100100_add_unit_of_measure_id_to_products_table` ha aggiunto una
+   colonna NOT NULL: l'insert grezzo del test viola il vincolo.
+Inoltre 2 errori ESLint pre-esistenti (`_omit` non usato) in `referent-form-metadata.test.tsx` e
+`registry-form-metadata.test.tsx`.
+
+**Nota su `QuoteWorkflowMigrationTest`.** Il test rolla indietro N migrazioni e il numero va bumpato
+a ogni nuova migrazione: era fermo a 19 (mancavano le 4 del 2026-09-01), portato a 24 con la mia.
+
+## SPEC 0088 — MODULO UNITA DI MISURA, FRONTEND (2026-09-01) — VERDE, NON COMMITTATO
+
+**Scope consegnato (teammate `frontend`, ownership `frontend/src/` soltanto).** Modulo lookup
+completo `units-of-measure` (18 file, clone di `payment-methods`/`vat-rates`: leanness di
+`vat-rates`, guard di cancellazione 409 di `payment-methods`/`tags`), campo `unit_of_measure_id`
+sul form/detail Prodotto, colonna Unita di Misura sulle righe Offerta (form editabile,
+read-only dettaglio Offerta/Contratto, Gestione Richieste — ereditata senza modifiche, verificato).
+
+**File creati.** `features/units-of-measure/` (13 file + 5 test), `pages/units-of-measure-page.tsx`,
+`i18n/locales/{it,en}-units-of-measure.ts` + `units-of-measure-i18n-parity.test.ts`.
+
+**File modificati (delta minimo).** `routes/router.tsx` (solo rotta lista: `new`/`:id`/`:id/edit`
+sono auto-generate da `buildModuleRoutes()` via `import.meta.glob('../*/*-screens.tsx')`),
+`routes/breadcrumbs.tsx`, `features/navigation/icon-map.ts` (+`ruler`), `i18n/locales/{it,en}.ts`,
+`{it,en}-navigation.ts`, `{it,en}-permissions.ts`, `permissions-i18n-parity.test.ts` (37->38
+`ASSIGNABLE_RESOURCES`), `features/products/{types,product-schema,use-product-form,
+product-form-payload,product-form-body,product-detail}.ts(x)` + `{it,en}-products.ts` + 8 file di
+test dei fixture `product()`, `features/quotes/{types,quote-schema,quote-line-values,
+quote-line-grid,quote-lines-field,quote-line-row,quote-lines-read-only}.ts(x)` +
+`{it,en}-quotes.ts` + 2 file di test.
+
+**Decisione di design non nelle istruzioni originali (verificata leggendo il codice, non
+assunta).** La colonna Unita sulle righe Offerta e' un valore CONGELATO per-riga (D-5 della
+spec), non derivabile dal `product_id` come invece fa `knownProducts`/`knownVatRates` (che sono
+dedup-by-id perche' nome/aliquota sono proprieta' dell'entita', non della riga). Soluzione:
+`unit_of_measure` e' un campo OPZIONALE, sola-lettura, aggiunto allo zod row-schema
+(`quote-schema.ts` `quoteLineRowSchema`) e popolato da `linesToFormValues`
+(`quote-line-values.ts`) — MAI incluso in `QuoteLineInput`/`toLineInputs`/`originalLineInputs`/
+`sameLines`, che restano intoccati (verificato leggendo il file, come richiesto).
+
+**Scoperta a meta' sessione — albero condiviso, NON causato da questo lavoro.** Mentre lavoravo,
+`git status` ha rivelato ~50 file gia' modificati (non miei) che rimuovono il campo
+Prodotti/Opportunita' "Regione" (`state_id`/`state`) e aggiungono `RECIPIENT` a
+`QuoteCommissionOrigin` — completamente estraneo alla spec 0088, probabilmente un altro
+task/agente sullo stesso checkout. Editando gli stessi file (`products/types.ts`,
+`product-schema.ts`, `use-product-form.ts`, `product-form-payload.ts`, `product-form-body.tsx`,
+`product-detail.tsx`, `quotes/types.ts`, `quote-schema.ts`, `{it,en}-products.ts`) ho SEMPRE
+riletto il file fresco prima di ogni Edit (un tool-call e' fallito con "file modified since
+read", prova diretta di scritture concorrenti) e ho aggiunto solo i miei campi senza toccare le
+loro rimozioni/aggiunte. **5 test rossi pre-esistenti, NON miei, NON risolti**:
+`features/quote-workflows/{column-renderers,quote-workflow-form}.test.tsx`, causati dalla
+rimozione di `state_id` da `en/it-quote-workflows.ts` (chiave `criterionFields.state_id`
+cancellata ma il test la referenzia ancora). Fuori dal mio scope/ownership dichiarato: segnalato,
+non corretto.
+
+**Correzione a un'assunzione del task assegnato.** Le istruzioni dicevano che
+`products.form.unitOfMeasure` (camelCase) e' "anche l'etichetta che la matrice permessi-campi
+mostra per il campo" — verificato leggendo `features/roles/permission-labels.ts`:
+`fieldPermissionLabel` cerca `${resource}.form.${field}` con `field` = chiave RAW backend
+(snake_case, es. `unit_of_measure_id`), non la camelCase. Con la sola chiave `unitOfMeasure` la
+matrice permessi ricade su `humanizeToken()` — ESATTAMENTE il comportamento gia' esistente,
+inalterato, di `vat_rate_id`/`supplier_id` sullo stesso form (nessuna chiave snake_case per
+loro). Ho seguito il pattern esistente (mirror esatto del blocco `vat_rate_id`, come richiesto)
+invece di introdurre un'eccezione solo per questo campo; gap pre-esistente, non nuovo.
+
+**Test eseguiti.** `npx vitest run` (intera suite): 3698 passed / 3703 (i 5 rossi sopra, non
+miei); mirato su `units-of-measure`+`products`+`quotes`+`request-management`+`contracts`: 686/686
+verdi. `npx tsc -b --force --pretty false`: EXIT=0. `npx eslint` sui file toccati: pulito.
+
+**Prossimo passo.** Chiedere all'utente se committare. Verificare con l'autore del lavoro
+"Regione"/`RECIPIENT` che i 5 rossi `quote-workflows` siano suoi da chiudere.
+
 ## "RIAPRI CONTRATTO" ANCHE SULLA CHIUSURA POSITIVA (2026-08-31 rev.3) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Su uno stato con esito positivo (`closed_won`), oltre a "Programma", deve

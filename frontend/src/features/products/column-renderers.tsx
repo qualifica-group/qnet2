@@ -2,7 +2,6 @@
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { DateTimeCell } from '@/features/table/cell-renderers'
-import { RelationCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { ProductCategorySummary } from '@/features/products/types'
 
@@ -46,15 +45,11 @@ function CategoryCell({ value }: ICellRendererParams) {
 /**
  * Custom cell renderers keyed by the backend column `id`. `name`/`description`
  * fall back to the AG Grid default text cell; `created_at` reuses the shared
- * domain-agnostic renderer (mirrors `referentTypeColumnRenderers`). `state`
- * (geo `State`, "Regione") reuses the cross-module `RelationCell` — the same
- * `{id, name}` shape rendering already used for the geo relations elsewhere
- * (e.g. `projectColumnRenderers`), so it is not duplicated here like `category`.
+ * domain-agnostic renderer (mirrors `referentTypeColumnRenderers`).
  */
 export const productColumnRenderers: TableRendererMap = {
   cost: (params) => <DecimalCell {...params} />,
   price: (params) => <DecimalCell {...params} />,
   category: (params) => <CategoryCell {...params} />,
-  state: (params) => <RelationCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

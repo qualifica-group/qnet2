@@ -12,6 +12,10 @@ use App\Enums\ProductType;
  * Objects. `cost`/`price`/`productType` are all required by the FormRequest,
  * so they cross as non-null values. `code` is optional: absent/null/empty
  * means the Service falls back to the sequential PRD-0001 generator.
+ * `unitOfMeasureId` (spec 0088, D-4) is likewise optional: absent OR null
+ * both collapse to the Service falling back to the default unit — on
+ * create there is no persisted value to "leave untouched", so the two cases
+ * need no `*Submitted` flag (unlike UpdateProductData).
  */
 final readonly class CreateProductData
 {
@@ -27,7 +31,7 @@ final readonly class CreateProductData
         public ProductType $productType,
         public ?int $vatRateId = null,
         public ?int $supplierId = null,
-        public ?int $stateId = null,
+        public ?int $unitOfMeasureId = null,
         public ?array $attributeValues = null,
         public ?string $code = null,
     ) {}
@@ -48,7 +52,7 @@ final readonly class CreateProductData
             productType: ProductType::from((string) $data['product_type']),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,
             supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
-            stateId: array_key_exists('state_id', $data) && $data['state_id'] !== null ? (int) $data['state_id'] : null,
+            unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
             code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );

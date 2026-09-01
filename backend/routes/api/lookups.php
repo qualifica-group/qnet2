@@ -15,6 +15,8 @@ use App\Http\Controllers\Sources\SourceController;
 use App\Http\Controllers\Sources\SourceForSelectController;
 use App\Http\Controllers\Tags\TagController;
 use App\Http\Controllers\Tags\TagForSelectController;
+use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureController;
+use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureForSelectController;
 use App\Http\Controllers\VatRates\VatRateController;
 use App\Http\Controllers\VatRates\VatRateForSelectController;
 use Illuminate\Support\Facades\Route;
@@ -172,6 +174,21 @@ Route::get('vat-rates/{vatRate}', [VatRateController::class, 'show']);
 Route::post('vat-rates', [VatRateController::class, 'store']);
 Route::match(['put', 'patch'], 'vat-rates/{vatRate}', [VatRateController::class, 'update']);
 Route::delete('vat-rates/{vatRate}', [VatRateController::class, 'destroy']);
+
+// Units of measure CRUD (spec 0088): a standalone lookup used to classify a
+// Product's quantity, congealed onto Quote lines at write time (D-5).
+// Authorization (units-of-measure.view/create/update/delete) is enforced
+// server-side in UnitOfMeasureController via UnitOfMeasurePolicy on every
+// endpoint. Minimal searchable/paginated list for entity-backed selects
+// (for-select standard, ADR 0011). Declared ABOVE units-of-measure/{unitOfMeasure}
+// so the literal `for-select` segment wins over the bound wildcard. The only
+// gate is auth:sanctum (ADR 0011, amended 2026-07-31).
+Route::get('units-of-measure/for-select', UnitOfMeasureForSelectController::class);
+
+Route::get('units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 'show']);
+Route::post('units-of-measure', [UnitOfMeasureController::class, 'store']);
+Route::match(['put', 'patch'], 'units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 'update']);
+Route::delete('units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 'destroy']);
 
 // Contract statuses CRUD (spec 0072): the Contract working-state pick-list,
 // combining reward-statuses' description/is_active shape with

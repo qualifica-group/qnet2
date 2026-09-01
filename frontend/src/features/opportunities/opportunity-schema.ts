@@ -91,10 +91,6 @@ function baseFields(t: TFunction, originalProductLines: ProductLineRow[] | null)
     // Spec 0056: facoltativa, never a submit-blocking requirement — no
     // server-side inheritance from another entity (a plain editable FK).
     operational_site_id: z.number().nullable(),
-    // Spec 0047 (D1, AC-026): the Regione, freely settable on a standalone
-    // opportunity (forced read-only in the UI when lead-linked, see
-    // `OpportunityFormBody`). Never a submit-blocking requirement.
-    state_id: z.number().nullable(),
     // Amendment rev.3 (AC-097/099): replaces the former single
     // `business_function_id`/`product_category_id` with an inline-editable
     // row collection (mirrors `manager_slots`: "Add" appends an EMPTY row).

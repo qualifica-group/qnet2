@@ -17,6 +17,11 @@ final class CommissionConfigurationColumnCatalog
             self::column('priority', 'number'),
             self::column('status', 'badge'),
             self::column('updated_at', 'datetime', filterType: 'date'),
+            // Spec 0089 D-11: appended LAST — inserting it anywhere else
+            // would shift every column layout already persisted by users.
+            // Not sortable: the value is resolved across three different
+            // recipient tables, with no single column to order by.
+            self::column('recipient', 'text', filterType: 'set', sortable: false),
         ];
     }
 
@@ -46,18 +51,27 @@ final class CommissionConfigurationColumnCatalog
         string $type,
         bool $searchable = false,
         ?string $filterType = null,
+        bool $sortable = true,
     ): array {
-        return array_filter([
-            'id' => $id,
-            'label' => "commissionConfigurations.columns.{$id}",
-            'type' => $type,
-            'visible' => true,
-            'sortable' => true,
-            'filterable' => true,
+        // `sortable`/`visible`/`filterable` are structural (ResolvesColumnConfig
+        // reads `$column['sortable']` unconditionally) and must always be
+        // present, even when false — only the truly optional keys go through
+        // the drop-if-empty filter below.
+        $optional = array_filter([
             'filterType' => $filterType ?? (in_array($id, ['category', 'product'], true)
                 ? 'set'
                 : ($type === 'number' ? 'number' : ($type === 'badge' ? 'set' : 'text'))),
             'searchable' => $searchable,
         ], static fn (mixed $value): bool => $value !== null && $value !== false);
+
+        return [
+            'id' => $id,
+            'label' => "commissionConfigurations.columns.{$id}",
+            'type' => $type,
+            'visible' => true,
+            'sortable' => $sortable,
+            'filterable' => true,
+            ...$optional,
+        ];
     }
 }

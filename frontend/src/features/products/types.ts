@@ -37,10 +37,11 @@ export interface ProductSupplierSummary {
   name: string
 }
 
-/** Minimal geo `State` ("Regione") projection hydrating the product's form/detail. */
-export interface ProductStateSummary {
+/** Minimal unit of measure projection hydrating the product's form/detail (spec 0088). */
+export interface ProductUnitOfMeasureSummary {
   id: number
   name: string
+  symbol: string
 }
 
 /**
@@ -78,9 +79,13 @@ export interface ProductDetail {
   /** The product's supplier (a registry flagged `is_supplier`), if assigned. */
   supplier_id: number | null
   supplier: ProductSupplierSummary | null
-  /** The product's geo `State` ("Regione"), if assigned. */
-  state_id: number | null
-  state: ProductStateSummary | null
+  /**
+   * The product's unit of measure (spec 0088, D-4): `NOT NULL` server-side —
+   * `ProductService` resolves the default unit (code `unit`) when omitted at
+   * create — so this is always a real id, never `null`.
+   */
+  unit_of_measure_id: number
+  unit_of_measure: ProductUnitOfMeasureSummary | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
   /**
@@ -125,7 +130,8 @@ export interface CreateProductPayload {
   product_type: ProductType
   vat_rate_id: number | null
   supplier_id: number | null
-  state_id: number | null
+  /** `null`/omitted resolves server-side to the default unit (spec 0088, D-4). */
+  unit_of_measure_id: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
   /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */

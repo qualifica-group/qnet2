@@ -25,4 +25,20 @@ enum CommissionRecipientRole: string
     #[Label('commission_configurations.roles.supplier')]
     #[Color('emerald')]
     case Supplier = 'SUPPLIER';
+
+    /**
+     * The morph alias (`Relation::enforceMorphMap()`, spec 0089 D-8) of the
+     * recipient entity this role's commission may be awarded to. Single
+     * source of truth: previously duplicated as an explicit map in
+     * `QuoteLineCommissionWriter` and an implicit one in
+     * `CommissionRecipientResolver`.
+     */
+    public function recipientType(): string
+    {
+        return match ($this) {
+            self::Commercial, self::Reporter => 'referent',
+            self::Supervisor => 'user',
+            self::Supplier => 'registry',
+        };
+    }
 }

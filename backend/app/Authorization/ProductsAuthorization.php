@@ -48,7 +48,10 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('product_type', 'select', mandatory: true),
             new FieldDefinition('vat_rate_id', 'select'),
             new FieldDefinition('supplier_id', 'select'),
-            new FieldDefinition('state_id', 'select'),
+            // Spec 0088, D-4: NOT `mandatory` — an absent value still resolves
+            // server-side to the default unit, so the field stays restrictable
+            // by the role field-permission matrix.
+            new FieldDefinition('unit_of_measure_id', 'select'),
         ];
     }
 
@@ -82,7 +85,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'product_type' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'vat_rate_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supplier_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'state_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

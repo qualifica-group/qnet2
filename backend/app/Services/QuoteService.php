@@ -89,6 +89,11 @@ class QuoteService
         'offerLines.quote',
         'offerLines.vatRate',
         'offerLines.commissions.recipient',
+        // Spec 0088, AC-053: both the frozen unit AND the product's current
+        // one are eager-loaded, so QuoteLineResource's fallback (a historic
+        // line with a NULL unit_of_measure_id) never N+1s.
+        'offerLines.unitOfMeasure',
+        'offerLines.product.unitOfMeasure',
         // Spec 0059 D-3 (Offerta origin): the reward chips the edit form
         // rehydrates its "abbinamento buono" control from.
         'rewards.rewardType',
@@ -96,6 +101,8 @@ class QuoteService
         'costLines.quote',
         'costLines.vatRate',
         'costLines.commissions.recipient',
+        'costLines.unitOfMeasure',
+        'costLines.product.unitOfMeasure',
     ];
 
     public function __construct(

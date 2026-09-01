@@ -135,19 +135,6 @@ describe('buildUpdatePayload', () => {
     })
   })
 
-  /** Spec 0047 (D1, AC-016/017): diffs independently, like every other field. */
-  describe('state_id (spec 0047)', () => {
-    it('includes state_id when changed', () => {
-      const payload = buildUpdatePayload(values({ state_id: 3 }), original({ state_id: null }))
-      expect(payload).toEqual({ state_id: 3 })
-    })
-
-    it('omits state_id when unchanged', () => {
-      const payload = buildUpdatePayload(values({ state_id: 3 }), original({ state_id: 3 }))
-      expect(payload).toEqual({})
-    })
-  })
-
   describe('products_of_interest (unordered set diff, user directive 2026-07-22)', () => {
     it('omits the key when the set is unchanged, even reordered', () => {
       const payload = buildUpdatePayload(

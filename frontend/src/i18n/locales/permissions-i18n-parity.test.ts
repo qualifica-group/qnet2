@@ -10,7 +10,7 @@ import { permissions as itLocale, permissionExplorer as itExplorer } from '@/i18
  * empty string would still typecheck, and a missing catalogue entry would
  * only be caught by falling back at runtime. This test additionally asserts:
  * (a) the exact same set of leaf keys in en/it, (b) no empty string value,
- * and (c) every one of the 37 assignable modules and every action of
+ * and (c) every one of the 38 assignable modules and every action of
  * `AssignablePermissionCatalogue::names()` is present in both bundles.
  */
 
@@ -32,7 +32,7 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
   })
 }
 
-// The 37 assignable resource prefixes (`AssignablePermissionCatalogue::names()`,
+// The 38 assignable resource prefixes (`AssignablePermissionCatalogue::names()`,
 // `backend/config/authorization.php` `definitions` + `permission_only_resources`).
 const ASSIGNABLE_RESOURCES = [
   'attachments',
@@ -68,6 +68,7 @@ const ASSIGNABLE_RESOURCES = [
   'sectors',
   'sources',
   'tags',
+  'units-of-measure',
   'users',
   'vat-rates',
 ]

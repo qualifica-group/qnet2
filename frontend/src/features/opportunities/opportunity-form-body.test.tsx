@@ -85,8 +85,6 @@ function editOpportunity(): OpportunityDetailWithPermissions {
     source: null,
     operational_site_id: null,
     operational_site: null,
-    state_id: null,
-    state: null,
     status: { source: 'default', distinct_count: 0, entries: [] },
     product_lines: [
       {

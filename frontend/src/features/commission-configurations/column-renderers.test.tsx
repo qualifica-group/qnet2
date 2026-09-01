@@ -33,4 +33,12 @@ describe('commission configuration column renderers', () => {
     render(<>{Role({ value: null } as never)}{Priority({ value: null } as never)}</>)
     expect(screen.getByText('–')).toBeInTheDocument()
   })
+
+  it('renders the recipient column as text or a dash for role rules (D-11)', () => {
+    const Recipient = commissionConfigurationColumnRenderers.recipient
+    const { rerender } = render(<>{Recipient({ value: 'Jane Referent' } as never)}</>)
+    expect(screen.getByText('Jane Referent')).toBeInTheDocument()
+    rerender(<>{Recipient({ value: null } as never)}</>)
+    expect(screen.getByText('–')).toBeInTheDocument()
+  })
 })

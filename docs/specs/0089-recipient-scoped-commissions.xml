@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0089 — Commissioni per destinatario specifico.
+  Contract-first: le shape sotto sono CONGELATE prima del dispatch dei teammate.
+  Emenda la spec 0066 (Commission Configurator), decisioni 2 e 13, e il contratto
+  docs/api/0006-commission-configurator-and-quote-integration.md.
+-->
+<spec id="0089-recipient-scoped-commissions" status="draft" owner="utente" date="2026-09-01">
+
+  <goal>
+    Le regole di commissione guadagnano una dimensione DESTINATARIO: oltre alla regola per ruolo
+    (Commerciale, Segnalatore, Supervisore, Fornitore) si puo' configurare una regola per la
+    singola persona/anagrafica. Se per quel destinatario esiste una regola valida, le regole di
+    ruolo non vengono nemmeno interrogate. La precompilazione delle commissioni sulle Offerte e la
+    loro modificabilita' restano quelle di oggi: cambia solo QUALE regola vince.
+  </goal>
+
+  <context>
+    Nomi reali verificati nel codebase (NON ipotizzare, riusare esatti).
+
+    REGOLA OGGI — tabella `commission_configurations`
+    (migrazione `2026_07_29_110000_create_commission_configurations_table.php`): `name`,
+    `recipient_role` string(32), `application_scope` string(32), `product_category_id` FK
+    nullable restrictOnDelete, `product_id` FK nullable restrictOnDelete, `commission_type`,
+    `value` decimal(15,4), `priority` int default 0, `valid_from` date, `valid_until` date
+    nullable, `status` string(16), `internal_note` text nullable. Due indici compositi di
+    risoluzione (`commission_config_product_resolution_index`, `commission_config_category_resolution_index`)
+    e tre CHECK MySQL-only (:38-42): `commission_configurations_scope_check` (scope XOR
+    product/category), `..._value_check`, `..._validity_check`.
+    Model `App\Models\CommissionConfiguration` — fillable via attributo PHP `#[Fillable]` (:17-21),
+    NON proprieta'; relazioni `productCategory()`, `product()`, `appliedCommissions()`.
+
+    SNAPSHOT APPLICATO — tabella `quote_line_commissions`
+    (`2026_07_29_110100_...`): unique `[quote_line_id, recipient_role]`, `nullableMorphs('recipient')`,
+    `origin` string(32), `commission_configuration_id` FK nullable restrictOnDelete.
+    Questa spec NON tocca lo schema di questa tabella.
+
+    ENUM — `App\Enums\CommissionRecipientRole` (COMMERCIAL|REPORTER|SUPERVISOR|SUPPLIER, con
+    `#[Label]`/`#[Color]` + trait `HasMeta`), `CommissionApplicationScope` (PRODUCT_CATEGORY|PRODUCT),
+    `CommissionType` (FIXED_AMOUNT|PERCENTAGE), `CommissionConfigurationStatus` (ACTIVE|SUSPENDED),
+    `CommissionOrigin` (PRODUCT|PRODUCT_CATEGORY|MANUAL_OVERRIDE, senza label).
+
+    RISOLUZIONE OGGI — `App\Services\Commissions\CommissionRuleResolver::resolveRole()` (:46-79):
+    per ruolo prova `CommissionApplicationScope::Product` poi `ProductCategory`, filtra
+    `status = ACTIVE` e la finestra `valid_from`/`valid_until` sulla `referenceDate`, ordina
+    `priority DESC, valid_from DESC, id DESC`, prende il primo. Input:
+    `CommissionResolutionContext` (`productId`, `productCategoryId`, `roles`, `referenceDate`).
+
+    DESTINATARIO BLOCCATO (decisione utente 2026-07-30, `docs/HANDOFF.md:6476`) —
+    `App\Services\Commissions\CommissionRecipientResolver::resolve()` e' l'UNICA fonte di verita'
+    su chi puo' ricevere una commissione: COMMERCIAL -> `quote.commercial_id` (alias morph
+    `referent`), REPORTER -> `quote.reporter_id` (`referent`), SUPERVISOR -> `quote.supervisor_id`
+    (`user`), SUPPLIER -> `product.supplier_id` (`registry`). Ruolo senza selezione a monte =
+    null = non commissionabile. Il destinatario NON si sceglie nel popup dell'Offerta.
+    CONSEGUENZA DIRETTA PER QUESTA SPEC: il destinatario di ogni ruolo e' gia' noto al momento
+    della risoluzione, quindi la regola per destinatario si aggancia da sola. Nessun nuovo
+    selettore lato Offerta.
+
+    MAPPA RUOLO -> TIPO MORPH: oggi DUPLICATA in due punti —
+    `CommissionRecipientResolver::resolve()` (:32-37, implicita) e
+    `QuoteLineCommissionWriter::ROLE_TYPES` (:30-35, esplicita) con `RECIPIENT_MODELS` (:23-27).
+    Gli alias sono quelli di `Relation::enforceMorphMap()` (`AppServiceProvider::boot`, :128):
+    `user`, `referent`, `registry`.
+
+    INIZIALIZZAZIONE — `QuoteCommissionInitializer::initialize()` risolve PRIMA i destinatari,
+    POI le regole, e scarta i ruoli senza destinatario (:49-51). `QuoteLineCommissionWriter::sync()`
+    ripete la risoluzione server-side: un `origin` diverso da `MANUAL_OVERRIDE` viene sempre
+    rigenerato dai defaults (:66-77, :107-111).
+
+    AUTORIZZAZIONE — `App\Authorization\CommissionConfigurationsAuthorization::fields()` (:22-38)
+    dichiara 12 campi; registrata in `backend/config/authorization.php:63`. Policy
+    `CommissionConfigurationPolicy` (`resource(): 'commission-configurations'`), ability generate da
+    `permissions:sync`. Field-permission applicate in `CommissionConfigurationResource` (unset dei
+    campi non visibili, :45-57) e via trait `EnforcesFieldPermissions` nelle FormRequest.
+
+    TABELLA — `CommissionConfigurationsTableDefinition` registrata in `backend/config/tables.php:66`
+    con chiave `commission-configurations`; colonne in
+    `App\Tables\CommissionConfigurations\CommissionConfigurationColumnCatalog` (:9-20), ordine:
+    name, recipient_role, application_scope, category, product, commission_type, value, priority,
+    status, updated_at.
+
+    FRONTEND — `frontend/src/features/commission-configurations/`: costanti sorgente in
+    `types.ts:3-6` (`COMMISSION_ROLES`, `COMMISSION_SCOPES`, `COMMISSION_TYPES`,
+    `COMMISSION_STATUSES`), schema Zod con refine incrociate in
+    `commission-configuration-schema.ts:10-49`, form in `commission-configuration-form-body.tsx`
+    (const locale `OPTIONS` :31-36, campo relazione via `RelationSelectField` con `resource`
+    `PRODUCTS_FOR_SELECT_RESOURCE` / `PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE`, :102-104).
+    Esistono gia' i for-select delle tre entita' destinatario:
+    `REFERENTS_FOR_SELECT_RESOURCE`, `USERS_FOR_SELECT_RESOURCE`, `REGISTRIES_FOR_SELECT_RESOURCE`.
+    Lato Offerta: `QuoteCommissionOrigin` in `features/quotes/types.ts:22`,
+    `commission-calculator.ts` (solo preview importi, nessun matching di regola).
+
+    NOME DEL DESTINATARIO — `Referent`, `User` e `Registry` espongono tutti `->name`: gia'
+    sfruttato da `QuoteCommissionRecipientsController::hydrate()` (:98-102) e da
+    `QuoteLineCommissionResource` (:31-34). La Resource della regola riusa lo stesso accesso.
+
+    CAMPI NASCOSTI — contratto `docs/api/0006`: un campo senza field permission visibile viene
+    OMESSO dal payload, non messo a null; nascondere `product_id` rimuove anche l'oggetto
+    riassuntivo `product`. Stessa regola per `recipient_id` -> `recipient`.
+
+    META — `GET /api/meta/commission-configurations` emette descrittori
+    `{key, type, group, mandatory}` (`App\Authorization\FieldDefinition.php:31-39`); il livello
+    visible/editable sta nel blocco `permissions` della risposta, non nel descrittore.
+
+    GESTIONE RICHIESTE — `request-offer-lines-section.tsx` monta lo stesso `QuoteLinesField` con
+    `withCommissions={false}` (:126) e senza `commissionContext`: nessuna colonna provvigioni,
+    nessuna fetch di default. Quel percorso NON e' toccato da questa spec.
+
+    POPUP OFFERTA — `quote-commissions-dialog.tsx`: destinatario in `<output>` read-only (:174-184),
+    origine in un `Badge` con chiave i18n `quotes.form.commissions.origins.<ORIGIN>` (:171).
+    Editabili solo `commission_type`, `value`, `internal_note`, e ogni modifica forza
+    `origin: 'MANUAL_OVERRIDE'` via `patch()` (:85-92).
+  </context>
+
+  <scope>
+    <in>
+      <item>Dimensione destinatario opzionale su `commission_configurations` (recipient_type/recipient_id).</item>
+      <item>Nuovo valore `RECIPIENT` di `application_scope`: regola personale valida su qualsiasi prodotto.</item>
+      <item>Nuova catena di risoluzione in `CommissionRuleResolver`, con i destinatari nel contesto.</item>
+      <item>Nuovo valore `RECIPIENT` di `CommissionOrigin`, per far leggere l'origine sul popup Offerta.</item>
+      <item>Campo destinatario nel form del Configuratore + colonna in griglia + field permission + i18n.</item>
+      <item>Unificazione della mappa ruolo -> tipo morph su `CommissionRecipientRole` (elimina la duplicazione esistente).</item>
+    </in>
+    <out>
+      <item>Qualunque modifica allo schema di `quote_line_commissions`.</item>
+      <item>Scelta del destinatario nel popup commissioni dell'Offerta: resta bloccata (HANDOFF 2026-07-30).</item>
+      <item>Ricalcolo retroattivo delle commissioni gia' persistite su Offerte esistenti.</item>
+      <item>Regole per destinatario su entita' diverse da Referent / User / Registry.</item>
+      <item>Sezione "Commissioni" nel dettaglio Utente o Referente.</item>
+      <item>Liquidazione, pagamenti, report per destinatario (restano fuori MVP come in 0066).</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <d id="D-1">La regola guadagna `recipient_type` string(32) nullable + `recipient_id` unsignedBigInteger
+      nullable. Valori di `recipient_type`: SOLO gli alias morph gia' enforced `referent`, `user`,
+      `registry`. Colonne dichiarate a mano, NON con `nullableMorphs()`, per non creare un indice
+      [type,id] ridondante rispetto ai due indici compositi di D-3. Nessuna FK: il morph e'
+      polimorfico, la coerenza la garantisce la validazione (come per `quote_line_commissions`).</d>
+
+    <d id="D-2">`CommissionApplicationScope` guadagna `Recipient = 'RECIPIENT'`: regola personale
+      senza prodotto ne' categoria. Il destinatario resta pero' ORTOGONALE allo scope: sono valide
+      anche `destinatario + PRODUCT` e `destinatario + PRODUCT_CATEGORY`. Lo scope `RECIPIENT`
+      esige il destinatario; gli altri due lo ammettono e basta.</d>
+
+    <d id="D-3">Vincoli e indici, in una NUOVA migrazione (quella del 2026-07-29 e' committata, non
+      si tocca — CLAUDE.md §backend 3):
+      - DROP + ADD di `commission_configurations_scope_check` con il terzo ramo:
+        `application_scope='RECIPIENT' AND product_id IS NULL AND product_category_id IS NULL AND recipient_type IS NOT NULL AND recipient_id IS NOT NULL`.
+      - NUOVO `commission_configurations_recipient_check`: i due campi destinatario sono
+        entrambi NULL o entrambi valorizzati.
+      - Entrambi MySQL-only, come i tre esistenti (SQLite dev non li applica).
+      - Due indici compositi nuovi, che rispecchiano le due query di D-4:
+        `commission_config_recipient_product_index` su
+        [recipient_type, recipient_id, recipient_role, application_scope, status, product_id, priority, valid_from, valid_until, id]
+        e `commission_config_recipient_category_index` su
+        [recipient_type, recipient_id, recipient_role, application_scope, status, product_category_id, priority, valid_from, valid_until, id].
+        Il ramo scope RECIPIENT usa il prefisso del primo. `down()` reversibile.</d>
+
+    <d id="D-4">CATENA DI RISOLUZIONE, per ruolo, primo colpo vince (emenda la decisione 2 di 0066):
+      1. destinatario + PRODUCT
+      2. destinatario + PRODUCT_CATEGORY
+      3. destinatario + RECIPIENT
+      4. ruolo (recipient_type IS NULL) + PRODUCT
+      5. ruolo (recipient_type IS NULL) + PRODUCT_CATEGORY
+      Se il ruolo non ha destinatario, i gradini 1-3 si saltano. Se un gradino 1-3 produce un
+      risultato, i gradini 4-5 non vengono interrogati: e' la traduzione letterale di "se ci sono
+      commissioni per utente specifico non si guardano quelle per ruolo".
+      Il tie-break resta quello di 0066 decisione 13 (`priority DESC, valid_from DESC, id DESC`) e
+      si applica DENTRO ogni gradino, mai fra gradini diversi.
+      I gradini 4-5 devono filtrare esplicitamente `whereNull('recipient_type')`: senza quel
+      filtro una regola personale di un ALTRO destinatario vincerebbe come se fosse di ruolo.</d>
+
+    <d id="D-5">`CommissionResolutionContext` guadagna `recipients`:
+      `array&lt;string, CommissionRecipient|null&gt;` chiavato sul value di `CommissionRecipientRole`.
+      `QuoteCommissionInitializer` li risolve gia' PRIMA delle regole (:30-35): li passa e basta,
+      zero query in piu'. Nessun altro chiamante del contesto esiste (verificato).</d>
+
+    <d id="D-6">`CommissionOrigin` guadagna `Recipient = 'RECIPIENT'`, usato quando vince un
+      gradino 1-3 QUALUNQUE sia il suo scope. Motivo: cio' che l'operatore deve leggere sul popup
+      e' "regola personale" contro "regola di ruolo su prodotto/categoria"; la tracciabilita' fine
+      resta su `commission_configuration_id`, gia' persistito. `QuoteLineCommissionWriter` non
+      cambia: tratta come automatico tutto cio' che non e' `MANUAL_OVERRIDE`.</d>
+
+    <d id="D-7">`recipient_type` NON e' un campo di form e NON e' accettato nel payload: il server
+      lo DERIVA da `recipient_role`. Il payload porta solo `recipient_id`. Elimina alla radice la
+      coppia incoerente (regola COMMERCIAL che punta a uno `user`) senza una validazione
+      incrociata in piu'.</d>
+
+    <d id="D-8">La mappa ruolo -> tipo morph diventa un metodo dell'enum:
+      `CommissionRecipientRole::recipientType(): string` (COMMERCIAL|REPORTER -> 'referent',
+      SUPERVISOR -> 'user', SUPPLIER -> 'registry'). `QuoteLineCommissionWriter::ROLE_TYPES` viene
+      CANCELLATO e sostituito dalla chiamata all'enum (dead code, CLAUDE.md §2). Sono i tre
+      consumatori: FormRequest della regola, Writer, resolver.</d>
+
+    <d id="D-9">CAMBIO DI RUOLO SU UNA REGOLA CON DESTINATARIO. Se l'update cambia `recipient_role`
+      verso un ruolo il cui `recipientType()` differisce da `recipient_type` persistito e il
+      payload NON rimanda `recipient_id`, la richiesta e' respinta 422 su `recipient_id` con
+      `commission_configurations.recipient_role_changed`. Non si ri-punta in silenzio l'id a
+      un'altra tabella e non si azzera in silenzio il destinatario. Lato form, cambiare il ruolo
+      pulisce il campo destinatario.</d>
+
+    <d id="D-10">Retrocompatibilita' totale, nessun backfill: le regole esistenti hanno
+      `recipient_type IS NULL` e restano regole di ruolo, servite dai gradini 4-5. Le commissioni
+      gia' persistite sulle Offerte non si ricalcolano da sole — cambiano solo alla prossima
+      rigenerazione della riga, esattamente come oggi (0066 decisione 5 e 14).</d>
+
+    <d id="D-11">Il campo destinatario in griglia e' `recipient`: testo, NON ordinabile (il valore
+      arriva da tre tabelle diverse), filtrabile `set` con i valori distinti calcolati SOLO sui
+      destinatari effettivamente referenziati dalle regole. APPESA IN FONDO al catalogo colonne:
+      inserirla in mezzo sposta i layout colonna gia' persistiti dagli utenti.</d>
+
+    <d id="D-12">Field permission: si aggiunge il SOLO campo `recipient_id` a
+      `CommissionConfigurationsAuthorization::fields()` (`recipient_type` non e' un campo, D-7).
+      Nessuna nuova ability: le otto esistenti (`commission-configurations.viewAny|view|create|
+      update|delete|export|import|viewActivity`) coprono tutto.</d>
+  </decisions>
+
+  <invariants>
+    <i id="INV-1">Un ruolo senza destinatario non produce mai una commissione (0066 decisione 15). Invariato.</i>
+    <i id="INV-2">Il destinatario di una commissione applicata resta quello risolto da `CommissionRecipientResolver`: questa spec non lo rende mai selezionabile.</i>
+    <i id="INV-3">Una regola con `recipient_type` valorizzato non puo' MAI essere restituita per un destinatario diverso da quello a cui punta.</i>
+    <i id="INV-4">La modifica manuale di una commissione su una riga di Offerta resta isolata e non scrive mai sul Configuratore (0066 decisione 5).</i>
+  </invariants>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/commission-configurations">
+      <request><![CDATA[
+        // ADDITIVO ai campi esistenti
+        "application_scope": "PRODUCT_CATEGORY" | "PRODUCT" | "RECIPIENT",   // esteso
+        "recipient_id": int | null                                          // nuovo, opzionale
+        // "recipient_type" NON e' accettato: derivato da recipient_role (D-7)
+      ]]></request>
+      <response status="201"><![CDATA[
+        "recipient_type": "referent" | "user" | "registry" | null,          // sola lettura
+        "recipient_id": int | null,
+        "recipient": { "id": int, "name": string } | null
+        // se `recipient_id` non e' visibile, le TRE chiavi sono OMESSE, non messe a null
+        // (stessa regola gia' applicata a product_id -> product)
+      ]]></response>
+      <errors>
+        422 `recipient_id` mancante con scope RECIPIENT;
+        422 `product_id`/`product_category_id` valorizzati con scope RECIPIENT;
+        422 `recipient_id` inesistente nella tabella derivata dal ruolo;
+        403 senza l'ability `commission-configurations.create`;
+        422 con l'ability ma senza field permission EDITABILE su `recipient_id` (trait `EnforcesFieldPermissions`).
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/commission-configurations/{commissionConfiguration}">
+      <request><![CDATA[
+        "application_scope": "PRODUCT_CATEGORY" | "PRODUCT" | "RECIPIENT",
+        "recipient_id": int | null    // null cancella il destinatario (torna regola di ruolo)
+      ]]></request>
+      <errors>422 `commission_configurations.recipient_role_changed` nel caso D-9.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/commission-configurations/{commissionConfiguration}">
+      <response status="200"><![CDATA[
+        "recipient_type": "referent" | "user" | "registry" | null,
+        "recipient_id": int | null,
+        "recipient": { "id": int, "name": string } | null   // eager `recipient` MorphTo, niente N+1
+      ]]></response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/commission-configurations">
+      <response status="200"><![CDATA[
+        // nuovo descrittore in `data.fields`:
+        //   { "key": "recipient_id", "type": "select", "group": <stesso di product_id>, "mandatory": false }
+        // mandatory false: il destinatario e' opzionale a livello di campo; l'obbligo con scope
+        // RECIPIENT e' una regola cross-field, non una field permission.
+        // `recipient_type` NON compare: non e' un campo (D-7).
+      ]]></response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/quotes/commission-defaults">
+      <response status="200"><![CDATA[
+        // shape INVARIATA. Cambia solo il dominio di un valore:
+        "origin": "PRODUCT" | "PRODUCT_CATEGORY" | "RECIPIENT" | "MANUAL_OVERRIDE"
+      ]]></response>
+    </endpoint>
+
+    <table id="commission-configurations">
+      <column id="recipient" appended="true">
+        label `commissionConfigurations.columns.recipient`, type text, visible true,
+        sortable FALSE (D-11), filterable true, filterType `set`.
+        Valore: `null` per le regole di ruolo, il nome del destinatario per le altre.
+        Valori distinti: solo i destinatari referenziati dalle regole, per alias morph.
+      </column>
+    </table>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">Con una regola di ruolo COMMERCIAL su un prodotto e nessuna regola personale, la commissione precompilata sull'Offerta resta identica a oggi (non-regressione).</ac>
+    <ac id="AC-002">Con una regola personale sul commerciale dell'Offerta (scope RECIPIENT) e una regola di ruolo COMMERCIAL sullo stesso prodotto, vince la personale e `origin` = RECIPIENT.</ac>
+    <ac id="AC-003">La regola personale su CATEGORIA batte la regola di RUOLO su PRODOTTO (D-4: la dimensione destinatario domina la specificita' di prodotto).</ac>
+    <ac id="AC-004">Fra due regole personali dello stesso destinatario, prodotto batte categoria, e categoria batte scope RECIPIENT.</ac>
+    <ac id="AC-005">Una regola personale intestata a un ALTRO destinatario non viene mai applicata, nemmeno in assenza di regole di ruolo (INV-3).</ac>
+    <ac id="AC-006">Una regola personale sospesa o fuori validita' non si applica, e la risoluzione ricade sui gradini di ruolo.</ac>
+    <ac id="AC-007">I quattro ruoli si risolvono in modo indipendente: una regola personale sul Fornitore non influenza il Commerciale.</ac>
+    <ac id="AC-008">Un ruolo senza destinatario a monte non produce commissione anche se esistono regole personali per altri (INV-1).</ac>
+    <ac id="AC-009">POST con `application_scope=RECIPIENT` senza `recipient_id` -> 422; con `product_id` valorizzato -> 422.</ac>
+    <ac id="AC-010">POST di una regola SUPERVISOR con un `recipient_id` che non esiste in `users` -> 422, anche se quell'id esiste in `referents`.</ac>
+    <ac id="AC-011">`recipient_type` inviato nel payload viene ignorato: la risposta espone quello derivato dal ruolo (D-7).</ac>
+    <ac id="AC-012">PATCH che cambia `recipient_role` verso un tipo diverso senza rimandare `recipient_id` -> 422 `recipient_role_changed`; rimandandolo, la regola punta alla nuova entita'.</ac>
+    <ac id="AC-013">PATCH con `recipient_id: null` riporta la regola a regola di ruolo e la fa tornare visibile ai gradini 4-5.</ac>
+    <ac id="AC-014">Un utente senza field permission editabile su `recipient_id` riceve **422** se lo invia — non 403: e' il comportamento del trait condiviso `EnforcesFieldPermissions` per un CAMPO non editabile (il 403 vale per l'ability di risorsa mancante), lo stesso gia' asserito per il lock di `commission_value` in `QuoteCommissionIntegrationTest`. Senza permesso visibile, la risposta OMETTE `recipient_id`, `recipient_type` e `recipient` invece di mandarli a null.</ac>
+    <ac id="AC-015">La colonna `recipient` compare IN FONDO alla griglia, filtra per `set` e non e' ordinabile; i layout colonna salvati prima della modifica rendono le stesse colonne nello stesso ordine (D-11).</ac>
+    <ac id="AC-016">Nel form, scegliere il ruolo cambia l'entita' cercata dal picker destinatario (referents / users / registries) e pulisce la selezione precedente (D-9).</ac>
+    <ac id="AC-017">Il popup commissioni dell'Offerta mostra l'origine RECIPIENT con la sua etichetta e il destinatario resta NON selezionabile (INV-2).</ac>
+    <ac id="AC-018">Una commissione modificata a mano resta MANUAL_OVERRIDE anche se esiste una regola personale applicabile (INV-4).</ac>
+    <ac id="AC-019">Le regole preesistenti (recipient nullo) continuano a risolvere come prima: la suite Pest esistente su commissioni passa senza modifiche (D-10).</ac>
+    <ac id="AC-020">Cancellare una regola personale referenziata da uno snapshot di riga resta bloccato con 409 (comportamento 0066 invariato).</ac>
+  </acceptance_criteria>
+
+  <microtasks>
+    <task id="T-01" lane="database" depends="">Migrazione additiva: colonne `recipient_type`/`recipient_id`, i due indici compositi, DROP+ADD dello scope check e nuovo recipient check (D-1, D-3). `down()` reversibile e verificato con rollback reale.</task>
+    <task id="T-02" lane="backend" depends="">`CommissionApplicationScope::Recipient`, `CommissionOrigin::Recipient`, `CommissionRecipientRole::recipientType()` + cancellazione di `QuoteLineCommissionWriter::ROLE_TYPES` con riuso dell'enum (D-2, D-6, D-8). Test unitario sull'enum.</task>
+    <task id="T-03" lane="backend" depends="T-01,T-02">`CommissionConfiguration`: `#[Fillable]` esteso, relazione `recipient()` MorphTo, factory aggiornata.</task>
+    <task id="T-04" lane="backend" depends="T-02,T-03">`CommissionResolutionContext.recipients` + nuova catena in `CommissionRuleResolver::resolveRole()` (D-4, D-5), incluso il `whereNull('recipient_type')` dei gradini di ruolo. E' il cuore: un test per ogni gradino e per INV-3.</task>
+    <task id="T-05" lane="backend" depends="T-04">`QuoteCommissionInitializer` passa i destinatari al contesto; verifica che `QuoteLineCommissionWriter` non richieda modifiche (AC-018, AC-019).</task>
+    <task id="T-06" lane="backend" depends="T-03">FormRequest store/update: `recipient_id`, derivazione di `recipient_type`, scope RECIPIENT nelle regole cross-field, caso D-9; `CommissionConfigurationRules`, i due DataObject, `CommissionConfigurationService`.</task>
+    <task id="T-07" lane="backend" depends="T-06">`CommissionConfigurationResource` (recipient_type/recipient_id/recipient + eager) e `CommissionConfigurationsAuthorization::fields()` con `recipient_id` (D-12). Chiavi lang it/en, incluso `recipient_role_changed`.</task>
+    <task id="T-08" lane="backend" depends="T-07">Colonna `recipient` in `CommissionConfigurationColumnCatalog` (in fondo), mapRow, valori distinti e filtro `set` (D-11).</task>
+    <task id="T-09" lane="frontend" depends="T-07">`types.ts` (COMMISSION_SCOPES + RECIPIENT, campi recipient sul Detail e sul Payload), schema Zod con le refine di scope RECIPIENT, `use-commission-configuration-form`.</task>
+    <task id="T-10" lane="frontend" depends="T-09">Campo destinatario nel form: `RelationSelectField` con `resource` scelta dal ruolo, reset al cambio ruolo (AC-016), `OPTIONS.application_scope` esteso, i18n it/en. Attenzione al limite 300 righe di `commission-configuration-form-body.tsx` (oggi 147): se la scelta della resource per ruolo lo gonfia, estrarre un piccolo componente dedicato.</task>
+    <task id="T-11" lane="frontend" depends="T-09">Renderer colonna `recipient` in `column-renderers.tsx` + dettaglio regola (`commission-configuration-detail.tsx`).</task>
+    <task id="T-12" lane="frontend" depends="T-02">`QuoteCommissionOrigin` + 'RECIPIENT', **`quote-schema.ts:111` `z.enum` degli origin** (senza, la riga con origine RECIPIENT viene scartata dal parse in silenzio) e chiave `quotes.form.commissions.origins.RECIPIENT` it/en per il badge del popup (AC-017). Il badge usa gia' una chiave dinamica (`quote-commissions-dialog.tsx:171`): nessuna modifica al componente. `request-offer-lines-section.tsx` non si tocca (`withCommissions={false}`).</task>
+    <task id="T-13" lane="verifier" depends="T-05,T-08,T-10,T-11,T-12">Gate finale: Pest completo (incluse le suite esistenti `CommissionRuleResolverTest`, `CommissionConfigurationCrudTest`, `QuoteCommissionIntegrationTest`, `QuoteCommissionRecipientLockTest`), Vitest, `npx tsc -b --force`, Pint, e riproduzione di AC-001..AC-020.</task>
+    <task id="T-14" lane="backend" depends="T-13">Aggiornamento di `docs/api/0006-commission-configurator-and-quote-integration.md` e nota di emendamento su `docs/specs/0066-commission-configurator.md` (decisione 2 superata da D-4).</task>
+  </microtasks>
+
+  <risks>
+    <r id="R-1">La catena a 5 gradini moltiplica le query per ruolo (fino a 5 x 4 = 20 per riga). Mitigazione: i gradini 1-3 si saltano quando il ruolo non ha destinatario, e i due indici di D-3 coprono le nuove query. Da verificare con un test che conta le query, non a occhio.</r>
+    <r id="R-2">Il filtro `whereNull('recipient_type')` sui gradini di ruolo e' l'unica cosa che impedisce a una regola personale altrui di vincere come regola generica. Dimenticarlo produce commissioni sbagliate silenziose: AC-005 lo copre e va eseguito, non solo scritto.</r>
+    <r id="R-3">I CHECK constraint esistono solo su MySQL; in dev su SQLite un payload incoerente passerebbe il DB. La difesa vera resta la FormRequest, non il vincolo: AC-009/AC-010 girano su SQLite.</r>
+    <r id="R-4">Il `set` filter della colonna `recipient` attraversa tre tabelle. Se il costo cresce, ridurlo a non filtrabile e' preferibile a una query non indicizzata: da decidere con dati reali, non in anticipo.</r>
+  </risks>
+
+</spec>

@@ -21,9 +21,6 @@ export function values(overrides: Partial<OpportunityFormValues> = {}): Opportun
     source_id: null,
     // Spec 0056: never submit-blocking; the payload-diff tests cover it independently.
     operational_site_id: null,
-    // Spec 0047: never submit-blocking; the payload-diff tests cover
-    // each independently.
-    state_id: null,
     product_lines: [],
     products_of_interest: [],
     rewards: [],
@@ -61,7 +58,6 @@ export function original(overrides: Partial<OpportunityDetail> = {}): Opportunit
     source: null,
     operational_site_id: null,
     operational_site: null,
-    state_id: null,
     product_lines: [],
     lead_id: null,
     lead: null,

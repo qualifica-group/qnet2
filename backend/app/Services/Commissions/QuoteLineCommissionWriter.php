@@ -26,14 +26,6 @@ final class QuoteLineCommissionWriter
         'registry' => Registry::class,
     ];
 
-    /** @var array<string, string> */
-    private const array ROLE_TYPES = [
-        'COMMERCIAL' => 'referent',
-        'REPORTER' => 'referent',
-        'SUPERVISOR' => 'user',
-        'SUPPLIER' => 'registry',
-    ];
-
     public function __construct(
         private readonly QuoteCommissionInitializer $initializer,
         private readonly CommissionCalculator $calculator,
@@ -192,7 +184,7 @@ final class QuoteLineCommissionWriter
 
     private function validatedRecipient(QuoteLineCommissionData $commission): Model
     {
-        $expectedType = self::ROLE_TYPES[$commission->role->value];
+        $expectedType = $commission->role->recipientType();
 
         if ($commission->recipientType !== $expectedType || $commission->recipientId === null) {
             throw ValidationException::withMessages([

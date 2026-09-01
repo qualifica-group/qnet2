@@ -89,7 +89,8 @@ it('registers metadata, backend-driven table, search, export and activity log', 
     expect(collect($columnsById['recipient_role']['badges'])->pluck('value')->all())
         ->toBe(['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'])
         ->and(collect($columnsById['application_scope']['badges'])->pluck('value')->all())
-        ->toBe(['PRODUCT_CATEGORY', 'PRODUCT'])
+        // Spec 0089 D-2: application_scope grows a third value, RECIPIENT.
+        ->toBe(['PRODUCT_CATEGORY', 'PRODUCT', 'RECIPIENT'])
         ->and(collect($columnsById['commission_type']['badges'])->pluck('value')->all())
         ->toBe(['FIXED_AMOUNT', 'PERCENTAGE'])
         ->and(collect($columnsById['status']['badges'])->pluck('value')->all())

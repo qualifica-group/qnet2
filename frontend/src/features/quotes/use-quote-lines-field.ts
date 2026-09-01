@@ -8,6 +8,8 @@ export type QuoteLineVariant = 'revenue' | 'cost'
 export const EMPTY_LINE_ROW: QuoteLineFormValues = {
   product_id: null,
   quantity: null,
+  // Congelated server-side only once the row is saved (spec 0088, D-5).
+  unit_of_measure: null,
   unit_price: null,
   vat_rate_id: null,
   commissions: [],

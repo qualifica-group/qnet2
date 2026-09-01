@@ -129,8 +129,8 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     vat_rate: null,
     supplier_id: null,
     supplier: null,
-    state_id: null,
-    state: null,
+    unit_of_measure_id: 1,
+    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     permissions: permissionsWithNotes(),
     ...overrides,
   }

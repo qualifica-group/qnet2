@@ -188,6 +188,45 @@ describe('QuoteLineRow (spec 0065)', () => {
     expect(screen.getByText('36.60')).toBeInTheDocument()
   })
 
+  it('shows the unit of measure symbol read-only, next to the quantity (spec 0088 AC-060)', () => {
+    render(
+      <QuoteLineRow
+        index={0}
+        row={{
+          ...EMPTY_ROW,
+          unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
+        }}
+        disabled={false}
+        vatRatePercentFor={() => null}
+        onChangeProduct={vi.fn()}
+        onChangeField={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.getByText('kg')).toBeInTheDocument()
+  })
+
+  it('falls back to a placeholder when a freshly-added row has no unit of measure yet', () => {
+    render(
+      <QuoteLineRow
+        index={0}
+        row={EMPTY_ROW}
+        disabled={false}
+        vatRatePercentFor={() => null}
+        onChangeProduct={vi.fn()}
+        onChangeField={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    // Two placeholders render for an unpicked row: the read-only product
+    // `code` cell and the unit of measure cell this test targets.
+    expect(screen.getAllByText('—')).toHaveLength(2)
+  })
+
   it('refreshes the live summary the moment the user manually picks a never-before-seen VAT rate (AC-071)', async () => {
     // Mirrors the real `useQuoteForm` percent cache: a row on a product WITHOUT
     // a VAT rate (or on a rate the row never saw via product pick/edit

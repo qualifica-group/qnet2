@@ -1,8 +1,8 @@
 import { type Control, type FieldPath } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { ImportConfigRelationSelect } from '@/features/imports/wizard/import-config-relation-select'
 import type { ImportMappingFormValues } from '@/features/imports/wizard/import-mapping-schema'
 import type { ImportGlobalFieldDescriptor } from '@/features/imports/wizard/types'
 
@@ -19,7 +19,6 @@ interface ImportConfigFieldsProps {
  * persists these together with the column mapping and dedup strategy.
  */
 export function ImportConfigFields({ globalFields, control }: ImportConfigFieldsProps) {
-  const { t } = useTranslation('importWizard')
   // Global-field labels arrive from the backend as default-namespace i18n keys
   // (`imports.leads.global.*`) — resolve them through the default translator.
   const { t: tLabel } = useTranslation()
@@ -36,19 +35,11 @@ export function ImportConfigFields({ globalFields, control }: ImportConfigFields
               <FormLabel required={globalField.required}>{tLabel(globalField.label)}</FormLabel>
               <FormControl>
                 {globalField.for_select_resource ? (
-                  <AsyncPaginatedSelect
+                  <ImportConfigRelationSelect
                     resource={globalField.for_select_resource}
                     value={(field.value as number | null) ?? null}
                     onChange={(next) => field.onChange(next)}
-                    labels={{
-                      placeholder: t('config.select.placeholder'),
-                      searchPlaceholder: t('config.select.searchPlaceholder'),
-                      empty: t('config.select.empty'),
-                      error: t('config.select.error'),
-                      clearLabel: t('config.select.clear'),
-                      triggerLabel: tLabel(globalField.label),
-                      retry: t('config.select.retry'),
-                    }}
+                    triggerLabel={tLabel(globalField.label)}
                   />
                 ) : (
                   <Input

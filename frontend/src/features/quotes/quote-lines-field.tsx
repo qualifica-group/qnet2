@@ -214,6 +214,7 @@ export function QuoteLinesField({
             <span>{t('quotes.form.lineProductHeader')}</span>
             <span>{t('quotes.form.lineCodeHeader')}</span>
             <span>{t('quotes.form.lineQuantityHeader')}</span>
+            <span>{t('quotes.form.lineUnitOfMeasureHeader')}</span>
             <span>{t('quotes.form.lineUnitPriceHeader')}</span>
             <span>{t('quotes.form.lineVatRateHeader')}</span>
             <span className="text-right">{t('quotes.form.lineNetHeader')}</span>

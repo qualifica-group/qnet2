@@ -31,6 +31,12 @@ class CommissionConfigurationResource extends JsonResource
             ],
             'product_id' => $this->product_id,
             'product' => $this->product === null ? null : ['id' => $this->product->id, 'name' => $this->product->name],
+            // Spec 0089: `recipient_type` is read-only (D-7, AC-011) and,
+            // like `product_id`/`product`, `recipient_id`/`recipient` fall
+            // together under the SAME field permission (D-12).
+            'recipient_type' => $this->recipient_type,
+            'recipient_id' => $this->recipient_id,
+            'recipient' => $this->recipient === null ? null : ['id' => $this->recipient->id, 'name' => $this->recipient->name],
             'commission_type' => $this->commission_type->value,
             'value' => $this->value,
             'priority' => $this->priority,
@@ -53,6 +59,8 @@ class CommissionConfigurationResource extends JsonResource
                 unset($payload['product_category']);
             } elseif ($field === 'product_id') {
                 unset($payload['product']);
+            } elseif ($field === 'recipient_id') {
+                unset($payload['recipient_type'], $payload['recipient']);
             }
         }
 

@@ -26,7 +26,7 @@ namespace App\DataObjects\Opportunities;
 final readonly class LeadOpportunityDefaults
 {
     /**
-     * @param  array<string, int|string|null>  $values  the 2 derivable fields (source_id/registry_id) plus the plain, never-locked defaults (state_id, operational_site_id, general_notes — the only non-id entry)
+     * @param  array<string, int|string|null>  $values  the 2 derivable fields (source_id/registry_id) plus the plain, never-locked defaults (operational_site_id, general_notes — the only non-id entry)
      * @param  array<string, array{id: int, name: string}|array{id: int, label: string}|null>  $references  {id,name} summaries, except `operational_site` which is a composed {id,label} (the site has no `name` column)
      * @param  array<int, string>  $lockedFields  the subset of $values whose derivation is non-null (BR-2)
      * @param  array<int, array{business_function: array{id: int, name: string}, product_category: array{id: int, name: string}}>  $productLines  0 or 1 row, editable/removable in the form (never locked)

@@ -130,10 +130,10 @@ export function OpportunityDetailSections({ opportunity }: OpportunityDetailSect
       </RecordSection>
 
       {/*
-        Sede operativa and Regione are HIDDEN from this section for the same
-        reason they are hidden in the form (user directive 2026-08-05): they
-        only carry meaning in Gestione Richieste. The values are not removed —
-        `operational_site`/`state` stay on the payload and survive every save.
+        Sede operativa is HIDDEN from this section for the same reason it is
+        hidden in the form (user directive 2026-08-05): it only carries
+        meaning in Gestione Richieste. The value is not removed —
+        `operational_site` stays on the payload and survives every save.
       */}
       <RecordSection title={t('opportunities.form.sections.classification.title')} icon={<Building2 />}>
         <RecordFieldList>

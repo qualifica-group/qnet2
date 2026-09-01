@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
-use App\Models\State;
+use App\Models\UnitOfMeasure;
 use App\Models\VatRate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -55,8 +55,9 @@ class ProductResource extends JsonResource
             'vat_rate' => $this->vatRateSummary($this->vatRate),
             'supplier_id' => $this->supplier_id,
             'supplier' => $this->supplierSummary($this->supplier),
-            'state_id' => $this->state_id,
-            'state' => $this->stateSummary($this->state),
+            // Spec 0088, D-4: always populated (NOT NULL, defaulted server-side).
+            'unit_of_measure_id' => $this->unit_of_measure_id,
+            'unit_of_measure' => $this->unitOfMeasureSummary($this->unitOfMeasure),
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,
@@ -111,14 +112,14 @@ class ProductResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, symbol: string}|null
      */
-    private function stateSummary(?State $state): ?array
+    private function unitOfMeasureSummary(?UnitOfMeasure $unitOfMeasure): ?array
     {
-        if ($state === null) {
+        if ($unitOfMeasure === null) {
             return null;
         }
 
-        return ['id' => $state->id, 'name' => $state->name];
+        return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
     }
 }

@@ -24,6 +24,11 @@ class DatabaseSeeder extends Seeder
         Artisan::call('locations:add');
 
         $this->call(RolePermissionSeeder::class);
+        // Clean reference data (spec 0088, D-3): unlike every other lookup
+        // module, the conventional units of measure are seeded here, not from
+        // DemoDataSeeder — a production install needs them without ever
+        // running the demo fixtures.
+        $this->call(UnitOfMeasureSeeder::class);
         $this->call(DemoUserSeeder::class);
     }
 }

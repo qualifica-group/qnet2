@@ -49,6 +49,10 @@ The product must keep two concepts separate:
 
 1. The Commission Configurator is an independent module; Quotes are its first consumer, not the owner of its rules.
 2. Rule specificity follows the required order: Product → Product Category → no configuration.
+   **AMENDED by spec 0089 (2026-09-01):** a rule may also target one specific recipient, and that
+   dimension dominates the product one. The chain becomes recipient+Product → recipient+Category →
+   recipient (any product) → role+Product → role+Category → none. Decision 13 (tie-break) is
+   unchanged but now applies within a single rung.
 3. Automatic resolution runs independently for the Commercial, Reporter, Supervisor, and Supplier roles.
 4. An applied line commission is persistent and retains at least recipient, type, value, calculated amount, internal note, and source.
 5. Configurator values are initial values. A manual change remains isolated to that Quote and Quote line and never updates the source rule.

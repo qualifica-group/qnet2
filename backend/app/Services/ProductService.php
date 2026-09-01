@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
 use App\Models\Product;
+use App\Models\UnitOfMeasure;
 use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeValueNormalizer;
@@ -39,12 +40,19 @@ class ProductService
     private const string CODE_COLUMN = 'code';
 
     /**
+     * The `units_of_measure.code` ProductService falls back to whenever
+     * `unit_of_measure_id` is absent or null (spec 0088, D-4) — the column
+     * is NOT NULL, so a product always resolves to a real unit.
+     */
+    private const string DEFAULT_UNIT_OF_MEASURE_CODE = 'unit';
+
+    /**
      * Relations eager-loaded on every returned model, so ProductResource
      * never N+1s while hydrating the category summary.
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'state'];
+    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure'];
 
     /**
      * Columns projected by the for-select standard (ADR 0011; spec 0065,
@@ -104,7 +112,7 @@ class ProductService
                 'product_type' => $data->productType,
                 'vat_rate_id' => $data->vatRateId,
                 'supplier_id' => $data->supplierId,
-                'state_id' => $data->stateId,
+                'unit_of_measure_id' => $data->unitOfMeasureId,
             ]);
 
             if ($data->hasAttributeValues()) {
@@ -117,6 +125,9 @@ class ProductService
             // directly (bypasses mass-assignment guarding) AFTER the fillable
             // attributes, mirroring ProjectService::create().
             $product->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+            // Spec 0088, D-4: absent/null falls back to the default unit — the
+            // column is NOT NULL.
+            $product->unit_of_measure_id ??= $this->resolveDefaultUnitOfMeasureId();
             $product->save();
 
             return $product;
@@ -148,6 +159,10 @@ class ProductService
             $this->applyAttributeValues($product, $data->attributeValues);
         }
 
+        // Spec 0088, D-4: a submitted null resets to the default unit — the
+        // column is NOT NULL, so it can never actually persist as null.
+        $product->unit_of_measure_id ??= $this->resolveDefaultUnitOfMeasureId();
+
         // Unconditional save: fire the model's saved event even when no native
         // attribute changed, so the HasCustomFields write pipeline (spec 0021)
         // persists a custom-fields-only edit. A clean save runs no UPDATE query.
@@ -159,6 +174,16 @@ class ProductService
     public function delete(Product $product): void
     {
         $product->delete();
+    }
+
+    /**
+     * The default unit's id (`code='unit'`, spec 0088, D-4), resolved fresh
+     * on every call rather than cached: this Service is not a singleton
+     * across requests, and the row is effectively immutable reference data.
+     */
+    private function resolveDefaultUnitOfMeasureId(): int
+    {
+        return (int) UnitOfMeasure::query()->where('code', self::DEFAULT_UNIT_OF_MEASURE_CODE)->value('id');
     }
 
     /**

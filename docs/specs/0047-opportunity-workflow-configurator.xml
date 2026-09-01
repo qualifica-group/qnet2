@@ -8,6 +8,21 @@
     D3 = al re-match, mappatura per system_key (open->open, closed->closed), altrimenti stato iniziale.
     D4 = tie-break a parità di specificità: workflow più vecchio (id asc). Nessun campo priority.
 
+  AMENDMENT 2026-09-01 (direttiva utente "eliminare campo regione"): D1 e' RITIRATO per
+  l'Opportunita'. La colonna `opportunities.state_id` e' DROPPATA (migrazione
+  2026_09_01_120000_drop_state_id_from_opportunities_and_products_tables), insieme alla relazione
+  `Opportunity::state()`, alla regola FormRequest, ai campi `state`/`state_id` di
+  OpportunityResource, al DTO (`stateId`/`stateIdSubmitted`) e all'ereditarieta' dalla conversione
+  (LeadOpportunityDefaultsResolver / ConvertLeadToOpportunity). Cade di conseguenza il campo-criterio
+  `state_id` dell'allow-list dei workflow (App\Support\QuoteWorkflows\QuoteCriterionFieldRegistry,
+  che dopo spec 0083 D-7 lo risolveva per ereditarieta' da `quote.opportunity`): l'allow-list nativa
+  scende a 3 voci (source_id, business_function_id, product_category_id) e le righe
+  `quote_workflow_criteria` su `state_id` sono cancellate dalla stessa migrazione. AC-002/AC-003 e
+  AC-026 per la parte Opportunita' sono RITIRATI; la Regione RESTA su `leads.state_id` (AC-001)
+  invariata, come restano invariate le Regioni geo di companies/company_sites/operational_sites/
+  users/projects/campaigns. Nella stessa direttiva sparisce anche `products.state_id` (Regione del
+  Prodotto), che non era coperto da questa spec.
+
   AMENDMENT 2026-07-27 (direttiva utente): i CAMPI PERSONALIZZATI dell'entità `opportunities`
   (spec 0021) diventano selezionabili come campi-criterio, LIMITATAMENTE a quelli di tipo
   `relation` — l'unico tipo il cui valore è un id intero verso una tabella, quindi l'unico

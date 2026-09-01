@@ -39,12 +39,8 @@ export function buildCreatePayload(
     // The create schema guarantees this value before the payload builder runs;
     // the shared RHF value remains nullable because edit permits clearing it.
     supervisor_id: values.supervisor_id as number,
-    // Spec 0056: facoltativa, never lead-derived — always sent as-is, like `state_id` below.
+    // Spec 0056: facoltativa, never lead-derived — always sent as-is.
     operational_site_id: values.operational_site_id,
-    // Spec 0047 (D1): never BR-2-locked (an opportunity's Regione stays
-    // editable even when it originates from a lead) — always sent as-is,
-    // unlike the `locked.has(...)`-gated fields below.
-    state_id: values.state_id,
     product_lines: completeProductLines(values.product_lines),
     products_of_interest: values.products_of_interest,
     manager_slots: values.manager_slots,
@@ -53,7 +49,7 @@ export function buildCreatePayload(
     estimated_value: values.estimated_value,
     success_probability: values.success_probability,
     // "Note generali" (user directive 2026-07-27): prefilled from the lead
-    // but never locked — always sent as-is, like `state_id` above.
+    // but never locked — always sent as-is.
     general_notes: values.general_notes,
   }
 
@@ -116,9 +112,6 @@ export function buildUpdatePayload(
   }
   if (values.operational_site_id !== (original.operational_site_id ?? null)) {
     payload.operational_site_id = values.operational_site_id
-  }
-  if (values.state_id !== (original.state_id ?? null)) {
-    payload.state_id = values.state_id
   }
   // Amendment rev.3: the server replaces the entire row SET (AC-099) — diff
   // as an unordered collection of pairs, never positionally (row order in

@@ -28,11 +28,16 @@ export function CommissionConfigurationDetailView({
   const visible = (field: string) =>
     configuration.permissions.fields[field]?.visible ?? true
   const scopeRelationField =
-    configuration.application_scope === 'PRODUCT' ? 'product_id' : 'product_category_id'
+    configuration.application_scope === 'PRODUCT'
+      ? 'product_id'
+      : configuration.application_scope === 'PRODUCT_CATEGORY'
+        ? 'product_category_id'
+        : null
   const scopeSectionVisible =
     visible('recipient_role') ||
     visible('application_scope') ||
-    visible(scopeRelationField)
+    (scopeRelationField ? visible(scopeRelationField) : false) ||
+    visible('recipient_id')
   const calculationSectionVisible =
     visible('commission_type') ||
     visible('value') ||
@@ -71,7 +76,7 @@ export function CommissionConfigurationDetailView({
           {visible('application_scope') ? <DetailField label={t('commissionConfigurations.form.application_scope')}>
             {option('application_scope', configuration.application_scope)}
           </DetailField> : null}
-          {visible(scopeRelationField) ? <DetailField
+          {scopeRelationField && visible(scopeRelationField) ? <DetailField
             label={
               configuration.application_scope === 'PRODUCT'
                 ? t('commissionConfigurations.form.product_id')
@@ -79,6 +84,9 @@ export function CommissionConfigurationDetailView({
             }
           >
             {configuration.product?.name ?? configuration.product_category?.name ?? '–'}
+          </DetailField> : null}
+          {visible('recipient_id') ? <DetailField label={t('commissionConfigurations.form.recipient_id')}>
+            {configuration.recipient?.name ?? '–'}
           </DetailField> : null}
         </DetailGrid>
       </DetailSection>

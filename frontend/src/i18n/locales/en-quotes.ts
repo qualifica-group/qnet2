@@ -224,6 +224,7 @@ export const quotes = {
     lineProductHeader: 'Product',
     lineCodeHeader: 'Code',
     lineQuantityHeader: 'Quantity',
+    lineUnitOfMeasureHeader: 'Unit',
     lineUnitPriceHeader: 'Unit price',
     lineVatRateHeader: 'VAT',
     lineNetHeader: 'Net',
@@ -280,7 +281,7 @@ export const quotes = {
       regenerateDescription: 'Changing the product replaces both automatic commissions and manual overrides on this line.',
       regenerateConfirm: 'Replace commissions',
       roles: { COMMERCIAL: 'Commercial', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
-      origins: { PRODUCT: 'Product', PRODUCT_CATEGORY: 'Category', MANUAL_OVERRIDE: 'Manual override' },
+      origins: { PRODUCT: 'Product', PRODUCT_CATEGORY: 'Category', RECIPIENT: 'Personal rule', MANUAL_OVERRIDE: 'Manual override' },
     },
   },
 }

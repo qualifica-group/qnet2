@@ -73,8 +73,8 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 }))
 
 const CRITERION_FIELDS: CriterionFieldOption[] = [
-  { field: 'state_id', label: 'quoteWorkflows.criterionFields.state_id', source: 'native', for_select_resource: 'states', multi_valued: false, inherited: true },
   { field: 'source_id', label: 'quoteWorkflows.criterionFields.source_id', source: 'native', for_select_resource: 'sources', multi_valued: false, inherited: true },
+  { field: 'business_function_id', label: 'quoteWorkflows.criterionFields.business_function_id', source: 'native', for_select_resource: 'business-functions', multi_valued: true, inherited: false },
 ]
 
 /** A custom relational field option (AC-027/D9): `label` is already literal display text, never an i18n key. */
@@ -131,10 +131,10 @@ function quoteWorkflow(
     criteria: [
       {
         id: 1,
-        field: 'state_id',
+        field: 'source_id',
         value_id: 5,
-        value_label: 'Lombardy',
-        field_label: 'quoteWorkflows.criterionFields.state_id',
+        value_label: 'Fiera',
+        field_label: 'quoteWorkflows.criterionFields.source_id',
         field_source: 'native',
       },
     ],
@@ -201,9 +201,9 @@ describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
     await screen.findByText(/^Value:.*:disabled$/)
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Region' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
 
-    await waitFor(() => expect(screen.getByText(/^Value:states:.*:enabled$/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/^Value:sources:.*:enabled$/)).toBeInTheDocument())
   })
 
   it('renders a custom field option with its literal label (no t()), a native one translated, and scopes the value select to it (AC-035)', async () => {
@@ -215,7 +215,7 @@ describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
     )
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    expect(await screen.findByRole('option', { name: 'Region' })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'Source' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Preferred supplier' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('option', { name: 'Preferred supplier' }))
@@ -300,7 +300,7 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
     fireEvent.change(nameInputs[1], { target: { value: 'In review' } })
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Region' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
     fireEvent.click(screen.getByRole('button', { name: 'Pick Value' }))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'EMEA workflow' } })
 
@@ -314,7 +314,7 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
       { name: 'Closed (won)', color: null, group: 'closed_won', system_key: 'closed_won', description: null, requires_note: false },
       { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
     ])
-    expect(payload.criteria).toEqual([{ field: 'state_id', value_id: 101 }])
+    expect(payload.criteria).toEqual([{ field: 'source_id', value_id: 101 }])
     expect(onSuccess).toHaveBeenCalled()
   })
 
@@ -329,7 +329,7 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
     fireEvent.change(screen.getByDisplayValue('Open'), { target: { value: 'Aperto (in corso)' } })
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Region' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
     fireEvent.click(screen.getByRole('button', { name: 'Pick Value' }))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'EMEA workflow' } })
 

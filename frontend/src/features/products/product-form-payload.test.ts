@@ -28,8 +28,8 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     vat_rate: null,
     supplier_id: null,
     supplier: null,
-    state_id: null,
-    state: null,
+    unit_of_measure_id: 1,
+    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     ...overrides,
   }
 }
@@ -45,7 +45,9 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     product_type: 'SERVICE',
     vat_rate_id: null,
     supplier_id: null,
-    state_id: null,
+    // Matches `original()`'s own default so the "nothing changed" PATCH
+    // assertions below stay accurate; individual tests override it.
+    unit_of_measure_id: 1,
     custom_fields: {},
     attribute_values: {},
     ...overrides,
@@ -63,17 +65,23 @@ describe('buildCreatePayload', () => {
       product_type: 'SERVICE',
       vat_rate_id: null,
       supplier_id: null,
-      state_id: null,
+      unit_of_measure_id: 1,
     })
   })
 
-  it('includes the selected VAT rate, supplier and region ids', () => {
+  it('includes the selected VAT rate, supplier and unit of measure ids', () => {
     expect(
-      buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11, state_id: 7 }), []),
+      buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11, unit_of_measure_id: 2 }), []),
     ).toMatchObject({
       vat_rate_id: 4,
       supplier_id: 11,
-      state_id: 7,
+      unit_of_measure_id: 2,
+    })
+  })
+
+  it('spec 0088 D-4: includes a null unit_of_measure_id so the server resolves the default unit', () => {
+    expect(buildCreatePayload(values({ unit_of_measure_id: null }), [])).toMatchObject({
+      unit_of_measure_id: null,
     })
   })
 
@@ -137,9 +145,9 @@ describe('buildUpdatePayload', () => {
     })
   })
 
-  it('includes only the changed region id', () => {
-    expect(buildUpdatePayload(values({ state_id: 7 }), original(), [])).toEqual({
-      state_id: 7,
+  it('spec 0088: includes only the changed unit of measure id', () => {
+    expect(buildUpdatePayload(values({ unit_of_measure_id: 2 }), original(), [])).toEqual({
+      unit_of_measure_id: 2,
     })
   })
 

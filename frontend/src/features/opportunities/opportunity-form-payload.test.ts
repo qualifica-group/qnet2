@@ -21,7 +21,6 @@ describe('buildCreatePayload', () => {
       supervisor_id: 9,
       source_id: null,
       operational_site_id: null,
-      state_id: null,
       product_lines: [],
       products_of_interest: [],
       manager_slots: [],
@@ -41,16 +40,6 @@ describe('buildCreatePayload', () => {
     )
 
     expect(payload.operational_site_id).toBe(8)
-  })
-
-  /** Spec 0047 (D1): never BR-2-locked — always sent as-is, even from a lead. */
-  it('sends state_id unconditionally, even when creating from a lead', () => {
-    const payload = buildCreatePayload(
-      createValues({ state_id: 7 }),
-      { leadId: 9, lockedFields: ['registry_id', 'source_id'] },
-    )
-
-    expect(payload.state_id).toBe(7)
   })
 
   /** Amendment rev.3 (AC-099/107): `product_lines` is always sent in full, never locked, even from a lead. */

@@ -129,20 +129,14 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
   })
 
   /**
-   * User directive 2026-08-05: the two fields are hidden here exactly as they
-   * already are in the form — the values still travel on the payload.
+   * User directive 2026-08-05: the operational site is hidden here exactly as
+   * it already is in the form — the value still travels on the payload.
    */
-  it('renders neither the operational site nor the region', () => {
-    render(
-      <OpportunityDetailView
-        opportunity={opportunity({ state_id: 3, state: { id: 3, name: 'Lombardia' } })}
-      />,
-    )
+  it('renders no operational site', () => {
+    render(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.queryByText('Warehouse A - Milan')).not.toBeInTheDocument()
     expect(screen.queryByText('Operational site')).not.toBeInTheDocument()
-    expect(screen.queryByText('Lombardia')).not.toBeInTheDocument()
-    expect(screen.queryByText('Region')).not.toBeInTheDocument()
   })
 
   it('renders no editable control and no edit action without onEdit', () => {

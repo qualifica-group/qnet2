@@ -12,6 +12,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
+import { CommissionConfigurationRecipientField } from './commission-configuration-recipient-field'
 import { useCommissionConfigurationForm } from './use-commission-configuration-form'
 import type {
   CommissionConfigurationDetail,
@@ -30,7 +31,7 @@ interface Props {
 
 const OPTIONS = {
   recipient_role: ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'],
-  application_scope: ['PRODUCT_CATEGORY', 'PRODUCT'],
+  application_scope: ['PRODUCT_CATEGORY', 'PRODUCT', 'RECIPIENT'],
   commission_type: ['FIXED_AMOUNT', 'PERCENTAGE'],
   status: ['ACTIVE', 'SUSPENDED'],
 } as const
@@ -40,6 +41,7 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
   const { field: fieldPermission } = useResourcePermissions()
   const { form, serverError, onSubmit } = useCommissionConfigurationForm({ mode, onSuccess })
   const scope = useWatch({ control: form.control, name: 'application_scope' })
+  const role = useWatch({ control: form.control, name: 'recipient_role' })
   const commissionType = useWatch({ control: form.control, name: 'commission_type' })
   const relationLabels = {
     placeholder: t('commissionConfigurations.form.selectPlaceholder'),
@@ -51,11 +53,15 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
   const selectedCategory =
     mode.type === 'edit' ? mode.configuration.product_category : null
   const selectedProduct = mode.type === 'edit' ? mode.configuration.product : null
+  const selectedRecipient = mode.type === 'edit' ? (mode.configuration.recipient ?? null) : null
+  const scopeRelationField =
+    scope === 'PRODUCT' ? 'product_id' : scope === 'PRODUCT_CATEGORY' ? 'product_category_id' : null
   const scopeVisible =
     fieldPermission('name').visible ||
     fieldPermission('recipient_role').visible ||
     fieldPermission('application_scope').visible ||
-    fieldPermission(scope === 'PRODUCT' ? 'product_id' : 'product_category_id').visible
+    (scopeRelationField ? fieldPermission(scopeRelationField).visible : false) ||
+    fieldPermission('recipient_id').visible
   const calculationVisible =
     fieldPermission('commission_type').visible ||
     fieldPermission('value').visible ||
@@ -68,10 +74,18 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
   const selectField = <T extends CommissionRole | CommissionScope | CommissionType | CommissionStatus>(
     name: 'recipient_role' | 'application_scope' | 'commission_type' | 'status',
     options: readonly T[],
+    onChangeExtra?: (next: T) => void,
   ) => (
     <MetaField control={form.control} name={name} metaKey={name} label={t(`commissionConfigurations.form.${name}`)}>
       {({ field, disabled }) => (
-        <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
+        <Select
+          value={field.value}
+          onValueChange={(next) => {
+            field.onChange(next)
+            onChangeExtra?.(next as T)
+          }}
+          disabled={disabled}
+        >
           <FormControl><SelectTrigger className="w-full"><SelectValue /></SelectTrigger></FormControl>
           <SelectContent>
             {options.map((option) => (
@@ -96,13 +110,16 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
                   {({ field, disabled, readOnly }) => <FormControl><Input {...field} disabled={disabled} readOnly={readOnly} /></FormControl>}
                 </MetaField>
               </div>
-              {selectField('recipient_role', OPTIONS.recipient_role)}
+              {selectField('recipient_role', OPTIONS.recipient_role, () =>
+                form.setValue('recipient_id', null, { shouldDirty: true, shouldValidate: true }),
+              )}
               {selectField('application_scope', OPTIONS.application_scope)}
-              {scope === 'PRODUCT_CATEGORY' ? (
+              {scope === 'RECIPIENT' ? null : scope === 'PRODUCT_CATEGORY' ? (
                 <RelationSelectField control={form.control} name="product_category_id" metaKey="product_category_id" label={t('commissionConfigurations.form.product_category_id')} resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchCategory')} selected={selectedCategory} {...relationLabels} />
               ) : (
                 <RelationSelectField control={form.control} name="product_id" metaKey="product_id" label={t('commissionConfigurations.form.product_id')} resource={PRODUCTS_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchProduct')} selected={selectedProduct} {...relationLabels} />
               )}
+              <CommissionConfigurationRecipientField control={form.control} role={role} selected={selectedRecipient} labels={relationLabels} />
             </div>
           </FormSection> : null}
 

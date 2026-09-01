@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * User directive 2026-07-23: the lead's `operational_site_id` (the Sede
  * operativa) is inherited by the opportunity again — but as a PLAIN default,
- * deliberately OUT of `DERIVED_FIELDS`/`lockedFields()` like `state_id`: the
+ * deliberately OUT of `DERIVED_FIELDS`/`lockedFields()`: the
  * conversion prefills it, the user stays free to change or clear it. The
  * 2026-07-17 directive that removed it from the derivable set is superseded
  * only in that sense — it is NOT re-added to the BR-2 lock.
@@ -94,18 +94,13 @@ final class LeadOpportunityDefaultsResolver
         $values = [
             'source_id' => $effectiveSource?->id,
             'registry_id' => $lead->registry_id,
-            // spec 0047 (AC-002, D1): the Regione inherited from the lead's
-            // own state_id. NOT in DERIVED_FIELDS — a plain default value,
-            // never BR-2-locked (an opportunity's Regione stays editable even
-            // when it originates from a lead).
-            'state_id' => $lead->state_id,
             // User directive 2026-07-23: the Sede operativa is inherited on
             // conversion. NOT in DERIVED_FIELDS — a plain editable default,
             // never BR-2-locked.
             'operational_site_id' => $lead->operational_site_id,
             // User directive 2026-07-27: the opportunity's "Note generali"
             // are seeded from the lead's own free-text notes. Same plain,
-            // never-locked treatment as the two defaults above — the only
+            // never-locked treatment as the default above — the only
             // non-id entry of this map.
             'general_notes' => $lead->notes,
         ];

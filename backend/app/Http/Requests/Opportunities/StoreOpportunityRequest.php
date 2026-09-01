@@ -92,10 +92,6 @@ class StoreOpportunityRequest extends FormRequest
             // "Note generali" (user directive 2026-07-27): free text, same
             // 5000-char ceiling as the lead `notes` it is inherited from.
             'general_notes' => ['nullable', 'string', 'max:5000'],
-            // spec 0047: state_id (Regione, D1) is editable on a standalone
-            // create, overwritten by BR-1 derivation when lead_id derives
-            // one.
-            'state_id' => ['nullable', 'integer', Rule::exists('states', 'id')],
             // "Prodotti di interesse": MANDATORY (user directive 2026-07-23),
             // mirroring `product_lines` — at least one product to create, and
             // the whole collection is replaced when submitted. A product

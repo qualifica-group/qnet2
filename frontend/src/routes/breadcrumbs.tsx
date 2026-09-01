@@ -38,6 +38,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   sectors: 'navigation.sectors',
   products: 'navigation.products',
   'vat-rates': 'navigation.vatRates',
+  'units-of-measure': 'navigation.unitsOfMeasure',
   'payment-methods': 'navigation.paymentMethods',
   sources: 'navigation.sources',
   tags: 'navigation.tags',

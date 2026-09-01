@@ -97,6 +97,14 @@ export function quoteLineRowSchema(t: TFunction) {
       id: z.number().optional(),
       product_id: z.number().nullable(),
       quantity: z.number().nullable(),
+      // Read-only display value congelated on the persisted line (spec 0088,
+      // D-5): never editable, never part of `toLineInputs`'s wire shape
+      // (quote-line-values.ts) — the backend rejects it as `prohibited`.
+      // Optional: a freshly-added row has none until the line is saved.
+      unit_of_measure: z
+        .object({ id: z.number(), name: z.string(), symbol: z.string() })
+        .nullable()
+        .optional(),
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
       commissions: z.array(z.object({
@@ -108,7 +116,7 @@ export function quoteLineRowSchema(t: TFunction) {
         commission_type: z.enum(COMMISSION_TYPES),
         value: z.number().min(0),
         internal_note: z.string().max(5000).nullable(),
-        origin: z.enum(['PRODUCT', 'PRODUCT_CATEGORY', 'MANUAL_OVERRIDE']),
+        origin: z.enum(['PRODUCT', 'PRODUCT_CATEGORY', 'RECIPIENT', 'MANUAL_OVERRIDE']),
         commission_configuration_id: z.number().nullable(),
       })).optional(),
     })

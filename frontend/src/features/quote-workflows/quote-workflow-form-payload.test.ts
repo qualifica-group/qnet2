@@ -11,7 +11,7 @@ const values: CreateQuoteWorkflowFormValues = {
   name: 'EMEA workflow',
   is_active: true,
   criteria: [
-    { field: 'state_id', value_id: 1 },
+    { field: 'business_function_id', value_id: 1 },
     { field: 'source_id', value_id: 2 },
   ],
 }
@@ -37,7 +37,7 @@ describe('buildCreatePayload', () => {
       name: 'EMEA workflow',
       is_active: true,
       criteria: [
-        { field: 'state_id', value_id: 1 },
+        { field: 'business_function_id', value_id: 1 },
         { field: 'source_id', value_id: 2 },
       ],
       statuses: [
@@ -52,9 +52,9 @@ describe('buildCreatePayload', () => {
   it('drops an incomplete criteria row (field or value still unset)', () => {
     const incomplete: CreateQuoteWorkflowFormValues = {
       ...values,
-      criteria: [{ field: 'state_id', value_id: 1 }, { field: null, value_id: null }],
+      criteria: [{ field: 'business_function_id', value_id: 1 }, { field: null, value_id: null }],
     }
-    expect(buildCreatePayload(incomplete, []).criteria).toEqual([{ field: 'state_id', value_id: 1 }])
+    expect(buildCreatePayload(incomplete, []).criteria).toEqual([{ field: 'business_function_id', value_id: 1 }])
   })
 
   it('sends the pinned rows with their system_key and no id (nothing persisted yet)', () => {
@@ -71,7 +71,7 @@ describe('buildUpdatePayload', () => {
       name: 'EMEA workflow',
       is_active: true,
       criteria: [
-        { field: 'state_id', value_id: 1 },
+        { field: 'business_function_id', value_id: 1 },
         { field: 'source_id', value_id: 2 },
       ],
       // No `system_key` on update: a system row is identified by its

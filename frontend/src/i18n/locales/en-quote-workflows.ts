@@ -21,7 +21,6 @@ export const quoteWorkflows = {
     updatedAt: 'Updated at',
   },
   criterionFields: {
-    state_id: 'Region',
     source_id: 'Source',
     business_function_id: 'Business function',
     product_category_id: 'Product category',

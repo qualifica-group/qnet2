@@ -9,7 +9,6 @@ use App\Models\QuoteLine;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Source;
-use App\Models\State;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,8 +16,8 @@ use Tests\TestCase;
 // Touches the database (workflows/criteria/statuses + Opportunity/Quote), so
 // bind the full TestCase + RefreshDatabase explicitly (Unit suite has no
 // default RefreshDatabase binding), mirroring Foundation0047Test. Spec 0083
-// (D-1/D-3/D-7) re-targets the whole resolver at the Quote: `source_id`/
-// `state_id` are inherited from `quote.opportunity`, `business_function_id`/
+// (D-1/D-3/D-7) re-targets the whole resolver at the Quote: `source_id` is
+// inherited from `quote.opportunity`, `business_function_id`/
 // `product_category_id` come from the quote's own REVENUE offer lines.
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -55,8 +54,8 @@ if (! function_exists('workflowResolver')) {
 if (! function_exists('quoteForNewOpportunity')) {
     /**
      * A Quote for a fresh Opportunity carrying $opportunityAttributes — the
-     * inherited criteria (state_id/source_id/custom.*, D-7) resolve through
-     * this parent, never a column on the Quote itself.
+     * inherited criteria (source_id/custom.*, D-7) resolve through this
+     * parent, never a column on the Quote itself.
      *
      * @param  array<string, mixed>  $opportunityAttributes
      */
@@ -80,7 +79,7 @@ if (! function_exists('revenueLineFor')) {
 // ---------------------------------------------------------------------------
 
 it('resolves to the global default set when no active workflow matches (AC-010)', function () {
-    $quote = quoteForNewOpportunity(['source_id' => null, 'state_id' => null]);
+    $quote = quoteForNewOpportunity(['source_id' => null]);
 
     $workflow = workflowResolver()->resolve($quote);
 
@@ -94,16 +93,17 @@ it('resolves to the global default set when no active workflow matches (AC-010)'
 
 it('picks the more specific of two matching workflows: 2 criteria beats 1 (AC-011)', function () {
     $source = Source::factory()->create();
-    $state = State::factory()->create();
+    $category = ProductCategory::factory()->create();
 
-    $quote = quoteForNewOpportunity(['source_id' => $source->id, 'state_id' => $state->id]);
+    $quote = quoteForNewOpportunity(['source_id' => $source->id]);
+    revenueLineFor($quote, Product::factory()->create(['category_id' => $category->id]));
 
     $lessSpecific = workflowWithSystemStatuses();
     $lessSpecific->criteria()->create(['field' => 'source_id', 'value_id' => $source->id]);
 
     $moreSpecific = workflowWithSystemStatuses();
     $moreSpecific->criteria()->create(['field' => 'source_id', 'value_id' => $source->id]);
-    $moreSpecific->criteria()->create(['field' => 'state_id', 'value_id' => $state->id]);
+    $moreSpecific->criteria()->create(['field' => 'product_category_id', 'value_id' => $category->id]);
 
     $resolved = workflowResolver()->resolve($quote);
 

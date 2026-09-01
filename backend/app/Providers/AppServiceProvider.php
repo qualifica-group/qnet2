@@ -49,6 +49,7 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
@@ -144,6 +145,7 @@ class AppServiceProvider extends ServiceProvider
             'attribute_layout' => AttributeLayout::class,
             'product_category' => ProductCategory::class,
             'product' => Product::class,
+            'unit_of_measure' => UnitOfMeasure::class,
             'source' => Source::class,
             'sector' => Sector::class,
             'tag' => Tag::class,

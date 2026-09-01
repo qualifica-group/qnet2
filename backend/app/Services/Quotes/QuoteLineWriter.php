@@ -6,6 +6,7 @@ namespace App\Services\Quotes;
 
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Enums\QuoteLineType;
+use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\VatRate;
@@ -42,6 +43,7 @@ final class QuoteLineWriter
         }
 
         $rates = $this->resolveVatRates($lines);
+        $units = $this->resolveProductUnits($lines);
 
         foreach (array_values($lines) as $index => $data) {
             /** @var QuoteLine|null $line */
@@ -57,6 +59,15 @@ final class QuoteLineWriter
                 'quantity' => $data->quantity,
                 'unit_price' => $data->unitPrice,
                 'vat_rate_id' => $data->vatRateId,
+                // Spec 0088, D-5 (AC-054/AC-055): frozen from the Product ONLY
+                // when the row is created or its product actually changes —
+                // NEVER on a resubmit of an otherwise-untouched line. offer_
+                // lines/cost_lines full-replace (D-8) resends every row on
+                // every quote save, so resolving this key unconditionally
+                // would silently re-sync every line to its product's CURRENT
+                // unit on the very next unrelated edit, erasing the freeze
+                // (bug found by the verifier, fixed 2026-09-01).
+                'unit_of_measure_id' => $isNew || $productChanged ? ($units[$data->productId] ?? null) : $line->unit_of_measure_id,
                 'net_amount' => $amounts['net'],
                 'vat_amount' => $amounts['vat'],
                 'total_amount' => $amounts['total'],
@@ -86,6 +97,28 @@ final class QuoteLineWriter
             ->whereIn('id', $ids)
             ->pluck('rate', 'id')
             ->map(static fn (mixed $rate): float => (float) $rate)
+            ->all();
+    }
+
+    /**
+     * The unit of measure currently set on each submitted line's Product
+     * (spec 0088, D-5), keyed by product id — the value frozen onto the
+     * line's own `unit_of_measure_id` at this exact write, mirroring
+     * resolveVatRates()'s batch shape.
+     *
+     * @param  array<int, QuoteLineData>  $lines
+     * @return array<int, int|null>
+     */
+    private function resolveProductUnits(array $lines): array
+    {
+        $ids = array_values(array_unique(array_map(
+            static fn (QuoteLineData $line): int => $line->productId,
+            $lines,
+        )));
+
+        return $ids === [] ? [] : Product::query()
+            ->whereIn('id', $ids)
+            ->pluck('unit_of_measure_id', 'id')
             ->all();
     }
 }

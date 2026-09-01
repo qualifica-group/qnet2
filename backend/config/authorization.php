@@ -31,6 +31,7 @@ use App\Authorization\RolesAuthorization;
 use App\Authorization\SectorsAuthorization;
 use App\Authorization\SourcesAuthorization;
 use App\Authorization\TagsAuthorization;
+use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
 use App\Authorization\VatRatesAuthorization;
 
@@ -90,6 +91,7 @@ return [
         'reward-statuses' => RewardStatusesAuthorization::class,
         'rewarded-referents' => RewardedReferentsAuthorization::class,
         'vat-rates' => VatRatesAuthorization::class,
+        'units-of-measure' => UnitsOfMeasureAuthorization::class,
     ],
 
     /*

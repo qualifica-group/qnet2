@@ -17,4 +17,8 @@ enum CommissionApplicationScope: string
     #[Label('commission_configurations.scopes.product')]
     #[Color('blue')]
     case Product = 'PRODUCT';
+
+    #[Label('commission_configurations.scopes.recipient')]
+    #[Color('violet')]
+    case Recipient = 'RECIPIENT';
 }

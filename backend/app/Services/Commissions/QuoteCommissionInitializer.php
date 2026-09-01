@@ -39,6 +39,8 @@ final class QuoteCommissionInitializer
             productCategoryId: $product->category_id,
             roles: CommissionRecipientRole::cases(),
             referenceDate: $data->referenceDate,
+            // Spec 0089 D-5: already resolved above, zero extra queries.
+            recipients: $recipients,
         ));
 
         $drafts = [];

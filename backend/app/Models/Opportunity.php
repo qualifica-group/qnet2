@@ -62,7 +62,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'source_id',
     'operational_site_id',
     'lead_id',
-    'state_id',
     'start_date',
     'estimated_value',
     'expected_close_date',
@@ -150,16 +149,6 @@ class Opportunity extends BaseModel
     public function transferredFromOperationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class, 'transferred_from_operational_site_id');
-    }
-
-    /**
-     * The Regione (spec 0047, D1): inherited from the originating Lead at
-     * conversion (LeadOpportunityDefaultsResolver) or editable on a
-     * standalone Opportunity.
-     */
-    public function state(): BelongsTo
-    {
-        return $this->belongsTo(State::class, 'state_id');
     }
 
     /**

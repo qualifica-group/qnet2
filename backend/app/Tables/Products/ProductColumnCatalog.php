@@ -84,18 +84,6 @@ final class ProductColumnCatalog
                 'filterType' => 'set',
             ],
             [
-                // The Regione, derived from the state() relation (geo
-                // reference data, localized in ProductsTableDefinition
-                // mirroring ProjectsTableDefinition's GEO_COLUMN_IDS).
-                'id' => 'state',
-                'label' => 'products.columns.state',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-            ],
-            [
                 // Real DB column rendered as a badge (ProductType), driven by
                 // config/config.php form_enums `product_type`.
                 'id' => 'product_type',
@@ -130,7 +118,6 @@ final class ProductColumnCatalog
             ['columnId' => 'cost', 'type' => 'number'],
             ['columnId' => 'price', 'type' => 'number'],
             ['columnId' => 'category', 'type' => 'set'],
-            ['columnId' => 'state', 'type' => 'set'],
             ['columnId' => 'product_type', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];

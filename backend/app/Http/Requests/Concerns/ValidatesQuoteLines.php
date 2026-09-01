@@ -132,6 +132,10 @@ trait ValidatesQuoteLines
             "{$field}.*.net_amount" => ['prohibited'],
             "{$field}.*.vat_amount" => ['prohibited'],
             "{$field}.*.total_amount" => ['prohibited'],
+            // Spec 0088, D-5/AC-052: server-frozen from the Product at write
+            // time (QuoteLineWriter::sync()), never accepted from the client
+            // — same discipline as the three amount columns above.
+            "{$field}.*.unit_of_measure_id" => ['prohibited'],
             "{$field}.*.commissions" => $field === 'offer_lines'
                 ? ['sometimes', 'array', 'max:4']
                 : ['prohibited'],

@@ -29,10 +29,11 @@ are `401`; denied abilities are `403`; missing records are `404`.
 | Concept | Accepted values |
 |---|---|
 | Recipient role | `COMMERCIAL`, `REPORTER`, `SUPERVISOR`, `SUPPLIER` |
-| Application scope | `PRODUCT_CATEGORY`, `PRODUCT` |
+| Application scope | `PRODUCT_CATEGORY`, `PRODUCT`, `RECIPIENT` (spec 0089) |
 | Commission type | `FIXED_AMOUNT`, `PERCENTAGE` |
 | Configuration status | `ACTIVE`, `SUSPENDED` |
-| Applied origin | `PRODUCT`, `PRODUCT_CATEGORY`, `MANUAL_OVERRIDE` |
+| Applied origin | `PRODUCT`, `PRODUCT_CATEGORY`, `RECIPIENT` (spec 0089), `MANUAL_OVERRIDE` |
+| Recipient type (read-only) | `referent`, `user`, `registry` — morph aliases, derived from the role (spec 0089) |
 
 ## Configurator CRUD
 
@@ -70,6 +71,7 @@ both `commission-configurations.viewActivity` and record-level `view`.
   "application_scope": "PRODUCT",
   "product_category_id": null,
   "product_id": 42,
+  "recipient_id": null,
   "commission_type": "PERCENTAGE",
   "value": "5.5000",
   "priority": 10,
@@ -93,6 +95,17 @@ Validation rules:
 - dates use `YYYY-MM-DD`, and `valid_until` cannot precede `valid_from`;
 - `PRODUCT` requires `product_id` and prohibits `product_category_id`;
 - `PRODUCT_CATEGORY` requires `product_category_id` and prohibits `product_id`;
+- `RECIPIENT` (spec 0089) requires `recipient_id` and prohibits both
+  `product_id` and `product_category_id`;
+- `recipient_id` is optional and orthogonal to the scope: a `PRODUCT` or
+  `PRODUCT_CATEGORY` rule may also carry one. It must reference a row of the
+  table the ROLE implies — `COMMERCIAL`/`REPORTER` a referent, `SUPERVISOR` a
+  user, `SUPPLIER` a registry — otherwise the request is rejected;
+- `recipient_type` is NEVER accepted from the payload: the server derives it
+  from `recipient_role`. Sending it has no effect;
+- changing `recipient_role` on a rule that already has a recipient of a
+  different type, without resubmitting `recipient_id`, is rejected with
+  `commission_configurations.recipient_role_changed`;
 - `internal_note` is nullable and at most 5,000 characters;
 - field permissions are enforced server-side for both create and update.
 
@@ -108,6 +121,9 @@ Validation rules:
   "product_category": null,
   "product_id": 42,
   "product": { "id": 42, "name": "Example product" },
+  "recipient_type": null,
+  "recipient_id": null,
+  "recipient": null,
   "commission_type": "PERCENTAGE",
   "value": "5.5000",
   "priority": 10,
@@ -121,7 +137,9 @@ Validation rules:
 ```
 
 Hidden fields are omitted, not returned as `null`. Hiding `product_id` or
-`product_category_id` also removes its related summary object. The same field
+`product_category_id` also removes its related summary object; hiding
+`recipient_id` removes `recipient_type` and `recipient` with it (spec 0089).
+`recipient` is `{ "id": int, "name": string }` when the rule targets one. The same field
 visibility filters Configurator table columns/rows and activity-log changes.
 
 ### Protected deletion
@@ -137,14 +155,25 @@ key provides database-level protection.
 Resolution is internal; there is no public generic resolver endpoint.
 
 For each requested role, the server considers only `ACTIVE` rules whose
-inclusive validity interval contains the reference date. It resolves:
+inclusive validity interval contains the reference date. Since spec 0089 the
+chain has five rungs, first hit wins — the recipient dimension dominates the
+product one:
 
-1. matching Product rule;
-2. otherwise matching Product Category rule;
-3. otherwise no result.
+1. rule bound to THIS role's recipient, scope Product;
+2. rule bound to THIS role's recipient, scope Product Category;
+3. rule bound to THIS role's recipient, scope `RECIPIENT` (any product);
+4. otherwise role-generic rule (`recipient_type IS NULL`), scope Product;
+5. otherwise role-generic rule (`recipient_type IS NULL`), scope Product Category;
+6. otherwise no result.
 
-Within the same scope, higher `priority` wins, then later `valid_from`, then
-higher configuration ID. Roles resolve independently.
+Rungs 1-3 are skipped when the role has no recipient. If any of them hits, the
+role-generic rungs are never queried. Rungs 4-5 exclude recipient-bound rules
+explicitly, so a rule addressed to somebody else can never win as a generic one.
+
+An applied commission resolved through rungs 1-3 carries `origin: "RECIPIENT"`,
+whatever the winning rule's scope; `commission_configuration_id` keeps the exact
+source. Within the same rung, higher `priority` wins, then later `valid_from`,
+then higher configuration ID. Roles resolve independently.
 
 If the role has no recipient, no applied commission is returned, persisted or
 summarized. Recipient sources are:

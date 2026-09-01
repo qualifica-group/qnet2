@@ -225,6 +225,39 @@ describe('QuoteCommissionsDialog', () => {
     })
   })
 
+  it('shows the RECIPIENT origin badge with its localized label (AC-017)', async () => {
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={1}
+        unitPrice={100}
+        commissions={[{
+          id: 9,
+          recipient_role: 'COMMERCIAL',
+          recipient_type: 'referent',
+          recipient_id: 9,
+          recipient: { id: 9, name: 'Mario Rossi' },
+          commission_type: 'FIXED_AMOUNT',
+          value: 15,
+          internal_note: null,
+          origin: 'RECIPIENT',
+          commission_configuration_id: 6,
+        }]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('Personal rule')).toBeInTheDocument())
+    // The recipient stays read-only, never a picker (INV-2/AC-017).
+    expect(screen.queryByRole('button', { name: 'Recipient' })).not.toBeInTheDocument()
+  })
+
   it('hides protected fields and collection actions', () => {
     const hidden = { ...editable, visible: false, hidden: true, editable: false, disabled: true }
     const restricted = {

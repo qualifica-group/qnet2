@@ -32,9 +32,6 @@ namespace App\DataObjects\Opportunities;
  * have one, so a middle insertion would be an ArgumentCountError trap, the
  * same one already paid on the projects/campaigns precedent).
  *
- * Spec 0047: `stateId` (Regione, D1) is a plain editable scalar — inherited
- * from the lead (LeadOpportunityDefaultsResolver/ConvertLeadToOpportunity)
- * or submitted directly on a standalone create — part of attributes().
  * Spec 0083, D-2: `workflowStatusId` is REMOVED — the Opportunity carries no
  * working-state override any more, the configurator having moved onto the
  * Offerta (-> Quote).
@@ -80,7 +77,6 @@ final readonly class CreateOpportunityData
         public ?float $estimatedValue,
         public ?string $expectedCloseDate,
         public ?int $successProbability,
-        public ?int $stateId = null,
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public ?array $rewards = null,
@@ -110,7 +106,6 @@ final readonly class CreateOpportunityData
             estimatedValue: isset($data['estimated_value']) ? (float) $data['estimated_value'] : null,
             expectedCloseDate: $data['expected_close_date'] ?? null,
             successProbability: isset($data['success_probability']) ? (int) $data['success_probability'] : null,
-            stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
@@ -195,7 +190,6 @@ final readonly class CreateOpportunityData
             'estimated_value' => $this->estimatedValue,
             'expected_close_date' => $this->expectedCloseDate,
             'success_probability' => $this->successProbability,
-            'state_id' => $this->stateId,
             'general_notes' => $this->generalNotes,
         ];
     }

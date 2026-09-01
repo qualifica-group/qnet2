@@ -18,10 +18,10 @@ const BASE: QuoteWorkflowDetailWithPermissions = {
   criteria: [
     {
       id: 1,
-      field: 'state_id',
+      field: 'source_id',
       value_id: 5,
-      value_label: 'Lombardy',
-      field_label: 'quoteWorkflows.criterionFields.state_id',
+      value_label: 'Fiera',
+      field_label: 'quoteWorkflows.criterionFields.source_id',
       field_source: 'native',
     },
     {
@@ -48,7 +48,7 @@ const BASE: QuoteWorkflowDetailWithPermissions = {
 describe('QuoteWorkflowDetailView — criterion field labels (AC-036)', () => {
   it('translates a native criterion field label', () => {
     render(<QuoteWorkflowDetailView quoteWorkflow={BASE} />)
-    expect(screen.getByText(i18n.t('quoteWorkflows.criterionFields.state_id'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('quoteWorkflows.criterionFields.source_id'))).toBeInTheDocument()
   })
 
   it('renders a custom criterion field label literally, without translating it', () => {
@@ -58,7 +58,7 @@ describe('QuoteWorkflowDetailView — criterion field labels (AC-036)', () => {
 
   it('renders the resolved value label for both native and custom criteria', () => {
     render(<QuoteWorkflowDetailView quoteWorkflow={BASE} />)
-    expect(screen.getByText('Lombardy')).toBeInTheDocument()
+    expect(screen.getByText('Fiera')).toBeInTheDocument()
     expect(screen.getByText('Acme Corp')).toBeInTheDocument()
   })
 })

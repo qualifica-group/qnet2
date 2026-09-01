@@ -30,6 +30,7 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
 use App\RequestManagement\RequestManagementActivityAuthorizer;
@@ -213,6 +214,9 @@ return [
         ],
         'vat-rates' => [
             'model' => VatRate::class,
+        ],
+        'units-of-measure' => [
+            'model' => UnitOfMeasure::class,
         ],
     ],
 

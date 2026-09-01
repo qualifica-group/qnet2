@@ -18,6 +18,7 @@ import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
+import { unitsOfMeasure } from './it-units-of-measure'
 import { paymentMethods } from './it-payment-methods'
 import { tags } from './it-tags'
 import { pipelineStatuses } from './it-pipeline-statuses'
@@ -365,6 +366,7 @@ export const it: TranslationResources = {
   products: { ...products, stats: moduleStats.products },
   sources,
   vatRates,
+  unitsOfMeasure,
   paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

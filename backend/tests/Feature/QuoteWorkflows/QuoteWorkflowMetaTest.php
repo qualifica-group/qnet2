@@ -38,13 +38,11 @@ it('criterion-fields: 200 with the 4 allow-listed fields, correct for_select_res
 
     $data = $this->getJson('/api/quote-workflows/criterion-fields')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(4);
+    expect($data)->toHaveCount(3);
 
     $byField = collect($data)->keyBy('field');
-    expect($byField['state_id']['for_select_resource'])->toBe('states')
-        ->and($byField['state_id']['source'])->toBe('native')
-        ->and($byField['state_id']['inherited'])->toBeTrue()
-        ->and($byField['source_id']['for_select_resource'])->toBe('sources')
+    expect($byField['source_id']['for_select_resource'])->toBe('sources')
+        ->and($byField['source_id']['source'])->toBe('native')
         ->and($byField['source_id']['inherited'])->toBeTrue()
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()

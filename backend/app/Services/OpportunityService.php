@@ -75,8 +75,6 @@ class OpportunityService
         'lead.campaign.productCategory',
         'lead.campaign.project.businessFunction',
         'lead.campaign.project.productCategory',
-        // spec 0047 (AC-003): Regione.
-        'state',
     ];
 
     public function __construct(

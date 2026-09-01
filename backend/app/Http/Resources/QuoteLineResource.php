@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\ProductCategory;
 use App\Models\QuoteLine;
+use App\Models\UnitOfMeasure;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Eloquent\Model;
@@ -50,6 +51,10 @@ class QuoteLineResource extends JsonResource
             'product_id' => $this->product_id,
             'product' => $this->summarizeProduct(),
             'quantity' => $this->quantity,
+            // Spec 0088, D-5/AC-053: the FROZEN unit, or — for a historic line
+            // predating the module (unit_of_measure_id NULL) — the product's
+            // CURRENT unit, so an old row never renders blank.
+            'unit_of_measure' => $this->summarizeUnitOfMeasure(),
             'unit_price' => $this->unit_price,
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->summarizeVatRate(),
@@ -116,5 +121,32 @@ class QuoteLineResource extends JsonResource
         $vatRate = $this->vatRate;
 
         return $vatRate === null ? null : ['id' => $vatRate->id, 'name' => $vatRate->name, 'rate' => $vatRate->rate];
+    }
+
+    /**
+     * Spec 0088, AC-053: the frozen `unitOfMeasure` relation when present;
+     * otherwise the product's CURRENT unit (a historic line predating the
+     * module). Both branches are eager-loaded by QuoteService::DETAIL_RELATIONS
+     * so neither ever N+1s.
+     *
+     * @return array{id: int, name: string, symbol: string}|null
+     */
+    private function summarizeUnitOfMeasure(): ?array
+    {
+        $unitOfMeasure = $this->unitOfMeasure ?? $this->product?->unitOfMeasure;
+
+        return $this->summarizeUnit($unitOfMeasure);
+    }
+
+    /**
+     * @return array{id: int, name: string, symbol: string}|null
+     */
+    private function summarizeUnit(?UnitOfMeasure $unitOfMeasure): ?array
+    {
+        if ($unitOfMeasure === null) {
+            return null;
+        }
+
+        return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
     }
 }

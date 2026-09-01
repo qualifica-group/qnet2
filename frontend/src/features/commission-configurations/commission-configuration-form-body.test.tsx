@@ -8,9 +8,29 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
 import { CommissionConfigurationFormBody } from './commission-configuration-form-body'
 import type { CommissionConfigurationDetailWithPermissions } from './types'
 
-vi.mock('@/components/form/relation-select-field', () => ({
-  RelationSelectField: ({ label }: { label: string }) => <div>{label}</div>,
-}))
+vi.mock('@/components/form/relation-select-field', async () => {
+  const { useController } = await import('react-hook-form')
+  return {
+    // A minimal test double that still binds to the real RHF field (via
+    // `useController`), so tests can both read the current value and simulate
+    // a pick — the real `AsyncPaginatedSelect` needs network data this suite
+    // does not provide.
+    RelationSelectField: ({ control, name, label, resource }: {
+      control: Parameters<typeof useController>[0]['control']
+      name: Parameters<typeof useController>[0]['name']
+      label: string
+      resource: string
+    }) => {
+      const { field } = useController({ control, name })
+      return (
+        <div>
+          <span>{`${label}: ${resource}: ${String(field.value)}`}</span>
+          <button type="button" onClick={() => field.onChange(99)}>{`pick ${name}`}</button>
+        </div>
+      )
+    },
+  }
+})
 
 const editable: FieldPermission = {
   visible: true,
@@ -21,7 +41,7 @@ const editable: FieldPermission = {
   disabled: false,
 }
 const fieldNames = [
-  'name', 'recipient_role', 'application_scope', 'product_category_id', 'product_id',
+  'name', 'recipient_role', 'application_scope', 'product_category_id', 'product_id', 'recipient_id',
   'commission_type', 'value', 'priority', 'valid_from', 'valid_until', 'status', 'internal_note',
 ]
 const permissions: ResourcePermissions = {
@@ -49,7 +69,8 @@ describe('CommissionConfigurationFormBody', () => {
       <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={onCancel} />,
     ))
     expect(screen.getByText('Identity and scope')).toBeInTheDocument()
-    expect(screen.getAllByText('Product category').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Product category/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/^Recipient: referents:/)).toBeInTheDocument()
     expect(screen.getByText('Calculation')).toBeInTheDocument()
     expect(screen.getByText('Validity')).toBeInTheDocument()
     expect(screen.getByText('Internal note')).toBeInTheDocument()
@@ -87,9 +108,43 @@ describe('CommissionConfigurationFormBody', () => {
     render(wrapper(
       <CommissionConfigurationFormBody mode={{ type: 'edit', configuration }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
     ))
-    expect(screen.getAllByText('Product').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/^Product:/).length).toBeGreaterThan(0)
     expect(screen.getByDisplayValue('20')).toBeInTheDocument()
     expect(screen.getByText('€')).toBeInTheDocument()
+  })
+
+  it('swaps the recipient picker resource and clears the previous pick when the role changes (AC-016)', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+    expect(screen.getByText('Recipient: referents: null')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'pick recipient_id' }))
+    expect(screen.getByText('Recipient: referents: 99')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Supervisor' }))
+
+    expect(screen.getByText('Recipient: users: null')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Supplier' }))
+
+    expect(screen.getByText('Recipient: registries: null')).toBeInTheDocument()
+  })
+
+  it('shows only the recipient picker for the RECIPIENT scope, hiding product and category', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+    expect(screen.getByText(/^Product category:/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Application scope/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Specific recipient' }))
+
+    expect(screen.queryByText(/^Product category:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Product:/)).not.toBeInTheDocument()
+    expect(screen.getByText(/^Recipient: referents:/)).toBeInTheDocument()
   })
 
   it('does not render empty sections when every child is hidden', () => {

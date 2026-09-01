@@ -62,7 +62,7 @@ export function buildCreatePayload(
     product_type: values.product_type,
     vat_rate_id: values.vat_rate_id,
     supplier_id: values.supplier_id,
-    state_id: values.state_id,
+    unit_of_measure_id: values.unit_of_measure_id,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
     ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
@@ -107,8 +107,8 @@ export function buildUpdatePayload(
   if (values.supplier_id !== original.supplier_id) {
     payload.supplier_id = values.supplier_id
   }
-  if (values.state_id !== original.state_id) {
-    payload.state_id = values.state_id
+  if (values.unit_of_measure_id !== original.unit_of_measure_id) {
+    payload.unit_of_measure_id = values.unit_of_measure_id
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

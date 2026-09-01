@@ -34,11 +34,20 @@ export function formatCommissionValue(value: unknown, type: unknown): string {
   return type === 'PERCENTAGE' ? `${formatted}%` : formatted
 }
 
+/** The `recipient` column (D-11): the destinatario's name, or an em-dash for a role rule. */
+function RecipientCell({ value }: { value: unknown }) {
+  if (typeof value !== 'string' || value === '') {
+    return <span className="text-muted-foreground">–</span>
+  }
+  return <span className="truncate">{value}</span>
+}
+
 export const commissionConfigurationColumnRenderers: TableRendererMap = {
   recipient_role: ({ value }) => <EnumCell field="recipient_role" value={value} />,
   application_scope: ({ value }) => <EnumCell field="application_scope" value={value} />,
   commission_type: ({ value }) => <EnumCell field="commission_type" value={value} />,
   status: ({ value }) => <EnumCell field="status" value={value} status />,
+  recipient: ({ value }) => <RecipientCell value={value} />,
   value: ({ value, data }) => (
     <span className="block text-right tabular-nums">
       {formatCommissionValue(value, data?.commission_type)}

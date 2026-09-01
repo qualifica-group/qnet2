@@ -13,11 +13,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 #[Fillable([
     'name', 'recipient_role', 'application_scope', 'product_category_id',
-    'product_id', 'commission_type', 'value', 'priority', 'valid_from',
-    'valid_until', 'status', 'internal_note',
+    'product_id', 'recipient_type', 'recipient_id', 'commission_type', 'value',
+    'priority', 'valid_from', 'valid_until', 'status', 'internal_note',
 ])]
 class CommissionConfiguration extends BaseModel
 {
@@ -46,6 +47,15 @@ class CommissionConfiguration extends BaseModel
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * The single recipient this rule is scoped to (spec 0089 D-1), or no
+     * relation loaded when the rule is a plain role-wide default.
+     */
+    public function recipient(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function appliedCommissions(): HasMany

@@ -6,10 +6,10 @@
  */
 export function quoteLineGridClass(variant: 'revenue' | 'cost', withCommissions = true): string {
   return variant === 'revenue' && withCommissions
-    ? 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_128px_140px_90px_90px_100px_36px_36px] gap-2'
-    : 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_128px_140px_90px_90px_100px_36px] gap-2'
+    ? 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_90px_90px_100px_36px_36px] gap-2'
+    : 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_90px_90px_100px_36px] gap-2'
 }
 
 export function quoteLineMinWidthClass(variant: 'revenue' | 'cost', withCommissions = true): string {
-  return variant === 'revenue' && withCommissions ? 'min-w-[980px]' : 'min-w-[930px]'
+  return variant === 'revenue' && withCommissions ? 'min-w-[1044px]' : 'min-w-[994px]'
 }

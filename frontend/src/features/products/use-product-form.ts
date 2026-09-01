@@ -37,7 +37,7 @@ const SERVER_ERROR_FIELDS = [
   'product_type',
   'vat_rate_id',
   'supplier_id',
-  'state_id',
+  'unit_of_measure_id',
 ] as const
 
 /** Default product type for a new product (SERVICE-only catalogue for now). */
@@ -135,7 +135,7 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
         product_type: product.product_type,
         vat_rate_id: product.vat_rate_id,
         supplier_id: product.supplier_id,
-        state_id: product.state_id,
+        unit_of_measure_id: product.unit_of_measure_id,
         custom_fields: customFields.defaultValues,
         attribute_values: seedAttributeValues(productAttributes, product.attribute_values ?? {}),
       }
@@ -150,7 +150,7 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
       product_type: DEFAULT_PRODUCT_TYPE,
       vat_rate_id: null,
       supplier_id: null,
-      state_id: null,
+      unit_of_measure_id: null,
       custom_fields: customFields.defaultValues,
       attribute_values: {},
     }

@@ -26,10 +26,10 @@ function renderCriteriaFields(value: unknown) {
 describe('CriteriaFieldsCell', () => {
   it('translates a native entry and renders a custom entry literally', () => {
     const { getByLabelText } = renderCriteriaFields([
-      'quoteWorkflows.criterionFields.state_id',
+      'quoteWorkflows.criterionFields.source_id',
       'Preferred supplier',
     ])
-    expect(getByLabelText('Region, Preferred supplier')).toBeInTheDocument()
+    expect(getByLabelText('Source, Preferred supplier')).toBeInTheDocument()
   })
 
   it('does not translate a custom label that coincides with an existing, unrelated i18n key', () => {

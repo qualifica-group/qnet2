@@ -58,7 +58,9 @@ class UpdateProductRequest extends FormRequest
             'product_type' => ['sometimes', 'required', Rule::enum(ProductType::class)],
             'vat_rate_id' => ['sometimes', 'nullable', 'integer', 'exists:vat_rates,id'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:registries,id'],
-            'state_id' => ['sometimes', 'nullable', 'integer', 'exists:states,id'],
+            // Spec 0088, D-4: a submitted null resets to the default unit in
+            // ProductService (the column is NOT NULL).
+            'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

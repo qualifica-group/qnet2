@@ -32,7 +32,7 @@ const NATIVE_CRITERION_FIELD_KEY_PREFIX = 'quoteWorkflows.criterionFields.'
 
 /**
  * Renders `criteria_fields` — a MIXED array of native i18n label keys (e.g.
- * "quoteWorkflows.criterionFields.state_id") and literal custom-field
+ * "quoteWorkflows.criterionFields.source_id") and literal custom-field
  * labels (D9: custom labels are free text, never a key) — as a compact count
  * badge with a tooltip listing every resolved field name. Mirrors
  * `TagsCountCell`'s shape; only entries carrying

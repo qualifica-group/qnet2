@@ -6,7 +6,6 @@ use App\Models\CustomFieldDefinition;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
-use App\Models\State;
 use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -212,82 +211,6 @@ it('update: 422 when vat_rate_id references a non-existent row', function () {
 
     $this->patchJson("/api/products/{$product->id}", ['vat_rate_id' => 999999])
         ->assertStatus(422)->assertJsonValidationErrors('vat_rate_id');
-});
-
-// ---------------------------------------------------------------------------
-// state_id (Regione)
-// ---------------------------------------------------------------------------
-
-it('show: exposes state summary when set, null when unset', function () {
-    $actor = productUserWith(['view']);
-    $state = State::factory()->create(['name' => 'Lombardy']);
-    $product = Product::factory()->create(['state_id' => $state->id]);
-    $bare = Product::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->getJson("/api/products/{$product->id}")
-        ->assertOk()
-        ->assertJsonPath('data.state_id', $state->id)
-        ->assertJsonPath('data.state.id', $state->id)
-        ->assertJsonPath('data.state.name', 'Lombardy');
-
-    $this->getJson("/api/products/{$bare->id}")
-        ->assertOk()
-        ->assertJsonPath('data.state_id', null)
-        ->assertJsonPath('data.state', null);
-});
-
-it('create: accepts a nullable state_id and persists it', function () {
-    $actor = productUserWith(['create']);
-    $category = ProductCategory::factory()->create();
-    $state = State::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/products', productGenericFields([
-        'name' => 'Widget', 'category_id' => $category->id, 'state_id' => $state->id,
-    ]))->assertCreated()
-        ->assertJsonPath('data.state_id', $state->id);
-
-    $product = Product::where('name', 'Widget')->firstOrFail();
-    expect($product->state_id)->toBe($state->id);
-});
-
-it('create: 422 when state_id references a non-existent row', function () {
-    $actor = productUserWith(['create']);
-    $category = ProductCategory::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->postJson('/api/products', productGenericFields([
-        'name' => 'Widget', 'category_id' => $category->id, 'state_id' => 999999,
-    ]))->assertStatus(422)->assertJsonValidationErrors('state_id');
-});
-
-it('update: PATCH sets and clears state_id', function () {
-    $actor = productUserWith(['update']);
-    $state = State::factory()->create();
-    $product = Product::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/products/{$product->id}", ['state_id' => $state->id])
-        ->assertOk()
-        ->assertJsonPath('data.state_id', $state->id);
-
-    expect($product->fresh()->state_id)->toBe($state->id);
-
-    $this->patchJson("/api/products/{$product->id}", ['state_id' => null])
-        ->assertOk()
-        ->assertJsonPath('data.state_id', null);
-
-    expect($product->fresh()->state_id)->toBeNull();
-});
-
-it('update: 422 when state_id references a non-existent row', function () {
-    $actor = productUserWith(['update']);
-    $product = Product::factory()->create();
-    Sanctum::actingAs($actor);
-
-    $this->patchJson("/api/products/{$product->id}", ['state_id' => 999999])
-        ->assertStatus(422)->assertJsonValidationErrors('state_id');
 });
 
 it('show: 403 without products.view / 404 for a non-existent product', function () {

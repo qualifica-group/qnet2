@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\Source;
-use App\Models\State;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -213,14 +213,14 @@ it('create: 422 when two criteria share the same field (AC-008)', function () {
 it('create: 422 when another workflow already has the exact same criteria combination (AC-009)', function () {
     $actor = quoteWorkflowUserWith(['create']);
     $source = Source::factory()->create();
-    $state = State::factory()->create();
+    $category = ProductCategory::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/quote-workflows', [
         'name' => 'First',
         'criteria' => [
             ['field' => 'source_id', 'value_id' => $source->id],
-            ['field' => 'state_id', 'value_id' => $state->id],
+            ['field' => 'product_category_id', 'value_id' => $category->id],
         ],
     ])->assertCreated();
 
@@ -228,7 +228,7 @@ it('create: 422 when another workflow already has the exact same criteria combin
     $this->postJson('/api/quote-workflows', [
         'name' => 'Second',
         'criteria' => [
-            ['field' => 'state_id', 'value_id' => $state->id],
+            ['field' => 'product_category_id', 'value_id' => $category->id],
             ['field' => 'source_id', 'value_id' => $source->id],
         ],
     ])->assertStatus(422)->assertJsonValidationErrors('criteria');

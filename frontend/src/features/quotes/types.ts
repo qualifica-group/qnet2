@@ -19,7 +19,11 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
 
-export type QuoteCommissionOrigin = 'PRODUCT' | 'PRODUCT_CATEGORY' | 'MANUAL_OVERRIDE'
+export type QuoteCommissionOrigin =
+  | 'PRODUCT'
+  | 'PRODUCT_CATEGORY'
+  | 'RECIPIENT'
+  | 'MANUAL_OVERRIDE'
 
 export type QuoteCommissionRecipientType = 'referent' | 'user' | 'registry'
 
@@ -140,6 +144,18 @@ export interface QuoteLineVatRateRef {
 }
 
 /**
+ * The unit of measure congelated on a quote line at write time (spec 0088,
+ * D-5): a snapshot, unlike `product`/`vat_rate` which read live. `null` only
+ * when the backend cannot resolve any unit (should not happen in practice —
+ * every product carries one, D-4).
+ */
+export interface QuoteLineUnitOfMeasureRef {
+  id: number
+  name: string
+  symbol: string
+}
+
+/**
  * A single revenue (`offer_lines`) or cost (`cost_lines`) row, as exposed by
  * `QuoteResource`. Both tabs share the exact same shape (D-11): the
  * discriminant (`line_type`) lives server-side only, never on the wire.
@@ -150,6 +166,13 @@ export interface QuoteLine {
   product: QuoteLineProductRef
   /** decimal(15,2) */
   quantity: string
+  /**
+   * Congelated at write time from the product's own unit (spec 0088, D-5);
+   * a row saved before this field existed falls back server-side to the
+   * product's CURRENT unit (AC-053). Read-only: never part of the write
+   * payload (`QuoteLineInput`), the backend rejects it with 422 if sent.
+   */
+  unit_of_measure: QuoteLineUnitOfMeasureRef | null
   /** decimal(15,2) */
   unit_price: string
   vat_rate_id: number | null

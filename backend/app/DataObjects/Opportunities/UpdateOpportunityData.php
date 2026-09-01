@@ -31,9 +31,7 @@ namespace App\DataObjects\Opportunities;
  * (AC-004), appended at the very end of the constructor for the same
  * ArgumentCountError reason as CreateOpportunityData.
  *
- * Spec 0047: `stateId` (Regione, D1) follows the same `*Submitted`
- * convention as every other plain scalar. Spec 0083, D-2: `workflowStatusId`
- * is REMOVED — the Opportunity carries no working-state override any more,
+ * Spec 0083, D-2: `workflowStatusId` is REMOVED — the Opportunity carries no working-state override any more,
  * the configurator having moved onto the Offerta (-> Quote).
  *
  * Spec 0057, D-5: `name` is REMOVED entirely — it is immutable server-side
@@ -82,8 +80,6 @@ final readonly class UpdateOpportunityData
         public bool $expectedCloseDateSubmitted = false,
         public ?int $successProbability = null,
         public bool $successProbabilitySubmitted = false,
-        public ?int $stateId = null,
-        public bool $stateIdSubmitted = false,
         public ?array $productsOfInterest = null,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
@@ -124,8 +120,6 @@ final readonly class UpdateOpportunityData
             expectedCloseDateSubmitted: array_key_exists('expected_close_date', $data),
             successProbability: self::nullableInt($data, 'success_probability'),
             successProbabilitySubmitted: array_key_exists('success_probability', $data),
-            stateId: self::nullableInt($data, 'state_id'),
-            stateIdSubmitted: array_key_exists('state_id', $data),
             productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
@@ -241,10 +235,6 @@ final readonly class UpdateOpportunityData
 
         if ($this->successProbabilitySubmitted) {
             $attributes['success_probability'] = $this->successProbability;
-        }
-
-        if ($this->stateIdSubmitted) {
-            $attributes['state_id'] = $this->stateId;
         }
 
         if ($this->generalNotesSubmitted) {

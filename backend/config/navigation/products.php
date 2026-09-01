@@ -38,5 +38,12 @@ return [
             'route' => '/vat-rates',
             'permission' => 'vat-rates.view',
         ],
+        [
+            'key' => 'units-of-measure',
+            'label' => 'navigation.unitsOfMeasure',
+            'icon' => 'ruler',
+            'route' => '/units-of-measure',
+            'permission' => 'units-of-measure.view',
+        ],
     ],
 ];

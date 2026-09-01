@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0088-units-of-measure-module" status="draft" owner="nicola" date="2026-09-01">
+
+  <goal>
+    Introdurre il modulo di supporto "Unita di Misura" come lookup centralizzata del
+    catalogo Prodotti, collegarlo al Prodotto con un default garantito, e riportare
+    l'unita di misura sulle righe Offerta/Preventivo accanto alla Quantita senza che
+    modifiche future all'unita del prodotto alterino le offerte gia emesse.
+  </goal>
+
+  <context>
+    Moduli di riferimento verificati nel repo (struttura, componenti e convenzioni da
+    riusare senza introdurre soluzioni parallele):
+      - backend lookup: PaymentMethod (spec 0068) per l'apparato completo, VatRate per
+        la leanness. Il nuovo modulo segue VatRate come ricchezza (niente is_active,
+        niente sort_order, niente reorder) e PaymentMethod per il guard di cancellazione.
+      - frontend lookup: features/payment-methods (18 file, nessun index.ts).
+
+    Fatti verificati che vincolano il disegno:
+      - I permessi CRUD NON hanno un catalogo hardcoded: `permissions:sync` li deriva per
+        riflessione dalle Policy che estendono BasePolicy (8 ability). Creare la Policy
+        e sufficiente.
+      - La riga d'offerta oggi NON denormalizza nulla del prodotto: decisione D-7 della
+        spec 0065, ripetuta in migration/model/Resource/tipi TS. Cio che il gestionale
+        congela sono i soli importi calcolati (net/vat/total_amount, D-10/D-12).
+        `vat_rate_id` e FK viva precompilata al pick, non uno snapshot.
+      - OpportunityProductLine non ha ne prodotto ne quantita (e la coppia
+        business_function_id + product_category_id): non esiste una colonna Quantita
+        nelle Opportunita a cui affiancare l'unita di misura.
+      - products.unit_of_measure_id non esiste: la migration 2026_07_08_100400 conferma
+        che il catalogo prodotti non ha alcun campo unita di misura.
+      - Il guard di cancellazione ha una convenzione universale (23 occorrenze):
+        `abort(409, '...')` dentro il delete() del Service, mai in Policy, mai eccezione
+        custom, piu override di deleteModel() nella TableDefinition per propagarlo al
+        bulk-delete generico.
+
+    Naming: identificatori in INGLESE (CLAUDE.md 2, engineering.md 1.2). Tabella
+    `units_of_measure`, model `UnitOfMeasure`, slug risorsa `units-of-measure`, FK
+    `unit_of_measure_id`. "Unita di Misura" vive solo nelle stringhe i18n.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Campi del modulo: `name`, `symbol`, `description` (come richiesto), piu `code`.
+      `code` e un'AGGIUNTA rispetto alla richiesta, motivata: la migration di Prodotti e
+      ProductService devono poter risolvere la riga di default in modo stabile anche se
+      l'utente rinomina nome o simbolo. Segue il pattern D-3 di PaymentMethod: snake_case,
+      unique, immutabile dopo la create (`prohibited` in update). Riga di default:
+      code `unit`, name "Unita", symbol "pz".
+    </decision>
+    <decision id="D-2">
+      La riga di default "Unita" e creata dalla MIGRATION, non da un seeder: le migration
+      girano prima dei seeder, ed e l'unico modo per garantire che i prodotti gia esistenti
+      vengano associati. Precedente nel repo: 2026_07_29_100000_add_code_to_products_table.php
+      (add nullable -> backfill via query builder -> change() a NOT NULL).
+    </decision>
+    <decision id="D-3">
+      Le unita convenzionali (Kg, Grammi, Litri, Metri, Ore, ...) stanno nel SEED PULITO:
+      nuovo `UnitOfMeasureSeeder` (senza prefisso Demo) chiamato da DatabaseSeeder dopo
+      RolePermissionSeeder. Sono reference data come le localita, non fixture finte: una
+      installazione di produzione deve averle senza lanciare il seeder demo.
+      Si discosta consapevolmente dal precedente di DemoVatRateSeeder/DemoPaymentMethodSeeder.
+      Decisione utente 2026-09-01.
+    </decision>
+    <decision id="D-4">
+      products.unit_of_measure_id e NOT NULL con restrictOnDelete. Non e dichiarato
+      `mandatory` nel catalogo field-permissions (resta restringibile dalla matrice ruoli):
+      quando il campo non arriva nel payload, ProductService risolve la default unit.
+      Cosi il default "Unita" e garantito senza rendere il campo non permissionabile.
+    </decision>
+    <decision id="D-5">
+      EMENDA D-7 della spec 0065 limitatamente all'unita di misura.
+      `quote_lines.unit_of_measure_id` e una colonna NULLABLE congelata alla scrittura
+      della riga: QuoteLineWriter::sync() la popola dal Product con un batch analogo al
+      gia esistente resolveVatRates(). Motivazione: a differenza di nome/codice/categoria
+      (dati descrittivi), l'unita di misura qualifica la QUANTITA gia congelata sulla riga;
+      leggerla viva renderebbe aritmeticamente falsa una riga storica (10 Kg che diventa
+      10 Grammi). Le righe preesistenti restano NULL e in visualizzazione ricadono
+      sull'unita corrente del prodotto. Decisione utente 2026-09-01.
+      PRECISAZIONE (2026-09-01, dopo verifica): il congelamento avviene SOLO alla creazione
+      della riga o quando il prodotto della riga cambia, mai a ogni scrittura. Poiche le righe
+      seguono il full-replace di D-8, popolare il campo a ogni save ri-sincronizzerebbe tutte
+      le righe all'unita corrente del prodotto al primo edit successivo dell'offerta,
+      vanificando la garanzia. Vedi AC-054/AC-055.
+    </decision>
+    <decision id="D-6">
+      Fuori scope il documento Word generato (spec 0070): l'allow-list delle ColumnKey
+      resta invariata. Decisione utente 2026-09-01.
+    </decision>
+    <decision id="D-7">
+      Il guard di cancellazione conta TUTTE le relazioni, non solo i prodotti:
+      products + quote_lines. Nota: VatRateService::delete() e privo di guard e cancellare
+      un'aliquota usata da una riga d'offerta produce oggi un 5xx invece di un 409
+      (quote_lines.vat_rate_id e restrictOnDelete). Difetto PREESISTENTE, segnalato e
+      NON corretto qui: fuori scope.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Modulo units-of-measure completo: migration, model, DTO, FormRequest store/update/for-select, policy, resource, controller, service, TableDefinition + column catalog, authorization (field permissions), route, factory, seeder pulito.</item>
+      <item>Registrazioni: config/tables.php, config/authorization.php, config/activity-log.php, config/navigation/products.php, morphMap in AppServiceProvider, routes/api/lookups.php.</item>
+      <item>Frontend modulo: features/units-of-measure/ (api, for-select-api, types, schema, payload, form, detail, table, screens, column-renderers), rotta lista in router.tsx, breadcrumb, i18n it/en + test di parita.</item>
+      <item>Campo unit_of_measure_id su Prodotti: migration additiva con backfill, model, DTO, request, resource, authorization, form create/edit, vista detail, i18n.</item>
+      <item>Unita di misura congelata sulle righe Offerta e mostrata accanto alla Quantita nel form righe, nella vista read-only (dettaglio Offerta e Contratto) e in Gestione Richieste.</item>
+      <item>Aggiornamento di ASSIGNABLE_RESOURCES in permissions-i18n-parity.test.ts (37 -> 38).</item>
+    </in>
+    <out>
+      <item>Documento Word / document layouts (D-6).</item>
+      <item>Opportunita: OpportunityProductLine non ha quantita, nulla da fare.</item>
+      <item>Correzione del guard mancante di VatRateService (D-7).</item>
+      <item>is_active, sort_order, reorder, quick-create, import legacy (old_id / MigrationSource).</item>
+      <item>Colonna unita di misura nella griglia AG Grid dei Prodotti oltre a quella standard del modulo lookup.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <entity name="units_of_measure">
+      id BIGINT PK
+      code VARCHAR(64) UNIQUE NOT NULL           regex ^[a-z][a-z0-9_]*$, immutabile post-create
+      name VARCHAR(191) UNIQUE NOT NULL
+      symbol VARCHAR(16) UNIQUE NOT NULL
+      description VARCHAR(500) NULL
+      created_at / updated_at
+    </entity>
+
+    <endpoint method="GET" path="/api/units-of-measure/{unitOfMeasure}">
+      <response status="200">{ success, message, data: {id, code, name, symbol, description, created_at, updated_at}, permissions }</response>
+      <errors>403 senza units-of-measure.view; 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/units-of-measure">
+      <request>{ name, symbol, code, description? }</request>
+      <response status="201">{ success, message: 'Created', data: {...}, permissions }</response>
+      <errors>403 senza units-of-measure.create; 422 name/symbol/code duplicati o regex code non valida</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/units-of-measure/{unitOfMeasure}">
+      <request>{ name?, symbol?, description? } - `code` prohibited</request>
+      <response status="200">{ success, message: 'OK', data: {...}, permissions }</response>
+      <errors>403 senza units-of-measure.update; 422 se `code` e presente nel payload</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/units-of-measure/{unitOfMeasure}">
+      <response status="204">nessun body</response>
+      <errors>403 senza units-of-measure.delete; 409 { success:false, message:'This unit of measure is used by a product and cannot be deleted.' } oppure '... used by a quote line and cannot be deleted.'</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/units-of-measure/for-select">
+      <request>search?, offset?, limit? (max 100), ids[]?</request>
+      <response status="200">{ items: [{id, label: name, subtitle: symbol, meta: {symbol}}], export_link, pagination }</response>
+      <errors>401 senza auth; nessun gate di permesso (ADR 0011)</errors>
+    </endpoint>
+
+    <delta entity="products">
+      unit_of_measure_id BIGINT NOT NULL, restrictOnDelete, default risolto server-side su code 'unit'.
+      ProductResource aggiunge: 'unit_of_measure_id' e 'unit_of_measure': {id, name, symbol} | null.
+      StoreProductRequest: ['sometimes','nullable','integer','exists:units_of_measure,id']
+      UpdateProductRequest: ['sometimes','nullable','integer','exists:units_of_measure,id']
+    </delta>
+
+    <delta entity="quote_lines">
+      unit_of_measure_id BIGINT NULL, restrictOnDelete. Popolata da QuoteLineWriter::sync()
+      dal Product; MAI accettata dal client (regola `prohibited` in ValidatesQuoteLines,
+      come net_amount/vat_amount/total_amount).
+      QuoteLineResource aggiunge, top-level accanto a quantity:
+        'unit_of_measure': {id, name, symbol} | null
+      Fallback: se unit_of_measure_id e NULL (riga storica), la Resource proietta
+      l'unita corrente del prodotto.
+    </delta>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">La migration crea units_of_measure con code/name/symbol unique e description nullable; down() e reversibile.</criterion>
+    <criterion id="AC-002">La migration crea la riga di default code='unit', name='Unita', symbol='pz'.</criterion>
+    <criterion id="AC-003">La migration di products aggiunge unit_of_measure_id, associa OGNI prodotto preesistente alla default unit, e lascia la colonna NOT NULL.</criterion>
+    <criterion id="AC-010">POST /api/units-of-measure con name+symbol+code -> 201 e riga persistita.</criterion>
+    <criterion id="AC-011">POST con code gia esistente -> 422; con name gia esistente -> 422; con symbol gia esistente -> 422.</criterion>
+    <criterion id="AC-012">POST con code non conforme a ^[a-z][a-z0-9_]*$ -> 422.</criterion>
+    <criterion id="AC-013">PATCH con `code` nel payload -> 422 anche per super-admin.</criterion>
+    <criterion id="AC-014">DELETE di un'unita non referenziata -> 204 e riga rimossa.</criterion>
+    <criterion id="AC-015">DELETE di un'unita usata da un prodotto -> 409 con message esplicativo, riga NON rimossa.</criterion>
+    <criterion id="AC-016">DELETE di un'unita usata solo da una riga d'offerta -> 409 con message esplicativo, riga NON rimossa.</criterion>
+    <criterion id="AC-017">Il bulk-delete generico della tabella applica lo stesso guard: unita in uso -> non cancellata.</criterion>
+    <criterion id="AC-020">permissions:sync crea esattamente gli 8 permessi units-of-measure.* e nessuno in piu.</criterion>
+    <criterion id="AC-021">403 su show/store/update/destroy senza il rispettivo permesso; for-select 200 anche senza units-of-measure.viewAny.</criterion>
+    <criterion id="AC-022">GET /api/tables/units-of-measure/columns -> 403 senza viewAny, 200 con le colonne name/symbol/code/description/created_at/updated_at.</criterion>
+    <criterion id="AC-023">GET /api/meta/units-of-measure espone i campi [code, name, symbol, description] nell'ordine congelato.</criterion>
+    <criterion id="AC-024">Una riga role_field_permissions che nega `description` rende il campo readonly nel meta e 422 se lo si modifica.</criterion>
+    <criterion id="AC-030">Il modulo compare nel permission-catalogue sotto l'area Prodotti con i suoi 8 permessi e i suoi 4 campi.</criterion>
+    <criterion id="AC-040">POST /api/products senza unit_of_measure_id -> il prodotto creato ha la default unit.</criterion>
+    <criterion id="AC-041">POST /api/products con unit_of_measure_id valorizzato -> il prodotto usa quell'unita.</criterion>
+    <criterion id="AC-042">ProductResource espone unit_of_measure_id e unit_of_measure {id,name,symbol}.</criterion>
+    <criterion id="AC-043">DELETE di un prodotto NON cancella l'unita; DELETE dell'unita usata dal prodotto -> 409 (gia AC-015).</criterion>
+    <criterion id="AC-050">Creando una riga d'offerta, quote_lines.unit_of_measure_id e valorizzata con l'unita del prodotto al momento della scrittura.</criterion>
+    <criterion id="AC-051">Cambiando l'unita del prodotto DOPO il salvataggio, la riga d'offerta gia salvata conserva l'unita originale (AC chiave di D-5).</criterion>
+    <criterion id="AC-052">Un payload che invia unit_of_measure_id dentro una riga d'offerta -> 422 (campo prohibited).</criterion>
+    <criterion id="AC-053">Una riga d'offerta preesistente con unit_of_measure_id NULL espone nella Resource l'unita corrente del prodotto, senza errori.</criterion>
+    <criterion id="AC-054">RISALVANDO l'offerta (full-replace di D-8) con le righe invariate DOPO che l'unita del prodotto e cambiata, la riga conserva l'unita ORIGINALE. Il congelamento avviene alla creazione della riga o al cambio del prodotto della riga, MAI a ogni scrittura: altrimenti il primo edit successivo dell'offerta azzererebbe la garanzia di D-5. Difetto trovato dal verifier il 2026-09-01 e corretto.</criterion>
+    <criterion id="AC-055">Cambiando il PRODOTTO di una riga d'offerta esistente, l'unita di misura si aggiorna a quella del nuovo prodotto (il congelamento non deve essere cosi rigido da conservare l'unita di un prodotto che non e piu sulla riga).</criterion>
+    <criterion id="AC-060">Il form righe Offerta mostra la colonna Unita di misura subito a destra della Quantita, in sola lettura.</criterion>
+    <criterion id="AC-061">La vista read-only delle righe (dettaglio Offerta e dettaglio Contratto) mostra la stessa colonna nella stessa posizione.</criterion>
+    <criterion id="AC-062">Le righe offerta di Gestione Richieste mostrano la colonna (riusano QuoteLinesField).</criterion>
+    <criterion id="AC-070">Il form Prodotto mostra il picker Unita di misura, idratato in edit e rispettoso di MetaField (nascosto se il permesso di campo lo nasconde).</criterion>
+    <criterion id="AC-071">La vista dettaglio Prodotto mostra l'unita di misura.</criterion>
+    <criterion id="AC-080">Il seed pulito (DatabaseSeeder) produce le unita convenzionali; e idempotente su re-run.</criterion>
+    <criterion id="AC-081">Le chiavi i18n it/en del modulo hanno parita esatta e nessuna stringa vuota.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: composer.json e package.json restano invariati.</item>
+    <item>Identificatori in inglese (CLAUDE.md 2). Etichette italiane solo in i18n.</item>
+    <item>Authorization server-side su ogni endpoint via UnitOfMeasurePolicy; nessuna eccezione.</item>
+    <item>Nessun throttle: regola di progetto backend.md 2 (decisione utente 2026-07-15).</item>
+    <item>File entro 300 righe soft / 500 hard; nessuna emoji nel codice (hook code-guard.js blocca).</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint pulito, `cd frontend &amp;&amp; npx tsc -b --force` pulito (mai --noEmit).</item>
+  </constraints>
+
+</spec>
