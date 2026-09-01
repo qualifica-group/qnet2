@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -48,7 +49,7 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['code', 'name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'product_type', 'created_at']);
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -62,6 +63,8 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($columns['code']['filterType'])->toBe('text')
         ->and($columns['description']['sortable'])->toBeFalse()
         ->and($columns['category']['filterType'])->toBe('set')
+        ->and($columns['unit_of_measure']['sortable'])->toBeTrue()
+        ->and($columns['unit_of_measure']['filterType'])->toBe('set')
         ->and($columns['product_type']['type'])->toBe('badge')
         ->and($columns['product_type']['filterType'])->toBe('set');
 });
@@ -218,4 +221,84 @@ it('filter: category set filter narrows the rows via whereHas', function () {
 
     $names = collect($response->json('items'))->pluck('name')->all();
     expect($names)->toBe(['Laptop']);
+});
+
+// ---------------------------------------------------------------------------
+// Derived `unit_of_measure` column (spec 0088): row value, values endpoint,
+// sort and set filter — the same derived treatment as `category`.
+// ---------------------------------------------------------------------------
+
+it('rows expose unit_of_measure{id,name,symbol}, null-safe', function () {
+    $actor = productUserWith(['viewAny']);
+    $unit = UnitOfMeasure::factory()->create(['name' => 'Chilogrammo', 'symbol' => 'kg']);
+    Product::factory()->create(['name' => 'Cemento', 'unit_of_measure_id' => $unit->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/products/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('name', 'Cemento');
+
+    expect($row['unit_of_measure'])->toBe(['id' => $unit->id, 'name' => 'Chilogrammo', 'symbol' => 'kg']);
+});
+
+it('rows: no N+1 on the unitOfMeasure relation', function () {
+    $actor = productUserWith(['viewAny']);
+    Product::factory()->count(5)->create();
+    Sanctum::actingAs($actor);
+
+    Product::preventLazyLoading();
+
+    $this->postJson('/api/tables/products/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+
+    Product::preventLazyLoading(false);
+});
+
+it('values: unit_of_measure → distinct unit names, narrowed by search', function () {
+    $actor = productUserWith(['viewAny']);
+    $kilogram = UnitOfMeasure::factory()->create(['name' => 'Chilogrammo', 'symbol' => 'kg']);
+    $litre = UnitOfMeasure::factory()->create(['name' => 'Litro', 'symbol' => 'l']);
+    Product::factory()->create(['unit_of_measure_id' => $kilogram->id]);
+    Product::factory()->create(['unit_of_measure_id' => $litre->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/products/values', ['columnId' => 'unit_of_measure'])->assertOk();
+    expect($response->json('data.values'))->toEqualCanonicalizing(['Chilogrammo', 'Litro']);
+
+    $narrowed = $this->postJson('/api/tables/products/values', [
+        'columnId' => 'unit_of_measure', 'search' => 'Chilo',
+    ])->assertOk();
+    expect($narrowed->json('data.values'))->toBe(['Chilogrammo']);
+});
+
+it('sort: rows ordered by the derived unit name', function () {
+    $actor = productUserWith(['viewAny']);
+    $zulu = UnitOfMeasure::factory()->create(['name' => 'Zetta']);
+    $alpha = UnitOfMeasure::factory()->create(['name' => 'Ampere']);
+    Product::factory()->create(['name' => 'FromZetta', 'unit_of_measure_id' => $zulu->id]);
+    Product::factory()->create(['name' => 'FromAmpere', 'unit_of_measure_id' => $alpha->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/products/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'sortModel' => [['colId' => 'unit_of_measure', 'sort' => 'asc']],
+    ])->assertOk();
+
+    $names = collect($response->json('items'))->pluck('name')->all();
+    expect($names)->toBe(['FromAmpere', 'FromZetta']);
+});
+
+it('filter: unit_of_measure set filter narrows the rows via whereHas', function () {
+    $actor = productUserWith(['viewAny']);
+    $kilogram = UnitOfMeasure::factory()->create(['name' => 'Chilogrammo']);
+    $litre = UnitOfMeasure::factory()->create(['name' => 'Litro']);
+    Product::factory()->create(['name' => 'Cemento', 'unit_of_measure_id' => $kilogram->id]);
+    Product::factory()->create(['name' => 'Vernice', 'unit_of_measure_id' => $litre->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/products/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['unit_of_measure' => ['filterType' => 'set', 'values' => ['Chilogrammo']]],
+    ])->assertOk();
+
+    $names = collect($response->json('items'))->pluck('name')->all();
+    expect($names)->toBe(['Cemento']);
 });

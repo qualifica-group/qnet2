@@ -69,6 +69,8 @@ export function buildCreatePayload(
     ...(values.parent_id === null
       ? { single_quote_per_opportunity: values.single_quote_per_opportunity }
       : {}),
+    // And once more for the contract rule (spec 0091): root-owned, inherited.
+    ...(values.parent_id === null ? { generates_contract: values.generates_contract } : {}),
     manager_labels: buildManagerLabelsValue(values.manager_labels),
     inherits_manager_labels: values.inherits_manager_labels,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -136,6 +138,11 @@ export function buildUpdatePayload(
     values.single_quote_per_opportunity !== original.single_quote_per_opportunity
   ) {
     payload.single_quote_per_opportunity = values.single_quote_per_opportunity
+  }
+
+  // Same root-only guard for the contract rule (spec 0091).
+  if (values.parent_id === null && values.generates_contract !== original.generates_contract) {
+    payload.generates_contract = values.generates_contract
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

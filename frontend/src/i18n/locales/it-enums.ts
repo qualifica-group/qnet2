@@ -17,6 +17,13 @@ export const enums = {
     en: 'Inglese',
     it: 'Italiano',
   },
+  // Modalità di gestione delle righe Categoria Prodotto su una scheda (spec
+  // 0077). Etichette CORTE: sono la pill della griglia e le voci del Set
+  // Filter, non il select del form (che ne usa una versione esplicativa).
+  category_management_mode: {
+    single: 'Singola',
+    multiple: 'Multipla',
+  },
   personal_data_type: {
     individual: 'Persona fisica',
     company: 'Azienda',

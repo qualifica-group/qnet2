@@ -61,6 +61,9 @@ class StoreProductCategoryRequest extends FormRequest
             // User directive 2026-08-07: same root-only semantics again —
             // omitted = server-resolved (inherited, or false at a fresh root).
             'single_quote_per_opportunity' => ['sometimes', 'boolean'],
+            // Spec 0091: same root-only semantics once more — omitted =
+            // server-resolved (inherited, or true at a fresh root).
+            'generates_contract' => ['sometimes', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

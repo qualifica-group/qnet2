@@ -14,6 +14,7 @@ export const referents = {
     contact_scope: 'Ambito contatto',
     primary_contact: 'Contatto principale',
     created_at: 'Creato il',
+    user: 'Utente collegato',
   },
   detail: {
     title: 'Dettaglio referente',
@@ -37,6 +38,11 @@ export const referents = {
     referentTypeSearch: 'Cerca tipi referente…',
     referentTypeEmpty: 'Nessun tipo referente trovato.',
     referentTypeError: 'Impossibile caricare i tipi referente.',
+    linkedUser: 'Utente collegato',
+    linkedUserPlaceholder: 'Seleziona un utente…',
+    linkedUserSearch: 'Cerca utenti…',
+    linkedUserEmpty: 'Nessun utente trovato.',
+    linkedUserError: 'Impossibile caricare gli utenti.',
     contactScope: 'Ambito contatto',
     activitySectors: 'Settori attività',
     activitySectorsComingSoon: 'Prossimamente',
@@ -58,7 +64,7 @@ export const referents = {
       },
       details: {
         title: 'Dettagli referente',
-        description: 'Tipo, ambito di contatto e note.',
+        description: 'Tipo, utente collegato, ambito di contatto e note.',
       },
       contacts: {
         title: 'Contatti',

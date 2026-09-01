@@ -14,7 +14,8 @@ namespace App\Tables\Products;
  * filter/sort/distinct-values are resolved by ProductsTableDefinition,
  * mirroring BusinessFunctionsTableDefinition's `manager` derived column. No
  * dynamic attribute ever appears here (spec 0017 decision — the products
- * grid shows only generic fields).
+ * grid shows only generic fields). `unit_of_measure` (spec 0088) is derived
+ * the same way as `category`, from the unitOfMeasure() relation.
  */
 final class ProductColumnCatalog
 {
@@ -84,6 +85,18 @@ final class ProductColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // The unit of measure's name, derived from the
+                // unitOfMeasure() relation (spec 0088). Same derived
+                // treatment as `category`: no real column of its own.
+                'id' => 'unit_of_measure',
+                'label' => 'products.columns.unit_of_measure',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // Real DB column rendered as a badge (ProductType), driven by
                 // config/config.php form_enums `product_type`.
                 'id' => 'product_type',
@@ -118,6 +131,7 @@ final class ProductColumnCatalog
             ['columnId' => 'cost', 'type' => 'number'],
             ['columnId' => 'price', 'type' => 'number'],
             ['columnId' => 'category', 'type' => 'set'],
+            ['columnId' => 'unit_of_measure', 'type' => 'set'],
             ['columnId' => 'product_type', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];

@@ -18,6 +18,10 @@ final readonly class CreateReferentData
         public ?int $referentTypeId,
         public string $contactScope,
         public ?string $notes,
+        // Defaulted (unlike the params above): `user_id` is new (spec 0090)
+        // and the ReferentsSource migration importer constructs this DTO
+        // without it — a required param would break that named-args call.
+        public ?int $userId = null,
     ) {}
 
     /**
@@ -31,6 +35,7 @@ final readonly class CreateReferentData
             referentTypeId: isset($data['referent_type_id']) ? (int) $data['referent_type_id'] : null,
             contactScope: (string) $data['contact_scope'],
             notes: $data['notes'] ?? null,
+            userId: isset($data['user_id']) ? (int) $data['user_id'] : null,
         );
     }
 
@@ -47,6 +52,7 @@ final readonly class CreateReferentData
             'referent_type_id' => $this->referentTypeId,
             'contact_scope' => $this->contactScope,
             'notes' => $this->notes,
+            'user_id' => $this->userId,
         ];
     }
 }

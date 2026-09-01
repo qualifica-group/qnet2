@@ -8,7 +8,8 @@ export type QuoteLineVariant = 'revenue' | 'cost'
 export const EMPTY_LINE_ROW: QuoteLineFormValues = {
   product_id: null,
   quantity: null,
-  // Congelated server-side only once the row is saved (spec 0088, D-5).
+  // Filled from the picked product's `meta` as a preview; congelated
+  // server-side on save (spec 0088, D-5).
   unit_of_measure: null,
   unit_price: null,
   vat_rate_id: null,
@@ -38,11 +39,15 @@ interface UseQuoteLinesFieldArgs {
 export function lineValuesFromProduct(
   item: QuoteProductForSelectItem,
   variant: QuoteLineVariant,
-): Pick<QuoteLineFormValues, 'product_id' | 'unit_price' | 'vat_rate_id'> {
+): Pick<QuoteLineFormValues, 'product_id' | 'unit_of_measure' | 'unit_price' | 'vat_rate_id'> {
   const priceSource = variant === 'revenue' ? item.meta.price : item.meta.cost
 
   return {
     product_id: item.id,
+    // Display-only preview of what the save will congelate on the line
+    // (spec 0088, D-5): without it the row's unit column stays "—" for the
+    // whole create/edit, even though the product always carries a unit.
+    unit_of_measure: item.meta.unit_of_measure,
     unit_price: priceSource !== null ? Number(priceSource) : null,
     vat_rate_id: item.meta.vat_rate_id,
   }
@@ -62,7 +67,7 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     onChange(value.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)))
 
   /**
-   * Precompiles `unit_price`/`vat_rate_id` from the picked product's `meta`
+   * Precompiles `unit_price`/`vat_rate_id`/`unit_of_measure` from the picked product's `meta`
    * (AC-074, D-6); clearing the product only clears its own id, leaving
    * quantity/price/rate exactly as the user left them.
    */
@@ -73,7 +78,7 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
     commissions?: QuoteLineFormValues['commissions'],
   ) => {
     if (productId === null || !item) {
-      setField(index, { product_id: null })
+      setField(index, { product_id: null, unit_of_measure: null })
       return
     }
 

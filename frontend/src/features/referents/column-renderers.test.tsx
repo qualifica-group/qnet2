@@ -46,6 +46,18 @@ describe('referentColumnRenderers.contact_scope', () => {
   })
 })
 
+describe('referentColumnRenderers.user', () => {
+  it('renders the linked user name', () => {
+    renderCell('user', 'Mario Rossi')
+    expect(screen.getByText('Mario Rossi')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when the referent has no linked user', () => {
+    renderCell('user', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
 describe('referentColumnRenderers.primary_contact', () => {
   it('reuses the shared ContactsCell: a count badge for the primary contacts', () => {
     renderCell('primary_contact', [

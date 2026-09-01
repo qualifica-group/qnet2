@@ -3,15 +3,17 @@ import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
 
 /**
  * The `meta` block additive to `GET /products/for-select` (spec 0065 D-1/
- * AC-009): `code`/`price`/`cost`/`vat_rate_id`/`vat_rate_name`/`vat_rate`.
+ * AC-009): `code`/`price`/`cost`/`vat_rate_id`/`vat_rate_name`/`vat_rate`/
+ * `unit_of_measure`.
  * Typed HERE (not in `features/products/for-select-api.ts`, out of this
  * module's write surface) the same way `ProjectForSelectItem`/
  * `OperationalSiteForSelectItem` extend the base `ForSelectItem` for their
  * own single consumer. This is what lets a quote line precompile
- * `unit_price`/`vat_rate_id` on pick (AC-074).
+ * `unit_price`/`vat_rate_id` and show the unit on pick (AC-074).
  */
 export interface QuoteProductForSelectMeta {
   code: string
@@ -20,6 +22,8 @@ export interface QuoteProductForSelectMeta {
   vat_rate_id: number | null
   vat_rate_name: string | null
   vat_rate: string | null
+  /** Spec 0088: the product's own unit, shown on the row before the save congelates the line's own. */
+  unit_of_measure: QuoteLineUnitOfMeasureRef | null
 }
 
 export interface QuoteProductForSelectItem extends ForSelectItem {

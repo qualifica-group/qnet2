@@ -13,10 +13,11 @@ import {
   buildCommissionConfigurationSchema,
   type CommissionConfigurationFormValues,
 } from './commission-configuration-schema'
-import type {
-  CommissionConfigurationDetail,
-  CommissionConfigurationFormMode,
-  CommissionConfigurationPayload,
+import {
+  COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES,
+  type CommissionConfigurationDetail,
+  type CommissionConfigurationFormMode,
+  type CommissionConfigurationPayload,
 } from './types'
 
 interface Args {
@@ -30,7 +31,9 @@ function payload(values: CommissionConfigurationFormValues): CommissionConfigura
     product_category_id:
       values.application_scope === 'PRODUCT_CATEGORY' ? values.product_category_id : null,
     product_id: values.application_scope === 'PRODUCT' ? values.product_id : null,
-    // recipient_id is orthogonal to application_scope (D-2): sent as-is, whichever scope is active.
+    // recipient_type/recipient_id are orthogonal to application_scope (D-2):
+    // sent as-is, whichever scope is active.
+    recipient_type: values.recipient_type,
     recipient_id: values.recipient_id,
     valid_until: values.valid_until || null,
     internal_note: values.internal_note || null,
@@ -52,6 +55,11 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
             application_scope: mode.configuration.application_scope,
             product_category_id: mode.configuration.product_category_id,
             product_id: mode.configuration.product_id,
+            // Omitted when not visible for field permission: falls back to
+            // the role's default (server-side derivation, spec 0090 D-4).
+            recipient_type:
+              mode.configuration.recipient_type ??
+              COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[mode.configuration.recipient_role][0],
             recipient_id: mode.configuration.recipient_id ?? null,
             commission_type: mode.configuration.commission_type,
             value: Number(mode.configuration.value),
@@ -67,6 +75,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
             application_scope: 'PRODUCT_CATEGORY',
             product_category_id: null,
             product_id: null,
+            recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES.COMMERCIAL[0],
             recipient_id: null,
             commission_type: 'PERCENTAGE',
             value: 0,
@@ -102,6 +111,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
           'application_scope',
           'product_category_id',
           'product_id',
+          'recipient_type',
           'recipient_id',
           'commission_type',
           'value',

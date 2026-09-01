@@ -40,6 +40,8 @@ class ReferentsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('referent_type_id', 'select'),
             new FieldDefinition('contact_scope', 'select', mandatory: true),
             new FieldDefinition('notes', 'text'),
+            // Spec 0090, D-2: the referent-user link, 4th native key.
+            new FieldDefinition('user_id', 'select'),
             new FieldDefinition('personal_data.type', 'select', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.first_name', 'text', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.last_name', 'text', 'personal_data', mandatory: true),
@@ -75,6 +77,7 @@ class ReferentsAuthorization extends AbstractResourceAuthorization
             'referent_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'contact_scope' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'user_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ], $this->personalDataFieldPermissions($mayWrite));
     }
 

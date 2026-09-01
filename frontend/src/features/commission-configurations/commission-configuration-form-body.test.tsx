@@ -113,24 +113,55 @@ describe('CommissionConfigurationFormBody', () => {
     expect(screen.getByText('€')).toBeInTheDocument()
   })
 
-  it('swaps the recipient picker resource and clears the previous pick when the role changes (AC-016)', () => {
+  it('keeps a still-admitted recipient type/pick across a role change, resetting only when it is no longer admitted (AC-019, supersedes 0089 AC-016)', () => {
     render(wrapper(
       <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
     ))
+    // Default role COMMERCIAL -> default type 'referent' (first of its allow-list).
     expect(screen.getByText('Recipient: referents: null')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'pick recipient_id' }))
     expect(screen.getByText('Recipient: referents: 99')).toBeInTheDocument()
 
+    // REPORTER also admits 'referent' (D-4): the pick survives untouched.
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Reporter' }))
+    expect(screen.getByText('Recipient: referents: 99')).toBeInTheDocument()
+
+    // SUPERVISOR admits {user, referent} too (D-9): still no reset.
     fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
     fireEvent.click(screen.getByRole('option', { name: 'Supervisor' }))
+    expect(screen.getByText('Recipient: referents: 99')).toBeInTheDocument()
+
+    // SUPPLIER admits only 'registry': 'referent' is no longer admitted -> reset.
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'Supplier' }))
+    expect(screen.getByText('Recipient: registries: null')).toBeInTheDocument()
+  })
+
+  it('changing the recipient type swaps the picker resource and clears the previous pick (spec 0090 D-4)', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+    fireEvent.click(screen.getByRole('button', { name: 'pick recipient_id' }))
+    expect(screen.getByText('Recipient: referents: 99')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient type/ }))
+    fireEvent.click(screen.getByRole('option', { name: 'User' }))
 
     expect(screen.getByText('Recipient: users: null')).toBeInTheDocument()
+  })
+
+  it('hides the recipient type selector for SUPPLIER, which admits a single type (spec 0090)', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+    expect(screen.getByRole('combobox', { name: /^Recipient type/ })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
     fireEvent.click(screen.getByRole('option', { name: 'Supplier' }))
 
-    expect(screen.getByText('Recipient: registries: null')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /^Recipient type/ })).not.toBeInTheDocument()
   })
 
   it('shows only the recipient picker for the RECIPIENT scope, hiding product and category', () => {

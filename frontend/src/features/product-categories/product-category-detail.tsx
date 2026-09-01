@@ -163,6 +163,16 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
             />
           </DetailField>
 
+          <DetailField label={t('productCategories.form.generatesContract')}>
+            <RuleValue
+              value={category.generates_contract ? t('common.yes') : t('common.no')}
+              inheritedFrom={category.generates_contract_source_category?.name}
+              inheritedLabel={t('productCategories.detail.generatesContractInherited', {
+                category: category.generates_contract_source_category?.name ?? '',
+              })}
+            />
+          </DetailField>
+
           <DetailField label={t('productCategories.form.isSelectable')}>
             {/* Per-node and never inherited (spec 0074): no source chip. */}
             <RuleValue value={category.is_selectable ? t('common.yes') : t('common.no')} />

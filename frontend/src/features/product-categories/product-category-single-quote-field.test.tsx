@@ -95,6 +95,7 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCate
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     ...overrides,
   }
 }
@@ -122,7 +123,9 @@ function category(
     management_mode: 'multiple',
     management_mode_source_category: null,
     single_quote_per_opportunity: false,
+    generates_contract: true,
     single_quote_per_opportunity_source_category: null,
+    generates_contract_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -155,12 +158,14 @@ describe('resolveInheritedSingleQuoteFlag', () => {
       id: 1,
       name: 'Electronics',
       single_quote_per_opportunity: true,
+      generates_contract: true,
       children: [
         treeNode({
           id: 2,
           name: 'Wiring',
           parent_id: 1,
           single_quote_per_opportunity: true,
+          generates_contract: true,
           children: [
             treeNode({ id: 3, name: 'Sockets', parent_id: 2, single_quote_per_opportunity: true }),
           ],
@@ -228,6 +233,7 @@ describe('ProductCategoryForm — single_quote_per_opportunity field', () => {
         id: 1,
         name: 'Electronics',
         single_quote_per_opportunity: true,
+        generates_contract: true,
         children: [
           treeNode({ id: 4, name: 'Laptops', parent_id: 1, single_quote_per_opportunity: true }),
         ],
@@ -242,7 +248,9 @@ describe('ProductCategoryForm — single_quote_per_opportunity field', () => {
             parent_id: 1,
             parent: { id: 1, name: 'Electronics' },
             single_quote_per_opportunity: true,
+            generates_contract: true,
             single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
+            generates_contract_source_category: { id: 1, name: 'Electronics' },
           }),
         }}
         onSuccess={vi.fn()}

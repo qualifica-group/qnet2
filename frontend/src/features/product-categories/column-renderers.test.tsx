@@ -32,7 +32,14 @@ describe('productCategoryColumnRenderers.parent', () => {
 })
 
 describe('productCategoryColumnRenderers boolean columns', () => {
-  it.each(['requires_quote', 'is_selectable'])('renders %s as a yes/no badge', (columnId) => {
+  // Spec 0091: the two root-owned booleans join the pair — `generates_contract`
+  // is a visible column, `single_quote_per_opportunity` had a renderer gap.
+  it.each([
+    'requires_quote',
+    'is_selectable',
+    'single_quote_per_opportunity',
+    'generates_contract',
+  ])('renders %s as a yes/no badge', (columnId) => {
     const { unmount } = renderCell(columnId, true, {})
     expect(screen.getByText('Yes')).toBeInTheDocument()
     unmount()

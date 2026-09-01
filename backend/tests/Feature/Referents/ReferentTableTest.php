@@ -36,7 +36,7 @@ if (! function_exists('referentUserWith')) {
 // AC-015 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 6 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 7 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = referentUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/referents/columns')->assertForbidden();
@@ -55,7 +55,9 @@ it('returns the 6 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'referent_type', 'contact_scope', 'primary_contact', 'created_at']);
+    // Spec 0090, D-3: `user` is APPENDED after `created_at` (not inserted
+    // earlier), so already-saved column layouts keep the same order.
+    expect($ids)->toBe(['id', 'name', 'referent_type', 'contact_scope', 'primary_contact', 'created_at', 'user']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['filterType'])->toBe('text')
@@ -66,7 +68,10 @@ it('returns the 6 columns in order with the declared flags, 403 without viewAny'
         ->and($columns['primary_contact']['sortable'])->toBeTrue()
         ->and($columns['primary_contact']['filterable'])->toBeTrue()
         ->and($columns['primary_contact']['filterType'])->toBe('text')
-        ->and($columns['created_at']['filterType'])->toBe('date');
+        ->and($columns['created_at']['filterType'])->toBe('date')
+        ->and($columns['user']['sortable'])->toBeTrue()
+        ->and($columns['user']['filterable'])->toBeTrue()
+        ->and($columns['user']['filterType'])->toBe('set');
 });
 
 it('hides action keys the user has no permission for', function () {

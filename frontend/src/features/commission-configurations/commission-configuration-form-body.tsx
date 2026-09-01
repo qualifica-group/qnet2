@@ -14,13 +14,15 @@ import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categ
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { CommissionConfigurationRecipientField } from './commission-configuration-recipient-field'
 import { useCommissionConfigurationForm } from './use-commission-configuration-form'
-import type {
-  CommissionConfigurationDetail,
-  CommissionConfigurationFormMode,
-  CommissionRole,
-  CommissionScope,
-  CommissionStatus,
-  CommissionType,
+import {
+  COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES,
+  type CommissionConfigurationDetail,
+  type CommissionConfigurationFormMode,
+  type CommissionRecipientType,
+  type CommissionRole,
+  type CommissionScope,
+  type CommissionStatus,
+  type CommissionType,
 } from './types'
 
 interface Props {
@@ -42,7 +44,11 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
   const { form, serverError, onSubmit } = useCommissionConfigurationForm({ mode, onSuccess })
   const scope = useWatch({ control: form.control, name: 'application_scope' })
   const role = useWatch({ control: form.control, name: 'recipient_role' })
+  const recipientType = useWatch({ control: form.control, name: 'recipient_type' })
   const commissionType = useWatch({ control: form.control, name: 'commission_type' })
+  // The role's admitted recipient identities (spec 0090 D-4): a single entry
+  // (SUPPLIER -> registry) hides the type selector entirely (nothing to choose).
+  const allowedRecipientTypes = COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role]
   const relationLabels = {
     placeholder: t('commissionConfigurations.form.selectPlaceholder'),
     emptyLabel: t('commissionConfigurations.form.selectEmpty'),
@@ -71,12 +77,17 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
     fieldPermission('valid_until').visible ||
     fieldPermission('status').visible
 
-  const selectField = <T extends CommissionRole | CommissionScope | CommissionType | CommissionStatus>(
-    name: 'recipient_role' | 'application_scope' | 'commission_type' | 'status',
+  const selectField = <
+    T extends CommissionRole | CommissionScope | CommissionType | CommissionStatus | CommissionRecipientType,
+  >(
+    name: 'recipient_role' | 'application_scope' | 'commission_type' | 'status' | 'recipient_type',
     options: readonly T[],
     onChangeExtra?: (next: T) => void,
+    // The "recipient type" selector is part of the destinatario field group:
+    // it follows `recipient_id`'s own field permission, not a separate key.
+    metaKeyOverride?: string,
   ) => (
-    <MetaField control={form.control} name={name} metaKey={name} label={t(`commissionConfigurations.form.${name}`)}>
+    <MetaField control={form.control} name={name} metaKey={metaKeyOverride ?? name} label={t(`commissionConfigurations.form.${name}`)}>
       {({ field, disabled }) => (
         <Select
           value={field.value}
@@ -110,16 +121,32 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
                   {({ field, disabled, readOnly }) => <FormControl><Input {...field} disabled={disabled} readOnly={readOnly} /></FormControl>}
                 </MetaField>
               </div>
-              {selectField('recipient_role', OPTIONS.recipient_role, () =>
-                form.setValue('recipient_id', null, { shouldDirty: true, shouldValidate: true }),
-              )}
+              {selectField('recipient_role', OPTIONS.recipient_role, (nextRole) => {
+                // AC-019: reset the destinatario ONLY when the current type is
+                // no longer admitted by the new role — otherwise a still-valid
+                // pick (e.g. a referent kept across COMMERCIAL -> SUPERVISOR,
+                // spec 0090 D-9) survives the role change untouched.
+                const allowedForNextRole = COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[nextRole]
+                if (!allowedForNextRole.includes(form.getValues('recipient_type'))) {
+                  form.setValue('recipient_type', allowedForNextRole[0], { shouldDirty: true, shouldValidate: true })
+                  form.setValue('recipient_id', null, { shouldDirty: true, shouldValidate: true })
+                }
+              })}
               {selectField('application_scope', OPTIONS.application_scope)}
               {scope === 'RECIPIENT' ? null : scope === 'PRODUCT_CATEGORY' ? (
                 <RelationSelectField control={form.control} name="product_category_id" metaKey="product_category_id" label={t('commissionConfigurations.form.product_category_id')} resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchCategory')} selected={selectedCategory} {...relationLabels} />
               ) : (
                 <RelationSelectField control={form.control} name="product_id" metaKey="product_id" label={t('commissionConfigurations.form.product_id')} resource={PRODUCTS_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchProduct')} selected={selectedProduct} {...relationLabels} />
               )}
-              <CommissionConfigurationRecipientField control={form.control} role={role} selected={selectedRecipient} labels={relationLabels} />
+              {allowedRecipientTypes.length > 1
+                ? selectField(
+                    'recipient_type',
+                    allowedRecipientTypes,
+                    () => form.setValue('recipient_id', null, { shouldDirty: true, shouldValidate: true }),
+                    'recipient_id',
+                  )
+                : null}
+              <CommissionConfigurationRecipientField control={form.control} type={recipientType} selected={selectedRecipient} labels={relationLabels} />
             </div>
           </FormSection> : null}
 

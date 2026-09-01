@@ -21,6 +21,7 @@ describe('buildCreatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -53,6 +54,7 @@ describe('buildCreatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -75,6 +77,7 @@ describe('buildCreatePayload', () => {
       is_selectable: true,
       management_mode: 'single',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -97,6 +100,7 @@ describe('buildCreatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: true,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -105,6 +109,7 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values)).not.toHaveProperty('single_quote_per_opportunity')
     expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({
       single_quote_per_opportunity: true,
+      generates_contract: true,
     })
   })
 })

@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0090 — Legame referente-utente e destinatario duale sulle regole di commissione.
+  Contract-first: le shape sotto sono CONGELATE prima del dispatch dei teammate.
+  EMENDA la spec 0089: D-7 (recipient_type derivato) e D-9 (guardia sul cambio ruolo).
+-->
+<spec id="0090-referent-user-link-and-dual-recipient" status="draft" owner="utente" date="2026-09-01">
+
+  <goal>
+    Il destinatario di una regola di commissione puo' essere un REFERENTE oppure un UTENTE, a
+    scelta, per i tre ruoli persona. Perche' le due identita' combacino quando la regola viene
+    applicata, `referents` guadagna un legame opzionale verso `users`: se sull'Offerta il
+    Commerciale e' il referente collegato all'utente X, una regola intestata a X si applica lo
+    stesso. Il Fornitore resta un'anagrafica.
+  </goal>
+
+  <context>
+    Nomi reali verificati (NON ipotizzare, riusare esatti).
+
+    PERCHE' SERVE — verificato: `referents` NON ha oggi nessuna colonna verso `users`
+    (`2026_07_07_100100_create_referents_table.php`: id, old_id unique, name index,
+    referent_type_id nullOnDelete, contact_scope default 'internal', notes, timestamps; nessuna
+    migrazione ALTER successiva). Referente e utente sono entita' scollegate: non esiste modo di
+    sapere che il referente "Mario Rossi" e l'utente "Mario Rossi" sono la stessa persona.
+    Da qui la richiesta: il legame va DICHIARATO da un operatore, non e' deducibile dai dati.
+
+    STATO DOPO LA SPEC 0089 (commit 9f22d1a, presente SOLO sul branch `feat/new-flow`, NON in `main`):
+    - `commission_configurations` ha `recipient_type` (alias morph) + `recipient_id`, e
+      `application_scope` vale PRODUCT | PRODUCT_CATEGORY | RECIPIENT.
+    - `CommissionRuleResolver::resolveRole()` ha 5 gradini: destinatario+PRODUCT ->
+      destinatario+PRODUCT_CATEGORY -> destinatario+RECIPIENT -> ruolo+PRODUCT ->
+      ruolo+PRODUCT_CATEGORY. I gradini di ruolo filtrano `whereNull('recipient_type')`
+      (`firstMatch()`): e' l'invariante piu' fragile del modulo, non va rotta.
+    - `CommissionRecipientRole::recipientType()` mappa il ruolo al SUO tipo naturale
+      (COMMERCIAL/REPORTER -> referent, SUPERVISOR -> user, SUPPLIER -> registry).
+    - `CommissionOrigin::Recipient` marca le commissioni nate dai gradini 1-3.
+
+    DESTINATARIO SULL'OFFERTA (invariato, decisione utente 2026-07-30) —
+    `CommissionRecipientResolver::resolve()`: COMMERCIAL -> `quotes.commercial_id` (referent),
+    REPORTER -> `quotes.reporter_id` (referent), SUPERVISOR -> `quotes.supervisor_id` (user),
+    SUPPLIER -> `products.supplier_id` (registry). Il destinatario NON si sceglie nel popup.
+
+    MODULO REFERENTI — Model `App\Models\Referent`: fillable via ATTRIBUTO
+    `#[Fillable(['name','referent_type_id','contact_scope','notes'])]` (:26), NON proprieta';
+    casts `contact_scope` enum + `old_id` integer; trait `HasPersonalData`, `LogsModelActivity`.
+    Stack: `ReferentController` (show/store/update/destroy), `StoreReferentRequest` (168 righe) /
+    `UpdateReferentRequest` (113) con trait `EnforcesFieldPermissions`, `ValidatesPhoneUniqueness`,
+    `ValidatesUserProfile`; DTO `CreateReferentData`/`UpdateReferentData` (quest'ultimo con i flag
+    `*Submitted` per distinguere "non inviato" da "null"); `ReferentResource` (41 righe, chiavi:
+    id, name, referent_type_id, referent_type{id,name}|null, contact_scope, notes, personal_data,
+    created_at); `ReferentService` (216 righe) con `ReferentProfileWriter`.
+    Field permission: `App\Authorization\ReferentsAuthorization`, registrata in
+    `config/authorization.php:71`; `fields()` dichiara 3 chiavi native
+    (`referent_type_id`, `contact_scope`, `notes`) + 13 sotto il group `personal_data`;
+    `fieldPermissionCeiling()` mappa esplicitamente le 3 native.
+    Griglia: `ReferentsTableDefinition` (331 righe) registrata in `config/tables.php:74`;
+    catalogo `Referents\ReferentColumnCatalog` con 5 colonne in ordine: name, referent_type,
+    contact_scope, primary_contact, created_at.
+
+    PRECEDENTI DA IMITARE (non inventare pattern nuovi):
+    - FK utente unica: `2026_07_04_110000_create_employment_profiles_table.php:21` ->
+      `$table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();`
+    - Colonna di griglia che mostra `users.name` con filtro `set`: colonna
+      `Tables\BusinessFunctions\BusinessFunctionColumnCatalog.php:63`, filtro
+      `BusinessFunctionsTableDefinition.php:206` -> `filterByRelatedName()` :221, sort :259-268,
+      distinct :286 -> `distinctManagerNames()` :296 su `DB::table('users')`.
+    - Campo relazione nel form referente: `referent-form-details-tab.tsx:46`
+      (`RelationSelectField` + `REFERENT_TYPES_FOR_SELECT_RESOURCE`). Il picker utente usa
+      `USERS_FOR_SELECT_RESOURCE`, gia' esistente.
+
+    FRONTEND REFERENTI — `frontend/src/features/referents/**` (28 file, 3271 righe):
+    `use-referent-form.ts` 271, `referent-form-body.tsx` 217, `referents-table.tsx` 143,
+    `referent-detail.tsx` 115, `referent-form-details-tab.tsx` 101, `types.ts` 87,
+    `referent-form-payload.ts` 81, `column-renderers.tsx` 71, `referent-schema.ts` 48,
+    `api.ts` 55. Il form ha 2 macro-tab: "account" e "contactInfo"; il campo nuovo va nella
+    sezione `referents.form.sections.details` del tab account, accanto a `referent_type_id`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonna `referents.user_id` nullable unique verso `users`, con campo nel form referente, colonna in griglia e field permission.</item>
+      <item>`recipient_type` diventa un input SCELTO (non piu' derivato) sulle regole di commissione, entro una allow-list per ruolo.</item>
+      <item>Risoluzione per INSIEME DI IDENTITA': referente e utente collegati valgono l'uno per l'altro.</item>
+      <item>Revisione della guardia D-9 di 0089 sul cambio di ruolo, ora che piu' tipi sono ammessi per lo stesso ruolo.</item>
+    </in>
+    <out>
+      <item>Qualunque modifica allo schema di `quotes` o `quote_line_commissions`.</item>
+      <item>Rendere selezionabile il destinatario nel popup commissioni dell'Offerta: resta bloccato.</item>
+      <item>Un utente come Commerciale/Segnalatore SULL'OFFERTA: quegli slot restano referenti.</item>
+      <item>Il Fornitore: resta anagrafica, non diventa ne' referente ne' utente.</item>
+      <item>Popolamento automatico del legame referente-utente (per nome, per email o altro): il legame si dichiara a mano.</item>
+      <item>Modifica del legame dalla scheda Utente: si gestisce solo dalla scheda Referente.</item>
+      <item>Ricalcolo retroattivo delle commissioni gia' persistite.</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <d id="D-1">`referents.user_id` unsignedBigInteger nullable, UNIQUE, FK verso `users` con
+      `nullOnDelete()`. Unique = un utente corrisponde ad al massimo UN referente, cosi' la
+      corrispondenza e' sempre non ambigua nei due sensi. `nullOnDelete` e non `cascadeOnDelete`:
+      cancellare un utente non deve cancellare il referente, che e' un'anagrafica a se'
+      (il precedente di `employment_profiles` usa cascade perche' li' il profilo NON esiste senza
+      l'utente; qui e' il contrario).</d>
+
+    <d id="D-2">Il legame si dichiara SOLO dalla scheda Referente: campo `user_id` "Utente
+      collegato" nella sezione `details` del tab account, accanto a `referent_type_id`, con lo
+      stesso `RelationSelectField` su `USERS_FOR_SELECT_RESOURCE`. Aggiunto a
+      `Referent::#[Fillable]`, a `ReferentsAuthorization::fields()` (4a chiave nativa) e al
+      `fieldPermissionCeiling()`. Nessun campo speculare sulla scheda Utente.</d>
+
+    <d id="D-3">Colonna di griglia `user` sui referenti, APPESA IN FONDO al catalogo (dopo
+      `created_at`): inserirla in mezzo sposta i layout colonna gia' salvati dagli utenti.
+      Filtro `set` sui nomi utente, ordinabile, valori distinti su `DB::table('users')`
+      ricalcando `BusinessFunctionsTableDefinition::distinctManagerNames()`.</d>
+
+    <d id="D-4">EMENDA 0089 D-7. `recipient_type` diventa un campo ACCETTATO dal payload, validato
+      contro una allow-list per ruolo:
+      COMMERCIAL -> {referent, user} · REPORTER -> {referent, user} ·
+      SUPERVISOR -> {user, referent} · SUPPLIER -> {registry}.
+      Se OMESSO, resta derivato dal ruolo via `CommissionRecipientRole::recipientType()`, come
+      oggi: cosi' le regole esistenti e i client che non lo inviano continuano a funzionare
+      identici. Un tipo fuori allow-list e' 422. La allow-list vive in UN SOLO posto, un metodo
+      nuovo dell'enum `CommissionRecipientRole::allowedRecipientTypes(): array`, e
+      `recipientType()` resta il default (primo elemento della lista).</d>
+
+    <d id="D-5">RISOLUZIONE PER INSIEME DI IDENTITA'. Per ogni ruolo si costruisce l'insieme delle
+      identita' della persona effettivamente sull'Offerta:
+      - destinatario referente #N -> aggiungi `user #referents.user_id` se valorizzato;
+      - destinatario utente #N -> aggiungi il referente il cui `user_id` = N (unico per D-1);
+      - destinatario anagrafica -> nessuna controparte.
+      Una regola intestata a QUALUNQUE identita' dell'insieme si applica. Le identita' denotano la
+      stessa persona, quindi NON c'e' preferenza fra diretta e collegata: a parita' di gradino
+      decide il tie-break gia' esistente (priority DESC, valid_from DESC, id DESC).</d>
+
+    <d id="D-6">La query resta UNA per gradino: il filtro sul destinatario diventa un gruppo OR
+      sulle coppie (recipient_type, recipient_id) dell'insieme, non una query per identita'.
+      Il conteggio query per ruolo resta 5, come misurato dal test di R-1 della spec 0089.
+      Niente `whereRaw`/`orderByRaw`: solo clausole costruite da valori interni (alias morph e id),
+      mai da input grezzo.</d>
+
+    <d id="D-7">L'insieme di identita' e' responsabilita' di un servizio NUOVO e dedicato,
+      `App\Services\Commissions\CommissionRecipientIdentities`. NON va messo dentro
+      `CommissionRecipientResolver`, che risponde a una domanda diversa (CHI puo' ricevere una
+      commissione su questa Offerta) e la cui semantica non deve cambiare.</d>
+
+    <d id="D-8">INVARIANTE DI PERSISTENZA. Lo scatto salvato su `quote_line_commissions` continua a
+      puntare alla persona REALE dell'Offerta (il destinatario primario), MAI al bersaglio della
+      regola che ha vinto. La regola sceglie solo tipo, valore e nota. Se una regola intestata
+      all'utente X vince per un referente collegato, la commissione resta intestata al REFERENTE.</d>
+
+    <d id="D-9">EMENDA 0089 D-9. La guardia sul cambio di `recipient_role` non si basa piu' sul
+      confronto col tipo naturale del nuovo ruolo, ma sulla allow-list di D-4: si respinge con
+      422 `commission_configurations.recipient_role_changed` SOLO se il `recipient_type`
+      persistito non e' ammesso dal nuovo ruolo e il payload non rimanda `recipient_id`.
+      Cambiare da COMMERCIAL a SUPERVISOR tenendo un destinatario `referent` diventa quindi
+      lecito, perche' entrambi ammettono `referent`.</d>
+
+    <d id="D-10">Un utente gia' collegato a un altro referente non e' riassegnabile in silenzio:
+      la unique di D-1 va anticipata da una regola di validazione che risponde 422 con
+      `referents.user_already_linked` nominando il referente che lo occupa. Il vincolo DB resta
+      come rete di sicurezza, non come messaggio d'errore all'utente.</d>
+
+    <d id="D-11">Nessun backfill, nessun popolamento automatico del legame. Finche' `user_id` e'
+      nullo ovunque, la risoluzione si comporta ESATTAMENTE come oggi: l'insieme di identita'
+      degenera al solo destinatario primario. E' anche la strategia di rilascio: la feature si
+      accende referente per referente, man mano che qualcuno dichiara i legami.</d>
+  </decisions>
+
+  <invariants>
+    <i id="INV-1">Lo scatto persistito e' intestato alla persona sull'Offerta, mai al bersaglio della regola (D-8).</i>
+    <i id="INV-2">Una regola intestata a un'identita' non si applica MAI a una persona diversa: il collegamento vale solo fra referente e utente esplicitamente legati.</i>
+    <i id="INV-3">I gradini di ruolo continuano a filtrare `whereNull('recipient_type')` (invariante di 0089, R-2).</i>
+    <i id="INV-4">Il ruolo SUPPLIER accetta solo destinatari `registry`, prima e dopo questa spec.</i>
+    <i id="INV-5">Con `referents.user_id` tutto nullo, ogni risoluzione produce lo stesso risultato di prima della spec (D-11).</i>
+  </invariants>
+
+  <data_contract>
+    <endpoint method="POST|PUT|PATCH" path="/api/referents[/{referent}]">
+      <request><![CDATA[
+        "user_id": int | null    // nuovo, opzionale
+      ]]></request>
+      <response status="200|201"><![CDATA[
+        "user_id": int | null,
+        "user": { "id": int, "name": string } | null
+        // omessi entrambi se `user_id` non e' visibile per field permission
+      ]]></response>
+      <errors>
+        422 `referents.user_already_linked` se l'utente e' gia' legato a un altro referente (D-10);
+        422 se l'utente non esiste;
+        403 senza l'ability di risorsa; 422 con l'ability ma senza field permission EDITABILE.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/commission-configurations[/{commissionConfiguration}]">
+      <request><![CDATA[
+        "recipient_type": "referent" | "user" | "registry" | null,   // ORA ACCETTATO (emenda 0089 D-7)
+        "recipient_id": int | null
+        // omesso -> derivato dal ruolo, comportamento identico a oggi
+      ]]></request>
+      <errors>
+        422 se `recipient_type` non e' nella allow-list del ruolo (D-4);
+        422 `commission_configurations.recipient_role_changed` solo nel caso ristretto di D-9.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/referents">
+      <response status="200"><![CDATA[
+        // nuovo descrittore: { "key": "user_id", "type": "select", "group": <stesso di referent_type_id>, "mandatory": false }
+      ]]></response>
+    </endpoint>
+
+    <table id="referents">
+      <column id="user" appended="true">
+        label `referents.columns.user`, type text, visible true, sortable true, filterable true,
+        filterType `set`. Valore: nome dell'utente collegato, `null` se non c'e'.
+        Modello esatto: la colonna `manager` di BusinessFunctions (filtro, sort, distinct).
+      </column>
+    </table>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">Un operatore autorizzato collega un utente a un referente dalla scheda referente, e il legame si rilegge in GET.</ac>
+    <ac id="AC-002">Collegare un utente gia' legato a un altro referente -> 422 `referents.user_already_linked`, e il messaggio nomina il referente che lo occupa.</ac>
+    <ac id="AC-003">`user_id: null` scollega, senza toccare nient'altro del referente.</ac>
+    <ac id="AC-004">Cancellare l'utente collegato lascia il referente in piedi con `user_id` a null (D-1, nullOnDelete).</ac>
+    <ac id="AC-005">Senza field permission editabile su `user_id` l'invio produce 422; senza permesso visibile, `user_id` e `user` sono OMESSI dalla risposta.</ac>
+    <ac id="AC-006">La colonna `user` compare IN FONDO alla griglia referenti, filtra per `set` e ordina; i layout colonna salvati prima rendono le stesse colonne nello stesso ordine.</ac>
+    <ac id="AC-007">Una regola COMMERCIAL puo' essere creata con `recipient_type: "user"` e un id di `users` -> 201 (D-4).</ac>
+    <ac id="AC-008">Una regola SUPPLIER con `recipient_type: "user"` -> 422: fuori allow-list (INV-4).</ac>
+    <ac id="AC-009">Una regola creata SENZA `recipient_type` continua a derivarlo dal ruolo, identica a prima (D-4, retrocompatibilita').</ac>
+    <ac id="AC-010">Data una regola intestata all'utente X e un'Offerta il cui Commerciale e' il referente collegato a X, la commissione precompilata usa quella regola, con `origin: RECIPIENT`.</ac>
+    <ac id="AC-011">Nello stesso scenario, lo scatto persistito e' intestato al REFERENTE dell'Offerta, non all'utente X (INV-1/D-8). Verifica diretta su `quote_line_commissions.recipient_type`/`recipient_id`.</ac>
+    <ac id="AC-012">Vale anche al contrario: regola intestata a un referente collegato, ruolo SUPERVISOR il cui utente e' quello collegato -> la regola si applica.</ac>
+    <ac id="AC-013">Se il referente NON e' collegato a nessun utente, una regola intestata a un utente non si applica (INV-2).</ac>
+    <ac id="AC-014">Una regola intestata a un utente collegato a un ALTRO referente non si applica (INV-2).</ac>
+    <ac id="AC-015">Con una regola sul referente E una sull'utente collegato, stesso gradino, vince il tie-break esistente (priority, poi valid_from, poi id) — non l'identita' (D-5).</ac>
+    <ac id="AC-016">Il numero di query di risoluzione per ruolo resta 5 anche con l'identita' collegata presente (D-6): test che conta le query.</ac>
+    <ac id="AC-017">Con `referents.user_id` tutto nullo, la suite commissioni preesistente passa senza modifiche (INV-5/D-11).</ac>
+    <ac id="AC-018">Cambiare `recipient_role` da COMMERCIAL a SUPERVISOR mantenendo un destinatario `referent` e' lecito e NON produce 422 (D-9); cambiarlo a SUPPLIER lo produce.</ac>
+    <ac id="AC-019">Nel form della regola, il tipo di destinatario e' scelto dall'operatore fra quelli ammessi dal ruolo, e cambiare ruolo azzera la selezione se il tipo corrente non e' piu' ammesso.</ac>
+  </acceptance_criteria>
+
+  <microtasks>
+    <task id="T-01" lane="database" depends="">Migrazione `referents.user_id` nullable unique FK nullOnDelete (D-1), reversibile e verificata con rollback reale.</task>
+    <task id="T-02" lane="backend" depends="T-01">`Referent`: `#[Fillable]` + relazione `user()` BelongsTo + relazione inversa utile a D-5. Factory aggiornata.</task>
+    <task id="T-03" lane="backend" depends="T-02">FormRequest referenti (store+update): regola `user_id`, guardia D-10 con messaggio che nomina il referente occupante; DTO Create/Update (attenzione ai flag `*Submitted` di `UpdateReferentData`); `ReferentService`; `ReferentResource` (user_id + user, omessi insieme se nascosti).</task>
+    <task id="T-04" lane="backend" depends="T-02">`ReferentsAuthorization::fields()` + `fieldPermissionCeiling()` con `user_id`; lang it/en `user_already_linked`.</task>
+    <task id="T-05" lane="backend" depends="T-02">Colonna `user` in fondo a `ReferentColumnCatalog` + mapRow/filtro/sort/distinct in `ReferentsTableDefinition`, ricalcando la colonna `manager` di BusinessFunctions (D-3). ATTENZIONE: il file e' gia' a 331 righe (soft limit 300) — se l'aggiunta lo gonfia, estrai le colonne di relazione in una classe affiancata invece di accodare.</task>
+    <task id="T-06" lane="backend" depends="">`CommissionRecipientRole::allowedRecipientTypes()` (D-4) con `recipientType()` che ne diventa il default; validazione allow-list nelle FormRequest delle regole; revisione della guardia D-9 (T-06 dipende solo dal codice 0089 gia' in main).</task>
+    <task id="T-07" lane="backend" depends="T-02,T-06">`CommissionRecipientIdentities` (D-7) + innesto nel gruppo OR di `CommissionRuleResolver` (D-5/D-6), SENZA toccare il `whereNull('recipient_type')` dei gradini di ruolo (INV-3). Test per ogni AC-010..AC-017.</task>
+    <task id="T-08" lane="frontend" depends="T-03">Referenti: `types.ts`, schema Zod, `referent-form-payload.ts`, campo "Utente collegato" in `referent-form-details-tab.tsx` (modello: `referent_type_id` a :46), dettaglio, i18n it/en.</task>
+    <task id="T-09" lane="frontend" depends="T-05">Renderer colonna `user` in `column-renderers.tsx` dei referenti + test.</task>
+    <task id="T-10" lane="frontend" depends="T-06">Configuratore commissioni: selettore del TIPO di destinatario limitato alla allow-list del ruolo, invio di `recipient_type`, azzeramento coerente al cambio ruolo (AC-019), i18n.</task>
+    <task id="T-11" lane="verifier" depends="T-04,T-07,T-08,T-09,T-10">Gate finale: Pest completo, Vitest, `tsc -b --force`, Pint, riproduzione di AC-001..AC-019, e verifica esplicita di INV-1 (lo scatto resta intestato alla persona dell'Offerta) e di AC-016 (conteggio query).</task>
+    <task id="T-12" lane="backend" depends="T-11">Aggiornamento di `docs/api/0006-...` (recipient_type ora accettato, allow-list, identita' collegate) e nota di emendamento su `docs/specs/0089-...` per D-7 e D-9.</task>
+  </microtasks>
+
+  <risks>
+    <r id="R-1">Il gruppo OR sulle identita' e' il punto dove si rompe l'isolamento: un OR costruito male farebbe combaciare persone diverse. AC-013/AC-014 esistono apposta e vanno ESEGUITI, non solo scritti.</r>
+    <r id="R-2">D-8 e' controintuitivo (la regola dell'utente X produce una commissione intestata al referente) e un'implementazione distratta scriverebbe il bersaglio della regola nello scatto. AC-011 lo verifica direttamente sulla riga persistita.</r>
+    <r id="R-3">Rendere `recipient_type` un input rimuove una garanzia che 0089 dava per costruzione (coerenza ruolo-tipo). Ora dipende dalla allow-list: se quella lista finisse duplicata in piu' punti, i due punti divergerebbero. D-4 impone UNA sola sede, l'enum.</r>
+    <r id="R-4">`ReferentsTableDefinition` e' a 331 righe e `StoreReferentRequest` a 168: T-05 e T-03 sono i due punti dove il codice puo' gonfiare oltre soglia. Lo split, se serve, e' parte del microtask, non un'aggiunta silenziosa.</r>
+    <r id="R-5">Il legame e' dato che oggi non esiste: finche' nessuno lo dichiara, la feature e' invisibile. E' voluto (D-11), ma va detto a chi la collauda, altrimenti sembrera' non funzionante.</r>
+  </risks>
+
+</spec>

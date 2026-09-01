@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0091 — Regola "Prevede un contratto" sulle Categorie Prodotto.
+  Contract-first. Le decisioni [D-n] sono state prese dall'utente il 2026-09-01
+  in fase di pianificazione: non vanno reinterpretate in implementazione.
+-->
+<spec id="0091-category-contract-generation" status="draft" owner="utente" date="2026-09-01">
+
+  <goal>
+    Una Categoria Prodotto radice dichiara, fra le "Regole di gestione", se il ramo PREVEDE UN
+    CONTRATTO. Quando non lo prevede, l'Offerta che entra in uno stato di lavorazione "chiuso
+    positivo" NON genera piu' la riga contrattuale: la scheda non compare nel modulo Contratti.
+    Nei seed, tutto il ramo "Formazione" nasce con la regola SPENTA.
+  </goal>
+
+  <context>
+    <!-- Fatti VERIFICATI sul codice reale. -->
+    <fact>
+      La sezione "Regole di gestione" del form Categorie Prodotto
+      (`frontend/src/features/product-categories/product-category-rules-section.tsx`) ospita oggi
+      quattro regole: `requires_quote`, `management_mode`, `single_quote_per_opportunity`
+      (root-owned, con chrome di ereditarieta') e `is_selectable` (per-nodo, senza chrome).
+    </fact>
+    <fact>
+      Ogni regola root-owned condivide la stessa macchina:
+      `App\Services\ProductCategories\RootOwnedCategorySetting` (sottoclassi
+      `RequiresQuoteInheritance`, `CategoryManagementModeInheritance`,
+      `SingleQuotePerOpportunityInheritance`). Solo una categoria senza padre AUTORIZZA il valore;
+      il valore e' DENORMALIZZATO su ogni riga del sottoalbero (`syncSubtree`), quindi griglia,
+      filtri, export e for-select leggono una colonna reale senza walk.
+    </fact>
+    <fact>
+      Il contratto nasce in UN SOLO punto: `App\Services\Contracts\ContractLifecycleManager::
+      syncOnStatusChange()` (spec 0072 BR-1, ri-targettata sullo stato di lavorazione dell'Offerta
+      dalla spec 0083), chiamato dentro la transazione di `QuoteService::create()/update()` e di
+      `RequestManagement\RequestManagementService::updateWork()`. Crea la riga `contracts` alla
+      transizione `non-closed_won -> closed_won` di `WorkflowStatusGroup`.
+    </fact>
+    <fact>
+      Un contratto non si crea ne' si elimina a mano (spec 0072 D-6): `ContractPolicy` non espone
+      `create`/`delete`. Non esiste alcun altro scrittore della tabella `contracts`.
+    </fact>
+    <fact>
+      La coppia Funzione aziendale / Categoria Prodotto di una scheda sta in
+      `opportunity_product_lines` (model `OpportunityProductLine`, relazione
+      `Opportunity::productLines()`). `quotes.opportunity_id` e' NOT NULL e immutabile dopo la
+      creazione. E' la stessa sorgente gia' interrogata da
+      `App\Services\Opportunities\OpportunityQuoteLimit::isSingleQuoteBranch()`.
+    </fact>
+    <fact>
+      `database/seeders/QualificaCatalog/CatalogRootRules.php` e' il punto unico dove il catalogo
+      Qualifica dichiara le regole root-owned dei suoi due root ("Formazione", "Consulenza"), le
+      RIALLINEA a ogni run in entrambe le direzioni e risincronizza il sottoalbero.
+    </fact>
+    <fact>
+      Nella griglia `/product-categories` la colonna `management_mode` e' dichiarata
+      `'type' => 'enum'` senza `badges`/`enumKey`: il fallback badge generico di
+      `column-defaults.tsx` (`isEnumBadgeColumn`) copre solo `type === 'badge'` e gli enum
+      DINAMICI, quindi la cella oggi stampa il valore grezzo `single`/`multiple`, non localizzato.
+    </fact>
+    <fact>
+      DIFETTO PREESISTENTE: `single_quote_per_opportunity` e' dichiarata nel catalogo colonne
+      (`ProductCategoryColumnCatalog::columns()`, `visible: false`) ma NON e' emessa da
+      `ProductCategoriesTableDefinition::mapRow()`. Abilitandola da UI la cella e' vuota.
+    </fact>
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Il flag e' una nuova colonna ROOT-OWNED `product_categories.generates_contract`, boolean,
+      DEFAULT `true` (il comportamento attuale: ogni categoria genera contratto). Nessun nuovo
+      pattern di ereditarieta': sottoclasse di `RootOwnedCategorySetting`, esattamente come
+      `single_quote_per_opportunity`.
+    </decision>
+    <decision id="D-2">
+      La regola si legge dalle RIGHE CATEGORIA DELL'OPPORTUNITA (`opportunity_product_lines`),
+      la stessa sorgente di `OpportunityQuoteLimit` — non dalle categorie dei prodotti delle righe
+      d'offerta. Un'offerta senza righe risolve comunque la copertura della scheda.
+    </decision>
+    <decision id="D-3">
+      Righe miste: vince la PIU' RESTRITTIVA. Se ANCHE UNA categoria coperta ha
+      `generates_contract = false`, il contratto NON nasce. Stessa forma della risoluzione di
+      modalita' della spec 0077 D-10. In pratica il caso e' raro: "Formazione" e'
+      `management_mode = single`, quindi una scheda che la tocca porta una riga sola.
+    </decision>
+    <decision id="D-4">
+      Nessuna retroattivita'. Un contratto gia' esistente non viene mai toccato quando il flag
+      viene spento: la regola impedisce la NASCITA di nuovi contratti, non cancella la storia
+      (spec 0072 D-3 — nessun dato contrattuale sparisce mai automaticamente; stesso
+      grandfathering di `single_quote_per_opportunity`).
+    </decision>
+    <decision id="D-5">
+      Seed: "Formazione" nasce con `generates_contract = false`, "Consulenza" con `true`.
+      Dichiarate entrambe esplicitamente in `CatalogRootRules::RULES` cosi' che un re-run
+      riallinei anche l'installazione seminata prima di questa direttiva, sottoalbero incluso.
+    </decision>
+    <decision id="D-6">
+      La regola gira SOLO alla transizione di stato. Non esiste alcun rifiuto 422 lato scrittura
+      dell'Offerta: chiudere positivamente resta legittimo, semplicemente non produce contratto.
+    </decision>
+    <decision id="D-7">
+      Griglia `/product-categories`: la nuova colonna e' VISIBILE di default e resa con il badge
+      booleano condiviso (`BooleanBadgeCell`). Contestualmente `management_mode` passa da
+      `'enum'` a `'badge'` con `badgesFor()`/`enumKeyFor()`, quindi si localizza da
+      `enums.category_management_mode.*` e viene resa come pill colorata dal fallback generico —
+      nessun renderer di dominio nuovo.
+    </decision>
+  </decisions>
+
+  <invariants>
+    <invariant id="INV-1">`generates_contract` e' scrivibile solo su una categoria radice
+      (`parent_id === null`); sui discendenti e' rispecchiato e in sola lettura. Un valore
+      divergente inviato su un figlio e' 422.</invariant>
+    <invariant id="INV-2">Alla transizione `non-closed_won -> closed_won`, la riga `contracts`
+      nasce SE E SOLO SE nessuna categoria coperta dall'Opportunita' dell'Offerta ha
+      `generates_contract = false`.</invariant>
+    <invariant id="INV-3">L'idempotenza gia' esistente resta prima della nuova guardia: una
+      seconda transizione in `closed_won` su un'offerta che ha gia' un contratto resta un no-op,
+      qualunque sia il valore del flag.</invariant>
+    <invariant id="INV-4">La sospensione (`closed_won -> non-closed_won`) non consulta mai il
+      flag: agisce solo su un contratto che esiste gia'.</invariant>
+  </invariants>
+
+  <scope>
+    <in>
+      <item>Colonna `generates_contract` su `product_categories` (default true) + servizio
+        `ContractGenerationInheritance` (sottoclasse di `RootOwnedCategorySetting`).</item>
+      <item>CRUD Categorie Prodotto completo sul campo: FormRequest store/update, DTO, service
+        (guardia no-override + resync sottoalbero), Resource, meta `..._source_category` sul
+        blocco `show`, `ProductCategoriesAuthorization`, tree, catalogo colonne + mapRow.</item>
+      <item>Tile della regola nella sezione "Regole di gestione" del form, con chrome di
+        ereditarieta' (gemello di `ProductCategorySingleQuoteField`) e riga nel dettaglio.</item>
+      <item>Servizio `App\Services\Contracts\ContractEligibility` + guardia in
+        `ContractLifecycleManager::createContract()`.</item>
+      <item>Seed: `CatalogRootRules` (D-5).</item>
+      <item>Griglia: nuova colonna booleana visibile + `management_mode` a badge localizzato
+        (D-7); correzione del `mapRow` mancante di `single_quote_per_opportunity`.</item>
+    </in>
+    <out>
+      <item>Rimozione/nascondimento dei contratti gia' esistenti (D-4).</item>
+      <item>Rifiuto 422 sulla chiusura positiva di un'offerta (D-6).</item>
+      <item>Avviso lato UI su Offerta/Gestione Richieste ("questa categoria non prevede
+        contratto"): nessun campo nuovo su `OpportunityResource`/`QuoteResource`.</item>
+      <item>Migrazione dati sui contratti storici: nessun backfill, nessuna cancellazione.</item>
+      <item>Un pattern di ereditarieta' diverso da quello di `single_quote_per_opportunity`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/product-categories">
+      <request>
+        generates_contract: boolean, `sometimes`. Accettato solo se `parent_id === null`; su una
+        categoria figlia un valore divergente da quello ereditato e' rifiutato dal server.
+        Omesso = risolto server-side (valore della radice, oppure `true` su una radice nuova).
+      </request>
+      <response status="201">data: { ...ProductCategoryResource, generates_contract: boolean }</response>
+      <errors>422 { message } quando un figlio invia un valore divergente da quello ereditato
+        (stessa forma di `assertSingleQuoteNotOverridden`). 403 senza `product-categories.create`
+        o senza permesso sul campo `generates_contract`.</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/product-categories/{productCategory}">
+      <request>generates_contract: boolean, `sometimes`. Se inviato o se cambia `parent_id`, il
+        sottoalbero viene risincronizzato.</request>
+      <response status="200">data: { ...ProductCategoryResource, generates_contract: boolean }</response>
+      <errors>422/403 come sopra.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}">
+      <response status="200">
+        data: { ...ProductCategoryResource, generates_contract: boolean },
+        meta: { ...blocco esistente,
+                generates_contract_source_category: { id: number, name: string } | null }
+        Stessa forma di `single_quote_per_opportunity_source_category`.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <response status="200">Ogni nodo guadagna `generates_contract: boolean`, gia' EFFETTIVO
+        (denormalizzato), come `single_quote_per_opportunity`.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/product-categories/rows">
+      <response status="200">
+        Ogni riga guadagna `generates_contract: boolean` e `single_quote_per_opportunity: boolean`
+        (quest'ultima colmando il difetto preesistente). La colonna `management_mode` cambia
+        `type` da `enum` a `badge` e viaggia con `badges` + `enumKey: "category_management_mode"`;
+        il VALORE della riga resta invariato (`"single"|"multiple"`).
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">Una radice persiste il proprio `generates_contract`; il payload lo espone.</ac>
+    <ac id="AC-002">Omesso su una radice nuova, il valore e' `true` (comportamento pre-esistente).</ac>
+    <ac id="AC-003">Un figlio creato sotto una radice con il flag spento lo eredita spento.</ac>
+    <ac id="AC-004">Un figlio che invia un valore divergente da quello ereditato riceve 422.</ac>
+    <ac id="AC-005">Cambiare il flag sulla radice riallinea l'intero sottoalbero, a ogni livello.</ac>
+    <ac id="AC-006">Riparentare una categoria sotto una radice con flag diverso riallinea lei e
+      il suo sottoalbero.</ac>
+    <ac id="AC-007">`GET /{id}` di un discendente espone
+      `meta.generates_contract_source_category` con la radice; su una radice e' null.</ac>
+    <ac id="AC-008">Un'offerta la cui opportunita' copre SOLO categorie con il flag acceso, che
+      passa in `closed_won`, crea la riga `contracts` (comportamento invariato).</ac>
+    <ac id="AC-009">Un'offerta la cui opportunita' copre una categoria con il flag spento, che
+      passa in `closed_won`, NON crea alcuna riga `contracts`.</ac>
+    <ac id="AC-010">Righe miste (una categoria accesa + una spenta): nessun contratto (D-3).</ac>
+    <ac id="AC-011">Un contratto gia' esistente sopravvive allo spegnimento del flag e continua a
+      sospendersi/riattivarsi normalmente (D-4, INV-4).</ac>
+    <ac id="AC-012">La stessa guardia vale sul canale Gestione Richieste
+      (`RequestManagementService::updateWork()`), non solo su `QuoteService`.</ac>
+    <ac id="AC-013">Seed: dopo `QualificaCatalogSeeder`, "Formazione" e OGNI suo discendente
+      (regioni GOL di terzo livello incluse) hanno `generates_contract = false`; "Consulenza" e i
+      suoi discendenti `true`. Idempotente sul re-run.</ac>
+    <ac id="AC-014">Un ramo "Formazione" seminato prima di questa direttiva viene RIALLINEATO a
+      false dal seeder, sottoalbero incluso.</ac>
+    <ac id="AC-015">La griglia espone la colonna `generates_contract` (visibile, ordinabile,
+      filtrabile boolean) e la riga la valorizza; `single_quote_per_opportunity` e' ora valorizzata
+      anch'essa.</ac>
+    <ac id="AC-016">La colonna `management_mode` viaggia come `badge` con i suoi `badges` e
+      `enumKey`, e la cella rende una pill localizzata invece del valore grezzo.</ac>
+  </acceptance_criteria>
+</spec>

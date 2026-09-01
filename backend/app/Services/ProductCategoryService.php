@@ -5,14 +5,11 @@ namespace App\Services;
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\DataObjects\ProductCategories\UpdateProductCategoryData;
 use App\Enums\AttributeContext;
-use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
-use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
 use App\Services\ProductCategories\CategoryTreeBuilder;
-use App\Services\ProductCategories\RequiresQuoteInheritance;
-use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
+use App\Services\ProductCategories\RootOwnedSettingsWriter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -29,9 +26,7 @@ class ProductCategoryService
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
         private readonly CategoryTreeBuilder $treeBuilder,
-        private readonly RequiresQuoteInheritance $requiresQuote,
-        private readonly CategoryManagementModeInheritance $managementMode,
-        private readonly SingleQuotePerOpportunityInheritance $singleQuote,
+        private readonly RootOwnedSettingsWriter $rootOwnedSettings,
         private readonly CategoryManagerLabelResolver $managerLabels,
     ) {}
 
@@ -41,17 +36,7 @@ class ProductCategoryService
             $this->assertNoInheritedBusinessFunction($data->parentId);
         }
 
-        if ($data->requiresQuote !== null) {
-            $this->assertRequiresQuoteNotOverridden($data->parentId, $data->requiresQuote);
-        }
-
-        if ($data->managementMode !== null) {
-            $this->assertManagementModeNotOverridden($data->parentId, $data->managementMode);
-        }
-
-        if ($data->singleQuotePerOpportunity !== null) {
-            $this->assertSingleQuoteNotOverridden($data->parentId, $data->singleQuotePerOpportunity);
-        }
+        $this->rootOwnedSettings->assertCreateNotOverridden($data);
 
         return DB::transaction(function () use ($data): ProductCategory {
             /** @var ProductCategory $category */
@@ -62,18 +47,13 @@ class ProductCategoryService
                 'inherits_quote_attributes' => $data->inheritsQuoteAttributes,
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
-                // A child never authors the flag: it takes its root's value,
-                // whatever was (or was not) submitted.
-                'requires_quote' => $this->requiresQuote->inheritedValueFor($data->parentId) ?? ($data->requiresQuote ?? false),
                 'is_selectable' => $data->isSelectable,
-                // Spec 0077, D-8: same root-only semantics — a fresh root
-                // with no submitted value defaults to "multiple".
-                'management_mode' => $this->managementMode->inheritedValueFor($data->parentId) ?? ($data->managementMode ?? CategoryManagementMode::Multiple),
-                // Same root-only semantics; a fresh root with no submitted
-                // value defaults to false (the pre-existing behaviour).
-                'single_quote_per_opportunity' => $this->singleQuote->inheritedValueFor($data->parentId) ?? ($data->singleQuotePerOpportunity ?? false),
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),
                 'inherits_manager_labels' => $data->inheritsManagerLabels,
+                // The four ROOT-OWNED settings: a child never authors any of
+                // them, it takes its branch root's value whatever was (or was
+                // not) submitted (RootOwnedSettingsWriter).
+                ...$this->rootOwnedSettings->resolvedColumnsFor($data),
             ]);
 
             if ($data->hasAttributes()) {
@@ -98,20 +78,7 @@ class ProductCategoryService
             $this->assertNoInheritedBusinessFunction($resolvedParentId);
         }
 
-        if ($data->requiresQuoteSubmitted && $data->requiresQuote !== null) {
-            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
-            $this->assertRequiresQuoteNotOverridden($resolvedParentId, $data->requiresQuote);
-        }
-
-        if ($data->managementModeSubmitted && $data->managementMode !== null) {
-            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
-            $this->assertManagementModeNotOverridden($resolvedParentId, $data->managementMode);
-        }
-
-        if ($data->singleQuotePerOpportunitySubmitted && $data->singleQuotePerOpportunity !== null) {
-            $resolvedParentId = $data->hasParentId() ? $data->parentId : $category->parent_id;
-            $this->assertSingleQuoteNotOverridden($resolvedParentId, $data->singleQuotePerOpportunity);
-        }
+        $this->rootOwnedSettings->assertUpdateNotOverridden($category, $data);
 
         return DB::transaction(function () use ($category, $data): ProductCategory {
             $attributes = $data->submittedAttributes();
@@ -140,25 +107,10 @@ class ProductCategoryService
                 $this->cascadeBusinessFunctionToDescendants($category);
             }
 
-            // Same trigger set for the quote flag: only a reparent (the branch
-            // root changed) or an edit of the flag itself can break the
-            // "whole subtree mirrors its root" invariant.
-            if ($data->hasParentId() || $data->requiresQuoteSubmitted) {
-                $this->requiresQuote->syncSubtree($category);
-            }
-
-            // Same trigger set for the management mode: only a reparent (the
-            // branch root changed) or an edit of the mode itself can break
-            // the "whole subtree mirrors its root" invariant (spec 0077).
-            if ($data->hasParentId() || $data->managementModeSubmitted) {
-                $this->managementMode->syncSubtree($category);
-            }
-
-            // Same trigger set for the single-quote flag (user directive
-            // 2026-08-07).
-            if ($data->hasParentId() || $data->singleQuotePerOpportunitySubmitted) {
-                $this->singleQuote->syncSubtree($category);
-            }
+            // The four ROOT-OWNED settings: only a reparent (the branch root
+            // changed) or an edit of the setting itself can break the "whole
+            // subtree mirrors its root" invariant.
+            $this->rootOwnedSettings->syncSubtrees($category, $data);
 
             return $category->fresh(['parent', 'attributes', 'businessFunction']);
         });
@@ -227,41 +179,18 @@ class ProductCategoryService
     }
 
     /**
-     * The ROOT category $category takes its `requires_quote` flag from — null
-     * when $category is itself a root and therefore owns the flag. The value
-     * itself is a real column on $category, already carried by the Resource.
+     * The ROOT each of $category's four root-owned settings is inherited FROM
+     * (`requires_quote`, `management_mode`, `single_quote_per_opportunity`,
+     * `generates_contract`) — null on a root, which owns its own values. The
+     * show endpoint spreads this straight into its `meta` block as the
+     * read-only "inherited from X" hints; the values themselves are real
+     * columns on $category, already carried by the Resource.
      *
-     * @return array{id: int, name: string}|null
+     * @return array<string, array{id: int, name: string}|null>
      */
-    public function requiresQuoteSourceCategory(ProductCategory $category): ?array
+    public function rootOwnedSourceCategories(ProductCategory $category): array
     {
-        return $this->requiresQuote->sourceCategoryFor($category);
-    }
-
-    /**
-     * The ROOT category $category takes its `management_mode` from — null
-     * when $category is itself a root and therefore owns the mode (spec
-     * 0077). The value itself is a real column on $category, already
-     * carried by the Resource.
-     *
-     * @return array{id: int, name: string}|null
-     */
-    public function managementModeSourceCategory(ProductCategory $category): ?array
-    {
-        return $this->managementMode->sourceCategoryFor($category);
-    }
-
-    /**
-     * The ROOT category $category takes its `single_quote_per_opportunity`
-     * flag from — null when $category is itself a root (user directive
-     * 2026-08-07). The value itself is a real column on $category, already
-     * carried by the Resource.
-     *
-     * @return array{id: int, name: string}|null
-     */
-    public function singleQuotePerOpportunitySourceCategory(ProductCategory $category): ?array
-    {
-        return $this->singleQuote->sourceCategoryFor($category);
+        return $this->rootOwnedSettings->sourceCategories($category);
     }
 
     /**
@@ -314,51 +243,6 @@ class ProductCategoryService
     {
         if ($this->hierarchy->inheritedBusinessFunctionFor($parentId) !== null) {
             abort(422, 'This category inherits a business function from an ancestor and cannot define its own.');
-        }
-    }
-
-    /**
-     * NO-OVERRIDE guard for the quote flag: only a ROOT category authors it,
-     * so a category under $parentId may only submit the value it already
-     * inherits. Submitting the inherited value is accepted as a no-op (the
-     * form shows it read-only and may echo it back); submitting a DIFFERENT
-     * one is a real override attempt and is refused.
-     */
-    private function assertRequiresQuoteNotOverridden(?int $parentId, bool $submitted): void
-    {
-        $inherited = $this->requiresQuote->inheritedValueFor($parentId);
-
-        if ($inherited !== null && $inherited !== $submitted) {
-            abort(422, 'This category inherits the quote flag from its root category and cannot define its own.');
-        }
-    }
-
-    /**
-     * NO-OVERRIDE guard for the management mode (spec 0077): only a ROOT
-     * category authors it, so a category under $parentId may only submit
-     * the mode it already inherits. Submitting the inherited mode is
-     * accepted as a no-op; submitting a DIFFERENT one is refused.
-     */
-    private function assertManagementModeNotOverridden(?int $parentId, CategoryManagementMode $submitted): void
-    {
-        $inherited = $this->managementMode->inheritedValueFor($parentId);
-
-        if ($inherited !== null && $inherited !== $submitted) {
-            abort(422, 'This category inherits the management mode from its root category and cannot define its own.');
-        }
-    }
-
-    /**
-     * NO-OVERRIDE guard for the single-quote flag (user directive
-     * 2026-08-07): only a ROOT category authors it, so a category under
-     * $parentId may only submit the value it already inherits.
-     */
-    private function assertSingleQuoteNotOverridden(?int $parentId, bool $submitted): void
-    {
-        $inherited = $this->singleQuote->inheritedValueFor($parentId);
-
-        if ($inherited !== null && $inherited !== $submitted) {
-            abort(422, 'This category inherits the single-quote rule from its root category and cannot define its own.');
         }
     }
 

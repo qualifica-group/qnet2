@@ -62,6 +62,7 @@ describe('useCommissionConfigurationForm', () => {
       application_scope: 'PRODUCT_CATEGORY',
       product_category_id: 8,
       product_id: 99,
+      recipient_type: 'referent',
       recipient_id: 42,
       commission_type: 'FIXED_AMOUNT',
       value: 10,

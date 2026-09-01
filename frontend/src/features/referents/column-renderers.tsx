@@ -56,6 +56,15 @@ function ContactScopeCell({ value }: ICellRendererParams) {
   )
 }
 
+/** Renders the `user` column (spec 0090 D-3): the linked user's name, or an em dash. */
+function UserCell({ value }: ICellRendererParams) {
+  const userName = value as string | null | undefined
+  if (!userName) {
+    return <EmptyCell />
+  }
+  return <span>{userName}</span>
+}
+
 /**
  * Custom cell renderers keyed by the backend column `id`. Only columns that
  * need special rendering appear here; `name` falls back to the AG Grid
@@ -67,5 +76,6 @@ export const referentColumnRenderers: TableRendererMap = {
   referent_type: (params) => <ReferentTypeCell {...params} />,
   contact_scope: (params) => <ContactScopeCell {...params} />,
   primary_contact: (params) => <ContactsCell {...params} />,
+  user: (params) => <UserCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

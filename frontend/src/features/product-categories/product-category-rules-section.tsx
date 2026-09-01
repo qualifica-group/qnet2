@@ -6,6 +6,7 @@ import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { ProductCategoryGeneratesContractField } from '@/features/product-categories/product-category-generates-contract-field'
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
@@ -23,8 +24,8 @@ interface ProductCategoryRulesSectionProps {
 /**
  * "Regole di gestione" (user directive 2026-08-07): the behavioural rules a
  * category imposes downstream — whether it is quoted, how many product lines
- * a card carries, how many offers an opportunity may hold, and whether it can
- * be picked at all. They used to sit mixed into the identity fields, where an
+ * a card carries, how many offers an opportunity may hold, whether a closed
+ * deal becomes a contract (spec 0091), and whether it can be picked at all. They used to sit mixed into the identity fields, where an
  * operator could not tell an inert label from a rule that changes what the
  * system accepts.
  *
@@ -48,6 +49,7 @@ export function ProductCategoryRulesSection({
     fieldPermission('requires_quote').visible ||
     fieldPermission('management_mode').visible ||
     fieldPermission('single_quote_per_opportunity').visible ||
+    fieldPermission('generates_contract').visible ||
     fieldPermission('is_selectable').visible
 
   if (!visible) {
@@ -64,6 +66,7 @@ export function ProductCategoryRulesSection({
         <ProductCategoryRequiresQuoteField control={control} mode={mode} parentId={parentId} />
         <ProductCategoryManagementModeField control={control} mode={mode} parentId={parentId} />
         <ProductCategorySingleQuoteField control={control} mode={mode} parentId={parentId} />
+        <ProductCategoryGeneratesContractField control={control} mode={mode} parentId={parentId} />
 
         <SelectableRule control={control} />
       </div>

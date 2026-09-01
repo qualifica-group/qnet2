@@ -12,11 +12,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class ReferentResource extends JsonResource
 {
     /**
+     * @param  array<string, array{visible: bool}>  $fieldPermissions
+     */
+    public function __construct($resource, private readonly array $fieldPermissions = [])
+    {
+        parent::__construct($resource);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        return [
+        $payload = [
             'id' => $this->id,
             'name' => $this->name,
             'referent_type_id' => $this->referent_type_id,
@@ -26,6 +34,15 @@ class ReferentResource extends JsonResource
             // model, so this never triggers a lazy load.
             'referent_type' => $this->referentType !== null
                 ? ['id' => $this->referentType->id, 'name' => $this->referentType->name]
+                : null,
+            // The referent-user link (spec 0090, D-1/D-2): `user_id` and
+            // `user` are omitted TOGETHER below when not visible for the
+            // actor's field permission, mirroring `referent_type_id`/
+            // `referent_type` in shape but not in that omission rule (spec
+            // 0090 data_contract, AC-005).
+            'user_id' => $this->user_id,
+            'user' => $this->user !== null
+                ? ['id' => $this->user->id, 'name' => $this->user->name]
                 : null,
             'contact_scope' => $this->contact_scope,
             'notes' => $this->notes,
@@ -37,5 +54,11 @@ class ReferentResource extends JsonResource
                 : null,
             'created_at' => $this->created_at,
         ];
+
+        if (($this->fieldPermissions['user_id']['visible'] ?? true) === false) {
+            unset($payload['user_id'], $payload['user']);
+        }
+
+        return $payload;
     }
 }

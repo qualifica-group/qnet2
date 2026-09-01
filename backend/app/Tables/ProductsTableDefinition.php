@@ -5,8 +5,10 @@ namespace App\Tables;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Tables\Products\ProductColumnCatalog;
+use App\Tables\Products\ProductRelationColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -17,19 +19,18 @@ use Illuminate\Support\Facades\Gate;
  * 0065, AC-009b).
  *
  * Real columns (code, name, description, cost, price, created_at) are handled
- * entirely by the generic engine. `category` has no real DB column of its
- * own (it is the related category's name) and is DERIVED: its set
- * filter/sort/distinct-values are resolved here against the related
- * category's name, mirroring BusinessFunctionsTableDefinition's `manager`
- * derived column. No dynamic attribute is ever a column (spec 0017 decision).
+ * entirely by the generic engine. `category` and `unit_of_measure` (spec
+ * 0088) have no real DB column of their own (they are the related lookup's
+ * name) and are DERIVED: their set filter/sort/distinct-values are resolved
+ * here against the related name, mirroring BusinessFunctionsTableDefinition's
+ * `manager` derived column. No dynamic attribute is ever a column (spec 0017
+ * decision).
  */
 class ProductsTableDefinition extends AbstractTableDefinition
 {
-    /**
-     * Maximum number of names honoured in the `category` set filter. Caps
-     * the WHERE IN cardinality (defence in depth); excess values ignored.
-     */
-    private const int MAX_FILTER_VALUES = 200;
+    public function __construct(
+        private readonly ProductRelationColumns $relationColumns,
+    ) {}
 
     public function domain(): string
     {
@@ -53,8 +54,9 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // Eager-load the category to avoid N+1 when every row projects it.
-        return Product::query()->with(['category']);
+        // Eager-load the derived relations to avoid N+1 when every row
+        // projects them.
+        return Product::query()->with(['category', 'unitOfMeasure']);
     }
 
     /**
@@ -140,6 +142,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'cost' => $row->cost === null ? null : (float) $row->cost,
             'price' => $row->price === null ? null : (float) $row->price,
             'category' => $this->categorySummary($row->category),
+            'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
             'product_type' => $row->product_type,
             'created_at' => $row->created_at,
         ];
@@ -155,6 +158,21 @@ class ProductsTableDefinition extends AbstractTableDefinition
         }
 
         return ['id' => $category->id, 'name' => $category->name];
+    }
+
+    /**
+     * Mirrors ProductResource's unit summary shape, so the grid cell and the
+     * detail view read the same fields.
+     *
+     * @return array{id: int, name: string, symbol: string}|null
+     */
+    private function unitOfMeasureSummary(?UnitOfMeasure $unitOfMeasure): ?array
+    {
+        if ($unitOfMeasure === null) {
+            return null;
+        }
+
+        return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
     }
 
     /**
@@ -186,8 +204,9 @@ class ProductsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Handle the derived `category` set filter. Every other column id (the
-     * real columns) falls through to the generic engine.
+     * Handle the set filter of the derived relation columns
+     * (`category`, `unit_of_measure`). Every other column id (the real
+     * columns) falls through to the generic engine.
      *
      * @param  Builder<Product>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -195,56 +214,24 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        if ($columnId !== 'category') {
-            return false;
-        }
-
-        $values = $filter['values'] ?? null;
-
-        if (! is_array($values)) {
-            return true;
-        }
-
-        $names = array_slice(array_values(array_filter(
-            $values,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        )), 0, self::MAX_FILTER_VALUES);
-
-        if ($names !== []) {
-            $query->whereHas('category', static function (Builder $relatedQuery) use ($names): void {
-                $relatedQuery->whereIn('name', $names);
-            });
-        }
-
-        return true;
+        return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
     /**
-     * ORDER BY the category's name via a correlated subquery, so sorting
-     * never needs a row-multiplying JOIN on the main query.
+     * ORDER BY the related name via a correlated subquery, so sorting never
+     * needs a row-multiplying JOIN on the main query.
      *
      * @param  Builder<Product>  $query
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        if ($columnId !== 'category') {
-            return false;
-        }
-
-        $subquery = ProductCategory::query()
-            ->select('name')
-            ->whereColumn('product_categories.id', 'products.category_id')
-            ->limit(1);
-
-        $query->orderBy($subquery, $direction);
-
-        return true;
+        return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005) for the derived
-     * `category` column: distinct related NAMES among the products matching
-     * `$query` (already scoped by every OTHER active filter).
+     * Excel-like distinct values (spec 0004/0005) for the derived related-name
+     * columns: distinct related NAMES among the products matching `$query`
+     * (already scoped by every OTHER active filter).
      *
      * @param  Builder<Product>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -252,34 +239,11 @@ class ProductsTableDefinition extends AbstractTableDefinition
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
-        return match ($columnId) {
-            'category' => $this->distinctCategoryNames($search, $query, $limit),
-            'product_type' => $this->distinctProductTypes($search, $query, $limit),
-            default => null,
-        };
-    }
+        if ($columnId === 'product_type') {
+            return $this->distinctProductTypes($search, $query, $limit);
+        }
 
-    /**
-     * Distinct related category NAMES among the products matching `$query`.
-     *
-     * @param  Builder<Product>  $query
-     * @return array<int, string>
-     */
-    private function distinctCategoryNames(?string $search, Builder $query, int $limit): array
-    {
-        $categoryIds = (clone $query)->select('products.category_id');
-
-        return DB::table('product_categories')
-            ->whereIn('id', $categoryIds)
-            ->when($search !== null && $search !== '', function ($builder) use ($search): void {
-                $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
-            })
-            ->distinct()
-            ->orderBy('name')
-            ->limit($limit)
-            ->pluck('name')
-            ->map(static fn (mixed $name): string => (string) $name)
-            ->all();
+        return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
     }
 
     /**

@@ -47,6 +47,8 @@ final readonly class UpdateProductCategoryData
         public bool $managementModeSubmitted = false,
         public ?bool $singleQuotePerOpportunity = null,
         public bool $singleQuotePerOpportunitySubmitted = false,
+        public ?bool $generatesContract = null,
+        public bool $generatesContractSubmitted = false,
         /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
         public ?array $managerLabels = null,
         public bool $managerLabelsSubmitted = false,
@@ -82,6 +84,8 @@ final readonly class UpdateProductCategoryData
             managementModeSubmitted: array_key_exists('management_mode', $data),
             singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
             singleQuotePerOpportunitySubmitted: array_key_exists('single_quote_per_opportunity', $data),
+            generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
+            generatesContractSubmitted: array_key_exists('generates_contract', $data),
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
@@ -163,6 +167,13 @@ final readonly class UpdateProductCategoryData
         // SingleQuotePerOpportunityInheritance::syncSubtree.
         if ($this->singleQuotePerOpportunitySubmitted) {
             $attributes['single_quote_per_opportunity'] = $this->singleQuotePerOpportunity;
+        }
+
+        // Spec 0091: identical root-only handling — on a child the value
+        // written here is immediately re-aligned on the root's by
+        // ContractGenerationInheritance::syncSubtree.
+        if ($this->generatesContractSubmitted) {
+            $attributes['generates_contract'] = $this->generatesContract;
         }
 
         // Spec 0080: mirrors inherits_product_attributes/

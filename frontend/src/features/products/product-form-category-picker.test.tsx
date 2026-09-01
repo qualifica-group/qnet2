@@ -112,6 +112,7 @@ function treeNode(
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     ...overrides,
   }
 }

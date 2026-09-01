@@ -18,6 +18,13 @@ export const enums = {
     en: 'English',
     it: 'Italiano',
   },
+  // How Category Product lines behave on a card (spec 0077). SHORT labels:
+  // these are the grid pill and the Set Filter entries, not the form select
+  // (which uses an explanatory variant).
+  category_management_mode: {
+    single: 'Single',
+    multiple: 'Multiple',
+  },
   personal_data_type: {
     individual: 'Individual',
     company: 'Company',

@@ -39,6 +39,7 @@ const SERVER_ERROR_FIELDS = [
   'is_selectable',
   'management_mode',
   'single_quote_per_opportunity',
+  'generates_contract',
   'manager_labels',
   'inherits_manager_labels',
 ] as const
@@ -118,6 +119,7 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
         is_selectable: category.is_selectable,
         management_mode: category.management_mode,
         single_quote_per_opportunity: category.single_quote_per_opportunity,
+        generates_contract: category.generates_contract,
         manager_labels: toManagerLabelsFormValue(category.manager_labels),
         inherits_manager_labels: category.inherits_manager_labels,
         custom_fields: customFields.defaultValues,
@@ -141,6 +143,9 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // A new root starts unconstrained: several offers per opportunity, the
       // behaviour every existing category already has.
       single_quote_per_opportunity: false,
+      // Spec 0091: a new root is sold under a contract — the behaviour every
+      // existing category had before the rule existed.
+      generates_contract: true,
       manager_labels: EMPTY_MANAGER_LABELS_FORM,
       inherits_manager_labels: true,
       custom_fields: customFields.defaultValues,

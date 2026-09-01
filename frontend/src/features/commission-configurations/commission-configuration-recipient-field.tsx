@@ -5,20 +5,19 @@ import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-a
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { CommissionConfigurationFormValues } from './commission-configuration-schema'
-import type { CommissionRelationRef, CommissionRole } from './types'
+import type { CommissionRecipientType, CommissionRelationRef } from './types'
 
 /**
- * Recipient-picker resource per `recipient_role` (spec 0089 D-8): mirrors the
- * backend's `CommissionRecipientRole::recipientType()` map — Commerciale and
- * Segnalatore point at a referent, Supervisore at a user, Fornitore at a
- * registry. Kept in sync manually since the enum lives server-side; the four
- * roles are exhaustive (`COMMISSION_ROLES`).
+ * Recipient-picker resource per `recipient_type` (spec 0090 D-4, emenda 0089
+ * D-8): a referent, a user or a registry, whichever the operator picked
+ * (or the role's derived default). Kept in sync manually since the enum
+ * lives server-side; the three types are exhaustive
+ * (`COMMISSION_RECIPIENT_TYPES`).
  */
-const RECIPIENT_RESOURCE_BY_ROLE: Record<CommissionRole, string> = {
-  COMMERCIAL: REFERENTS_FOR_SELECT_RESOURCE,
-  REPORTER: REFERENTS_FOR_SELECT_RESOURCE,
-  SUPERVISOR: USERS_FOR_SELECT_RESOURCE,
-  SUPPLIER: REGISTRIES_FOR_SELECT_RESOURCE,
+const RECIPIENT_RESOURCE_BY_TYPE: Record<CommissionRecipientType, string> = {
+  referent: REFERENTS_FOR_SELECT_RESOURCE,
+  user: USERS_FOR_SELECT_RESOURCE,
+  registry: REGISTRIES_FOR_SELECT_RESOURCE,
 }
 
 interface RelationLabels {
@@ -31,18 +30,19 @@ interface RelationLabels {
 
 interface Props {
   control: Control<CommissionConfigurationFormValues>
-  role: CommissionRole
+  type: CommissionRecipientType
   selected: CommissionRelationRef | null
   labels: RelationLabels
 }
 
 /**
- * Destinatario picker (spec 0089): the entity searched by `recipient_id`
- * depends on the currently selected `recipient_role`. The parent form resets
- * `recipient_id` whenever the role changes (AC-016) — this component only
- * renders the picker bound to whatever resource that role implies.
+ * Destinatario picker (spec 0090 D-4): the entity searched by `recipient_id`
+ * depends on the currently selected `recipient_type`, itself chosen by the
+ * operator among the role's allow-list. The parent form resets `recipient_id`
+ * whenever the type changes (AC-019) — this component only renders the
+ * picker bound to whatever resource that type implies.
  */
-export function CommissionConfigurationRecipientField({ control, role, selected, labels }: Props) {
+export function CommissionConfigurationRecipientField({ control, type, selected, labels }: Props) {
   const { t } = useTranslation()
   return (
     <RelationSelectField
@@ -50,7 +50,7 @@ export function CommissionConfigurationRecipientField({ control, role, selected,
       name="recipient_id"
       metaKey="recipient_id"
       label={t('commissionConfigurations.form.recipient_id')}
-      resource={RECIPIENT_RESOURCE_BY_ROLE[role]}
+      resource={RECIPIENT_RESOURCE_BY_TYPE[type]}
       searchPlaceholder={t('commissionConfigurations.form.searchRecipient')}
       selected={selected}
       {...labels}

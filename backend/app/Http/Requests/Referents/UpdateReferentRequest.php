@@ -7,6 +7,7 @@ use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Http\Requests\Referents\Concerns\ValidatesReferentUserLink;
 use App\Models\Referent;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,7 @@ class UpdateReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesPhoneUniqueness;
+    use ValidatesReferentUserLink;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -63,6 +65,7 @@ class UpdateReferentRequest extends FormRequest
             'referent_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referent_types', 'id')],
             'contact_scope' => ['sometimes', 'required', Rule::enum(ReferentContactScopeEnum::class)],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'user_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
         ], $this->profileRules());
     }
 
@@ -75,6 +78,7 @@ class UpdateReferentRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateProfile($validator);
             $this->validatePhoneUniqueness($validator);
+            $this->validateUserLinkUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

@@ -69,6 +69,9 @@ export function ReferentDetailView({ referent }: ReferentDetailViewProps) {
           <DetailField label={t('referents.form.referentType')}>
             {referent.referent_type?.name ?? <DetailEmpty />}
           </DetailField>
+          <DetailField label={t('referents.form.linkedUser')}>
+            {referent.user?.name ?? <DetailEmpty />}
+          </DetailField>
           <DetailField label={t('referents.form.notes')} full>
             {referent.notes || <DetailEmpty />}
           </DetailField>

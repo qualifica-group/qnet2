@@ -70,6 +70,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
     setProfileDraft,
     profileValid,
     selectedReferentTypeItem,
+    selectedUserItem,
     onSubmit,
     personalDataFieldPermission,
   } = useReferentForm({ mode, onSuccess })
@@ -80,6 +81,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
   // always shown).
   const detailsVisible =
     fieldPermission('referent_type_id').visible ||
+    fieldPermission('user_id').visible ||
     fieldPermission('contact_scope').visible ||
     fieldPermission('notes').visible
   const contactsVisible = personalDataFieldPermission('personal_data.contacts').visible
@@ -91,7 +93,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
   const errors = form.formState.errors
   const accountHasError =
     !profileValid ||
-    Boolean(errors.referent_type_id || errors.contact_scope || errors.notes)
+    Boolean(errors.referent_type_id || errors.user_id || errors.contact_scope || errors.notes)
 
   // Contacts/addresses persist immediately once the card exists; otherwise they
   // stay buffered until the form is saved (parity with the Users module).
@@ -141,6 +143,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
                 <DetailsTabContent
                   control={form.control}
                   selectedReferentTypeItem={selectedReferentTypeItem}
+                  selectedUserItem={selectedUserItem}
                 />
               )}
 

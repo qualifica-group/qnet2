@@ -23,6 +23,7 @@ return [
     'invalid_scope' => 'The selected scope does not match the category or product.',
     'referenced_delete' => 'This commission configuration is in use and cannot be deleted.',
     'invalid_recipient' => 'The commission recipient is not compatible with its role.',
+    'recipient_type_not_allowed' => 'This recipient type is not allowed for this role.',
     'recipient_not_selected' => 'The commission recipient must be the person selected on the quote for this role.',
     'role_without_recipient' => 'No recipient is selected on the quote for this role, so it cannot be commissioned.',
     'invalid_quote_line_id' => 'A submitted quote line does not belong to this quote or line type.',

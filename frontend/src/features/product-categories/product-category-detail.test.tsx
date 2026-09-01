@@ -58,8 +58,10 @@ function category(
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
+    generates_contract_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -204,7 +206,9 @@ describe('ProductCategoryDetailView — management rules', () => {
       <ProductCategoryDetailView
         category={category({
           single_quote_per_opportunity: true,
+          generates_contract: true,
           single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
+          generates_contract_source_category: { id: 1, name: 'Electronics' },
         })}
       />,
     )

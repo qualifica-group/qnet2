@@ -44,7 +44,8 @@ it('200: field catalogue matches the frozen contract, in order', function () {
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe([
-        'referent_type_id', 'contact_scope', 'notes',
+        // Spec 0090, D-2: `user_id` joins as the 4th native key.
+        'referent_type_id', 'contact_scope', 'notes', 'user_id',
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
@@ -59,6 +60,8 @@ it('200: field catalogue matches the frozen contract, in order', function () {
         ->and($fields['contact_scope']['type'])->toBe('select')
         ->and($fields['notes']['mandatory'])->toBeFalse()
         ->and($fields['notes']['type'])->toBe('text')
+        ->and($fields['user_id']['mandatory'])->toBeFalse()
+        ->and($fields['user_id']['type'])->toBe('select')
         ->and($fields['personal_data.first_name']['group'])->toBe('personal_data');
 
     foreach ($response->json('permissions.fields') as $field) {

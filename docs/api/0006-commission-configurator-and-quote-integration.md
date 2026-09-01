@@ -33,7 +33,7 @@ are `401`; denied abilities are `403`; missing records are `404`.
 | Commission type | `FIXED_AMOUNT`, `PERCENTAGE` |
 | Configuration status | `ACTIVE`, `SUSPENDED` |
 | Applied origin | `PRODUCT`, `PRODUCT_CATEGORY`, `RECIPIENT` (spec 0089), `MANUAL_OVERRIDE` |
-| Recipient type (read-only) | `referent`, `user`, `registry` — morph aliases, derived from the role (spec 0089) |
+| Recipient type | `referent`, `user`, `registry` — morph aliases. Chosen by the caller within the role's allow-list (spec 0090); derived from the role when omitted |
 
 ## Configurator CRUD
 
@@ -101,11 +101,21 @@ Validation rules:
   `PRODUCT_CATEGORY` rule may also carry one. It must reference a row of the
   table the ROLE implies — `COMMERCIAL`/`REPORTER` a referent, `SUPERVISOR` a
   user, `SUPPLIER` a registry — otherwise the request is rejected;
-- `recipient_type` is NEVER accepted from the payload: the server derives it
-  from `recipient_role`. Sending it has no effect;
+- `recipient_type` IS accepted (spec 0090 amends spec 0089 D-7), constrained by
+  the role's allow-list: `COMMERCIAL`, `REPORTER` and `SUPERVISOR` admit
+  `referent` and `user`; `SUPPLIER` admits only `registry`. Omitted, it is still
+  derived from `recipient_role`, so a caller that never sends it behaves exactly
+  as before. A type outside the role's allow-list is rejected;
+- `recipient_type` inherits the field permission of `recipient_id`: submitting it
+  while `recipient_id` is not editable is rejected. The two columns are one
+  logical datum and share one gate — without this, resubmitting the same numeric
+  id under a different type would silently repoint who gets paid;
 - changing `recipient_role` on a rule that already has a recipient of a
   different type, without resubmitting `recipient_id`, is rejected with
-  `commission_configurations.recipient_role_changed`;
+  `commission_configurations.recipient_role_changed` — but only when the
+  persisted type is not admitted by the NEW role (spec 0090 amends spec 0089
+  D-9). `COMMERCIAL` -> `SUPERVISOR` keeping a `referent` is therefore lawful;
+  `COMMERCIAL` -> `SUPPLIER` is not;
 - `internal_note` is nullable and at most 5,000 characters;
 - field permissions are enforced server-side for both create and update.
 
@@ -165,6 +175,18 @@ product one:
 4. otherwise role-generic rule (`recipient_type IS NULL`), scope Product;
 5. otherwise role-generic rule (`recipient_type IS NULL`), scope Product Category;
 6. otherwise no result.
+
+Since spec 0090 each rung matches an IDENTITY SET rather than a single
+recipient: the person resolved on the Quote, plus their linked counterpart when
+`referents.user_id` declares one — a referent's user, or the single referent
+representing a user. A rule addressed to either identity matches, and within a
+rung the ordinary tie-break decides between them, because both denote the same
+person. The set is one OR-group inside the same query, so the query count per
+rung is unchanged.
+
+The persisted snapshot always names the person actually on the Quote, never the
+rule's target: a rule addressed to user X, winning for the referent linked to X,
+still produces a commission addressed to the REFERENT.
 
 Rungs 1-3 are skipped when the role has no recipient. If any of them hits, the
 role-generic rungs are never queried. Rungs 4-5 exclude recipient-bound rules

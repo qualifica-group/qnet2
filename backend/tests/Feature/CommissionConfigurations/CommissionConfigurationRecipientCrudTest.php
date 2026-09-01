@@ -5,6 +5,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Models\CommissionConfiguration;
 use App\Models\Product;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,6 +15,14 @@ use Spatie\Permission\Models\Permission;
 /**
  * Spec 0089: the recipient dimension on the Configurator's write path
  * (D-7/D-9/D-12) — AC-009 through AC-014, AC-016's server-side half.
+ *
+ * Spec 0090 D-4/D-9 EMENDS 0089's D-7/D-9: `recipient_type` becomes an
+ * ACCEPTED, allow-list-validated input instead of an always-ignored one, and
+ * the role-change guard now keys off that allow-list. The two tests below
+ * that asserted the SUPERSEDED behaviour ("recipient_type is always ignored"
+ * / "COMMERCIAL -> SUPERVISOR is always blocked without resubmitting
+ * recipient_id") are updated accordingly — the requirement itself changed,
+ * per CLAUDE.md §2 ("cambia un test solo se il requisito è cambiato").
  */
 uses(RefreshDatabase::class);
 
@@ -75,28 +84,55 @@ it('rejects a SUPERVISOR rule pointing at an id that only exists in referents, n
     ]))->assertUnprocessable()->assertJsonValidationErrors('recipient_id');
 });
 
-it('ignores a client-submitted recipient_type and derives it from recipient_role instead (AC-011)', function () {
+it('honours a client-submitted recipient_type within the role allow-list, and derives it when omitted (spec 0090 D-4, AC-007/AC-009)', function () {
     Sanctum::actingAs(recipientCrudActor(['create', 'view']));
     $commercial = Referent::factory()->create();
+    $supervisorAsUser = User::factory()->create();
 
-    $response = $this->postJson('/api/commission-configurations', recipientCrudPayload([
+    $derived = $this->postJson('/api/commission-configurations', recipientCrudPayload([
         'recipient_id' => $commercial->id,
-        'recipient_type' => 'registry',
     ]))->assertCreated();
+    expect($derived->json('data.recipient_type'))->toBe('referent')
+        ->and($derived->json('data.recipient.name'))->toBe($commercial->name);
 
-    expect($response->json('data.recipient_type'))->toBe('referent')
-        ->and($response->json('data.recipient.name'))->toBe($commercial->name);
+    $chosen = $this->postJson('/api/commission-configurations', recipientCrudPayload([
+        'name' => 'Recipient rule (user)',
+        'recipient_id' => $supervisorAsUser->id,
+        'recipient_type' => 'user',
+    ]))->assertCreated();
+    expect($chosen->json('data.recipient_type'))->toBe('user')
+        ->and($chosen->json('data.recipient_id'))->toBe($supervisorAsUser->id);
 });
 
-it('refuses to change recipient_role toward a different recipient type without resubmitting recipient_id (AC-012)', function () {
+it('rejects a recipient_type outside the role allow-list (spec 0090 D-4, AC-008)', function () {
+    Sanctum::actingAs(recipientCrudActor(['create']));
+    $supplier = Registry::factory()->create();
+
+    $this->postJson('/api/commission-configurations', recipientCrudPayload([
+        'recipient_role' => 'SUPPLIER',
+        'recipient_id' => $supplier->id,
+        'recipient_type' => 'user',
+    ]))->assertUnprocessable()->assertJsonValidationErrors('recipient_type');
+});
+
+it('refuses to change recipient_role toward a type no longer admitted without resubmitting recipient_id, but allows a role change that keeps it admitted (spec 0090 D-9, AC-012/AC-018)', function () {
     Sanctum::actingAs(recipientCrudActor(['create', 'view', 'update']));
     $commercial = Referent::factory()->create();
     $id = $this->postJson('/api/commission-configurations', recipientCrudPayload(['recipient_id' => $commercial->id]))
         ->assertCreated()->json('data.id');
 
-    $this->patchJson("/api/commission-configurations/{$id}", ['recipient_role' => 'SUPERVISOR'])
+    // COMMERCIAL(referent) -> SUPPLIER: SUPPLIER only admits `registry` (INV-4) -> blocked.
+    $this->patchJson("/api/commission-configurations/{$id}", ['recipient_role' => 'SUPPLIER'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('recipient_id');
+
+    // COMMERCIAL(referent) -> SUPERVISOR: SUPERVISOR's allow-list also admits
+    // `referent` (spec 0090 D-4), so this is now lawful and keeps the SAME
+    // recipient without resubmitting recipient_id (AC-018).
+    $this->patchJson("/api/commission-configurations/{$id}", ['recipient_role' => 'SUPERVISOR'])
+        ->assertOk()
+        ->assertJsonPath('data.recipient_type', 'referent')
+        ->assertJsonPath('data.recipient_id', $commercial->id);
 
     $supervisor = User::factory()->create();
     $this->patchJson("/api/commission-configurations/{$id}", [
@@ -105,6 +141,21 @@ it('refuses to change recipient_role toward a different recipient type without r
     ])->assertOk()
         ->assertJsonPath('data.recipient_type', 'user')
         ->assertJsonPath('data.recipient_id', $supervisor->id);
+});
+
+it('requires recipient_id alongside a submitted recipient_type, never repainting the persisted id under a new table (spec 0090 R-3)', function () {
+    Sanctum::actingAs(recipientCrudActor(['create', 'view', 'update']));
+    $commercial = Referent::factory()->create();
+    $id = $this->postJson('/api/commission-configurations', recipientCrudPayload(['recipient_id' => $commercial->id]))
+        ->assertCreated()->json('data.id');
+
+    $this->patchJson("/api/commission-configurations/{$id}", ['recipient_type' => 'user'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('recipient_id');
+
+    expect(CommissionConfiguration::findOrFail($id))
+        ->recipient_type->toBe('referent')
+        ->recipient_id->toBe($commercial->id);
 });
 
 it('clears the recipient back to a role-wide rule when recipient_id is set to null (AC-013)', function () {
@@ -193,4 +244,46 @@ it('rejects a recipient_id submission with 422, not 403, when the actor lacks ed
     $this->patchJson("/api/commission-configurations/{$configuration->id}", ['recipient_id' => $commercial->id])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('recipient_id');
+});
+
+it('rejects a submitted recipient_type when recipient_id is locked, even resubmitting the SAME id (spec 0090)', function () {
+    // `recipient_type` is not its own field permission (D-12, unchanged): it
+    // inherits recipient_id's. Without that inheritance, resubmitting the
+    // SAME numeric id under a DIFFERENT type would pass EnforcesFieldPermissions'
+    // value-diff check on recipient_id (unchanged) undetected, letting a
+    // locked actor silently repoint who gets paid (referent -> user).
+    foreach (['viewAny', 'view', 'create', 'update'] as $ability) {
+        Permission::findOrCreate("commission-configurations.{$ability}");
+    }
+    $role = Role::create(['name' => fake()->unique()->slug()]);
+    $role->givePermissionTo([
+        'commission-configurations.viewAny',
+        'commission-configurations.view',
+        'commission-configurations.create',
+        'commission-configurations.update',
+    ]);
+    $role->fieldPermissions()->create([
+        'resource' => 'commission-configurations',
+        'field' => 'recipient_id',
+        'visible' => true,
+        'editable' => false,
+        'required' => false,
+    ]);
+    $actor = User::factory()->create();
+    $actor->assignRole($role);
+    Sanctum::actingAs($actor);
+
+    $commercial = Referent::factory()->create();
+    $configuration = CommissionConfiguration::factory()
+        ->forRecipient('referent', $commercial->id, CommissionApplicationScope::Product)
+        ->create(['recipient_role' => CommissionRecipientRole::Commercial, 'product_id' => Product::factory()->create()->id]);
+
+    $this->patchJson("/api/commission-configurations/{$configuration->id}", [
+        'recipient_type' => 'user',
+        'recipient_id' => $commercial->id,
+    ])->assertUnprocessable()->assertJsonValidationErrors('recipient_type');
+
+    expect(CommissionConfiguration::findOrFail($configuration->id))
+        ->recipient_type->toBe('referent')
+        ->recipient_id->toBe($commercial->id);
 });

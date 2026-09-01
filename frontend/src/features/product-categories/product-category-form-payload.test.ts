@@ -30,8 +30,10 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
+    generates_contract_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -53,6 +55,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -74,6 +77,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -95,6 +99,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -119,6 +124,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -142,6 +148,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -165,6 +172,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -186,6 +194,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -210,6 +219,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -231,6 +241,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: false,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -253,6 +264,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -279,6 +291,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'single',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -300,6 +313,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'single',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -327,6 +341,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: true,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
@@ -338,6 +353,32 @@ describe('buildUpdatePayload', () => {
     // Already a root: only the flag changed.
     expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
       single_quote_per_opportunity: true,
+    })
+  })
+
+  // Spec 0091: identical root-only diffing for the contract rule.
+  it('never sends generates_contract under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: false,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      generates_contract: false,
     })
   })
 
@@ -354,6 +395,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: { '1': '  Commercial  ', '2': '', '3': '   ', '4': 'Tutor' },
       inherits_manager_labels: true,
       custom_fields: {},
@@ -378,6 +420,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       // Different key order / extra blank rows: the position-by-position diff
       // must still see this as unchanged from `withOwnLabel`.
       manager_labels: { '1': '', '2': 'Operator', '3': '', '4': '' },
@@ -401,6 +444,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: {},
       inherits_manager_labels: false,
       custom_fields: {},
@@ -422,6 +466,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: { '1': 'Commercial', '2': '  ' },
       inherits_manager_labels: false,
       custom_fields: {},
@@ -448,6 +493,7 @@ describe('buildUpdatePayload', () => {
       is_selectable: true,
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       manager_labels: { '5': 'Regional lead', '12': 'Director' },
       inherits_manager_labels: true,
       custom_fields: {},

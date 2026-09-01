@@ -52,6 +52,8 @@ function original(
     name: 'Ada Lovelace',
     referent_type_id: 1,
     referent_type: { id: 1, name: 'Sponsor' },
+    user_id: null,
+    user: null,
     contact_scope: 'internal',
     notes: 'Some notes',
     personal_data: card(),
@@ -67,6 +69,7 @@ function original(
 
 const formValues: ReferentFormValues = {
   referent_type_id: 1,
+  user_id: null,
   contact_scope: 'internal',
   notes: 'Some notes',
   custom_fields: {},
@@ -94,6 +97,11 @@ describe('buildCreatePayload', () => {
       individualDraft(),
     )
     expect(payload.referent_type_id).toBeNull()
+  })
+
+  it('carries the linked user_id through', () => {
+    const payload = buildCreatePayload({ ...formValues, user_id: 42 }, individualDraft())
+    expect(payload.user_id).toBe(42)
   })
 })
 
@@ -133,7 +141,7 @@ describe('buildUpdatePayload', () => {
 
   it('combines multiple changed fields in a single payload', () => {
     const payload = buildUpdatePayload(
-      { referent_type_id: 2, contact_scope: 'external', notes: '', custom_fields: {} },
+      { referent_type_id: 2, user_id: null, contact_scope: 'external', notes: '', custom_fields: {} },
       original(),
       individualDraft(),
     )
@@ -143,5 +151,31 @@ describe('buildUpdatePayload', () => {
       contact_scope: 'external',
       notes: null,
     })
+  })
+
+  it('includes user_id when a user is linked (AC-001)', () => {
+    const payload = buildUpdatePayload(
+      { ...formValues, user_id: 42 },
+      original(),
+      individualDraft(),
+    )
+    expect(payload).toEqual({ user_id: 42 })
+  })
+
+  it('sends user_id: null when unlinking (AC-003)', () => {
+    const payload = buildUpdatePayload(
+      formValues,
+      original({ user_id: 42, user: { id: 42, name: 'Mario Rossi' } }),
+      individualDraft(),
+    )
+    expect(payload).toEqual({ user_id: null })
+  })
+
+  it('does not diff user_id when it is entirely omitted from the original (AC-005, not visible)', () => {
+    const withoutUser = original()
+    delete (withoutUser as { user_id?: number | null }).user_id
+    delete (withoutUser as { user?: unknown }).user
+    const payload = buildUpdatePayload(formValues, withoutUser, individualDraft())
+    expect(payload).toEqual({})
   })
 })

@@ -185,7 +185,12 @@
     <d id="D-7">`recipient_type` NON e' un campo di form e NON e' accettato nel payload: il server
       lo DERIVA da `recipient_role`. Il payload porta solo `recipient_id`. Elimina alla radice la
       coppia incoerente (regola COMMERCIAL che punta a uno `user`) senza una validazione
-      incrociata in piu'.</d>
+      incrociata in piu'.
+      **EMENDATA dalla spec 0090 (2026-09-01):** `recipient_type` E' accettato dal payload, entro
+      la allow-list per ruolo di `CommissionRecipientRole::allowedRecipientTypes()` (COMMERCIAL,
+      REPORTER e SUPERVISOR ammettono referent e user; SUPPLIER solo registry). Omesso, resta
+      derivato dal ruolo: un client che non lo invia non cambia comportamento. Eredita inoltre la
+      field permission di `recipient_id`, perche' i due campi sono un unico dato logico.</d>
 
     <d id="D-8">La mappa ruolo -> tipo morph diventa un metodo dell'enum:
       `CommissionRecipientRole::recipientType(): string` (COMMERCIAL|REPORTER -> 'referent',
@@ -198,7 +203,10 @@
       payload NON rimanda `recipient_id`, la richiesta e' respinta 422 su `recipient_id` con
       `commission_configurations.recipient_role_changed`. Non si ri-punta in silenzio l'id a
       un'altra tabella e non si azzera in silenzio il destinatario. Lato form, cambiare il ruolo
-      pulisce il campo destinatario.</d>
+      pulisce il campo destinatario.
+      **EMENDATA dalla spec 0090 (2026-09-01):** il 422 scatta solo quando il tipo persistito NON
+      e' ammesso dal nuovo ruolo. COMMERCIAL -> SUPERVISOR tenendo un `referent` e' lecito;
+      COMMERCIAL -> SUPPLIER no. Il form azzera la selezione solo nel caso non piu' ammesso.</d>
 
     <d id="D-10">Retrocompatibilita' totale, nessun backfill: le regole esistenti hanno
       `recipient_type IS NULL` e restano regole di ruolo, servite dai gradini 4-5. Le commissioni

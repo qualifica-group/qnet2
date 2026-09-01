@@ -13,10 +13,13 @@ final readonly class UpdateCommissionConfigurationData
     public function __construct(public array $attributes) {}
 
     /**
-     * `recipient_type` is never submitted (spec 0089 D-7): it is only
-     * (re)derived here, and ONLY when `recipient_id` is actually part of
-     * this partial update — an update that leaves `recipient_id` untouched
-     * must leave `recipient_type` untouched too.
+     * Spec 0090 D-4 (emends 0089 D-7): `recipient_type` is (re)computed here
+     * ONLY when `recipient_id` is actually part of this partial update — an
+     * update that leaves `recipient_id` untouched must leave `recipient_type`
+     * untouched too. When it IS part of the update, a submitted
+     * `recipient_type` (validated against the role's allow-list by the
+     * FormRequest) wins; omitted, it falls back to the role's default, same
+     * as before 0090.
      *
      * @param  array<string, mixed>  $data
      */
@@ -29,7 +32,7 @@ final readonly class UpdateCommissionConfigurationData
                 : $configuration->recipient_role;
 
             $data['recipient_id'] = $recipientId;
-            $data['recipient_type'] = $recipientId === null ? null : $role->recipientType();
+            $data['recipient_type'] = $recipientId === null ? null : ($data['recipient_type'] ?? $role->recipientType());
         }
 
         return new self($data);

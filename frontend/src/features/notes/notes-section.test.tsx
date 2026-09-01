@@ -435,3 +435,50 @@ describe('NotesSection — quote scope selectors from meta.quotes', () => {
     expect(fetchNotesMock.mock.calls[0][0]).toMatchObject({ quoteScope: 11 })
   })
 })
+
+/**
+ * La lista si aggiorna da sola dopo una scrittura solo se l'invalidazione
+ * colpisce la query MONTATA: dalla spec 0085 la chiave include lo scope, quindi
+ * un'invalidazione fissata su `'all'` manca la lista filtrata (o quella bloccata
+ * su un'Offerta) e l'operatore vede la propria nota solo ricaricando la pagina.
+ */
+describe('NotesSection — the list refreshes after a write on any scope', () => {
+  const QUOTES = [{ id: 11, code: 'QUO-0001', title: 'Prima offerta' }]
+
+  it('refetches the scoped list after a new root note (section locked on one Offerta)', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [],
+      meta: { next_cursor: null, has_more: false, quotes: QUOTES },
+    })
+    createNoteMock.mockResolvedValue(makeNote({ id: 30, body: 'Scoped note', quote_id: 11 }))
+
+    renderSection(7, { lockedQuoteId: 11 })
+    await screen.findByText(/No notes yet/)
+    expect(fetchNotesMock).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Scoped note' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => expect(fetchNotesMock).toHaveBeenCalledTimes(2))
+    expect(fetchNotesMock).toHaveBeenLastCalledWith(expect.objectContaining({ quoteScope: 11 }))
+  })
+
+  it('refetches the unfiltered list after a new root note', async () => {
+    fetchNotesMock.mockResolvedValue({
+      data: [],
+      meta: { next_cursor: null, has_more: false, quotes: QUOTES },
+    })
+    createNoteMock.mockResolvedValue(makeNote({ id: 31, body: 'General note' }))
+
+    renderSection()
+    await screen.findByText(/No notes yet/)
+    expect(fetchNotesMock).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getAllByRole('combobox')[1] as HTMLTextAreaElement, {
+      target: { value: 'General note' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => expect(fetchNotesMock).toHaveBeenCalledTimes(2))
+  })
+})

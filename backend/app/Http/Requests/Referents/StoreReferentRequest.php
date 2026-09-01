@@ -7,6 +7,7 @@ use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Http\Requests\Referents\Concerns\ValidatesReferentUserLink;
 use App\Models\Referent;
 use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
@@ -34,6 +35,7 @@ class StoreReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesPhoneUniqueness;
+    use ValidatesReferentUserLink;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -83,6 +85,7 @@ class StoreReferentRequest extends FormRequest
             'referent_type_id' => ['nullable', 'integer', Rule::exists('referent_types', 'id')],
             'contact_scope' => ['required', Rule::enum(ReferentContactScopeEnum::class)],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ], $this->profileRules());
     }
 
@@ -97,6 +100,7 @@ class StoreReferentRequest extends FormRequest
             $this->validateProfile($validator);
             $this->validatePhoneContact($validator);
             $this->validatePhoneUniqueness($validator);
+            $this->validateUserLinkUniqueness($validator);
             $this->enforceFieldPermissions($validator);
         });
     }

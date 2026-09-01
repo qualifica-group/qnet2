@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\PersonalData;
 use App\Models\Referent;
 use App\Models\ReferentType;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -34,6 +35,17 @@ class ReferentFactory extends Factory
     {
         return $this->state(fn (): array => [
             'referent_type_id' => null,
+        ]);
+    }
+
+    /**
+     * Declare this referent to BE $user (spec 0090, D-1/D-2): sets the
+     * unique `user_id` link consumed by CommissionRecipientIdentities.
+     */
+    public function forUser(User $user): static
+    {
+        return $this->state(fn (): array => [
+            'user_id' => $user->id,
         ]);
     }
 

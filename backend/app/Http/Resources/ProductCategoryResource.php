@@ -63,6 +63,11 @@ class ProductCategoryResource extends JsonResource
             // is needed here. `single_quote_per_opportunity_source_category`
             // is attached by the controller alongside the other two.
             'single_quote_per_opportunity' => (bool) $this->single_quote_per_opportunity,
+            // Spec 0091: the EFFECTIVE contract rule — already mirrored from
+            // the root on every descendant, so no walk is needed here either.
+            // `generates_contract_source_category` is attached by the
+            // controller alongside the other three.
+            'generates_contract' => (bool) $this->generates_contract,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

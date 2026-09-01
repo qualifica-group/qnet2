@@ -21,7 +21,9 @@ use App\Models\QuoteWorkflowStatus;
  *    AC-002/003: a second transition into closed_won is a no-op if one
  *    already exists), `accepted_at` = today (D-7, written ONCE here), status
  *    = the active `is_default` row (fallback: the system 'new' row),
- *    activity `contract.created`.
+ *    activity `contract.created`. Spec 0091: nothing is created at all when
+ *    the opportunity's product categories say the branch is not sold under a
+ *    contract (ContractEligibility).
  *  - closed_won -> non-closed_won: if the contract exists and is not
  *    ALREADY suspended, saves the current status as
  *    `status_before_suspension_id`, moves to the system 'suspended' row,
@@ -32,7 +34,10 @@ use App\Models\QuoteWorkflowStatus;
  */
 class ContractLifecycleManager
 {
-    public function __construct(private readonly ContractStatusResolver $statusResolver) {}
+    public function __construct(
+        private readonly ContractStatusResolver $statusResolver,
+        private readonly ContractEligibility $eligibility,
+    ) {}
 
     /**
      * @param  int|null  $previousStatusId  the quote's `quote_workflow_status_id`
@@ -64,6 +69,13 @@ class ContractLifecycleManager
     {
         if (Contract::where('quote_id', $quote->id)->exists()) {
             return; // AC-002: already a contract for this quote, no-op.
+        }
+
+        // Spec 0091 AC-009: the branch is not sold under a contract. Checked
+        // AFTER the idempotence guard (INV-3) so a pre-existing contract is
+        // never re-evaluated against a flag flipped later.
+        if (! $this->eligibility->allowsContract($quote)) {
+            return;
         }
 
         // `quote_id`/`accepted_at` are outside #[Fillable] (D-6/D-7): direct

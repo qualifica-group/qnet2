@@ -48,9 +48,11 @@ class ReferentController extends BaseApiController
         try {
             $this->authorize('view', $referent);
 
+            $permissions = $this->buildPermissions($request->user(), $referent);
+
             return $this->okWithPermissions(
-                new ReferentResource($this->service->loadProfileTree($referent)),
-                $this->buildPermissions($request->user(), $referent),
+                new ReferentResource($this->service->loadProfileTree($referent), $permissions['fields']),
+                $permissions,
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['referent' => $referent->id]);
@@ -66,10 +68,11 @@ class ReferentController extends BaseApiController
             $this->authorize('create', Referent::class);
 
             $referent = $this->service->create($request->user(), $request->toData(), $request->toProfile());
+            $permissions = $this->buildPermissions($request->user(), $referent);
 
             return $this->okWithPermissions(
-                new ReferentResource($referent),
-                $this->buildPermissions($request->user(), $referent),
+                new ReferentResource($referent, $permissions['fields']),
+                $permissions,
                 'Created',
                 HttpStatusEnum::CREATED,
             );
@@ -87,10 +90,11 @@ class ReferentController extends BaseApiController
             $this->authorize('update', $referent);
 
             $referent = $this->service->update($request->user(), $referent, $request->toData(), $request->toProfile());
+            $permissions = $this->buildPermissions($request->user(), $referent);
 
             return $this->okWithPermissions(
-                new ReferentResource($referent),
-                $this->buildPermissions($request->user(), $referent),
+                new ReferentResource($referent, $permissions['fields']),
+                $permissions,
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['referent' => $referent->id]);

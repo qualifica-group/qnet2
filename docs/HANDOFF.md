@@ -3,6 +3,150 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REGOLA "PREVEDE UN CONTRATTO" SULLE CATEGORIE PRODOTTO (2026-09-01, spec 0091) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Un setting nelle "Regole di gestione" della Categoria Prodotto che dica se
+comprende un contratto: se non lo comprende, alla chiusura in esito positivo la scheda non compare
+nei Contratti. Nei seed, tutte le categorie Formazione devono averlo spento. In corso d'opera:
+"aggiungilo come colonna" e "modifica anche la colonna modalita di gestione inserendo un badge non
+solo testo", riferito alla pagina `/product-categories`.
+
+**Cosa e stato fatto.** Colonna root-owned `product_categories.generates_contract` (boolean,
+DEFAULT TRUE) + `ContractGenerationInheritance` (quarta sottoclasse di `RootOwnedCategorySetting`),
+tile nella sezione "Regole di gestione", riga nel dettaglio, colonna in griglia, guardia in
+`ContractLifecycleManager::createContract()` via il nuovo `ContractEligibility`, seeder
+`CatalogRootRules`. Spec: `docs/specs/0091-category-contract-generation.xml`.
+
+**Decisioni da non re-litigare (prese dall'utente il 2026-09-01).**
+- D-2 La sorgente sono le RIGHE CATEGORIA DELL'OPPORTUNITA (`opportunity_product_lines`), la stessa
+  di `OpportunityQuoteLimit` — NON le categorie dei prodotti delle righe d'offerta. Un'offerta
+  senza righe risolve comunque la copertura della scheda.
+- D-3 Righe miste: vince la PIU' RESTRITTIVA. Basta UNA categoria con il flag spento perche' il
+  contratto non nasca. (In pratica raro: Formazione e `management_mode = single`.)
+- D-4 Nessuna retroattivita': un contratto gia' aperto non viene MAI toccato quando il flag viene
+  spento; continua a sospendersi/riattivarsi (spec 0072 D-3).
+- D-6 Nessun 422: chiudere positivamente resta legittimo, semplicemente non produce contratto.
+- Il DEFAULT e TRUE, unico fra i quattro setting root-owned. Gli altri tre default sono permissivi
+  (false/multiple); qui il comportamento pre-esistente e "ogni chiusura positiva apre un contratto",
+  quindi true e cio' che lascia invariato un catalogo esistente. Non uniformarlo per simmetria.
+
+**Ordine delle guardie in `createContract()` — non invertirlo.** L'idempotenza
+(`Contract::where('quote_id', ...)->exists()`) viene PRIMA della guardia di eleggibilita' (INV-3):
+cosi' un contratto pre-esistente non viene mai rivalutato contro un flag girato dopo. Coperto da
+un test dedicato in `ContractCategoryGateTest`.
+
+**REFACTOR NECESSARIO, non opzionale.** Aggiungere il quarto setting portava
+`ProductCategoryService` a 514 righe, oltre l'hard limit di 500. Le tre cose che il service faceva
+su tutti i setting insieme (guardia no-override, risoluzione in create, resync sottoalbero, piu' le
+source-category del blocco `meta`) sono state estratte in
+`App\Services\ProductCategories\RootOwnedSettingsWriter` (156 righe). Il service scende a 352.
+Conseguenze sull'API interna:
+- I tre metodi pubblici `requiresQuoteSourceCategory` / `managementModeSourceCategory` /
+  `singleQuotePerOpportunitySourceCategory` NON ESISTONO PIU'. Al loro posto
+  `rootOwnedSourceCategories(ProductCategory): array`, che il controller spreada (`...`) nel blocco
+  `meta` del `show`. Le quattro chiavi `*_source_category` in risposta sono invariate.
+- I messaggi dei 422 sono invariati alla lettera (i test preesistenti li asseriscono).
+- `RootOwnedCategorySetting` (le MECCANICHE di ereditarieta') resta dov'era: il writer orchestra, non
+  duplica.
+
+**Difetto PREESISTENTE trovato e corretto.** `single_quote_per_opportunity` era dichiarata nel
+catalogo colonne ma NON emessa da `ProductCategoriesTableDefinition::mapRow()`: essendo
+`visible: false`, la cella vuota non era mai stata notata. Ora e valorizzata e ha il suo
+`BooleanBadgeCell`.
+
+**Colonna modalita di gestione a badge.** `management_mode` passa da `'type' => 'enum'` a
+`'badge'` con `badgesFor()`/`enumKeyFor()`. Perche' serviva: il fallback badge generico di
+`column-defaults.tsx` (`isEnumBadgeColumn`) copre solo `type === 'badge'` e gli enum DINAMICI, quindi
+la cella stampava il valore grezzo `single`/`multiple` non localizzato. Nessun renderer di dominio
+nuovo: la pill arriva dal `BadgeCell` generico. Le etichette stanno in
+`enums.category_management_mode.*` (it/en) e sono CORTE ("Singola"/"Multipla") — sono la pill della
+griglia e le voci del Set Filter, non il select del form, che tiene la sua versione esplicativa
+("Singola (una riga per scheda)"). Le due copie sono volutamente diverse.
+
+**Seed.** `CatalogRootRules::RULES` — Formazione `generates_contract => false`, Consulenza `true`,
+entrambe dichiarate esplicitamente cosi' che un re-run riallinei anche un'installazione seminata
+prima della direttiva; `syncSubtree` propaga a tutto il ramo, regioni GOL di terzo livello incluse.
+
+**Fuori scope, dichiarato.** Rimozione/nascondimento dei contratti gia' esistenti; 422 sulla
+chiusura positiva; avviso lato UI su Offerta/Gestione Richieste ("questa categoria non prevede
+contratto") — nessun campo nuovo su `OpportunityResource`/`QuoteResource`; backfill sui contratti
+storici.
+
+**Verifica ESEGUITA dal lead (non riferita).** Pest intero: 5590 test, 5589 passati, 1 skipped,
+ZERO failure. Frontend `tsc -b --force` EXIT=0. Vitest intero: 519 file / 3730 test tutti verdi.
+ESLint pulito sui file toccati. NB: i due fallimenti pre-esistenti annotati piu' in basso in questo
+file (`FieldCatalogueEndpointTest`, `ProductCodeTest` AC-008) NON si presentano piu'.
+
+**Da tenere d'occhio.** `ProductCategoriesTableDefinition.php` e a 392 righe (soft 300, hard 500):
+al prossimo intervento valutare lo split, non aggiungere e basta.
+
+---
+
+## COLONNA UNITA DI MISURA NELLA GRIGLIA PRODOTTI (2026-09-01) — VERDE, NON COMMITTATO
+
+**Cosa.** Nuova colonna `unit_of_measure` nella tabella Prodotti (spec 0088 gia' esistente sul
+campo prodotto): visibile, ordinabile, filtro `set` con distinct values Excel-like.
+
+**Decisioni.**
+- La colonna e' DERIVATA come `category`: nessuna colonna DB propria, proietta il `name` della
+  relazione `unitOfMeasure()`. Il payload di riga e' `{id, name, symbol}` — stessa shape di
+  `ProductResource::unitOfMeasureSummary()`, cosi' griglia e dettaglio leggono gli stessi campi.
+  La cella mostra il SIMBOLO come badge (forma compatta, la stessa delle righe Offerta) con
+  un trigger (i) che rivela il NOME in tooltip. Il trigger e' un `button` con `aria-label` =
+  nome: il nome non resta hover-only, arriva anche a tastiera e screen reader. Ordinamento,
+  set filter e distinct values restano sul NOME — quello che l'utente legge nel tooltip.
+- Posizionata fra `category` e `product_type`, l'ordine del form. `ProductTableTest` asserisce
+  l'ordine esatto degli id: se aggiungi una colonna, aggiorna quella lista.
+- La logica derivata (filter/sort/distinct) e' stata estratta da `ProductsTableDefinition` in
+  **`app/Tables/Products/ProductRelationColumns.php`**, sul modello di `QuoteRelationColumns`:
+  la definition era gia' a 317 righe (sopra il soft limit) e duplicare i tre metodi per la
+  seconda relazione l'avrebbe portata a 374. Ora e' a 281. `category` passa dalla stessa
+  allow-list: comportamento invariato, coperto dai test preesistenti.
+- `baseQuery()` fa eager-load di `unitOfMeasure` (test no-N+1 con `preventLazyLoading`).
+
+**Verificato dal lead (eseguito, non riferito).** `pest tests/Feature/Products
+tests/Feature/UnitsOfMeasure` 195/195; `pest tests/Feature/Table tests/Feature/Tables
+tests/Feature/Exports` 266/266; `pint --test` sui file toccati passed; frontend
+`tsc -b --force` EXIT 0; `vitest run src/features/products` 14 file / 70 test verdi;
+`eslint` sui file toccati pulito.
+Suite backend COMPLETA non eseguita: il working tree contiene lavoro in corso di altre
+sessioni (specs 0090/0091) e i suoi fallimenti non sarebbero attribuibili a questa modifica.
+
+**Nota ambiente incontrata.** Per ~10 minuti `app/Services/ProductCategoryService.php` era
+NON PARSABILE (`Unmatched '}'` riga 251, blocchi orfani da un'estrazione a meta') e faceva
+fallire l'INTERA suite backend con quell'errore, non solo i test dei prodotti. Se vedi quel
+messaggio, non e' il tuo codice: e' un file di un'altra lane a meta' scrittura.
+
+## FIX — NOTE: LA LISTA FILTRATA NON SI AGGIORNAVA DOPO L'INVIO (2026-09-01) — VERDE, NON COMMITTATO
+
+**Sintomo.** Scritta una nota su un'Opportunita', la lista restava com'era: la nota compariva
+solo ricaricando la pagina.
+
+**Causa.** Dalla spec 0085 la query key della lista include lo scope
+(`['notes', entityType, entityId, { quoteScope }]`), ma le tre mutation invalidavano
+`notesKeys.list(entityType, entityId)`, che senza argomento vale `quoteScope: 'all'`.
+L'invalidazione fa match parziale sull'ULTIMO elemento: colpiva solo la lista non filtrata.
+Con un filtro attivo, o sulla sezione bloccata su un'Offerta (`lockedQuoteId`: dialog note
+della griglia Offerte, dettaglio Offerta), la query montata non veniva mai invalidata.
+
+**Fix.** `notesKeys.lists(entityType, entityId)` = prefisso di tutte le liste del record,
+usato dalle tre mutation. `notesKeys.mentionable` sposta `'mentionable-users'` PRIMA di
+entityType, cosi' `lists()` resta prefisso delle sole liste e l'invalidazione non trascina
+anche la lookup delle menzioni. File: `frontend/src/features/notes/query-keys.ts`,
+`use-note-mutations.ts`.
+
+**Verificato.** Due test nuovi in `notes-section.test.tsx` (lista bloccata su un'Offerta e
+lista non filtrata: entrambe rifetchano dopo la creazione) — il primo falliva prima del fix.
+`src/features/notes` 54/54, `opportunities|quotes|request-management` 653/653.
+
+**Rosso preesistente, NON toccato (lavoro spec 0090 gia' in working tree):**
+- 4 test `features/referents` (`referent-form.test.tsx`, `referent-form-metadata.test.tsx`):
+  elementi duplicati (`referent-type-value`, `select-referent-type-3`).
+- `tsc -b` era EXIT=2 su `use-commission-configuration-form.test.tsx:59` (l'oggetto di submit
+  non portava `recipient_type`, richiesto dallo schema 0090). Corretto sbloccando l'hook Stop
+  aggiungendo `recipient_type: 'referent'` — valore ammesso per il ruolo `REPORTER` in
+  `COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES`. Ora `tsc -b --force` EXIT=0.
+
 ## SPEC 0088 — MODULO UNITA DI MISURA (2026-09-01) — VERDE, NON COMMITTATO
 
 **Cosa.** Nuovo lookup `units-of-measure` (name/symbol/description + `code`), campo
@@ -55,6 +199,75 @@ attivo. Non e il codice: `php -d xdebug.mode=off ./vendor/bin/pest` passa. Se ve
 `pint --test` passed; frontend `tsc -b --force` EXIT 0; vitest 518 file / 3704 test tutti verdi.
 Migration applicate su MariaDB 11.3.2 reale: 0 prodotti senza unita (il backfill dell'AC-003
 finora era provato solo su SQLite).
+
+## LEGAME REFERENTE-UTENTE E DESTINATARIO DUALE (2026-09-01, spec 0090) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Voglio sia che destinatario puo' essere un referente o un user."
+Estende la spec 0089: il bersaglio di una regola di commissione non e' piu' vincolato al tipo
+naturale del ruolo.
+
+**Il vincolo che ha guidato tutto.** Sull'Offerta il Commerciale e il Segnalatore sono REFERENTI
+(`quotes.commercial_id`/`reporter_id` -> `referents`), il Supervisore e' un UTENTE
+(`supervisor_id` -> `users`), il Fornitore un'anagrafica. Una regola intestata a un utente su un
+ruolo "da referente" non aggancerebbe nulla. Da qui il legame esplicito.
+
+### Cosa e' cambiato
+
+1. `referents.user_id` nullable UNIQUE, FK `nullOnDelete` (migrazione `2026_09_01_130000`).
+   Dichiarato a mano dalla scheda Referente ("Utente collegato"), campo `user_id` con field
+   permission propria e colonna di griglia `user` in fondo al catalogo. NESSUN popolamento
+   automatico: nome ed email non sono prova d'identita'.
+2. `recipient_type` sulle regole passa da DERIVATO a SCELTO, entro
+   `CommissionRecipientRole::allowedRecipientTypes()` — unica sede della allow-list.
+   COMMERCIAL/REPORTER/SUPERVISOR ammettono referent e user; SUPPLIER solo registry.
+   Omesso -> derivato dal ruolo, quindi i client vecchi non cambiano comportamento.
+3. `App\Services\Commissions\CommissionRecipientIdentities` (nuovo): dato il destinatario
+   risolto sull'Offerta, ne restituisce l'INSIEME DI IDENTITA' (se stesso + la controparte
+   collegata). `CommissionRuleResolver` calcola l'insieme una volta per ruolo e i gradini 1-3
+   fanno match con un gruppo OR dentro la STESSA query: il numero di query per gradino non cambia.
+
+### I due punti dove il codice sbaglierebbe in silenzio
+
+- **Lo scatto persistito e' intestato alla persona dell'OFFERTA, mai al bersaglio della regola.**
+  Se una regola intestata all'utente X vince perche' il referente dell'Offerta e' collegato a X,
+  la commissione resta intestata al REFERENTE. Verificato sulla riga persistita reale in
+  `CommissionRecipientIdentityPersistenceTest`, non su un draft in memoria.
+- **I gradini 4-5 filtrano ancora `whereNull('recipient_type')`** (invariante ereditata dalla
+  0089). Non rimuoverlo mai: senza, una regola personale altrui vince come regola di ruolo.
+
+### Buco di autorizzazione trovato e chiuso
+
+`recipient_type` non e' un campo di field permission, quindi non era gated da nulla: un attore con
+`recipient_id` visibile-ma-non-editabile poteva rimandare lo STESSO id numerico con un tipo diverso
+e spostare il pagamento da un referente a un utente, passando indenne dal controllo di differenza
+sul valore. Chiuso in `CommissionConfigurationRules::validateRecipient()` facendo ereditare a
+`recipient_type` il permesso di `recipient_id`, SENZA toccare il trait condiviso
+`EnforcesFieldPermissions`. Test che riproduce il bypass incluso.
+
+### Trappola di manutenzione (vale per tutti)
+
+`tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php` cabla il NUMERO di migrazioni da
+riavvolgere ed elenca a mano ogni migrazione nel commento: **ogni nuova migrazione, di chiunque,
+lo rompe**. Ora e' a 26. Con piu' sessioni in parallelo si rompe di continuo e due sessioni
+finiscono per scrivere sulla stessa riga. Andrebbe derivato dal filesystem.
+
+### Stato verificato (verifier indipendente + ricontrollo del lead)
+
+`php artisan test` intero: 5566 test, 5565 passati, 1 skipped, ZERO failure.
+`--filter=Referent` 246/246 (1148 assertion). `--filter=Commission` 60/60 (306).
+`--filter=QuoteCommission` 18/18. Vitest referenti + configuratore: 19 file, 96 test.
+Pint pulito. Migrazione verificata reversibile in isolamento su SQLite (mai sul mysql condiviso).
+`tsc -b --force`: un solo errore in tutto il progetto, in
+`features/product-categories/product-category-generates-contract-field.tsx` — di un'ALTRA
+sessione (feature `generates_contract`), non di questa spec.
+
+### Nota di rilascio
+
+Finche' nessuno compila i legami referente-utente, la feature e' INVISIBILE e nulla cambia
+(scelta voluta: accensione graduale). Chi collauda deve saperlo, altrimenti sembrera' non
+funzionante.
+
+---
 
 ## COMMISSIONI PER DESTINATARIO SPECIFICO (2026-09-01, spec 0089) — VERDE, NON COMMITTATO
 

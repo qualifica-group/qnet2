@@ -14,6 +14,7 @@ export const referents = {
     contact_scope: 'Contact scope',
     primary_contact: 'Primary contact',
     created_at: 'Created at',
+    user: 'Linked user',
   },
   detail: {
     title: 'Referent details',
@@ -37,6 +38,11 @@ export const referents = {
     referentTypeSearch: 'Search referent types…',
     referentTypeEmpty: 'No referent types found.',
     referentTypeError: 'Unable to load referent types.',
+    linkedUser: 'Linked user',
+    linkedUserPlaceholder: 'Select a user…',
+    linkedUserSearch: 'Search users…',
+    linkedUserEmpty: 'No users found.',
+    linkedUserError: 'Unable to load users.',
     contactScope: 'Contact scope',
     activitySectors: 'Activity sectors',
     activitySectorsComingSoon: 'Coming soon',
@@ -58,7 +64,7 @@ export const referents = {
       },
       details: {
         title: 'Referent details',
-        description: 'Type, contact scope and notes.',
+        description: 'Type, linked user, contact scope and notes.',
       },
       contacts: {
         title: 'Contacts',

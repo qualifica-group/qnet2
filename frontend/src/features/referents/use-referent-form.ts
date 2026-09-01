@@ -46,7 +46,7 @@ import type {
  * `personalDataServerErrorMessage` below) — mirroring why `users` does not map
  * them onto its own outer form either.
  */
-const SERVER_ERROR_FIELDS = ['referent_type_id', 'contact_scope', 'notes'] as const
+const SERVER_ERROR_FIELDS = ['referent_type_id', 'user_id', 'contact_scope', 'notes'] as const
 
 /** Form pre-selects 'internal' (spec 0016, user-approved decision). */
 const DEFAULT_CONTACT_SCOPE = 'internal' as const
@@ -142,6 +142,9 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     if (mode.type === 'edit') {
       return {
         referent_type_id: mode.referent.referent_type_id,
+        // Omitted entirely when not visible for field permission (AC-005):
+        // falls back to unlinked, same as a fresh create.
+        user_id: mode.referent.user_id ?? null,
         contact_scope: mode.referent.contact_scope,
         notes: mode.referent.notes ?? '',
         custom_fields: customFields.defaultValues,
@@ -149,6 +152,7 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     }
     return {
       referent_type_id: null,
+      user_id: null,
       contact_scope: DEFAULT_CONTACT_SCOPE,
       notes: '',
       custom_fields: customFields.defaultValues,
@@ -161,6 +165,15 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     () =>
       mode.type === 'edit' && mode.referent.referent_type
         ? { id: mode.referent.referent_type.id, label: mode.referent.referent_type.name }
+        : null,
+    [mode],
+  )
+
+  // EDIT: same pre-known hydration for the "Linked user" picker (spec 0090 D-2).
+  const selectedUserItem = useMemo<ForSelectItem | null>(
+    () =>
+      mode.type === 'edit' && mode.referent.user
+        ? { id: mode.referent.user.id, label: mode.referent.user.name }
         : null,
     [mode],
   )
@@ -265,6 +278,7 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     setProfileDraft,
     profileValid,
     selectedReferentTypeItem,
+    selectedUserItem,
     onSubmit,
     personalDataFieldPermission,
   }

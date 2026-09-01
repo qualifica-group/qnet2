@@ -17,6 +17,10 @@ namespace App\Tables\Referents;
  * real column) and behaves IDENTICALLY to the Users column via the shared
  * PrimaryContactColumn: sortable + filterable (text/set), resolved by
  * ReferentsTableDefinition's applyDerivedFilter/applyDerivedSort/distinctValues.
+ * `user` (spec 0090, D-3) is likewise DERIVED (the linked user's name via
+ * `referents.user_id`), APPENDED after `created_at` — inserting it earlier
+ * would shift the columns of layouts users already saved — and resolved by
+ * ReferentUserColumn, mirroring BusinessFunctions' own `manager` column.
  */
 final class ReferentColumnCatalog
 {
@@ -83,6 +87,18 @@ final class ReferentColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
+            [
+                // The linked user's name (spec 0090, D-3), derived from the
+                // user() relation. APPENDED after created_at (D-3): inserting
+                // it earlier would shift already-saved column layouts.
+                'id' => 'user',
+                'label' => 'referents.columns.user',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
         ];
     }
 
@@ -97,6 +113,7 @@ final class ReferentColumnCatalog
             ['columnId' => 'contact_scope', 'type' => 'set'],
             ['columnId' => 'primary_contact', 'type' => 'text'],
             ['columnId' => 'created_at', 'type' => 'date'],
+            ['columnId' => 'user', 'type' => 'set'],
         ];
     }
 

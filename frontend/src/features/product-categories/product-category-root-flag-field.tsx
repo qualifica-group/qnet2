@@ -14,7 +14,10 @@ export interface RootFlagInheritance {
 }
 
 /** The form paths carrying a ROOT-OWNED boolean rule. */
-export type RootFlagName = 'requires_quote' | 'single_quote_per_opportunity'
+export type RootFlagName =
+  | 'requires_quote'
+  | 'single_quote_per_opportunity'
+  | 'generates_contract'
 
 interface ProductCategoryRootFlagFieldProps {
   control: Control<ProductCategoryFormValues>

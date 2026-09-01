@@ -21,8 +21,8 @@ use Illuminate\Database\Eloquent\Model;
  * request on), which this ceiling cannot see. The no-override guard in
  * ProductCategoryService, which does see it, is the authority — mirroring how
  * `business_function_id` is handled. `management_mode` (spec 0077) and
- * `single_quote_per_opportunity` (user directive 2026-08-07) follow the
- * identical reasoning.
+ * `single_quote_per_opportunity` (user directive 2026-08-07) and
+ * `generates_contract` (spec 0091) follow the identical reasoning.
  */
 class ProductCategoriesAuthorization extends AbstractResourceAuthorization
 {
@@ -53,6 +53,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('is_selectable', 'boolean'),
             new FieldDefinition('management_mode', 'select'),
             new FieldDefinition('single_quote_per_opportunity', 'boolean'),
+            new FieldDefinition('generates_contract', 'boolean'),
             new FieldDefinition('attributes', 'custom'),
             // Spec 0080: covers the WHOLE "Gestori Account" section — both
             // `manager_labels` and `inherits_manager_labels` — a single field
@@ -87,6 +88,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'is_selectable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'management_mode' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'single_quote_per_opportunity' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'generates_contract' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_labels' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];

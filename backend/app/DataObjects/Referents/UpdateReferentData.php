@@ -24,6 +24,8 @@ final readonly class UpdateReferentData
         public ?string $contactScope = null,
         public ?string $notes = null,
         public bool $notesSubmitted = false,
+        public ?int $userId = null,
+        public bool $userIdSubmitted = false,
     ) {}
 
     /**
@@ -41,6 +43,10 @@ final readonly class UpdateReferentData
             contactScope: array_key_exists('contact_scope', $data) ? (string) $data['contact_scope'] : null,
             notes: array_key_exists('notes', $data) ? $data['notes'] : null,
             notesSubmitted: array_key_exists('notes', $data),
+            userId: array_key_exists('user_id', $data) && $data['user_id'] !== null
+                ? (int) $data['user_id']
+                : null,
+            userIdSubmitted: array_key_exists('user_id', $data),
         );
     }
 
@@ -52,6 +58,11 @@ final readonly class UpdateReferentData
     public function hasNotes(): bool
     {
         return $this->notesSubmitted;
+    }
+
+    public function hasUserId(): bool
+    {
+        return $this->userIdSubmitted;
     }
 
     /**
@@ -74,6 +85,10 @@ final readonly class UpdateReferentData
 
         if ($this->notesSubmitted) {
             $attributes['notes'] = $this->notes;
+        }
+
+        if ($this->userIdSubmitted) {
+            $attributes['user_id'] = $this->userId;
         }
 
         return $attributes;

@@ -7,6 +7,7 @@ use App\Models\ReferentType;
 use App\Models\User;
 use App\Tables\Concerns\UnwrapsMultiFilter;
 use App\Tables\Referents\ReferentColumnCatalog;
+use App\Tables\Referents\ReferentUserColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Gate;
  * eager-loaded contacts and behaves IDENTICALLY to the Users column, via the
  * shared PrimaryContactColumn: its row payload, text/set filter, correlated
  * sort and distinct values are all bound to the `referents` owner here.
+ * `user` (belongsTo, spec 0090 D-3) is likewise DERIVED, delegated entirely to
+ * ReferentUserColumn (extracted rather than inlined — this file was already
+ * past the soft line limit, spec 0090 R-4).
  */
 class ReferentsTableDefinition extends AbstractTableDefinition
 {
@@ -35,7 +39,10 @@ class ReferentsTableDefinition extends AbstractTableDefinition
      */
     private const int MAX_FILTER_VALUES = 200;
 
-    public function __construct(private readonly PrimaryContactColumn $contactColumn) {}
+    public function __construct(
+        private readonly PrimaryContactColumn $contactColumn,
+        private readonly ReferentUserColumn $userColumn,
+    ) {}
 
     public function domain(): string
     {
@@ -59,10 +66,11 @@ class ReferentsTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // Eager-load referentType + the card's contacts (spec 0016 AC-015), so
-        // mapRow reads referent_type/primary_contact entirely from memory — a
-        // fixed number of queries regardless of row count.
-        return Referent::query()->with(['referentType', 'personalData.contacts']);
+        // Eager-load referentType + the card's contacts (spec 0016 AC-015) and
+        // the linked user (spec 0090, D-3), so mapRow reads referent_type/
+        // primary_contact/user entirely from memory — a fixed number of
+        // queries regardless of row count.
+        return Referent::query()->with(['referentType', 'personalData.contacts', 'user']);
     }
 
     /**
@@ -125,6 +133,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             'contact_scope' => $row->contact_scope->value,
             'primary_contact' => $this->contactColumn->format($row->personalData?->contacts),
             'created_at' => $row->created_at,
+            'user' => $row->user?->name,
         ];
     }
 
@@ -172,6 +181,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'referent_type' => $this->filterReferentType($query, $filter),
             'primary_contact' => $this->filterPrimaryContact($query, $filter),
+            'user' => $this->userColumn->applyFilter($query, $filter),
             default => false,
         };
     }
@@ -235,6 +245,12 @@ class ReferentsTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === 'user') {
+            $this->userColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $subquery = match ($columnId) {
             'referent_type' => ReferentType::query()
                 ->select('name')
@@ -270,6 +286,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             'referent_type' => $this->distinctReferentTypeNames($query, $search, $limit),
             'contact_scope' => $this->distinctContactScopes($query, $search, $limit),
             'primary_contact' => $this->contactColumn->distinctValues($query, 'referents', (new Referent)->getMorphClass(), $search, $limit),
+            'user' => $this->userColumn->distinctValues($query, $search, $limit),
             default => null,
         };
     }

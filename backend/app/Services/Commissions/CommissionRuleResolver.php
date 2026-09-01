@@ -29,6 +29,8 @@ final class CommissionRuleResolver
         CommissionApplicationScope::ProductCategory,
     ];
 
+    public function __construct(private readonly CommissionRecipientIdentities $identities) {}
+
     /**
      * @return array<int, ResolvedCommissionRule>
      */
@@ -63,6 +65,11 @@ final class CommissionRuleResolver
      * they are never even queried once a personal rule matches. The
      * tie-break (priority desc, valid_from desc, id desc) applies only
      * within a single gradino, never across them.
+     *
+     * Spec 0090 D-5: gradini 1-3 match against the recipient's whole IDENTITY
+     * SET (itself plus its linked referent/user, `CommissionRecipientIdentities`),
+     * resolved once per role — never per gradino, never per identity query
+     * (D-6, AC-016).
      */
     private function resolveRole(
         CommissionResolutionContext $context,
@@ -71,8 +78,10 @@ final class CommissionRuleResolver
         $recipient = $context->recipients[$role->value] ?? null;
 
         if ($recipient !== null) {
+            $identities = $this->identities->forRecipient($recipient);
+
             foreach (self::PERSONAL_SCOPES as $scope) {
-                $configuration = $this->firstMatch($context, $role, $scope, $recipient);
+                $configuration = $this->firstMatch($context, $role, $scope, $identities);
 
                 if ($configuration !== null) {
                     return $configuration;
@@ -81,7 +90,7 @@ final class CommissionRuleResolver
         }
 
         foreach (self::ROLE_SCOPES as $scope) {
-            $configuration = $this->firstMatch($context, $role, $scope, null);
+            $configuration = $this->firstMatch($context, $role, $scope, []);
 
             if ($configuration !== null) {
                 return $configuration;
@@ -92,17 +101,21 @@ final class CommissionRuleResolver
     }
 
     /**
-     * A single gradino's query. $recipient !== null targets gradini 1-3
-     * (recipient_type/recipient_id pinned to it); $recipient === null targets
-     * gradini 4-5 and MUST filter `whereNull('recipient_type')` — without it
-     * a personal rule belonging to a DIFFERENT recipient would win as if it
-     * were role-wide (risk R-2, covered by AC-005).
+     * A single gradino's query. A non-empty $identities targets gradini 1-3:
+     * ONE query per gradino (D-6), the recipient filter becomes an OR group
+     * over the identity set's (recipient_type, recipient_id) pairs — never a
+     * query per identity. An empty $identities targets gradini 4-5 and MUST
+     * filter `whereNull('recipient_type')` — without it a personal rule
+     * belonging to a DIFFERENT recipient would win as if it were role-wide
+     * (risk R-2, covered by AC-005).
+     *
+     * @param  array<int, CommissionRecipient>  $identities
      */
     private function firstMatch(
         CommissionResolutionContext $context,
         CommissionRecipientRole $role,
         CommissionApplicationScope $scope,
-        ?CommissionRecipient $recipient,
+        array $identities,
     ): ?CommissionConfiguration {
         if ($scope === CommissionApplicationScope::ProductCategory && $context->productCategoryId === null) {
             return null;
@@ -120,9 +133,15 @@ final class CommissionRuleResolver
             ->orderByDesc('valid_from')
             ->orderByDesc('id');
 
-        $recipient === null
+        $identities === []
             ? $query->whereNull('recipient_type')
-            : $query->where('recipient_type', $recipient->type)->where('recipient_id', $recipient->id);
+            : $query->where(function (Builder $query) use ($identities): void {
+                foreach ($identities as $identity) {
+                    $query->orWhere(fn (Builder $query) => $query
+                        ->where('recipient_type', $identity->type)
+                        ->where('recipient_id', $identity->id));
+                }
+            });
 
         match ($scope) {
             CommissionApplicationScope::Product => $query->where('product_id', $context->productId),

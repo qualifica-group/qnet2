@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
@@ -27,6 +27,31 @@ describe('productColumnRenderers.category', () => {
 
   it('renders an em dash when the product has no category', () => {
     renderCell('category', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
+describe('productColumnRenderers.unit_of_measure', () => {
+  it('badges the symbol and labels the info trigger with the unit name', () => {
+    renderCell('unit_of_measure', { id: 2, name: 'Kilogram', symbol: 'kg' })
+
+    expect(screen.getByText('kg')).toBeInTheDocument()
+    expect(screen.queryByText('Kilogram')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kilogram' })).toBeInTheDocument()
+  })
+
+  it('reveals the unit name in the tooltip', async () => {
+    renderCell('unit_of_measure', { id: 2, name: 'Kilogram', symbol: 'kg' })
+
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Kilogram' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Kilogram').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('renders an em dash when the product has no unit', () => {
+    renderCell('unit_of_measure', null)
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

@@ -83,6 +83,7 @@ export const productCategories = {
     is_selectable: 'Selezionabile',
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
+    generates_contract: 'Prevede un contratto',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
     productsMore: '+{{count}} altri',
@@ -95,6 +96,7 @@ export const productCategories = {
     requiresQuoteInherited: 'Ereditato da {{category}}',
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
+    generatesContractInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
   },
   bulkMove: {
@@ -186,6 +188,14 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       "Limita quanti DOCUMENTI OFFERTA può contenere un'opportunità: è una regola diversa dalla modalità di gestione, che limita invece le righe prodotto di una scheda. Se attivo, la creazione di una seconda offerta su un'opportunità di questo ramo viene rifiutata. Le opportunità che ne hanno già più di una le mantengono e restano modificabili. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
     singleQuotePerOpportunityInfoLabel: 'Maggiori informazioni su Offerta unica per opportunità',
+    generatesContract: 'Prevede un contratto',
+    generatesContractHint:
+      "Se attivo, un'offerta di questa categoria che si chiude con esito positivo apre un contratto.",
+    generatesContractInheritedHint:
+      'La regola sul contratto è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
+    generatesContractInfo:
+      "Decide se il ramo viene venduto sotto contratto. Se spento, quando l'offerta entra in uno stato di lavorazione chiuso positivo NON viene creato alcun contratto e la scheda non compare nel modulo Contratti; la chiusura positiva resta comunque possibile. I contratti già aperti prima dello spegnimento restano dove sono e continuano a vivere normalmente. Se una scheda copre più categorie, basta che UNA non preveda il contratto perché non venga creato. La regola appartiene alla categoria RADICE e tutto il sottoalbero la segue.",
+    generatesContractInfoLabel: 'Maggiori informazioni su Prevede un contratto',
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
@@ -275,6 +285,7 @@ export const products = {
     cost: 'Costo',
     price: 'Prezzo',
     category: 'Categoria',
+    unit_of_measure: 'Unita di misura',
     product_type: 'Tipo',
     business_function: 'Funzione aziendale',
     created_at: 'Creato il',

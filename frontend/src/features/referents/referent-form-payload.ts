@@ -30,6 +30,7 @@ export function buildCreatePayload(
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   return {
     referent_type_id: values.referent_type_id,
+    user_id: values.user_id,
     contact_scope: values.contact_scope,
     notes: values.notes || null,
     personal_data: omitNonEditableFields(draftToPayload(profileDraft), fieldPermission),
@@ -55,6 +56,12 @@ export function buildUpdatePayload(
 
   if (values.referent_type_id !== original.referent_type_id) {
     payload.referent_type_id = values.referent_type_id
+  }
+  // `original.user_id` may be entirely absent (field permission not visible,
+  // spec 0090 AC-005): normalize to `null` so an unlinked-and-hidden field
+  // never diffs against the form's own unlinked default.
+  if (values.user_id !== (original.user_id ?? null)) {
+    payload.user_id = values.user_id
   }
   if (values.contact_scope !== original.contact_scope) {
     payload.contact_scope = values.contact_scope

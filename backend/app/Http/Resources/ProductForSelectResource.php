@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Product;
+use App\Models\UnitOfMeasure;
 use Illuminate\Http\Request;
 
 /**
@@ -15,9 +16,9 @@ use Illuminate\Http\Request;
  * pick is recognizable BEFORE it adds a product line to the opportunity.
  *
  * `meta` (spec 0065, AC-009) is ADDITIVE: `code`/`price`/`cost`/
- * `vat_rate_id`/`vat_rate_name`/`vat_rate` let the Quote line form
- * precompile `unit_price` and the VAT rate from this SAME pick — no
- * existing key changes name or type.
+ * `vat_rate_id`/`vat_rate_name`/`vat_rate`/`unit_of_measure` let the Quote
+ * line form precompile `unit_price`, the VAT rate and the unit shown in the
+ * row from this SAME pick — no existing key changes name or type.
  *
  * @mixin Product
  */
@@ -44,7 +45,24 @@ class ProductForSelectResource extends ForSelectResource
                 'vat_rate_id' => $this->vat_rate_id,
                 'vat_rate_name' => $this->vatRate?->name,
                 'vat_rate' => $this->vatRate?->rate,
+                // Spec 0088: the product's own unit, so a quote line can show
+                // it the moment the product is picked. The line's own
+                // `unit_of_measure_id` is still congelated server-side on save
+                // (D-5) — this is the pre-save preview, never an input.
+                'unit_of_measure' => $this->unitOfMeasureSummary($this->unitOfMeasure),
             ],
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string, symbol: string}|null
+     */
+    private function unitOfMeasureSummary(?UnitOfMeasure $unitOfMeasure): ?array
+    {
+        if ($unitOfMeasure === null) {
+            return null;
+        }
+
+        return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
     }
 }

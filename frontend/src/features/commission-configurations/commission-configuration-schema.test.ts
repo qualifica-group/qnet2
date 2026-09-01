@@ -8,6 +8,7 @@ const valid = {
   application_scope: 'PRODUCT' as const,
   product_category_id: null,
   product_id: 10,
+  recipient_type: 'referent' as const,
   recipient_id: null,
   commission_type: 'PERCENTAGE' as const,
   value: 5,
@@ -73,5 +74,23 @@ describe('commission configuration schema', () => {
     expect(
       buildCommissionConfigurationSchema(t).safeParse({ ...valid, recipient_id: null }).success,
     ).toBe(true)
+  })
+
+  it('accepts recipient_type "user" for a COMMERCIAL rule (AC-007, spec 0090 D-4)', () => {
+    expect(
+      buildCommissionConfigurationSchema(t).safeParse({ ...valid, recipient_type: 'user' }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a recipient_type outside the role allow-list (AC-008, spec 0090 D-4)', () => {
+    const result = buildCommissionConfigurationSchema(t).safeParse({
+      ...valid,
+      recipient_role: 'SUPPLIER',
+      recipient_type: 'user',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'recipient_type')).toBe(true)
+    }
   })
 })

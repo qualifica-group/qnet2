@@ -53,9 +53,11 @@ vi.mock('@/features/config/use-config', () => ({
   useEnumOptions: (key: string) => enums[key] ?? [],
 }))
 
+// Keyed by `resource`: the form mounts two of these pickers (referent-types,
+// users, spec 0090 T-08), each gated by its own field permission.
 vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({ value }: { value: number | null }) => (
-    <div data-testid="referent-type-value">{value ?? ''}</div>
+  AsyncPaginatedSelect: ({ value, resource }: { value: number | null; resource: string }) => (
+    <div data-testid={`${resource}-value`}>{value ?? ''}</div>
   ),
 }))
 
@@ -161,8 +163,43 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
     fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
 
     await waitFor(() => expect(screen.getByLabelText(/^Notes/)).toBeInTheDocument())
-    expect(screen.queryByTestId('referent-type-value')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('referent-types-value')).not.toBeInTheDocument()
     expect(screen.getByText('Contact scope').closest('label')?.textContent).toContain('*')
+  })
+
+  it('hides the linked-user field independently by its own field permission (AC-005, spec 0090)', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+        fields: {
+          referent_type_id: {
+            visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false,
+          },
+          user_id: {
+            visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false,
+          },
+          contact_scope: {
+            visible: true, hidden: false, editable: true, readonly: false, required: true, disabled: false,
+          },
+          notes: {
+            visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false,
+          },
+        },
+        actions: {},
+      },
+    })
+
+    render(
+      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Account/ }))
+
+    await waitFor(() => expect(screen.getByLabelText(/^Notes/)).toBeInTheDocument())
+    expect(screen.getByTestId('referent-types-value')).toBeInTheDocument()
+    expect(screen.queryByTestId('users-value')).not.toBeInTheDocument()
   })
 
   it('renders a readonly/non-editable field disabled in edit mode', async () => {
@@ -231,7 +268,8 @@ describe('ReferentForm — metadata-driven authorization (spec 0004)', () => {
     // exactly like the real API client. The cache the detail page reads must
     // still carry `permissions`, or its `referent.permissions.resource` access
     // crashes on the next render.
-    const { permissions: _omit, ...bareSaved } = referent({ name: 'Ada Byron' })
+    const bareSaved = referent({ name: 'Ada Byron' })
+    delete (bareSaved as { permissions?: unknown }).permissions
     updateReferentMock.mockResolvedValue(bareSaved)
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

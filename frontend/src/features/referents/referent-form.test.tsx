@@ -64,23 +64,27 @@ vi.mock('@/features/config/use-config', () => ({
   useEnumOptions: (key: string) => enums[key] ?? [],
 }))
 
-// Replace the async single-select referent-type with a lightweight
-// controllable stub so this suite focuses on the form's own logic.
+// Replace the async single-select pickers (referent type, linked user) with a
+// lightweight controllable stub so this suite focuses on the form's own
+// logic. Keyed by `resource` since the form now mounts two of these
+// (referent-types, users, spec 0090 T-08).
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
     value,
     onChange,
+    resource,
   }: {
     value: number | null
     onChange: (value: number | null) => void
+    resource: string
   }) => (
     <div>
-      <span data-testid="referent-type-value">{value ?? ''}</span>
+      <span data-testid={`${resource}-value`}>{value ?? ''}</span>
       <button type="button" onClick={() => onChange(3)}>
-        select-referent-type-3
+        {`select-${resource}-3`}
       </button>
       <button type="button" onClick={() => onChange(null)}>
-        clear-referent-type
+        {`clear-${resource}`}
       </button>
     </div>
   ),
@@ -152,6 +156,8 @@ function referent(
     name: 'Ada Lovelace',
     referent_type_id: 3,
     referent_type: { id: 3, name: 'Sponsor' },
+    user_id: null,
+    user: null,
     contact_scope: 'internal',
     notes: 'Some notes',
     personal_data: card(),
@@ -184,7 +190,8 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     expect(screen.getByLabelText(/^Last name/)).toBeInTheDocument()
 
     switchTab('Account')
-    expect(screen.getByTestId('referent-type-value')).toBeInTheDocument()
+    expect(screen.getByTestId('referent-types-value')).toBeInTheDocument()
+    expect(screen.getByTestId('users-value')).toBeInTheDocument()
     // contact_scope pre-selects 'internal'.
     expect(screen.getByRole('combobox', { name: 'Contact scope' })).toHaveTextContent('Internal')
     // Activity sectors: disabled placeholder, not wired to any field.
@@ -208,7 +215,8 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fillRequiredPhone()
 
     switchTab('Account')
-    fireEvent.click(screen.getByText('select-referent-type-3'))
+    fireEvent.click(screen.getByText('select-referent-types-3'))
+    fireEvent.click(screen.getByText('select-users-3'))
     fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'VIP sponsor' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -216,6 +224,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     await waitFor(() => expect(createReferentMock).toHaveBeenCalledTimes(1))
     const payload = createReferentMock.mock.calls[0][0]
     expect(payload.referent_type_id).toBe(3)
+    expect(payload.user_id).toBe(3)
     expect(payload.contact_scope).toBe('internal')
     expect(payload.notes).toBe('VIP sponsor')
     expect(payload.personal_data.first_name).toBe('Ada')
@@ -271,7 +280,7 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
   it('seeds referent fields and the anagraphic card from the loaded detail in edit mode', async () => {
     render(
       <ReferentForm
-        mode={{ type: 'edit', referent: referent() }}
+        mode={{ type: 'edit', referent: referent({ user_id: 9, user: { id: 9, name: 'Mario Rossi' } }) }}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -283,7 +292,8 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     expect(screen.getByLabelText(/^First name/)).toHaveValue('Ada')
 
     switchTab('Account')
-    expect(screen.getByTestId('referent-type-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('referent-types-value')).toHaveTextContent('3')
+    expect(screen.getByTestId('users-value')).toHaveTextContent('9')
     expect(screen.getByLabelText(/^Notes/)).toHaveValue('Some notes')
 
     switchTab('Contact info')
@@ -310,6 +320,27 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     const [id, payload] = updateReferentMock.mock.calls[0]
     expect(id).toBe(7)
     expect(payload).toEqual({ notes: 'Updated note' })
+  })
+
+  it('unlinks the user without touching any other field (AC-003, spec 0090)', async () => {
+    updateReferentMock.mockResolvedValue(referent({ user_id: null, user: null }))
+
+    render(
+      <ReferentForm
+        mode={{ type: 'edit', referent: referent({ user_id: 9, user: { id: 9, name: 'Mario Rossi' } }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    switchTab('Account')
+    fireEvent.click(screen.getByText('clear-users'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateReferentMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateReferentMock.mock.calls[0]
+    expect(payload).toEqual({ user_id: null })
   })
 
   it('invalidates the referents module statistics after a successful save (spec 0026)', async () => {

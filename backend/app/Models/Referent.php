@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * optional classification; `contact_scope` distinguishes internal/external
  * referents.
  */
-#[Fillable(['name', 'referent_type_id', 'contact_scope', 'notes'])]
+#[Fillable(['name', 'referent_type_id', 'contact_scope', 'notes', 'user_id'])]
 class Referent extends BaseModel
 {
     /** @use HasFactory<ReferentFactory> */
@@ -50,6 +50,19 @@ class Referent extends BaseModel
     public function referentType(): BelongsTo
     {
         return $this->belongsTo(ReferentType::class);
+    }
+
+    /**
+     * The system user this referent IS, if the link has been declared (spec
+     * 0090, D-1/D-2): unique both ways (a user backs at most one referent),
+     * nullOnDelete — the referent is an anagraphic in its own right and
+     * survives the deletion of the linked account (AC-004). Feeds the
+     * identity set `CommissionRecipientIdentities` builds when resolving
+     * commission rules (D-5).
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

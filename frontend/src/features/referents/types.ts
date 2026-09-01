@@ -21,6 +21,12 @@ export interface ReferentTypeRef {
   name: string
 }
 
+/** The linked user reference as hydrated in the referent resource ({id, name}, spec 0090). */
+export interface ReferentUserRef {
+  id: number
+  name: string
+}
+
 /**
  * Single referent detail returned by GET/POST/PATCH /referents (envelope
  * `data`). Matches `ReferentResource`.
@@ -31,6 +37,14 @@ export interface ReferentDetail {
   referent_type_id: number | null
   /** Hydrates the "Referent type" single-select control. */
   referent_type: ReferentTypeRef | null
+  /**
+   * The system user declared to BE this referent (spec 0090 D-2), or `null`
+   * if unlinked. Both keys are OMITTED (not `null`) when `user_id` is not
+   * visible for field permission.
+   */
+  user_id?: number | null
+  /** Hydrates the "Linked user" single-select control. */
+  user?: ReferentUserRef | null
   contact_scope: ReferentContactScope
   notes: string | null
   /**
@@ -60,6 +74,8 @@ export interface ReferentDetailWithPermissions extends ReferentDetail {
  */
 export interface CreateReferentPayload {
   referent_type_id?: number | null
+  /** The linked user's id, or `null` for none (spec 0090 D-2). */
+  user_id?: number | null
   contact_scope: ReferentContactScope
   notes?: string | null
   personal_data: PersonalDataPayload
@@ -74,6 +90,8 @@ export interface CreateReferentPayload {
  */
 export interface UpdateReferentPayload {
   referent_type_id?: number | null
+  /** The linked user's id, `null` to unlink (spec 0090 D-2/AC-003). */
+  user_id?: number | null
   contact_scope?: ReferentContactScope
   notes?: string | null
   personal_data?: PersonalDataPayload

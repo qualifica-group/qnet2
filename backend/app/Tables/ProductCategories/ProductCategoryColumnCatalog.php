@@ -22,10 +22,16 @@ use App\Enums\CategoryManagementMode;
  * SORTABLE (see BusinessFunctionColumn) — the EFFECTIVE (own or inherited)
  * function name, resolved by CategoryHierarchy. `management_mode` (spec
  * 0077) is a real per-row column like `requires_quote`/`is_selectable`: its
- * static `options` list every `CategoryManagementMode` case.
+ * static `options` list every `CategoryManagementMode` case, and it renders as
+ * a `badge` (spec 0091 D-7) so the grid shows a localized pill instead of the
+ * raw `single`/`multiple` value — `managementModeBadges()` below supplies the
+ * metadata the generic BadgeCell needs.
  */
 final class ProductCategoryColumnCatalog
 {
+    /** Frontend i18n namespace of the `management_mode` badge labels (`enums.<key>.<value>`). */
+    public const string MANAGEMENT_MODE_ENUM_KEY = 'category_management_mode';
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -111,7 +117,7 @@ final class ProductCategoryColumnCatalog
                 // handling.
                 'id' => 'management_mode',
                 'label' => 'productCategories.columns.management_mode',
-                'type' => 'enum',
+                'type' => 'badge',
                 'visible' => true,
                 'sortable' => true,
                 'filterable' => true,
@@ -127,6 +133,21 @@ final class ProductCategoryColumnCatalog
                 'label' => 'productCategories.columns.single_quote_per_opportunity',
                 'type' => 'boolean',
                 'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
+                // Whether a positively closed offer of this branch opens a
+                // contract (spec 0091). Owned by the branch ROOT and mirrored
+                // onto every descendant by ContractGenerationInheritance, so
+                // this IS a real column here. Visible by default: it decides
+                // whether a deal ever reaches the Contratti module, which an
+                // operator configuring the catalogue needs to see at a glance.
+                'id' => 'generates_contract',
+                'label' => 'productCategories.columns.generates_contract',
+                'type' => 'boolean',
+                'visible' => true,
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'boolean',
@@ -167,6 +188,36 @@ final class ProductCategoryColumnCatalog
     }
 
     /**
+     * Badge metadata for the `management_mode` column (spec 0091 D-7). The
+     * label is the same i18n key the frontend resolves through the enum key,
+     * so the server-side fallback and the localized pill never say different
+     * things; MANAGEMENT_MODE_ENUM_KEY lets the
+     * cell AND the Set Filter checklist localize from
+     * `enums.category_management_mode.<value>` instead of printing the raw
+     * value. No icon: BadgeCell then renders a status dot in the token's
+     * strong shade, which keeps the pill compact.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function managementModeBadges(): array
+    {
+        return [
+            [
+                'value' => CategoryManagementMode::Single->value,
+                'label' => 'enums.category_management_mode.single',
+                'color' => 'blue',
+                'icon' => null,
+            ],
+            [
+                'value' => CategoryManagementMode::Multiple->value,
+                'label' => 'enums.category_management_mode.multiple',
+                'color' => 'slate',
+                'icon' => null,
+            ],
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function filters(): array
@@ -180,6 +231,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'is_selectable', 'type' => 'boolean'],
             ['columnId' => 'management_mode', 'type' => 'set'],
             ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],
+            ['columnId' => 'generates_contract', 'type' => 'boolean'],
             ['columnId' => 'attributes_count', 'type' => 'number'],
             ['columnId' => 'products_count', 'type' => 'number'],
             ['columnId' => 'created_at', 'type' => 'date'],

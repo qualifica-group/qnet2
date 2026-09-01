@@ -61,7 +61,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -281,7 +281,7 @@ class ProductService
             ->get();
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load(['category:id,name', 'vatRate:id,name,rate']);
+        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol']);
 
         return new ForSelectResult(
             items: $items,

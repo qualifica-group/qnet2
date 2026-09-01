@@ -83,6 +83,7 @@ export const productCategories = {
     is_selectable: 'Selectable',
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
+    generates_contract: 'Includes a contract',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
     productsMore: '+{{count}} more',
@@ -95,6 +96,7 @@ export const productCategories = {
     requiresQuoteInherited: 'Inherited from {{category}}',
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
+    generatesContractInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
   },
   bulkMove: {
@@ -184,6 +186,14 @@ export const productCategories = {
     singleQuotePerOpportunityInfo:
       'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The rule belongs to the ROOT category and the whole subtree follows it.',
     singleQuotePerOpportunityInfoLabel: 'More info about One offer per opportunity',
+    generatesContract: 'Includes a contract',
+    generatesContractHint:
+      'When on, an offer of this category that closes with a positive outcome opens a contract.',
+    generatesContractInheritedHint:
+      'The contract rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
+    generatesContractInfo:
+      'Decides whether the branch is sold under a contract. When off, an offer reaching a positively closed working status opens NO contract and the deal never appears in the Contratti module; closing positively stays possible all the same. Contracts already opened before it was turned off stay where they are and go on living normally. When a card covers several categories, a single one without the rule is enough to withhold the contract. The rule belongs to the ROOT category and the whole subtree follows it.',
+    generatesContractInfoLabel: 'More info about Includes a contract',
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
@@ -273,6 +283,7 @@ export const products = {
     cost: 'Cost',
     price: 'Price',
     category: 'Category',
+    unit_of_measure: 'Unit of measure',
     product_type: 'Type',
     business_function: 'Business function',
     created_at: 'Created at',

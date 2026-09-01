@@ -95,6 +95,7 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCate
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     ...overrides,
   }
 }
@@ -121,8 +122,10 @@ function category(
     is_selectable: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
+    generates_contract: true,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
+    generates_contract_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
@@ -156,6 +159,7 @@ describe('resolveInheritedManagementMode', () => {
       name: 'Electronics',
       management_mode: 'single',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       children: [
         treeNode({
           id: 2,
@@ -163,6 +167,7 @@ describe('resolveInheritedManagementMode', () => {
           parent_id: 1,
           management_mode: 'single',
           single_quote_per_opportunity: false,
+          generates_contract: true,
           children: [treeNode({ id: 3, name: 'Sockets', parent_id: 2, management_mode: 'single' })],
         }),
       ],
@@ -232,6 +237,7 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
         name: 'Electronics',
         management_mode: 'single',
         single_quote_per_opportunity: false,
+        generates_contract: true,
         children: [treeNode({ id: 4, name: 'Laptops', parent_id: 1, management_mode: 'single' })],
       }),
     ])
@@ -245,8 +251,10 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
             parent: { id: 1, name: 'Electronics' },
             management_mode: 'single',
             single_quote_per_opportunity: false,
+            generates_contract: true,
             management_mode_source_category: { id: 1, name: 'Electronics' },
             single_quote_per_opportunity_source_category: null,
+            generates_contract_source_category: null,
           }),
         }}
         onSuccess={vi.fn()}
@@ -272,6 +280,7 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
         name: 'Electronics',
         management_mode: 'single',
         single_quote_per_opportunity: false,
+        generates_contract: true,
         children: [treeNode({ id: 4, name: 'Laptops', parent_id: 1, management_mode: 'single' })],
       }),
     ])
@@ -280,8 +289,10 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
       parent: { id: 1, name: 'Electronics' },
       management_mode: 'single',
       single_quote_per_opportunity: false,
+      generates_contract: true,
       management_mode_source_category: { id: 1, name: 'Electronics' },
       single_quote_per_opportunity_source_category: null,
+      generates_contract_source_category: null,
     })
     updateProductCategoryMock.mockResolvedValue(child)
 

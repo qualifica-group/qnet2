@@ -62,13 +62,16 @@ class UpdateCommissionConfigurationRequest extends FormRequest
     }
 
     /**
-     * Spec 0089 D-9: changing `recipient_role` toward a role whose
-     * `recipientType()` differs from the persisted `recipient_type`, without
-     * resubmitting `recipient_id`, would silently re-point that id at a
-     * different table (e.g. a `referents` id reinterpreted as a `users` id)
-     * or silently drop the recipient. Both are refused; the caller must
-     * either resubmit a valid `recipient_id` for the new role or clear it
-     * explicitly with `null` (AC-012, AC-013).
+     * Spec 0090 D-9 (emends 0089 D-9): changing `recipient_role` toward a
+     * role whose allow-list no longer admits the persisted `recipient_type`,
+     * without resubmitting `recipient_id`, would silently re-point that id
+     * at a different table (e.g. a `referents` id reinterpreted as a
+     * `users` id) or silently drop the recipient. Both are refused; the
+     * caller must either resubmit a valid `recipient_id` for the new role or
+     * clear it explicitly with `null` (AC-012, AC-013 of 0089). Since 0090
+     * widens several roles' allow-lists, a role change that KEEPS the
+     * persisted type admissible (e.g. COMMERCIAL -> SUPERVISOR keeping a
+     * `referent`) is now lawful and must NOT trip this guard (AC-018).
      */
     private function guardRecipientRoleChange(Validator $validator, CommissionConfiguration $model): void
     {
@@ -78,7 +81,7 @@ class UpdateCommissionConfigurationRequest extends FormRequest
 
         $newRole = CommissionRecipientRole::tryFrom((string) $this->input('recipient_role'));
 
-        if ($newRole !== null && $newRole->recipientType() !== $model->recipient_type) {
+        if ($newRole !== null && ! in_array($model->recipient_type, $newRole->allowedRecipientTypes(), true)) {
             $validator->errors()->add('recipient_id', __('commission_configurations.recipient_role_changed'));
         }
     }

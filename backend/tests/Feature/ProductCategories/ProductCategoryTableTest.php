@@ -35,7 +35,7 @@ if (! function_exists('productCategoryUserWith')) {
 // columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 12 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 13 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = productCategoryUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/product-categories/columns')->assertForbidden();
@@ -50,7 +50,7 @@ it('returns the 12 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'management_mode', 'single_quote_per_opportunity', 'attributes_count', 'products_count', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'parent', 'description', 'business_function', 'requires_quote', 'is_selectable', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'attributes_count', 'products_count', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()
@@ -68,10 +68,18 @@ it('returns the 12 columns in order with the declared flags, 403 without viewAny
         ->and($columns['is_selectable']['type'])->toBe('boolean')
         ->and($columns['is_selectable']['filterType'])->toBe('boolean')
         ->and($columns['is_selectable']['sortable'])->toBeTrue()
-        ->and($columns['management_mode']['type'])->toBe('enum')
+        // Spec 0091 D-7: a badge column now, so the grid renders a localized
+        // pill instead of the raw value — hence `badges`/`enumKey`.
+        ->and($columns['management_mode']['type'])->toBe('badge')
         ->and($columns['management_mode']['filterType'])->toBe('set')
         ->and($columns['management_mode']['sortable'])->toBeTrue()
         ->and($columns['management_mode']['options'])->toBe(['single', 'multiple'])
+        ->and($columns['management_mode']['enumKey'])->toBe('category_management_mode')
+        ->and(collect($columns['management_mode']['badges'])->pluck('value')->all())->toBe(['single', 'multiple'])
+        ->and($columns['generates_contract']['type'])->toBe('boolean')
+        ->and($columns['generates_contract']['filterType'])->toBe('boolean')
+        ->and($columns['generates_contract']['sortable'])->toBeTrue()
+        ->and($columns['generates_contract']['visible'])->toBeTrue()
         ->and($columns['attributes_count']['filterType'])->toBe('number')
         ->and($columns['products_count']['filterType'])->toBe('number');
 });
