@@ -37,6 +37,14 @@ use InvalidArgumentException;
  */
 final class QuoteCriterionFieldRegistry
 {
+    /**
+     * The one native field whose match is NOT an exact category equality:
+     * it matches the line's own category or any ancestor of it (spec 0092
+     * D-2). Public because QuoteWorkflowResolver needs it to compute the
+     * D-3 depth tie-break — the field name is never duplicated as a literal.
+     */
+    public const string BRANCH_FIELD = 'product_category_branch_id';
+
     private const string ENTITY_TYPE = 'opportunities';
 
     private const string CUSTOM_FIELD_TYPE = 'relation';
@@ -63,6 +71,15 @@ final class QuoteCriterionFieldRegistry
             'multi_valued' => true,
             'inherited' => false,
         ],
+        self::BRANCH_FIELD => [
+            // Its own picker (spec 0092 D-4): the destination for-select
+            // filters `is_selectable`, which hides exactly the container
+            // categories a branch criterion is about.
+            'for_select_resource' => 'product-category-branches',
+            'table' => 'product_categories',
+            'multi_valued' => true,
+            'inherited' => false,
+        ],
     ];
 
     /**
@@ -79,6 +96,7 @@ final class QuoteCriterionFieldRegistry
         private readonly CustomFieldProvider $customFieldProvider,
         private readonly CustomFieldEntityRegistry $entityRegistry,
         private readonly CustomFieldRelationLabelResolver $relationLabelResolver,
+        private readonly CategoryBranchResolver $branchResolver,
     ) {}
 
     /**
@@ -138,7 +156,9 @@ final class QuoteCriterionFieldRegistry
      * 012): the resolving Opportunity's own value for an INHERITED field
      * (empty when null or the opportunity is missing), the distinct,
      * non-null values across every `offerLines()` row's product for
-     * `business_function_id`/`product_category_id`, or — for a custom
+     * `business_function_id`/`product_category_id`, that same set WIDENED to
+     * every ancestor for `product_category_branch_id` (spec 0092 D-2,
+     * delegated to CategoryBranchResolver), or — for a custom
      * relation field (also inherited, D-7) — the Opportunity's normalized
      * (int[]) `custom_fields` value. Assumes `offerLines.product.category`/
      * `opportunity.customFieldValueRow` are already eager-loaded by the
@@ -158,6 +178,10 @@ final class QuoteCriterionFieldRegistry
             $value = $quote->opportunity?->getAttribute($field);
 
             return $value === null ? [] : [(int) $value];
+        }
+
+        if ($field === self::BRANCH_FIELD) {
+            return array_keys($this->branchResolver->distancesFor($quote));
         }
 
         return $this->offerLineValues($quote, $field);

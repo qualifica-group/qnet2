@@ -72,10 +72,11 @@ it('isSystem() is true only for a row carrying a system_key', function () {
 
 // ============ AC-022 (partial): QuoteCriterionFieldRegistry allow-list ============
 
-it('allowedFields() returns the 3 native fields (source native) with correct for_select_resource (AC-022/AC-027)', function () {
+it('allowedFields() returns the 4 native fields (source native) with correct for_select_resource (AC-022/AC-027)', function () {
     $fields = criterionFieldRegistry()->allowedFields();
 
-    expect($fields)->toHaveCount(3);
+    // 4, not 3, since spec 0092 added `product_category_branch_id`.
+    expect($fields)->toHaveCount(4);
 
     $byField = collect($fields)->keyBy('field');
 
@@ -84,7 +85,9 @@ it('allowedFields() returns the 3 native fields (source native) with correct for
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()
         ->and($byField['product_category_id']['for_select_resource'])->toBe('product-categories')
-        ->and($byField['product_category_id']['multi_valued'])->toBeTrue();
+        ->and($byField['product_category_id']['multi_valued'])->toBeTrue()
+        ->and($byField['product_category_branch_id']['for_select_resource'])->toBe('product-category-branches')
+        ->and($byField['product_category_branch_id']['multi_valued'])->toBeTrue();
 
     foreach ($fields as $field) {
         expect($field['source'])->toBe('native')

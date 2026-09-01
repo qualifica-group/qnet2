@@ -94,6 +94,42 @@ class ProductCategoryForSelectResolver
     }
 
     /**
+     * The BRANCH picker (spec 0092 D-4): the categories a quote-workflow
+     * branch criterion may point at — those with at least one child.
+     *
+     * Deliberately NOT resolve() with a relaxed filter: that endpoint feeds
+     * DESTINATION pickers and its `is_selectable` filter stays unconditional
+     * (spec 0074 D-4). A branch criterion is about the opposite population —
+     * the containers that filter hides, `Consulenza` first among them — so it
+     * gets its own scope and, having no consumer for them, none of the
+     * business-function / management-mode meta.
+     */
+    public function resolveBranches(ForSelectQuery $query): ForSelectResult
+    {
+        $base = ProductCategory::query()->select(['id', 'name'])->whereHas('children');
+
+        if ($query->hasSearch()) {
+            $base->where('name', 'like', '%'.$query->search.'%');
+        }
+
+        $total = (clone $base)->count();
+
+        /** @var Collection<int, ProductCategory> $page */
+        $page = $base->orderBy('name')
+            ->orderBy('id')
+            ->offset($query->offset)
+            ->limit($query->limit)
+            ->get();
+
+        return new ForSelectResult(
+            items: $this->appendHydratedForSelectIds($page, $query),
+            total: $total,
+            offset: $query->offset,
+            limit: $query->limit,
+        );
+    }
+
+    /**
      * Every category id whose EFFECTIVE business function is
      * $businessFunctionId (spec 0040 amendment rev.3) — a single batched
      * CategoryHierarchy call, never a query per row.

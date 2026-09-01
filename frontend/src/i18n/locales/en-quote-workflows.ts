@@ -24,6 +24,8 @@ export const quoteWorkflows = {
     source_id: 'Source',
     business_function_id: 'Business function',
     product_category_id: 'Product category',
+    /** Spec 0092: matches the offer line's category or any ancestor of it. */
+    product_category_branch_id: 'Product category (branch)',
     /** Spec 0083 (D-7): hint shown next to a criterion field resolved from the parent Opportunity. */
     inheritedHint: 'Inherited from the opportunity',
   },

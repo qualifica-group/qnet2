@@ -5,6 +5,7 @@ use App\Http\Controllers\Campaigns\CampaignForSelectController;
 use App\Http\Controllers\Geo\StateForSelectController;
 use App\Http\Controllers\PipelineStatuses\PipelineStatusController;
 use App\Http\Controllers\PipelineStatuses\PipelineStatusForSelectController;
+use App\Http\Controllers\ProductCategories\ProductCategoryBranchForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryForSelectController;
 use App\Http\Controllers\Projects\ProjectController;
 use App\Http\Controllers\Projects\ProjectForSelectController;
@@ -108,4 +109,8 @@ Route::delete('campaigns/{campaign}', [CampaignController::class, 'destroy']);
 // Product categories / states for-select (spec 0023) — see file docblock for
 // why they are declared here instead of inline in their own blocks.
 Route::get('product-categories/for-select', ProductCategoryForSelectController::class);
+// Branch picker of the quote-workflow criteria editor (spec 0092 D-4): a
+// SEPARATE resource segment, so the sibling above keeps its unconditional
+// `is_selectable` filter (spec 0074 D-4) untouched.
+Route::get('product-category-branches/for-select', ProductCategoryBranchForSelectController::class);
 Route::get('states/for-select', StateForSelectController::class);

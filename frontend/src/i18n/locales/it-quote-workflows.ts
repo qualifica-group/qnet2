@@ -24,6 +24,8 @@ export const quoteWorkflows = {
     source_id: 'Fonte',
     business_function_id: 'Funzione aziendale',
     product_category_id: 'Categoria prodotto',
+    /** Spec 0092: match sulla categoria della riga offerta o su un suo antenato. */
+    product_category_branch_id: 'Categoria prodotto (ramo)',
     /** Spec 0083 (D-7): hint shown next to a criterion field resolved from the parent Opportunity. */
     inheritedHint: "Ereditato dall'opportunità",
   },

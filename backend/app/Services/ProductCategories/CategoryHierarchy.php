@@ -27,6 +27,13 @@ final class CategoryHierarchy
     private const int MAX_DEPTH = 100;
 
     /**
+     * Memo of parentIdMap()'s single projection query.
+     *
+     * @var array<int, int|null>|null
+     */
+    private ?array $parentIdMap = null;
+
+    /**
      * $category's ancestors, ROOT-FIRST (does not include $category itself).
      * This is the STRUCTURAL walk — it ignores the inheritance barriers and is
      * used only by the anti-cycle guard, which must see the full chain
@@ -196,6 +203,28 @@ final class CategoryHierarchy
         }
 
         return $ids;
+    }
+
+    /**
+     * Every category's `parent_id`, as `id => parent_id`, read in ONE
+     * projection query and memoized on this instance — the batched
+     * counterpart of ancestors()' per-level find(), for callers that must
+     * climb the tree for MANY nodes inside a request that cannot afford a
+     * query per level (spec 0092: the quote-workflow branch criterion is
+     * resolved inside QuoteWorkflowResolver, which guarantees zero extra
+     * queries beyond the caller's single eager load).
+     *
+     * @return array<int, int|null>
+     */
+    public function parentIdMap(): array
+    {
+        return $this->parentIdMap ??= ProductCategory::query()
+            ->select('id', 'parent_id')
+            ->get()
+            ->mapWithKeys(static fn (ProductCategory $category): array => [
+                (int) $category->id => $category->parent_id === null ? null : (int) $category->parent_id,
+            ])
+            ->all();
     }
 
     /**

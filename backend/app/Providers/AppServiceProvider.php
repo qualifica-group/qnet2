@@ -54,6 +54,7 @@ use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Support\QuoteWorkflows\CategoryBranchResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -102,6 +103,15 @@ class AppServiceProvider extends ServiceProvider
         // saving/saved observers read it) but reset between requests under
         // Octane/long-running workers.
         $this->app->scoped(CustomFieldRequestBag::class);
+
+        // Scoped so the product-category tree projection behind the
+        // quote-workflow branch criterion (spec 0092) is read ONCE per
+        // request: QuoteCriterionFieldRegistry (which values a quote matches)
+        // and QuoteWorkflowResolver (how far up it matched) both depend on it,
+        // and a fresh instance per injection would mean a second query plus a
+        // second per-quote memo. Scoped, not singleton: a reparented category
+        // must not be resolved against a stale tree forever on a worker.
+        $this->app->scoped(CategoryBranchResolver::class);
 
         // Singleton, same reasoning as FieldPermissionRepository above: the
         // protected-fields config (spec 0078) is parsed once per request even

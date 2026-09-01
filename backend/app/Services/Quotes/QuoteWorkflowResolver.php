@@ -9,6 +9,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowCriterion;
 use App\Models\QuoteWorkflowStatus;
+use App\Support\QuoteWorkflows\CategoryBranchResolver;
 use App\Support\QuoteWorkflows\QuoteCriterionFieldRegistry;
 use Illuminate\Support\Collection;
 
@@ -44,12 +45,16 @@ final class QuoteWorkflowResolver
      */
     private array $statusesCache = [];
 
-    public function __construct(private readonly QuoteCriterionFieldRegistry $fieldRegistry) {}
+    public function __construct(
+        private readonly QuoteCriterionFieldRegistry $fieldRegistry,
+        private readonly CategoryBranchResolver $branchResolver,
+    ) {}
 
     /**
      * The active workflow that matches $quote (AC-010/011/012/013/014):
      * every one of a workflow's criteria must match (AND), the workflow with
-     * the MOST matching criteria wins (specificity), ties broken by id asc.
+     * the MOST matching criteria wins (specificity), then the one whose
+     * category branch matched CLOSEST (spec 0092 D-3), ties broken by id asc.
      * Null when no active workflow matches — the caller falls back to the
      * global default set.
      */
@@ -74,12 +79,19 @@ final class QuoteWorkflowResolver
             return null;
         }
 
-        // Step 4: most specific (most criteria) wins; tie-break id asc.
+        // Step 4: most specific (most criteria) wins; then the CLOSEST
+        // category branch (spec 0092 D-3); tie-break id asc.
         return $matching
-            ->sort(function (QuoteWorkflow $a, QuoteWorkflow $b): int {
+            ->sort(function (QuoteWorkflow $a, QuoteWorkflow $b) use ($quote): int {
                 $bySpecificity = $b->criteria->count() <=> $a->criteria->count();
 
-                return $bySpecificity !== 0 ? $bySpecificity : $a->id <=> $b->id;
+                if ($bySpecificity !== 0) {
+                    return $bySpecificity;
+                }
+
+                $byDepth = $this->matchDepth($quote, $a) <=> $this->matchDepth($quote, $b);
+
+                return $byDepth !== 0 ? $byDepth : $a->id <=> $b->id;
             })
             ->first();
     }
@@ -212,6 +224,25 @@ final class QuoteWorkflowResolver
                     true,
                 ),
         );
+    }
+
+    /**
+     * How far up the category tree $workflow matched $quote (spec 0092 D-3):
+     * the distance from an offer line's own category to the value of the
+     * workflow's branch criterion. Zero when the workflow has no branch
+     * criterion at all, so a workflow matching the EXACT category always
+     * outranks one matching an ancestor, and the pre-0092 ordering is
+     * unchanged for every workflow that does not use the field.
+     */
+    private function matchDepth(Quote $quote, QuoteWorkflow $workflow): int
+    {
+        $criterion = $workflow->criteria->firstWhere('field', QuoteCriterionFieldRegistry::BRANCH_FIELD);
+
+        if ($criterion === null) {
+            return 0;
+        }
+
+        return $this->branchResolver->distancesFor($quote)[$criterion->value_id] ?? 0;
     }
 
     /**

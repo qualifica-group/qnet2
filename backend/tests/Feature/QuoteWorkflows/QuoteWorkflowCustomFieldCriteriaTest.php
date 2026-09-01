@@ -68,7 +68,8 @@ it('criterion-fields: includes an active relation custom field of entity_type op
 
     $data = $this->getJson('/api/quote-workflows/criterion-fields')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(4);
+    // 4 natives (spec 0092 added `product_category_branch_id`) + 1 custom.
+    expect($data)->toHaveCount(5);
 
     $custom = collect($data)->firstWhere('field', "custom.{$definition->key}");
 
@@ -89,7 +90,8 @@ it('criterion-fields: excludes a custom field of a different entity_type, a diff
 
     $data = $this->getJson('/api/quote-workflows/criterion-fields')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(3)
+    // The 4 natives only (spec 0092 added `product_category_branch_id`).
+    expect($data)->toHaveCount(4)
         ->and(collect($data)->pluck('field'))->not->toContain('custom.wrong_entity', 'custom.wrong_type', 'custom.inactive_relation');
 });
 

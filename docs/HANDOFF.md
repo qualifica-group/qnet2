@@ -3,6 +3,61 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CRITERIO "RAMO DI CATEGORIA" NEL CONFIGURATORE STATI OFFERTA (2026-09-01, spec 0092) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Se ho un prodotto con categoria ISO che ha categoria padre Consulenza, e
+Consulenza ha una configurazione di stati, l'offerta avra' gli stati di Consulenza?" Risposta: NO,
+il match era esatto sulla categoria DIRETTA. Scelta la strada A: nuovo campo criterio additivo.
+
+**Causa del comportamento precedente.** `QuoteCriterionFieldRegistry::offerLineValues()` restituiva
+il solo `$line->product?->category_id` e `QuoteWorkflowResolver::matches()` confronta in `in_array`
+strict. Nessuna risalita ad antenati esisteva nel dominio quote-workflows.
+
+**Cosa e' stato fatto.** Nuovo campo criterio nativo `product_category_branch_id`
+(`QuoteCriterionFieldRegistry::BRANCH_FIELD`), che matcha la categoria della riga offerta O un suo
+antenato a qualunque livello. La risoluzione espande i valori dell'OFFERTA verso l'alto (mai il
+criterio verso il basso), in `App\Support\QuoteWorkflows\CategoryBranchResolver` — nuovo
+collaboratore `scoped` che restituisce `id categoria => distanza minima`, memoizzato per
+`spl_object_id($quote)` e costruito da `CategoryHierarchy::parentIdMap()` (UNA proiezione
+`id/parent_id`, memoizzata sull'istanza). Nuova specificita' in `QuoteWorkflowResolver::resolve()`
+STEP 4: numero di criteri desc -> `matchDepth()` asc -> `id` asc. Nuovo endpoint
+`GET /api/product-category-branches/for-select` (controller/request/resource dedicati +
+`ProductCategoryForSelectResolver::resolveBranches()`) che elenca le sole categorie CON FIGLI
+ignorando `is_selectable`. FE: solo due chiavi i18n, l'editor criteri e' data-driven dal catalogo.
+
+**Invarianti da non rompere.**
+- `product_category_id` resta un match ESATTO sulla categoria diretta: la strada A non la tocca.
+- `GET /product-categories/for-select` resta destination-only col filtro `is_selectable`
+  incondizionato (spec 0074 D-4). Il picker dei rami e' un endpoint SEPARATO apposta.
+- `CategoryBranchResolver` va risolto dal container (`scoped`), mai istanziato a mano: registry e
+  resolver DEVONO condividere l'istanza o la proiezione dell'albero viene letta due volte.
+- `CategoryHierarchy::ancestors()` (una `find()` per livello) resta VIETATA nel percorso di
+  risoluzione workflow.
+- Profondita' 0 = categoria diretta, quindi un workflow senza criterio ramo conserva esattamente
+  l'ordinamento pre-0092.
+
+**Non fatto, deciso (spec 0092 D-7 / `<out>`).**
+- I workflow #10 Autoimpiego, #11 Yisu e #13 Consulenza sono configurati su `product_category_id`
+  puntato a categorie contenitore: NON matchano oggi e continueranno a non matchare finche' non
+  vengono riconfigurati a mano sul nuovo campo. Nessuno script li converte.
+- Il criterio `business_function_id` legge la colonna PROPRIA della categoria, non quella effettiva
+  di `CategoryHierarchy::effectiveBusinessFunction()`: stesso difetto di classe su un altro campo,
+  segnalato e NON corretto. Merita una spec sua.
+
+**Dimensioni da tenere d'occhio.** `QuoteCriterionFieldRegistry` 318 righe (oltre il soft 300),
+`CategoryHierarchy` 468 (soft superato da tempo, hard 500 vicino): il prossimo intervento su questi
+due file valuta lo split PRIMA di aggiungere altro.
+
+**Verifiche eseguite.** Suite Pest COMPLETA verde: 5617 test, 5616 passed, 1 skipped, 23680
+asserzioni. Nuovi: `QuoteCategoryBranchCriterionTest` (13), `ProductCategoryBranchForSelectTest`
+(7), `QuoteWorkflowBranchCriterionTest` (6). Pint pulito, `npx tsc -b --force` EXIT=0, Vitest
+`features/quote-workflows` 41/41. Aggiornati per requisito cambiato (un campo nativo in piu' nel
+catalogo, dichiarato): `Foundation0047Test`, `QuoteWorkflowMetaTest`,
+`QuoteWorkflowCustomFieldCriteriaTest`.
+
+**NOTA sull'ambiente.** `php artisan test` sull'intera suite va in segfault (signal 11) con Xdebug
+attivo. Girare con `XDEBUG_MODE=off php artisan test`.
+
 ## UNITA DI MISURA VISIBILE NEL FORM OFFERTA (2026-09-01, spec 0088) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** "In creazione/update offerte e linee di offerte c'e' la colonna unita ma c'e'

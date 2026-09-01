@@ -38,7 +38,8 @@ it('criterion-fields: 200 with the 4 allow-listed fields, correct for_select_res
 
     $data = $this->getJson('/api/quote-workflows/criterion-fields')->assertOk()->json('data');
 
-    expect($data)->toHaveCount(3);
+    // 4, not 3, since spec 0092 added `product_category_branch_id`.
+    expect($data)->toHaveCount(4);
 
     $byField = collect($data)->keyBy('field');
     expect($byField['source_id']['for_select_resource'])->toBe('sources')
@@ -48,7 +49,9 @@ it('criterion-fields: 200 with the 4 allow-listed fields, correct for_select_res
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()
         ->and($byField['business_function_id']['inherited'])->toBeFalse()
         ->and($byField['product_category_id']['for_select_resource'])->toBe('product-categories')
-        ->and($byField['product_category_id']['inherited'])->toBeFalse();
+        ->and($byField['product_category_id']['inherited'])->toBeFalse()
+        ->and($byField['product_category_branch_id']['for_select_resource'])->toBe('product-category-branches')
+        ->and($byField['product_category_branch_id']['inherited'])->toBeFalse();
 
     foreach ($data as $field) {
         expect($field['source'])->toBe('native');
