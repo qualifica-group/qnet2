@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0092 — Criterio "ramo di categoria prodotto" nel Configuratore Stati Offerta.
+  Contract-first. Le decisioni [D-n] sono state prese dall'utente il 2026-09-01
+  in fase di pianificazione: non vanno reinterpretate in implementazione.
+  Emenda: 0083 D-7 (catalogo criteri) e la regola di specificita' di 0047 AC-014.
+-->
+<spec id="0092-quote-workflow-category-branch-criterion" status="draft" owner="utente" date="2026-09-01">
+
+  <goal>
+    Un workflow offerta puo' essere agganciato a un INTERO RAMO dell'albero categorie, non solo a
+    una categoria foglia: con criterio "ramo = Consulenza", un'offerta il cui prodotto sta su
+    `10854` (figlia di `ISO`, figlia di `Consulenza`) risolve il workflow di Consulenza. Il
+    criterio per categoria esatta resta invariato e continua a vincere sul ramo.
+  </goal>
+
+  <context>
+    <!-- Fatti VERIFICATI sul codice e sui dati reali (branch feat/new-flow, DB qnet2). -->
+    <fact>
+      Oggi il match e' per categoria DIRETTA ed esatto:
+      `QuoteCriterionFieldRegistry::offerLineValues()` restituisce `$line->product?->category_id`
+      per ogni riga di `Quote::offerLines` (mai `cost_lines`), e
+      `QuoteWorkflowResolver::matches()` fa `in_array($criterion->value_id, ..., strict: true)`.
+      Nessuna risalita ad antenati esiste nel dominio quote-workflows.
+    </fact>
+    <fact>
+      L'albero reale e' profondo tre livelli: `Consulenza` (17, is_selectable=0) -> `ISO`
+      (140, is_selectable=1) -> `10854`/`1090`/... (is_selectable=1, e' qui che vivono i prodotti).
+      Un criterio "padre diretto" non basterebbe: da `10854` risolverebbe `ISO`, mai `Consulenza`.
+    </fact>
+    <fact>
+      Tre workflow attivi sono gia' configurati su categorie contenitore e oggi NON matchano mai
+      alcuna offerta (no-op silenzioso): #13 Consulenza (`product_category_id=17`),
+      #10 Autoimpiego (`=13`), #11 Yisu (`=14`). I #1-#9 (GOL - Regione) puntano a categorie su cui
+      i prodotti stanno davvero e funzionano.
+    </fact>
+    <fact>
+      `GET /product-categories/for-select` filtra `is_selectable = true` in modo INCONDIZIONATO e
+      deliberato (`ProductCategoryForSelectResolver::resolve()`, spec 0074 D-4: "no opt-in param a
+      future consumer could forget"). `Consulenza` ha `is_selectable = 0`, quindi non e'
+      selezionabile da quel picker. L'idratazione `ids[]` e' esente dal filtro (D-3a).
+    </fact>
+    <fact>
+      L'editor criteri FE e' interamente data-driven dal catalogo `GET /quote-workflows/criterion-fields`:
+      `quote-workflow-criteria-editor.tsx` costruisce la select dei campi dalle voci del catalogo e
+      passa `option.for_select_resource` a `AsyncPaginatedSelect`, che chiama `/{resource}/for-select`.
+      Un nuovo campo criterio NON richiede modifiche a componenti, schema Zod o payload FE.
+    </fact>
+    <fact>
+      `quote_workflow_criteria.field` e' `string(191)` senza vincolo enum, con unique
+      `(quote_workflow_id, field)`. `CreateQuoteWorkflowData::computeSignature()` ordina per `field`
+      e concatena `field:value_id`: un campo nuovo entra nella firma di unicita' senza modifiche.
+    </fact>
+    <fact>
+      La specificita' oggi (`QuoteWorkflowResolver::resolve()` STEP 4) e': numero di criteri desc,
+      tie-break `id` asc. Nessuna nozione di distanza/profondita'.
+    </fact>
+    <fact>
+      `CategoryHierarchy` e' il proprietario unico del walk su `parent_id`
+      (cfr. `Tables/Shared/BusinessFunctionColumn.php:15`). `ancestors()` fa una
+      `ProductCategory::find()` PER LIVELLO: inutilizzabile in risoluzione batch, dove il resolver
+      garantisce oggi zero query extra grazie a un solo eager load
+      (`offerLines.product.category`, `opportunity.customFieldValueRow`).
+    </fact>
+
+    <!-- Decisioni utente, 2026-09-01. Vincolanti. -->
+    <decision id="D-1">
+      Strada A: NUOVO campo criterio, additivo. La semantica di `product_category_id`
+      (match esatto sulla categoria diretta) NON cambia.
+    </decision>
+    <decision id="D-2">
+      Il nuovo criterio matcha la categoria STESSA o un suo antenato a qualunque livello
+      ("tutto il ramo, testa compresa"): criterio ramo=`ISO` matcha sia un prodotto su `10854`
+      sia uno direttamente su `ISO`. Nessuna zona morta.
+    </decision>
+    <decision id="D-3">
+      Specificita': l'ordine attuale resta il PRIMO discriminante. Nuovo ordine completo —
+      (1) numero di criteri desc, (2) profondita' del match asc (antenato piu' vicino vince;
+      la categoria diretta e' profondita' 0 e batte qualunque ramo), (3) `id` asc.
+      Un workflow con 2 criteri su un ramo lontano batte ancora un workflow con 1 criterio
+      sul ramo vicino.
+    </decision>
+    <decision id="D-4">
+      I contenitori si selezionano da un ENDPOINT DEDICATO che elenca le sole categorie CON FIGLI
+      ignorando `is_selectable`. Il for-select categorie esistente resta destination-only e il suo
+      filtro resta incondizionato (0074 D-4 non viene toccata).
+    </decision>
+
+    <!-- Decisioni tecniche di questa spec. -->
+    <decision id="D-5">
+      Naming: il campo e' `product_category_branch_id` (non `..._ancestor_id`: include la categoria
+      stessa, D-2, quindi denota il RAMO). Resource for-select: `product-category-branches`.
+      Label UI: IT "Categoria prodotto (ramo)", EN "Product category (branch)".
+    </decision>
+    <decision id="D-6">
+      Direzione della risoluzione: si espandono i valori dell'OFFERTA verso l'alto (categoria della
+      riga + tutti i suoi antenati), NON il valore del criterio verso il basso. Cosi'
+      `QuoteWorkflowResolver::matches()` resta invariato e il registry rimane la fonte unica dei
+      "valori che un'offerta porta per un campo".
+    </decision>
+    <decision id="D-7">
+      Nessuna migrazione dati: i criteri esistenti restano `product_category_id`. I workflow #10,
+      #11 e #13 continueranno a non matchare finche' l'utente non li riconfigura sul nuovo campo
+      dall'interfaccia. Nessuno script li converte.
+    </decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo campo criterio nativo `product_category_branch_id` in `QuoteCriterionFieldRegistry::NATIVE_FIELDS`, dichiarato subito dopo `product_category_id` (l'ordine del catalogo e' l'ordine del registry).</item>
+      <item>Nuovo collaboratore `App\Support\QuoteWorkflows\CategoryBranchResolver`: distanze `id categoria -> distanza minima` per un'offerta, memoizzate per istanza di Quote, costruite da UNA sola proiezione `id/parent_id`.</item>
+      <item>`CategoryHierarchy::parentIdMap()`: proiezione `id => parent_id` in una query, memoizzata sull'istanza. Resta il proprietario unico del walk su `parent_id`.</item>
+      <item>Nuova regola di specificita' in `QuoteWorkflowResolver::resolve()` STEP 4 secondo D-3, con `matchDepth()` privato.</item>
+      <item>Nuovo endpoint `GET /api/product-category-branches/for-select` + controller, FormRequest, Resource minimale, metodo `resolveBranches()` su `ProductCategoryForSelectResolver`.</item>
+      <item>Due chiavi i18n `quoteWorkflows.criterionFields.product_category_branch_id` (it/en).</item>
+      <item>Test Pest: registry, resolver (specificita' e match), endpoint for-select. Nessun test Vitest nuovo (FE invariato a parte le stringhe).</item>
+    </in>
+    <out>
+      <item>Qualunque modifica alla semantica di `product_category_id` (D-1).</item>
+      <item>Migrazione/conversione dei criteri gia' persistiti, inclusi i workflow #10/#11/#13 oggi inattivi di fatto (D-7).</item>
+      <item>Modifiche a `GET /product-categories/for-select` e al suo filtro `is_selectable` (D-4).</item>
+      <item>Un criterio analogo "per ramo" su `business_function_id` (che oggi legge la colonna PROPRIA della categoria, non quella effettiva ereditata): difetto reale, segnalato, NON corretto qui.</item>
+      <item>Componenti FE nuovi: picker ad albero, multi-selezione di categorie, chrome di ereditarieta' nell'editor criteri.</item>
+      <item>Migrazioni DB: nessuna (il campo e' un valore stringa in una colonna esistente).</item>
+      <item>Memoizzazione di `CategoryHierarchy::descendantIds()` (oggi ri-query a ogni chiamata): fuori scope.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ====== Catalogo criteri: una voce in piu', shape invariata ====== -->
+    <endpoint method="GET" path="/api/quote-workflows/criterion-fields">
+      <request>Nessun parametro.</request>
+      <response status="200">
+        Envelope `{ success, message, data }`. `data` = array di
+        `{ field, label, source, for_select_resource, multi_valued, inherited }` — shape INVARIATA.
+        Nuova voce, in terza posizione (nativi, ordine registry):
+        {
+          "field": "product_category_branch_id",
+          "label": "quoteWorkflows.criterionFields.product_category_branch_id",
+          "source": "native",
+          "for_select_resource": "product-category-branches",
+          "multi_valued": true,
+          "inherited": false
+        }
+      </response>
+      <errors>403 senza `quote-workflows.view`.</errors>
+    </endpoint>
+
+    <!-- ====== Picker dei rami ====== -->
+    <endpoint method="GET" path="/api/product-category-branches/for-select">
+      <request>
+        `search` (nullable string, max 255) · `offset` (int >= 0, default 0) ·
+        `limit` (int 1..BaseApiController::MAX_LIMIT) · `ids[]` (int[], idratazione edit-mode).
+        Stessa shape di ogni for-select (ADR 0011): `ForSelectQuery::fromValidated()`.
+      </request>
+      <response status="200">
+        Envelope paginato `{ success, message, data: [{ id, label }], pagination: { offset, limit, total } }`.
+        `label` = `product_categories.name`. NESSUN `meta` (il picker criteri non ne consuma).
+        Insieme: le sole categorie che hanno almeno un figlio, `is_selectable` IGNORATO.
+        Ordinamento `name` asc, `id` asc.
+      </response>
+      <errors>401 senza sessione. Nessun gate di permesso oltre `auth:sanctum` (ADR 0011, emendamento 2026-07-31).</errors>
+    </endpoint>
+
+    <!-- ====== Scrittura workflow: nessun cambio di shape ====== -->
+    <endpoint method="POST|PUT" path="/api/quote-workflows[/{quoteWorkflow}]">
+      <request>
+        `criteria: [{ field, value_id }]` — shape INVARIATA. `field` accetta ora anche
+        `product_category_branch_id`; `value_id` e' un `product_categories.id`.
+      </request>
+      <response status="200|201">Invariata.</response>
+      <errors>
+        422 `field` fuori allow-list · 422 stesso `field` due volte nello stesso payload ·
+        422 `value_id` inesistente in `product_categories` · 422 combinazione di criteri gia'
+        usata da un altro workflow (la firma include il nuovo campo senza modifiche).
+        NOTA: NON e' un errore configurare `product_category_id` e `product_category_branch_id`
+        insieme sullo stesso workflow — sono campi distinti, si sommano in AND.
+      </errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Registry / valori dell'offerta -->
+    <criterion id="AC-001">Dato `GET /quote-workflows/criterion-fields`, allora `data` contiene una voce `product_category_branch_id` con `source: "native"`, `for_select_resource: "product-category-branches"`, `multi_valued: true`, `inherited: false`, posizionata dopo `product_category_id`.</criterion>
+    <criterion id="AC-002">Data la catena `Consulenza > ISO > 10854` e un'offerta con una riga ricavo il cui prodotto ha categoria `10854`, allora `QuoteCriterionFieldRegistry::quoteValues($quote, 'product_category_branch_id')` restituisce esattamente `[10854, ISO, Consulenza]` (ordine non significativo, valori unici).</criterion>
+    <criterion id="AC-003">Data la stessa offerta, `quoteValues($quote, 'product_category_id')` restituisce ancora `[10854]` soltanto: la semantica del campo esistente e' invariata.</criterion>
+    <criterion id="AC-004">Data un'offerta con prodotto su una categoria RADICE (senza padre), allora `quoteValues(..., 'product_category_branch_id')` restituisce la sola categoria stessa (D-2: testa compresa, nessuna zona morta).</criterion>
+    <criterion id="AC-005">Date due righe ricavo su categorie di rami diversi, allora i valori sono l'unione delle due catene, senza duplicati. Le righe `cost_lines` non contribuiscono.</criterion>
+    <criterion id="AC-006">Dato un albero con un ciclo corrotto (`parent_id` che rientra), allora la risalita termina entro `CategoryHierarchy::MAX_DEPTH` senza loop infinito.</criterion>
+
+    <!-- Risoluzione e specificita' -->
+    <criterion id="AC-007">Dato un workflow attivo con unico criterio `product_category_branch_id = Consulenza` e un'offerta con prodotto su `10854`, allora `QuoteWorkflowResolver::resolve()` restituisce quel workflow (oggi restituisce null).</criterion>
+    <criterion id="AC-008">Dati due workflow con un criterio ciascuno, `branch = ISO` e `branch = Consulenza`, e un'offerta con prodotto su `10854`, allora vince `ISO` (antenato piu' vicino, D-3) indipendentemente dall'ordine degli `id`.</criterion>
+    <criterion id="AC-009">Dati due workflow con un criterio ciascuno, `product_category_id = 10854` e `branch = ISO`, allora vince quello per categoria diretta (profondita' 0, D-3).</criterion>
+    <criterion id="AC-010">Dati un workflow con DUE criteri (`branch = Consulenza` + `source_id = X`, entrambi soddisfatti) e uno con UN criterio (`branch = ISO`), allora vince quello a due criteri: il numero di criteri resta il primo discriminante (D-3).</criterion>
+    <criterion id="AC-011">Dati due workflow che matchano con pari numero di criteri e pari profondita', allora vince l'`id` piu' basso (tie-break invariato).</criterion>
+    <criterion id="AC-012">Dato un insieme di workflow che non usano il nuovo campo, allora l'esito di `resolve()` e' identico a quello di prima della spec per ogni offerta (non regressione: la suite `QuoteWorkflowResolverTest` esistente passa invariata).</criterion>
+    <criterion id="AC-013">Data un'offerta senza righe ricavo, allora nessun workflow con criterio `product_category_branch_id` matcha (valori vuoti) e si cade sul set globale di default.</criterion>
+
+    <!-- Perf -->
+    <criterion id="AC-014">Data la risoluzione di un'offerta contro N workflow attivi tutti con criterio ramo, allora la proiezione `id/parent_id` viene interrogata UNA volta sola (assert sul numero di query via `DB::listen`/`assertQueryCount`), indipendentemente da N e dal numero di righe offerta.</criterion>
+
+    <!-- Endpoint picker -->
+    <criterion id="AC-015">Dato `GET /product-category-branches/for-select`, allora la risposta contiene `Consulenza` (`is_selectable = 0`, ma ha figli) e NON contiene una categoria foglia senza figli, qualunque sia il suo `is_selectable`.</criterion>
+    <criterion id="AC-016">Dato lo stesso endpoint con `search=cons`, allora filtra per `name like %cons%` mantenendo il vincolo "ha figli"; `offset`/`limit` paginano e `total` conta l'insieme filtrato.</criterion>
+    <criterion id="AC-017">Dato `ids[]` con l'id di una categoria che NON ha piu' figli, allora la riga viene comunque idratata nella prima pagina (edit-mode: un criterio gia' salvato deve continuare a mostrare la sua etichetta).</criterion>
+    <criterion id="AC-018">Dato un utente autenticato SENZA il permesso `product-categories.view`, allora l'endpoint risponde 200 (ADR 0011). Senza sessione, 401.</criterion>
+    <criterion id="AC-019">Dato `GET /product-categories/for-select` (endpoint esistente), allora continua a escludere `Consulenza`: nessuna regressione sul filtro `is_selectable` (D-4).</criterion>
+
+    <!-- Scrittura -->
+    <criterion id="AC-020">Dato un POST `/quote-workflows` con `criteria: [{field: "product_category_branch_id", value_id: 17}]`, allora il workflow viene creato (201) e il criterio persiste.</criterion>
+    <criterion id="AC-021">Dato un POST con `value_id` inesistente in `product_categories`, allora 422 su `criteria.0.value_id`.</criterion>
+    <criterion id="AC-022">Dato un POST con `product_category_id = 140` E `product_category_branch_id = 17` nello stesso workflow, allora la creazione RIESCE (campi distinti, AND) e il workflow matcha solo le offerte che soddisfano entrambi.</criterion>
+    <criterion id="AC-023">Dato un secondo workflow con la stessa identica combinazione di criteri di uno esistente, allora 422 di unicita' della firma (il nuovo campo entra nella firma senza modifiche a `computeSignature`).</criterion>
+    <criterion id="AC-024">Dato il dettaglio di un workflow con criterio ramo, allora `value_label` risolve il NOME della categoria (`QuoteCriterionValueLabelResolver` raggruppa per tabella: `product_categories` con label column `name`).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza composer/npm.</item>
+    <item>Nessuna migrazione DB.</item>
+    <item>
+      PERF, vincolo duro: la risoluzione NON deve introdurre query per riga offerta ne' per workflow.
+      `CategoryHierarchy::ancestors()` (una `find()` per livello) e' VIETATA in questo percorso.
+      La proiezione `id/parent_id` si legge una volta e si memoizza sull'istanza; le distanze per
+      offerta si memoizzano per `spl_object_id($quote)` (il Quote puo' non avere ancora un `id`
+      durante la create).
+    </item>
+    <item>
+      DIMENSIONI: `QuoteCriterionFieldRegistry` e' gia' a 294 righe (soft limit 300) — la logica di
+      risalita NON va aggiunta li' dentro: sta in `CategoryBranchResolver`, iniettato nel registry e
+      nel resolver. `CategoryHierarchy` e' a 439/500: `parentIdMap()` e' l'unica aggiunta ammessa;
+      se il file superasse ~470 righe, lo split va SEGNALATO, non eseguito qui.
+    </item>
+    <item>Layering invariato: Controller thin -> FormRequest -> Resolver/Service -> Resource. Il nuovo endpoint riusa `ForSelectQuery`/`ForSelectResult` e l'astratta `ForSelectResource`.</item>
+    <item>Anti-SQLi: `field` ed `existsTable()` continuano a provenire SOLO dal registry, mai dall'input. Il nuovo campo non introduce alcun `whereRaw`.</item>
+    <item>La rotta si dichiara accanto a `product-categories/for-select` in `routes/api/projects.php`. Segmento distinto: nessuna collisione con wildcard.</item>
+    <item>i18n: nessuna stringa hardcoded nell'editor; le due chiavi vanno in `it-quote-workflows.ts` ed `en-quote-workflows.ts`, dentro `criterionFields`.</item>
+    <item>Definition of Done: Pest verde (suite `QuoteWorkflow|QuoteCriterion|ProductCategory`), Pint pulito, `npx tsc -b --force` (da `frontend/`) pulito, Vitest `features/quote-workflows` verde.</item>
+  </constraints>
+
+</spec>

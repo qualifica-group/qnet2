@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## UNITA DI MISURA VISIBILE NEL FORM OFFERTA (2026-09-01, spec 0088) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "In creazione/update offerte e linee di offerte c'e' la colonna unita ma c'e'
+un `-` e non c'e' un'unita scelta per il prodotto."
+
+**Causa.** La colonna unita della riga legge `row.unit_of_measure`, che finora esisteva SOLO sulle
+righe gia' persistite (`QuoteLineResource`): `quote_lines.unit_of_measure_id` viene congelato
+server-side al salvataggio (D-5). Il picker prodotto (`GET /products/for-select`, meta di spec 0065)
+non portava l'unita, quindi durante tutta la create/edit la cella restava `-` anche se il prodotto
+ha SEMPRE un'unita (`products.unit_of_measure_id` NOT NULL, D-4).
+
+**Cosa e' stato fatto.** `meta.unit_of_measure` additivo su `ProductForSelectResource`
+(`{id,name,symbol}`), con `unit_of_measure_id` in `ProductService::FOR_SELECT_COLUMNS` e
+`unitOfMeasure:id,name,symbol` nell'eager load (nessun N+1). Lato FE `QuoteProductForSelectMeta`
+espone il campo e `lineValuesFromProduct` lo copia sulla riga alla scelta del prodotto; il clear del
+prodotto azzera anche l'unita. Vale per Offerte e per Gestione Richieste (stesso row editor).
+
+**Invariante da non rompere.** L'unita resta di sola LETTURA e NON viaggia mai nel payload:
+`toLineInputs` non la include e il backend la rifiuta (`unit_of_measure_id => prohibited`). Quella
+sulla riga in form e' solo l'anteprima di cio' che `QuoteLineWriter` congelera' al salvataggio
+(ricalcolata li' quando la riga e' nuova o il prodotto e' cambiato).
+
+**Verifiche eseguite.** Pest `ProductForSelect|QuoteLine|QuoteStore|QuoteUpdate` 24/24 verde
+(+ suite `Quote|Product` completa verde), Pint pulito, Vitest `features/quotes` +
+`features/request-management` 434/434 verde (nuovo `use-quote-lines-field.test.ts`),
+`tsc -b --force` EXIT=0.
+
+**Prossimo passo.** In attesa dell'ok per il commit (§3.6): niente e' stato committato.
+
 ## REGOLA "PREVEDE UN CONTRATTO" SULLE CATEGORIE PRODOTTO (2026-09-01, spec 0091) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Un setting nelle "Regole di gestione" della Categoria Prodotto che dica se

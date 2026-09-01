@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,7 +146,20 @@ it('meta.vat_rate_* is null when the product has no vat_rate_id (AC-009)', funct
         ->assertJsonPath('items.0.meta.vat_rate', null);
 });
 
-it('no N+1 on the vatRate relation across the page (AC-009)', function () {
+it('exposes the product unit of measure in meta, so a quote line can show it on pick (spec 0088)', function () {
+    $actor = productForSelectActor();
+    $unit = UnitOfMeasure::factory()->create(['name' => 'Chilogrammo', 'symbol' => 'kg']);
+    Product::factory()->create(['name' => 'Fibra 1Gb', 'unit_of_measure_id' => $unit->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/products/for-select')
+        ->assertOk()
+        ->assertJsonPath('items.0.meta.unit_of_measure.id', $unit->id)
+        ->assertJsonPath('items.0.meta.unit_of_measure.name', 'Chilogrammo')
+        ->assertJsonPath('items.0.meta.unit_of_measure.symbol', 'kg');
+});
+
+it('no N+1 on the vatRate/unitOfMeasure relations across the page (AC-009, spec 0088)', function () {
     $actor = productForSelectActor();
     $vatRate = VatRate::factory()->create();
     Product::factory()->count(5)->create(['vat_rate_id' => $vatRate->id]);
