@@ -6,6 +6,7 @@ import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
+import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttributeSummary, QuoteWorkflowStatusRef } from '@/features/quotes/types'
@@ -121,6 +122,14 @@ export function quoteLineRowSchema(t: TFunction) {
       })).optional(),
     })
     .superRefine((row, ctx) => {
+      // Una riga mai toccata non e' una riga: le create form ne aprono una
+      // vuota di default (direttiva 2026-09-01) e un'offerta senza righe resta
+      // legittima, quindi non deve impedire il submit. `toLineInputs` la scarta
+      // dal payload con lo stesso predicato.
+      if (isPristineLineRow(row)) {
+        return
+      }
+
       if (row.product_id === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

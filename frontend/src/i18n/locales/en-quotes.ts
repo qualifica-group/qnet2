@@ -246,7 +246,7 @@ export const quotes = {
     lineUnitPriceInvalid: 'Enter a non-negative price.',
     lineUnitPriceDecimals: 'Unit price may have at most 2 decimals.',
     lineVatRate: 'Row {{n}} VAT rate',
-    lineVatRatePlaceholder: 'Select a VAT rate…',
+    lineVatRatePlaceholder: 'VAT rate…',
     lineVatRateSearch: 'Search VAT rates…',
     lineVatRateEmpty: 'No VAT rates found.',
     lineVatRateLoadError: 'Unable to load VAT rates.',

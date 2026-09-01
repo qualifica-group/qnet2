@@ -162,11 +162,14 @@ export function buildRequestCreatePayload({
   // empty array is a no-op the server need not process.
   // "Linee dell'offerta" (user directive 2026-08-07): same "only when filled
   // in" rule — an empty array would ask the server to replace nothing with
-  // nothing on an Offerta that is being created empty anyway.
+  // nothing on an Offerta that is being created empty anyway. The gate reads
+  // the WIRE rows, not the form ones: since directive 2026-09-01 the form
+  // opens on an untouched row that `toLineInputs` drops.
+  const offerLineInputs = toLineInputs(offerLines)
   const classification = {
     product_lines,
     ...(productsOfInterest.length > 0 ? { products_of_interest: productsOfInterest } : {}),
-    ...(offerLines.length > 0 ? { offer_lines: toLineInputs(offerLines) } : {}),
+    ...(offerLineInputs.length > 0 ? { offer_lines: offerLineInputs } : {}),
   }
 
   // The operative block (user directive 2026-07-31): sent only when it

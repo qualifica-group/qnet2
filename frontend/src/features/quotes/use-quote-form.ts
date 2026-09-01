@@ -12,6 +12,7 @@ import { managerSlotsFromRefs } from '@/lib/utils'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
 import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
+import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import {
   buildCreateQuoteSchema,
   buildUpdateQuoteSchema,
@@ -198,7 +199,11 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
       // Opportunita's own assignments are deliberately not copied over, or
       // the same segnalatore would be counted twice in "Segnalatori premiati".
       rewards: [],
-      offer_lines: [],
+      // Directive 2026-09-01: the Offerta tab opens on ONE empty row instead
+      // of an empty grid — an offer without lines is the exception, so making
+      // the user press "Aggiungi riga" first was pure friction. Costs stay
+      // empty: those rows are genuinely optional.
+      offer_lines: [EMPTY_LINE_ROW],
       cost_lines: [],
     }
   }, [mode, initialCode])

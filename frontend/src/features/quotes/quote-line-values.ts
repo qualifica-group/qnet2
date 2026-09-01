@@ -45,18 +45,39 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
 }
 
 /**
+ * A row nobody has touched: every editable field still empty and no persisted
+ * `id`. Since directive 2026-09-01 the create forms OPEN on one such row
+ * (`EMPTY_LINE_ROW`) instead of an empty grid, so "untouched" must mean
+ * "no row at all" on both sides of the submit — the schema skips its
+ * `required` rules on it (quote-schema.ts) and `toLineInputs` drops it below.
+ * Without this an offer-less quote/richiesta, which both endpoints accept,
+ * would become unsavable unless the user deleted the seeded row by hand.
+ */
+export function isPristineLineRow(row: QuoteLineFormValues): boolean {
+  return (
+    row.id === undefined &&
+    row.product_id === null &&
+    row.quantity === null &&
+    row.unit_price === null &&
+    row.vat_rate_id === null &&
+    (row.commissions?.length ?? 0) === 0
+  )
+}
+
+/**
  * Casts a validated row to the wire shape, assigning `sort_order` from its
  * position in the array (the contract's own fallback when the key is
- * omitted — AC-038 — so the client never needs to invent one). Every field
- * is non-null here: the schema's per-row `superRefine` (quote-schema.ts)
- * already blocks submit on an incomplete row before this ever runs.
+ * omitted — AC-038 — so the client never needs to invent one). Untouched
+ * rows are dropped first (see `isPristineLineRow`); of what remains every
+ * field is non-null, since the schema's per-row `superRefine`
+ * (quote-schema.ts) already blocks submit on an incomplete row.
  *
  * `commissions` travel only when the row carries them: Gestione Richieste
  * never fills that block in (the endpoint prohibits it), the Offerte form
  * always does.
  */
 export function toLineInputs(rows: QuoteLineFormValues[]): QuoteLineInput[] {
-  return rows.map((row, index) => ({
+  return rows.filter((row) => !isPristineLineRow(row)).map((row, index) => ({
     ...(row.id ? { id: row.id } : {}),
     product_id: row.product_id as number,
     quantity: row.quantity as number,

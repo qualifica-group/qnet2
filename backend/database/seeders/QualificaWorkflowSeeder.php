@@ -13,8 +13,9 @@ use Illuminate\Database\Seeder;
 /**
  * The client's "stati di lavorazione" (spec 0047): one QuoteWorkflow per
  * product category of WorkflowStatusCatalogue::WORKFLOWS, each matched on that
- * category (criterion `product_category_id`) and carrying that category's own
- * working-state pick list.
+ * category — by EXACT category by default, by whole BRANCH for the categories
+ * that declare it (WorkflowStatusCatalogue::criterionFieldFor, spec 0092) —
+ * and carrying that category's own working-state pick list.
  *
  * Split out of QualificaCatalogSeeder — which calls it as its last step —
  * only because the two together would blow past the file-size limit; it is
@@ -60,7 +61,10 @@ class QualificaWorkflowSeeder extends Seeder
      */
     private function seedWorkflow(QuoteWorkflowService $service, ProductCategory $category): void
     {
-        $criteria = [['field' => WorkflowStatusCatalogue::CRITERION_FIELD, 'value_id' => $category->id]];
+        $criteria = [[
+            'field' => WorkflowStatusCatalogue::criterionFieldFor($category->name),
+            'value_id' => $category->id,
+        ]];
 
         $exists = QuoteWorkflow::query()
             ->where('name', $category->name)

@@ -117,6 +117,22 @@ describe('buildCreatePayload', () => {
     expect(payload.layout_id).toBe(4)
   })
 
+  // Direttiva 2026-09-01: la riga vuota con cui la form si apre non e' una
+  // riga — non viaggia, e non sposta il `sort_order` di quelle vere.
+  it('drops untouched empty rows and renumbers sort_order', () => {
+    const payload = buildCreatePayload(
+      formValues({
+        offer_lines: [
+          { product_id: null, quantity: null, unit_price: null, vat_rate_id: null, commissions: [] },
+          { product_id: 7, quantity: 3, unit_price: 10, vat_rate_id: 2 },
+        ],
+      }),
+    )
+    expect(payload.offer_lines).toEqual([
+      { product_id: 7, quantity: 3, unit_price: 10, vat_rate_id: 2, sort_order: 0 },
+    ])
+  })
+
   it('emits only the contract fields for each line, never the calculated amounts', () => {
     const payload = buildCreatePayload(
       formValues({

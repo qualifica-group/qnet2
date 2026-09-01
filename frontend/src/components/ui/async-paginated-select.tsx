@@ -273,7 +273,7 @@ export function AsyncPaginatedSelect({
             <span className="truncate">{triggerLabel}</span>
           </span>
         ) : (
-          <span className="flex-1 text-left text-muted-foreground">
+          <span className="flex-1 truncate text-left text-muted-foreground">
             {labels.placeholder}
           </span>
         )}

@@ -42,10 +42,20 @@ use InvalidArgumentException;
 final class WorkflowStatusCatalogue
 {
     /**
-     * The CriterionFieldRegistry allow-list key every seeded workflow matches
-     * on: the product category of the opportunity's product lines.
+     * The QuoteCriterionFieldRegistry allow-list key a seeded workflow matches
+     * on unless its WORKFLOWS entry overrides it: the EXACT product category
+     * of the offer lines' products.
      */
-    public const string CRITERION_FIELD = 'product_category_id';
+    public const string DEFAULT_CRITERION_FIELD = 'product_category_id';
+
+    /**
+     * The spec 0092 criterion: the offer line's category OR any ancestor of
+     * it. Used by a workflow bound to a category that is a BRANCH ROOT rather
+     * than a leaf products actually sit on — "Consulenza" is exactly that
+     * (its products live two levels down, under `ISO` and its siblings), so
+     * an exact-category criterion would never match a single offer.
+     */
+    public const string BRANCH_CRITERION_FIELD = 'product_category_branch_id';
 
     /**
      * The sheet's LEGEND, the only thing that classifies a state: a cell's
@@ -154,13 +164,13 @@ final class WorkflowStatusCatalogue
         ],
         self::CONSULTING => [
             'Da Richiamare' => ['legend' => self::OPEN, 'description' => 'Contatto da ricontattare per fornire informazioni, aggiornamenti o proseguire la gestione della trattativa.'],
-            'Trattativa' => ['legend' => self::OPEN, 'description' => 'Opportunità in fase di valutazione/negoziazione, con attività ancora in corso prima della definizione dell\'esito finale.'],
-            'Appuntamento' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
+            'In trattativa' => ['legend' => self::OPEN, 'description' => 'Opportunità in fase di valutazione/negoziazione, con attività ancora in corso prima della definizione dell\'esito finale.'],
+            'Appuntamento Fissato' => ['legend' => self::OPEN, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
             'Rimandata' => ['legend' => self::OPEN, 'description' => 'Trattativa o contatto posticipato a una data successiva in attesa di un nuovo confronto o aggiornamento.'],
             'VINTO' => ['legend' => self::POSITIVE, 'description' => 'Trattativa conclusa positivamente.'],
             'Persa' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa conclusa negativamente senza finalizzazione.'],
             'Annullata' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa o appuntamento annullato e non più proseguito.'],
-            'NR' => ['legend' => self::OPEN, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati (Non Risponde).'],
+            'Non risponde' => ['legend' => self::OPEN, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non raggiungibile dopo diversi tentativi tramite i recapiti disponibili.'],
             'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.'],
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
@@ -192,7 +202,7 @@ final class WorkflowStatusCatalogue
      * CATALOG: a rename there breaks loudly here instead of silently dropping
      * a whole workflow.
      *
-     * @var array<string, array{section: string, statuses?: list<string>}>
+     * @var array<string, array{section: string, statuses?: list<string>, criterion_field?: string}>
      */
     public const array WORKFLOWS = [
         'GOL - Lombardia' => ['section' => self::GOL, 'statuses' => [
@@ -238,7 +248,9 @@ final class WorkflowStatusCatalogue
         'Autoimpiego' => ['section' => self::SELF_EMPLOYMENT],
         'Yisu' => ['section' => self::SELF_EMPLOYMENT],
         'Autofinanziato' => ['section' => self::SELF_FUNDED],
-        'Consulenza' => ['section' => self::CONSULTING],
+        // Bound to the "Consulenza" ROOT, whose products sit two levels below
+        // it: only the branch criterion reaches them (spec 0092).
+        'Consulenza' => ['section' => self::CONSULTING, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
     ];
 
     /**
@@ -274,7 +286,22 @@ final class WorkflowStatusCatalogue
      */
     private const array VALIDATED_STATUSES = [
         self::SELF_EMPLOYMENT => 'OK_Da Caricare',
+        // User directive 2026-09-01: the consulting block's own working phase
+        // — the negotiation is live, its outcome not yet decided.
+        self::CONSULTING => 'In trattativa',
     ];
+
+    /**
+     * The criterion field $categoryName's workflow matches on: the exact
+     * category by default, the whole branch for the categories that declare
+     * it (WORKFLOWS `criterion_field`).
+     */
+    public static function criterionFieldFor(string $categoryName): string
+    {
+        $workflow = self::WORKFLOWS[$categoryName] ?? throw new InvalidArgumentException("Unknown workflow category [{$categoryName}].");
+
+        return $workflow['criterion_field'] ?? self::DEFAULT_CRITERION_FIELD;
+    }
 
     /**
      * The sheet row promoted onto each system row of $categoryName's set,

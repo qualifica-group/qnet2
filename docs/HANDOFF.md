@@ -3,6 +3,74 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RIGHE OFFERTA: ALIQUOTA SU UNA RIGA + RIGA VUOTA DI DEFAULT (2026-09-01) — VERDE, NON COMMITTATO
+
+**Direttive utente.** (1) "La selezione aliquota sulle righe delle offerte va a capo, voglio tutto
+in un'unica riga." (2) "Quando non c'e' ancora una riga (in creazione di offerta o in gestione
+richieste) aggiungi tu di default la riga vuota."
+
+**(1) Wrap dell'aliquota.** Causa: nel trigger di `AsyncPaginatedSelect` lo span del PLACEHOLDER
+(a differenza di quello del valore selezionato) non aveva `truncate`, e "Seleziona aliquota…" non
+sta nei 140px della colonna aliquota (`quote-line-grid.ts`) -> il bottone `min-h-9` cresceva a due
+righe. Fix: `truncate` sullo span placeholder (vale per ogni select stretto, non solo l'aliquota) +
+placeholder accorciato a `Aliquota…` / `VAT rate…` cosi' resta leggibile invece di essere tagliato.
+
+**(2) Riga vuota di default.** `offer_lines: [EMPTY_LINE_ROW]` nei default di create di
+`useQuoteForm` (Offerte) e `useRequestCreateForm` (Gestione Richieste). `cost_lines` resta `[]`:
+le righe costo sono davvero opzionali. Il pannello di lavorazione richieste NON semina nulla
+(idrata dal panel).
+
+**Invariante nuova — "una riga mai toccata non e' una riga".** `isPristineLineRow`
+(`quote-line-values.ts`): nessun `id`, product/quantity/unit_price/vat_rate tutti `null`, nessuna
+commissione. Chi la usa: `quoteLineRowSchema.superRefine` (esce subito, la riga intatta non blocca
+il submit) e `toLineInputs` (la scarta e rinumera `sort_order`). Senza questo, un'offerta/richiesta
+SENZA righe — che entrambi gli endpoint accettano — sarebbe diventata non salvabile finche'
+l'utente non cancellava a mano la riga seminata. `request-create-payload.ts` ora decide se mandare
+la chiave `offer_lines` guardando le righe WIRE (`toLineInputs`), non quelle di form.
+
+**Verifiche eseguite.** Vitest INTERA suite 520 file / 3736 test verde, `npx tsc -b --force` pulito,
+ESLint pulito sui file toccati. Test aggiornati/aggiunti: `quote-schema.test.ts` (riga intatta
+accettata, riga parziale ancora rifiutata), `quote-form-payload.test.ts` (riga intatta scartata,
+`sort_order` rinumerato), `quote-form-seeded-products.test.tsx` (il caso "link senza prodotti" ora
+apre su UNA riga vuota, non su griglia vuota).
+
+**Prossimo passo.** In attesa di via libera per il commit.
+
+## SEED CONSULENZA SU CRITERIO RAMO + NUOVA PICK LIST (2026-09-01) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Il workflow seedato "Consulenza" deve usare il criterio RAMO (spec 0092) e
+portare la pick list della gestione trattative, con questa mappatura esatta:
+Da Richiamare=aperto, In trattativa=VALIDATO, Appuntamento Fissato=aperto, Rimandata=aperto,
+VINTO=chiuso positivo, Persa / Annullata / Irreperibile / Non pertinente / Numero inesistente=chiuso
+negativo, Non risponde=aperto.
+
+**Cosa e' stato fatto** (`QualificaCatalog/WorkflowStatusCatalogue.php` + `QualificaWorkflowSeeder`):
+- `CRITERION_FIELD` spaccato in `DEFAULT_CRITERION_FIELD` (`product_category_id`) +
+  `BRANCH_CRITERION_FIELD` (`product_category_branch_id`), con override PER workflow via la chiave
+  opzionale `criterion_field` di `WORKFLOWS` e il nuovo `criterionFieldFor()`. Solo `Consulenza`
+  lo dichiara: e' un root contenitore, i suoi prodotti stanno due livelli sotto (`ISO` e sorelle).
+- Sezione `CONSULTING`: `Trattativa` -> `In trattativa`, `Appuntamento` -> `Appuntamento Fissato`,
+  `NR` -> `Non risponde` (resta legend OPEN).
+- `VALIDATED_STATUSES` guadagna `CONSULTING => 'In trattativa'` (secondo caso dopo
+  `SELF_EMPLOYMENT => 'OK_Da Caricare'`): il gruppo `validated` sovrascrive la legend.
+
+**Conseguenza strutturale da NON scambiare per un bug.** `WorkflowStatusWriter::createWithCustoms()`
+ancora la riga `open` in testa e le due chiuse in coda, quindi l'ordine seedato e':
+Da Richiamare, In trattativa, Appuntamento Fissato, Rimandata, Annullata, Non risponde, Irreperibile,
+Non pertinente, Numero inesistente, VINTO, Persa. VINTO/Persa finiscono in fondo, non al 5o/6o posto
+della lista dettata: sono le righe di sistema promosse, esattamente come in tutti gli altri workflow.
+
+**Limite noto (idempotenza).** `QualificaWorkflowSeeder` salta un workflow gia' esistente per nome O
+per firma dei criteri — scelta deliberata, protegge le modifiche fatte a mano dal configuratore.
+Quindi su un DB gia' seedato il workflow #13 "Consulenza" NON viene riallineato: il seed nuovo vale
+solo su seed pulito. Sul DB corrente va riconfigurato a mano (criterio -> "Categoria prodotto (ramo)"
+= Consulenza) oppure serve una decisione esplicita per introdurre un riallineamento tipo
+`CatalogRootRules`.
+
+**Verifiche eseguite.** Suite Pest COMPLETA verde: 5619 test, 5618 passed, 1 skipped, 23687
+asserzioni. Due nuovi test in `QualificaWorkflowSeederTest` (criterio ramo su Consulenza; ordine e
+gruppi della pick list). Pint pulito.
+
 ## CRITERIO "RAMO DI CATEGORIA" NEL CONFIGURATORE STATI OFFERTA (2026-09-01, spec 0092) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** "Se ho un prodotto con categoria ISO che ha categoria padre Consulenza, e

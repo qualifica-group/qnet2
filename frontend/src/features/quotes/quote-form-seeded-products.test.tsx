@@ -151,11 +151,15 @@ it('submits the seeded rows as the offer of the blocking opportunity', async () 
   })
 })
 
-it('leaves the offer empty when the link carries no product', async () => {
+// Direttiva 2026-09-01: senza prodotti nel link la form non resta a griglia
+// vuota, apre su UNA riga vuota (nessun prodotto preselezionato) — la riga
+// intatta non viaggia nel payload (`toLineInputs`).
+it('opens on one empty offer row when the link carries no product', async () => {
   renderForm({ opportunity_id: 25 })
 
   await waitFor(() =>
     expect(screen.getByRole('combobox', { name: 'Opportunity' })).toHaveTextContent('OPP_25'),
   )
-  expect(screen.queryByLabelText('Row 1 quantity')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(null)
+  expect(screen.queryByLabelText('Row 2 quantity')).not.toBeInTheDocument()
 })

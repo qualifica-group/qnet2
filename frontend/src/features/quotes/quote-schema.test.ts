@@ -145,6 +145,27 @@ describe('buildCreateQuoteSchema', () => {
       }
     })
 
+    // Direttiva 2026-09-01: le create form aprono su una riga vuota, quindi
+    // una riga MAI toccata non deve bloccare il submit; basta un solo campo
+    // compilato perche' le regole `required` tornino a valere.
+    it('accepts an untouched empty row', () => {
+      const schema = buildCreateQuoteSchema(i18n.t)
+      const emptyRow = { product_id: null, quantity: null, unit_price: null, vat_rate_id: null, commissions: [] }
+      expect(schema.safeParse(baseValues({ offer_lines: [emptyRow] })).success).toBe(true)
+    })
+
+    it('rejects a partially filled row (no longer untouched)', () => {
+      const schema = buildCreateQuoteSchema(i18n.t)
+      const startedRow = { product_id: null, quantity: 2, unit_price: null, vat_rate_id: null, commissions: [] }
+      const result = schema.safeParse(baseValues({ offer_lines: [startedRow] }))
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(
+          result.error.issues.some((issue) => issue.path.join('.') === 'offer_lines.0.product_id'),
+        ).toBe(true)
+      }
+    })
+
     it('rejects a negative unit_price, error path on that row', () => {
       const schema = buildCreateQuoteSchema(i18n.t)
       const result = schema.safeParse(baseValues({ cost_lines: [validLine({ unit_price: -1 })] }))

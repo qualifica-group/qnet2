@@ -18,6 +18,7 @@ import {
   buildRequestCreateSchema,
   type RequestCreateFormValues,
 } from '@/features/request-management/request-create-schema'
+import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
 
@@ -119,10 +120,11 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       operator_id: null,
       operational_site_id: null,
       products_of_interest: [],
-      // "Linee dell'offerta" (user directive 2026-08-07): the form opens with
-      // none — a request is often created before its offer is known (spec
-      // 0086 AC-028), so the operator adds the first row deliberately.
-      offer_lines: [],
+      // "Linee dell'offerta": the form opens on ONE empty row (user directive
+      // 2026-09-01, superseding the 2026-08-07 "start with none"), like
+      // `product_lines` above — pressing "Add" before the first row was pure
+      // friction. An offer-less request stays possible: the operator removes it.
+      offer_lines: [EMPTY_LINE_ROW],
       rewards: [],
       next_callback_at: null,
       general_notes: '',

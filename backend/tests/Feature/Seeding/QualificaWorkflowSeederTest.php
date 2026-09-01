@@ -32,9 +32,11 @@ it('provisions one active workflow per catalogue category, idempotently', functi
 
         expect($workflow)->not->toBeNull($categoryName)
             ->and($workflow->is_active)->toBeTrue($categoryName)
-            // Matched on its own category alone.
+            // Matched on its own category alone — by exact category, or by
+            // whole branch for the categories that declare it (spec 0092).
             ->and($workflow->criteria)->toHaveCount(1, $categoryName)
-            ->and($workflow->criteria->first()->field)->toBe('product_category_id', $categoryName)
+            ->and($workflow->criteria->first()->field)
+            ->toBe(WorkflowStatusCatalogue::criterionFieldFor($categoryName), $categoryName)
             ->and($workflow->criteria->first()->value_id)->toBe($category->id, $categoryName);
     }
 });
@@ -137,6 +139,65 @@ it('promotes a state onto a pinned row instead of duplicating it as a custom one
     expect($vinto->system_key)->toBe('closed_won')
         ->and($vinto->color)->toBe('green')
         ->and($vinto->description)->toBe('Trattativa conclusa positivamente.');
+});
+
+it('seeds Consulenza on the BRANCH criterion, so the states reach the whole branch (user directive 2026-09-01)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->with('criteria')->firstOrFail();
+    $root = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
+
+    expect($workflow->criteria)->toHaveCount(1)
+        ->and($workflow->criteria->first()->field)->toBe('product_category_branch_id')
+        ->and($workflow->criteria->first()->value_id)->toBe($root->id)
+        // The root is a container: an exact-category criterion could never
+        // match, since no product sits directly on it.
+        ->and($root->children()->exists())->toBeTrue();
+});
+
+it('seeds the consulting pick list with the client mapping (user directive 2026-09-01)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
+    $statuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $workflow->id)
+        ->orderBy('sort_order')
+        ->get();
+
+    // The pinned rows anchor the set: `open` first, the two closed outcomes
+    // last, so VINTO/Persa sit at the tail rather than mid-list.
+    expect($statuses->pluck('name')->all())->toBe([
+        'Da Richiamare',
+        'In trattativa',
+        'Appuntamento Fissato',
+        'Rimandata',
+        'Annullata',
+        'Non risponde',
+        'Irreperibile',
+        'Non pertinente',
+        'Numero inesistente',
+        'VINTO',
+        'Persa',
+    ]);
+
+    expect($statuses->mapWithKeys(fn (QuoteWorkflowStatus $status): array => [$status->name => $status->group->value])->all())
+        ->toBe([
+            'Da Richiamare' => WorkflowStatusGroup::Open->value,
+            'In trattativa' => WorkflowStatusGroup::Validated->value,
+            'Appuntamento Fissato' => WorkflowStatusGroup::Open->value,
+            'Rimandata' => WorkflowStatusGroup::Open->value,
+            'Annullata' => WorkflowStatusGroup::ClosedLost->value,
+            'Non risponde' => WorkflowStatusGroup::Open->value,
+            'Irreperibile' => WorkflowStatusGroup::ClosedLost->value,
+            'Non pertinente' => WorkflowStatusGroup::ClosedLost->value,
+            'Numero inesistente' => WorkflowStatusGroup::ClosedLost->value,
+            'VINTO' => WorkflowStatusGroup::ClosedWon->value,
+            'Persa' => WorkflowStatusGroup::ClosedLost->value,
+        ]);
+
+    // 'In trattativa' is `validated`, a plain GROUP on a custom row (user
+    // directive 2026-08-07): it is pinned to nothing.
+    expect($statuses->firstWhere('name', 'In trattativa')->system_key)->toBeNull();
 });
 
 it('classifies each status from the sheet legend', function (): void {

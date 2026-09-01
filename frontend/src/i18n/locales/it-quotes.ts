@@ -247,7 +247,7 @@ export const quotes = {
     lineUnitPriceInvalid: 'Inserisci un prezzo non negativo.',
     lineUnitPriceDecimals: 'Il prezzo unitario può avere al massimo 2 decimali.',
     lineVatRate: 'Aliquota IVA riga {{n}}',
-    lineVatRatePlaceholder: 'Seleziona aliquota…',
+    lineVatRatePlaceholder: 'Aliquota…',
     lineVatRateSearch: 'Cerca aliquote…',
     lineVatRateEmpty: 'Nessuna aliquota trovata.',
     lineVatRateLoadError: 'Impossibile caricare le aliquote.',
