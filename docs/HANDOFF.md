@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## RIGHE FA->CATEGORIA SU PROGETTO/CAMPAGNA + PRODOTTI DI INTERESSE SUL LEAD (2026-09-02, spec 0094) — IN CORSO
+## RIGHE FA->CATEGORIA SU PROGETTO/CAMPAGNA + PRODOTTI DI INTERESSE SUL LEAD (2026-09-02, spec 0094) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** La Campagna non deve essere limitata a una sola coppia Funzione Aziendale ->
 Categoria Prodotto; il Lead deve avere "Prodotti di interesse" filtrati dalle categorie della sua
@@ -67,8 +67,46 @@ stesso checkout (`personal-data`, `request-management`, spec 0093). Un agente ha
 modifica annullata da un processo esterno e l'ha dovuta riapplicare: con working copy condivisa
 l'ownership disgiunta protegge dai conflitti logici, non dalle sovrascritture.
 
-**Prossimo passo.** MT-4 (Lead backend), MT-5 (conversione + Offerta), MT-6 (import backend),
-MT-9 (wizard import FE), poi il gate del verifier. NIENTE e' stato committato (CLAUDE.md §3.6).
+**STATO FINALE — verificato dal lead eseguendo, non riferito dagli agenti.**
+Pest backend COMPLETA: 5765 test, 5764 passed, 1 skipped, 0 failed. `tsc -b --force` EXIT=0.
+Vitest COMPLETA: 543 file / 3870 test passed. Pint backend passed. 38/45 AC coperti da test
+eseguiti (vedi buchi dichiarati sotto).
+
+**Il gate ha trovato 3 regressioni reali, poi corrette** — test PREESISTENTI mai migrati al nuovo
+contratto, non bug di produzione:
+- `ProductCategorySelectableTest` mandava ancora il payload scalare (ora `product_lines[]`);
+- `QuoteWorkflowMigrationTest` aveva `--step: 28` hardcoded (ora 35: 6 migrazioni di 0094 + 1 di 0095);
+- `QualificaSampleLeadSeederTest` leggeva le colonne droppate — e Eloquent restituisce `null` in
+  SILENZIO su un attributo inesistente, che e' il modo peggiore di fallire. Se dopo questa spec un
+  test asserisce `null` dove si aspettava un id, sospetta questo.
+
+**FLAKY AC-042: causa vera, diversa da quella ipotizzata.** Il primo sospetto (ordine delle due
+scritture su `campaign_id` in `use-lead-campaign-product-interest.ts`) era SBAGLIATO: quelle
+scritture sono sincrone su `_formValues` di RHF, deterministiche. La causa reale: la decisione di
+compatibilita' leggeva `selectedProducts`, Map derivata da un `useQuery` che puo' restare indietro
+di un tick. Cambiando Campagna SUBITO dopo aver aggiunto un prodotto, il prodotto risultava non
+risolto -> nessun incompatibile -> NESSUNA conferma richiesta (il contrario di cio' che D-5 impone).
+Fix: la decisione ora passa da `queryClient.fetchQuery` con la STESSA query key (cache hit, nessuna
+doppia richiesta) ed e' attesa; il revert di `campaign_id` e il gate del submit avvengono PRIMA di
+qualunque await. Nessun test e' stato ammorbidito: 0 fallimenti su 42 giri (agente) + 8 (lead).
+
+**BUCHI DICHIARATI, non nascosti.**
+- AC-002/003/004 (backfill e reversibilita' delle migrazioni "move") NON hanno test automatico:
+  servirebbe rigiocare l'intero set da un punto storico su SQLite, la stessa fragilita' gia'
+  documentata nel docblock di `QuoteWorkflowMigrationTest`. Coperti solo dalla verifica MANUALE
+  eseguita durante MT-1 (backfill provato su dati reali, rollback provato, round-trip idempotente).
+- `lead-form-body.tsx` a 356 righe (era gia' 334 prima, sopra il soft limit di 300).
+
+**INCIDENTE — DB DI SVILUPPO AZZERATO (2026-09-02).** Nel mandato del verifier ho incluso
+`php artisan migrate:fresh --env=testing --force`. NON ESISTE `.env.testing`, quindi Laravel ricade
+su `.env` e colpisce il MySQL reale `qnet2`: il database di sviluppo e' stato svuotato. Lo schema e'
+integro (manca solo la migrazione `210000` di spec 0095, di un'altra sessione, che fallisce per
+motivi suoi). REGOLA DA RISPETTARE D'ORA IN POI: nessun agente deve MAI eseguire `migrate:fresh`,
+`migrate:refresh` o `db:wipe`; i test girano su SQLite in memoria via `phpunit.xml`, e Pest e'
+l'unico canale ammesso. Finche' non esiste un `.env.testing`, `--env=testing` NON protegge nulla.
+
+**Prossimo passo.** In attesa dell'ok per il commit (§3.6) e della decisione su come ripopolare il
+DB di sviluppo (`db:seed` pulito e/o `db:seed --class=DemoDataSeeder`).
 
 ## CONTRATTO -> PROGRAMMA -> COMMESSE (2026-09-02, spec 0095) — VERDE, NON COMMITTATO
 

@@ -128,17 +128,50 @@ export function useLeadCampaignProductInterest({
   const previousCampaignIdRef = useRef<number | null>(original?.campaign_id ?? null)
 
   const productIds = useWatch({ control: form.control, name: 'products_of_interest' })
+  // Pre-warms the QueryClient cache entry `resolveProductLabels` reads at
+  // decision time (same query key, see below), so a campaign switch usually
+  // resolves from cache instead of paying a fresh round trip. The returned
+  // Map is intentionally unused here: the compatibility decision below never
+  // trusts a passively-rendered `useQuery` snapshot (see `resolveProductLabels`).
+  useForSelectLabels({
+    resource: PRODUCTS_FOR_SELECT_RESOURCE,
+    ids: productIds,
+    enabled: productIds.length > 0,
+  })
 
   const handleCampaignItemChange = useCallback(
     async (item: ForSelectItem | null) => {
       const nextCategoryIds = campaignProductCategoryIds(item)
 
-      // Step 1: resolve the CURRENTLY-selected products' categories fresh and
-      // awaited (see `resolveProductLabels`), then keep only the ones the new
-      // campaign no longer covers. A product whose category still cannot be
-      // resolved (fetch failed) is KEPT out of the count: blocking on
-      // incomplete information would be worse than letting the server have
-      // the last word (mirrors the opportunity form's coherence hook).
+      // Step 1: nothing selected — no product can possibly be incompatible,
+      // apply the switch immediately and synchronously like any other field
+      // (no lookup needed).
+      if (productIds.length === 0) {
+        setCampaignCategoryIds(nextCategoryIds)
+        previousCampaignIdRef.current = item?.id ?? null
+        onCampaignApplied(item)
+        return
+      }
+
+      // Step 2: hold the switch back and gate Submit BEFORE the async lookup
+      // below settles, not after — so there is never a window where
+      // `campaign_id` shows the new campaign while compatibility is still
+      // undetermined (AC-042). This revert (and the eventual re-apply in
+      // Step 4/5) is the ONLY write this handler makes to `campaign_id`
+      // until the check resolves, so it never races the id
+      // `AsyncPaginatedSelect.onChange` already applied before this handler
+      // ran — that write happened, and is unconditionally overwritten here,
+      // strictly before anything in this handler awaits.
+      form.setValue('campaign_id', previousCampaignIdRef.current, { shouldValidate: true })
+      setIsCampaignChangePending(true)
+
+      // Step 3: resolve the CURRENTLY-selected products' categories fresh
+      // and awaited (`resolveProductLabels`), then keep only the ones the
+      // new campaign no longer covers. A product whose category still
+      // cannot be resolved (fetch failed) is KEPT out of the count:
+      // blocking on incomplete information would be worse than letting the
+      // server have the last word (mirrors the opportunity form's coherence
+      // hook).
       const resolvedProducts = await resolveProductLabels(queryClient, productIds)
       const incompatible = productIds
         .map((id) => resolvedProducts.get(id))
@@ -148,20 +181,16 @@ export function useLeadCampaignProductInterest({
           return categoryId !== null && !nextCategoryIds.includes(categoryId)
         })
 
-      // Step 2: nothing at risk — apply the switch immediately, like any
-      // other field.
+      // Step 4: nothing actually at risk — re-apply the switch Step 2 held
+      // back and clear the gate; no confirmation needed.
       if (incompatible.length === 0) {
+        form.setValue('campaign_id', item?.id ?? null, { shouldValidate: true })
+        setIsCampaignChangePending(false)
         setCampaignCategoryIds(nextCategoryIds)
         previousCampaignIdRef.current = item?.id ?? null
         onCampaignApplied(item)
         return
       }
-
-      // Step 3: revert the id `AsyncPaginatedSelect.onChange` already applied
-      // before this handler ran, so the form never carries a half-applied
-      // campaign while the confirm is pending.
-      form.setValue('campaign_id', previousCampaignIdRef.current, { shouldValidate: true })
-      setIsCampaignChangePending(true)
 
       const confirmed = await confirm({
         title: t('leads.form.productsOfInterest.campaignChangeTitle'),
@@ -178,7 +207,7 @@ export function useLeadCampaignProductInterest({
         return
       }
 
-      // Step 4: confirmed — re-apply the id Step 3 reverted, then drop
+      // Step 5: confirmed — re-apply the id Step 2 reverted, then drop
       // exactly the named products.
       form.setValue('campaign_id', item?.id ?? null, { shouldValidate: true })
       const dropIds = new Set(incompatible.map((product) => product.id))
