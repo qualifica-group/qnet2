@@ -16,25 +16,34 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 
 /**
- * The client's "Dati Lavorazione Contatto" set (spec 0061, OPPORTUNITY
- * context): what the operator records while working a request, assigned to the
- * categories that use it — the Formazione root (inherited by its whole
- * branch), the "GOL" container and three of its regions, the "Autofinanziato"
- * subcategory, and the two Consulenza leaves. The catalogue rows live in
+ * The client's "Dati Lavorazione Contatto" set (spec 0061): what the operator
+ * records while working a request, assigned to the categories that use it —
+ * the Formazione root (inherited by its whole branch), the "GOL" container and
+ * three of its regions, the "Autofinanziato" subcategory, and the two
+ * Consulenza leaves. The catalogue rows live in
  * QualificaCatalog\ContactProcessingAttributeCatalogue; this seeder assigns
  * them and groups them into one form section (spec 0062).
  *
- * ONE LAYOUT ROW PER CATEGORY, not one on the root: like the Product side, a
- * layout is not inherited — AttributeLayoutMerger reads the
- * layout of each category CONTRIBUTING to the request (its product lines'
+ * TWO CONTEXTS, ONE CATALOGUE (self::CONTEXTS): the same codes, on the same
+ * categories, are provisioned for the Offerta (`quote`, spec 0084) AND for the
+ * Commessa (`work_order`, spec 0098 D-2). The two are independent — both
+ * `attribute_category` and `attribute_layouts` are keyed on the context — so
+ * each context gets its OWN pivot row and its OWN layout row rather than
+ * sharing one: withdrawing a field from the Commessa afterwards, from the
+ * category configurator, leaves the Offerta untouched.
+ *
+ * ONE LAYOUT ROW PER CATEGORY AND CONTEXT, not one on the root: like the
+ * Product side, a layout is not inherited — AttributeLayoutMerger reads the
+ * layout of each category CONTRIBUTING to the record (its product lines'
  * categories), never an ancestor's. A single root row would render nowhere.
- * Each category's section is built from its OWN effective attributes, so
- * "Autofinanziato" carries the training set AND its own two fields, while a
- * Consulenza leaf carries only the company-appointment ones.
+ * Each category's section is built from its OWN effective attributes in that
+ * context, so "Autofinanziato" carries the training set AND its own two
+ * fields, while a Consulenza leaf carries only the company-appointment ones.
  *
  * Idempotent AND non-destructive: attributes keyed on `code` (an imported
  * q-crm row is adopted, never duplicated), assignments and options additive, a
- * category whose opportunity layout is already configured left untouched.
+ * category whose layout for that context is already configured left
+ * untouched.
  *
  * The ONE subtractive step is the retirement of the codes the catalogue no
  * longer declares (ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES):
@@ -48,6 +57,14 @@ class QualificaContactProcessingSeeder extends Seeder
 
     private const string SECTION_ID = 'contact-processing';
 
+    /**
+     * The contexts the set is provisioned in, in order. Adding one here is all
+     * it takes: every step below iterates it instead of naming a context.
+     *
+     * @var list<AttributeContext>
+     */
+    private const array CONTEXTS = [AttributeContext::Quote, AttributeContext::WorkOrder];
+
     public function __construct(
         private readonly AttributeLayoutService $layouts,
         private readonly CategoryHierarchy $hierarchy,
@@ -60,7 +77,8 @@ class QualificaContactProcessingSeeder extends Seeder
         // attribute is created as an enum outright.
         $this->promoteDegree();
 
-        // Step 2: the attributes, each on the category the client scoped it to.
+        // Step 2: the attributes, each on the category the client scoped it to,
+        // in both contexts.
         //
         // Spec 0084 moved the "Informazioni aggiuntive" from the Opportunity to
         // the Offerta, so these go in `AttributeContext::Quote`. They used to be
@@ -74,7 +92,9 @@ class QualificaContactProcessingSeeder extends Seeder
             // a whole category's fields.
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
 
-            $this->seedCategoryAttributes($category, $specs, AttributeContext::Quote);
+            foreach (self::CONTEXTS as $context) {
+                $this->seedCategoryAttributes($category, $specs, $context);
+            }
         }
 
         // Step 2-bis: the codes the catalogue stopped declaring, withdrawn from
@@ -82,9 +102,14 @@ class QualificaContactProcessingSeeder extends Seeder
         $this->retireAttributes();
 
         // Step 3: the section, on every category that can contribute to a
-        // request.
+        // record. AFTER step 2 for BOTH contexts, never interleaved with it:
+        // AttributeLayoutService validates each code against the category's
+        // effective set in that context, so the assignments have to be there
+        // first.
         foreach ($this->layoutCategories() as $category) {
-            $this->seedLayout($category);
+            foreach (self::CONTEXTS as $context) {
+                $this->seedLayout($category, $context);
+            }
         }
     }
 
@@ -217,15 +242,15 @@ class QualificaContactProcessingSeeder extends Seeder
             ->get();
     }
 
-    private function seedLayout(ProductCategory $category): void
+    private function seedLayout(ProductCategory $category, AttributeContext $context): void
     {
         // A configured layout is user data: leave it exactly as it is.
-        if ($this->layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All) !== null) {
+        if ($this->layouts->resolveExact($category, $context, LayoutFormScope::All) !== null) {
             return;
         }
 
         $effective = $this->hierarchy
-            ->effectiveAttributes($category, AttributeContext::Quote)
+            ->effectiveAttributes($category, $context)
             ->pluck('code')
             ->all();
 
@@ -235,7 +260,7 @@ class QualificaContactProcessingSeeder extends Seeder
             return;
         }
 
-        $this->layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, [
+        $this->layouts->upsert($category, $context, LayoutFormScope::All, [
             'sections' => [
                 $this->layoutSection(
                     self::SECTION_ID,

@@ -38,9 +38,9 @@ use Illuminate\Database\Seeder;
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
  *     into form sections by QualificaClassroomLayoutSeeder (spec 0062). The
- *     OPPORTUNITY-context counterpart ("Dati Lavorazione Contatto", scoped to
- *     Formazione / Autofinanziato / the two Consulenza leaves) is delegated to
- *     QualificaContactProcessingSeeder;
+ *     counterpart of the OFFERTA and COMMESSA contexts ("Dati Lavorazione
+ *     Contatto", scoped to Formazione / Autofinanziato / the two Consulenza
+ *     leaves) is delegated to QualificaContactProcessingSeeder;
  *   - the GOL training courses (QualificaCatalog\TrainingCourseCatalogue): one
  *     SERVICE product per funded course, filed under its own region's
  *     `GOL - <Regione>` category and carrying its duration in that attribute.
@@ -247,7 +247,7 @@ class QualificaCatalogSeeder extends Seeder
         // attributes step 2 assigned onto every category of the branch.
         $this->call(QualificaClassroomLayoutSeeder::class);
 
-        // Step 4-ter: the Opportunity-context set, which resolves the same
+        // Step 4-ter: the Offerta/Commessa set, which resolves the same
         // categories of step 2 and adopts the q-crm rows when they are there.
         $this->call(QualificaContactProcessingSeeder::class);
 

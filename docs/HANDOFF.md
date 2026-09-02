@@ -3,6 +3,51 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED PRODUZIONE: ATTRIBUTI + LAYOUT COMMESSA (2026-09-02) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Come per gli attributi e layout delle opportunita', voglio farlo anche con
+commesse, stesso flusso" — poi l'utente lancia il seed di produzione.
+
+**Grounding (non re-indagare).** Il "flusso opportunita'" nel seed di produzione e' UNO:
+`QualificaCatalogSeeder` step 4-ter chiama `QualificaContactProcessingSeeder`, che assegna il
+catalogo `ContactProcessingAttributeCatalogue` ("Dati Lavorazione Contatto") e scrive UNA riga di
+layout per categoria via `AttributeLayoutService::upsert(..., LayoutFormScope::All)`. Backend e FE
+del contesto `work_order` esistevano gia' (spec 0098): mancava solo il provisioning nel seed.
+
+**Decisione utente.** Stesso set, stesse categorie, stessa sezione, in contesto `work_order`
+(opzione "Stesso set, contesto work_order"; scartate "sezione rinominata" e "set diverso").
+NIENTE seeder dedicato Commessa: sarebbe stato un clone dello stesso catalogo.
+
+**Cosa e' stato fatto.** `QualificaContactProcessingSeeder` ora itera
+`self::CONTEXTS = [AttributeContext::Quote, AttributeContext::WorkOrder]` sia allo step 2
+(assegnazioni) sia allo step 3 (layout); `seedLayout()` prende il contesto come parametro.
+Aggiungere un contesto = aggiungerlo a quella costante. Docblock allineati in
+`QualificaCatalogSeeder`, `Concerns/SeedsCategoryAttributes`, `Concerns/SeedsAttributeLayouts`
+(dicevano "Opportunity-context", contesto che non esiste piu').
+
+**Vincoli tecnici da conoscere.**
+- Lo step 3 gira DOPO lo step 2 per ENTRAMBI i contesti, mai interleaved: `AttributeLayoutService`
+  valida ogni `attribute_code` contro il set effettivo della categoria IN QUEL contesto.
+- `attribute_category` e `attribute_layouts` sono entrambe chiavate sul contesto -> una riga pivot
+  e una riga layout PER CONTESTO, non condivise. Togliere un campo dalla Commessa dal
+  configuratore non tocca l'Offerta.
+- Gli attributi sono gli STESSI record (chiave naturale `code`): zero attributi nuovi creati.
+- `retireAttributes()`/`stripFromLayouts()` erano gia' context-agnostici: nessuna modifica.
+- Risultato del seed: 18 righe layout in contesto `work_order` (le stesse 18 categorie
+  dell'Offerta: branch Formazione + le due leaf Consulenza), blob identico a quello Offerta.
+
+**Verifica eseguita.** `php artisan test` 5899 test, 5897 passati, 1 skip preesistente,
+24728 assert. `pint --test` passed. Nessuna modifica FE (il configuratore layout ha gia'
+`ATTRIBUTE_LAYOUT_CONTEXTS = ['product','quote','work_order']`).
+
+**ROSSO PREESISTENTE, NON MIO (da chiudere prima del commit di 0099).**
+`QuoteWorkflowMigrationTest::it rolls back all 7 new migrations cleanly (AC-004)` fallisce:
+il contatore `--step` e' fermo a **40** (ultima migrazione contata: quella di spec 0098) ma
+spec 0099 ne ha aggiunte due sopra — `2026_09_03_100000_create_product_typologies_table` e
+`2026_09_03_100100_add_product_typology_id_to_products_table`. Il test dice esplicitamente
+"Adding a migration means bumping this number": va portato a **42** e va esteso il commento.
+Non toccato qui: appartiene al lavoro di 0099, non a questo task.
+
 ## IMPORT /migrations: ATTRIBUTI FLESSIBILI DI COMMESSA (2026-09-02) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** "Come per l'import degli attributi flessibili per opportunita', voglio una

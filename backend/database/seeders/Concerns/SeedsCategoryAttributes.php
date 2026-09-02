@@ -11,7 +11,7 @@ use App\Models\ProductCategory;
  * Creates catalogue attributes and assigns them to a category in one usage
  * context (spec 0061). Shared by the seeders that provision the client's
  * reference attributes — the Product-context catalogue (QualificaCatalogSeeder)
- * and the Opportunity-context one (QualificaContactProcessingSeeder) — so the
+ * and the Offerta/Commessa one (QualificaContactProcessingSeeder) — so the
  * "natural key + additive assignment" rules below live in ONE place.
  *
  * `code` is the natural key: an attribute already in the catalogue keeps its
