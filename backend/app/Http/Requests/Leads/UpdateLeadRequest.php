@@ -16,6 +16,12 @@ use Illuminate\Validation\Rule;
  * accept an empty value once touched). Lead status is derived and is not
  * accepted in the write contract.
  *
+ * `products_of_interest` (spec 0094, D-5): `sometimes|array`, no `min:1` —
+ * `[]` is a valid submission that AZZERA the collection (AC-033). Coherence
+ * against the campaign's covered categories, and the AC-034 guard on a
+ * `campaign_id` change that would orphan a persisted product, are both
+ * enforced service-side (LeadService/LeadProductInterestWriter), not here.
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $lead)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
@@ -49,6 +55,8 @@ class UpdateLeadRequest extends FormRequest
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'extra_fields' => ['sometimes', 'nullable', 'array'],
             'extra_fields.*' => ['string'],
+            'products_of_interest' => ['sometimes', 'array'],
+            'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
         ];
     }
 

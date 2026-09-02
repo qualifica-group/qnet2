@@ -36,7 +36,7 @@ const EMPTY_PRODUCT_LINES: ProductLine[] = []
 function TeamPerson({ user }: { user: UserProfileSummary }) {
   return (
     <UserProfileHoverCard user={user} triggerClassName="rounded-md">
-      <UserAvatar name={user.name} src={user.avatar_url ?? null} className="size-7 shrink-0" />
+      <UserAvatar name={user.name} src={user.avatar_url ?? null} className="shrink-0" />
       <span className="truncate text-sm text-foreground">{user.name}</span>
     </UserProfileHoverCard>
   )

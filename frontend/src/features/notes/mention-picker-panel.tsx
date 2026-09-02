@@ -75,7 +75,7 @@ export function MentionPickerPanel({
                 index === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
               )}
             >
-              <UserAvatar name={item.label} src={item.avatar_url} size="sm" className="text-[10px]" />
+              <UserAvatar name={item.label} src={item.avatar_url} size="sm" />
               <span className="flex min-w-0 flex-col">
                 <span className="truncate font-medium">{item.label}</span>
                 {item.subtitle ? (

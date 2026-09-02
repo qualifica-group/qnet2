@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { UserAvatar } from '@/components/user-avatar'
+import { avatarInitials } from '@/components/avatar-initials'
 import { avatarColor } from '@/components/avatar-color'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -84,7 +85,11 @@ interface DetailMonogramProps {
   className?: string
 }
 
-/** Rounded, softly-tinted tile identifying a non-person record. */
+/**
+ * Softly-tinted disc identifying a non-person record. Same circle, same
+ * palette, same initials as `UserAvatar` (it just swaps the initials for a
+ * kind icon), so a record's hero reads like every other avatar in the app.
+ */
 export function DetailMonogram({ name, icon, className }: DetailMonogramProps) {
   const color = avatarColor(name)
   return (
@@ -92,11 +97,11 @@ export function DetailMonogram({ name, icon, className }: DetailMonogramProps) {
       aria-hidden
       style={{ backgroundColor: color.bg, color: color.fg }}
       className={cn(
-        'flex size-14 shrink-0 items-center justify-center rounded-2xl text-lg font-semibold shadow-sm ring-1 ring-inset ring-black/5 dark:ring-white/10 [&>svg]:size-6',
+        'flex size-14 shrink-0 items-center justify-center rounded-full text-lg font-medium [&>svg]:size-6',
         className,
       )}
     >
-      {icon ?? monogramInitials(name)}
+      {icon ?? avatarInitials(name)}
     </div>
   )
 }
@@ -173,7 +178,7 @@ interface DetailPersonProps {
 export function DetailPerson({ name, avatarUrl, className }: DetailPersonProps) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <UserAvatar name={name} src={avatarUrl} className="size-7" />
+      <UserAvatar name={name} src={avatarUrl} />
       <span className="truncate text-sm text-foreground">{name}</span>
     </div>
   )
@@ -227,12 +232,4 @@ export function DetailError({ message, retryLabel, onRetry }: DetailErrorProps) 
       </Button>
     </div>
   )
-}
-
-/** Up to two uppercase initials from a display name. */
-function monogramInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
 }

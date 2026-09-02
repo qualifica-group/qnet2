@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\DataObjects\WorkOrders\CreateWorkOrderData;
+use App\DataObjects\WorkOrders\UpdateWorkOrderData;
+use App\Models\WorkOrder;
+use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\WorkOrders\WorkOrderLineWriter;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Business logic for the `work-orders` resource (spec 0093): create/update
+ * with the server-generated `COM-0001` code (D-1, same
+ * GeneratesSequentialCode pattern as QuoteService), the REVENUE-only line
+ * membership invariant (D-7, delegated to WorkOrderLineWriter) and the D-4
+ * force-close/reason pairing. The controller stays thin; this Service is the
+ * single authority.
+ */
+class WorkOrderService
+{
+    use GeneratesSequentialCode;
+
+    private const string CODE_PREFIX = 'COM';
+
+    private const string CODE_TABLE = 'work_orders';
+
+    private const string CODE_COLUMN = 'code';
+
+    /**
+     * Relations eager-loaded for the detail read tree (WorkOrderResource), so
+     * a single query never N+1s.
+     *
+     * @var array<int, string>
+     */
+    private const array DETAIL_RELATIONS = [
+        'quote',
+        'quoteLines.product',
+    ];
+
+    public function __construct(private readonly WorkOrderLineWriter $lineWriter) {}
+
+    public function loadDetail(WorkOrder $workOrder): WorkOrder
+    {
+        return $workOrder->load(self::DETAIL_RELATIONS);
+    }
+
+    /**
+     * The next sequential code (COM-0001...) as a non-binding suggestion for
+     * the create form's auto-fill (D-1). Lock-free: the binding value is
+     * still resolved atomically in create().
+     */
+    public function previewNextCode(): string
+    {
+        return $this->peekNextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+    }
+
+    /**
+     * Create a new work order. A manual `code` (D-1) is persisted as
+     * submitted; otherwise one is generated inside the transaction with a
+     * pessimistic lock, so two concurrent creates never collide. The line
+     * membership invariant (D-7) is checked AFTER the insert but still
+     * inside the transaction: a violation rolls back the whole write
+     * (AC-022/AC-023).
+     */
+    public function create(CreateWorkOrderData $data): WorkOrder
+    {
+        $workOrder = DB::transaction(function () use ($data): WorkOrder {
+            // Step 1: insert with the server-generated (or manual) code.
+            $workOrder = new WorkOrder($data->attributes());
+            $workOrder->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+            $this->enforceForceCloseInvariant($workOrder);
+            $workOrder->save();
+
+            // Step 2: validate + sync the REVENUE line membership (D-7).
+            $this->lineWriter->writeSubmitted($workOrder, $data->quoteId, $data->quoteLineIds);
+
+            return $workOrder;
+        });
+
+        return $this->loadDetail($workOrder);
+    }
+
+    /**
+     * Update an existing work order. Only the submitted scalar keys are
+     * touched (partial PATCH); `code`/`quote_id` never reach $data (rejected
+     * upstream as immutable). `quote_line_ids` is full-replaced only when
+     * its own key was submitted (AC-025/AC-026).
+     */
+    public function update(WorkOrder $workOrder, UpdateWorkOrderData $data): WorkOrder
+    {
+        DB::transaction(function () use ($workOrder, $data): void {
+            $workOrder->fill($data->submittedAttributes());
+            $this->enforceForceCloseInvariant($workOrder);
+            $workOrder->save();
+
+            $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
+        });
+
+        return $this->loadDetail($workOrder);
+    }
+
+    /**
+     * Delete the work order. `quote_line_work_order` pivot rows cascade away
+     * via their own FK (AC-003/AC-060); the linked Quote/QuoteLine rows are
+     * untouched. No guard (D-11): nothing references a work order yet.
+     */
+    public function delete(WorkOrder $workOrder): void
+    {
+        $workOrder->delete();
+    }
+
+    /**
+     * D-4: whenever the model's FINAL `is_force_closed` is false, its
+     * `force_close_reason` is zeroed to null in the SAME save — regardless of
+     * which combination of the two fields a partial PATCH actually submitted
+     * (AC-031). Applied uniformly in both create() and update(), right
+     * before save(), so this is the single point where the pairing can never
+     * drift.
+     */
+    private function enforceForceCloseInvariant(WorkOrder $workOrder): void
+    {
+        if (! $workOrder->is_force_closed) {
+            $workOrder->force_close_reason = null;
+        }
+    }
+}

@@ -5,6 +5,7 @@ import {
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
 import { GEO_LEVELS } from '@/features/campaigns/campaign-geo'
+import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
  * Zod schema for the campaign create/edit form, built as a factory so
@@ -19,15 +20,6 @@ const NAME_MAX_LENGTH = 191
 
 /** Backend `code` column limit (`string(32)`). */
 const CODE_MAX_LENGTH = 32
-
-/**
- * The 2 classification fields whose requiredness flips with `project_id`
- * (BR-2). `state_id` LEFT this group (spec 0027 D-3): it is now one of the 4
- * geo fields, following BR-5 instead. `pipeline_status_id` LEFT this group
- * too (spec 0039 D-3): it is nullable/optional in every case now, the server
- * falling back to the system "Nuovo" status when omitted and standalone.
- */
-const DERIVED_FIELDS = ['business_function_id', 'product_category_id'] as const
 
 function baseFields(t: TFunction) {
   return {
@@ -56,8 +48,19 @@ function baseFields(t: TFunction) {
     // held nullable so the controlled selects can represent "unset" — the
     // required-when-standalone superRefine below mirrors the backend's rule.
     pipeline_status_id: z.number().nullable(),
-    business_function_id: z.number().nullable(),
-    product_category_id: z.number().nullable(),
+    // Spec 0094: replaces the former single `business_function_id`/
+    // `product_category_id` pair with an inline-editable row collection
+    // (mirrors the project/opportunity forms). BR-2: required (min 1 complete
+    // row) only while standalone, read-only and holding the linked project's
+    // EFFECTIVE rows while linked — `withRequiredProductLinesRule` below
+    // skips validation entirely in that case, mirroring
+    // `withRequiredDerivedFieldsRule`'s old project_id gate.
+    product_lines: z.array(
+      z.object({
+        business_function_id: z.number().nullable(),
+        product_category_id: z.number().nullable(),
+      }),
+    ),
     // Geo cascade (spec 0027 BR-4/BR-5): EFFECTIVE values (own or inherited),
     // held nullable like every other controlled select. `country_id`'s
     // requiredness and the parent-before-child shape are enforced by
@@ -97,28 +100,29 @@ function withDateOrderRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
 }
 
 /**
- * BR-2/AC-023/AC-043: the 2 classification fields are required only when the
- * campaign is standalone (`project_id === null`). When linked, the backend
- * forces/derives them and the payload builder never sends them regardless of
- * their form value, so no "must be empty" counterpart is needed here.
+ * BR-2/AC-023/AC-043 (spec 0094): `product_lines` is required (at least one
+ * COMPLETE row) only when the campaign is standalone (`project_id === null`).
+ * When linked, the field holds the project's read-only EFFECTIVE rows and the
+ * payload builder never sends it regardless of its form value, so no
+ * "must be empty" counterpart is needed here. Reuses the shared
+ * `productLines.*` i18n messages (spec 0040 amendment rev.3), not
+ * campaign-specific copies.
  */
-function withRequiredDerivedFieldsRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
+function withRequiredProductLinesRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
   return schema.superRefine((values, ctx) => {
-    const record = values as { project_id: number | null } & Record<
-      (typeof DERIVED_FIELDS)[number],
-      number | null
-    >
+    const record = values as { project_id: number | null; product_lines: ProductLineRow[] }
     if (record.project_id !== null) {
       return
     }
-    const messages: Record<(typeof DERIVED_FIELDS)[number], string> = {
-      business_function_id: t('campaigns.form.businessFunctionRequired'),
-      product_category_id: t('campaigns.form.productCategoryRequired'),
+    if (record.product_lines.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.required') })
+      return
     }
-    for (const field of DERIVED_FIELDS) {
-      if (record[field] === null) {
-        ctx.addIssue({ code: 'custom', path: [field], message: messages[field] })
-      }
+    const hasIncompleteRow = record.product_lines.some(
+      (row) => row.business_function_id === null || row.product_category_id === null,
+    )
+    if (hasIncompleteRow) {
+      ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.rowIncomplete') })
     }
   })
 }
@@ -162,7 +166,7 @@ function withGeoHierarchyRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
 /** Create schema. `customFieldsSchema` is the toolbox-built schema for `custom_fields` (spec 0021 AC-023). */
 export function buildCreateCampaignSchema(t: TFunction, customFieldsSchema: CustomFieldsSchema) {
   const object = z.object({ ...baseFields(t), custom_fields: asCustomFieldsField(customFieldsSchema) })
-  return withGeoHierarchyRule(withRequiredDerivedFieldsRule(withDateOrderRule(object, t), t), t)
+  return withGeoHierarchyRule(withRequiredProductLinesRule(withDateOrderRule(object, t), t), t)
 }
 
 /** Edit schema (same shape; partial PATCH is computed by the caller). */

@@ -47,6 +47,7 @@ vi.mock('@/features/imports/wizard/use-review-rows', () => ({
     handleApplyGeo: vi.fn(),
     handleApplyOperator: vi.fn(),
     handleApplySite: vi.fn(),
+    handleApplyProducts: vi.fn(),
     handleBulkAssign: (...args: unknown[]) => handleBulkAssignMock(...args),
     isSaving: false,
     hasSaveError: false,
@@ -61,6 +62,15 @@ vi.mock('@/features/imports/wizard/use-review-rows', () => ({
     select_all: selection.selectAll,
     row_ids: selection.toggledNodes.map(Number),
   }),
+}))
+
+// `useReviewProductsScope` calls the real `useForSelectLabels` (a TanStack
+// Query hook) — this file never wraps `ReviewGrid` in a `QueryClientProvider`
+// (the whole `useReviewRows` module is mocked out above for the same
+// reason), so it is stubbed here too. Its own contract is covered by
+// `use-review-products-scope.test.ts`.
+vi.mock('@/features/imports/wizard/use-review-products-scope', () => ({
+  useReviewProductsScope: () => ({ globalDefaultProductIds: [], campaignCategoryIds: [] }),
 }))
 
 const SITE_PICK_ID = 84

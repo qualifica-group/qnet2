@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0093-work-orders-module" status="draft" owner="nicola" date="2026-09-02">
+
+  <goal>
+    Introdurre il modulo "Commesse": un'entita di dominio con numerazione propria,
+    collegata a UNA offerta (Quote) e a UNA O PIU righe prodotto di quella stessa
+    offerta, con stato aperto/chiuso calcolato in lettura e forzabile a chiuso da un
+    operatore. Apparato completo come gli altri moduli del gestionale: migration,
+    model, request, policy, resource, controller, service, API REST, permessi CRUD +
+    permessi di campo, tabella backend-driven con filtri/ordinamenti/export, form
+    create/edit/view.
+  </goal>
+
+  <context>
+    Moduli di riferimento VERIFICATI nel repo, da riusare senza soluzioni parallele:
+      - archetipo "entita di dominio ricca": Contracts (spec 0072) — routes/api dedicato,
+        sotto-namespace Services/Tables/DataObjects/Controllers/Requests.
+      - archetipo "CRUD completo recente": UnitOfMeasure (spec 0088) — store/destroy,
+        guard 409, form + detail frontend.
+      - numerazione: Quote (spec 0065/0025) — l'UNICO precedente rilevante.
+
+    Fatti verificati che vincolano il disegno (letti nei file reali, non ipotizzati):
+      - `quotes.code` string(32) UNIQUE, formato `QUO-0001`, generato da
+        `App\Services\Concerns\GeneratesSequentialCode` (`nextSequentialCode` DENTRO la
+        transazione, `peekNextSequentialCode` per l'anteprima `GET /{slug}/next-code`).
+        Prefissi gia in uso: PRJ, CMP, PRD, QUO. `code` sta FUORI da `#[Fillable]`.
+      - `opportunities` NON ha alcuna colonna `code`: "come si fa ora con opportunita e
+        offerta" ha quindi un solo precedente reale, quello dell'Offerta. E' quello adottato.
+      - NON esiste un numero di contratto proprio: la migration di `contracts` documenta
+        esplicitamente che "il codice mostrato all'utente e sempre `quotes.code`, letto
+        tramite la relazione quote(), mai copiato". "Contratto n." della Commessa e quindi
+        `quote.code`, derivato e in sola lettura.
+      - `quote_lines` NON ha ne descrizione ne nome: l'identita di riga si legge LIVE dal
+        prodotto (`product.code` + `product.name`, ordinata per `sort_order`) — spec 0065 D-7.
+      - `quote_lines.line_type` e `App\Enums\QuoteLineType` (`REVENUE` | `COST`);
+        `Quote::offerLines()` filtra REVENUE, `Quote::costLines()` filtra COST.
+      - SoftDeletes NON e in uso nel gestionale (unica eccezione: `notes`). La cancellazione
+        e fisica, protetta da `abort(409, ...)` nel `delete()` del Service (23 occorrenze) +
+        `restrictOnDelete()` a livello di schema, con `deleteModel()` della TableDefinition
+        che delega allo stesso metodo per non bucare il bulk-delete generico.
+      - I permessi CRUD NON hanno un catalogo scritto a mano: `permissions:sync` li deriva
+        per riflessione dalle Policy che estendono `BasePolicy` + dai nodi di navigazione.
+      - `config/navigation/opportunities.php` ha gia il gruppo `navigation.opportunitiesAndCommesse`
+        e il suo commento dichiara che il modulo Commesse non esiste ancora: il nodo va li.
+      - Stato calcolato: il precedente e spec 0082/0083 (OpportunityStatusResolver +
+        Scope + Column, `sortable: false`, `filterType: 'set'`, nessuna colonna denormalizzata,
+        nessun listener di ricalcolo).
+      - `#[Fillable([...])]` e un ATTRIBUTO PHP (Laravel 13), i cast sono il metodo
+        `protected function casts(): array`, la base e `App\Models\Abstracts\BaseModel`.
+
+    Naming: identificatori in INGLESE (CLAUDE.md §2, engineering.md §1.2).
+    Model `WorkOrder`, tabella `work_orders`, pivot `quote_line_work_order`, slug risorsa
+    e dominio tabella `work-orders`, namespace i18n `workOrders`.
+    "Commessa"/"Commesse" vive SOLO nelle stringhe i18n.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Numerazione "Commessa n." = colonna `code` string(32) UNIQUE, prefisso `COM`
+      (`COM-0001`), identica al pattern Offerta: generata da `GeneratesSequentialCode`
+      dentro la transazione di create, FUORI da `#[Fillable]`, sovrascrivibile a mano SOLO
+      in create (`nullable|string|max:32|unique`), `prohibited` in update, con anteprima
+      `GET /api/work-orders/next-code`. Il prefisso e un valore mostrato all'utente e segue
+      la parola italiana, come gli altri prefissi seguono la loro parola.
+    </decision>
+    <decision id="D-2">
+      "Contratto n." NON e una colonna della commessa. E `quote.code` letto tramite la
+      relazione e restituito in sola lettura come `contract_number` nella Resource e come
+      colonna derivata in tabella. Motivo: e la regola gia scritta e documentata per i
+      Contratti; una copia locale potrebbe disallinearsi e non c'e nulla che la riallinei.
+    </decision>
+    <decision id="D-3">
+      Stato commessa calcolato in lettura, MAI persistito, MAI scrivibile dal client:
+      `is_force_closed = true` -> `closed`, altrimenti `open`. Unico punto di calcolo:
+      `App\Services\WorkOrders\WorkOrderStatusResolver`, con `resolve(WorkOrder): WorkOrderStatus`
+      e `applyFilter(Builder, array $values)` sulla STESSA classe, cosi il filtro di tabella
+      non puo divergere dal badge (invariante di spec 0082). La regola di business definitiva
+      (avanzamento lavorazioni/progetti) non e ancora definita: il resolver e il punto di
+      estensione unico, con `EAGER_LOADS = []` da riempire quando la regola leggera relazioni.
+      Nessun listener, nessuna colonna denormalizzata, nessun campo di stato in input.
+    </decision>
+    <decision id="D-4">
+      "Chiusura forzata" e la coppia `is_force_closed` BOOLEAN default false indicizzato +
+      `force_close_reason` TEXT nullable, entrambi in `#[Fillable]` (l'utente li imposta dal
+      form, non sono flag di sistema). `force_close_reason` e OBBLIGATORIO quando
+      `is_force_closed` e true e viene AZZERATO a NULL quando torna false, nello stesso save:
+      senza questa regola resta a schermo la motivazione di una chiusura non piu in vigore.
+      NON vengono aggiunte le colonne `force_closed_at`/`force_closed_by`: chi e quando lo
+      registra gia `LogsModelActivity` (spec 0034), duplicarlo sarebbe stato morto.
+    </decision>
+    <decision id="D-5">
+      Collegamento all'offerta: `work_orders.quote_id` FK `quotes` NOT NULL
+      **restrictOnDelete**, IMMUTABILE dopo la create (`prohibited` in update). Motivo:
+      la commessa e le sue righe sono definite dentro il perimetro di quell'offerta; permettere
+      di cambiare offerta lascerebbe il pivot popolato con righe di un'altra offerta.
+      Per cambiare offerta si crea una nuova commessa.
+      Conseguenza obbligatoria: `QuoteService::delete()` guadagna il guard
+      `abort(409, 'This quote has work orders and cannot be deleted.')` PRIMA della delete,
+      altrimenti la `restrictOnDelete` esploderebbe come 500 invece che come 409. E' l'unica
+      modifica a un file di un altro modulo, ed e esattamente la "cancellazione che
+      comprometterebbe relazioni usate da altri moduli" chiesta nel brief.
+    </decision>
+    <decision id="D-6">
+      Collegamento alle righe: tabella pivot DEDICATA `quote_line_work_order`
+      (`id`, `work_order_id` cascadeOnDelete, `quote_line_id` cascadeOnDelete,
+      UNIQUE(`work_order_id`,`quote_line_id`)), relazione `WorkOrder::quoteLines()` BelongsToMany.
+      La tabella con `id` proprio E il punto di estensione richiesto ("relazione strutturata in
+      modo estendibile"): colonne future (quantita assegnata, avanzamento, stato riga) si
+      aggiungono qui senza toccare ne offerte ne commesse. NON si aggiungono oggi colonne
+      speculative.
+    </decision>
+    <decision id="D-7">
+      INVARIANTE DI APPARTENENZA: ogni `quote_line_id` inviato deve appartenere al `quote_id`
+      della commessa ED essere una riga d'OFFERTA (`line_type = REVENUE`, cioe `Quote::offerLines()`).
+      Le righe di COSTO sono costi interni, non prodotti venduti, e non sono selezionabili.
+      Violazione -> 422 con errore sul campo `quote_line_ids`. La regola e verificata
+      SERVER-SIDE con una query sulle righe reali, mai fidandosi del client, e vale sia in
+      create sia in update.
+    </decision>
+    <decision id="D-8">
+      La selezione righe e alimentata da un endpoint for-select DEDICATO
+      `GET /api/quote-offer-lines/for-select` (ADR 0011) con `quote_id` OBBLIGATORIO e filtro
+      REVENUE incondizionato. Slug esplicito invece di `quote-lines` generico: la semantica
+      "solo righe d'offerta di UNA offerta" e ristretta e il nome deve dirlo.
+      L'etichetta di riga e composta live da `product.code` + `product.name` (D-7 di 0065),
+      perche la riga non ha una descrizione propria.
+    </decision>
+    <decision id="D-9">
+      "Data richiamo" = `callback_date` DATE nullable indicizzato. NON riusa
+      `opportunities.next_callback_at`: quello e un DATETIME con semantica "prossimo richiamo
+      pianificato + marcatore di promemoria" (spec 0052 D-1/D-4) e trascinarne il nome
+      implicherebbe un promemoria che qui non esiste.
+      "Note commessa" = `internal_notes` TEXT nullable, stesso nome usato da `quotes`: `notes`
+      confonderebbe con il modulo Note collaborative (spec 0052), che qui NON viene abilitato.
+    </decision>
+    <decision id="D-10">
+      "Tipo commessa" = colonna `type` string(16) NOT NULL, cast su nuovo enum
+      `App\Enums\WorkOrderType` (`Processing = 'processing'`, `Project = 'project'`).
+      Enum di modulo, non condiviso (stessa motivazione di spec 0072 D-5: riusare l'enum di
+      un altro modulo accoppia i due moduli). Le etichette "Lavorazione"/"Progetto" stanno
+      nell'i18n, mai nel valore.
+    </decision>
+    <decision id="D-11">
+      Cancellazione FISICA (nessun SoftDeletes, coerente col resto del gestionale).
+      `WorkOrderService::delete()` e l'unico punto di cancellazione: oggi le righe pivot
+      cascadano e non esiste ancora alcun modulo che referenzi una commessa, quindi il
+      metodo non ha guard da scrivere; `WorkOrdersTableDefinition::deleteModel()` delega
+      comunque al service, cosi il bulk-delete generico erediterà automaticamente ogni guard
+      futuro senza una seconda modifica. La protezione REALE oggi e quella lato offerta (D-5).
+    </decision>
+    <decision id="D-12">
+      Fuori da questo modulo: nessuna for-select delle commesse (nessun altro modulo deve
+      ancora sceglierne una), nessun pannello stats, nessun allegato, nessuna nota
+      collaborativa, nessun import wizard. Si aggiungono quando servono, non "per il futuro".
+    </decision>
+    <decision id="D-13">
+      La creazione NON e' disponibile dalla pagina elenco Commesse: nessun bottone "Nuova"
+      nel PageHeader, nemmeno per chi ha `work-orders.create`. Motivo: una commessa nasce
+      sempre dentro il perimetro di UNA offerta, e la sua invariante centrale (D-7: solo righe
+      REVENUE di QUELLA offerta) presuppone che l'offerta sia gia' scelta. Una creazione
+      "da zero" partirebbe da un contesto vuoto che l'utente deve ricostruire a mano.
+      Resta INVARIATO tutto il resto dell'apparato di scrittura: `POST /api/work-orders`, il
+      permesso `work-orders.create`, il form di create e la rotta generata `/work-orders/new`
+      continuano a esistere e a essere autorizzati server-side. Cambia solo l'affordance nella
+      pagina elenco. Il punto d'ingresso definitivo (presumibilmente dal dettaglio Offerta) NON
+      e' oggetto di questa spec e va deciso separatamente.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migration `work_orders` + migration pivot `quote_line_work_order`.</item>
+      <item>`App\Models\WorkOrder` + `App\Enums\WorkOrderType` + `App\Enums\WorkOrderStatus`.</item>
+      <item>`WorkOrderPolicy` (8 ability standard di BasePolicy) + `WorkOrdersAuthorization` (permessi di campo).</item>
+      <item>Store/Update FormRequest + DataObject create/update.</item>
+      <item>`WorkOrderService` + `WorkOrders\WorkOrderStatusResolver` + `WorkOrders\WorkOrderLineWriter` (pivot).</item>
+      <item>`WorkOrderResource` + `WorkOrderController` + `routes/api/work-orders.php`.</item>
+      <item>`QuoteOfferLineForSelectController` + request + resource (endpoint D-8).</item>
+      <item>`WorkOrdersTableDefinition` + `WorkOrders\WorkOrderColumnCatalog` + colonna stato calcolato.</item>
+      <item>Guard 409 in `QuoteService::delete()` (D-5) — unica modifica fuori modulo.</item>
+      <item>Registrazioni: `config/tables.php`, `config/authorization.php`, `config/activity-log.php`, `config/navigation/opportunities.php`, `routes/api.php`.</item>
+      <item>Factory + `DemoWorkOrderSeeder` in `DemoDataSeeder` (fixture demo, MAI nel seed pulito).</item>
+      <item>Frontend `features/work-orders/`: api, types, schema, payload, form (create/edit), detail (view), tabella, renderers, screens, multi-select righe offerta.</item>
+      <item>`pages/work-orders-page.tsx`, rotta, breadcrumb, i18n it/en + label di navigazione.</item>
+      <item>Test Pest (feature + unit) e Vitest, ESEGUITI.</item>
+    </in>
+    <out>
+      <item>Qualunque logica di avanzamento lavorazioni/progetti: lo stato calcolato oggi dipende SOLO da `is_force_closed` (D-3).</item>
+      <item>Configuratore di stati commessa (niente tabella `work_order_statuses`, niente workflow): lo stato e derivato, non anagrafico.</item>
+      <item>Cambio dell'offerta collegata dopo la create (D-5).</item>
+      <item>Selezione di righe di COSTO (D-7).</item>
+      <item>For-select delle commesse, stats panel, allegati, note collaborative, import wizard, custom fields dedicati (D-12).</item>
+      <item>Modifiche al modulo Offerte oltre al guard 409 di `QuoteService::delete()` (D-5).</item>
+      <item>Colonne `force_closed_at` / `force_closed_by` (D-4).</item>
+      <item>Il punto d'ingresso alternativo per creare una commessa (es. dal dettaglio Offerta): D-13 rimuove l'affordance dalla pagina elenco ma NON ne introduce un'altra.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/work-orders/next-code">
+      <request>nessun parametro. Gate: `work-orders.create`.</request>
+      <response status="200">{ success, message, data: { code: "COM-0007" } }</response>
+      <errors>401 non autenticato; 403 senza `work-orders.create`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quote-offer-lines/for-select">
+      <request>
+        quote_id: int REQUIRED (exists:quotes,id)
+        search?: string · limit?: int · offset?: int · ids[]?: int[] (idratazione, ADR 0011)
+        Gate: `work-orders.view` (chi compila una commessa) OPPURE `quotes.view`.
+      </request>
+      <response status="200">
+        { items: [ { id: int, label: "PRD-0003 — Consulenza ISO 9001", sort_order: int } ],
+          export_link: null,
+          pagination: { total: int, offset: int, limit: int } }
+        Solo righe con `line_type = REVENUE` del `quote_id` indicato, ordinate per `sort_order`.
+      </response>
+      <errors>401; 403 senza permesso; 422 se `quote_id` manca o non esiste.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders">
+      <request>
+        {
+          code?: string|null (max 32, unique; assente/null/"" -> generato COM-000N),
+          quote_id: int REQUIRED (exists:quotes,id),
+          title: string REQUIRED (max 191),
+          type: "processing" | "project" REQUIRED,
+          callback_date?: string|null (Y-m-d),
+          description?: string|null,
+          internal_notes?: string|null,
+          is_force_closed?: bool (default false),
+          force_close_reason?: string|null (REQUIRED se is_force_closed true),
+          quote_line_ids?: int[] (righe REVENUE del quote_id indicato; default [])
+        }
+      </request>
+      <response status="201">
+        { success: true, message: "Created",
+          data: &lt;WorkOrderDetail&gt;,
+          permissions: &lt;ResourcePermissions&gt; }
+      </response>
+      <errors>401; 403 senza `work-orders.create`; 422 validazione (inclusi
+        `quote_line_ids` non appartenenti all'offerta o non REVENUE, e
+        `force_close_reason` mancante con chiusura forzata attiva).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <request>route model binding.</request>
+      <response status="200">
+        { success: true, message: "OK", data: &lt;WorkOrderDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
+      </response>
+      <errors>401; 403 senza `work-orders.view`; 404 id inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH|PUT" path="/api/work-orders/{workOrder}">
+      <request>
+        Stessi campi della create, tutti `sometimes`, TRANNE:
+          code: `prohibited` (immutabile dopo la create, D-1)
+          quote_id: `prohibited` (immutabile dopo la create, D-5)
+        `quote_line_ids` inviato = sostituzione completa dell'insieme (sync).
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: &lt;WorkOrderDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
+      </response>
+      <errors>401; 403 senza `work-orders.update`; 404; 422 (validazione, campi non
+        editabili per permesso di campo, invariante di appartenenza righe).</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}">
+      <request>route model binding.</request>
+      <response status="204">nessun body. Le righe pivot cascadano.</response>
+      <errors>401; 403 senza `work-orders.delete`; 404; 409 se un guard futuro rifiuta.</errors>
+    </endpoint>
+
+    <shape name="WorkOrderDetail">
+      {
+        id: int,
+        code: "COM-0001",
+        title: string,
+        type: "processing" | "project",
+        status: { value: "open" | "closed", is_force_closed: bool },   // calcolato, sola lettura (D-3)
+        is_force_closed: bool,
+        force_close_reason: string|null,
+        callback_date: "2026-09-30"|null,
+        description: string|null,
+        internal_notes: string|null,
+        contract_number: "QUO-0001"|null,                              // = quote.code, derivato (D-2)
+        quote: { id: int, code: string, title: string }|null,
+        quote_lines: [ { id: int, sort_order: int,
+                         product: { id: int, code: string, name: string }|null } ],
+        created_at: ISO8601, updated_at: ISO8601
+      }
+    </shape>
+
+    <endpoint method="POST" path="/api/tables/work-orders/rows">
+      <request>generico (framework tabellare). Gate: `work-orders.viewAny` via Policy.</request>
+      <response status="200">
+        Colonne mostrate (ordine di catalogo):
+          code (text, sortable, filterable text, searchable)          -> "Commessa n."
+          title (text, sortable, filterable text, searchable)         -> "Titolo"
+          contract_number (text, sortable, filterable text, searchable, derivata da quote.code) -> "Contratto n."
+          quote (text, sortable, filterable text, derivata da quote.title) -> "Offerta collegata"
+          type (badge, sortable, filterable set: processing|project)  -> "Tipo commessa"
+          callback_date (date, sortable, filterable date)             -> "Data richiamo"
+          is_force_closed (badge, sortable, filterable set: true|false) -> "Chiusura forzata"
+          status (badge, sortable: FALSE, filterable set: open|closed, calcolata) -> "Stato"
+          created_at / updated_at (datetime, sortable, filterable date)
+        Azioni: view / edit / delete / activity, filtrate per permesso.
+      </response>
+      <errors>403 senza `work-orders.viewAny`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/work-orders">
+      <request>generico (AuthorizationRegistry).</request>
+      <response status="200">
+        Campi del catalogo permessi di campo, in quest'ordine:
+          code (text), quote_id (select), title (text), type (select), callback_date (date),
+          description (textarea), internal_notes (textarea), is_force_closed (select),
+          force_close_reason (textarea), quote_line_ids (select)
+        Ceiling: `code` e `quote_id` editabili SOLO in create (model === null), altrove readonly.
+        `title` e `type` mandatory. `status` NON compare: non e scrivibile (D-3).
+        Azioni: delete, export, view_activity.
+      </response>
+      <errors>401; 403.</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Schema -->
+    <criterion id="AC-001">La migration crea `work_orders` con: `code` string(32) unique, `quote_id` FK quotes NOT NULL restrictOnDelete, `title` string(191) indicizzato, `type` string(16) NOT NULL, `callback_date` date nullable indicizzato, `description` text nullable, `internal_notes` text nullable, `is_force_closed` boolean default false indicizzato, `force_close_reason` text nullable, timestamps. `down()` la rimuove.</criterion>
+    <criterion id="AC-002">La migration crea `quote_line_work_order` con `id`, `work_order_id` FK cascadeOnDelete, `quote_line_id` FK cascadeOnDelete e UNIQUE(`work_order_id`,`quote_line_id`); inserire due volte la stessa coppia viola il vincolo.</criterion>
+    <criterion id="AC-003">Cancellando una commessa, le sue righe pivot spariscono (cascade); le `quote_lines` e la `quote` restano intatte.</criterion>
+
+    <!-- Numerazione -->
+    <criterion id="AC-010">POST senza `code` assegna il primo codice libero della serie `COM-000N`; due create consecutive danno `COM-0001` e `COM-0002`.</criterion>
+    <criterion id="AC-011">POST con `code` valorizzato usa quel codice; un `code` gia esistente da 422.</criterion>
+    <criterion id="AC-012">PATCH con `code` da 422 (campo `prohibited`): il numero e immutabile.</criterion>
+    <criterion id="AC-013">`GET /api/work-orders/next-code` restituisce l'anteprima del prossimo codice senza consumarlo: due chiamate consecutive danno lo stesso valore.</criterion>
+
+    <!-- Offerta e righe -->
+    <criterion id="AC-020">POST con `quote_id` inesistente da 422.</criterion>
+    <criterion id="AC-021">PATCH con `quote_id` da 422 (campo `prohibited`): l'offerta collegata e immutabile.</criterion>
+    <criterion id="AC-022">POST con `quote_line_ids` che contiene una riga di UN'ALTRA offerta da 422 con errore sul campo `quote_line_ids`, e nessuna commessa viene creata.</criterion>
+    <criterion id="AC-023">POST con `quote_line_ids` che contiene una riga di COSTO (`line_type = COST`) della stessa offerta da 422 con errore sul campo `quote_line_ids`.</criterion>
+    <criterion id="AC-024">POST con piu `quote_line_ids` REVENUE validi della stessa offerta crea 201 e persiste una riga pivot per ciascuno.</criterion>
+    <criterion id="AC-025">PATCH con `quote_line_ids` sostituisce l'insieme: partendo da [A,B] e inviando [B,C] restano esattamente B e C.</criterion>
+    <criterion id="AC-026">PATCH che NON invia `quote_line_ids` lascia le righe collegate invariate.</criterion>
+    <criterion id="AC-027">`GET /api/quote-offer-lines/for-select?quote_id=N` restituisce SOLO le righe REVENUE dell'offerta N, ordinate per `sort_order`, con label composta da `product.code` e `product.name`; senza `quote_id` risponde 422.</criterion>
+
+    <!-- Chiusura forzata e stato calcolato -->
+    <criterion id="AC-030">POST con `is_force_closed: true` e `force_close_reason` assente/vuoto da 422 sul campo `force_close_reason`.</criterion>
+    <criterion id="AC-031">PATCH che porta `is_force_closed` da true a false azzera `force_close_reason` a NULL nello stesso salvataggio (D-4).</criterion>
+    <criterion id="AC-032">La Resource di una commessa con `is_force_closed = false` espone `status.value = "open"`; con `is_force_closed = true` espone `"closed"`. Nessuna colonna `status` esiste in tabella DB.</criterion>
+    <criterion id="AC-033">POST/PATCH che inviano `status` non lo scrivono e non lo accettano: lo stato non e client-writable (D-3).</criterion>
+    <criterion id="AC-034">Filtrando la tabella su `status = closed` tornano ESATTAMENTE le commesse che la Resource marca `closed` (badge e filtro non possono divergere).</criterion>
+
+    <!-- Tabella -->
+    <criterion id="AC-040">`GET /api/tables/work-orders/columns` espone le colonne dichiarate nel data_contract, con `status` non ordinabile e filtrabile `set`.</criterion>
+    <criterion id="AC-041">Ordinando per `contract_number` le righe risultano ordinate per `quotes.code`; filtrando per testo su `contract_number` si filtra su `quotes.code`.</criterion>
+    <criterion id="AC-042">L'export della tabella `work-orders` produce le stesse colonne visibili con gli stessi valori mostrati a schermo.</criterion>
+    <criterion id="AC-043">Il bulk-delete dalla griglia passa da `WorkOrderService::delete()` (stesso percorso di `DELETE /{id}`).</criterion>
+
+    <!-- Permessi -->
+    <criterion id="AC-050">Un utente senza `work-orders.viewAny` riceve 403 dalla tabella; senza `work-orders.view` riceve 403 dal dettaglio; senza `work-orders.create` 403 dalla POST; senza `work-orders.update` 403 dalla PATCH; senza `work-orders.delete` 403 dalla DELETE. Non autenticato: 401 ovunque.</criterion>
+    <criterion id="AC-051">`php artisan permissions:sync` crea gli 8 permessi `work-orders.*` derivandoli dalla Policy, senza alcuna lista scritta a mano.</criterion>
+    <criterion id="AC-052">`GET /api/meta/work-orders` restituisce il catalogo campi nell'ordine dichiarato; un ruolo con `title` in sola lettura riceve 422 se prova a modificarlo via PATCH.</criterion>
+    <criterion id="AC-053">Il nodo di menu "Commesse" compare solo per chi ha `work-orders.view`.</criterion>
+
+    <!-- Cancellazione sicura -->
+    <criterion id="AC-060">`DELETE /api/work-orders/{id}` con i permessi risponde 204 e rimuove la riga e le sue righe pivot.</criterion>
+    <criterion id="AC-061">Cancellare un'offerta che ha almeno una commessa risponde 409 con messaggio esplicito e NON cancella nulla (ne offerta ne commessa) — D-5.</criterion>
+    <criterion id="AC-062">Cancellare un'offerta SENZA commesse continua a funzionare come prima (nessuna regressione sui test esistenti di `QuoteService::delete()`).</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-070">La pagina `/work-orders` mostra la tabella backend-driven; senza `work-orders.viewAny` mostra il messaggio di accesso negato e nessuna griglia.</criterion>
+    <criterion id="AC-078">La pagina `/work-orders` non espone ALCUN bottone di creazione, nemmeno per un utente che possiede `work-orders.create` (D-13). L'endpoint POST resta funzionante e autorizzato.</criterion>
+    <criterion id="AC-071">Nel form di create, il selettore righe prodotto e DISABILITATO finche non e scelta un'offerta, e una volta scelta propone solo le righe di quell'offerta.</criterion>
+    <criterion id="AC-072">Cambiando offerta nel form di create, le righe gia selezionate che non appartengono alla nuova offerta vengono rimosse dalla selezione (nessuna selezione orfana inviata al server).</criterion>
+    <criterion id="AC-073">Il campo "Motivo chiusura" e visibile e obbligatorio solo quando "Chiusura forzata" e attivo; lo schema Zod rifiuta il submit senza motivo.</criterion>
+    <criterion id="AC-074">In edit, i campi "Commessa n." e "Offerta collegata" sono in sola lettura; il payload PATCH non li include mai.</criterion>
+    <criterion id="AC-075">La vista di dettaglio mostra numero, titolo, tipo, stato calcolato, data richiamo, contratto n., offerta collegata, righe prodotto collegate, descrizione e note.</criterion>
+    <criterion id="AC-076">Le chiavi i18n it/en del namespace `workOrders` hanno lo stesso insieme di foglie, nessuna stringa vuota, e ogni label di colonna/filtro/azione dichiarata dal backend risolve a una stringa non vuota.</criterion>
+    <criterion id="AC-077">Il payload PATCH invia solo i campi effettivamente modificati (diff), coerente con gli altri moduli.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo librerie gia in `composer.json` / `package.json`.</item>
+    <item>Authz server-side su OGNI endpoint (Policy), inclusa la tabella generica (`authorizeViewAny`) e l'endpoint for-select.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` costruito da input utente: ordinamenti e filtri derivano dalla allow-list del catalogo colonne.</item>
+    <item>`$request->safe()->only()` o DTO tipizzato: mai `$request->only()` nudo. `code` e `quote_id` fuori da `#[Fillable]` per i percorsi di scrittura di sistema.</item>
+    <item>Nessun model Eloquent restituito raw: sempre via Resource, sempre nell'envelope `{ success, message, data }`.</item>
+    <item>Nessun accesso lazy nelle liste: eager loading dichiarato (`Model::preventLazyLoading()` e attivo fuori produzione).</item>
+    <item>File entro 300 righe (soft) / 500 (hard); nessun file `.md` non richiesto; nessuna emoticon nel codice.</item>
+    <item>Identificatori in inglese; "Commessa" solo nelle stringhe i18n.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI e verdi, Pint pulito, ESLint pulito sui file toccati, `cd frontend &amp;&amp; npx tsc -b --force` pulito (MAI `tsc --noEmit`).</item>
+    <item>Il seeder di dati demo si chiama `DemoWorkOrderSeeder` ed e richiamato SOLO da `DemoDataSeeder`, mai da `DatabaseSeeder`.</item>
+  </constraints>
+
+</spec>

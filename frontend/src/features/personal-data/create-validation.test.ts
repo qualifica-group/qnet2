@@ -40,19 +40,19 @@ function address(overrides: Partial<AddressDraft> = {}): AddressDraft {
 
 describe('isCreateAddressValid', () => {
   it('is valid when the buffer is empty (optional)', () => {
-    expect(isCreateAddressValid([])).toBe(true)
+    expect(isCreateAddressValid([], t)).toBe(true)
   })
 
   it('is valid once line1 and the city are both set', () => {
-    expect(isCreateAddressValid([address()])).toBe(true)
+    expect(isCreateAddressValid([address()], t)).toBe(true)
   })
 
   it('is invalid when line1 is missing', () => {
-    expect(isCreateAddressValid([address({ line1: '' })])).toBe(false)
+    expect(isCreateAddressValid([address({ line1: '' })], t)).toBe(false)
   })
 
   it('is invalid when the city is missing', () => {
-    expect(isCreateAddressValid([address({ city_id: null })])).toBe(false)
+    expect(isCreateAddressValid([address({ city_id: null })], t)).toBe(false)
   })
 })
 

@@ -1,0 +1,71 @@
+<?php
+
+namespace App\Imports\Leads;
+
+use App\Models\Campaign;
+use App\Services\Opportunities\ProductCategoryCoherence;
+
+/**
+ * Validates a submitted "Prodotti di interesse" id set against a Campaign's
+ * EFFECTIVE product categories (spec 0094, D-4/D-5), reused by BOTH the
+ * import wizard's global configuration step (ConfigureImportRequest,
+ * AC-051) and the per-row override (UpdateImportRowRequest, AC-054) — the
+ * SAME coherence rule App\Services\Leads\LeadProductInterestWriter applies
+ * at persist time (App\Services\Opportunities\ProductCategoryCoherence,
+ * LEAD_MESSAGE), never re-implemented here: this class only resolves WHICH
+ * categories a campaign classifies itself with (project-first, BR-2 —
+ * mirroring CampaignForSelectResource::effectiveProductCategoryIds()) before
+ * handing off to that one shared rule for the actual "is it covered" check.
+ */
+final class LeadImportProductCoherence
+{
+    public function __construct(private readonly ProductCategoryCoherence $coherence) {}
+
+    /**
+     * The products of $productIds sitting outside $campaignId's effective
+     * categories, as ready-to-display labels — empty when coherent. An
+     * unresolved campaign covers ZERO categories, so every submitted product
+     * is reported (never silently accepted just because the campaign id
+     * itself turned out invalid — that gets its own error from the caller's
+     * `exists:` rule).
+     *
+     * @param  array<int, int>  $productIds
+     * @return array<int, string>
+     */
+    public function offendingProducts(?int $campaignId, array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+
+        return $this->coherence->offendingProducts($productIds, $this->effectiveCategoryIds($campaignId));
+    }
+
+    /**
+     * @param  array<int, string>  $offendingProducts
+     */
+    public function message(array $offendingProducts): string
+    {
+        return $this->coherence->message($offendingProducts, ProductCategoryCoherence::LEAD_MESSAGE);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function effectiveCategoryIds(?int $campaignId): array
+    {
+        if ($campaignId === null) {
+            return [];
+        }
+
+        $campaign = Campaign::query()->with(['productLines', 'project.productLines'])->find($campaignId);
+
+        if ($campaign === null) {
+            return [];
+        }
+
+        $lines = $campaign->project !== null ? $campaign->project->productLines : $campaign->productLines;
+
+        return $lines->pluck('product_category_id')->map(intval(...))->all();
+    }
+}

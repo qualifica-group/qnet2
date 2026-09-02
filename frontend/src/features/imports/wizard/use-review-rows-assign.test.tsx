@@ -55,6 +55,8 @@ function rowItem(overrides: Partial<ImportRunRowItem> = {}): ImportRunRowItem {
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    product_ids: null,
+    products: [],
     values: { email: 'bad-email' },
     messages: ['Invalid email format'],
     ...overrides,

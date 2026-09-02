@@ -39,6 +39,12 @@ use App\Models\User;
  * only which operator/site owns the row at commit time — so a request
  * carrying ONLY these overrides short-circuits before StagedRowBuilder even
  * runs.
+ *
+ * `product_ids` (spec 0094, D-4/AC-054): the per-row "Prodotti di interesse"
+ * override mirrors the same short-circuit — it never touches recognizers/
+ * validation/dedup either, only which products this row carries at commit
+ * time (LeadRowPersister). Coverage against the campaign's categories is
+ * already enforced by UpdateImportRowRequest before this class ever runs.
  */
 final class StagedRowReviser
 {
@@ -47,6 +53,7 @@ final class StagedRowReviser
     /**
      * @param  array<string, string>|null  $editedValues  field id (or extra column key) => new value
      * @param  array{country_id: ?int, state_id: ?int, province_id: ?int, city_id: ?int}|null  $geo
+     * @param  array<int, int>|null  $productIds  three-state: not submitted (see $productIdsSubmitted) / null (inherit global) / explicit set
      */
     public function revise(
         ImportDefinition $definition,
@@ -59,14 +66,18 @@ final class StagedRowReviser
         ?int $operatorId = null,
         bool $siteIdSubmitted = false,
         ?int $siteId = null,
+        bool $productIdsSubmitted = false,
+        ?array $productIds = null,
     ): ImportRunRow {
-        // Step 1: an operator/site-only override never touches staging/
-        // validation status — plain column write, no StagedRowBuilder replay.
+        // Step 1: an operator/site/product_ids-only override never touches
+        // staging/validation status — plain column write, no
+        // StagedRowBuilder replay.
         if ($editedValues === null && $geo === null) {
-            if ($operatorIdSubmitted || $siteIdSubmitted) {
+            if ($operatorIdSubmitted || $siteIdSubmitted || $productIdsSubmitted) {
                 $row->update([
                     ...($operatorIdSubmitted ? ['operator_id' => $operatorId] : []),
                     ...($siteIdSubmitted ? ['operational_site_id' => $siteId] : []),
+                    ...($productIdsSubmitted ? ['product_ids' => $productIds] : []),
                     'is_edited' => true,
                 ]);
             }
@@ -103,6 +114,7 @@ final class StagedRowReviser
             'is_edited' => true,
             ...($operatorIdSubmitted ? ['operator_id' => $operatorId] : []),
             ...($siteIdSubmitted ? ['operational_site_id' => $siteId] : []),
+            ...($productIdsSubmitted ? ['product_ids' => $productIds] : []),
         ]);
 
         return $row->fresh();

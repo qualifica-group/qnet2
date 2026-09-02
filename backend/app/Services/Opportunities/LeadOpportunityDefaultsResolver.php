@@ -6,9 +6,12 @@ namespace App\Services\Opportunities;
 
 use App\DataObjects\Opportunities\LeadOpportunityDefaults;
 use App\Models\Campaign;
+use App\Models\CampaignProductLine;
 use App\Models\Lead;
+use App\Models\ProjectProductLine;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * BR-1 (spec 0040, spec 0041 D-3): resolves the values an Opportunity
@@ -27,12 +30,15 @@ use Illuminate\Database\Eloquent\Model;
  * registry (BR-4, spec 0040).
  *
  * Amendment rev.3: business function/product category are NO LONGER
- * BR-2-locked scalars — `productLines` carries the campaign's EFFECTIVE pair
+ * BR-2-locked scalars — `productLines` carries the campaign's EFFECTIVE rows
  * (read through its linked Project when one exists, else the campaign's own
- * — the exact `project !== null ? project->x : campaign->x` merge
- * CampaignResource already uses for the same 2 columns, spec 0023 BR-2, no
- * second implementation) as a single EDITABLE/removable row, only when BOTH
- * are present.
+ * — the exact `project !== null ? project->productLines : campaign->productLines`
+ * merge CampaignResource::summarizeProductLines() already uses, no second
+ * implementation) as EDITABLE/removable rows.
+ *
+ * Spec 0094, D-1/AC-060: the pair became a to-many COLLECTION on both
+ * Campaign and Project — `productLines()` below now derives 0..N rows,
+ * instead of the former 0-or-1 pair.
  *
  * User directive 2026-07-23: the lead's `operational_site_id` (the Sede
  * operativa) is inherited by the opportunity again — but as a PLAIN default,
@@ -69,6 +75,11 @@ final class LeadOpportunityDefaultsResolver
      * ConvertLeadsToOpportunities) can eager-load exactly this set up front
      * instead of maintaining a second, drifting copy of the list.
      *
+     * Spec 0094, AC-061: `productsOfInterest` is not read by resolve() itself
+     * — it is here so ConvertLeadToOpportunity (the one caller that needs it,
+     * to transfer the lead's products onto the derived Opportunity/Offerta)
+     * never pays a per-lead query for it on the bulk path either.
+     *
      * @var array<int, string>
      */
     public const array REQUIRED_RELATIONS = [
@@ -77,10 +88,11 @@ final class LeadOpportunityDefaultsResolver
         'operator',
         'operationalSite.addresses.city',
         'opportunity',
-        'campaign.businessFunction',
-        'campaign.productCategory',
-        'campaign.project.businessFunction',
-        'campaign.project.productCategory',
+        'campaign.productLines.businessFunction',
+        'campaign.productLines.productCategory',
+        'campaign.project.productLines.businessFunction',
+        'campaign.project.productLines.productCategory',
+        'productsOfInterest',
     ];
 
     public function resolve(Lead $lead): LeadOpportunityDefaults
@@ -124,7 +136,7 @@ final class LeadOpportunityDefaultsResolver
             values: $values,
             references: $references,
             lockedFields: $this->lockedFields($values),
-            productLines: $this->productLines($this->effectiveBusinessFunction($campaign), $this->effectiveProductCategory($campaign)),
+            productLines: $this->productLines($this->effectiveProductLines($campaign)),
             existingOpportunityId: $lead->opportunity?->id,
             managerSlots: $operator === null ? [] : [null, $operator->id],
             managerRefs: $managerRef === null ? [] : [$managerRef],
@@ -132,50 +144,49 @@ final class LeadOpportunityDefaultsResolver
     }
 
     /**
-     * Whether a campaign (via its linked Project when one exists, else the
-     * campaign's own business function/product category) derives a
-     * non-empty Opportunity product line — the SAME predicate resolve()
-     * uses, exposed for App\Services\Import\ImportOpportunityConvertibility
-     * (the import wizard's pre-conversion gate, spec 0045) so the two never
-     * drift apart. Caller must eager-load businessFunction/productCategory/
-     * project.businessFunction/project.productCategory on $campaign.
+     * Whether a campaign (via its linked Project when one exists, else its
+     * own product lines) derives at least one Opportunity product line — the
+     * SAME predicate resolve() uses, exposed for
+     * App\Services\Import\ImportOpportunityConvertibility (the import
+     * wizard's pre-conversion gate, spec 0045) so the two never drift apart.
+     * Caller must eager-load `productLines` (and `project.productLines`) on
+     * $campaign.
      */
     public function campaignDerivesProductLine(Campaign $campaign): bool
     {
-        return $this->productLines(
-            $this->effectiveBusinessFunction($campaign),
-            $this->effectiveProductCategory($campaign),
-        ) !== [];
-    }
-
-    private function effectiveBusinessFunction(Campaign $campaign): ?Model
-    {
-        return $campaign->project !== null ? $campaign->project->businessFunction : $campaign->businessFunction;
-    }
-
-    private function effectiveProductCategory(Campaign $campaign): ?Model
-    {
-        return $campaign->project !== null ? $campaign->project->productCategory : $campaign->productCategory;
+        return $this->effectiveProductLines($campaign)->isNotEmpty();
     }
 
     /**
-     * A single derived row {business_function, product_category} when BOTH
-     * the campaign/project's effective business function AND product
-     * category are present, else an empty list (amendment rev.3: this row is
-     * EDITABLE/removable in the form, never BR-2-locked).
+     * $campaign's EFFECTIVE product lines (spec 0094, BR-2): the linked
+     * Project's own collection when it has one, else the campaign's own —
+     * the exact project-first precedence CampaignResource::summarizeProductLines()
+     * already applies, no second implementation.
      *
+     * @return Collection<int, CampaignProductLine|ProjectProductLine>
+     */
+    private function effectiveProductLines(Campaign $campaign): Collection
+    {
+        return $campaign->project !== null ? $campaign->project->productLines : $campaign->productLines;
+    }
+
+    /**
+     * $lines projected to the derived-row shape (amendment rev.3: editable/
+     * removable in the form, never BR-2-locked) — 0..N rows, one per
+     * business_function + product_category pair.
+     *
+     * @param  Collection<int, CampaignProductLine|ProjectProductLine>  $lines
      * @return array<int, array{business_function: array{id: int, name: string}, product_category: array{id: int, name: string}}>
      */
-    private function productLines(?Model $businessFunction, ?Model $productCategory): array
+    private function productLines(Collection $lines): array
     {
-        if ($businessFunction === null || $productCategory === null) {
-            return [];
-        }
-
-        return [[
-            'business_function' => ['id' => $businessFunction->id, 'name' => $businessFunction->name],
-            'product_category' => ['id' => $productCategory->id, 'name' => $productCategory->name],
-        ]];
+        return $lines
+            ->map(static fn (Model $line): array => [
+                'business_function' => ['id' => $line->businessFunction->id, 'name' => $line->businessFunction->name],
+                'product_category' => ['id' => $line->productCategory->id, 'name' => $line->productCategory->name],
+            ])
+            ->values()
+            ->all();
     }
 
     /**

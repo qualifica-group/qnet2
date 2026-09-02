@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DataObjects\Contracts\ChangeContractStatusData;
-use App\DataObjects\Contracts\ScheduleContractData;
 use App\DataObjects\Contracts\TerminateContractData;
 use App\DataObjects\Contracts\ValidateContractData;
 use App\Enums\ContractStatusGroup;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * The domain actions that move a contract FORWARD (spec 0072, BR-3/BR-4,
  * plus "Modifica stato" — user directive 2026-08-31 rev.2): validate,
- * schedule, changeStatus, terminate. "Riattiva contratto", the only action
+ * changeStatus, terminate. "Riattiva contratto", the only action
  * with two paths, lives in its own class
  * (App\Services\Contracts\ContractReactivator). Each is a single, small write inside its
  * own transaction, followed by the SAME detail read ContractController::show
@@ -73,36 +72,6 @@ class ContractActionService
                     'contract_status_id' => $contract->contract_status_id,
                 ])
                 ->log('Contract validated');
-        });
-
-        return $this->contractService->loadDetail($contract->fresh());
-    }
-
-    /**
-     * D-2: "Programmato"/"Da programmare" are plain, deletable custom rows —
-     * the destination status ALWAYS comes from the client here, never
-     * resolved by system_key.
-     */
-    public function schedule(Contract $contract, ScheduleContractData $data): Contract
-    {
-        DB::transaction(function () use ($contract, $data): void {
-            $this->assertNotSuspended($contract);
-            $this->assertNotTerminated($contract);
-
-            $contract->expiry_date = $data->expiryDate;
-            $contract->renewal_date = $data->renewalDate;
-            $contract->contract_status_id = $data->contractStatusId;
-            $contract->save();
-
-            activity($contract->getTable())
-                ->performedOn($contract)
-                ->event('contract.scheduled')
-                ->withProperties([
-                    'expiry_date' => $data->expiryDate,
-                    'renewal_date' => $data->renewalDate,
-                    'contract_status_id' => $data->contractStatusId,
-                ])
-                ->log('Contract scheduled');
         });
 
         return $this->contractService->loadDetail($contract->fresh());

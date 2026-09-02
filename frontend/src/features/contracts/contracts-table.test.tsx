@@ -49,7 +49,7 @@ const VALIDATE_ACTION: TableActionDefinition = {
 
 const ROW: TableRow = {
   id: 7,
-  actions: ['view', 'activity', 'validate', 'schedule', 'terminate', 'reactivate', 'edit', 'change_status'],
+  actions: ['view', 'activity', 'validate', 'program', 'terminate', 'reactivate', 'edit', 'change_status'],
   title: 'Contratto Acme',
   code: 'QUO-0007',
 }

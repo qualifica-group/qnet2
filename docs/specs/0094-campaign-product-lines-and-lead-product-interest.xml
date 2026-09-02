@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0094-campaign-product-lines-and-lead-product-interest" status="draft" owner="utente" date="2026-09-02">
+
+  <goal>
+    Portare le righe "Funzione Aziendale -> Categoria Prodotto" da coppia singola a COLLEZIONE su
+    Progetto e Campagna, riusando integralmente le regole gia' in vigore sull'Opportunita'; dare al
+    Lead una sezione "Prodotti di interesse" filtrata dalle categorie della sua Campagna; trasferire
+    quelle informazioni alla conversione in Opportunita', generando l'Offerta collegata con una riga
+    prodotto per ogni prodotto di interesse.
+  </goal>
+
+  <context>
+    <!-- Tutti i nomi qui sotto sono stati VERIFICATI nel codice reale, non ipotizzati. -->
+
+    <existing_shared_logic>
+      La logica delle righe FA->CP esiste gia' ed e' condivisa. Questa spec NON ne scrive una nuova:
+      la estende ai due moduli che oggi ne hanno solo la versione "coppia singola".
+      - App\Services\ProductLines\ProductLineSetValidator — LA definizione unica delle regole:
+        rules() (per-riga: business function esistente + App\Rules\SelectableProductCategory),
+        crossRowErrors() (coppia duplicata -> DUPLICATE_PAIR_MESSAGE; categoria la cui funzione
+        EFFETTIVA non combacia -> BUSINESS_FUNCTION_MISMATCH_MESSAGE), collectionInvariantErrors()
+        (radice con management_mode = single -> una sola riga, SINGLE_ROW_ONLY_MESSAGE),
+        assert() per i canali senza FormRequest.
+      - App\Services\ProductCategories\CategoryHierarchy — effectiveBusinessFunction(),
+        rootManagementModesFor(), risoluzione batch senza N+1.
+      - App\Http\Requests\Concerns\ValidatesProductLines — binding del set di regole a un FormRequest.
+      - App\Services\Opportunities\OpportunityProductLineWriter — sync full-replace (delete-all+insert).
+      - App\Services\Opportunities\ProductCategoryCoherence — ogni prodotto di interesse deve stare
+        in una categoria COPERTA dalle righe. Copertura per MATCH ESATTO su products.category_id
+        (whereNotIn), MAI per discendenza: invariante da preservare.
+      - App\Services\Opportunities\OpportunityProductInterestWriter — unico write path dei prodotti
+        di interesse dell'Opportunita', applica la coerenza sopra.
+      - Frontend: frontend/src/features/product-lines/product-lines-field.tsx (ProductLinesField) +
+        use-product-lines-field.ts + product-category-tree-select.tsx — editor di collezione gia'
+        generico (feature propria, non dentro opportunities), con filtro categoria per riga sulla
+        business function e blocco di "Aggiungi" in management_mode single.
+      - Frontend: frontend/src/features/products/products-of-interest-field.tsx
+        (ProductsOfInterestField) su AsyncPaginatedMultiSelect con params.category_ids.
+    </existing_shared_logic>
+
+    <current_state>
+      - projects.business_function_id / projects.product_category_id: due colonne SINGOLE nullable
+        (migrazione 2026_07_13_110100_create_projects_table.php:29,44), required nei FormRequest.
+      - campaigns.business_function_id / campaigns.product_category_id: idem
+        (2026_07_13_110200_create_campaigns_table.php:49,50). BR-2: quando la Campagna e' legata a un
+        Progetto le proprie colonne sono NULL e i valori EFFETTIVI si leggono dal Progetto
+        (CampaignResource:47-49, CampaignService::resolveUpdateAttributes():267-269).
+      - App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction: la variante "coppia
+        singola" della regola, usata ESATTAMENTE dai 4 FormRequest di Progetti e Campagne.
+      - Lead NON ha alcuna relazione con Product: nessuna pivot, nessun campo nei DTO.
+      - LeadOpportunityDefaultsResolver::productLines() deriva 0 o 1 riga dalla Campagna/Progetto;
+        ConvertLeadToOpportunity solleva 422 se la collezione risulta vuota.
+      - La conversione NON crea alcuna Offerta: il pannello Offerte (spec 0067) offre solo un bottone
+        che apre il form con opportunity_id precompilato.
+      - Griglia: Progetti espone business_function/product_category come colonne relazione SINGOLE
+        (ProjectColumnCatalog:57,70); Campagne non le espone affatto. L'Opportunita' le espone come
+        colonne AGGREGATE to-many (OpportunityRelationColumns::AGGREGATED_RELATIONS:62-65).
+    </current_state>
+
+    <decisions>
+      <decision id="D-1">
+        Le righe multiple arrivano ANCHE sul Progetto (scelta utente 2026-09-02). La Campagna legata a
+        un Progetto continua a ereditare la classificazione in sola lettura (BR-2 invariato), ma ora
+        eredita N righe invece di una coppia.
+      </decision>
+      <decision id="D-2">
+        Sostituzione piena, come gia' fatto per l'Opportunita' (spec 0040 amendment rev.3): le due
+        colonne singole vengono migrate nella collezione e poi DROPPATE. Nessuna doppia verita'.
+      </decision>
+      <decision id="D-3">
+        La conversione genera UNA Offerta collegata all'Opportunita', con una riga REVENUE per ogni
+        Prodotto di interesse del Lead. Non n Offerte.
+      </decision>
+      <decision id="D-4">
+        Import: i Prodotti di interesse si scelgono come configurazione GLOBALE del run (accanto alla
+        Campagna, filtrati dalle sue categorie) e restano modificabili RIGA PER RIGA nella griglia di
+        revisione, sul modello gia' esistente di Operatore/Sede (colonna dedicata su import_run_rows,
+        canale di update proprio, mai dentro `values` che e' vincolato a stringa).
+      </decision>
+      <decision id="D-5">
+        La regola di coerenza sul Lead e' la STESSA dell'Opportunita' e usa lo stesso servizio:
+        ProductCategoryCoherence, con un terzo template di messaggio (LEAD_MESSAGE). Cambiare la
+        Campagna lasciando prodotti non piu' coperti produce 422 sul campo che l'attore ha davvero
+        inviato — non una rimozione silenziosa. E' questa la "gestione esplicita da parte dell'utente".
+      </decision>
+      <decision id="D-6">
+        Conseguenza DICHIARATA dei setting, non un limite nuovo: se le righe della Campagna risolvono
+        a una radice con management_mode = single, la Campagna porta UNA sola riga e il Lead puo'
+        avere prodotti di una sola categoria; alla conversione, ValidatesQuoteLines::enforceSingleOfferLine
+        ammette UNA sola riga d'offerta, quindi un Lead con 2+ prodotti in quel ramo NON e'
+        convertibile finche' l'operatore non riduce la selezione. Il rifiuto e' esplicito (422), mai
+        un troncamento silenzioso.
+      </decision>
+      <decision id="D-7">
+        Nessun gate su requires_quote: il flag esiste sulle categorie ma oggi non e' piu' usato come
+        cancello da nessuna parte (rimosso da OpportunityResource, spec 0083 D-5). L'Offerta nasce se
+        e solo se il Lead porta almeno un prodotto di interesse.
+      </decision>
+      <decision id="D-8">
+        I prezzi delle righe generate si risolvono SERVER-SIDE (products.price, quantita' 1,
+        products.vat_rate_id): oggi il default di listino e' precompilato solo dal frontend
+        (lineValuesFromProduct), e la conversione non ha frontend. L'unita' di misura NON viene
+        inviata: resta congelata da QuoteLineWriter, che e' l'unica autorita' (spec 0088 D-5).
+      </decision>
+    </decisions>
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabelle project_product_lines e campaign_product_lines + migrazione dati + drop delle 4 colonne singole.</item>
+      <item>Pivot lead_product (prodotti di interesse del Lead) + relazione, DTO, writer, Resource.</item>
+      <item>Adozione di ValidatesProductLines/ProductLineSetValidator nei 4 FormRequest di Progetti e Campagne; cancellazione del trait ValidatesProductCategoryBusinessFunction rimasto orfano.</item>
+      <item>Generalizzazione del writer full-replace e della risoluzione degli id esenti (spec 0074 D-3b) a qualunque owner con relazione productLines().</item>
+      <item>Colonne di griglia aggregate to-many per Progetti (sostituiscono le due singole) e per Campagne (nuove), filtro set e distinct values sul modello di OpportunityRelationColumns.</item>
+      <item>Sezione "Prodotti di interesse" nel form Lead (create/edit), filtrata dalle categorie effettive della Campagna, con pruning esplicito al cambio Campagna.</item>
+      <item>Import Lead: campo globale multi-valore product_ids + override per riga in revisione.</item>
+      <item>Conversione Lead -> Opportunita': N righe FA->CP derivate dalla Campagna, trasferimento dei prodotti di interesse, creazione di UNA Offerta con una riga per prodotto.</item>
+      <item>Editor collezione nei form Progetto e Campagna (riuso di ProductLinesField).</item>
+    </in>
+    <out>
+      <item>Editing inline in griglia delle righe FA->CP su Progetti/Campagne (resta non editabile come oggi; il meccanismo CellValueValidator esiste ma non viene abilitato qui).</item>
+      <item>Qualsiasi modifica alle righe FA->CP dell'Opportunita' che non sia il riuso del writer/trait generalizzati.</item>
+      <item>Modifica dei calcoli, degli aggregati, del workflow o del ciclo contratti dell'Offerta: l'Offerta generata passa dal normale QuoteService::create.</item>
+      <item>Retroattivita': Lead gia' esistenti restano senza prodotti di interesse; Opportunita' e Offerte gia' create non vengono toccate.</item>
+      <item>Mappatura dei prodotti da colonna del file di import (scelta D-4: globale + override per riga).</item>
+      <item>Gate su requires_quote (D-7) e qualunque nuovo setting di Categoria Prodotto.</item>
+      <item>Conversione massiva che generi Offerte con logica propria: usa la stessa azione singola, senza seconda implementazione.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="POST|PATCH" path="/api/projects">
+      <request>
+        product_lines: array (POST: required, min 1 — PATCH: sometimes, min 1, mai svuotabile a [])
+        product_lines[].business_function_id: int, required
+        product_lines[].product_category_id: int, required, categoria selezionabile (spec 0074)
+        RIMOSSI: business_function_id, product_category_id (scalari)
+      </request>
+      <response status="200">
+        data.product_lines: [{ id, business_function: {id,name}|null, product_category: {id,name}|null }]
+        RIMOSSI da data: business_function_id, business_function, product_category_id, product_category
+      </response>
+      <errors>
+        422 product_lines — collezione assente/vuota, oppure radice single con 2+ righe
+        422 product_lines.{i}.product_category_id — coppia duplicata, o categoria non selezionabile
+        422 product_lines.{i}.business_function_id — funzione effettiva della categoria diversa da quella dichiarata
+        403 senza permesso; 404 risorsa altrui
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/campaigns">
+      <request>
+        product_lines: stessa shape dei progetti.
+        Campagna STANDALONE (project_id null): required min 1 (POST) / sometimes min 1 (PATCH).
+        Campagna LEGATA a un progetto: prohibited — la classificazione e' derivata (BR-2 invariato).
+      </request>
+      <response status="200">
+        data.product_lines: righe EFFETTIVE (quelle del Progetto quando legata, le proprie altrimenti)
+        data.derived_from_project: bool (invariato)
+      </response>
+      <errors>
+        422 product_lines — prohibited su campagna legata; stessi 422 per-riga dei progetti
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/campaigns/for-select">
+      <response status="200">
+        data[].meta.operational_site: {id,label}|null   (invariato)
+        data[].meta.product_category_ids: int[]         (NUOVO — categorie EFFETTIVE della campagna,
+                                                         gia' risolte via progetto quando legata)
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/projects/for-select">
+      <response status="200">
+        data[].meta.product_lines: [{ business_function: {id,name}, product_category: {id,name} }]
+        (sostituisce meta.business_function / meta.product_category, consumati dal prefill Campagna)
+      </response>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/leads">
+      <request>
+        products_of_interest: int[] — sometimes|array; [] ammesso (azzera la collezione).
+        Ogni id deve esistere e appartenere a una categoria COPERTA dalle righe effettive della
+        Campagna del lead (match esatto su products.category_id).
+      </request>
+      <response status="200">
+        data.products_of_interest: [{ id, name, product_category: {id,name}|null }]
+      </response>
+      <errors>
+        422 products_of_interest — prodotto inesistente, o categoria non coperta dalla Campagna
+        422 campaign_id — la Campagna inviata non copre prodotti gia' persistiti sul lead (D-5)
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/products/for-select">
+      <request>category_ids[]: int[] — INVARIATO, gia' supportato. Il client passa le categorie effettive della Campagna.</request>
+      <response status="200">invariato</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/imports/{domain}/{importRun}/configure">
+      <request>
+        global_config.campaign_id: int (invariato, required)
+        global_config.product_ids: int[] (NUOVO, opzionale) — validati contro le categorie della campagna scelta
+      </request>
+      <response status="200">
+        data.global_fields[]: { id, label, required, for_select_resource, multiple: bool, depends_on: string|null, default }
+        (multiple e depends_on sono NUOVI e additivi; i campi esistenti restano single/depends_on null)
+      </response>
+      <errors>422 global_config.product_ids — prodotto fuori dalle categorie della campagna</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/imports/{domain}/{importRun}/rows/{row}">
+      <request>
+        product_ids: int[]|null (NUOVO) — null = eredita il globale; [] = nessun prodotto su questa riga.
+        Canale dedicato, come operator_id/operational_site_id: NON passa da `values` (vincolato a stringa).
+      </request>
+      <response status="200">
+        data.product_ids: int[]|null
+        data.products: [{id,label}]  (etichette risolte, come data.operator)
+      </response>
+      <errors>422 product_ids — prodotto fuori dalle categorie della campagna del run</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/leads (convert_to_opportunity) e /api/leads/convert-to-opportunities">
+      <request>invariato</request>
+      <response status="200">
+        Invariato nella shape. Effetti nuovi: l'Opportunita' nasce con N righe FA->CP derivate dalla
+        Campagna e con i prodotti di interesse del Lead; se il Lead ne porta almeno uno, nasce anche
+        UNA Offerta collegata con una riga REVENUE per prodotto
+        (quantita' 1, unit_price = products.price, vat_rate_id = products.vat_rate_id,
+        unita' di misura congelata da QuoteLineWriter).
+      </response>
+      <errors>
+        422 product_lines — la Campagna non deriva alcuna riga (comportamento odierno, invariato)
+        422 offer_lines — radice single con 2+ prodotti di interesse (D-6)
+      </errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <!-- Schema e migrazione dati -->
+    <criterion id="AC-001">Esiste project_product_lines con FK project_id cascadeOnDelete, business_function_id/product_category_id restrictOnDelete e UNIQUE sulla tripletta; idem campaign_product_lines per campaign_id.</criterion>
+    <criterion id="AC-002">Dato un progetto con la coppia singola valorizzata, dopo la migrazione esiste esattamente una riga in project_product_lines con gli stessi due id; le colonne singole non esistono piu' su projects.</criterion>
+    <criterion id="AC-003">Dato una campagna STANDALONE con la coppia valorizzata, dopo la migrazione ha una riga in campaign_product_lines; una campagna LEGATA a un progetto (colonne NULL) non ne ha nessuna e continua a leggere quelle del progetto.</criterion>
+    <criterion id="AC-004">Le migrazioni sono reversibili: down() ricrea le colonne e ripopola la coppia dalla prima riga.</criterion>
+    <criterion id="AC-005">Esiste la pivot lead_product con UNIQUE(lead_id, product_id) e cascade sul lead.</criterion>
+
+    <!-- Regole condivise su Progetto e Campagna -->
+    <criterion id="AC-010">POST /projects senza product_lines (o con []) -> 422 su product_lines.</criterion>
+    <criterion id="AC-011">POST /projects con due righe identiche -> 422 su product_lines.1.product_category_id con DUPLICATE_PAIR_MESSAGE.</criterion>
+    <criterion id="AC-012">POST /projects con una categoria la cui funzione effettiva e' un'altra -> 422 su product_lines.0.business_function_id con BUSINESS_FUNCTION_MISMATCH_MESSAGE.</criterion>
+    <criterion id="AC-013">POST /projects con una categoria non selezionabile (is_selectable false) -> 422; la stessa categoria gia' persistita sul record resta accettabile in PATCH (spec 0074 D-3b).</criterion>
+    <criterion id="AC-014">POST /projects con due righe di cui almeno una su radice management_mode single -> 422 su product_lines con SINGLE_ROW_ONLY_MESSAGE.</criterion>
+    <criterion id="AC-015">Gli stessi cinque criteri AC-010..AC-014 valgono identici su POST/PATCH /campaigns per una campagna standalone, con gli stessi messaggi.</criterion>
+    <criterion id="AC-016">PATCH /projects che omette product_lines lascia la collezione invariata; PATCH con [] -> 422.</criterion>
+    <criterion id="AC-017">PATCH /projects con una collezione diversa la SOSTITUISCE integralmente (nessuna riga residua).</criterion>
+    <criterion id="AC-018">POST /campaigns con project_id valorizzato e product_lines inviate -> 422 (prohibited); la campagna legata espone nella response le righe del progetto.</criterion>
+    <criterion id="AC-019">GET /projects/{id} espone product_lines[] con {id, business_function{id,name}, product_category{id,name}} e non espone piu' i quattro campi scalari; nessuna query N+1 (test con preventLazyLoading).</criterion>
+    <criterion id="AC-020">Il trait ValidatesProductCategoryBusinessFunction non esiste piu' nel repo e nessun file lo referenzia.</criterion>
+
+    <!-- Griglia -->
+    <criterion id="AC-025">La griglia Progetti espone business_function e product_category come colonne AGGREGATE (nomi uniti da virgola), non ordinabili, con filtro set che seleziona i progetti tramite whereHas sulla relazione annidata.</criterion>
+    <criterion id="AC-026">I distinct values di quelle due colonne provengono da un join su project_product_lines limitato alle righe della pagina, senza whereRaw su input utente.</criterion>
+    <criterion id="AC-027">La griglia Campagne espone le stesse due colonne aggregate, che per una campagna legata mostrano le righe del progetto.</criterion>
+
+    <!-- Prodotti di interesse sul Lead -->
+    <criterion id="AC-030">POST /leads con products_of_interest di prodotti appartenenti alle categorie della campagna li persiste; GET /leads/{id} li espone con la loro categoria.</criterion>
+    <criterion id="AC-031">POST /leads con un prodotto la cui categoria NON e' coperta dalle righe della campagna -> 422 su products_of_interest, messaggio LEAD_MESSAGE che nomina il prodotto e la sua categoria.</criterion>
+    <criterion id="AC-032">La copertura e' per match esatto sulla categoria del prodotto: un prodotto in una categoria FIGLIA di una categoria coperta viene rifiutato.</criterion>
+    <criterion id="AC-033">PATCH /leads con products_of_interest: [] azzera la collezione senza errore.</criterion>
+    <criterion id="AC-034">PATCH /leads che cambia campaign_id lasciando persistiti prodotti non coperti dalla nuova campagna -> 422 su campaign_id; i prodotti restano quelli di prima (nessuna rimozione silenziosa).</criterion>
+    <criterion id="AC-035">PATCH /leads che cambia campaign_id e invia contestualmente un products_of_interest coerente con la nuova campagna riesce.</criterion>
+    <criterion id="AC-036">Un lead senza prodotti di interesse resta salvabile su tutti gli altri campi (nessun requisito di minimo).</criterion>
+
+    <!-- Frontend Lead -->
+    <criterion id="AC-040">Il form Lead mostra la sezione "Prodotti di interesse" fra Dettagli e Note, disabilitata finche' non e' scelta una Campagna.</criterion>
+    <criterion id="AC-041">Scelta la Campagna, il picker prodotti interroga products/for-select con category_ids = le categorie effettive della campagna (lette da meta.product_category_ids del for-select campagne, senza richieste aggiuntive).</criterion>
+    <criterion id="AC-042">Cambiando Campagna nel form, i prodotti gia' scelti non piu' coperti vengono evidenziati e rimossi solo dopo conferma esplicita dell'utente; senza conferma il submit non parte.</criterion>
+    <criterion id="AC-043">I 422 con chiave products_of_interest e product_lines.{i}.* sono mostrati all'utente (banner con prefisso, pattern collectPrefixedServerErrors), non silenziati.</criterion>
+
+    <!-- Frontend Progetto/Campagna -->
+    <criterion id="AC-045">I form Progetto e Campagna usano ProductLinesField (riuso, nessun editor nuovo): aggiunta/rimozione righe, categoria filtrata per funzione della riga, "Aggiungi" disabilitato quando una riga e' su radice single.</criterion>
+    <criterion id="AC-046">Nel form Campagna, con un progetto collegato, l'editor e' read-only e mostra le righe del progetto.</criterion>
+
+    <!-- Import -->
+    <criterion id="AC-050">Il descrittore dei campi globali espone multiple e depends_on; product_ids e' dichiarato multiple con depends_on = campaign_id.</criterion>
+    <criterion id="AC-051">La configure con product_ids fuori dalle categorie della campagna -> 422 su global_config.product_ids.</criterion>
+    <criterion id="AC-052">Un campo globale required con valore [] e' trattato come mancante (il controllo del required riconosce l'array vuoto).</criterion>
+    <criterion id="AC-053">Confermando un import senza override per riga, ogni Lead creato riceve i prodotti del campo globale.</criterion>
+    <criterion id="AC-054">PATCH di una riga con product_ids scrive l'override; quel Lead riceve i suoi prodotti e non quelli globali. product_ids null torna a ereditare il globale.</criterion>
+    <criterion id="AC-055">Il wizard rende il campo globale come multi-select filtrato dalla campagna scelta, e la griglia di revisione espone una cella prodotti editabile per riga.</criterion>
+
+    <!-- Conversione -->
+    <criterion id="AC-060">Convertendo un Lead la cui Campagna porta 3 righe FA->CP, l'Opportunita' nasce con le stesse 3 righe.</criterion>
+    <criterion id="AC-061">I prodotti di interesse del Lead vengono trasferiti sull'Opportunita' e superano la coerenza categoria (sono coperti per costruzione dalle righe derivate).</criterion>
+    <criterion id="AC-062">Con almeno un prodotto di interesse, la conversione crea UNA Offerta collegata all'Opportunita' con una riga REVENUE per prodotto: quantita' 1, unit_price = products.price, vat_rate_id = products.vat_rate_id, sort_order progressivo.</criterion>
+    <criterion id="AC-063">L'unita' di misura delle righe generate e' quella congelata da QuoteLineWriter dal prodotto; nessun unit_of_measure_id viaggia nell'input.</criterion>
+    <criterion id="AC-064">L'Offerta generata ha codice, stato iniziale e aggregati prodotti dal normale flusso QuoteService::create (nessuna scorciatoia).</criterion>
+    <criterion id="AC-065">Con zero prodotti di interesse, la conversione crea l'Opportunita' e NESSUNA Offerta.</criterion>
+    <criterion id="AC-066">Nessuna riga duplicata: due prodotti di interesse uguali (o ripetuti nel payload) producono una sola riga.</criterion>
+    <criterion id="AC-067">Se le righe risolvono a una radice single e i prodotti di interesse sono 2+, la conversione fallisce con 422 e NON crea ne' Opportunita' ne' Offerta (rollback completo).</criterion>
+    <criterion id="AC-068">La conversione massiva produce gli stessi effetti per ogni lead, riusando la stessa azione singola; il fallimento di uno annulla l'intero batch (all-or-nothing invariato).</criterion>
+    <criterion id="AC-069">Un lead gia' convertito non genera una seconda Offerta.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: solo cio' che e' gia' in composer.json / package.json.</item>
+    <item>Nessuna logica FA->CP duplicata: le regole restano in ProductLineSetValidator e CategoryHierarchy. Chi ne scrive una seconda copia va respinto in review.</item>
+    <item>Authz server-side su ogni endpoint toccato (Policy esistenti); l'UI nasconde, il backend autorizza.</item>
+    <item>Nessun whereRaw/orderByRaw su input utente: filtri e distinct values delle colonne aggregate passano da allow-list e query builder, come OpportunityRelationColumns.</item>
+    <item>Eager loading esplicito delle nuove relazioni: i test girano con preventLazyLoading, un N+1 e' un fallimento.</item>
+    <item>La copertura categoria resta match ESATTO su products.category_id: non introdurre la discesa ai discendenti in questa spec.</item>
+    <item>Il freeze dell'unita' di misura resta di QuoteLineWriter (spec 0088 D-5): la conversione non lo aggira.</item>
+    <item>File entro 300 righe soft / 500 hard; dead code cancellato, non commentato.</item>
+    <item>Identificatori in inglese; le stringhe utente passano da i18next (it/en entrambi aggiornati).</item>
+  </constraints>
+
+</spec>

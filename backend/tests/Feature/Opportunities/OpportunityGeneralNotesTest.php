@@ -71,12 +71,11 @@ if (! function_exists('leadWithNotes')) {
      */
     function leadWithNotes(?string $notes): Lead
     {
-        $businessFunction = BusinessFunction::factory()->create();
-        $productCategory = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-        $campaign = Campaign::factory()->create([
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => $productCategory->id,
-        ]);
+        // Spec 0094 D-2: la classificazione della campagna e' una collezione,
+        // non due colonne. La factory semina gia' una riga coerente
+        // (funzione aziendale + categoria sotto di essa) per una campagna
+        // standalone, che e' esattamente cio' che serve qui.
+        $campaign = Campaign::factory()->create();
 
         return Lead::factory()->create([
             'campaign_id' => $campaign->id,

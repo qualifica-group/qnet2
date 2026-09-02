@@ -20,16 +20,25 @@ namespace App\DataObjects\Projects;
  * `*Submitted` flags carry that distinction, mirroring
  * UpdateBusinessFunctionData/UpdateProductData. `code` is never accepted
  * (BR-1): there is no property for it at all.
+ *
+ * Spec 0094, D-1/D-2: `businessFunctionId`/`productCategoryId` are REPLACED
+ * by `productLines` — a full-replace to-many collection, null-means-
+ * untouched like `managerSlots` on UpdateOpportunityData: omitted, the
+ * project's rows are left as-is; present, ProjectService::update() syncs the
+ * whole collection. Out of submittedAttributes() (not a mass-assignable
+ * column).
  */
 final readonly class UpdateProjectData
 {
+    /**
+     * @param  array<int, array{business_function_id: int, product_category_id: int}>|null  $productLines
+     */
     public function __construct(
         public ?string $name = null,
         public ?int $pipelineStatusId = null,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
-        public ?int $businessFunctionId = null,
-        public bool $businessFunctionIdSubmitted = false,
+        public ?array $productLines = null,
         public ?int $countryId = null,
         public bool $countryIdSubmitted = false,
         public ?int $stateId = null,
@@ -38,8 +47,6 @@ final readonly class UpdateProjectData
         public bool $provinceIdSubmitted = false,
         public ?int $cityId = null,
         public bool $cityIdSubmitted = false,
-        public ?int $productCategoryId = null,
-        public bool $productCategoryIdSubmitted = false,
         public ?int $partnerId = null,
         public bool $partnerIdSubmitted = false,
         public ?int $operationalSiteId = null,
@@ -66,8 +73,7 @@ final readonly class UpdateProjectData
             pipelineStatusId: array_key_exists('pipeline_status_id', $data) ? (int) $data['pipeline_status_id'] : null,
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
-            businessFunctionId: self::nullableInt($data, 'business_function_id'),
-            businessFunctionIdSubmitted: array_key_exists('business_function_id', $data),
+            productLines: array_key_exists('product_lines', $data) ? self::normalizeProductLines($data['product_lines']) : null,
             countryId: self::nullableInt($data, 'country_id'),
             countryIdSubmitted: array_key_exists('country_id', $data),
             stateId: self::nullableInt($data, 'state_id'),
@@ -76,8 +82,6 @@ final readonly class UpdateProjectData
             provinceIdSubmitted: array_key_exists('province_id', $data),
             cityId: self::nullableInt($data, 'city_id'),
             cityIdSubmitted: array_key_exists('city_id', $data),
-            productCategoryId: self::nullableInt($data, 'product_category_id'),
-            productCategoryIdSubmitted: array_key_exists('product_category_id', $data),
             partnerId: self::nullableInt($data, 'partner_id'),
             partnerIdSubmitted: array_key_exists('partner_id', $data),
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
@@ -116,10 +120,6 @@ final readonly class UpdateProjectData
             $attributes['description'] = $this->description;
         }
 
-        if ($this->businessFunctionIdSubmitted) {
-            $attributes['business_function_id'] = $this->businessFunctionId;
-        }
-
         if ($this->countryIdSubmitted) {
             $attributes['country_id'] = $this->countryId;
         }
@@ -134,10 +134,6 @@ final readonly class UpdateProjectData
 
         if ($this->cityIdSubmitted) {
             $attributes['city_id'] = $this->cityId;
-        }
-
-        if ($this->productCategoryIdSubmitted) {
-            $attributes['product_category_id'] = $this->productCategoryId;
         }
 
         if ($this->partnerIdSubmitted) {
@@ -165,6 +161,25 @@ final readonly class UpdateProjectData
         }
 
         return $attributes;
+    }
+
+    public function hasProductLines(): bool
+    {
+        return $this->productLines !== null;
+    }
+
+    /**
+     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     */
+    private static function normalizeProductLines(mixed $rows): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'business_function_id' => (int) $row['business_function_id'],
+                'product_category_id' => (int) $row['product_category_id'],
+            ],
+            (array) $rows,
+        );
     }
 
     /**

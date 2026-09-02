@@ -44,12 +44,19 @@ if (! function_exists('leadConversionActor')) {
 if (! function_exists('convertibleLeadFixture')) {
     /**
      * A POST /api/leads payload with `convert_to_opportunity: true` plus
-     * every reference needed to make the derivation succeed: a campaign
-     * whose business function/product category ARE set (spec 0044,
-     * mirrors OpportunityFromLeadTest's completeLead()), an operator, and a
-     * site. `source_id` is the LEAD's own (the campaign no longer carries a
-     * source; the campaign-source fallback was removed). Returns both the
-     * payload and the models tests assert against.
+     * every reference needed to make the derivation succeed: a campaign, an
+     * operator, and a site. `source_id` is the LEAD's own (the campaign no
+     * longer carries a source; the campaign-source fallback was removed).
+     *
+     * Spec 0094, D-1/D-2: `campaigns.business_function_id`/
+     * `product_category_id` no longer exist as columns — CampaignFactory's
+     * default (standalone) campaign always carries ONE coherent
+     * `campaign_product_lines` row of its own, created in its own
+     * `afterCreating()` hook, so `businessFunction`/`productCategory` below
+     * are read OFF that persisted row rather than passed into create().
+     * Requirement changed by spec 0094, not test tampering.
+     *
+     * Returns both the payload and the models tests assert against.
      *
      * @return array{payload: array<string, mixed>, registry: Registry, source: Source, businessFunction: BusinessFunction, productCategory: ProductCategory, operator: User, site: OperationalSite}
      */
@@ -57,12 +64,8 @@ if (! function_exists('convertibleLeadFixture')) {
     {
         $registry = Registry::factory()->create();
         $source = Source::factory()->create();
-        $businessFunction = BusinessFunction::factory()->create();
-        $productCategory = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-        $campaign = Campaign::factory()->create([
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => $productCategory->id,
-        ]);
+        $campaign = Campaign::factory()->create();
+        $line = $campaign->productLines()->with(['businessFunction', 'productCategory'])->firstOrFail();
         $operator = User::factory()->create();
         $site = OperationalSite::factory()->create();
 
@@ -77,8 +80,8 @@ if (! function_exists('convertibleLeadFixture')) {
             ],
             'registry' => $registry,
             'source' => $source,
-            'businessFunction' => $businessFunction,
-            'productCategory' => $productCategory,
+            'businessFunction' => $line->businessFunction,
+            'productCategory' => $line->productCategory,
             'operator' => $operator,
             'site' => $site,
         ];
@@ -263,13 +266,15 @@ it('AC-011: convert_to_opportunity without opportunities.create -> 403, no lead 
     expect(Lead::count())->toBe(0);
 });
 
-it('AC-012: a campaign with no business function/product category -> 422, transaction rolled back', function () {
+it('AC-012: a campaign with no product line -> 422, transaction rolled back', function () {
     $actor = leadConversionActor(['create'], ['create']);
     $registry = Registry::factory()->create();
-    $campaign = Campaign::factory()->create([
-        'business_function_id' => null,
-        'product_category_id' => null,
-    ]);
+    // Spec 0094: the coherent row CampaignFactory auto-creates for a
+    // standalone campaign is dropped here, leaving the campaign with none —
+    // the "no business function/product category" case now has this shape.
+    // Requirement changed by spec 0094, not test tampering.
+    $campaign = Campaign::factory()->create();
+    $campaign->productLines()->delete();
     $operator = User::factory()->create();
     $site = OperationalSite::factory()->create();
     Sanctum::actingAs($actor);

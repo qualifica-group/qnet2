@@ -5,9 +5,8 @@ namespace App\Http\Requests\Projects;
 use App\DataObjects\Projects\UpdateProjectData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
-use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
+use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Models\Project;
-use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,6 +21,11 @@ use Illuminate\Validation\Rule;
  * by EnforcesFieldPermissions below (its ceiling is readonly once $model
  * exists).
  *
+ * Spec 0094, D-1/D-2: `business_function_id`/`product_category_id` are
+ * REPLACED by `product_lines` (ValidatesProductLines) — a full-replace
+ * to-many collection that may be OMITTED (partial PATCH, rows untouched) but
+ * may NOT be cleared to `[]` (a project always keeps at least one row).
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('update', $project)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
@@ -31,7 +35,7 @@ class UpdateProjectRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesGeoHierarchy;
-    use ValidatesProductCategoryBusinessFunction;
+    use ValidatesProductLines;
 
     public function authorize(): bool
     {
@@ -44,24 +48,21 @@ class UpdateProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'pipeline_status_id' => ['sometimes', 'required', 'integer', Rule::exists('pipeline_statuses', 'id')],
             'description' => ['sometimes', 'nullable', 'string'],
-            'business_function_id' => ['sometimes', 'required', 'integer', Rule::exists('business_functions', 'id')],
             'country_id' => ['sometimes', 'required', 'integer', Rule::exists('countries', 'id')],
             'state_id' => ['sometimes', 'nullable', 'integer', Rule::exists('states', 'id')],
             'province_id' => ['sometimes', 'nullable', 'integer', Rule::exists('provinces', 'id')],
             'city_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cities', 'id')],
-            // Spec 0074 D-3b: the project's CURRENT category stays acceptable.
-            'product_category_id' => ['sometimes', 'required', 'integer', new SelectableProductCategory([(int) $this->currentProject()->product_category_id])],
             'partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:start_date'],
             'total_budget' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'target_lead' => ['sometimes', 'nullable', 'integer', 'min:0'],
-        ];
+        ], $this->productLinesRules(required: false));
     }
 
     public function withValidator(Validator $validator): void
@@ -79,21 +80,7 @@ class UpdateProjectRequest extends FormRequest
                 $this->validateGeoHierarchy($validator, $this->effectiveGeo());
             }
 
-            // Only re-check coherence when THIS request touches either
-            // classification field: an update that changes neither must not
-            // fail on a pre-existing (possibly legacy) row it does not itself
-            // change — mirrors the geo guard above. The resulting pair is the
-            // submitted value for a touched field, else the project's current.
-            $classFields = ['business_function_id', 'product_category_id'];
-
-            if ($this->hasAny($classFields) && ! $validator->errors()->hasAny($classFields)) {
-                $project = $this->currentProject();
-                $this->validateProductCategoryBusinessFunction(
-                    $validator,
-                    $this->has('business_function_id') ? (int) $this->input('business_function_id') : $project->business_function_id,
-                    $this->has('product_category_id') ? (int) $this->input('product_category_id') : $project->product_category_id,
-                );
-            }
+            $this->validateProductLines($validator);
         });
     }
 

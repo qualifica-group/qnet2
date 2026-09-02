@@ -1,6 +1,7 @@
 import type {
   CreateProjectPayload,
   ProjectDetail,
+  ProjectProductLineInput,
   UpdateProjectPayload,
 } from '@/features/projects/types'
 import type { ProjectFormValues } from '@/features/projects/use-project-form'
@@ -20,12 +21,14 @@ export function buildCreatePayload(values: ProjectFormValues): CreateProjectPayl
     // Nullable/optional (spec 0039 D-3): the server falls back to the system "Nuovo" status when omitted.
     pipeline_status_id: values.pipeline_status_id,
     description: values.description,
-    business_function_id: values.business_function_id,
+    // Spec 0094: the server REPLACES the entire row collection on every
+    // write. Always sent in full on create (validated non-empty by the
+    // schema's `superRefine` before submit).
+    product_lines: completeProductLines(values.product_lines),
     country_id: values.country_id,
     state_id: values.state_id,
     province_id: values.province_id,
     city_id: values.city_id,
-    product_category_id: values.product_category_id,
     partner_id: values.partner_id,
     operational_site_id: values.operational_site_id,
     start_date: values.start_date || null,
@@ -56,8 +59,16 @@ export function buildUpdatePayload(
   if (values.description !== original.description) {
     payload.description = values.description
   }
-  if (values.business_function_id !== original.business_function_id) {
-    payload.business_function_id = values.business_function_id
+  // Spec 0094: the server replaces the entire row SET on every write —
+  // diff as an unordered collection of pairs, never positionally (row order
+  // in the form carries no meaning).
+  const originalProductLines = original.product_lines.map((line) => ({
+    business_function_id: line.business_function.id,
+    product_category_id: line.product_category.id,
+  }))
+  const currentProductLines = completeProductLines(values.product_lines)
+  if (!sameProductLines(currentProductLines, originalProductLines)) {
+    payload.product_lines = currentProductLines
   }
   if (values.country_id !== original.country_id) {
     payload.country_id = values.country_id
@@ -70,9 +81,6 @@ export function buildUpdatePayload(
   }
   if (values.city_id !== original.city_id) {
     payload.city_id = values.city_id
-  }
-  if (values.product_category_id !== original.product_category_id) {
-    payload.product_category_id = values.product_category_id
   }
   if (values.partner_id !== original.partner_id) {
     payload.partner_id = values.partner_id
@@ -102,4 +110,40 @@ export function buildUpdatePayload(
   }
 
   return payload
+}
+
+/**
+ * Filters out any row still missing an id and casts the rest to the wire
+ * shape. Defensive only: the schema's `superRefine` (spec 0094) already
+ * blocks submit on an incomplete row — this exists because
+ * `ProjectFormValues.product_lines` stays nullable-per-id at the type level
+ * (each row is inline-editable).
+ */
+function completeProductLines(rows: ProjectFormValues['product_lines']): ProjectProductLineInput[] {
+  return rows.filter(
+    (row): row is ProjectProductLineInput =>
+      row.business_function_id !== null && row.product_category_id !== null,
+  )
+}
+
+/** Order-independent key of a product-line pair, for set comparison. */
+function productLineKey(line: ProjectProductLineInput): string {
+  return `${line.business_function_id}:${line.product_category_id}`
+}
+
+function sameProductLines(a: ProjectProductLineInput[], b: ProjectProductLineInput[]): boolean {
+  if (a.length !== b.length) {
+    return false
+  }
+  const keysA = new Set(a.map(productLineKey))
+  const keysB = new Set(b.map(productLineKey))
+  if (keysA.size !== keysB.size) {
+    return false
+  }
+  for (const key of keysA) {
+    if (!keysB.has(key)) {
+      return false
+    }
+  }
+  return true
 }

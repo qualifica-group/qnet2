@@ -17,6 +17,10 @@ use Illuminate\Database\Eloquent\Model;
  * fields (BR-1, spec 0041 D-1); no `code` field exists for a Lead (D-3).
  *
  * Lead status is display-only and derived from assignment/opportunity state.
+ *
+ * Spec 0094, D-5: `products_of_interest` is OPTIONAL (unlike its Opportunity
+ * counterpart) — a Lead is valid with zero products (AC-036), so it is not
+ * `mandatory` here.
  */
 class LeadsAuthorization extends AbstractResourceAuthorization
 {
@@ -43,6 +47,7 @@ class LeadsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('operator_id', 'select'),
             new FieldDefinition('notes', 'textarea'),
             new FieldDefinition('extra_fields', 'textarea'),
+            new FieldDefinition('products_of_interest', 'multiselect'),
         ];
     }
 
@@ -69,6 +74,7 @@ class LeadsAuthorization extends AbstractResourceAuthorization
             'operator_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'extra_fields' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'products_of_interest' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

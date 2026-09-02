@@ -156,7 +156,7 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByLabelText('Fax')).toBeInTheDocument()
     // ...and so is the address: its group is always expanded, no toggle to open.
     expect(screen.queryByRole('button', { name: /^Address$/ })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Address')).toHaveValue('')
+    expect(screen.getByLabelText(/^Address\*?$/)).toHaveValue('')
 
     // Spec 0056: the operational site is exposed and editable from the attribution section.
     expect(screen.getByRole('combobox', { name: 'Operational site' })).toBeInTheDocument()
@@ -192,9 +192,9 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     renderPanel()
 
     // The address group is always expanded: type straight into it.
-    await waitFor(() => expect(screen.getByLabelText('Address')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText(/^Address\*?$/)).toBeInTheDocument())
 
-    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Via Roma 1' } })
+    fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '20100' } })
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 

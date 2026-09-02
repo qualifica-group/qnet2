@@ -34,6 +34,7 @@ export const navigation = {
   quotes: 'Offerte',
   contractStatuses: 'Stati Contratto',
   contracts: 'Contratti',
+  workOrders: 'Commesse',
   commissionConfigurations: 'Configuratore Commissioni',
   requestManagement: 'Gestione Richieste',
   fieldChangeRequests: 'Richieste di modifica',

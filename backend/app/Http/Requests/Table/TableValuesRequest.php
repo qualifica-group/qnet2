@@ -6,6 +6,7 @@ use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
+use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -67,6 +68,10 @@ class TableValuesRequest extends FormRequest
             // Spec 0067: scopes `quotes` distinct-values to one Opportunity's
             // Offerte — a no-op key for every other domain.
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
+
+            // Spec 0095, D-8: scopes `work-orders` distinct-values to one
+            // Quote's own Commesse — a no-op key for every other domain.
+            'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
         ];
     }
 
@@ -97,7 +102,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null}
      */
     public function payload(): array
     {
@@ -110,6 +115,7 @@ class TableValuesRequest extends FormRequest
             'filterModel' => $validated['filterModel'] ?? [],
             'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
             'opportunityId' => isset($validated['opportunityId']) ? (int) $validated['opportunityId'] : null,
+            'quoteId' => isset($validated['quoteId']) ? (int) $validated['quoteId'] : null,
         ];
     }
 
@@ -130,6 +136,10 @@ class TableValuesRequest extends FormRequest
 
             if ($definition instanceof OpportunityScopedTableDefinition) {
                 $definition->scopeToOpportunity($this->opportunityIdInput());
+            }
+
+            if ($definition instanceof QuoteScopedTableDefinition) {
+                $definition->scopeToQuote($this->quoteIdInput());
             }
 
             $this->resolvedDefinition = $definition;
@@ -156,6 +166,17 @@ class TableValuesRequest extends FormRequest
     private function opportunityIdInput(): ?int
     {
         $value = $this->input('opportunityId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `quoteId` request input, coerced to int (spec 0095), mirroring
+     * TableRowsRequest.
+     */
+    private function quoteIdInput(): ?int
+    {
+        $value = $this->input('quoteId');
 
         return is_numeric($value) ? (int) $value : null;
     }

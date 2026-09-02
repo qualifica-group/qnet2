@@ -5,10 +5,9 @@ namespace App\Http\Requests\Campaigns;
 use App\DataObjects\Campaigns\UpdateCampaignData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
-use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
+use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Models\Campaign;
 use App\Models\Project;
-use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,11 +23,13 @@ use Illuminate\Validation\Rule;
  * BR-2 (campaign-derivation) on a partial update depends on the EFFECTIVE
  * `project_id` after this request (submitted value, or — when `project_id`
  * is not touched — the campaign's current one):
- *  - effectively linked → the 3 classification fields are `prohibited`
+ *  - effectively linked → `pipeline_status_id` AND `product_lines` (spec
+ *    0094, D-1/D-2 — REPLACING the former `business_function_id`/
+ *    `product_category_id` scalars, ValidatesProductLines) are `prohibited`
  *    (reject an explicit value, mirroring the store rule);
  *  - effectively standalone because THIS request unlinks it (was linked,
- *    now null) → they are `required`: the previous values are NULL in DB
- *    (BR-2), so fresh ones must be supplied in the same request (spec:
+ *    now null) → they are `required`: the previous values are NULL/empty in
+ *    DB (BR-2), so fresh ones must be supplied in the same request (spec:
  *    "da linked a standalone le rende obbligatorie");
  *  - effectively standalone and UNCHANGED (already standalone, project_id
  *    not touched) → `sometimes`+`required`: optional to resubmit, but a
@@ -53,7 +54,7 @@ class UpdateCampaignRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesGeoHierarchy;
-    use ValidatesProductCategoryBusinessFunction;
+    use ValidatesProductLines;
 
     /**
      * Memoizes effectiveProject() (rules() and withValidator() both need it)
@@ -75,34 +76,54 @@ class UpdateCampaignRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')],
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'description' => ['sometimes', 'nullable', 'string'],
             'partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'pipeline_status_id' => $this->derivedFieldRules(Rule::exists('pipeline_statuses', 'id')),
-            'business_function_id' => $this->derivedFieldRules(Rule::exists('business_functions', 'id')),
             'country_id' => $this->countryIdRules(),
             'state_id' => $this->geoLevelRules('state_id', 'states'),
             'province_id' => $this->geoLevelRules('province_id', 'provinces'),
             'city_id' => $this->geoLevelRules('city_id', 'cities'),
-            // Spec 0074 D-3b: the campaign's CURRENT category stays acceptable.
-            'product_category_id' => $this->derivedFieldRules(
-                new SelectableProductCategory($this->currentCategoryIds()),
-            ),
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:start_date'],
             'total_budget' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'target_lead' => ['sometimes', 'nullable', 'integer', 'min:0'],
-        ];
+        ], $this->productLinesFieldRules());
     }
 
     /**
-     * The validation rule set for one of the 3 BR-2 classification fields,
-     * shared here since only the rule proving the referenced row is a valid
-     * target differs between them (a plain `exists` for two of them, the
-     * selectable-category rule of spec 0074 for the third).
+     * `product_lines` (spec 0094, D-1/D-2), mirroring `derivedFieldRules()`
+     * above (BR-2): `prohibited` once effectively linked, `required` (min 1)
+     * the moment THIS request unlinks the campaign (its own collection is
+     * empty in DB until now), else `sometimes` (min 1 — a submitted value
+     * cannot be emptied). Per-row rules (ValidatesProductLines) always merge
+     * in, keyed against the campaign's OWN currently-persisted rows (spec
+     * 0074 D-3b, resolved generically by the trait).
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    private function productLinesFieldRules(): array
+    {
+        $required = $this->isUnlinkingFromProject();
+        $rules = $this->productLinesRules(required: $required);
+
+        if ($this->isLinkedAfterUpdate()) {
+            $rules['product_lines'] = ['prohibited'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * The validation rule set for a BR-2 classification field derived from
+     * the (effective) linked project — `pipeline_status_id`, the one
+     * remaining scalar (`product_lines`, spec 0094, follows the SAME
+     * prohibited/required/sometimes+required shape via
+     * productLinesFieldRules() above, but as a to-many collection it cannot
+     * share this plain-FK helper).
      *
      * @param  mixed  $existenceRule  rule proving the referenced row is a valid target
      * @return array<int, mixed>
@@ -170,8 +191,9 @@ class UpdateCampaignRequest extends FormRequest
 
     /**
      * Whether THIS request is the one unlinking a previously-linked campaign
-     * (project_id explicitly cleared): the moment its 3 BR-2 classification
-     * fields, NULL in DB until now, need fresh values.
+     * (project_id explicitly cleared): the moment its BR-2 classification —
+     * `pipeline_status_id` (NULL) and `product_lines` (empty) in DB until
+     * now — needs fresh values.
      */
     private function isUnlinkingFromProject(): bool
     {
@@ -203,19 +225,6 @@ class UpdateCampaignRequest extends FormRequest
         return $this->effectiveProjectCache;
     }
 
-    /**
-     * The category already persisted on the campaign being updated, exempt
-     * from the selectable check (spec 0074 D-3b).
-     *
-     * @return array<int, int>
-     */
-    private function currentCategoryIds(): array
-    {
-        $categoryId = $this->currentCampaign()->product_category_id;
-
-        return $categoryId !== null ? [(int) $categoryId] : [];
-    }
-
     private function currentCampaign(): Campaign
     {
         /** @var Campaign $campaign */
@@ -240,21 +249,11 @@ class UpdateCampaignRequest extends FormRequest
                 $this->validateGeoHierarchy($validator, $this->mergedGeo());
             }
 
-            // Coherence only applies when the campaign is EFFECTIVELY
-            // standalone after this update: a linked campaign derives its
-            // classification from the project (fields `prohibited`, NULL in
-            // DB). The resulting pair is the submitted value for a touched
-            // field, else the campaign's current one.
-            $classFields = ['business_function_id', 'product_category_id'];
-
-            if (! $this->isLinkedAfterUpdate() && ! $validator->errors()->hasAny($classFields)) {
-                $campaign = $this->currentCampaign();
-                $this->validateProductCategoryBusinessFunction(
-                    $validator,
-                    $this->has('business_function_id') ? (int) $this->input('business_function_id') : $campaign->business_function_id,
-                    $this->has('product_category_id') ? (int) $this->input('product_category_id') : $campaign->product_category_id,
-                );
-            }
+            // `product_lines` cross-row rules (spec 0094): a no-op when the
+            // campaign is effectively linked and the collection was not
+            // submitted (the `prohibited` rule above already reports one
+            // that was).
+            $this->validateProductLines($validator);
         });
     }
 

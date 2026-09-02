@@ -82,24 +82,23 @@ if (! function_exists('completeLead')) {
      * source (the campaign no longer carries one, campaign-source fallback
      * removed). The lead's own `operational_site_id` (unrelated to
      * Opportunity, which no longer has that field) still carries a real
-     * site, mirroring the common-case fixture. The category's OWN
-     * business_function_id matches the campaign's (amendment rev.3): the
-     * product_lines row the defaults endpoint prefills must satisfy the SAME
+     * site, mirroring the common-case fixture.
+     *
+     * Spec 0094, D-1/D-2: `campaigns.business_function_id`/
+     * `product_category_id` no longer exist as columns — CampaignFactory's
+     * default (standalone) campaign auto-creates ONE coherent
+     * `campaign_product_lines` row of its own (its OWN business function
+     * matches its OWN category, satisfying the same
      * CategoryHierarchy::effectiveBusinessFunction() check the write path
-     * enforces, so the two never drift apart in this fixture. Shared with
+     * enforces), so this fixture no longer builds the pair itself.
+     * Requirement changed by spec 0094, not test tampering. Shared with
      * OpportunityFromLeadProductLinesTest (file-size split, engineering.md §6).
      */
     function completeLead(): Lead
     {
         $registry = Registry::factory()->create();
         $source = Source::factory()->create();
-        $businessFunction = BusinessFunction::factory()->create();
-        $productCategory = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-
-        $campaign = Campaign::factory()->create([
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => $productCategory->id,
-        ]);
+        $campaign = Campaign::factory()->create();
 
         return Lead::factory()->create([
             'campaign_id' => $campaign->id,

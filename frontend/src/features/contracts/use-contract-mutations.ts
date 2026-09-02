@@ -3,7 +3,6 @@ import {
   changeContractStatus,
   contractDetailQueryKey,
   reactivateContract,
-  scheduleContract,
   terminateContract,
   updateContract,
   validateContract,
@@ -12,7 +11,6 @@ import type {
   ChangeContractStatusPayload,
   ContractDetailWithPermissions,
   ReactivateContractPayload,
-  ScheduleContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
   ValidateContractPayload,
@@ -21,7 +19,6 @@ import type {
   ChangeContractStatusFormValues,
   EditContractFormValues,
   ReactivateContractFormValues,
-  ScheduleContractFormValues,
   TerminateContractFormValues,
   ValidateContractFormValues,
 } from '@/features/contracts/contract-schema'
@@ -36,15 +33,6 @@ export function buildValidatePayload(values: ValidateContractFormValues): Valida
   return {
     validated_at: values.validated_at,
     ...omitIfNull('contract_status_id', values.contract_status_id),
-  }
-}
-
-/** `contract_status_id` is validated non-null by the schema before this runs. */
-export function buildSchedulePayload(values: ScheduleContractFormValues): ScheduleContractPayload {
-  return {
-    expiry_date: values.expiry_date,
-    renewal_date: values.renewal_date,
-    contract_status_id: values.contract_status_id as number,
   }
 }
 
@@ -121,10 +109,6 @@ export function useChangeContractStatus(options: ContractMutationOptions) {
 
 export function useValidateContract(options: ContractMutationOptions) {
   return useContractMutation(options, validateContract)
-}
-
-export function useScheduleContract(options: ContractMutationOptions) {
-  return useContractMutation(options, scheduleContract)
 }
 
 export function useTerminateContract(options: ContractMutationOptions) {

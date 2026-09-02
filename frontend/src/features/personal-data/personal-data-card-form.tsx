@@ -3,6 +3,10 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
+import {
+  focusFirstInvalid,
+  sameCardFields,
+} from '@/features/personal-data/personal-data-card-helpers'
 import { PersonalDataIndividualFields } from '@/features/personal-data/personal-data-individual-fields'
 import { resolveGate } from '@/features/personal-data/personal-data-field-gate'
 import { formatOnBlur } from '@/lib/formatting/format-on-blur'
@@ -45,6 +49,15 @@ interface PersonalDataCardFormProps {
    * (registries/self-service profile).
    */
   lockType?: PersonalDataType
+  /**
+   * Bumped by the owner form every time a save is refused. This card is
+   * buffered: its own RHF instance takes no part in that submit, so a required
+   * field nobody ever touched would stay unmarked and the user would read
+   * "fill the required fields" next to a form with no red on it. Each new
+   * value re-runs the card's validation — which paints the labels, the borders
+   * and the inline messages — and focuses the first offending input.
+   */
+  revalidateSignal?: number
 }
 
 /**
@@ -60,6 +73,7 @@ export function PersonalDataCardForm({
   onChange,
   fieldPermission,
   lockType,
+  revalidateSignal,
 }: PersonalDataCardFormProps) {
   const { t } = useTranslation()
   const typeOptions = useEnumOptions('personal_data_type')
@@ -98,6 +112,23 @@ export function PersonalDataCardForm({
   const sdiCodeGate = resolveGate(fieldPermission, 'personal_data.sdi_code', false)
   // The individual-only gates (birth date, gender, the two comuni) are resolved
   // by PersonalDataIndividualFields, which owns that block.
+
+  // Show every failing card field the moment the owner form refuses to save.
+  // `trigger()` is what marks them: this RHF instance validates `onChange`, so
+  // an untouched field has no error state until something asks for it.
+  useEffect(() => {
+    if (!revalidateSignal) {
+      return
+    }
+    void form.trigger().then((valid) => {
+      if (!valid) {
+        focusFirstInvalid(form)
+      }
+    })
+    // Only the signal drives this: `form` is stable and re-running on it would
+    // re-focus the field on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revalidateSignal])
 
   // Mirror the current field values into the parent buffer (in an effect, so the
   // parent update happens after this render rather than during it), preserving the
@@ -340,22 +371,5 @@ export function PersonalDataCardForm({
         )}
       </div>
     </Form>
-  )
-}
-
-/** True when two drafts carry identical card fields (children ignored). */
-function sameCardFields(a: PersonalDataDraft, b: PersonalDataDraft): boolean {
-  return (
-    a.type === b.type &&
-    a.first_name === b.first_name &&
-    a.last_name === b.last_name &&
-    a.company_name === b.company_name &&
-    a.tax_code === b.tax_code &&
-    a.vat_number === b.vat_number &&
-    a.sdi_code === b.sdi_code &&
-    a.birth_date === b.birth_date &&
-    a.birth_city_id === b.birth_city_id &&
-    a.residence_city_id === b.residence_city_id &&
-    a.gender === b.gender
   )
 }

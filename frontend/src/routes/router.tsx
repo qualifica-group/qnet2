@@ -45,6 +45,7 @@ const QuoteWorkflowsPage = lazy(() => import('@/pages/quote-workflows-page'))
 const QuotesPage = lazy(() => import('@/pages/quotes-page'))
 const ContractStatusesPage = lazy(() => import('@/pages/contract-statuses-page'))
 const ContractsPage = lazy(() => import('@/pages/contracts-page'))
+const WorkOrdersPage = lazy(() => import('@/pages/work-orders-page'))
 const CommissionConfigurationsPage = lazy(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazy(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazy(() => import('@/pages/reward-types-page'))
@@ -241,6 +242,10 @@ export const router = createBrowserRouter([
           {
             path: 'contracts/:id',
             element: <ModuleDetailPage domain="contracts" />,
+          },
+          {
+            path: 'work-orders',
+            element: <WorkOrdersPage />,
           },
           {
             path: 'commission-configurations',

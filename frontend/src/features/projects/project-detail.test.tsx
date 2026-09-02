@@ -24,8 +24,6 @@ function project(overrides: Partial<ProjectDetailWithPermissions> = {}): Project
     description: null,
     pipeline_status_id: 3,
     pipeline_status: { id: 3, name: 'Active', color: 'blue' },
-    business_function_id: null,
-    business_function: null,
     country_id: 1,
     country: { id: 1, name: 'Italy' },
     state_id: null,
@@ -35,8 +33,7 @@ function project(overrides: Partial<ProjectDetailWithPermissions> = {}): Project
     city_id: null,
     city: null,
     geo_scope: 'country',
-    product_category_id: null,
-    product_category: null,
+    product_lines: [],
     partner_id: null,
     partner: null,
     operational_site_id: null,
@@ -174,6 +171,31 @@ describe('ProjectDetailView — Sede (operational site)', () => {
     render(<ProjectDetailView project={project({ operational_site_id: null, operational_site: null })} />)
 
     expect(screen.getByText('Site')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+})
+
+/** Spec 0094: the scalar business_function/product_category pair is replaced by the shared read-only row list. */
+describe('ProjectDetailView — product lines (spec 0094)', () => {
+  it('lists every business-function + product-category row', () => {
+    render(
+      <ProjectDetailView
+        project={project({
+          product_lines: [
+            { id: 1, business_function: { id: 5, name: 'Sales' }, product_category: { id: 6, name: 'Widgets' } },
+            { id: 2, business_function: { id: 7, name: 'Support' }, product_category: { id: 8, name: 'Gadgets' } },
+          ],
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Sales')).toBeInTheDocument()
+    expect(screen.getByText('Support')).toBeInTheDocument()
+  })
+
+  it('shows an empty placeholder when there are no rows', () => {
+    render(<ProjectDetailView project={project({ product_lines: [] })} />)
+
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })

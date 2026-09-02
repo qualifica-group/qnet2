@@ -46,7 +46,13 @@ final class ProjectAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => true,
                 'source' => ['resource' => 'business-functions'],
-                'target' => 'businessFunction',
+                // Spec 0094: NESTED dot-path (`productLines.businessFunction`,
+                // no longer the project's own direct relation) —
+                // AdvancedFilterApplier's `whereHas($target, ...)` call needs
+                // no change: Eloquent's own `whereHas()` already supports
+                // dot-path nested relations (mirrors
+                // OpportunityAdvancedFilterCatalog's own amendment).
+                'target' => 'productLines.businessFunction',
             ],
             [
                 'name' => 'product_category',
@@ -58,7 +64,7 @@ final class ProjectAdvancedFilterCatalog
                 'width' => 'md',
                 'multiple' => true,
                 'source' => ['resource' => 'product-categories'],
-                'target' => 'productCategory',
+                'target' => 'productLines.productCategory',
             ],
             [
                 'name' => 'partner',

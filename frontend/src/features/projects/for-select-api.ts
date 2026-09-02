@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import { FOR_SELECT_PAGE_SIZE } from '@/features/for-select/api'
 import type { ForSelectItem, ForSelectParams, PaginatedResponse } from '@/features/for-select/types'
+import type { ProductLineRelationRef } from '@/features/product-lines/types'
 
 /** Resource segment for the projects for-select endpoint (spec 0023). */
 export const PROJECTS_FOR_SELECT_RESOURCE = 'projects'
@@ -34,19 +35,31 @@ export interface ProjectForSelectGeo {
 }
 
 /**
+ * A `product_lines` row as exposed by the project's `for-select` `meta`
+ * block (spec 0094): unlike the confirmed `ProductLine` (persisted row, with
+ * its own `id`), this one is a plain pair — the prefill only ever needs the
+ * two relation ids/names, never a row identity of its own.
+ */
+export interface ProjectForSelectProductLine {
+  business_function: ProductLineRelationRef
+  product_category: ProductLineRelationRef
+}
+
+/**
  * The `meta` block carried by every `/projects/for-select` item (spec 0023):
  * feeds the Campaign form's default-population when a Project is linked
  * (AC-042) — no extra request, the picker's own response already carries it.
  * `total_budget`/`allocated_budget`/`remaining_budget` are decimal columns
  * cast `decimal:2`, serialized as numeric strings. `geo` (spec 0027 D-5) is
  * the project's own geo cascade, used to lock/prefill the campaign form.
+ * `product_lines` (spec 0094) replaces the former single
+ * `business_function`/`product_category` pair.
  */
 export interface ProjectForSelectMeta {
   partner: ProjectForSelectRelation | null
   pipeline_status: ProjectForSelectRelation
-  business_function: ProjectForSelectRelation | null
   state: ProjectForSelectRelation | null
-  product_category: ProjectForSelectRelation | null
+  product_lines: ProjectForSelectProductLine[]
   total_budget: string | null
   allocated_budget: string
   remaining_budget: string | null

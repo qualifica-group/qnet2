@@ -9,6 +9,7 @@ use Database\Factories\LeadFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -98,5 +99,20 @@ class Lead extends BaseModel
     public function lifecycleStatus(): LeadLifecycleStatus
     {
         return LeadLifecycleStatus::forLead($this);
+    }
+
+    /**
+     * The products the contact recorded interest in (spec 0094, D-5): a
+     * plain reference collection, no pivot payload — mirrors
+     * Opportunity::productsOfInterest(). Written exclusively by
+     * App\Services\Leads\LeadProductInterestWriter, which also guarantees
+     * every selected product's category is covered by the lead's Campaign's
+     * EFFECTIVE product lines.
+     *
+     * @return BelongsToMany<Product, $this>
+     */
+    public function productsOfInterest(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'lead_product')->orderBy('products.name');
     }
 }

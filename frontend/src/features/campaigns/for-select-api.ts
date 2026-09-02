@@ -24,6 +24,13 @@ export interface CampaignForSelectOperationalSite {
 /** The `meta` block carried by every `/campaigns/for-select` item, feeding the Lead form's Sede prefill on selection. */
 export interface CampaignForSelectMeta {
   operational_site: CampaignForSelectOperationalSite | null
+  /**
+   * The EFFECTIVE product categories the campaign classifies itself with —
+   * already resolved through the linked project when there is one (spec 0094).
+   * The Lead form scopes its "prodotti di interesse" picker on these, so it
+   * never needs a second request to know which products are pickable.
+   */
+  product_category_ids?: number[]
 }
 
 /** A single campaign option as returned by `GET /api/campaigns/for-select`, carrying its `meta` default-population block. */

@@ -213,7 +213,7 @@ describe('ProfileForm', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText('Complete the required personal data fields.'),
+        screen.getByText(/^Complete the required personal data fields: /),
       ).toBeInTheDocument(),
     )
     expect(updateProfileMock).not.toHaveBeenCalled()

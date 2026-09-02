@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadForm } from '@/features/leads/lead-form'
 import type { LeadDetailWithPermissions } from '@/features/leads/types'
 import type { ResourceMeta } from '@/features/authorization/types'
@@ -93,10 +94,29 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
+/** Stubs the "Prodotti di interesse" picker: not exercised by this suite. */
+vi.mock('@/components/ui/async-paginated-multi-select', () => ({
+  AsyncPaginatedMultiSelect: ({
+    value,
+    labels,
+    disabled,
+  }: {
+    value: number[]
+    labels: { triggerLabel: string }
+    disabled?: boolean
+  }) => (
+    <div data-testid={`multi-${labels.triggerLabel}`} data-disabled={disabled ? 'true' : 'false'}>
+      {value.join(',')}
+    </div>
+  ),
+}))
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+    </QueryClientProvider>
   )
 }
 

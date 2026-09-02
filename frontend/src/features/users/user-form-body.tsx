@@ -19,6 +19,8 @@ import { ContractTabContent, ProfileTabContent } from '@/features/users/user-for
 import { useUserForm } from '@/features/users/use-user-form'
 import type { UserFormMode } from '@/features/users/user-form'
 import type { UserDetail } from '@/features/users/types'
+import type { BlockedSection } from '@/features/personal-data/personal-data-issues'
+import { useRevealBlockedSection } from '@/features/personal-data/use-reveal-blocked-section'
 
 interface UserFormBodyProps {
   mode: UserFormMode
@@ -29,6 +31,13 @@ interface UserFormBodyProps {
 
 /** Tab selected when the form opens. */
 const DEFAULT_TAB = 'account'
+
+/** Which tab owns each anagraphic block, for the reveal on a refused save. */
+const TAB_OF_SECTION: Record<BlockedSection, string> = {
+  card: 'account',
+  contacts: 'contactInfo',
+  addresses: 'contactInfo',
+}
 
 /** One entry in the tab strip: its value, label, icon, and gating flags. */
 interface UserFormTab {
@@ -69,6 +78,8 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     profileQuery,
     profileName,
     profileValid,
+    revalidateSignal,
+    blockedSection,
     selectedRoleItems,
     selectedBusinessFunctionItem,
     selectedCompanyItem,
@@ -82,6 +93,10 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
     canRemoveAvatar,
     personalDataFieldPermission,
   } = useUserForm({ mode, onSuccess, onAvatarChange })
+
+  // A highlighted field on a hidden tab is no highlight at all: a refused save
+  // brings its own block on screen.
+  useRevealBlockedSection(revalidateSignal, blockedSection, TAB_OF_SECTION, setActiveTab)
 
   // The identity card's data is still loading/failed (edit mode only): show a
   // single skeleton/retry in its place, and hold off on contacts/addresses
@@ -196,6 +211,7 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
                 onRetry={() => profileQuery.refetch()}
                 profileDraft={profileDraft}
                 setProfileDraft={setProfileDraft}
+                revalidateSignal={revalidateSignal}
                 personalDataFieldPermission={personalDataFieldPermission}
                 setPendingAvatar={setPendingAvatar}
                 handleAvatarUpload={handleAvatarUpload}

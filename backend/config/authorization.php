@@ -34,6 +34,7 @@ use App\Authorization\TagsAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
 use App\Authorization\VatRatesAuthorization;
+use App\Authorization\WorkOrdersAuthorization;
 
 return [
 
@@ -86,6 +87,8 @@ return [
         'payment-methods' => PaymentMethodsAuthorization::class,
         'quotes' => QuotesAuthorization::class,
         'quote-workflows' => QuoteWorkflowsAuthorization::class,
+        // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
+        'work-orders' => WorkOrdersAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

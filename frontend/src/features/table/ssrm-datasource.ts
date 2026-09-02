@@ -35,6 +35,10 @@ const DEFAULT_BLOCK_SIZE = 25
  * the same kind of plain value, sent as `opportunityId` only when present —
  * a no-op for every domain but `quotes`.
  *
+ * `quoteId` (spec 0095 D-8, the Contract detail's Commesse tab) is the same
+ * kind of plain value, sent as `quoteId` only when present — a no-op for
+ * every domain but `work-orders`.
+ *
  * Domain-agnostic: the only domain-specific input is the `domain` key. The same
  * datasource powers every table.
  */
@@ -44,6 +48,7 @@ export function createSsrmDatasource(
   getAdvancedFilters?: () => AdvancedFilterValues,
   productCategoryId?: number,
   opportunityId?: number,
+  quoteId?: number,
 ): IServerSideDatasource<TableRow> {
   return {
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
@@ -81,6 +86,7 @@ export function createSsrmDatasource(
           ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
           ...(productCategoryId != null ? { productCategoryId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
+          ...(quoteId != null ? { quoteId } : {}),
         })
 
         params.success({

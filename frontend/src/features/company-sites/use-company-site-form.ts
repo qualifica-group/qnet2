@@ -10,11 +10,12 @@ import { useResourcePermissions } from '@/features/authorization/permissions'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import {
-  areCreateContactsValid,
-  isCreateAddressValid,
-} from '@/features/personal-data/create-validation'
+  describeAddressIssues,
+  describeCardIssues,
+  describeContactIssues,
+  isPersonalDataCardValid,
+} from '@/features/personal-data/personal-data-issues'
 import { cardToDraft, emptyPersonalDataDraft } from '@/features/personal-data/drafts'
-import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type {
   PersonalDataDraft,
   PersonalDataFieldPermission,
@@ -86,6 +87,9 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
   const queryClient = useQueryClient()
   const { canAction, field: fieldPermission } = useResourcePermissions()
   const [serverError, setServerError] = useState<string | null>(null)
+  // Bumped on every refused save so the buffered card marks its own missing
+  // fields (it takes no part in this form's submit — see PersonalDataCardForm).
+  const [revalidateSignal, setRevalidateSignal] = useState(0)
   // CREATE mode only: logo chosen before the site exists, uploaded after save.
   const [pendingLogo, setPendingLogo] = useState<File | null>(null)
 
@@ -177,33 +181,35 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
   // its required identity fields are valid. The card form shows the field-level
   // messages inline (mirrors the Registries module).
   const profileValid = useMemo(
-    () =>
-      buildPersonalDataSchema(t).safeParse({
-        type: profileDraft.type,
-        company_name: profileDraft.company_name ?? undefined,
-        tax_code: profileDraft.tax_code ?? undefined,
-        vat_number: profileDraft.vat_number ?? undefined,
-      }).success,
+    () => isPersonalDataCardValid(profileDraft, t),
     [profileDraft, t],
   )
+
+  /** Refuses the save, naming the offending fields and highlighting them inline. */
+  const refuse = (messageKey: string, fields: string[]): void => {
+    setServerError(t(messageKey, { fields: fields.join(' · ') }))
+    setRevalidateSignal((signal) => signal + 1)
+  }
 
   const onSubmit = async (values: CompanySiteFormValues) => {
     setServerError(null)
 
     if (!profileValid) {
-      setServerError(t('personalData.section.incomplete'))
+      refuse('personalData.section.incomplete', describeCardIssues(profileDraft, t))
       return
     }
 
     // Create only: the quick-create fields are fully controlled and never
     // block typing, so an invalid buffer is caught once, right here.
     if (mode.type === 'create') {
-      if (!isCreateAddressValid(profileDraft.addresses)) {
-        setServerError(t('personalData.section.addressIncomplete'))
+      const addressIssues = describeAddressIssues(profileDraft.addresses, t)
+      if (addressIssues.length > 0) {
+        refuse('personalData.section.addressIncomplete', addressIssues)
         return
       }
-      if (!areCreateContactsValid(profileDraft.contacts, t)) {
-        setServerError(t('personalData.section.contactsInvalid'))
+      const contactIssues = describeContactIssues(profileDraft.contacts, t)
+      if (contactIssues.length > 0) {
+        refuse('personalData.section.contactsInvalid', contactIssues)
         return
       }
     }
@@ -305,6 +311,7 @@ export function useCompanySiteForm({ mode, onSuccess, onSiteChange }: UseCompany
     profileDraft,
     setProfileDraft,
     profileValid,
+    revalidateSignal,
     personalDataFieldPermission,
     pendingLogo,
     setPendingLogo,

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Note;
+use App\Models\User;
 use App\Notes\Mentions\MentionParser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -81,15 +82,26 @@ class NoteResource extends JsonResource
     }
 
     /**
-     * @return array<int, array{id: int, name: string}>
+     * Mentioned users, ordered by first appearance in the body. Carries
+     * `avatar_url` like every other user projection, so a mention chip shows
+     * the same avatar the person has in grids, selects and detail sheets
+     * instead of falling back to initials. Relies on NoteService eager-loading
+     * `mentionedUsers.avatar`.
+     *
+     * @return array<int, array{id: int, name: string, avatar_url: string|null}>
      */
     private function mentions(Note $note): array
     {
-        $namesById = $note->mentionedUsers->pluck('name', 'id');
+        $usersById = $note->mentionedUsers->keyBy('id');
 
         return collect(MentionParser::extractIds($note->body))
-            ->filter(fn (int $id): bool => $namesById->has($id))
-            ->map(fn (int $id): array => ['id' => $id, 'name' => $namesById->get($id)])
+            ->filter(fn (int $id): bool => $usersById->has($id))
+            ->map(function (int $id) use ($usersById): array {
+                /** @var User $user */
+                $user = $usersById->get($id);
+
+                return ['id' => $id, 'name' => $user->name, 'avatar_url' => $user->avatarDataUri()];
+            })
             ->values()
             ->all();
     }

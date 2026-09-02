@@ -43,10 +43,10 @@ if (! function_exists('campaignFallbackUserWith')) {
 }
 
 /**
- * A standalone campaign's other 2 BR-2 fields + country_id (BR-4),
+ * A standalone campaign's `product_lines` (spec 0094) + country_id (BR-4),
  * DELIBERATELY without pipeline_status_id.
  *
- * @return array<string, int|string>
+ * @return array<string, mixed>
  */
 if (! function_exists('standaloneFieldsWithoutStatus')) {
     function standaloneFieldsWithoutStatus(): array
@@ -55,8 +55,10 @@ if (! function_exists('standaloneFieldsWithoutStatus')) {
         $businessFunction = BusinessFunction::factory()->create();
 
         return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            'product_lines' => [[
+                'business_function_id' => $businessFunction->id,
+                'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            ]],
             'country_id' => Country::factory()->create()->id,
             'start_date' => '2026-01-01',
             'end_date' => '2026-12-31',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { History, Paperclip } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -11,6 +11,10 @@ import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contract
 import { ContractActionsBar } from '@/features/contracts/contract-actions-bar'
 import { ContractDetailHeader } from '@/features/contracts/contract-detail-header'
 import { ContractDetailSections } from '@/features/contracts/contract-detail-fields'
+import {
+  ContractWorkOrdersSection,
+  type ContractWorkOrdersSectionHandle,
+} from '@/features/contracts/contract-work-orders-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -125,6 +129,11 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
   const createdAt = formatDateTime(contract.created_at)
   const updatedAt = formatDateTime(contract.updated_at)
 
+  // "Programma" lives in the actions bar (a SIBLING of the Commesse tab
+  // below), so its success is bubbled here and forwarded through this ref
+  // rather than lifting the tab's own grid state (AC-062).
+  const workOrdersRef = useRef<ContractWorkOrdersSectionHandle>(null)
+
   return (
     <ResourcePermissionsProvider permissions={contract.permissions}>
       <RecordCanvas>
@@ -132,7 +141,11 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
           <div className={COLUMN_CLASS}>
             <RecordCard>
               <ContractDetailHeader contract={contract} />
-              <ContractActionsBar contract={contract} onChanged={setContract} />
+              <ContractActionsBar
+                contract={contract}
+                onChanged={setContract}
+                onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
+              />
               <ContractDetailSections contract={contract} />
 
               {/* Banda di chiusura: le sole righe di ricavo del preventivo
@@ -150,6 +163,14 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
             <ContractDetailCollaboration contract={contract} />
           </div>
         </div>
+
+        {/*
+          Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la
+          griglia a due colonne, non nella card di collaborazione — quella
+          colonna (`minmax(0,4fr)`) e' troppo stretta per una TableView con
+          toolbar + griglia + filtri.
+        */}
+        <ContractWorkOrdersSection ref={workOrdersRef} quoteId={contract.quote_id} />
 
         <RecordMeta>
           {createdAt ? (

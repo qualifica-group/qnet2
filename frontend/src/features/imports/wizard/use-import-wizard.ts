@@ -10,6 +10,7 @@ import {
   createMappingTemplate,
   getImportWizardRun,
 } from '@/features/imports/wizard/api'
+import type { ImportConfigFormValues } from '@/features/imports/wizard/import-config-schema'
 import { importWizardKeys } from '@/features/imports/wizard/query-keys'
 import { useStallTimeout } from '@/hooks/use-stall-timeout'
 import { resolveImportWizardErrorMessage } from '@/features/imports/wizard/resolve-error-message'
@@ -93,6 +94,12 @@ function resolveGlobalConfigValue(
   const stored = run.global_config?.[fieldId]
   if (typeof stored === 'number') return stored
   return typeof fieldDefault === 'number' ? fieldDefault : null
+}
+
+/** Reads a `multiple` global-config value (spec 0094, e.g. `product_ids`) from the run, or `[]` when unset. */
+function resolveGlobalConfigArrayValue(run: ImportRunDetail, fieldId: string): number[] {
+  const stored = run.global_config?.[fieldId]
+  return Array.isArray(stored) ? stored.filter((id): id is number => typeof id === 'number') : []
 }
 
 interface UseImportWizardArgs {
@@ -229,11 +236,13 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
     onError: resyncOnStaleState,
   })
 
-  const initialConfigValues = useMemo<Record<string, number | null>>(() => {
+  const initialConfigValues = useMemo<ImportConfigFormValues>(() => {
     if (!run) return {}
-    const values: Record<string, number | null> = {}
+    const values: ImportConfigFormValues = {}
     for (const field of run.global_fields) {
-      values[field.id] = resolveGlobalConfigValue(run, field.id, field.default)
+      values[field.id] = field.multiple
+        ? resolveGlobalConfigArrayValue(run, field.id)
+        : resolveGlobalConfigValue(run, field.id, field.default)
     }
     return values
   }, [run])
@@ -255,7 +264,7 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
     (
       mapping: Record<string, string>,
       strategy: string,
-      globalConfig: Record<string, number | null>,
+      globalConfig: ImportConfigFormValues,
       saveAsTemplate?: { name: string },
     ) => {
       configureMutation.mutate(

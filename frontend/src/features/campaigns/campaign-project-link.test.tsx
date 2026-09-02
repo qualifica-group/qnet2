@@ -100,6 +100,14 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 }))
 
 /**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03); these tests only read the PREFILLED value (never pick one
+ * manually), so the shared read-only double is enough.
+ */
+vi.mock('@/features/product-lines/product-category-tree-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
+
+/**
  * `GeoSelect` is covered by its own test; here a controllable read-only stub
  * exposes the wired value and `lockedLevels` so BR-5's prefill+lock (AC-042)
  * and unlock-on-unlink (AC-043) are observable without a real cascade.
@@ -145,9 +153,8 @@ function projectForSelectItem(overrides: {
     meta: {
       partner: { id: 31, label: 'Jane Partner' },
       pipeline_status: { id: 41, label: 'Active' },
-      business_function: { id: 51, label: 'Marketing' },
       state: null,
-      product_category: { id: 71, label: 'Hardware' },
+      product_lines: [{ business_function: { id: 51, name: 'Marketing' }, product_category: { id: 71, name: 'Hardware' } }],
       total_budget: '1000.00',
       allocated_budget: '600.00',
       remaining_budget: '400.00',
@@ -181,8 +188,6 @@ function campaign(
     derived_from_project: false,
     pipeline_status_id: 1,
     pipeline_status: { id: 1, name: 'Active', color: 'blue' },
-    business_function_id: 2,
-    business_function: { id: 2, name: 'Sales' },
     country_id: 61,
     country: { id: 61, name: 'Italy' },
     state_id: 3,
@@ -193,8 +198,7 @@ function campaign(
     city: null,
     geo_scope: 'state',
     geo_locked_levels: [],
-    product_category_id: 4,
-    product_category: { id: 4, name: 'Hardware' },
+    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } }],
     start_date: '2026-01-01',
     end_date: '2026-12-31',
     total_budget: null,
@@ -239,15 +243,17 @@ describe('CampaignForm — selecting a Project (AC-042)', () => {
 
     await waitFor(() => expect(screen.getByTestId('value-Partner')).toHaveTextContent('31'))
     expect(screen.getByTestId('value-Status')).toHaveTextContent('41')
-    expect(screen.getByTestId('value-Business function')).toHaveTextContent('51')
-    expect(screen.getByTestId('value-Product category')).toHaveTextContent('71')
+    // Spec 0094: the project's product_lines row(s), rendered read-only by
+    // the shared ProductLinesField (AC-046).
+    expect(screen.getByTestId('value-Business function 1')).toHaveTextContent('51')
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('71')
     // The Sede is prefilled from the project's own meta (project -> campaign -> lead chain).
     expect(screen.getByTestId('value-Site')).toHaveTextContent('81')
 
-    // The 3 derived fields are forced read-only while linked; Partner/Sede stay editable.
+    // Status and the product_lines row are forced read-only while linked; Partner/Sede stay editable.
     expect(screen.getByTestId('disabled-Status')).toHaveTextContent('true')
-    expect(screen.getByTestId('disabled-Business function')).toHaveTextContent('true')
-    expect(screen.getByTestId('disabled-Product category')).toHaveTextContent('true')
+    expect(screen.getByTestId('disabled-Business function 1')).toHaveTextContent('true')
+    expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('true')
     expect(screen.getByTestId('disabled-Partner')).toHaveTextContent('false')
     expect(screen.getByTestId('disabled-Site')).toHaveTextContent('false')
 
@@ -266,8 +272,7 @@ describe('CampaignForm — selecting a Project (AC-042)', () => {
     await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
     const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
     expect(payload).not.toHaveProperty('pipeline_status_id')
-    expect(payload).not.toHaveProperty('business_function_id')
-    expect(payload).not.toHaveProperty('product_category_id')
+    expect(payload).not.toHaveProperty('product_lines')
     expect(payload).not.toHaveProperty('country_id')
     expect(payload.project_id).toBe(TEST_PROJECT_ID)
     expect(payload.partner_id).toBe(31)
@@ -324,8 +329,10 @@ describe('CampaignForm — deselecting the Project (AC-043)', () => {
 
     await waitFor(() => expect(screen.getByTestId('disabled-Status')).toHaveTextContent('false'))
     expect(screen.getByTestId('value-Status')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Business function')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Product category')).toHaveTextContent('')
+    // Spec 0094: unlinking resets product_lines to an EMPTY collection (not a
+    // blanked single row) — no row testid survives, "Add" is the only affordance left.
+    expect(screen.queryByTestId('select-Business function 1')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
     expect(screen.getByTestId('geo-select')).toHaveAttribute('data-locked', '')
     expect(screen.getByTestId('geo-select')).toHaveAttribute('data-country', '')
     // The Sede is an always-own field (like Partner): unlinking never resets it.

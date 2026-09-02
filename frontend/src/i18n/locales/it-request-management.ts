@@ -140,9 +140,9 @@ export const requestManagement = {
       },
       errors: {
         generic: 'Si è verificato un errore. Riprova.',
-        identityIncomplete: "Completa i dati identificativi del cliente prima di salvare.",
-        addressIncomplete: "Completa l'indirizzo (via e città) oppure svuotalo del tutto.",
-        contactsInvalid: 'Uno dei contatti inseriti non è valido.',
+        identityIncomplete: 'Completa i dati identificativi del cliente: {{fields}}',
+        addressIncomplete: "Completa l'indirizzo (oppure svuotalo del tutto): {{fields}}",
+        contactsInvalid: 'Correggi i contatti: {{fields}}',
       },
     },
   },

@@ -12,7 +12,9 @@ use App\Models\Campaign;
 use App\Models\PipelineStatus;
 use App\Models\Project;
 use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Statuses\SystemStatusGuard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,7 +22,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Business logic for the `campaigns` resource (spec 0023): create/update
  * (with the server-generated CMP-0001 code, BR-1), the BR-2 classification
- * derivation (forcing the 3 classification fields null when linked to a
+ * derivation (forcing `pipeline_status_id` null and clearing the campaign's
+ * own `product_lines` collection — spec 0094, D-1/D-2 — when linked to a
  * project), the BR-5 geo refinement (nulling out, defence in depth, whatever
  * geo level the linked project already fills — spec 0027) and the BR-3
  * budget guard, all computed inside the write transaction with a
@@ -31,7 +34,10 @@ class CampaignService
 {
     use GeneratesSequentialCode;
 
-    public function __construct(private readonly SystemStatusGuard $systemStatusGuard) {}
+    public function __construct(
+        private readonly SystemStatusGuard $systemStatusGuard,
+        private readonly ProductLineWriter $productLineWriter,
+    ) {}
 
     private const string CODE_PREFIX = 'CMP';
 
@@ -51,26 +57,29 @@ class CampaignService
      * Relations eager-loaded for the detail read tree (CampaignResource):
      * the campaign's OWN classification (standalone case) plus the linked
      * project's (the read-through source when derived_from_project=true),
-     * so a single query never N+1s across either branch.
+     * so a single query never N+1s across either branch. Spec 0094, D-1/D-2:
+     * `businessFunction`/`productCategory` are REPLACED by
+     * `productLines.businessFunction`/`productLines.productCategory`, on
+     * both the campaign's own collection and the linked project's.
      *
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
         'project.pipelineStatus',
-        'project.businessFunction',
+        'project.productLines.businessFunction',
+        'project.productLines.productCategory',
         'project.country',
         'project.state',
         'project.province',
         'project.city',
-        'project.productCategory',
         'partner',
         'pipelineStatus',
-        'businessFunction',
+        'productLines.businessFunction',
+        'productLines.productCategory',
         'country',
         'state',
         'province',
         'city',
-        'productCategory',
         'operationalSite.addresses.city',
     ];
 
@@ -114,6 +123,14 @@ class CampaignService
             $campaign->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
             $campaign->save();
 
+            // Spec 0094, D-1/D-2: `product_lines` is a to-many collection,
+            // null when linked (BR-2 — the classification is derived from
+            // the project, StoreCampaignRequest's `prohibited` rule keeps it
+            // that way), required (min 1) when standalone.
+            if ($data->productLines !== null) {
+                $this->productLineWriter->sync($campaign, $data->productLines);
+            }
+
             return $campaign;
         });
 
@@ -132,10 +149,12 @@ class CampaignService
 
     /**
      * Update an existing campaign. Only keys present in $data are touched
-     * (partial PATCH), except the 3 BR-2 classification fields and the geo
-     * levels the EFFECTIVE project fills (BR-5), which are additionally
-     * forced by resolveUpdateAttributes() whenever the EFFECTIVE project_id
-     * (after this update) is non-null.
+     * (partial PATCH), except `pipeline_status_id` and the geo levels the
+     * EFFECTIVE project fills (BR-5), which are additionally forced by
+     * resolveUpdateAttributes() whenever the EFFECTIVE project_id (after
+     * this update) is non-null — `product_lines` (spec 0094) follows the
+     * SAME rule but, being a to-many collection, is synced separately below,
+     * never through this mass-assignment attributes array.
      */
     public function update(Campaign $campaign, UpdateCampaignData $data): Campaign
     {
@@ -161,6 +180,20 @@ class CampaignService
             // native attribute changed, so the HasCustomFields write pipeline
             // (spec 0021) persists a custom-fields-only edit.
             $campaign->fill($attributes)->save();
+
+            // Spec 0094, D-1/D-2: a campaign EFFECTIVELY linked after this
+            // update never owns product lines of its own — cleared
+            // unconditionally (defence in depth, mirroring the former
+            // unconditional null-forcing on the two scalar columns; the
+            // FormRequest's `prohibited` rule keeps `product_lines` out of
+            // $data in this branch already). A STANDALONE campaign only
+            // resyncs when the collection was actually submitted (partial
+            // PATCH, `sometimes`).
+            if ($project !== null) {
+                $this->productLineWriter->sync($campaign, []);
+            } elseif ($data->hasProductLines()) {
+                $this->productLineWriter->sync($campaign, $data->productLines);
+            }
         });
 
         return $this->loadDetail($campaign);
@@ -187,9 +220,7 @@ class CampaignService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = Campaign::query()
-            ->select(['id', 'code', 'name', 'operational_site_id'])
-            ->with(['operationalSite.addresses.city', 'operationalSite.addresses.state']);
+        $base = $this->forSelectBaseQuery();
 
         if ($query->hasSearch()) {
             $base->where(function ($relatedQuery) use ($query): void {
@@ -218,6 +249,27 @@ class CampaignService
     }
 
     /**
+     * The for-select projection query (spec 0024, ADR 0011): id/code/name/
+     * operational_site_id plus `project_id` (spec 0094 — needed to resolve
+     * the EFFECTIVE product-line categories, own or read through the linked
+     * project) and the relations CampaignForSelectResource reads: the site's
+     * composed label, and the campaign's own/linked-project's product lines.
+     *
+     * @return Builder<Campaign>
+     */
+    private function forSelectBaseQuery(): Builder
+    {
+        return Campaign::query()
+            ->select(['id', 'code', 'name', 'project_id', 'operational_site_id'])
+            ->with([
+                'operationalSite.addresses.city',
+                'operationalSite.addresses.state',
+                'productLines',
+                'project.productLines',
+            ]);
+    }
+
+    /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
      * not already on the page, deduplicated. They bypass search and the same
      * id/code/name projection applies. Total is unaffected.
@@ -239,9 +291,7 @@ class CampaignService
         }
 
         /** @var Collection<int, Campaign> $hydrated */
-        $hydrated = Campaign::query()
-            ->select(['id', 'code', 'name', 'operational_site_id'])
-            ->with(['operationalSite.addresses.city', 'operationalSite.addresses.state'])
+        $hydrated = $this->forSelectBaseQuery()
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')
@@ -265,8 +315,6 @@ class CampaignService
     {
         if ($project !== null) {
             $submitted['pipeline_status_id'] = null;
-            $submitted['business_function_id'] = null;
-            $submitted['product_category_id'] = null;
         }
 
         return $this->applyGeoInheritance($submitted, $project);

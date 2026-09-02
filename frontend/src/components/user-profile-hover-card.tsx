@@ -27,7 +27,7 @@ export function UserProfileHoverAction({ user }: { user: UserProfileSummary }) {
       aria-label={t('common.viewProfile', { name: user.name })}
       className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <UserAvatar name={user.name} src={user.avatar_url ?? null} className="size-6 shrink-0" />
+      <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" className="shrink-0" />
       <span className="truncate font-medium">{user.name}</span>
       <ChevronRight aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
     </button>

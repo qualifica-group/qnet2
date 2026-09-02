@@ -19,6 +19,11 @@ namespace App\Tables\Campaigns;
  * project) geo value is not a plain join like the other derived columns —
  * the same pragmatic choice already made for `pipeline_status` (AC-032),
  * just without that column's set-filter/sort support.
+ *
+ * `business_function`/`product_category` (spec 0094, AC-025/AC-027) are NEW
+ * AGGREGATED (to-many) columns, resolved by CampaignsTableDefinition via
+ * CampaignRelationColumns — filterable (`set` widget) but never sortable, the
+ * SAME shape as ProjectColumnCatalog's own pair.
  */
 final class CampaignColumnCatalog
 {
@@ -57,6 +62,8 @@ final class CampaignColumnCatalog
                 'rules' => ['max:191'],
             ],
             self::derivedColumn('pipeline_status', 'campaigns.columns.pipeline_status'),
+            self::derivedColumn('business_function', 'campaigns.columns.business_function'),
+            self::derivedColumn('product_category', 'campaigns.columns.product_category'),
             self::displayOnlyColumn('country', 'campaigns.columns.country'),
             self::displayOnlyColumn('state', 'campaigns.columns.state'),
             self::displayOnlyColumn('province', 'campaigns.columns.province'),

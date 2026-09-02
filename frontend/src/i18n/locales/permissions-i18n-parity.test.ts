@@ -87,7 +87,7 @@ const CATALOGUE_ABILITIES = [
   'viewActivity',
   'validate',
   'terminate',
-  'schedule',
+  'program',
   'changeStatus',
   'reactivate',
   'viewAll',

@@ -41,12 +41,12 @@ if (! function_exists('campaignUserWith')) {
 
 if (! function_exists('standaloneClassificationFields')) {
     /**
-     * The 3 BR-2 classification fields, required for a standalone campaign
-     * (state_id LEFT this group — spec 0027, D-3). Local copy mirroring
-     * CampaignCrudTest's (each test file guards its own, since file load
-     * order across the suite is not guaranteed).
+     * `pipeline_status_id` plus `product_lines` (spec 0094), required for a
+     * standalone campaign (state_id LEFT this group — spec 0027, D-3). Local
+     * copy mirroring CampaignCrudTest's (each test file guards its own,
+     * since file load order across the suite is not guaranteed).
      *
-     * @return array<string, int>
+     * @return array<string, mixed>
      */
     function standaloneClassificationFields(): array
     {
@@ -55,8 +55,10 @@ if (! function_exists('standaloneClassificationFields')) {
 
         return [
             'pipeline_status_id' => PipelineStatus::factory()->create()->id,
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            'product_lines' => [[
+                'business_function_id' => $businessFunction->id,
+                'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            ]],
         ];
     }
 }

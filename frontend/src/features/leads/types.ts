@@ -40,6 +40,18 @@ export interface LeadOpportunityRef {
 }
 
 /**
+ * A Lead's chosen product (spec 0094, D-5), as exposed by
+ * `LeadResource.products_of_interest`. Every id must belong to a product
+ * category covered by the Campaign's effective classification (match EXACT
+ * on `products.category_id`, never by descent).
+ */
+export interface LeadProductOfInterest {
+  id: number
+  name: string
+  product_category: { id: number; name: string } | null
+}
+
+/**
  * Single lead detail returned by GET/POST/PATCH /leads (envelope `data`).
  * Matches `LeadResource`. `registry_id`/`campaign_id` are always set (BR-1,
  * D-1; spec 0041 D-1: the contact is the anagrafica, not the referent); the
@@ -81,6 +93,13 @@ export interface LeadDetail {
   notes: string | null
   extra_fields: Record<string, string> | null
   opportunity?: LeadOpportunityRef | null
+  /**
+   * Products of interest (spec 0094, D-5). Optional — like `opportunity`
+   * above — so every pre-existing `LeadDetail` fixture across this feature's
+   * test suites keeps type-checking unchanged; a missing key means none yet
+   * (no requirement of minimum, AC-036).
+   */
+  products_of_interest?: LeadProductOfInterest[]
   created_at: string
   updated_at: string
 }
@@ -114,6 +133,14 @@ export interface CreateLeadPayload {
   state_id?: number | null
   notes?: string | null
   extra_fields?: Record<string, string> | null
+  /**
+   * Spec 0094, D-5: chosen product ids, `sometimes|array` — `[]` clears the
+   * collection. Every id must belong to a category covered by the Campaign's
+   * effective product lines; a PATCH that changes `campaign_id` while
+   * leaving persisted products uncovered is refused on `campaign_id`
+   * instead (no silent removal).
+   */
+  products_of_interest?: number[]
   /**
    * Spec 0044: requests atomic conversion into a linked Opportunity when
    * true (default false). Create-only — `UpdateLeadPayload` never carries

@@ -21,17 +21,20 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * convention. Lowering `total_budget` below the sum already allocated to its
  * campaigns is allowed (D-4) — see ProjectResource for the computed
  * `allocated_budget`/`remaining_budget` exposed read-side.
+ *
+ * Spec 0094, D-1/D-2: the former single `business_function_id`/
+ * `product_category_id` columns are REPLACED by `productLines()`, a
+ * one-to-many collection (see ProjectProductLine), mirroring the Opportunity's
+ * own amendment rev.3 collection.
  */
 #[Fillable([
     'name',
     'description',
     'pipeline_status_id',
-    'business_function_id',
     'country_id',
     'state_id',
     'province_id',
     'city_id',
-    'product_category_id',
     'partner_id',
     'operational_site_id',
     'start_date',
@@ -62,11 +65,6 @@ class Project extends BaseModel
         return $this->belongsTo(PipelineStatus::class);
     }
 
-    public function businessFunction(): BelongsTo
-    {
-        return $this->belongsTo(BusinessFunction::class);
-    }
-
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
@@ -87,9 +85,16 @@ class Project extends BaseModel
         return $this->belongsTo(City::class);
     }
 
-    public function productCategory(): BelongsTo
+    /**
+     * The "funzione aziendale" + "categoria prodotto" rows (spec 0094,
+     * D-1/D-2), SUBSTITUTING the former single `business_function_id`/
+     * `product_category_id` columns.
+     *
+     * @return HasMany<ProjectProductLine, $this>
+     */
+    public function productLines(): HasMany
     {
-        return $this->belongsTo(ProductCategory::class);
+        return $this->hasMany(ProjectProductLine::class);
     }
 
     /**

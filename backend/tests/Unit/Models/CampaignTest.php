@@ -1,10 +1,12 @@
 <?php
 
 use App\Models\Campaign;
+use App\Models\CampaignProductLine;
 use App\Models\Concerns\LogsModelActivity;
 use App\Models\PipelineStatus;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,12 +26,23 @@ it('creates the campaigns table with the expected columns', function () {
     expect(Schema::hasTable('campaigns'))->toBeTrue();
     expect(Schema::hasColumns('campaigns', [
         'id', 'code', 'project_id', 'name', 'description',
-        'partner_id', 'pipeline_status_id', 'business_function_id',
-        'state_id', 'product_category_id', 'start_date', 'end_date',
+        'partner_id', 'pipeline_status_id', 'state_id', 'start_date', 'end_date',
         'total_budget', 'target_lead', 'created_at', 'updated_at',
     ]))->toBeTrue();
     expect(Schema::hasColumn('campaigns', 'registry_id'))->toBeFalse();
     expect(Schema::hasColumn('campaigns', 'source_id'))->toBeFalse();
+    // Spec 0094, D-1/D-2: the former single-pair columns are DROPPED — the
+    // collection now lives in campaign_product_lines.
+    expect(Schema::hasColumn('campaigns', 'business_function_id'))->toBeFalse();
+    expect(Schema::hasColumn('campaigns', 'product_category_id'))->toBeFalse();
+});
+
+it('creates the campaign_product_lines table with the expected columns (AC-001)', function () {
+    expect(Schema::hasTable('campaign_product_lines'))->toBeTrue();
+    expect(Schema::hasColumns('campaign_product_lines', [
+        'id', 'campaign_id', 'business_function_id', 'product_category_id',
+        'created_at', 'updated_at',
+    ]))->toBeTrue();
 });
 
 it('code is unique at the database level', function () {
@@ -95,15 +108,27 @@ it('`code` is deliberately absent from #[Fillable]: mass-assignment cannot set i
     expect($campaign->code)->toBeNull();
 });
 
-it('forProject() factory state links the campaign and nulls the 4 derived columns', function () {
+it('forProject() factory state links the campaign, nulls pipeline_status_id/state_id and owns no product line (spec 0094)', function () {
     $project = Project::factory()->create();
     $campaign = Campaign::factory()->forProject($project)->create();
 
     expect($campaign->project_id)->toBe($project->id)
         ->and($campaign->pipeline_status_id)->toBeNull()
-        ->and($campaign->business_function_id)->toBeNull()
         ->and($campaign->state_id)->toBeNull()
-        ->and($campaign->product_category_id)->toBeNull();
+        ->and($campaign->productLines)->toBeEmpty();
+});
+
+it('productLines() is a HasMany CampaignProductLine (spec 0094)', function () {
+    $relation = (new Campaign)->productLines();
+
+    expect($relation)->toBeInstanceOf(HasMany::class);
+    expect($relation->getRelated())->toBeInstanceOf(CampaignProductLine::class);
+});
+
+it('a fresh STANDALONE campaign carries exactly one coherent product line by default', function () {
+    $campaign = Campaign::factory()->create();
+
+    expect($campaign->productLines)->toHaveCount(1);
 });
 
 it('logs model activity on the campaigns log channel', function () {

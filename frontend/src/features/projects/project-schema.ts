@@ -4,6 +4,7 @@ import {
   asCustomFieldsField,
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
+import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
  * Zod schema for the project create/edit form, built as a factory so
@@ -39,14 +40,24 @@ function baseFields(t: TFunction) {
     // "Nuovo" status when omitted, and the create form preselects it as soon
     // as the for-select resolves.
     pipeline_status_id: z.number().nullable(),
-    business_function_id: z.number().nullable(),
     // Geo cascade (spec 0027 BR-4): `country_id` required (withGeoHierarchyRule
     // below), the other three optional but parent-gated.
     country_id: z.number().nullable(),
     state_id: z.number().nullable(),
     province_id: z.number().nullable(),
     city_id: z.number().nullable(),
-    product_category_id: z.number().nullable(),
+    // Spec 0094: replaces the former single `business_function_id`/
+    // `product_category_id` pair with an inline-editable row collection
+    // (mirrors the opportunity form, spec 0040 amendment rev.3). Each id is
+    // individually nullable (a row starts empty and fills in place);
+    // `withRequiredProductLinesRule` below requires at least one COMPLETE
+    // row before submit, mirroring the backend's `required|min:1`.
+    product_lines: z.array(
+      z.object({
+        business_function_id: z.number().nullable(),
+        product_category_id: z.number().nullable(),
+      }),
+    ),
     partner_id: z.number().nullable(),
     // The Sede (spec directive 2026-07-21): the project's own, always
     // editable relation, inherited as a prefill by every campaign/lead
@@ -77,25 +88,23 @@ function withDateOrderRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
 }
 
 /**
- * The single-select relations that must be set: `business_function_id` and
- * `product_category_id` (mandatory, mirroring the backend's `required`
- * rules). `pipeline_status_id` left this group (spec 0039 D-3): it is now
- * nullable/optional, the server falling back to the system "Nuovo" status
- * when omitted. Held nullable in `baseFields` so the controlled selects can
- * represent "unset"; this rule rejects a null at submit.
+ * Spec 0094: at least one COMPLETE business-function + product-category row
+ * is mandatory (mirrors the backend's `required|min:1`), reusing the shared
+ * `productLines.*` i18n messages already frozen for the opportunity form
+ * (spec 0040 amendment rev.3) rather than minting project-specific copies.
  */
-const REQUIRED_RELATIONS = [
-  { field: 'business_function_id', message: 'projects.form.businessFunctionRequired' },
-  { field: 'product_category_id', message: 'projects.form.productCategoryRequired' },
-] as const
-
-function withRequiredRelationsRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
+function withRequiredProductLinesRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
   return schema.superRefine((values, ctx) => {
-    const record = values as Record<(typeof REQUIRED_RELATIONS)[number]['field'], number | null>
-    for (const { field, message } of REQUIRED_RELATIONS) {
-      if (record[field] === null) {
-        ctx.addIssue({ code: 'custom', path: [field], message: t(message) })
-      }
+    const record = values as { product_lines: ProductLineRow[] }
+    if (record.product_lines.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.required') })
+      return
+    }
+    const hasIncompleteRow = record.product_lines.some(
+      (row) => row.business_function_id === null || row.product_category_id === null,
+    )
+    if (hasIncompleteRow) {
+      ctx.addIssue({ code: 'custom', path: ['product_lines'], message: t('productLines.rowIncomplete') })
     }
   })
 }
@@ -141,7 +150,7 @@ function withGeoHierarchyRule<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
 /** Create schema. `customFieldsSchema` is the toolbox-built schema for `custom_fields` (spec 0021 AC-023). */
 export function buildCreateProjectSchema(t: TFunction, customFieldsSchema: CustomFieldsSchema) {
   const object = z.object({ ...baseFields(t), custom_fields: asCustomFieldsField(customFieldsSchema) })
-  return withGeoHierarchyRule(withRequiredRelationsRule(withDateOrderRule(object, t), t), t)
+  return withGeoHierarchyRule(withRequiredProductLinesRule(withDateOrderRule(object, t), t), t)
 }
 
 /** Edit schema (same shape; partial PATCH is computed by the caller). */

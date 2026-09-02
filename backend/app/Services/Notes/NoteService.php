@@ -59,13 +59,13 @@ final class NoteService
             ->where('notable_id', $record->getKey())
             ->whereNull('parent_id')
             ->with([
-                'author',
-                'mentionedUsers',
+                'author.avatar',
+                'mentionedUsers.avatar',
                 'quote',
                 'replies' => fn (HasMany $replies) => $replies
                     ->orderBy('created_at')
                     ->orderBy('id')
-                    ->with(['author', 'mentionedUsers', 'quote']),
+                    ->with(['author.avatar', 'mentionedUsers.avatar', 'quote']),
             ]);
 
         $this->applyQuoteScope($query, $scope);
@@ -108,7 +108,7 @@ final class NoteService
 
             $this->syncMentionsAndNotify($note, $user, $data->entityType, $record, $data->mentionIds);
 
-            return $note->load(['author', 'mentionedUsers', 'quote']);
+            return $note->load(['author.avatar', 'mentionedUsers.avatar', 'quote']);
         });
     }
 
@@ -131,7 +131,7 @@ final class NoteService
 
             $this->syncMentionsAndNotify($note, $user, $entityType, $record, $data->mentionIds);
 
-            return $note->load(['author', 'mentionedUsers', 'quote']);
+            return $note->load(['author.avatar', 'mentionedUsers.avatar', 'quote']);
         });
     }
 
@@ -213,7 +213,7 @@ final class NoteService
     private function syncMentionsAndNotify(Note $note, User $author, string $entityType, Model $record, array $mentionIds): void
     {
         $sync = $note->mentionedUsers()->sync($mentionIds);
-        $note->load('mentionedUsers');
+        $note->load('mentionedUsers.avatar');
 
         $newRecipientIds = array_values(array_diff(array_unique($sync['attached']), [$author->id]));
 

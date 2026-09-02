@@ -14,11 +14,11 @@ use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use App\Services\Opportunities\OpportunityProductInterestWriter;
-use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\Opportunities\RewardAssignmentWriter;
+use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Support\ManagerPositions;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,16 +71,20 @@ class OpportunityService
         'lead.registry',
         'lead.operationalSite.addresses.city',
         'lead.source',
-        'lead.campaign.businessFunction',
-        'lead.campaign.productCategory',
-        'lead.campaign.project.businessFunction',
-        'lead.campaign.project.productCategory',
+        // Spec 0094, D-1/D-2: the campaign/project's classification is a
+        // to-many `productLines` collection now, not the former single
+        // `businessFunction`/`productCategory` pair — mirrors
+        // CampaignService::DETAIL_RELATIONS' own naming exactly.
+        'lead.campaign.productLines.businessFunction',
+        'lead.campaign.productLines.productCategory',
+        'lead.campaign.project.productLines.businessFunction',
+        'lead.campaign.project.productLines.productCategory',
     ];
 
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
         private readonly OpportunityProductInterestWriter $productInterestWriter,
-        private readonly OpportunityProductLineWriter $productLineWriter,
+        private readonly ProductLineWriter $productLineWriter,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
         // User directive 2026-08-05: the products-of-interest half of the rule

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0095-contract-work-order-generation" status="draft" owner="nicola" date="2026-09-02">
+
+  <goal>
+    Spostare la creazione delle Commesse dentro il flusso del Contratto: l'azione "Programma"
+    apre un form che elenca le righe prodotto dell'Offerta collegata, ne fa selezionare una o
+    piu' e genera UNA Commessa con quelle righe. Un Contratto puo' generare piu' Commesse con
+    gruppi di righe diversi, e le vede tutte in un tab "Commesse" del proprio dettaglio, servito
+    dalla STESSA tabella del modulo Commesse filtrata sul contratto corrente.
+    Flusso finale: Contratto -> Offerta -> Righe prodotto -> Programma -> Commessa.
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nel repo (letti nei file reali):
+      - `contracts.quote_id` e UNIQUE (`2026_08_01_100100_create_contracts_table.php:41`):
+        Contratto e Offerta sono 1:1. Da qui la scelta di NON aggiungere `work_orders.contract_id`.
+      - L'azione `schedule` ("Programma contratto") oggi imposta `expiry_date`/`renewal_date` e
+        `contract_status_id` (`ContractActionService::schedule()`), MA il bottone e' renderizzato
+        `disabled` in `contract-actions-bar.tsx:103` con il commento "the action will be
+        repurposed": nella UI attuale non e' raggiungibile. Entrambe le capacita' che scriveva
+        restano comunque disponibili altrove: le due date dal form di modifica del Contratto
+        (`UpdateContractRequest:49-50`, `ContractsAuthorization:81-82` le dichiara editabili) e
+        la transizione di stato dall'azione dedicata `POST /contracts/{contract}/change-status`.
+      - `maySchedule()` (`ContractActionAvailability:39-42`) = gruppo stato `ClosedWon`. E' la
+        regola di disponibilita' gia' in vigore ed e' quella richiesta ("solo quando il Contratto
+        si trova nello stato che ne consente la programmazione").
+      - Il dettaglio Contratto HA GIA' in payload `offer_lines` (`ContractResource:83`,
+        `QuoteLineResource`) con `product{code,name,category,business_function}`, `quantity`,
+        `unit_of_measure`, importi e `sort_order`. Prodotto/categoria/quantita'/UM per il form
+        NON richiedono un endpoint nuovo per essere mostrati.
+      - Il pivot `quote_line_work_order` ha UNIQUE sulla COPPIA (`work_order_id`,`quote_line_id`):
+        impedisce la stessa riga due volte nella STESSA commessa, NON impedisce che la stessa
+        riga finisca in commesse diverse. La regola "una riga, una sola Commessa" oggi NON esiste.
+      - `QuoteLine` NON ha la relazione inversa verso WorkOrder; `grep quote_line_work_order`
+        in `backend/app` da' zero risultati fuori da `WorkOrder::quoteLines()`.
+      - Tabella scoped: NON esiste alcun `applyScope()`. Il pattern reale e' un DECORATOR per
+        dominio composto in `TableRegistry::resolve()`. Precedente esatto e unico da ricalcare:
+        `App\Tables\Quotes\OpportunityScopedTableDefinition` (~157 righe di cui ~130 passthrough
+        via `DelegatesUnaugmentedTableMethods`) + `rowScope={{opportunityId}}` montato da
+        `features/opportunities/opportunity-quotes-section.tsx:162-171` (spec 0067).
+      - `rowScope` NON entra in nessuna query key (la config e identica scoped o no); `scope`
+        invece si. Per le Commesse serve `rowScope`.
+      - `WorkOrderService::create()` e' gia' il punto unico di creazione (codice sequenziale nella
+        transazione + invariante D-7 + force-close). `WorkOrderLineWriter::assertBelongToRevenueLines()`
+        e' gia' `public`, richiamabile senza toccare la classe.
+      - `WorkOrder.title` e `WorkOrder.type` sono NOT NULL e senza default: una generazione
+        automatica deve comunque deciderli.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      L'azione `schedule` viene RICONVERTITA, non affiancata: "Programma contratto" diventa
+      "Programma" e genera Commesse. Vengono RIMOSSI (non lasciati orfani: codice morto vietato)
+      `ContractScheduleController`, `ScheduleContractRequest`, `ScheduleContractData`,
+      `ContractActionService::schedule()`, la rotta `POST /contracts/{contract}/schedule`,
+      `contract-schedule-dialog.tsx` e i relativi test/chiavi i18n.
+      NON vengono toccati `expiry_date`/`renewal_date` (restano scrivibili dal form di modifica)
+      ne' `change-status` (resta la via per le transizioni di stato).
+      CORREZIONE (rilevata dal verifier a implementazione avvenuta): "restano scrivibili" NON basta.
+      `ScheduleContractRequest` portava anche la regola `renewal_date before_or_equal:expiry_date`, che
+      `UpdateContractRequest` NON ha: rimuovere l'apparato ha silenziosamente perso un vincolo di
+      business. L'invariante va ripristinata sul canale superstite (AC-064). Lezione generale: quando si
+      rimuove un percorso di scrittura, non basta verificare che il dato resti scrivibile altrove — va
+      verificato che resti VALIDATO allo stesso modo.
+    </decision>
+    <decision id="D-2">
+      Ability: `contracts.schedule` -> `contracts.program`, con `ContractPolicy::abilities()`
+      aggiornata. Motivo: la semantica cambia radicalmente (impostare date != creare commesse) e
+      un permesso che mente sul proprio nome e' una trappola per chi configura i ruoli.
+      CONSEGUENZA OPERATIVA: `permissions:sync` crea, non pota. La riga `contracts.schedule` e le
+      sue eventuali assegnazioni ai ruoli restano nel DB e vanno rimosse a mano. Va verificato e
+      dichiarato, non assunto.
+      Disponibilita' INVARIATA: `mayProgram()` = gruppo stato `ClosedWon`, stessa regola di
+      `maySchedule()`, rinominata. Doppio gate confermato: `lifecycle.program &amp;&amp;
+      permissions.actions.program`.
+    </decision>
+    <decision id="D-3">
+      UNA conferma del form = UNA Commessa contenente TUTTE le righe selezionate. Per generarne
+      un'altra si riapre "Programma" e si sceglie un altro gruppo di righe. Nessuna generazione
+      "una commessa per riga": moltiplicherebbe le commesse senza che l'utente lo chieda.
+    </decision>
+    <decision id="D-4">
+      REGOLA NUOVA "una riga, una sola Commessa", su richiesta esplicita. Si applica su DUE livelli,
+      perche' il solo vincolo DB darebbe un errore di integrita' illeggibile:
+        (a) migration: il pivot passa da UNIQUE(`work_order_id`,`quote_line_id`) a
+            UNIQUE(`quote_line_id`). Copre anche il caso precedente (una riga non puo' stare due
+            volte nemmeno nella stessa commessa), quindi il vincolo vecchio non serve piu'.
+        (b) `WorkOrderLineWriter`: nuovo `assertNotAlreadyProgrammed()` che rifiuta con 422 su
+            `quote_line_ids`, nominando la commessa occupante, PRIMA di toccare il DB. In update,
+            le righe gia' appartenenti ALLA COMMESSA CORRENTE sono ovviamente ammesse.
+      La migration deve gestire il dato esistente: se in produzione esistessero gia' righe
+      condivise fra commesse la `unique` fallirebbe. Va incluso un controllo esplicito.
+    </decision>
+    <decision id="D-5">
+      Relazione inversa mancante: `QuoteLine::workOrders(): BelongsToMany` verso `WorkOrder`
+      tramite `quote_line_work_order`. E' il pezzo simmetrico che oggi manca ed e' cio' che rende
+      esprimibili sia il flag "gia' programmata" sia il vincolo D-4 senza query sparse.
+    </decision>
+    <decision id="D-6">
+      Endpoint DEDICATO per il form: `GET /api/contracts/{contract}/programmable-lines`.
+      Motivo della scelta contro le due alternative:
+      - NON si arricchisce `QuoteLineResource`: e' condivisa da Offerte e Gestione Richieste, e
+        aggiungerci l'occupazione da commessa imporrebbe un eager load a contesti che non la usano.
+      - NON basta `quote-offer-lines/for-select`: restituisce `{id,label,sort_order}`, mancano
+        categoria, quantita' e unita' di misura richieste dal brief.
+      Restituisce le righe REVENUE dell'offerta del contratto con i campi di visualizzazione E
+      l'occupazione (`work_order` = la commessa che gia' la usa, o null). Gate: `contracts.program`.
+    </decision>
+    <decision id="D-7">
+      Il picker gia' esistente nel form Commessa (`work-order-quote-lines-field.tsx`, alimentato da
+      `quote-offer-lines/for-select`) deve rispettare D-4: l'endpoint esclude le righe gia'
+      programmate, TRANNE quelle della commessa in modifica (parametro `except_work_order_id`).
+      Senza questo, il form Commessa offrirebbe righe che il salvataggio poi rifiuta con 422.
+    </decision>
+    <decision id="D-8">
+      Tab "Commesse" nel dettaglio Contratto: si monta la STESSA `TableView` con
+      `domain="work-orders"` e i medesimi `workOrderColumnRenderers`, filtrata via `rowScope`.
+      Si ricalca 1:1 il precedente `OpportunityQuotesSection` (spec 0067). Lo scope e' `quoteId`
+      (non `contractId`): Contratto e Offerta sono 1:1 e `work_orders.quote_id` esiste gia', quindi
+      il filtro e' un `where` diretto senza join. Nuovo decorator
+      `App\Tables\WorkOrders\QuoteScopedTableDefinition` + wrap in `TableRegistry::resolve()`.
+      VIETATO scrivere una seconda tabella Commesse.
+    </decision>
+    <decision id="D-9">
+      Le azioni di riga della tabella Commesse vengono ESTRATTE da `work-orders-table.tsx` in un
+      hook condiviso `useWorkOrderRowActions({onMutated, forceMode})`, consumato sia dalla pagina
+      sia dal tab. E' esattamente quanto fatto per `useQuoteRowActions` dopo che la duplicazione
+      aveva causato una divergenza reale (documentata in `use-opportunity-quotes-panel.ts:43-48`).
+      Nel tab si usa `forceMode: OPEN_MODE_MODAL`, cosi' aprire una commessa non porta via
+      l'utente dal contratto.
+    </decision>
+    <decision id="D-10">
+      Collocazione del tab: NON nella card di collaborazione (colonna destra `minmax(0,4fr)`,
+      troppo stretta per toolbar + griglia + filtri). Va in una `RecordCard` a piena larghezza
+      sotto la griglia a due colonne, come `OpportunityQuotesSection`.
+    </decision>
+    <decision id="D-11">
+      Campi del form "Programma": `title` (obbligatorio) e `type` (obbligatorio, default
+      `processing`) perche' sono NOT NULL su `work_orders`, piu' la selezione righe (almeno una).
+      `callback_date`, `description`, `internal_notes` NON sono nel form: si compilano dopo dal
+      form Commessa, che gia' esiste. Niente campi speculativi in un dialog di generazione.
+    </decision>
+    <decision id="D-12">
+      D-13 della spec 0093 (nessuna creazione dalla pagina elenco Commesse) resta VALIDA e ora
+      trova il suo punto d'ingresso: la creazione avviene dal Contratto. `POST /api/work-orders`
+      resta invariato e autorizzato: e' l'API, non l'affordance.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Rimozione dell'apparato `schedule` (BE + FE + test + i18n), D-1.</item>
+      <item>Ability `contracts.program`, `ContractActionAvailability::mayProgram()`, `ContractPolicy`, `ContractsAuthorization` (actions + actionPermissions), catalogo azioni tabella Contratti.</item>
+      <item>`GET /api/contracts/{contract}/programmable-lines` + request/resource/service.</item>
+      <item>`POST /api/contracts/{contract}/work-orders` (genera UNA commessa dalle righe selezionate) che delega a `WorkOrderService::create()`.</item>
+      <item>Migration: pivot `quote_line_work_order` UNIQUE(`quote_line_id`), con controllo del dato esistente.</item>
+      <item>`QuoteLine::workOrders()`; `WorkOrderLineWriter::assertNotAlreadyProgrammed()`.</item>
+      <item>`quote-offer-lines/for-select`: esclusione righe programmate + `except_work_order_id` (D-7).</item>
+      <item>`QuoteScopedTableDefinition` + wrap in `TableRegistry`; `quoteId` in `TableRowScope`, `ssrm-datasource`, `TableRowsRequest`/`TableValuesRequest`/`TableColumnsRequest`/`TableController`/`CreateExportRequest`.</item>
+      <item>FE: `ContractProgramDialog` (tabella righe con checkbox, prodotto/categoria/quantita'/UM, righe occupate disabilitate), bottone "Programma" nella barra azioni, `contractLifecycleActions` aggiornato.</item>
+      <item>FE: `useWorkOrderRowActions` estratto (D-9) e sezione `ContractWorkOrdersSection` (D-8/D-10).</item>
+      <item>i18n it/en; test Pest e Vitest ESEGUITI.</item>
+    </in>
+    <out>
+      <item>Colonna `work_orders.contract_id`: il legame passa dall'Offerta (Contratto 1:1 Offerta).</item>
+      <item>Modifiche a `expiry_date`/`renewal_date` e all'azione `change-status`.</item>
+      <item>Arricchimento di `QuoteLineResource` (D-6).</item>
+      <item>Generazione automatica di una commessa per riga (D-3).</item>
+      <item>Campi extra nel dialog di generazione oltre a title/type (D-11).</item>
+      <item>Reintroduzione della creazione dalla pagina elenco Commesse (spec 0093 D-13).</item>
+      <item>Pulizia automatica della riga permesso `contracts.schedule` dal DB: va fatta a mano e dichiarata (D-2).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/contracts/{contract}/programmable-lines">
+      <request>route model binding. Gate: `contracts.program` + `mayProgram($contract)`.</request>
+      <response status="200">
+        { success: true, message: "OK", data: [
+            { id: int, sort_order: int,
+              product: { id, code, name, category: {id,name}|null }|null,
+              quantity: "2.00",
+              unit_of_measure: { id, name, symbol }|null,
+              work_order: { id: int, code: "COM-0001" }|null   // occupata -> non selezionabile
+            } ] }
+        Solo righe REVENUE dell'offerta del contratto, ordinate per `sort_order`.
+      </response>
+      <errors>401; 403 senza `contracts.program` o con contratto in stato non programmabile; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/work-orders">
+      <request>
+        { title: string REQUIRED (max 191),
+          type: "processing" | "project" REQUIRED,
+          quote_line_ids: int[] REQUIRED, min 1 }
+        `quote_id` NON e' un input: si ricava da `$contract->quote_id` (nessun mismatch possibile).
+      </request>
+      <response status="201">
+        { success: true, message: "Created", data: &lt;WorkOrderDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
+        Shape identica a spec 0093: nessuna seconda forma di Commessa.
+      </response>
+      <errors>401; 403; 404; 422 se una riga non appartiene all'offerta del contratto, non e'
+        REVENUE, o e' GIA' programmata in un'altra commessa (messaggio che nomina la commessa).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/quote-offer-lines/for-select">
+      <request>invariata + `except_work_order_id?: int` (D-7).</request>
+      <response status="200">invariata; esclude le righe gia' programmate, tranne quelle della
+        commessa indicata da `except_work_order_id`.</response>
+      <errors>invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/work-orders/rows">
+      <request>invariata + `quoteId?: int` (chiave OMESSA quando assente: payload byte-identico
+        per ogni chiamante esistente).</request>
+      <response status="200">stesse colonne e stesse azioni della spec 0093, filtrate
+        su `work_orders.quote_id`.</response>
+      <errors>403 senza `work-orders.viewAny`.</errors>
+    </endpoint>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">L'apparato `schedule` non esiste piu': `POST /contracts/{id}/schedule` risponde 404, e nel repo non restano `ContractScheduleController`, `ScheduleContractRequest`, `ScheduleContractData`, `ContractActionService::schedule()`, `contract-schedule-dialog.tsx` ne' le loro chiavi i18n.</criterion>
+    <criterion id="AC-002">`expiry_date` e `renewal_date` restano modificabili via `PATCH /api/contracts/{id}` esattamente come prima (nessuna regressione sui test esistenti).</criterion>
+    <criterion id="AC-003">`POST /contracts/{id}/change-status` continua a funzionare invariato.</criterion>
+    <criterion id="AC-010">`permissions:sync` crea `contracts.program`; `ContractPolicy::abilities()` non espone piu' `schedule`. Il report finale dichiara se la riga `contracts.schedule` resta nel DB e come rimuoverla.</criterion>
+    <criterion id="AC-011">Il bottone "Programma" compare solo con contratto in gruppo `ClosedWon` E permesso `contracts.program`; in ogni altro stato non e' presente. Non e' piu' renderizzato disabilitato.</criterion>
+    <criterion id="AC-020">`GET /contracts/{id}/programmable-lines` restituisce SOLO le righe REVENUE dell'offerta del contratto, ordinate per `sort_order`, ciascuna con prodotto, categoria, quantita' e unita' di misura.</criterion>
+    <criterion id="AC-021">Una riga gia' usata da una commessa arriva con `work_order: {id, code}` valorizzato; una libera con `null`.</criterion>
+    <criterion id="AC-022">Le righe di COSTO non compaiono mai.</criterion>
+    <criterion id="AC-030">`POST /contracts/{id}/work-orders` con 2 righe libere crea UNA commessa con esattamente quelle 2 righe e un `code` `COM-000N` progressivo.</criterion>
+    <criterion id="AC-031">Ripetendo l'azione sullo STESSO contratto con altre righe si ottiene una SECONDA commessa: un contratto puo' averne piu' di una.</criterion>
+    <criterion id="AC-032">Inviare una riga gia' programmata in un'altra commessa da 422 su `quote_line_ids`, con messaggio che nomina la commessa occupante, e NON crea nulla (nessuna scrittura parziale).</criterion>
+    <criterion id="AC-033">Inviare una riga di un'ALTRA offerta, o una riga COST, da 422.</criterion>
+    <criterion id="AC-034">`quote_line_ids` vuoto o assente da 422: una commessa senza righe non e' generabile da questo flusso.</criterion>
+    <criterion id="AC-035">La commessa generata e' indistinguibile da una creata via `POST /api/work-orders`: stessa shape, stesso `WorkOrderService::create()`, stesso formato di codice.</criterion>
+    <criterion id="AC-040">Il pivot ha UNIQUE su `quote_line_id`: due commesse non possono condividere la stessa riga nemmeno forzando a DB. `down()` ripristina il vincolo di coppia.</criterion>
+    <criterion id="AC-041">La migration rileva ed espone esplicitamente l'eventuale dato preesistente incompatibile invece di fallire con un errore di integrita' opaco.</criterion>
+    <criterion id="AC-042">`PATCH /api/work-orders/{id}` che rinvia le righe GIA' proprie della commessa continua a funzionare (non vengono scambiate per duplicati).</criterion>
+    <criterion id="AC-043">`GET /quote-offer-lines/for-select?quote_id=N` non elenca le righe gia' programmate; con `except_work_order_id=X` rimette quelle della commessa X.</criterion>
+    <criterion id="AC-050">Il tab "Commesse" del dettaglio Contratto mostra tutte e sole le commesse dell'offerta di quel contratto.</criterion>
+    <criterion id="AC-051">Il tab usa `TableView domain="work-orders"`: nessuna seconda definizione di tabella, nessun secondo set di renderer.</criterion>
+    <criterion id="AC-052">Le azioni di riga (apri, modifica, elimina, attivita') funzionano dal tab come dalla pagina Commesse, aprendo in modale senza abbandonare il contratto.</criterion>
+    <criterion id="AC-053">Il payload di `POST /api/tables/work-orders/rows` inviato dalla PAGINA Commesse resta byte-identico a prima (chiave `quoteId` omessa quando assente).</criterion>
+    <criterion id="AC-054">La tabella Commesse non scoped continua a mostrare tutte le commesse (nessuna regressione da spec 0093).</criterion>
+    <criterion id="AC-060">Nel dialog "Programma" le righe gia' programmate sono visibili ma NON selezionabili, con indicazione della commessa che le occupa.</criterion>
+    <criterion id="AC-061">Il submit e' bloccato senza almeno una riga selezionata, e senza titolo.</criterion>
+    <criterion id="AC-062">Dopo la generazione il dialog si chiude, la tabella del tab "Commesse" si aggiorna e compare la nuova commessa senza ricaricare la pagina.</criterion>
+    <criterion id="AC-063">Le chiavi i18n it/en dei nuovi testi hanno lo stesso insieme di foglie e nessuna stringa vuota; le chiavi di `schedule` sono rimosse da entrambe.</criterion>
+    <criterion id="AC-064">L'invariante "il rinnovo non cade dopo la scadenza", che viveva in `ScheduleContractRequest` (`before_or_equal:expiry_date`), sopravvive sul canale superstite: `PATCH /api/contracts/{id}` con `renewal_date` successiva a `expiry_date` risponde 422. Vale anche in PATCH PARZIALE, confrontando col valore gia' persistito quando l'altro campo non e' inviato. Se una delle due date e' null, nessun vincolo si applica.</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza.</item>
+    <item>Authz server-side su ogni nuovo endpoint; lo scope di tabella non e' un permesso: `work-orders.viewAny` resta richiesto.</item>
+    <item>`quote_id` della generazione viene dal contratto lato server, MAI dal client.</item>
+    <item>Riuso obbligatorio: `WorkOrderService::create()`, `WorkOrderLineWriter`, `TableView`+`workOrderColumnRenderers`, `OpportunityScopedTableDefinition` come modello. Vietate seconde implementazioni.</item>
+    <item>`DelegatesUnaugmentedTableMethods` per il decorator: nessun metodo passthrough riscritto a mano.</item>
+    <item>Nessun `whereRaw`/`orderByRaw` da input; nessun model Eloquent raw fuori dalle Resource.</item>
+    <item>File entro 300/500 righe; nessuna emoticon; nessun .md non richiesto.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint, ESLint, `cd frontend &amp;&amp; npx tsc -b --force` (MAI `--noEmit`).</item>
+  </constraints>
+
+</spec>

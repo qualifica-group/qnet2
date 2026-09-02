@@ -19,7 +19,7 @@ if (! function_exists('contractAuthUserWith')) {
      */
     function contractAuthUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'] as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
         }
 
@@ -40,13 +40,30 @@ if (! function_exists('contractAuthUserWith')) {
 it('AC-037: permissions:sync creates the 5 contracts domain permissions and never create/delete', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'] as $ability) {
+    foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'] as $ability) {
         expect(Permission::where('name', "contracts.{$ability}")->exists())->toBeTrue();
     }
 
     expect(Permission::where('name', 'contracts.create')->exists())->toBeFalse()
         ->and(Permission::where('name', 'contracts.delete')->exists())->toBeFalse()
         ->and(Permission::where('name', 'contracts.import')->exists())->toBeFalse();
+});
+
+// ---------------------------------------------------------------------------
+// AC-010 (spec 0095, D-2) — permissions:sync CREATES contracts.program but
+// never PRUNES the retired contracts.schedule: a stale permission row (and
+// any role assignment on it) survives the rename and must be removed by
+// hand. Documented, not assumed — see App\Console\Commands\SyncPermissions,
+// which only ever calls Permission::firstOrCreate().
+// ---------------------------------------------------------------------------
+
+it('AC-010: permissions:sync never prunes the retired contracts.schedule permission', function () {
+    $stale = Permission::findOrCreate('contracts.schedule');
+
+    $this->artisan('permissions:sync')->assertSuccessful();
+
+    expect(Permission::where('name', 'contracts.program')->exists())->toBeTrue()
+        ->and(Permission::query()->whereKey($stale->id)->exists())->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------
@@ -67,7 +84,7 @@ it('AC-038: GET /api/meta/contracts lists the 9 fields and 7 actions', function 
     ]);
 
     expect(array_keys($response->json('permissions.actions')))->toEqual([
-        'validate', 'terminate', 'schedule', 'change_status', 'reactivate', 'export', 'view_activity',
+        'validate', 'terminate', 'program', 'change_status', 'reactivate', 'export', 'view_activity',
     ]);
 });
 

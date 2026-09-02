@@ -34,6 +34,12 @@ export interface MentionTextareaProps {
   value: string
   /** Emits the updated body and the FULL set of mentioned ids currently present in the body. */
   onChange: (value: string, mentions: number[]) => void
+  /**
+   * The candidate just inserted. The body tokens keep only `{name, id}`, so
+   * this is the composer's only chance to learn the picked user's avatar and
+   * render the same one the rest of the app shows.
+   */
+  onMentionPicked?: (item: ForSelectItem) => void
   entityType: string
   entityId: number
   placeholder?: string
@@ -61,6 +67,7 @@ export interface MentionTextareaProps {
 export function MentionTextarea({
   value,
   onChange,
+  onMentionPicked,
   entityType,
   entityId,
   placeholder,
@@ -167,6 +174,7 @@ export function MentionTextarea({
     pendingCaretRef.current = triggerStart + insertion.length
     // The picked user is not among the body's previous refs yet, hence the extra entry.
     emitDisplayText(nextDisplay, [...mentionRefs, { id: item.id, name: item.label }])
+    onMentionPicked?.(item)
     closePicker()
   }
 

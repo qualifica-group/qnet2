@@ -21,6 +21,7 @@ use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
+use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,6 +69,7 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
             $this->scopeToProductCategory($definition, $request->productCategoryId());
             $this->scopeToOpportunity($definition, $request->opportunityId());
+            $this->scopeToQuote($definition, $request->quoteId());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -204,6 +206,8 @@ class TableController extends BaseApiController
             $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId);
             $opportunityId = $payload['opportunityId'] ?? null;
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
+            $quoteId = $payload['quoteId'] ?? null;
+            $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
 
             $result = $this->service->rows($definition, $actor, $payload);
 
@@ -271,6 +275,7 @@ class TableController extends BaseApiController
             $payload = $request->payload();
             $this->scopeToProductCategory($definition, $payload['productCategoryId']);
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
+            $this->scopeToQuote($definition, $payload['quoteId']);
 
             $result = $this->service->distinctValues(
                 $definition,
@@ -367,6 +372,20 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof OpportunityScopedTableDefinition) {
             $definition->scopeToOpportunity($opportunityId);
+        }
+    }
+
+    /**
+     * Spec 0095: narrows a `QuoteScopedTableDefinition` (only `work-orders`)
+     * to one Quote's own Commesse. A no-op for every other domain. Never
+     * called from `savePreferences()`/`saveFilters()`/`resetPreferences()`/
+     * `resetFilters()`/`bulkDelete()`/`updateRow()`, mirroring
+     * `scopeToOpportunity()`.
+     */
+    private function scopeToQuote(TableDefinition $definition, ?int $quoteId): void
+    {
+        if ($definition instanceof QuoteScopedTableDefinition) {
+            $definition->scopeToQuote($quoteId);
         }
     }
 }

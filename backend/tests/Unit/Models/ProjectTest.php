@@ -4,6 +4,7 @@ use App\Models\Campaign;
 use App\Models\Concerns\LogsModelActivity;
 use App\Models\PipelineStatus;
 use App\Models\Project;
+use App\Models\ProjectProductLine;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
@@ -25,12 +26,23 @@ it('creates the projects table with the expected columns', function () {
     expect(Schema::hasTable('projects'))->toBeTrue();
     expect(Schema::hasColumns('projects', [
         'id', 'code', 'name', 'description', 'pipeline_status_id',
-        'business_function_id', 'state_id', 'product_category_id',
-        'partner_id', 'start_date', 'end_date', 'total_budget', 'target_lead',
-        'created_at', 'updated_at',
+        'state_id', 'partner_id', 'start_date', 'end_date', 'total_budget',
+        'target_lead', 'created_at', 'updated_at',
     ]))->toBeTrue();
     expect(Schema::hasColumn('projects', 'registry_id'))->toBeFalse();
     expect(Schema::hasColumn('projects', 'source_id'))->toBeFalse();
+    // Spec 0094, D-1/D-2: the former single-pair columns are DROPPED — the
+    // collection now lives in project_product_lines.
+    expect(Schema::hasColumn('projects', 'business_function_id'))->toBeFalse();
+    expect(Schema::hasColumn('projects', 'product_category_id'))->toBeFalse();
+});
+
+it('creates the project_product_lines table with the expected columns (AC-001)', function () {
+    expect(Schema::hasTable('project_product_lines'))->toBeTrue();
+    expect(Schema::hasColumns('project_product_lines', [
+        'id', 'project_id', 'business_function_id', 'product_category_id',
+        'created_at', 'updated_at',
+    ]))->toBeTrue();
 });
 
 it('code is unique at the database level', function () {
@@ -74,6 +86,18 @@ it('campaigns() is a HasMany relation to Campaign', function () {
 
     expect($relation)->toBeInstanceOf(HasMany::class);
     expect($relation->getRelated())->toBeInstanceOf(Campaign::class);
+});
+
+it('productLines() is a HasMany ProjectProductLine (spec 0094)', function () {
+    $relation = (new Project)->productLines();
+
+    expect($relation)->toBeInstanceOf(HasMany::class);
+    expect($relation->getRelated())->toBeInstanceOf(ProjectProductLine::class);
+});
+
+it('a fresh project carries no product line by default; withProductLine() opts one in', function () {
+    expect(Project::factory()->create()->productLines)->toBeEmpty();
+    expect(Project::factory()->withProductLine()->create()->productLines)->toHaveCount(1);
 });
 
 it('casts total_budget to decimal:2 and target_lead to int', function () {

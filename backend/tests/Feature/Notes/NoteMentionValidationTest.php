@@ -5,8 +5,10 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -105,10 +107,34 @@ it('matching token and mentions[] -> 201, mentions ordered by first appearance, 
         'mentions' => [$mentioned->id],
     ])->assertCreated();
 
-    expect($response->json('data.mentions'))->toBe([['id' => $mentioned->id, 'name' => 'Tizio Caio']]);
+    expect($response->json('data.mentions'))->toBe([['id' => $mentioned->id, 'name' => 'Tizio Caio', 'avatar_url' => null]]);
 
     $noteId = $response->json('data.id');
     expect(DB::table('note_mentions')->where('note_id', $noteId)->count())->toBe(1);
+});
+
+it('a mention carries the user avatar so the chip matches the avatar shown elsewhere', function () {
+    Storage::fake('local');
+
+    $actor = noteActor(['request-management.view', 'notes.create']);
+    $opportunity = noteManagedOpportunity($actor);
+    $mentioned = User::factory()->create(['name' => 'Tizio Caio']);
+    $mentioned->attach(UploadedFile::fake()->image('avatar.png'), User::AVATAR_COLLECTION);
+    grantMentionAccess($opportunity, $mentioned);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/notes', [
+        'entity_type' => 'request-management',
+        'entity_id' => $opportunity->id,
+        'body' => "Hey @[Tizio Caio](user:{$mentioned->id})",
+        'mentions' => [$mentioned->id],
+    ])->assertCreated();
+
+    $mention = $response->json('data.mentions.0');
+
+    expect($mention['id'])->toBe($mentioned->id)
+        ->and($mention['avatar_url'])->toStartWith('data:image/')
+        ->and($mention['avatar_url'])->toContain(';base64,');
 });
 
 // ---------------------------------------------------------------------------

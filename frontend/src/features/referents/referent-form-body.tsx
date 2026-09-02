@@ -13,6 +13,8 @@ import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
 import { cardOwnerRef } from '@/features/personal-data/drafts'
+import type { BlockedSection } from '@/features/personal-data/personal-data-issues'
+import { useRevealBlockedSection } from '@/features/personal-data/use-reveal-blocked-section'
 import { DetailsTabContent } from '@/features/referents/referent-form-details-tab'
 import { ReferentDuplicateWarning } from '@/features/referents/referent-duplicate-warning'
 import { useReferentDuplicateCheck } from '@/features/referents/use-referent-duplicate-check'
@@ -36,6 +38,13 @@ interface ReferentFormBodyProps {
 /** One entry in the tab strip: its value, label, icon, and gating flags. */
 /** Tab selected when the form opens. */
 const DEFAULT_TAB = 'account'
+
+/** Which tab owns each anagraphic block, for the reveal on a refused save. */
+const TAB_OF_SECTION: Record<BlockedSection, string> = {
+  card: 'account',
+  contacts: 'contactInfo',
+  addresses: 'contactInfo',
+}
 
 interface ReferentFormTab {
   value: string
@@ -69,11 +78,17 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
     profileDraft,
     setProfileDraft,
     profileValid,
+    revalidateSignal,
+    blockedSection,
     selectedReferentTypeItem,
     selectedUserItem,
     onSubmit,
     personalDataFieldPermission,
   } = useReferentForm({ mode, onSuccess })
+
+  // A highlighted field on a hidden tab is no highlight at all: a refused save
+  // brings its own block on screen.
+  useRevealBlockedSection(revalidateSignal, blockedSection, TAB_OF_SECTION, setActiveTab)
   const { matches: duplicateMatches } = useReferentDuplicateCheck({ mode, profileDraft })
 
   // Section visibility, read from the same authorization context `MetaField`
@@ -136,6 +151,7 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
                   value={profileDraft}
                   onChange={setProfileDraft}
                   fieldPermission={personalDataFieldPermission}
+                  revalidateSignal={revalidateSignal}
                 />
               </FormSection>
 

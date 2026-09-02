@@ -19,7 +19,7 @@ const patchMock = vi.mocked(apiClient.patch)
 const PERMISSIONS = {
   resource: { view: true, create: false, update: false, delete: false, export: true, import: false },
   fields: {},
-  actions: { validate: false, schedule: true, terminate: true, reactivate: false, change_status: false },
+  actions: { validate: false, program: true, terminate: true, reactivate: false, change_status: false },
 }
 
 function envelope() {

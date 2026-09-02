@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'operator_id',
   'state_id',
   'notes',
+  'products_of_interest',
   'convert_to_opportunity',
 ] as const
 
@@ -73,6 +74,7 @@ export function useLeadForm({ mode, onSuccess }: UseLeadFormArgs) {
         state_id: lead.state_id ?? null,
         notes: lead.notes,
         extra_fields: recordToEntries(lead.extra_fields),
+        products_of_interest: (lead.products_of_interest ?? []).map((product) => product.id),
         // Create-only control (spec 0044): edit mode never renders the
         // checkbox, so it always defaults to false here.
         convert_to_opportunity: false,
@@ -87,6 +89,7 @@ export function useLeadForm({ mode, onSuccess }: UseLeadFormArgs) {
       state_id: null,
       notes: null,
       extra_fields: [],
+      products_of_interest: [],
       convert_to_opportunity: canConvertToOpportunity,
     }
   }, [mode, canConvertToOpportunity])

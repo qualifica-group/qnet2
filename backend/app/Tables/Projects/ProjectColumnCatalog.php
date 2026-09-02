@@ -9,14 +9,19 @@ namespace App\Tables\Projects;
  *
  * `code`/`name`/`start_date`/`end_date`/`total_budget`/`target_lead`/
  * `created_at` are real DB columns handled entirely by the generic engine.
- * `pipeline_status`/`business_function`/`country`/
- * `state`/`province`/`city`/`product_category`/`partner` have no real column
- * of their own (each is the related row's name) and are DERIVED, resolved by
- * ProjectsTableDefinition — only `pipeline_status` is sortable (a
- * correlated subquery per spec 0023 table_definitions); the rest are
- * filterable-only. `geo_scope` (spec 0027, D-2) is a purely COMPUTED,
+ * `pipeline_status`/`country`/`state`/`province`/`city`/`partner` have no
+ * real column of their own (each is the related row's name) and are
+ * DERIVED, resolved by ProjectsTableDefinition — only `pipeline_status` is
+ * sortable (a correlated subquery per spec 0023 table_definitions); the rest
+ * are filterable-only. `geo_scope` (spec 0027, D-2) is a purely COMPUTED,
  * DISPLAY-ONLY column: neither sortable nor filterable (no real value to
  * join/sort on), mirroring PipelineStatusColumnCatalog's `color`.
+ *
+ * `business_function`/`product_category` (spec 0094) are AGGREGATED
+ * (to-many, via `productLines`) columns, resolved by ProjectRelationColumns
+ * — filterable (`set` widget) but never sortable, same as before their
+ * amendment: no shape change to this catalogue, only to how
+ * ProjectsTableDefinition resolves them.
  */
 final class ProjectColumnCatalog
 {

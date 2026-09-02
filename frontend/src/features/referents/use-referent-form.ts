@@ -9,13 +9,15 @@ import { toast } from 'sonner'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
+import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
-  areCreateContactsValid,
-  hasPhoneContact,
-  isCreateAddressValid,
-} from '@/features/personal-data/create-validation'
+  describeAddressIssues,
+  describeCardIssues,
+  describeContactIssues,
+  isPersonalDataCardValid,
+  type BlockedSection,
+} from '@/features/personal-data/personal-data-issues'
 import { cardToDraft, emptyPersonalDataDraft } from '@/features/personal-data/drafts'
-import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type {
   PersonalDataDraft,
   PersonalDataFieldPermission,
@@ -113,6 +115,10 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
   }
 
   const [serverError, setServerError] = useState<string | null>(null)
+  // Bumped on every refused save so the buffered card marks its own missing
+  // fields (it takes no part in this form's submit — see PersonalDataCardForm).
+  const [revalidateSignal, setRevalidateSignal] = useState(0)
+  const [blockedSection, setBlockedSection] = useState<BlockedSection | null>(null)
   const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(() =>
     mode.type === 'edit' && mode.referent.personal_data
       ? cardToDraft(mode.referent.personal_data)
@@ -187,36 +193,39 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
   // one): block the save until the required identity fields are valid. The
   // card form shows the field-level messages inline.
   const profileValid = useMemo(
-    () =>
-      buildPersonalDataSchema(t).safeParse({
-        type: profileDraft.type,
-        first_name: profileDraft.first_name ?? undefined,
-        last_name: profileDraft.last_name ?? undefined,
-        company_name: profileDraft.company_name ?? undefined,
-        tax_code: profileDraft.tax_code ?? undefined,
-        vat_number: profileDraft.vat_number ?? undefined,
-        birth_date: profileDraft.birth_date ?? undefined,
-      }).success,
+    () => isPersonalDataCardValid(profileDraft, t),
     [profileDraft, t],
   )
+
+  /**
+   * Refuses the save: names the offending fields in the banner, marks them
+   * inline, and records which block the owner form has to bring into view.
+   */
+  const refuse = (section: BlockedSection, messageKey: string, fields: string[]): void => {
+    setServerError(t(messageKey, { fields: fields.join(' · ') }))
+    setBlockedSection(section)
+    setRevalidateSignal((signal) => signal + 1)
+  }
 
   const onSubmit = async (values: ReferentFormValues) => {
     setServerError(null)
 
     if (!profileValid) {
-      setServerError(t('personalData.section.incomplete'))
+      refuse('card', 'personalData.section.incomplete', describeCardIssues(profileDraft, t))
       return
     }
 
     // Create only: the quick-create fields are fully controlled and never
     // block typing, so an invalid buffer is caught once, right here.
     if (mode.type === 'create') {
-      if (!isCreateAddressValid(profileDraft.addresses)) {
-        setServerError(t('personalData.section.addressIncomplete'))
+      const addressIssues = describeAddressIssues(profileDraft.addresses, t)
+      if (addressIssues.length > 0) {
+        refuse('addresses', 'personalData.section.addressIncomplete', addressIssues)
         return
       }
-      if (!areCreateContactsValid(profileDraft.contacts, t)) {
-        setServerError(t('personalData.section.contactsInvalid'))
+      const contactIssues = describeContactIssues(profileDraft.contacts, t)
+      if (contactIssues.length > 0) {
+        refuse('contacts', 'personalData.section.contactsInvalid', contactIssues)
         return
       }
       // A referent must be reachable by phone (user directive 2026-07-31);
@@ -277,6 +286,8 @@ export function useReferentForm({ mode, onSuccess }: UseReferentFormArgs) {
     profileDraft,
     setProfileDraft,
     profileValid,
+    revalidateSignal,
+    blockedSection,
     selectedReferentTypeItem,
     selectedUserItem,
     onSubmit,

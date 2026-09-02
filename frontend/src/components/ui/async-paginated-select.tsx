@@ -264,10 +264,15 @@ export function AsyncPaginatedSelect({
         {triggerLabel !== null ? (
           <span className="flex flex-1 items-center gap-2 overflow-hidden">
             {showAvatar ? (
+              // The avatar is tinted by the option's own label: while the
+              // selection is still hydrating `triggerLabel` is the `#id`
+              // placeholder, which would hash to an unrelated color and make
+              // the same person look different here than in the grid.
               <UserAvatar
-                name={triggerLabel}
+                name={selected?.label ?? ''}
                 src={selected?.avatar_url}
-                className="size-6 shrink-0 text-xs"
+                size="sm"
+                className="shrink-0"
               />
             ) : null}
             <span className="truncate">{triggerLabel}</span>
@@ -393,7 +398,7 @@ export function AsyncPaginatedSelect({
                         <UserAvatar
                           name={item.label}
                           src={item.avatar_url}
-                          className="size-7 shrink-0 text-xs"
+                          className="shrink-0"
                         />
                       ) : null}
                       <span className="flex min-w-0 flex-col">
@@ -435,7 +440,7 @@ function OptionsSkeleton({ showAvatar = false }: { showAvatar?: boolean }) {
         <div key={index} className="flex items-center gap-2 px-2 py-1.5">
           <Skeleton className="size-4 shrink-0 rounded-sm" />
           {showAvatar ? (
-            <Skeleton className="size-7 shrink-0 rounded-full" />
+            <Skeleton className="size-8 shrink-0 rounded-full" />
           ) : null}
           <div className="flex-1 space-y-1.5">
             <Skeleton className="h-3.5 w-[55%]" />

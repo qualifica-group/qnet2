@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\PipelineStatus;
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,7 +55,7 @@ it('GET /api/tables/campaigns/columns: 200 with the declared columns, 403 withou
 
     $ids = collect($data['columns'])->pluck('id')->all();
     expect($ids)->toBe([
-        'id', 'code', 'project', 'name', 'pipeline_status',
+        'id', 'code', 'project', 'name', 'pipeline_status', 'business_function', 'product_category',
         'country', 'state', 'province', 'city', 'geo_scope', 'operational_site',
         'start_date', 'end_date', 'total_budget', 'target_lead', 'created_at',
     ]);
@@ -66,7 +68,12 @@ it('GET /api/tables/campaigns/columns: 200 with the declared columns, 403 withou
         ->and($columns['id']['filterType'])->toBeNull()
         ->and($columns['project']['sortable'])->toBeTrue()
         ->and($columns['pipeline_status']['sortable'])->toBeFalse()
-        ->and($columns['pipeline_status']['filterType'])->toBe('set');
+        ->and($columns['pipeline_status']['filterType'])->toBe('set')
+        // Spec 0094, AC-025/AC-027: AGGREGATED (to-many) columns, never sortable.
+        ->and($columns['business_function']['sortable'])->toBeFalse()
+        ->and($columns['business_function']['filterType'])->toBe('set')
+        ->and($columns['product_category']['sortable'])->toBeFalse()
+        ->and($columns['product_category']['filterType'])->toBe('set');
 });
 
 // ---------------------------------------------------------------------------
@@ -218,4 +225,86 @@ it('row.actions omits duplicate for an actor without campaigns.create', function
         ->assertOk()->json('items'));
 
     expect($items->firstWhere('id', $campaign->id)['actions'])->not->toContain('duplicate');
+});
+
+// ---------------------------------------------------------------------------
+// AC-025/AC-026/AC-027 — business_function/product_category AGGREGATED
+// (to-many) columns, own-or-through-project (BR-2, mirrors pipeline_status)
+// ---------------------------------------------------------------------------
+
+it('rows: a linked campaign shows the PROJECT\'s product lines, comma-joined (AC-027)', function () {
+    $actor = campaignUserWith(['viewAny']);
+    $function = BusinessFunction::factory()->create(['name' => 'Marketing']);
+    $category = ProductCategory::factory()->create(['business_function_id' => $function->id, 'name' => 'Widgets']);
+    $project = Project::factory()->create();
+    $project->productLines()->create(['business_function_id' => $function->id, 'product_category_id' => $category->id]);
+    $campaign = Campaign::factory()->forProject($project)->create(['name' => 'Linked Row']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/campaigns/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('id', $campaign->id);
+
+    expect($row['business_function'])->toBe('Marketing')
+        ->and($row['product_category'])->toBe('Widgets');
+});
+
+it('rows: a standalone campaign shows its OWN product lines (AC-025)', function () {
+    $actor = campaignUserWith(['viewAny']);
+    $function = BusinessFunction::factory()->create(['name' => 'Sales']);
+    $category = ProductCategory::factory()->create(['business_function_id' => $function->id, 'name' => 'Gadgets']);
+    $campaign = Campaign::factory()->create(['name' => 'Standalone Row']);
+    $campaign->productLines()->delete();
+    $campaign->productLines()->create(['business_function_id' => $function->id, 'product_category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/campaigns/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('id', $campaign->id);
+
+    expect($row['business_function'])->toBe('Sales')
+        ->and($row['product_category'])->toBe('Gadgets');
+});
+
+it('rows: the product_category set filter finds a linked campaign via the project\'s rows, never sorts (AC-025/AC-026/AC-027)', function () {
+    $actor = campaignUserWith(['viewAny']);
+    $category = ProductCategory::factory()->create(['name' => 'Widgets']);
+    $project = Project::factory()->create();
+    $project->productLines()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'product_category_id' => $category->id]);
+    $linked = Campaign::factory()->forProject($project)->create(['name' => 'Matches']);
+    Campaign::factory()->create(['name' => 'Does Not Match']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/campaigns/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['product_category' => ['filterType' => 'set', 'values' => ['Widgets']]],
+    ])->assertOk();
+
+    $ids = collect($response->json('items'))->pluck('id');
+    expect($ids->all())->toBe([$linked->id]);
+
+    $this->postJson('/api/tables/campaigns/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'sortModel' => [['colId' => 'product_category', 'sort' => 'asc']],
+    ])->assertStatus(422)->assertJsonValidationErrors('sortModel.0.colId');
+});
+
+it('the business_function distinct values union own AND linked-project rows, no whereRaw (AC-026)', function () {
+    $actor = campaignUserWith(['viewAny']);
+    $ownFunction = BusinessFunction::factory()->create(['name' => 'Standalone Function']);
+    $standalone = Campaign::factory()->create();
+    $standalone->productLines()->delete();
+    $standalone->productLines()->create(['business_function_id' => $ownFunction->id, 'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $ownFunction->id])->id]);
+
+    $projectFunction = BusinessFunction::factory()->create(['name' => 'Linked Function']);
+    $project = Project::factory()->create();
+    $project->productLines()->create(['business_function_id' => $projectFunction->id, 'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $projectFunction->id])->id]);
+    Campaign::factory()->forProject($project)->create();
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/campaigns/values', ['columnId' => 'business_function'])->assertOk();
+
+    expect($response->json('data.values'))
+        ->toContain('Standalone Function')
+        ->toContain('Linked Function');
 });

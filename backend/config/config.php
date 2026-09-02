@@ -11,6 +11,8 @@ use App\Enums\ProductType;
 use App\Enums\ReferentContactScopeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Enums\SizeClassEnum;
+use App\Enums\WorkOrderStatus;
+use App\Enums\WorkOrderType;
 
 return [
 
@@ -67,6 +69,14 @@ return [
         // list of the `module` advanced filter on the layouts grid, which
         // declares `enumKey: document_layout_module`.
         'document_layout_module' => DocumentLayoutModule::class,
+        // Work order type (spec 0093, D-10): the create form's `type` select
+        // and the work-orders grid's `type` badge, which declares
+        // `enumKey: work_order_type`.
+        'work_order_type' => WorkOrderType::class,
+        // Work order computed status (spec 0093, D-3): never a form field —
+        // registered so the work-orders grid's `status` badge, which
+        // declares `enumKey: work_order_status`, has a catalogue to read.
+        'work_order_status' => WorkOrderStatus::class,
     ],
 
 ];

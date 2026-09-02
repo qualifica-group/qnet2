@@ -77,6 +77,13 @@ interface DataTableProps {
    * for every other domain.
    */
   opportunityId?: number
+  /**
+   * The Contract's Offerta row-set scope (spec 0095 D-8, the Contract
+   * detail's Commesse tab), forwarded to the Set Filter's async values
+   * callback the same way `opportunityId` is. Absent for every domain but
+   * `work-orders`.
+   */
+  quoteId?: number
   /** Backend-driven column schema. */
   columns: TableColumn[]
   /** SSRM datasource feeding the grid. */
@@ -175,6 +182,7 @@ export function DataTable({
   domain,
   productCategoryId,
   opportunityId,
+  quoteId,
   columns,
   datasource,
   blockSize,
@@ -221,6 +229,7 @@ export function DataTable({
         domain,
         productCategoryId,
         opportunityId,
+        quoteId,
         columns,
         cellRenderers,
         renderRowActions,
@@ -233,6 +242,7 @@ export function DataTable({
       domain,
       productCategoryId,
       opportunityId,
+      quoteId,
       columns,
       cellRenderers,
       renderRowActions,

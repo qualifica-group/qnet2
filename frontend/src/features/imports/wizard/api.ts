@@ -23,12 +23,16 @@ import type {
  * per-row operator override (`null` reverts to the run's global default).
  * `operational_site_id` sets/clears the row's per-row operational-site
  * override (`null` clears it — there is no global default to revert to).
+ * `product_ids` sets/clears the row's per-row products-of-interest override
+ * (spec 0094 D-4): `null` reverts to the run's global `product_ids` default,
+ * `[]` is an explicit "no products on this row" override.
  */
 export interface UpdateImportRunRowPayload {
   values?: Record<string, string>
   geo?: GeoValue
   operator_id?: number | null
   operational_site_id?: number | null
+  product_ids?: number[] | null
 }
 
 /**

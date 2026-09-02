@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement;
 
 use App\Models\Opportunity;
-use App\Services\Opportunities\OpportunityProductLineWriter;
 use App\Services\ProductLines\ProductLineSetValidator;
+use App\Services\ProductLines\ProductLineWriter;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -15,8 +15,8 @@ use Illuminate\Validation\ValidationException;
  * request, not only while creating it — the same `product_lines` collection
  * the create form already writes).
  *
- * The replace itself is delegated to the shared OpportunityProductLineWriter,
- * so this channel and the opportunities CRUD sync the collection identically.
+ * The replace itself is delegated to the shared ProductLineWriter, so this
+ * channel and the opportunities CRUD sync the collection identically.
  * What lives HERE is what only this channel needs: the diff — nothing is
  * rewritten, nor logged, when the pairs are unchanged.
  *
@@ -42,7 +42,7 @@ final class RequestProductLineWriter
     private const string ERROR_FIELD = 'product_lines';
 
     public function __construct(
-        private readonly OpportunityProductLineWriter $productLineWriter,
+        private readonly ProductLineWriter $productLineWriter,
         private readonly ProductLineSetValidator $setValidator,
     ) {}
 

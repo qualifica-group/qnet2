@@ -164,9 +164,11 @@ class DemoCampaignSeeder extends Seeder
     }
 
     /**
-     * Campaigns with no project (project_id null): the 4 classification
-     * columns are the campaign's own and required (BR-2), drawn round-robin
-     * across the same lookups DemoProjectSeeder uses.
+     * Campaigns with no project (project_id null): `pipeline_status_id` and
+     * `product_lines` (spec 0094, D-1/D-2 — REPLACING the former
+     * `business_function_id`/`product_category_id` scalars, one coherent row)
+     * are the campaign's own and required (BR-2), drawn round-robin across
+     * the same lookups DemoProjectSeeder uses.
      *
      * @param  Collection<int, PipelineStatus>  $statuses
      * @param  Collection<int, State>  $states
@@ -189,12 +191,11 @@ class DemoCampaignSeeder extends Seeder
                 'name' => $faker->unique()->bs(),
                 'partner_id' => $this->pick($partners, $index)?->id,
                 'pipeline_status_id' => $statuses[$index % $statuses->count()]->id,
-                'business_function_id' => $pair['business_function_id'],
+                'product_lines' => [$pair],
                 'country_id' => $geo['country_id'],
                 'state_id' => $geo['state_id'],
                 'province_id' => $geo['province_id'],
                 'city_id' => $geo['city_id'],
-                'product_category_id' => $pair['product_category_id'],
                 'total_budget' => $faker->boolean(75) ? $faker->randomFloat(2, 500, 60000) : null,
             ]);
         }
@@ -204,8 +205,9 @@ class DemoCampaignSeeder extends Seeder
      * Build the DTO from the given overrides plus shared defaults (dates,
      * target_lead) and create the campaign through the real Service — the
      * derived fields absent from $overrides for a linked campaign are simply
-     * left null, since CreateCampaignData::attributes() forces them null
-     * regardless (BR-2).
+     * left null, since CreateCampaignData::attributes() forces
+     * `pipeline_status_id` null regardless (BR-2), and CampaignService never
+     * syncs `product_lines` when it is null (spec 0094).
      *
      * @param  array<string, mixed>  $overrides
      */
@@ -224,9 +226,8 @@ class DemoCampaignSeeder extends Seeder
             partnerId: $overrides['partner_id'] ?? null,
             operationalSiteId: $overrides['operational_site_id'] ?? null,
             pipelineStatusId: $overrides['pipeline_status_id'] ?? null,
-            businessFunctionId: $overrides['business_function_id'] ?? null,
+            productLines: $overrides['product_lines'] ?? null,
             stateId: $overrides['state_id'] ?? null,
-            productCategoryId: $overrides['product_category_id'] ?? null,
             startDate: $startDate->format('Y-m-d'),
             endDate: $endDate?->format('Y-m-d'),
             totalBudget: $overrides['total_budget'] ?? null,

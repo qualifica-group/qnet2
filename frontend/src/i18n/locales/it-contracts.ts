@@ -75,6 +75,10 @@ export const contracts = {
       contractDocuments: 'Documenti contratto',
       opportunityDocuments: 'Documenti opportunità',
     },
+    workOrders: {
+      title: 'Commesse',
+      countLabel: '{{count}} commesse',
+    },
   },
   actions: {
     // Path PIATTI (stringa), consumati da `features/table/row-actions.tsx`
@@ -83,13 +87,10 @@ export const contracts = {
     // (tooltip/aria-label). Devono restare stringhe, mai oggetti: i
     // contenuti dei dialog vivono nei sibling `*Dialog` sotto.
     validate: 'Valida contratto',
-    schedule: 'Programma contratto',
+    program: 'Programma',
     terminate: 'Disdici contratto',
     reactivate: 'Riapri contratto',
     changeStatus: 'Cambia stato',
-    // "Programma" resta a schermo ma disabilitato: l'azione sara' ripensata
-    // (direttiva utente 2026-08-31).
-    scheduleUnavailable: 'Non ancora disponibile',
 
     statusSearch: 'Cerca stato…',
     statusPlaceholder: 'Seleziona uno stato',
@@ -115,18 +116,24 @@ export const contracts = {
       dateRequired: 'La data di validazione è obbligatoria.',
       dateFuture: 'La data di validazione non può essere futura.',
     },
-    scheduleDialog: {
-      description: 'Imposta la data di scadenza, il rinnovo e lo stato di destinazione.',
-      expiryDate: 'Data di scadenza',
-      renewalDate: 'Data di rinnovo',
-      status: 'Stato di destinazione',
-      confirm: 'Programma',
-      saving: 'Salvataggio…',
-      success: 'Contratto programmato con successo.',
-      genericError: 'Impossibile programmare il contratto. Riprova.',
-      expiryRequired: 'La data di scadenza è obbligatoria.',
-      statusRequired: 'Lo stato di destinazione è obbligatorio.',
-      renewalAfterExpiry: 'La data di rinnovo non può essere successiva alla scadenza.',
+    programDialog: {
+      description: "Seleziona le righe prodotto dell'offerta da assegnare alla nuova commessa.",
+      linesLabel: 'Righe prodotto',
+      linesLoadError: 'Impossibile caricare le righe prodotto. Riprova.',
+      linesEmpty: 'Nessuna riga di ricavo disponibile in questa offerta.',
+      linesRequired: 'Seleziona almeno una riga.',
+      lineSelectHeader: 'Seleziona',
+      lineSelectLabel: 'Seleziona {{name}}',
+      lineProductHeader: 'Prodotto',
+      lineCategoryHeader: 'Categoria',
+      lineQuantityHeader: 'Quantità',
+      lineUnitOfMeasureHeader: 'UM',
+      lineStatusHeader: 'Stato',
+      lineOccupied: 'Già in {{code}}',
+      confirm: 'Genera commessa',
+      saving: 'Generazione…',
+      success: 'Commessa generata con successo.',
+      genericError: 'Impossibile generare la commessa. Riprova.',
     },
     terminateDialog: {
       description: 'Registra la data e la motivazione della disdetta.',

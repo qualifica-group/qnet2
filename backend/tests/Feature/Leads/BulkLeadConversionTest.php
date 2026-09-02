@@ -4,6 +4,8 @@ use App\Exceptions\Leads\BulkConversionBlockedException;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,12 +56,19 @@ if (! function_exists('convertibleLead')) {
 }
 
 if (! function_exists('nonDerivableLead')) {
-    /** A lead whose campaign derives no product line (legacy data). */
+    /**
+     * A lead whose campaign derives no product line (legacy data). Spec
+     * 0094: `campaigns.product_category_id` no longer exists — the coherent
+     * row CampaignFactory auto-creates for a standalone campaign is dropped
+     * here instead, leaving the campaign with none. Requirement changed by
+     * spec 0094, not test tampering.
+     */
     function nonDerivableLead(): Lead
     {
-        return Lead::factory()->create([
-            'campaign_id' => Campaign::factory()->create(['product_category_id' => null]),
-        ]);
+        $campaign = Campaign::factory()->create();
+        $campaign->productLines()->delete();
+
+        return Lead::factory()->create(['campaign_id' => $campaign->id]);
     }
 }
 
@@ -92,7 +101,10 @@ it('AC-002: returns the ids of the created Opportunities', function () {
 it('AC-003: derives each Opportunity exactly like the contextual conversion does', function () {
     Sanctum::actingAs(bulkConversionActor(['view'], ['create']));
     $lead = convertibleLead();
-    $campaign = $lead->campaign;
+    // Spec 0094: the campaign's classification is a `productLines`
+    // collection now, not two single columns — read the persisted row
+    // instead. Requirement changed by spec 0094, not test tampering.
+    $campaignLine = $lead->campaign->productLines()->firstOrFail();
 
     $this->postJson(BULK_CONVERT_URI, ['lead_ids' => [$lead->id]])->assertOk();
 
@@ -102,8 +114,8 @@ it('AC-003: derives each Opportunity exactly like the contextual conversion does
     expect($opportunity->registry_id)->toBe($lead->registry_id);
     expect($opportunity->source_id)->toBe($lead->source_id);
     expect($opportunity->productLines)->toHaveCount(1);
-    expect($opportunity->productLines->first()->business_function_id)->toBe($campaign->business_function_id);
-    expect($opportunity->productLines->first()->product_category_id)->toBe($campaign->product_category_id);
+    expect($opportunity->productLines->first()->business_function_id)->toBe($campaignLine->business_function_id);
+    expect($opportunity->productLines->first()->product_category_id)->toBe($campaignLine->product_category_id);
 });
 
 it('AC-004: converts a duplicated id only once', function () {
@@ -249,4 +261,47 @@ it('AC-024: rejects an unknown lead id', function () {
     $this->postJson(BULK_CONVERT_URI, ['lead_ids' => [999999]])
         ->assertStatus(422)
         ->assertJsonValidationErrors('lead_ids.0');
+});
+
+// ---------------------------------------------------------------------------
+// E) The generated Offerta reuses the single action (spec 0094, AC-068/AC-069)
+// ---------------------------------------------------------------------------
+
+if (! function_exists('convertibleLeadWithInterest')) {
+    /** A convertibleLead() carrying one product of interest in its campaign's own category. */
+    function convertibleLeadWithInterest(): Lead
+    {
+        $lead = convertibleLead();
+        $categoryId = $lead->campaign->productLines()->value('product_category_id');
+        $product = Product::factory()->create(['category_id' => $categoryId]);
+        $lead->productsOfInterest()->attach($product->id);
+
+        return $lead;
+    }
+}
+
+it('AC-068: converts every selected lead with the same Offerta-generation effects as the single action', function () {
+    Sanctum::actingAs(bulkConversionActor(['view'], ['create']));
+    $leads = collect([convertibleLeadWithInterest(), convertibleLeadWithInterest()]);
+
+    $this->postJson(BULK_CONVERT_URI, ['lead_ids' => $leads->pluck('id')->all()])->assertOk();
+
+    foreach ($leads as $lead) {
+        $opportunity = Opportunity::where('lead_id', $lead->id)->firstOrFail();
+        $quote = Quote::where('opportunity_id', $opportunity->id)->firstOrFail();
+        expect($quote->offerLines)->toHaveCount(1);
+    }
+});
+
+it('AC-069: a lead already converted (blocked up front) does not generate a second Offerta', function () {
+    Sanctum::actingAs(bulkConversionActor(['view'], ['create']));
+    $converted = convertibleLeadWithInterest();
+    Opportunity::factory()->create(['lead_id' => $converted->id]);
+    $quoteCountBefore = Quote::count();
+
+    $this->postJson(BULK_CONVERT_URI, ['lead_ids' => [$converted->id]])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.blockers.0.reason', BulkConversionBlockedException::BLOCKER_ALREADY_CONVERTED);
+
+    expect(Quote::count())->toBe($quoteCountBefore);
 });

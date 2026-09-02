@@ -22,6 +22,8 @@ interface RequestCreateClientSectionProps {
   address: AddressDraft[]
   onAddressChange: (next: AddressDraft[]) => void
   usingExistingRegistry: boolean
+  /** Bumped by the form when a save is refused, forwarded to the identity card. */
+  revalidateSignal: number
   /** Server 422s for the `client_*` blocks (AC-016), collected as one banner — see `useRequestCreateForm`. */
   errorMessage: string | null
 }
@@ -47,6 +49,7 @@ export function RequestCreateClientSection({
   address,
   onAddressChange,
   usingExistingRegistry,
+  revalidateSignal,
   errorMessage,
 }: RequestCreateClientSectionProps) {
   const { t } = useTranslation()
@@ -96,7 +99,11 @@ export function RequestCreateClientSection({
           <div className="border-t" />
 
           <ClientGroup icon={UserRound} title={t('requestManagement.form.create.client.identityGroup')}>
-            <PersonalDataCardForm value={identity} onChange={onIdentityChange} />
+            <PersonalDataCardForm
+              value={identity}
+              onChange={onIdentityChange}
+              revalidateSignal={revalidateSignal}
+            />
           </ClientGroup>
 
           <div className="border-t" />

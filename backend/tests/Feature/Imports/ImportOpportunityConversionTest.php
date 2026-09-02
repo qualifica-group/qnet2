@@ -4,7 +4,6 @@ use App\Enums\ImportDedupMode;
 use App\Enums\ImportRowResolution;
 use App\Enums\ImportRowStatus;
 use App\Enums\ImportStatus;
-use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\ImportRun;
@@ -13,7 +12,6 @@ use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\PersonalData;
-use App\Models\ProductCategory;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,12 +67,10 @@ function conversionActor(array $abilities, array $opportunityAbilities = []): Us
  */
 function conversionReadyFixture(): array
 {
-    $businessFunction = BusinessFunction::factory()->create();
-    $productCategory = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-    $campaign = Campaign::factory()->create([
-        'business_function_id' => $businessFunction->id,
-        'product_category_id' => $productCategory->id,
-    ]);
+    // Spec 0094 D-1/D-2: la classificazione della campagna e' una collezione,
+    // non due colonne. La factory semina gia' una riga coerente per una
+    // campagna standalone, che e' l'ingrediente richiesto qui.
+    $campaign = Campaign::factory()->create();
 
     return [
         'campaign' => $campaign,
@@ -117,7 +113,10 @@ it('422 with rows_without_site listing every creatable row with no effective ope
 
 it('422 with campaign_missing_product_line when the campaign derives no product line', function () {
     $actor = conversionActor(['import'], ['create']);
-    $campaign = Campaign::factory()->create(['business_function_id' => null, 'product_category_id' => null]);
+    // Una campagna che non deriva alcuna riga: la factory ne semina una di
+    // default, quindi va rimossa esplicitamente (spec 0094 D-2).
+    $campaign = Campaign::factory()->create();
+    $campaign->productLines()->delete();
     $operationalSite = OperationalSite::factory()->create();
     $operator = User::factory()->create();
     $run = ImportRun::factory()->create([

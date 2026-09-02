@@ -37,6 +37,26 @@ vi.mock('@/features/campaigns/api', async () => {
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+/**
+ * `ProductLinesField`'s row picker resolves an unknown business-function
+ * label through this API directly (`use-product-lines-field.ts`'s
+ * `resolveLabel`), bypassing the mocked `AsyncPaginatedSelect` component —
+ * left un-mocked it fires a real, unauthenticated request.
+ */
+vi.mock('@/features/for-select/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
+    '@/features/for-select/api',
+  )
+  return {
+    ...actual,
+    fetchForSelect: vi.fn().mockResolvedValue({
+      items: [],
+      pagination: { offset: 0, limit: 25, total: 0 },
+      export_link: null,
+    }),
+  }
+})
+
 const FULL_PERMISSIONS = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
@@ -81,6 +101,39 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
       {value ?? ''}
     </button>
   ),
+}))
+
+/** Local, clickable double (mirrors `AsyncPaginatedSelect` above): the shared read-only stub exposes no "pick" affordance. */
+vi.mock('@/features/product-lines/product-category-tree-select', () => ({
+  ProductCategoryTreeSelect: ({
+    value,
+    onChange,
+    businessFunctionId,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (id: number) => void
+    businessFunctionId: number | null
+    disabled?: boolean
+    triggerLabel: string
+  }) => {
+    const isDisabled = Boolean(disabled) || businessFunctionId === null
+    return (
+      <div>
+        <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+        <span data-testid={`disabled-${triggerLabel}`}>{String(isDisabled)}</span>
+        <button
+          type="button"
+          disabled={isDisabled}
+          data-testid={`select-${triggerLabel}`}
+          onClick={() => onChange(4)}
+        >
+          {`select ${triggerLabel}`}
+        </button>
+      </div>
+    )
+  },
 }))
 
 /**
@@ -154,8 +207,6 @@ function campaign(
     derived_from_project: false,
     pipeline_status_id: 1,
     pipeline_status: { id: 1, name: 'Active', color: 'blue' },
-    business_function_id: 2,
-    business_function: { id: 2, name: 'Sales' },
     country_id: 10,
     country: { id: 10, name: 'Italy' },
     state_id: 3,
@@ -166,8 +217,7 @@ function campaign(
     city: null,
     geo_scope: 'state',
     geo_locked_levels: [],
-    product_category_id: 4,
-    product_category: { id: 4, name: 'Hardware' },
+    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } }],
     start_date: '2026-01-01',
     end_date: '2026-12-31',
     total_budget: null,
@@ -205,6 +255,12 @@ function fillRequiredDates() {
   fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
   fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
   fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
+}
+
+/** Fills the standalone-required product_lines row 1 (spec 0094). */
+function fillRequiredClassification() {
+  fireEvent.click(screen.getByTestId('select-Business function 1'))
+  fireEvent.click(screen.getByTestId('select-Product category 1'))
 }
 
 describe('CampaignForm — default status preselection (spec 0039 D-3, AC-012)', () => {
@@ -265,8 +321,7 @@ describe('CampaignForm — manual code (spec 0025 AC-010/AC-011)', () => {
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: '  ACME-2026  ' } })
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
     fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('select-Business function'))
-    fireEvent.click(screen.getByTestId('select-Product category'))
+    fillRequiredClassification()
     fireEvent.click(screen.getByTestId('geo-select'))
     fillRequiredDates()
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -348,8 +403,7 @@ describe('CampaignForm — 422 duplicate code (spec 0025 AC-012)', () => {
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'ACME-2026' } })
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
     fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('select-Business function'))
-    fireEvent.click(screen.getByTestId('select-Product category'))
+    fillRequiredClassification()
     fireEvent.click(screen.getByTestId('geo-select'))
     fillRequiredDates()
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -363,69 +417,5 @@ describe('CampaignForm — 422 duplicate code (spec 0025 AC-012)', () => {
   })
 })
 
-describe('CampaignForm — product category depends on business function (spec 0023 REV)', () => {
-  it('disables the product category select until a business function is chosen, then enables it', async () => {
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Product category')).toBeDisabled()
-
-    fireEvent.click(screen.getByTestId('select-Business function'))
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeEnabled())
-  })
-
-  it('leaves the product category enabled in edit mode of a standalone campaign', async () => {
-    render(
-      <CampaignForm mode={{ type: 'edit', campaign: campaign() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Product category')).toBeEnabled()
-  })
-})
-
-describe('CampaignForm — Sede (operational site)', () => {
-  it('renders the Site field, always editable, and pre-fills it from the loaded campaign in edit mode', async () => {
-    render(
-      <CampaignForm
-        mode={{
-          type: 'edit',
-          campaign: campaign({ operational_site_id: 8, operational_site: { id: 8, label: 'Warehouse A' } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Site')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Site')).toHaveTextContent('8')
-    expect(screen.getByTestId('select-Site')).not.toBeDisabled()
-  })
-
-  it('sends the picked operational_site_id on a standalone create', async () => {
-    createCampaignMock.mockResolvedValue(campaign())
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('select-Business function'))
-    fireEvent.click(screen.getByTestId('select-Product category'))
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fireEvent.click(screen.getByTestId('select-Site'))
-    fillRequiredDates()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
-    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.operational_site_id).toBe(3)
-  })
-})
+// `product_lines` (spec 0094, AC-045) and Sede (operational site) coverage
+// lives in `campaign-form-product-lines.test.tsx` (engineering.md §6 size split).

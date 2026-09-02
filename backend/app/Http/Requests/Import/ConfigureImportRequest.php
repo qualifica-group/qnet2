@@ -5,9 +5,11 @@ namespace App\Http\Requests\Import;
 use App\Enums\ImportDedupMode;
 use App\Imports\ImportDefinition;
 use App\Imports\ImportRegistry;
+use App\Imports\Leads\LeadImportProductCoherence;
 use App\Imports\Staging\StagedRowBuilder;
 use App\Imports\Support\ColumnAnalysis;
 use App\Models\ImportRun;
+use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -49,6 +51,15 @@ class ConfigureImportRequest extends FormRequest
         return [
             'column_mapping' => ['required', 'array'],
             'column_mapping.*' => ['required', 'string'],
+            // `global_config` deliberately carries NO per-key dot-rule here:
+            // its shape is domain-defined (campaign_id/source_id/product_ids/
+            // ...), and Laravel's `excludeUnvalidatedArrayKeys` (default on)
+            // drops the WHOLE bulk array from validated() the moment ANY
+            // `global_config.<key>` rule exists but not every key has one —
+            // `campaign_id`/`source_id` would silently vanish from
+            // `$request->safe()->only(['global_config'])`. `product_ids`'s
+            // own shape/existence/coherence checks therefore run manually in
+            // assertGlobalProductIdsCoherent() below, never as a rule.
             'global_config' => ['sometimes', 'array'],
             'dedup_strategy' => ['required', 'string', Rule::in($this->allowedDedupValues())],
         ];
@@ -62,6 +73,7 @@ class ConfigureImportRequest extends FormRequest
             $this->assertMappingKeysAndTargetsAllowed($validator, $definition);
             $this->assertRequiredFieldsMapped($validator, $definition);
             $this->assertRequiredGlobalConfigPresent($validator, $definition);
+            $this->assertGlobalProductIdsCoherent($validator, $definition);
         });
     }
 
@@ -129,9 +141,66 @@ class ConfigureImportRequest extends FormRequest
 
             $value = is_array($globalConfig) ? ($globalConfig[$field['id']] ?? null) : null;
 
-            if ($value === null || $value === '') {
+            // AC-052: an empty array is as absent as null/'' for a required
+            // field — a `multiple` field left unset submits `[]`, not a blank
+            // scalar, and must be caught the same way.
+            if ($value === null || $value === '' || $value === []) {
                 $validator->errors()->add("global_config.{$field['id']}", "The [{$field['id']}] global field is required.");
             }
+        }
+    }
+
+    /**
+     * AC-051: `global_config.product_ids` must be an array of EXISTING
+     * product ids, each sitting inside the effective product categories of
+     * the campaign chosen in the SAME payload (`global_config`'s field its
+     * `depends_on` names) — resolved via LeadImportProductCoherence, never a
+     * second copy of the coherence rule. Both checks run manually (never as
+     * a `rules()` entry, see that method's docblock) and a definition with
+     * no `product_ids` global field (every domain but `leads`, today) skips
+     * silently.
+     */
+    private function assertGlobalProductIdsCoherent(Validator $validator, ImportDefinition $definition): void
+    {
+        $productField = collect($definition->globalConfig())->firstWhere('id', 'product_ids');
+
+        if ($productField === null) {
+            return;
+        }
+
+        $globalConfig = $this->input('global_config', []);
+        $productIds = is_array($globalConfig) ? ($globalConfig['product_ids'] ?? null) : null;
+
+        if ($productIds === null) {
+            return;
+        }
+
+        if (! is_array($productIds)) {
+            $validator->errors()->add('global_config.product_ids', 'The global_config.product_ids field must be an array.');
+
+            return;
+        }
+
+        if ($productIds === []) {
+            return;
+        }
+
+        $normalizedIds = array_map(static fn (mixed $id): int => (int) $id, $productIds);
+
+        if (Product::query()->whereIn('id', $normalizedIds)->count() !== count(array_unique($normalizedIds))) {
+            $validator->errors()->add('global_config.product_ids', 'One of the selected products does not exist.');
+
+            return;
+        }
+
+        $campaignFieldId = $productField['depends_on'] ?? null;
+        $campaignId = $campaignFieldId !== null ? ($globalConfig[$campaignFieldId] ?? null) : null;
+
+        $coherence = app(LeadImportProductCoherence::class);
+        $offending = $coherence->offendingProducts($campaignId === null ? null : (int) $campaignId, $normalizedIds);
+
+        if ($offending !== []) {
+            $validator->errors()->add('global_config.product_ids', $coherence->message($offending));
         }
     }
 

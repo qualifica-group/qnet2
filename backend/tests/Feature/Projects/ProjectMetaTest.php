@@ -49,9 +49,9 @@ it('200: field catalogue matches ProjectsAuthorization::fields(), in order (AC-0
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe([
-        'code', 'name', 'description', 'pipeline_status_id',
-        'business_function_id', 'country_id', 'state_id', 'province_id', 'city_id',
-        'product_category_id', 'partner_id', 'operational_site_id', 'start_date', 'end_date', 'total_budget', 'target_lead',
+        'code', 'name', 'description', 'pipeline_status_id', 'product_lines',
+        'country_id', 'state_id', 'province_id', 'city_id',
+        'partner_id', 'operational_site_id', 'start_date', 'end_date', 'total_budget', 'target_lead',
     ]);
 
     foreach ($response->json('permissions.fields') as $field) {

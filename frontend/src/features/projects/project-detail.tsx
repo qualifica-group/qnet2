@@ -18,6 +18,7 @@ import { ActivityLogSection } from '@/features/activity-log/activity-log-section
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName } from '@/features/geo/geo-scope'
+import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { ProjectDetailWithPermissions as ProjectDetailData } from '@/features/projects/types'
 
 interface ProjectDetailViewProps {
@@ -96,17 +97,14 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
       <DetailSection title={t('projects.form.sections.classification.title')} icon={<Tags />}>
         <DetailGrid>
           <DetailField label={t('projects.form.status')}>{project.pipeline_status.name}</DetailField>
-          <DetailField label={t('projects.form.businessFunction')}>
-            {project.business_function?.name ?? <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('projects.form.productCategory')}>
-            {project.product_category?.name ?? <DetailEmpty />}
-          </DetailField>
           <DetailField label={t('projects.form.partner')}>
             {project.partner?.name ?? <DetailEmpty />}
           </DetailField>
           <DetailField label={t('projects.form.operationalSite')}>
             {project.operational_site?.label ?? <DetailEmpty />}
+          </DetailField>
+          <DetailField label={t('projects.form.productLines')} full>
+            <ProductLinesReadOnlyList lines={project.product_lines} />
           </DetailField>
         </DetailGrid>
       </DetailSection>

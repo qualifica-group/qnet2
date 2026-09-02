@@ -12,8 +12,10 @@ use App\Support\Geo\GeoNameLocalizer;
 use App\Tables\Campaigns\CampaignAdvancedFilterCatalog;
 use App\Tables\Campaigns\CampaignColumnCatalog;
 use App\Tables\Campaigns\CampaignPipelineStatusResolver;
+use App\Tables\Campaigns\CampaignRelationColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -35,6 +37,12 @@ use Illuminate\Support\Facades\Gate;
  * would risk ambiguous column names: `campaigns` and `projects` share
  * several). It is filterable-only (never sortable — spec 0023
  * table_definitions).
+ *
+ * `business_function`/`product_category` (spec 0094, AC-025/AC-027) are NEW
+ * AGGREGATED (to-many) columns, own-or-through-project (BR-2, the SAME
+ * pattern `pipeline_status` uses) — delegated to CampaignRelationColumns
+ * (file-size split), mirroring OpportunityRelationColumns/
+ * ProjectRelationColumns.
  */
 class CampaignsTableDefinition extends AbstractTableDefinition
 {
@@ -60,7 +68,10 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         'project' => ['relation' => 'project', 'table' => 'projects', 'fk' => 'project_id'],
     ];
 
-    public function __construct(private readonly CampaignPipelineStatusResolver $pipelineStatusResolver) {}
+    public function __construct(
+        private readonly CampaignPipelineStatusResolver $pipelineStatusResolver,
+        private readonly CampaignRelationColumns $relationColumns,
+    ) {}
 
     public function domain(): string
     {
@@ -94,11 +105,15 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             'project.state',
             'project.province',
             'project.city',
+            'project.productLines.businessFunction',
+            'project.productLines.productCategory',
             'pipelineStatus',
             'country',
             'state',
             'province',
             'city',
+            'productLines.businessFunction',
+            'productLines.productCategory',
             'operationalSite.addresses.city',
         ]);
     }
@@ -167,6 +182,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         $state = $row->state ?? $project?->state;
         $province = $row->province ?? $project?->province;
         $city = $row->city ?? $project?->city;
+        $productLines = $project?->productLines ?? $row->productLines;
 
         return [
             'id' => $row->id,
@@ -179,6 +195,11 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             'province' => $this->summarize($province, geo: true),
             'city' => $this->summarize($city, geo: true),
             'geo_scope' => GeoScopeLevel::for($country?->id, $state?->id, $province?->id, $city?->id)?->value,
+            // Spec 0094, AC-027: AGGREGATED (to-many) columns — the EFFECTIVE
+            // rows (the linked project's when derived, else the campaign's
+            // own), distinct related names comma-joined.
+            'product_category' => $this->summarizeNames($productLines->pluck('productCategory')),
+            'business_function' => $this->summarizeNames($productLines->pluck('businessFunction')),
             'operational_site' => $this->summarizeOperationalSite($row->operationalSite),
             'start_date' => $row->start_date,
             'end_date' => $row->end_date,
@@ -217,6 +238,19 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         $name = $geo ? GeoNameLocalizer::toItalian($related->name) : $related->name;
 
         return ['id' => $related->id, 'name' => $name];
+    }
+
+    /**
+     * Display value for an AGGREGATED to-many column (spec 0094): the
+     * distinct related names, comma-joined — null when there is none.
+     *
+     * @param  Collection<int, Model|null>  $related
+     */
+    private function summarizeNames(Collection $related): ?string
+    {
+        $names = $related->filter()->pluck('name')->unique()->values();
+
+        return $names->isEmpty() ? null : $names->implode(', ');
     }
 
     /**
@@ -322,8 +356,10 @@ class CampaignsTableDefinition extends AbstractTableDefinition
     /**
      * Handle the `project` set filter via whereHas on
      * the related row's name; `pipeline_status` is delegated to
-     * CampaignPipelineStatusResolver (AC-032). Every real column falls
-     * through to the generic engine.
+     * CampaignPipelineStatusResolver (AC-032); `business_function`/
+     * `product_category` (spec 0094, AGGREGATED to-many, AC-025/AC-027) are
+     * delegated to CampaignRelationColumns. Every real column falls through
+     * to the generic engine.
      *
      * @param  Builder<Campaign>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -342,7 +378,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
-            return false;
+            return $this->relationColumns->applyFilter($query, $columnId, $filter);
         }
 
         if ($names !== []) {
@@ -401,7 +437,9 @@ class CampaignsTableDefinition extends AbstractTableDefinition
     /**
      * Excel-like distinct values (spec 0004/0005). `project` is a
      * plain related-row name; `pipeline_status` is delegated to
-     * CampaignPipelineStatusResolver (AC-032).
+     * CampaignPipelineStatusResolver (AC-032); `business_function`/
+     * `product_category` (spec 0094, AC-026/AC-027) are delegated to
+     * CampaignRelationColumns.
      *
      * @param  Builder<Campaign>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -416,7 +454,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
-            return null;
+            return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
         }
 
         $relatedIds = (clone $query)->whereNotNull($config['fk'])->select($config['fk']);

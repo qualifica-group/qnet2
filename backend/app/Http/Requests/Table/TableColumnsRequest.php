@@ -8,12 +8,13 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates the OPTIONAL `product_category_id`/`opportunity_id` query
- * parameters for `GET /api/tables/{domain}/columns`: generic across every
- * domain (harmless for one that never sends it), but only
- * `RequestManagementScopedTableDefinition` (`request-management`, spec 0064)
- * and `OpportunityScopedTableDefinition` (`quotes`, spec 0067) actually
- * narrow their response from these values — see `TableController::columns()`.
+ * Validates the OPTIONAL `product_category_id`/`opportunity_id`/`quote_id`
+ * query parameters for `GET /api/tables/{domain}/columns`: generic across
+ * every domain (harmless for one that never sends it), but only
+ * `RequestManagementScopedTableDefinition` (`request-management`, spec 0064),
+ * `OpportunityScopedTableDefinition` (`quotes`, spec 0067) and
+ * `QuoteScopedTableDefinition` (`work-orders`, spec 0095) actually narrow
+ * their response from these values — see `TableController::columns()`.
  * The response SHAPE never changes either way (spec 0067 D-1/AC-009), EXCEPT
  * `request-management`'s `attr.*` columns, which are shape-dependent on the
  * category scope (user directive 2026-08-31).
@@ -36,6 +37,7 @@ class TableColumnsRequest extends FormRequest
         return [
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
             'opportunity_id' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
+            'quote_id' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
         ];
     }
 
@@ -49,6 +51,13 @@ class TableColumnsRequest extends FormRequest
     public function opportunityId(): ?int
     {
         $value = $this->validated('opportunity_id');
+
+        return $value === null ? null : (int) $value;
+    }
+
+    public function quoteId(): ?int
+    {
+        $value = $this->validated('quote_id');
 
         return $value === null ? null : (int) $value;
     }

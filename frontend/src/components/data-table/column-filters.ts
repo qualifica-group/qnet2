@@ -82,6 +82,10 @@ export function resolveTypedFilter(
  * `opportunityId` (spec 0067 D-1, the Opportunity detail's Quotes panel) rides
  * along the same way, so a set filter's value list is restricted to that
  * Opportunity's Offerte; omitted for every domain but `quotes`.
+ *
+ * `quoteId` (spec 0095 D-8, the Contract detail's Commesse tab) rides along
+ * the same way, restricting the value list to that Contract's Offerta;
+ * omitted for every domain but `work-orders`.
  */
 export function createColumnValuesGetter(
   domain: string,
@@ -89,6 +93,7 @@ export function createColumnValuesGetter(
   onTruncated: () => void,
   productCategoryId?: number,
   opportunityId?: number,
+  quoteId?: number,
 ): SetFilterValuesFunc {
   return (params: SetFilterValuesFuncParams) => {
     const filterModel: Record<string, unknown> = { ...params.api.getFilterModel() }
@@ -99,6 +104,7 @@ export function createColumnValuesGetter(
       filterModel,
       ...(productCategoryId != null ? { productCategoryId } : {}),
       ...(opportunityId != null ? { opportunityId } : {}),
+      ...(quoteId != null ? { quoteId } : {}),
     })
       .then((response) => {
         if (response.hasMore) {
@@ -128,9 +134,10 @@ export function buildSetFilterParams(
   translate: (key: string) => string,
   productCategoryId?: number,
   opportunityId?: number,
+  quoteId?: number,
 ): ISetFilterParams {
   const params: ISetFilterParams = {
-    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId, opportunityId),
+    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId, opportunityId, quoteId),
     refreshValuesOnOpen: true,
     suppressClearModelOnRefreshValues: true,
     excelMode: 'windows',
@@ -221,12 +228,13 @@ export function buildColumnFilter(
   translate: (key: string) => string,
   productCategoryId?: number,
   opportunityId?: number,
+  quoteId?: number,
 ): { filter: ColDef['filter']; filterParams: ColDef['filterParams'] } {
   const filter = resolveFilter(column)
   if (filter === 'agSetColumnFilter') {
     return {
       filter,
-      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId),
+      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId),
     }
   }
   if (filter === 'agMultiColumnFilter') {
@@ -235,7 +243,7 @@ export function buildColumnFilter(
       filters: [
         {
           filter: 'agSetColumnFilter',
-          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId),
+          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId),
         },
         {
           filter: typedFilter,

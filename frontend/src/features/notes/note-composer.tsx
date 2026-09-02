@@ -88,6 +88,12 @@ export function NoteComposer({
   const [mentions, setMentions] = useState<number[]>(
     () => editingNote?.mentions.map((mention) => mention.id) ?? [],
   )
+  // Avatars of the people already mentioned (edit mode) plus the ones picked in
+  // this session: the body tokens carry only `{name, id}`, so without this map
+  // a draft chip would fall back to initials for a user who has a photo.
+  const [avatarByUserId, setAvatarByUserId] = useState<ReadonlyMap<number, string | null>>(
+    () => new Map(editingNote?.mentions.map((mention) => [mention.id, mention.avatar_url]) ?? []),
+  )
   const createNote = useCreateNote(entityType, entityId)
   const updateNote = useUpdateNote(entityType, entityId)
   const pending = createNote.isPending || updateNote.isPending
@@ -153,6 +159,11 @@ export function NoteComposer({
                     field.onChange(value)
                     setMentions(nextMentions)
                   }}
+                  onMentionPicked={(item) => {
+                    setAvatarByUserId((current) =>
+                      new Map(current).set(item.id, item.avatar_url ?? null),
+                    )
+                  }}
                   entityType={entityType}
                   entityId={entityId}
                   placeholder={t('notes.composer.placeholder', {
@@ -165,6 +176,7 @@ export function NoteComposer({
               </FormControl>
               <MentionBadges
                 body={field.value}
+                avatarByUserId={avatarByUserId}
                 disabled={pending}
                 onRemove={(userId) => {
                   const nextBody = removeMention(field.value, userId)
@@ -224,6 +236,8 @@ export function NoteComposer({
 interface MentionBadgesProps {
   /** Wire body (D-12): the badges are derived from the tokens it still carries. */
   body: string
+  /** Avatars of the mentioned users, so a draft chip matches the posted one. */
+  avatarByUserId: ReadonlyMap<number, string | null>
   disabled?: boolean
   onRemove: (userId: number) => void
 }
@@ -233,7 +247,7 @@ interface MentionBadgesProps {
  * ever shows the readable `@Name`, so this row is where a mention becomes a
  * visible, dismissible entity instead of raw markup.
  */
-function MentionBadges({ body, disabled, onRemove }: MentionBadgesProps) {
+function MentionBadges({ body, avatarByUserId, disabled, onRemove }: MentionBadgesProps) {
   const { t } = useTranslation()
   const refs = parseMentionRefs(body)
 
@@ -245,7 +259,12 @@ function MentionBadges({ body, disabled, onRemove }: MentionBadgesProps) {
     <ul className="flex flex-wrap items-center gap-1.5 pt-1.5">
       {refs.map((ref) => (
         <li key={ref.id} className="flex items-center gap-0.5">
-          <MentionBadge userId={ref.id} name={ref.name} className="max-w-40" />
+          <MentionBadge
+            userId={ref.id}
+            name={ref.name}
+            avatarUrl={avatarByUserId.get(ref.id) ?? null}
+            className="max-w-40"
+          />
           <button
             type="button"
             onClick={() => onRemove(ref.id)}

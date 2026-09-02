@@ -48,11 +48,18 @@ final class LeadImportFieldCatalog
      * nor Operational Site is a global field: both are Review-only, per-row
      * overrides (spec 0045, extended to Operational Site).
      *
-     * @var array<int, array{id: string, required: bool, for_select_resource: string}>
+     * `product_ids` (spec 0094, D-4/AC-050) is the ONE multi-value global
+     * field: the run's default "Prodotti di interesse", validated against
+     * `campaign_id`'s effective categories (LeadImportProductCoherence) and
+     * still overridable per row (`import_run_rows.product_ids`, review
+     * grid) — never mapped from a file column.
+     *
+     * @var array<int, array{id: string, required: bool, for_select_resource: string, multiple?: bool, depends_on?: string}>
      */
     private const array GLOBAL_FIELDS = [
         ['id' => 'campaign_id', 'required' => true, 'for_select_resource' => 'campaigns'],
         ['id' => 'source_id', 'required' => false, 'for_select_resource' => 'sources'],
+        ['id' => 'product_ids', 'required' => false, 'for_select_resource' => 'products', 'multiple' => true, 'depends_on' => 'campaign_id'],
     ];
 
     /**
@@ -98,7 +105,7 @@ final class LeadImportFieldCatalog
     }
 
     /**
-     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, default: mixed}>
+     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}>
      */
     public function globalConfig(): array
     {
@@ -108,6 +115,8 @@ final class LeadImportFieldCatalog
                 'label' => "imports.leads.global.{$field['id']}",
                 'required' => $field['required'],
                 'for_select_resource' => $field['for_select_resource'],
+                'multiple' => $field['multiple'] ?? false,
+                'depends_on' => $field['depends_on'] ?? null,
                 'default' => null,
             ],
             self::GLOBAL_FIELDS,

@@ -24,14 +24,17 @@ export const personalDataFieldLabels = {
 }
 
 export const personalData = {
+  // Card field labels keyed by their schema path: read by the "which field is
+  // missing" summary (`personal-data-issues.ts`) to name the offending field.
+  fieldLabels: personalDataFieldLabels,
   section: {
     title: 'Personal data',
     subtitle: 'Registry card, contacts and addresses.',
     loadError: 'Unable to load the personal data. Please try again.',
     createHint: 'Save the card first to add contacts and addresses.',
-    incomplete: 'Complete the required personal data fields.',
-    addressIncomplete: 'Enter the street and city to complete the address.',
-    contactsInvalid: 'Fix the invalid contacts before saving.',
+    incomplete: 'Complete the required personal data fields: {{fields}}',
+    addressIncomplete: 'Complete the address: {{fields}}',
+    contactsInvalid: 'Fix the contacts: {{fields}}',
     phoneRequired: 'Enter at least one phone number.',
   },
   form: {

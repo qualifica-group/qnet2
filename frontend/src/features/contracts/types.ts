@@ -8,6 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { QuoteLine } from '@/features/quotes/types'
+import type { WorkOrderType } from '@/features/work-orders/types'
 
 /** `App\Enums\ContractStatusGroup` (D-5): dedicated to this module, not shared with `QuoteStatusGroup`. */
 export type ContractStatusGroupValue = 'open' | 'pending' | 'closed_won' | 'closed_lost'
@@ -131,11 +132,44 @@ export interface ValidateContractPayload {
   contract_status_id?: number
 }
 
-/** Payload for POST /contracts/{id}/schedule. `contract_status_id` is mandatory (D-2: "Programmato" is not resolvable by system_key). */
-export interface ScheduleContractPayload {
-  expiry_date: string
-  renewal_date?: string | null
-  contract_status_id: number
+/**
+ * One row of `GET /contracts/{id}/programmable-lines` (spec 0095 D-6): a
+ * REVENUE line of the contract's offer, with its work-order occupation.
+ * `product`/`unit_of_measure` are nullable per the frozen `data_contract`
+ * (unlike `QuoteLine`, whose `product` is never null).
+ */
+export interface ContractProgrammableLineProduct {
+  id: number
+  code: string
+  name: string
+  category: { id: number; name: string } | null
+}
+
+/** The work order already using a programmable line (AC-021/060), or `null` when the line is free. */
+export interface ContractProgrammableLineWorkOrderRef {
+  id: number
+  code: string
+}
+
+export interface ContractProgrammableLine {
+  id: number
+  sort_order: number
+  product: ContractProgrammableLineProduct | null
+  /** decimal cast: numeric string, never a JS number. */
+  quantity: string
+  unit_of_measure: { id: number; name: string; symbol: string } | null
+  work_order: ContractProgrammableLineWorkOrderRef | null
+}
+
+/**
+ * Payload for POST /contracts/{id}/work-orders (spec 0095 D-6/D-11):
+ * generates ONE work order from the selected offer lines. `quote_id` is
+ * never a key here — the server resolves it from the contract (constraint).
+ */
+export interface CreateContractWorkOrderPayload {
+  title: string
+  type: WorkOrderType
+  quote_line_ids: number[]
 }
 
 /**

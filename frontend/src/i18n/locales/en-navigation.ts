@@ -33,6 +33,7 @@ export const navigation = {
   quotes: 'Quotes',
   contractStatuses: 'Contract Statuses',
   contracts: 'Contracts',
+  workOrders: 'Work orders',
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
   fieldChangeRequests: 'Change Requests',

@@ -160,7 +160,7 @@ export function AvatarUpload(props: AvatarUploadProps) {
     <div className="flex flex-col gap-3">
       {label && <span className="text-sm font-medium">{label}</span>}
       <div className="flex items-center gap-4">
-        <UserAvatar name={name} src={displaySrc} className="size-16" />
+        <UserAvatar name={name} src={displaySrc} size="2xl" />
 
         <div className="flex flex-col gap-2">
           {canUpload && (

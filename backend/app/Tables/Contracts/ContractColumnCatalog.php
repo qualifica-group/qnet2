@@ -279,12 +279,12 @@ final class ContractColumnCatalog
                 'permission' => 'contracts.validate',
             ],
             [
-                'key' => 'schedule',
-                'label' => 'contracts.actions.schedule',
+                'key' => 'program',
+                'label' => 'contracts.actions.program',
                 'icon' => 'calendar-clock',
                 'type' => 'action',
                 'confirm' => true,
-                'permission' => 'contracts.schedule',
+                'permission' => 'contracts.program',
             ],
             [
                 'key' => 'change_status',

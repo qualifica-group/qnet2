@@ -17,6 +17,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     state_id: null,
     notes: null,
     extra_fields: [],
+    products_of_interest: [],
     convert_to_opportunity: false,
     ...overrides,
   }
@@ -83,6 +84,21 @@ describe('buildCreateLeadSchema', () => {
     const schema = buildCreateLeadSchema(i18n.t)
     const result = schema.safeParse(baseValues({ notes: 'a'.repeat(5001) }))
     expect(result.success).toBe(false)
+  })
+})
+
+/** Spec 0094, D-5: a lead with no products of interest stays valid (AC-036). */
+describe('buildCreateLeadSchema — products_of_interest', () => {
+  it('accepts an empty products_of_interest array', () => {
+    const schema = buildCreateLeadSchema(i18n.t)
+    const result = schema.safeParse(baseValues({ products_of_interest: [] }))
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a non-empty products_of_interest array', () => {
+    const schema = buildCreateLeadSchema(i18n.t)
+    const result = schema.safeParse(baseValues({ products_of_interest: [7, 9] }))
+    expect(result.success).toBe(true)
   })
 })
 

@@ -79,6 +79,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     isSubmitting,
     usingExistingRegistry,
     identityDraft,
+    revalidateSignal,
     setIdentityDraft,
     contactsDraft,
     setContactsDraft,
@@ -219,6 +220,7 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                 address={addressDraft}
                 onAddressChange={setAddressDraft}
                 usingExistingRegistry={usingExistingRegistry}
+                revalidateSignal={revalidateSignal}
                 errorMessage={clientBlockError}
               />
 

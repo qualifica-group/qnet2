@@ -140,9 +140,9 @@ export const requestManagement = {
       },
       errors: {
         generic: 'Something went wrong. Please try again.',
-        identityIncomplete: 'Complete the client identity fields before saving.',
-        addressIncomplete: 'Complete the address (street and city), or clear it entirely.',
-        contactsInvalid: 'One of the entered contacts is not valid.',
+        identityIncomplete: 'Complete the client identity fields: {{fields}}',
+        addressIncomplete: 'Complete the address (or clear it entirely): {{fields}}',
+        contactsInvalid: 'Fix the contacts: {{fields}}',
       },
     },
   },

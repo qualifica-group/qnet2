@@ -26,8 +26,10 @@ use Illuminate\Validation\Validator;
  *
  * `opportunityId` (spec 0067, D-5) scopes the `quotes` export to one
  * Opportunity's Offerte — a no-op key for every other domain, mirroring
- * `TableRowsRequest`. Unlike `columns`/`sortModel`/`filterModel`, it is NOT
- * used to scope `definition()` here: the allow-lists it feeds (columnIds,
+ * `TableRowsRequest`. `quoteId` (spec 0095, D-8) is the same mechanism for
+ * `work-orders`, scoped to one Quote's own Commesse. Unlike
+ * `columns`/`sortModel`/`filterModel`, neither is used to scope
+ * `definition()` here: the allow-lists they feed (columnIds,
  * sortableColumnIds, filterableColumnIds) are identical scoped or not (D-1),
  * so there is nothing for the scope to widen or narrow at validation time.
  * The value only starts mattering once ExportController::store() freezes it
@@ -71,6 +73,10 @@ class CreateExportRequest extends FormRequest
             // Spec 0067, D-5: scopes a `quotes` export to one Opportunity's
             // Offerte — a no-op key for every other domain.
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
+
+            // Spec 0095, D-8: scopes a `work-orders` export to one Quote's
+            // own Commesse — a no-op key for every other domain.
+            'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
         ];
     }
 

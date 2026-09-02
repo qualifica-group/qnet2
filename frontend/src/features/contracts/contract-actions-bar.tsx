@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { ContractValidateDialog } from '@/features/contracts/contract-validate-dialog'
-import { ContractScheduleDialog } from '@/features/contracts/contract-schedule-dialog'
+import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
 import { ContractTerminateDialog } from '@/features/contracts/contract-terminate-dialog'
 import { ContractChangeStatusDialog } from '@/features/contracts/contract-change-status-dialog'
 import { ContractEditDialog } from '@/features/contracts/contract-edit-dialog'
@@ -14,13 +14,16 @@ import { ContractReactivateDialog } from '@/features/contracts/contract-reactiva
 import { contractLifecycleActions, isContractClosed } from '@/features/contracts/contract-lifecycle'
 import { useReactivateContract } from '@/features/contracts/use-contract-mutations'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
+import type { WorkOrderDetail } from '@/features/work-orders/types'
 
 /** Which action dialog (if any) is currently open. */
-type OpenDialog = 'none' | 'validate' | 'schedule' | 'terminate' | 'edit' | 'reactivate' | 'change-status'
+type OpenDialog = 'none' | 'validate' | 'program' | 'terminate' | 'edit' | 'reactivate' | 'change-status'
 
 interface ContractActionsBarProps {
   contract: ContractDetailWithPermissions
   onChanged: (contract: ContractDetailWithPermissions) => void
+  /** Fired after "Programma" generates a Commessa (AC-062): the caller refreshes the Commesse tab. */
+  onWorkOrderCreated: (workOrder: WorkOrderDetail) => void
 }
 
 /**
@@ -29,8 +32,9 @@ interface ContractActionsBarProps {
  * On top of the ability, each one is gated on the contract's LIFECYCLE
  * (`contractLifecycleActions`, user directive 2026-08-31): "Valida"+"Disdici"
  * before the validation, "Programma"+"Disdici"+"Riapri" after it, only
- * "Riapri" once the contract is disdetto. "Programma" is rendered DISABLED
- * for now (same directive: the action will be repurposed).
+ * "Riapri" once the contract is disdetto. "Programma" (spec 0095 D-1/D-2,
+ * renamed from `schedule`) opens `ContractProgramDialog`, which generates a
+ * Commessa from a group of the offer's product lines.
  *
  * "Riapri contratto" is the one action a CLOSED contract keeps, on either
  * side of the closure (user directive 2026-08-31 rev.3): on that path it
@@ -50,7 +54,7 @@ interface ContractActionsBarProps {
  * negative one (disdici), neutral outline for everything else — riapertura
  * inclusa, che non e' un esito ma un ritorno in lavorazione (rev.3).
  */
-export function ContractActionsBar({ contract, onChanged }: ContractActionsBarProps) {
+export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: ContractActionsBarProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const [openDialog, setOpenDialog] = useState<OpenDialog>('none')
@@ -94,18 +98,16 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
         </Button>
       ) : null}
 
-      {lifecycle.schedule && contract.permissions.actions.schedule ? (
+      {lifecycle.program && contract.permissions.actions.program ? (
         <Button
           type="button"
           variant={ACTION_BUTTON_VARIANT.action}
           className="bg-card"
           size="sm"
-          disabled
-          title={t('contracts.actions.scheduleUnavailable')}
-          onClick={() => setOpenDialog('schedule')}
+          onClick={() => setOpenDialog('program')}
         >
           <CalendarClock aria-hidden="true" />
-          {t('contracts.actions.schedule')}
+          {t('contracts.actions.program')}
         </Button>
       ) : null}
 
@@ -150,11 +152,11 @@ export function ContractActionsBar({ contract, onChanged }: ContractActionsBarPr
         contract={contract}
         onValidated={(updated) => onChanged({ ...contract, ...updated })}
       />
-      <ContractScheduleDialog
-        open={openDialog === 'schedule'}
-        onOpenChange={(open) => setOpenDialog(open ? 'schedule' : 'none')}
-        contract={contract}
-        onScheduled={(updated) => onChanged({ ...contract, ...updated })}
+      <ContractProgramDialog
+        open={openDialog === 'program'}
+        onOpenChange={(open) => setOpenDialog(open ? 'program' : 'none')}
+        contractId={contract.id}
+        onCreated={onWorkOrderCreated}
       />
       <ContractTerminateDialog
         open={openDialog === 'terminate'}

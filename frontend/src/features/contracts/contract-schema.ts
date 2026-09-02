@@ -37,38 +37,6 @@ export function validateContractDefaultValues(): ValidateContractFormValues {
 }
 
 /**
- * "Programma contratto": `expiry_date` and the destination status are
- * mandatory (D-2 — "Programmato" is a deletable custom row, so the client
- * must pick it, there is no system_key fallback); `renewal_date` is optional
- * and must not fall after `expiry_date`.
- */
-export function buildScheduleContractSchema(t: TFunction) {
-  return z
-    .object({
-      expiry_date: z.string().min(1, t('contracts.actions.scheduleDialog.expiryRequired')),
-      renewal_date: z.string().nullable(),
-      contract_status_id: z.number({ message: t('contracts.actions.scheduleDialog.statusRequired') }).nullable(),
-    })
-    .refine((value) => value.contract_status_id !== null, {
-      message: t('contracts.actions.scheduleDialog.statusRequired'),
-      path: ['contract_status_id'],
-    })
-    .refine(
-      (value) => !value.renewal_date || !value.expiry_date || value.renewal_date <= value.expiry_date,
-      {
-        message: t('contracts.actions.scheduleDialog.renewalAfterExpiry'),
-        path: ['renewal_date'],
-      },
-    )
-}
-
-export type ScheduleContractFormValues = z.infer<ReturnType<typeof buildScheduleContractSchema>>
-
-export function scheduleContractDefaultValues(): ScheduleContractFormValues {
-  return { expiry_date: '', renewal_date: null, contract_status_id: null }
-}
-
-/**
  * "Disdici contratto" (BR-4): date and motivation are mandatory;
  * `contract_status_id` is an optional destination restricted to the
  * `closed_lost` group — the client offers the same active-status picker as

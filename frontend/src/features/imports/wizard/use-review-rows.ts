@@ -95,6 +95,11 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
       updateImportRunRow(domain, importRunId, rowId, { operational_site_id: siteId }),
   })
 
+  const updateRowProductsMutation = useMutation({
+    mutationFn: ({ rowId, productIds }: { rowId: number; productIds: number[] | null }) =>
+      updateImportRunRow(domain, importRunId, rowId, { product_ids: productIds }),
+  })
+
   const resolveRowMutation = useMutation({
     mutationFn: ({ rowId, resolution }: { rowId: number; resolution: ImportRowResolution }) =>
       resolveImportRunRow(domain, importRunId, rowId, resolution),
@@ -240,6 +245,22 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
     [domain, importRunId, onRowUpdated, queryClient, updateRowSiteMutation],
   )
 
+  // Step 1: PATCH the popup's chosen product ids (`null` reverts to the run's
+  // global `product_ids` default, `[]` is an explicit "no products on this
+  // row" override — the two are distinct, see `ImportRunRowItem.product_ids`)
+  // as `product_ids`, mirroring `handleApplySite`. Step 2: on success replace
+  // the row with the server's copy and bubble the recalculated counts. On
+  // failure reject unchanged (no `setData`) so the popup — the only caller —
+  // can surface the error itself.
+  const handleApplyProducts = useCallback(
+    (row: ImportRunRowItem, productIds: number[] | null, node: IRowNode<ImportRunRowItem>) =>
+      updateRowProductsMutation.mutateAsync({ rowId: row.id, productIds }).then((result) => {
+        node.setData(result.row)
+        onRowUpdated(result.row, result.counts)
+      }),
+    [onRowUpdated, updateRowProductsMutation],
+  )
+
   // Step 1: PATCH the combined bulk assignment (operator and/or site) for the
   // current selection (`select_all`/`row_ids` mirror AG Grid's own
   // server-side selection state 1:1 — built by the caller from
@@ -272,6 +293,7 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
     handleApplyGeo,
     handleApplyOperator,
     handleApplySite,
+    handleApplyProducts,
     handleBulkAssign,
     isSaving: updateRowMutation.isPending,
     hasSaveError: updateRowMutation.isError,

@@ -4,6 +4,7 @@ import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { createProject, projectDetailQueryKey, updateProject } from '@/features/projects/api'
@@ -15,6 +16,7 @@ import {
 } from '@/features/projects/project-schema'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
 import { useDefaultSystemStatusId } from '@/features/status-reorder/use-default-system-status'
+import { emptyProductLineRow } from '@/features/product-lines/types'
 import type { ProjectDetail, ProjectFormMode } from '@/features/projects/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -23,18 +25,16 @@ import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module
 /** Domain key of the module statistics (mirrors `PROJECTS_DOMAIN` in `projects-table.tsx`). */
 const PROJECTS_DOMAIN = 'projects'
 
-/** Server-side field names mapped onto the form for 422 handling. */
+/** Server-side field names mapped onto the form for 422 handling. `product_lines` is handled separately (banner, see `collectPrefixedServerErrors`). */
 const SERVER_ERROR_FIELDS = [
   'code',
   'name',
   'pipeline_status_id',
   'description',
-  'business_function_id',
   'country_id',
   'state_id',
   'province_id',
   'city_id',
-  'product_category_id',
   'partner_id',
   'operational_site_id',
   'start_date',
@@ -42,6 +42,32 @@ const SERVER_ERROR_FIELDS = [
   'total_budget',
   'target_lead',
 ] as const
+
+/** Every 422 key that names the `product_lines` collection or one of its rows (spec 0094). */
+const PRODUCT_LINES_ERROR_PREFIXES = ['product_lines']
+
+/**
+ * Joins every 422 message whose key is `prefix` or `prefix.<anything>` (a
+ * per-row key like `product_lines.0.business_function_id`), for a single
+ * banner above the field. Reimplemented locally (not imported) from
+ * `request-management/use-request-create-form.ts`'s `collectPrefixedServerErrors`:
+ * that file is owned by another feature/session, so this ~12-line helper is
+ * duplicated rather than creating a cross-feature dependency on a file
+ * currently changing under a different owner.
+ */
+function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
+    return null
+  }
+  const errors = error.response.data?.errors as Record<string, string[]> | undefined
+  if (!errors) {
+    return null
+  }
+  const messages = Object.entries(errors)
+    .filter(([key]) => prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}.`)))
+    .flatMap(([, fieldMessages]) => fieldMessages)
+  return messages.length > 0 ? messages.join(' ') : null
+}
 
 export type ProjectFormValues = CreateProjectFormValues
 
@@ -60,12 +86,14 @@ function mapProjectToFormValues(
   return {
     description: project.description,
     pipeline_status_id: project.pipeline_status_id,
-    business_function_id: project.business_function_id,
     country_id: project.country_id,
     state_id: project.state_id,
     province_id: project.province_id,
     city_id: project.city_id,
-    product_category_id: project.product_category_id,
+    product_lines: project.product_lines.map((line) => ({
+      business_function_id: line.business_function.id,
+      product_category_id: line.product_category.id,
+    })),
     partner_id: project.partner_id,
     operational_site_id: project.operational_site_id,
     start_date: project.start_date ?? '',
@@ -94,6 +122,7 @@ export function useProjectForm({ mode, onSuccess, initialCode }: UseProjectFormA
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PROJECTS_DOMAIN)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [productLinesError, setProductLinesError] = useState<string | null>(null)
 
   const isEdit = mode.type === 'edit'
   // Only a bare create preselects the system default status below (duplicate
@@ -141,12 +170,14 @@ export function useProjectForm({ mode, onSuccess, initialCode }: UseProjectFormA
       name: '',
       description: null,
       pipeline_status_id: null,
-      business_function_id: null,
       country_id: null,
       state_id: null,
       province_id: null,
       city_id: null,
-      product_category_id: null,
+      // User directive 2026-07-29 (mirrors the opportunity/request-management
+      // create forms): at least one row is mandatory, so the create form
+      // opens on ONE empty row instead of zero — pure UX friction otherwise.
+      product_lines: [emptyProductLineRow()],
       partner_id: null,
       operational_site_id: null,
       start_date: '',
@@ -190,6 +221,7 @@ export function useProjectForm({ mode, onSuccess, initialCode }: UseProjectFormA
 
   const onSubmit = async (values: ProjectFormValues) => {
     setServerError(null)
+    setProductLinesError(null)
     const errorFields: Path<ProjectFormValues>[] = [
       ...SERVER_ERROR_FIELDS,
       ...(customFields.errorPaths as Path<ProjectFormValues>[]),
@@ -209,7 +241,10 @@ export function useProjectForm({ mode, onSuccess, initialCode }: UseProjectFormA
       invalidateStats()
       onSuccess(created)
     } catch (error) {
-      if (!applyServerValidationErrors(error, form.setError, errorFields)) {
+      const mappedScalar = applyServerValidationErrors(error, form.setError, errorFields)
+      const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
+      setProductLinesError(productLinesMessage)
+      if (!mappedScalar && !productLinesMessage) {
         setServerError(t('projects.form.genericError'))
       }
     }
@@ -219,6 +254,7 @@ export function useProjectForm({ mode, onSuccess, initialCode }: UseProjectFormA
     form,
     isEdit,
     serverError,
+    productLinesError,
     onSubmit,
   }
 }

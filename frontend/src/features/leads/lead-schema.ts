@@ -53,6 +53,14 @@ function baseFields(t: TFunction) {
     state_id: z.number().nullable(),
     notes: z.string().max(NOTES_MAX_LENGTH, t('leads.form.notesMax')).nullable(),
     extra_fields: z.array(extraFieldEntrySchema(t)),
+    /**
+     * Products of interest (spec 0094, D-5). Deliberately NOT `.min(1)`: a
+     * lead with zero products is valid (AC-036). Also deliberately NOT
+     * `.default([])`: same trap documented above for `convert_to_opportunity`
+     * — a Zod default on an array diverges the resolver's input/output
+     * types. `use-lead-form` supplies the `[]` default instead.
+     */
+    products_of_interest: z.array(z.number()),
   }
 }
 

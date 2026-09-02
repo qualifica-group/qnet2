@@ -8,6 +8,7 @@ use Database\Factories\QuoteLineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -89,5 +90,20 @@ class QuoteLine extends BaseModel
     public function commissions(): HasMany
     {
         return $this->hasMany(QuoteLineCommission::class);
+    }
+
+    /**
+     * The inverse of WorkOrder::quoteLines() (spec 0095, D-5): the work
+     * order(s) this line has been programmed into, via the SAME
+     * `quote_line_work_order` pivot. D-4's `UNIQUE(quote_line_id)` guarantees
+     * this collection never holds more than one row — the relation stays
+     * BelongsToMany (the pivot's own shape), never a BelongsTo, so a future
+     * per-row pivot column stays reachable the same way from either side.
+     *
+     * @return BelongsToMany<WorkOrder, $this>
+     */
+    public function workOrders(): BelongsToMany
+    {
+        return $this->belongsToMany(WorkOrder::class, 'quote_line_work_order');
     }
 }

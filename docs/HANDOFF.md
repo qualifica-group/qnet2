@@ -3,6 +3,345 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RIGHE FA->CATEGORIA SU PROGETTO/CAMPAGNA + PRODOTTI DI INTERESSE SUL LEAD (2026-09-02, spec 0094) — IN CORSO
+
+**Richiesta utente.** La Campagna non deve essere limitata a una sola coppia Funzione Aziendale ->
+Categoria Prodotto; il Lead deve avere "Prodotti di interesse" filtrati dalle categorie della sua
+Campagna; alla conversione le informazioni passano all'Opportunita' e generano l'Offerta.
+
+**Decisioni prese dall'utente il 2026-09-02 (NON re-litigare).**
+- D-1 Le righe multiple arrivano ANCHE sul Progetto: la Campagna legata continua a ereditare
+  read-only (BR-2 invariato), ma eredita N righe invece di una coppia.
+- D-2 Sostituzione piena come gia' fatto per l'Opportunita' (spec 0040 rev.3): dati migrati nella
+  collezione, colonne scalari DROPPATE. Nessuna doppia verita'.
+- D-3 La conversione genera UNA Offerta con una riga REVENUE per prodotto di interesse. Non n Offerte.
+- D-4 Import: prodotti come config GLOBALE del run + override per riga in revisione.
+
+**Decisioni del lead, dichiarate nella spec.**
+- D-5 Cambio Campagna con prodotti non piu' coperti -> 422, mai rimozione silenziosa. Stessa regola
+  dell'Opportunita', stesso servizio (`ProductCategoryCoherence`, terzo template `LEAD_MESSAGE`).
+- D-6 CONSEGUENZA DEI SETTING, non limite nuovo: con radice `management_mode = single` la Campagna
+  porta UNA riga, il Lead una sola categoria, e `enforceSingleOfferLine` ammette UNA riga d'offerta
+  -> un Lead con 2+ prodotti in quel ramo NON e' convertibile finche' l'operatore non riduce.
+- D-8 I prezzi delle righe generate si risolvono SERVER-SIDE (`products.price`, qta 1,
+  `products.vat_rate_id`): il default di listino oggi e' precompilato solo dal frontend, e la
+  conversione non ha frontend. L'unita' di misura resta congelata da `QuoteLineWriter` (spec 0088 D-5).
+
+**Cosa NON va duplicato.** Le regole FA->CP restano in `ProductLineSetValidator` +
+`CategoryHierarchy`. Il writer full-replace e' ora `App\Services\ProductLines\ProductLineWriter`
+(generico su qualunque owner con `productLines()`): `OpportunityProductLineWriter` NON ESISTE PIU'.
+`ValidatesProductLines` risolve da solo il route model che espone `productLines()`, quindi vale per
+opportunity, quote->opportunity, project e campaign senza modifiche.
+Il trait `ValidatesProductCategoryBusinessFunction` (variante "coppia singola") e' stato CANCELLATO.
+
+**Fatto e verificato (eseguito, non riferito).**
+- Migrazioni `2026_09_02_2000*`: `project_product_lines`, `campaign_product_lines`, `lead_product`,
+  `import_run_rows.product_ids`, backfill + drop delle 4 colonne scalari. Backfill provato su dati
+  reali (campagna LEGATA -> zero righe, BR-2 rispettato) e rollback provato, round-trip idempotente.
+- Backend Progetti/Campagne: 446 test verdi (Projects+Campaigns+Unit Models), RequestManagement 394.
+  Colonne di griglia AGGREGATE to-many su entrambi i moduli, filtro `set` via `whereHas`, distinct
+  via join sulla pivot. Zero `whereRaw` su input utente. `CampaignForSelectResource` espone il nuovo
+  `meta.product_category_ids` (categorie EFFETTIVE, gia' risolte via progetto).
+- Frontend Progetti/Campagne/Lead: `tsc -b --force` EXIT=0 sull'intero frontend (verificato dal lead),
+  vitest `features/leads`+`features/campaigns` 223/223 verdi ripetuto 4 volte. Riuso di
+  `ProductLinesField` e `ProductsOfInterestField`, nessun editor nuovo.
+
+**Bug reale trovato da un test (non da revisione a vista).** Nel form Lead la conferma al cambio
+Campagna ripristinava `campaign_id` mentre il dialog era pendente ma non lo RIAPPLICAVA dopo l'OK.
+Corretto; coperto da `use-lead-campaign-product-interest.test.tsx`.
+
+**Debito aperto, dichiarato.**
+- 42 test rossi in `tests/Feature/Opportunities` e `tests/Feature/Leads`: `OpportunityService`
+  (`DETAIL_RELATIONS`) e `LeadOpportunityDefaultsResolver` fanno ancora eager-load di
+  `campaign.businessFunction`/`campaign.productCategory`, relazioni che non esistono piu'; piu' test
+  che costruiscono `Campaign::factory()->create(['business_function_id' => ...])`. Vanno riscritti
+  leggendo `productLines` con la logica "linked -> righe del progetto, else proprie" gia' in
+  `CampaignResource::toArray()`. Assegnato a MT-4/MT-5.
+- FLAKY a bassa frequenza: `lead-form-body-products-of-interest.test.tsx` (~riga 208, `act`
+  asincrono) ha fallito 1 volta su 11 esecuzioni. Verde 6/6 in isolamento e 4/4 nel giro combinato.
+  Da stabilizzare, NON e' un rosso stabile.
+- `lead-form-body.tsx` a 356 righe (era gia' 334 prima, sopra il soft limit di 300).
+
+**Nota di contesto.** Questa feature e' stata sviluppata mentre altre sessioni lavoravano sullo
+stesso checkout (`personal-data`, `request-management`, spec 0093). Un agente ha visto una propria
+modifica annullata da un processo esterno e l'ha dovuta riapplicare: con working copy condivisa
+l'ownership disgiunta protegge dai conflitti logici, non dalle sovrascritture.
+
+**Prossimo passo.** MT-4 (Lead backend), MT-5 (conversione + Offerta), MT-6 (import backend),
+MT-9 (wizard import FE), poi il gate del verifier. NIENTE e' stato committato (CLAUDE.md §3.6).
+
+## CONTRATTO -> PROGRAMMA -> COMMESSE (2026-09-02, spec 0095) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Il pulsante "Programma contratto" diventa "Programma" e genera Commesse dalle
+righe prodotto dell'Offerta collegata; tab "Commesse" nel dettaglio Contratto con la STESSA tabella
+del modulo Commesse filtrata. Flusso: Contratto -> Offerta -> Righe -> Programma -> Commessa.
+
+**Decisione dell'utente sul punto critico.** "Programma contratto" e stato SOSTITUITO, non affiancato.
+Prima di procedere e stato verificato che il bottone era gia' renderizzato `disabled` con un commento
+"the action will be repurposed", quindi il form date+stato NON era raggiungibile dagli utenti, e che
+entrambe le capacita' sopravvivono altrove: le date da `PATCH /api/contracts/{id}`, la transizione di
+stato da `POST /contracts/{contract}/change-status`. Rimossi: ContractScheduleController,
+ScheduleContractRequest, ScheduleContractData, ContractActionService::schedule(), la rotta,
+contract-schedule-dialog.tsx.
+
+**LEZIONE 1 — rimuovere un percorso di scrittura non e' rimuovere solo il percorso.**
+`ScheduleContractRequest` portava anche `renewal_date before_or_equal:expiry_date`. La spec verificava
+che i due campi restassero SCRIVIBILI dal form di modifica, non che restassero VALIDATI allo stesso
+modo: `UpdateContractRequest` aveva solo `['sometimes','nullable','date']`. Risultato: per un po'
+`PATCH /api/contracts/{id}` accettava un rinnovo DOPO la scadenza (200 OK dove prima era 422).
+Trovata dal verifier RIPRODUCENDOLA, non leggendo il codice. Ripristinata in
+`UpdateContractRequest::assertRenewalNotAfterExpiry()` (`withValidator()->after()`) con fallback al
+valore gia' sul model per il campo che il PATCH parziale non invia — il vecchio endpoint riceveva
+sempre entrambe le date insieme e non aveva bisogno del fallback. Decisione esplicita nel docblock:
+anticipare la scadenza sotto un rinnovo gia' salvato e 422. Se una delle due e null, nessun vincolo.
+Regola generale da applicare SEMPRE: quando si smonta un endpoint, inventariare le sue REGOLE DI
+VALIDAZIONE, non solo i suoi campi.
+
+**LEZIONE 2 — su migration che toccano INDICI o FOREIGN KEY, i test verdi NON sono una prova.**
+La suite Pest gira su SQLite; il DB reale e MySQL. La migration del vincolo pivot falliva su MySQL con
+errno 1553 ("Cannot drop index: needed in a foreign key constraint") mentre il suo test era VERDE.
+Causa: la FK su `work_order_id` non aveva indice proprio, si appoggiava all'UNIQUE composito di cui e
+la prima colonna. Il `down()` aveva il difetto speculare su `quote_line_id`.
+Fix: `up()` crea l'indice dedicato PRIMA del drop; `down()` ricrea l'indice su `quote_line_id` prima di
+togliere l'unique e rimuove quello su `work_order_id` solo DOPO che il composito e tornato a coprirlo.
+Round-trip up->down->up verificato su MySQL DUE VOLTE, indipendentemente (lead + verifier), su database
+usa-e-getta separati. Residuo cosmetico noto: dopo un secondo `up()` resta un indice ridondante
+`quote_line_work_order_quote_line_id_foreign` accanto all'unique — inerte, non inseguito.
+PROCEDURA da adottare d'ora in poi: ogni migration che fa drop/alter di indici o FK va provata su un
+DB MySQL usa-e-getta, MAI sul DB di sviluppo condiviso.
+
+**LEZIONE 3 — non lanciare comandi distruttivi sul DB di sviluppo condiviso.**
+Il lead ha eseguito `migrate:rollback` sul DB dev mentre altre sessioni ci scrivevano: i comandi si
+sono interlacciati con un `migrate:fresh --seed` di un'altra sessione e hanno droppato due tabelle
+estranee (`activity_log`, `migration_runs`), poi ripristinate. Impatto reale nullo (DB gia azzerato da
+altri), ma la procedura era sbagliata. Verifiche di migration: database temporaneo, sempre.
+
+**Invarianti nuove.**
+- "UNA RIGA, UNA SOLA COMMESSA" (scelta esplicita dell'utente): il pivot passa da
+  UNIQUE(`work_order_id`,`quote_line_id`) a UNIQUE(`quote_line_id`). Doppio livello: vincolo DB +
+  `WorkOrderLineWriter::assertNotAlreadyProgrammed()` che risponde 422 NOMINANDO la commessa occupante
+  (il solo vincolo DB darebbe un errore di integrita illeggibile). Le righe della commessa CORRENTE
+  sono escluse dal conflitto, altrimenti un PATCH che rinvia le proprie righe verrebbe rifiutato.
+- Conseguenza obbligata (D-7): `quote-offer-lines/for-select` ESCLUDE le righe gia programmate e accetta
+  `except_work_order_id` per rimettere quelle della commessa in modifica. Senza, il form Commessa
+  offrirebbe righe che il salvataggio poi rifiuta.
+- La Commessa NON ha `contract_id`: raggiunge il Contratto tramite l'Offerta (`contracts.quote_id` e
+  UNIQUE, quindi 1:1). Stessa scelta gia fatta per "Contratto n.", mai copiato.
+- `quote_id` della generazione viene da `$contract->quote_id` LATO SERVER, mai dal client.
+
+**Tabella scoped — pattern da riusare, NON esiste `applyScope()`.**
+Il framework tabellare non ha alcun hook di scope: si usa un DECORATOR per dominio composto in
+`TableRegistry::resolve()`. `QuoteScopedTableDefinition` ricalca 1:1 `OpportunityScopedTableDefinition`
+(spec 0067): `DelegatesUnaugmentedTableMethods` per i passthrough, solo `baseQuery()` sovrascritto.
+Lato FE `rowScope={{quoteId}}` (NON `scope`: quello entra nella query key della config, `rowScope` no).
+INVARIANTE CRITICA: la chiave `quoteId` e OMESSA quando assente in TUTTI i punti
+(`ssrm-datasource.ts`, `column-filters.ts`, `data-table.tsx`, `table-view.tsx`, `export-dialog.tsx`),
+cosi il payload di ogni chiamante esistente resta byte-identico. Verificato da test dedicato.
+Azioni di riga estratte in `useWorkOrderRowActions` e condivise fra pagina e tab: la duplicazione dello
+switch aveva gia causato una divergenza reale sulle Offerte (documentata in
+`use-opportunity-quotes-panel.ts:43-48`).
+
+**Verifiche eseguite.** Pest `tests/Feature/Contracts tests/Feature/WorkOrders` 180/180 (737 asserzioni);
+`--filter=Opportunity` 440/440 e `--filter=RequestManagement` 424/424 (i due consumatori dello scope,
+nessuna regressione); Vitest 43 file / 400 test; `npx tsc -b --force` EXIT=0 sull'intero repo; Pint e
+ESLint puliti. Verifier indipendente: VERDE, unico difetto reale la regressione della LEZIONE 1, corretta.
+
+**Rossi ESTRANEI presenti nel checkout (altre sessioni, spec 0094 ProductLines).**
+AGGIORNAMENTO a fine ciclo: i 2 rossi di `ProductCategorySelectableTest` sono stati risolti da un'altra
+sessione mentre lavoravamo — `--filter=Table` e ora 894 test, 893 passed, 0 failed, 1 skipped.
+Restano da tenere d'occhio `QualificaSampleLeadSeederTest` e soprattutto `QuoteWorkflowMigrationTest`:
+quest'ultimo ha un conteggio di rollback HARDCODED che va rialzato contando TUTTE le migration nuove
+(2 di spec 0093 + 1 di spec 0095 + 6 di spec 0094). E gia rotto dalle sole 6 estranee. CHI COMMITTA
+PER ULTIMO allinea quel numero.
+
+**Prossimo passo.** In attesa di via libera per il commit. Il working tree contiene almeno tre
+workstream di altre sessioni (ProductLines/campaigns/leads, personal-data, note/avatar): un commit
+indiscriminato li mescolerebbe, vanno selezionati i soli file di 0093/0095.
+
+## MODULO COMMESSE / WORK ORDERS (2026-09-02, spec 0093) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Nuovo modulo Commesse con apparato completo (migration, model, request,
+policy, resource, controller, service, API REST, permessi CRUD + di campo, tabella
+backend-driven con filtri/ordinamenti/export, form create/edit/view), collegato a UNA offerta e
+a UNA O PIU righe prodotto di quella offerta, con stato aperto/chiuso calcolato on-the-fly e
+forzabile a chiuso.
+
+**Naming.** `WorkOrder` / `work_orders`, pivot `quote_line_work_order`, slug e dominio tabella
+`work-orders`, namespace i18n `workOrders`. "Commessa" vive SOLO nelle stringhe i18n.
+
+**Decisioni che vincolano il futuro (dettaglio in `docs/specs/0093-work-orders-module.xml`).**
+- D-1: numerazione `COM-0001` col pattern dell'Offerta (`GeneratesSequentialCode` dentro la
+  transazione, `code` fuori da `#[Fillable]`, override manuale SOLO in create, `prohibited` in
+  update, anteprima `GET /api/work-orders/next-code`). Opportunita NON ha un `code`: l'unico
+  precedente reale era l'Offerta.
+- D-2: "Contratto n." NON e una colonna. E `quote.code` derivato in sola lettura, come gia fanno
+  i Contratti (la migration di `contracts` lo documenta esplicitamente).
+- D-3: stato calcolato in lettura, mai persistito, mai client-writable. UNICO punto di calcolo
+  `WorkOrderStatusResolver`, che possiede sia `resolve()` sia `applyFilter()`: badge e filtro di
+  tabella NON possono divergere per costruzione. Oggi la regola e solo `is_force_closed`; quando
+  arrivera quella vera (avanzamento lavorazioni/progetti) si tocca SOLO questa classe.
+- D-5: `quote_id` IMMUTABILE dopo la create (`prohibited`), FK `restrictOnDelete`. Conseguenza
+  obbligatoria: `QuoteService::delete()` ha ora un guard `abort(409)` se l'offerta ha commesse.
+  E l'unica modifica fuori modulo.
+- D-7: si collegano SOLO righe REVENUE (`Quote::offerLines()`) della MEDESIMA offerta. Le righe
+  COST non sono selezionabili. Invariante verificata SERVER-SIDE con query reale in
+  `WorkOrderLineWriter::assertBelongToRevenueLines`, dentro la transazione, sia in create SIA in
+  update.
+- D-4: `is_force_closed` + `force_close_reason`, senza `force_closed_at`/`force_closed_by` (chi e
+  quando lo registra gia l'activity log). Il motivo viene AZZERATO quando si riapre, nello stesso
+  save (`WorkOrderService::enforceForceCloseInvariant()`, applicato dopo il `fill()`).
+
+**Enum e badge.** `type`/`status` passano da `enumKeyFor()` -> `work_order_type`/`work_order_status`
+in `config/config.php` form_enums; il FE traduce via `enums.<key>.<value>`. `distinctValues()`
+restituisce l'insieme DICHIARATO dell'enum (stringhe semplici, non EnumMeta: `DistinctValuesResult`
+e tipizzato `array<int,string>` e `FilterApplier::applySet()` fa `whereIn` su scalari), NON un
+pluck dal DB — altrimenti il set-filter offrirebbe solo i valori gia presenti.
+`is_force_closed` NON ha enumKey: e boolean, localizzato lato FE con `BooleanBadgeCell`.
+
+**Deviazione nota, da semplificare al prossimo passaggio.** La spec ha congelato `is_force_closed`
+come `badge` + `filterType: set` (`true|false`), mentre la convenzione del codebase per i booleani
+e `type: boolean` + `filterType: boolean` (es. `ContractStatus.is_active`). Ha richiesto un filtro
+custom che il framework avrebbe dato gratis. Difetto della spec, non dell'implementazione: funziona
+ed e testato, si allinea quando si torna sul modulo.
+
+**Verifiche ESEGUITE (verifier indipendente).** Pest perimetro 53/53 (210 asserzioni); Vitest 9
+file / 49 test; `npx tsc -b --force --pretty false` EXIT=0 sull'intero repo; Pint pulito; ESLint
+pulito. `--filter=Quote` 602/603: l'unico rosso e `QuoteWorkflowMigrationTest` ed e ESTRANEO —
+6 migrazioni `2026_09_02_2000xx` di un'altra sessione (spec 0094) si sono inserite sopra le nostre,
+quindi `--step 28` non raggiunge piu `quote_workflows`. Nessun difetto reale trovato.
+
+**Da fare quando la spec 0094 atterra.** Il conteggio di `QuoteWorkflowMigrationTest` (ora 28, che
+copre le 2 migrazioni di questo modulo) va rialzato per includere le loro 6: chi committa per
+ultimo aggiorna il numero.
+
+**Nota ambiente.** Durante il debug e stato creato con `tinker` sul DB di SVILUPPO un utente finto
+(#8, email Faker) con una riga pivot verso `quotes.view`. Gli 8 permessi `work-orders.*` sono
+invece legittimi (li avrebbe creati `permissions:sync`). L'utente finto e la sua pivot restano da
+rimuovere: in attesa di decisione dell'utente.
+
+**Prossimo passo.** In attesa di via libera per il commit.
+
+## ANAGRAFICHE: CAMPI OBBLIGATORI, ERRORE CHE NOMINA IL CAMPO, HIGHLIGHT (2026-09-02) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** Sull'Anagrafica e sulle anagrafiche riportate negli altri moduli: (1) i campi
+obbligatori devono essere marcati bene con `*`; (2) se manca un campo, l'errore deve dire QUALE
+campo compilare; (3) il campo mancante va evidenziato.
+
+**(1) L'asterisco mancava ovunque ci fosse un resolver di permessi.** Causa vera:
+`resolveGate()` leggeva SOLO `permission.required`, e `RegistriesAuthorization::personalDataFieldPermissions()`
+(come Referents/Users) emette `required: false` per TUTTE le chiavi `personal_data.*` — per scelta:
+l'obbligatorieta' per tipo (individual → nome+cognome, company → ragione sociale) e' logica di
+validazione, non del ceiling di autorizzazione. Risultato: nel profilo self-service (nessun resolver)
+l'asterisco c'era, in Anagrafiche/Referenti/Utenti/Sedi/Gestione Richieste no.
+Fix in `personal-data-field-gate.ts`: **`required` = UNIONE** di `permission.required` e del fallback
+schema-driven, applicato solo dove il campo e' editabile. Il permesso puo' ancora AGGIUNGERE
+obbligatorieta', non toglierla. NESSUNA modifica al backend.
+Aggiunti inoltre `*` + `aria-required` su via e comune di `AddressCreateField` (quick-create):
+il comune usa `requiredLevels={['city']}` di `GeoSelect`, che gia' esisteva.
+
+**(2) Nuovo modulo condiviso `features/personal-data/personal-data-issues.ts`** — unica fonte per
+"quale campo blocca il salvataggio". Espone `isPersonalDataCardValid`, `describeCardIssues`,
+`describeAddressIssues`, `describeContactIssues` e il tipo `BlockedSection`. Ogni voce e'
+`"<etichetta campo>: <messaggio>"`; le etichette vengono da `personalData.fieldLabels.*` (nuova
+chiave i18n = riuso di `personalDataFieldLabels`, gia' indicizzato per path dello schema).
+`create-validation.ts` e' riscritto SOPRA questi describer (`isCreateAddressValid` ora richiede `t`),
+cosi' gate booleano e messaggio non possono divergere.
+I messaggi banner ora interpolano `{{fields}}`: `personalData.section.incomplete` /
+`addressIncomplete` / `contactsInvalid` e i tre `requestManagement.form.create.errors.*`.
+
+**Effetto collaterale voluto.** I 6 consumer duplicavano un `safeParse` con un sottoinsieme DIVERSO
+di campi (nessuno passava `gender`/`sdi_code`, company-sites solo 4 campi): il gate accettava un
+codice fiscale incoerente col sesso che la card segnalava gia' in rosso inline. Ora tutti passano da
+`cardValues()`: **il gate valida esattamente cio' che la card mostra**.
+
+**(3) Highlight — `revalidateSignal`.** La card e' un'istanza RHF separata e bufferizzata (ADR 0012):
+non partecipa al submit del form proprietario, quindi un campo mai toccato restava senza errore.
+`PersonalDataCardForm` accetta ora `revalidateSignal?: number`, incrementato a ogni submit rifiutato:
+esegue `form.trigger()` (dipinge label/bordo/messaggio) e `focusFirstInvalid()` (scroll+focus sul
+primo input invalido). Propagato anche da `PersonalDataSection`.
+**`useRevealBlockedSection`** (nuovo hook): un campo evidenziato dentro un `TabsContent` nascosto
+non e' renderizzato affatto, quindi i form a tab (Anagrafiche/Referenti/Utenti) portano in vista il
+blocco che ha rifiutato — l'hook mappa `BlockedSection` → valore del tab via `TAB_OF_SECTION`.
+Sedi aziendali e creazione richiesta non ne hanno bisogno (blocco su tab unico / pagina singola).
+
+**File nuovi.** `personal-data-issues.ts`, `personal-data-card-helpers.ts` (split di
+`personal-data-card-form.tsx`, che stava sforando: `sameCardFields` + `focusFirstInvalid`),
+`use-reveal-blocked-section.ts`, `personal-data-issues.test.ts`,
+`personal-data-card-form-required.test.tsx`.
+
+**Test modificati (requisito cambiato, dichiarato).** `personal-data-section.test.tsx` AC-011
+asseriva il contratto VECCHIO ("il resolver puo' togliere l'asterisco a first_name") — riscritto sul
+nuovo ("required = unione") + nuovo caso "un campo bloccato non porta l'asterisco". Le query
+`getByLabelText('Address')` diventano `/^Address\*?$/` (stessa convenzione gia' usata da
+`address-form.test.tsx`). Le asserzioni sui banner ora verificano il testo che NOMINA il campo.
+
+**Verifiche eseguite.** Suite dei moduli toccati: 89 file / 522 test verdi.
+`npx tsc -b --force` pulito (EXIT=0). ESLint pulito (EXIT=0) sui file toccati.
+NOTA: la suite intera (`npx vitest run`) da' fallimenti INTERMITTENTI e diversi a ogni giro in
+`features/work-orders/` e `features/projects/` — un'altra sessione stava scrivendo
+`src/features/work-orders/*` durante l'esecuzione (mtime a secondi dal run); quei file passano se
+eseguiti da soli e non sono nello scope di questa modifica.
+
+**Fuori scope, segnalato.** `registry-form-metadata.test.tsx:268` ha un errore ESLint preesistente
+(`'_omit' is assigned a value but never used`), non toccato da questa modifica.
+
+**Prossimo passo.** In attesa di via libera per il commit.
+
+## AVATAR UNIFICATI IN TUTTA L'APP (2026-09-02) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "Sistemazione degli avatar in ogni tabella/form. In alcune pagine ci sono
+gli avatar con dei colori, in altre pagine gli stessi avatar hanno altri colori, voglio che venga
+unificato tutto." Decisioni prese dall'utente: (1) il colore resta derivato dal NOME
+(`avatarColor`), si correggono i punti che passavano la stringa sbagliata — NON si passa a una
+chiave per id; (2) forma CERCHIO ovunque, monogrammi delle schede di dettaglio inclusi.
+
+**Diagnosi.** La palette era gia' unica (`components/avatar-color.ts`, 12 coppie pastello) e
+`UserAvatar` era gia' l'unico renderer del fallback. Le divergenze vere erano cinque:
+`#{id}` passato come `name` nei select non idratati (colore casuale), `MentionBadge` senza
+`avatarUrl` (iniziali dove altrove c'e' la foto), `DetailMonogram` con iniziali/forma/peso font
+propri, taglie e `text-[Npx]` cablati a mano in ~15 call site, un avatar quadrato nell'header.
+
+**Scala vincolante (nuova).** `AvatarSize = xs|sm|default|lg|xl|2xl` = 16/24/32/40/56/64px, ogni
+rung accoppia diametro e font-size delle iniziali (~0.4x) in `components/ui/avatar.tsx`.
+**Un call site sceglie un rung, non scrive mai `size-*`/`text-*` sull'avatar.** `className` resta
+solo per il layout (`shrink-0`, `ring-*`, margini). `AvatarGroup`/`AvatarGroupCount` seguono il
+rung dei figli via `group-has-data-[size=...]`.
+
+**Iniziali: una sola regola.** `components/avatar-initials.ts` -> `avatarInitials()`. Nome a una
+parola = prime due lettere (`Acme` -> `AC`), a piu' parole = iniziali delle prime due
+(`Mario Rossi` -> `MR`), vuoto -> `?`; whitespace irregolare normalizzato. Sostituisce le DUE
+implementazioni divergenti (`user-avatar.tsx` dava `A` per `Acme`, `detail-panel.tsx` dava `AC`).
+Vive fuori da `user-avatar.tsx` per il vincolo react-refresh (un file componente esporta solo
+componenti).
+
+**`DetailMonogram` ora e' lo stesso oggetto di `UserAvatar`**: `rounded-full`, `font-medium`,
+stessa palette, stesse iniziali; via `rounded-2xl`, `shadow-sm` e il `ring` interno. Vale per i
+~35 hero di dettaglio.
+
+**Contratto API cambiato (Note).** `NoteResource.mentions[]` ora e'
+`{id, name, avatar_url}` (prima `{id, name}`): senza, un utente menzionato mostrava le iniziali
+mentre ovunque altrove mostrava la foto. `NoteService` fa eager load di `author.avatar` e
+`mentionedUsers.avatar` (chiude anche un N+1 che gia' c'era sull'author). Lato FE:
+`NoteMention.avatar_url`, `NoteBody` accetta `mentions` e le passa a `MentionBadge`;
+`MentionTextarea` espone `onMentionPicked` cosi' il composer impara l'avatar di chi viene
+scelto e la chip in bozza combacia con quella pubblicata.
+
+**Verificato (eseguito davvero).** `npx tsc -b --force` EXIT=0; `npx vitest run` 529 file /
+3790 test — i 10 fallimenti del run completo erano timeout a 5000ms sotto carico (un'altra
+sessione stava girando la sua suite in parallelo): rieseguiti i 9 file in isolamento, 63/63 verdi.
+Backend `php artisan test tests/Feature/Notes` 62/62. Nuovi test:
+`frontend/src/components/user-avatar.test.tsx` (8 test: iniziali, tinta stabile tra i rung,
+cerchio su ogni rung) e un test Pest sull'`avatar_url` della menzione.
+`NoteMentionValidationTest` aggiornato perche' il CONTRATTO e' cambiato, non per farlo passare.
+
+**Attenzione.** `./vendor/bin/pint --dirty` ha riformattato anche `WorkOrderResource.php`,
+`CreateWorkOrderData.php`, `UpdateWorkOrderData.php` — lavoro non committato di un'altra
+sessione (modulo work-orders), fuori dal mio scope: solo formattazione Pint, nessun cambio
+semantico.
+
+**Prossimi passi.** Nessun call site scrive piu' taglie a mano; se ne serve una nuova si aggiunge
+un rung in `avatar.tsx`, non una classe locale.
+
 ## RIGHE OFFERTA: ALIQUOTA SU UNA RIGA + RIGA VUOTA DI DEFAULT (2026-09-01) — VERDE, NON COMMITTATO
 
 **Direttive utente.** (1) "La selezione aliquota sulle righe delle offerte va a capo, voglio tutto

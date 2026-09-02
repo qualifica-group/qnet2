@@ -47,7 +47,7 @@ describe('useRequestCreateForm', () => {
     })
 
     expect(createRequestMock).not.toHaveBeenCalled()
-    expect(result.current.clientBlockError).toBe('Complete the client identity fields before saving.')
+    expect(result.current.clientBlockError).toMatch(/^Complete the client identity fields: /)
     expect(onSuccess).not.toHaveBeenCalled()
   })
 

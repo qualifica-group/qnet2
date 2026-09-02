@@ -12,12 +12,18 @@ use Illuminate\Http\Request;
 /**
  * For-select projection of a Project (GET /api/projects/for-select, spec
  * 0023). Label is "{code} — {name}"; `meta` carries the campaign-form
- * defaults (partner/pipeline_status/business_function/state/
- * product_category/operational_site, each {id, label} or null) plus the BR-7
- * budget figures, so selecting a project in the Campaign form precompiles it
- * with no extra request (ADR 0011). `operational_site` (prefill-modifiable
- * sede) has no own name column: its label is composed the same way
- * LeadResource/OperationalSiteForSelectResource do.
+ * defaults (partner/pipeline_status/state/product_lines/operational_site)
+ * plus the BR-7 budget figures, so selecting a project in the Campaign form
+ * precompiles it with no extra request (ADR 0011). `operational_site`
+ * (prefill-modifiable sede) has no own name column: its label is composed
+ * the same way LeadResource/OperationalSiteForSelectResource do.
+ *
+ * Spec 0094, D-1/D-2: `meta.business_function`/`meta.product_category` are
+ * REPLACED by `meta.product_lines` — `[{business_function: {id,name},
+ * product_category: {id,name}}]`, consumed by the Campaign form's prefill
+ * (no `id` per row, unlike ProjectResource/OpportunityResource's own
+ * `product_lines` — the data contract here only needs the pair, not the
+ * row's own persistence id).
  *
  * @mixin Project
  */
@@ -37,9 +43,8 @@ class ProjectForSelectResource extends ForSelectResource
             'meta' => [
                 'partner' => $this->summarize($this->partner),
                 'pipeline_status' => $this->summarize($this->pipelineStatus),
-                'business_function' => $this->summarize($this->businessFunction),
                 'state' => $this->summarize($this->state, geo: true),
-                'product_category' => $this->summarize($this->productCategory),
+                'product_lines' => $this->summarizeProductLines($this->productLines),
                 'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
                 'total_budget' => $totalBudget === null ? null : $this->formatMoney((float) $totalBudget),
                 'allocated_budget' => $this->formatMoney($allocatedBudget),
@@ -88,6 +93,20 @@ class ProjectForSelectResource extends ForSelectResource
         }
 
         return ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * @return array<int, array{business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductLines(iterable $lines): array
+    {
+        return collect($lines)
+            ->map(fn (Model $line): array => [
+                'business_function' => $this->summarizeGeo($line->businessFunction),
+                'product_category' => $this->summarizeGeo($line->productCategory),
+            ])
+            ->values()
+            ->all();
     }
 
     private function formatMoney(float $value): string

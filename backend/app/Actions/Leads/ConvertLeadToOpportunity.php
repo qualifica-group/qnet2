@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Actions\Leads;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
+use App\DataObjects\Quotes\CreateQuoteData;
+use App\Enums\CategoryManagementMode;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
+use App\Services\Opportunities\OpportunityProductLineCoverage;
 use App\Services\OpportunityService;
+use App\Services\Quotes\ProductOfferLineResolver;
+use App\Services\QuoteService;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -25,30 +30,53 @@ use Illuminate\Validation\ValidationException;
  * OpportunityService::create() for the actual persistence (product lines
  * sync, and — spec 0057, D-5 — the `OPP_{id}` name derivation), rather than
  * re-implementing either.
+ *
+ * Spec 0094, D-3/AC-062: with at least one product of interest, ALSO creates
+ * the ONE collegata Offerta, through the SAME QuoteService::create() the
+ * quotes module uses — never a second implementation of its code/status/
+ * aggregates. D-6/AC-067: a derived classification resolving to a `single`
+ * management-mode root accepts one offer row only; that check runs AFTER the
+ * Opportunity (and its product lines) are persisted — mirrors
+ * RequestCreationService::assertOfferLinesFitManagementMode(), the same
+ * shared OpportunityProductLineCoverage the FormRequest-based
+ * ValidatesQuoteLines::enforceSingleOfferLine() cannot reach here, since the
+ * Opportunity is born in this very (possibly not self-opened) transaction —
+ * a rejection at that point still rolls back everything Step 3 wrote.
  */
 final class ConvertLeadToOpportunity
 {
     public function __construct(
         private readonly LeadOpportunityDefaultsResolver $defaultsResolver,
         private readonly OpportunityService $opportunityService,
+        private readonly OpportunityProductLineCoverage $coverage,
+        private readonly QuoteService $quoteService,
+        private readonly ProductOfferLineResolver $offerLineResolver,
     ) {}
 
     /**
      * @param  ?User  $actor  who triggered the conversion, propagated to
      *                        OpportunityService so the assignment notifications
      *                        (spec 0081) can exclude them and name them as the
-     *                        author. Null on system-initiated conversions (the
-     *                        lead import), where there is nobody to exclude.
+     *                        author. Also who the generated Offerta (D-3) is
+     *                        attributed to — QuoteService::create() requires a
+     *                        non-null actor, so a null one here (today: no
+     *                        caller passes one) skips the Offerta entirely
+     *                        rather than crashing; the Opportunity is still
+     *                        created and still carries the transferred
+     *                        products of interest (AC-061).
      */
     public function handle(Lead $lead, ?User $actor = null): Opportunity
     {
-        // Step 1: derive the BR-1 values (registry_id/source_id) and the
-        // campaign/project's product line from the lead.
+        // Step 1: derive the BR-1 values (registry_id/source_id), the
+        // campaign/project's N product lines (spec 0094, AC-060), and the
+        // lead's own products of interest (AC-061) — REQUIRED_RELATIONS
+        // already eager-loaded productsOfInterest, so this never lazy-loads.
         $defaults = $this->defaultsResolver->resolve($lead);
+        $productIds = $lead->productsOfInterest->pluck('id')->map(intval(...))->unique()->values()->all();
 
-        // Step 2: a campaign/project with no business function or product
-        // category derives nothing to seed the opportunity's mandatory
-        // product line with (AC-012) — reject before persisting anything.
+        // Step 2: a campaign/project with no product line derives nothing to
+        // seed the opportunity's mandatory classification with (AC-012) —
+        // reject before persisting anything.
         if ($defaults->productLines === []) {
             throw ValidationException::withMessages([
                 'product_lines' => ["The lead's campaign has no business function or product category to derive an opportunity from."],
@@ -56,9 +84,11 @@ final class ConvertLeadToOpportunity
         }
 
         // Step 3: persist through OpportunityService::create(), so product
-        // line sync (and the `OPP_{id}` name derivation, spec 0057 D-5) stay
-        // the single implementation.
-        return $this->opportunityService->create(new CreateOpportunityData(
+        // line sync, the products-of-interest transfer (AC-061, covered by
+        // construction: they came from categories the SAME campaign lines
+        // cover) and the `OPP_{id}` name derivation (spec 0057 D-5) stay the
+        // single implementation.
+        $opportunity = $this->opportunityService->create(new CreateOpportunityData(
             registryId: $defaults->values['registry_id'],
             referentId: null,
             commercialId: null,
@@ -77,12 +107,68 @@ final class ConvertLeadToOpportunity
             estimatedValue: null,
             expectedCloseDate: null,
             successProbability: null,
+            productsOfInterest: $productIds === [] ? null : $productIds,
             // User directive 2026-07-23: the opportunity inherits the lead's
             // Sede operativa (plain default, never BR-2-locked).
             operationalSiteId: $defaults->values['operational_site_id'],
             // User directive 2026-07-27: the "Note generali" are seeded from
             // the lead's own notes (plain default, never BR-2-locked).
             generalNotes: $defaults->values['general_notes'],
+        ), $actor);
+
+        // Step 4 (D-6/AC-067): reject a `single`-managed derivation carrying
+        // 2+ products of interest — see class docblock for why this runs
+        // here rather than through the FormRequest-only ValidatesQuoteLines.
+        $this->assertOfferLinesFitManagementMode($opportunity, $productIds);
+
+        // Step 5 (D-3/D-7/AC-062/AC-065): with at least one product of
+        // interest AND a known actor, generate the single collegata Offerta.
+        $this->createOfferForActor($opportunity, $productIds, $actor);
+
+        return $opportunity;
+    }
+
+    /**
+     * @throws ValidationException more than one distinct product of interest on a `single`-managed derivation
+     */
+    private function assertOfferLinesFitManagementMode(Opportunity $opportunity, array $productIds): void
+    {
+        if (count($productIds) < 2) {
+            return;
+        }
+
+        if ($this->coverage->managementModeOf($opportunity) !== CategoryManagementMode::Single) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'offer_lines' => [__(OpportunityProductLineCoverage::SINGLE_OFFER_LINE_MESSAGE)],
+        ]);
+    }
+
+    /**
+     * @param  array<int, int>  $productIds
+     */
+    private function createOfferForActor(Opportunity $opportunity, array $productIds, ?User $actor): void
+    {
+        if ($actor === null || $productIds === []) {
+            return;
+        }
+
+        $this->quoteService->create(new CreateQuoteData(
+            code: null,
+            title: $opportunity->name,
+            opportunityId: $opportunity->id,
+            workflowStatusId: null,
+            note: null,
+            commercialId: null,
+            commercialIdSubmitted: false,
+            reporterId: null,
+            reporterIdSubmitted: false,
+            supervisorId: null,
+            supervisorIdSubmitted: false,
+            internalNotes: null,
+            offerLines: $this->offerLineResolver->resolve($productIds),
         ), $actor);
     }
 

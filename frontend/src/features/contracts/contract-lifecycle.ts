@@ -11,8 +11,9 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  * Mirrors `App\Services\Contracts\ContractActionAvailability` verbatim: the
  * server is the authority (it gates `permissions.actions` with the same rule
  * and 422s the endpoints anyway), this is the UI half of the same
- * defense-in-depth pair — needed here because the bar must also decide the
- * affordances the server does not describe, such as the disabled "Programma".
+ * defense-in-depth pair. `program` (spec 0095 D-1/D-2, renamed from
+ * `schedule`) now opens the work-order generation dialog instead of the
+ * date/status form it used to.
  *
  * La SOSPENSIONE e' un asse ortogonale che la direttiva non cita e il flusso
  * BR-2/D-3 deve continuare a funzionare: un contratto sospeso sta sulla riga
@@ -21,7 +22,7 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  */
 export interface ContractLifecycleActions {
   validate: boolean
-  schedule: boolean
+  program: boolean
   terminate: boolean
   edit: boolean
   changeStatus: boolean
@@ -60,7 +61,7 @@ export function contractLifecycleActions(contract: ContractDetail): ContractLife
 
   return {
     validate: working && !contract.is_suspended,
-    schedule: closedWon,
+    program: closedWon,
     terminate: working || closedWon,
     edit: working,
     changeStatus: working,

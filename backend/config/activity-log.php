@@ -33,6 +33,7 @@ use App\Models\Tag;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
+use App\Models\WorkOrder;
 use App\RequestManagement\RequestManagementActivityAuthorizer;
 
 return [
@@ -217,6 +218,9 @@ return [
         ],
         'units-of-measure' => [
             'model' => UnitOfMeasure::class,
+        ],
+        'work-orders' => [
+            'model' => WorkOrder::class,
         ],
     ],
 

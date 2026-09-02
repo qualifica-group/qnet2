@@ -22,6 +22,12 @@ interface PersonalDataSectionProps {
    * today's ungated behaviour (self-service profile, AC-013).
    */
   fieldPermission?: PersonalDataFieldPermissionResolver
+  /**
+   * Forwarded verbatim to the card: bumped by the owner form when a save is
+   * refused, so the buffered card marks its own missing fields (see
+   * `PersonalDataCardForm`).
+   */
+  revalidateSignal?: number
 }
 
 /**
@@ -37,6 +43,7 @@ export function PersonalDataSection({
   value,
   onChange,
   fieldPermission,
+  revalidateSignal,
 }: PersonalDataSectionProps) {
   const { t } = useTranslation()
   const persistence = cardOwnerRef(value)
@@ -46,7 +53,12 @@ export function PersonalDataSection({
   return (
     <section className="flex flex-col gap-4">
       <FormSection icon={IdCard} title={t('personalData.section.title')}>
-        <PersonalDataCardForm value={value} onChange={onChange} fieldPermission={fieldPermission} />
+        <PersonalDataCardForm
+          value={value}
+          onChange={onChange}
+          fieldPermission={fieldPermission}
+          revalidateSignal={revalidateSignal}
+        />
       </FormSection>
 
       {contactsVisible && (

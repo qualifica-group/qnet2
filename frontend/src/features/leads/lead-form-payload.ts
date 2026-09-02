@@ -20,6 +20,7 @@ export function buildCreatePayload(values: LeadFormValues): CreateLeadPayload {
     state_id: values.state_id,
     notes: values.notes,
     extra_fields: entriesToRecord(values.extra_fields),
+    products_of_interest: values.products_of_interest,
     convert_to_opportunity: values.convert_to_opportunity,
   }
 }
@@ -62,6 +63,11 @@ export function buildUpdatePayload(values: LeadFormValues, original: LeadDetail)
     payload.extra_fields = nextExtraFields
   }
 
+  const originalProductIds = (original.products_of_interest ?? []).map((product) => product.id)
+  if (!productIdsEqual(values.products_of_interest, originalProductIds)) {
+    payload.products_of_interest = values.products_of_interest
+  }
+
   return payload
 }
 
@@ -72,4 +78,12 @@ function extraFieldsEqual(a: Record<string, string> | null, b: Record<string, st
   const bKeys = Object.keys(b).sort()
   if (aKeys.length !== bKeys.length) return false
   return aKeys.every((key, index) => key === bKeys[index] && a[key] === b[key])
+}
+
+/** Order-independent equality of two product-id sets, for the `products_of_interest` sparse diff. */
+function productIdsEqual(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort((x, y) => x - y)
+  const sortedB = [...b].sort((x, y) => x - y)
+  return sortedA.every((id, index) => id === sortedB[index])
 }

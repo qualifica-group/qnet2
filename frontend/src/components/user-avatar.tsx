@@ -1,23 +1,28 @@
+import type { AvatarSize } from '@/components/ui/avatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { avatarColor } from '@/components/avatar-color'
+import { avatarInitials } from '@/components/avatar-initials'
 
 interface UserAvatarProps {
-  /** Display name: drives the initials fallback and the image alt text. */
+  /** Display name: drives the deterministic color, the initials and the alt text. */
   name: string
   /** Avatar image source (data: URI or URL); falls back to initials when null. */
   src?: string | null
-  /** Forwarded to the underlying `Avatar` root; defaults to `"default"`. */
-  size?: 'default' | 'sm' | 'lg'
-  /** Extra classes forwarded to the avatar root (e.g. sizing, rounding). */
+  /** Rung of the app-wide avatar scale; defaults to `"default"` (32px). */
+  size?: AvatarSize
+  /** Extra classes forwarded to the avatar root — layout only, never sizing. */
   className?: string
 }
 
 /**
- * Single source of truth for rendering a user's avatar across the app — sidebar,
- * tables, forms, anywhere a user is shown. Renders the image when available and
- * the name's initials otherwise. Change the avatar's look or behaviour HERE and
- * it propagates everywhere; do not re-compose Avatar/AvatarImage/AvatarFallback
- * ad hoc elsewhere.
+ * Single source of truth for rendering an identity avatar across the app —
+ * sidebar, tables, forms, selects, detail sheets. Renders the image when
+ * available and the name's initials otherwise, always as a circle tinted by
+ * `avatarColor(name)`. Change the avatar's look or behaviour HERE and it
+ * propagates everywhere; do not re-compose Avatar/AvatarImage/AvatarFallback
+ * ad hoc elsewhere, and do not override the diameter or the font size from a
+ * call site — pick a `size` rung so the same person looks identical on every
+ * screen.
  */
 export function UserAvatar({ name, src, size, className }: UserAvatarProps) {
   const color = avatarColor(name)
@@ -27,22 +32,10 @@ export function UserAvatar({ name, src, size, className }: UserAvatarProps) {
     // fallback shows immediately instead of leaving a blank circle.
     <Avatar key={src ? 'image' : 'fallback'} size={size} className={className}>
       {src && <AvatarImage src={src} alt={name} />}
-      <AvatarFallback
-        className="font-medium"
-        style={{ backgroundColor: color.bg, color: color.fg }}
-      >
-        {initials(name)}
+      <AvatarFallback style={{ backgroundColor: color.bg, color: color.fg }}>
+        {avatarInitials(name)}
       </AvatarFallback>
     </Avatar>
   )
 }
 
-/** Derives up to two uppercase initials from a display name. */
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-}

@@ -11,6 +11,7 @@ use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
+use App\Models\WorkOrder;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
@@ -304,9 +305,20 @@ class QuoteService
      * opportunity's derived name (spec 0077) is recalculated AFTER the
      * cascade, inside the same transaction, so a now-orphaned revenue line
      * never counts (AC-034: falls back to `OPP_{id}` once no offer is left).
+     *
+     * Guarded (spec 0093, D-5): a quote with at least one WorkOrder cannot be
+     * deleted — `work_orders.quote_id` is `restrictOnDelete`, so without this
+     * explicit check the FK constraint would surface as an unhandled 500
+     * instead of a clean 409. Checked via a plain query, not a Quote::
+     * workOrders() relation (spec 0093 deliberately adds no such relation to
+     * this file — the sole cross-module edit is this guard).
      */
     public function delete(Quote $quote): void
     {
+        if (WorkOrder::where('quote_id', $quote->id)->exists()) {
+            abort(409, 'This quote has work orders and cannot be deleted.');
+        }
+
         DB::transaction(function () use ($quote): void {
             $opportunityId = $quote->opportunity_id;
 

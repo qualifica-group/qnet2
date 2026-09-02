@@ -33,6 +33,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Relies on CampaignService::loadDetail() having eager-loaded both branches
  * (own classification/geo + project's), so resolving either side here never
  * N+1s.
+ *
+ * Spec 0094, D-1/D-2: `business_function_id`/`business_function`/
+ * `product_category_id`/`product_category` are REPLACED by `product_lines`
+ * (one row per funzione-aziendale + categoria-prodotto pair, mirroring
+ * OpportunityResource/ProjectResource) — the EFFECTIVE rows, same
+ * project-first precedence as every other BR-2 field above: the linked
+ * project's collection when derived, else the campaign's own.
  */
 class CampaignResource extends JsonResource
 {
@@ -45,8 +52,7 @@ class CampaignResource extends JsonResource
         $derivedFromProject = $project !== null;
 
         $pipelineStatus = $derivedFromProject ? $project->pipelineStatus : $this->pipelineStatus;
-        $businessFunction = $derivedFromProject ? $project->businessFunction : $this->businessFunction;
-        $productCategory = $derivedFromProject ? $project->productCategory : $this->productCategory;
+        $productLines = $derivedFromProject ? $project->productLines : $this->productLines;
 
         $country = $project?->country ?? $this->country;
         $state = $project?->state ?? $this->state;
@@ -75,8 +81,6 @@ class CampaignResource extends JsonResource
                 'name' => $pipelineStatus->name,
                 'color' => $pipelineStatus->color,
             ],
-            'business_function_id' => $businessFunction?->id,
-            'business_function' => $this->summarize($businessFunction),
             'country_id' => $country?->id,
             'country' => $this->summarize($country, geo: true),
             'state_id' => $state?->id,
@@ -87,8 +91,7 @@ class CampaignResource extends JsonResource
             'city' => $this->summarize($city, geo: true),
             'geo_scope' => GeoScopeLevel::for($country?->id, $state?->id, $province?->id, $city?->id)?->value,
             'geo_locked_levels' => $this->geoLockedLevels($project),
-            'product_category_id' => $productCategory?->id,
-            'product_category' => $this->summarize($productCategory),
+            'product_lines' => $this->summarizeProductLines($productLines),
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'total_budget' => $this->total_budget,
@@ -115,6 +118,21 @@ class CampaignResource extends JsonResource
             $project->province_id !== null ? GeoScopeLevel::Province->value : null,
             $project->city_id !== null ? GeoScopeLevel::City->value : null,
         ]));
+    }
+
+    /**
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductLines(iterable $lines): array
+    {
+        return collect($lines)
+            ->map(fn (Model $line): array => [
+                'id' => $line->id,
+                'business_function' => $this->summarize($line->businessFunction),
+                'product_category' => $this->summarize($line->productCategory),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

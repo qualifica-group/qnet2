@@ -44,11 +44,7 @@ export function NavUserHeader({ user }: { user: User }) {
             <span className="truncate text-xs font-medium">{user.name}</span>
             <span className="truncate text-[11px] text-sidebar-foreground/70">{subtitle}</span>
           </div>
-          <UserAvatar
-            name={user.name}
-            src={user.avatar_url}
-            className="size-7 rounded-md"
-          />
+          <UserAvatar name={user.name} src={user.avatar_url} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-56 rounded-lg" align="end" sideOffset={8}>

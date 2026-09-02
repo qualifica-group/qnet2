@@ -28,11 +28,17 @@ namespace App\DataObjects\Leads;
  * fall back to deriving it from the Sede only when the key was absent. Like
  * `state_id` on the DB, it is set by the Service's overlay, not through
  * attributes().
+ *
+ * `productsOfInterest` (spec 0094, D-5) follows the SAME null-means-
+ * untouched convention as CreateOpportunityData's own field: synced by
+ * App\Services\Leads\LeadProductInterestWriter, never mass-assigned, so it
+ * stays out of attributes().
  */
 final readonly class CreateLeadData
 {
     /**
      * @param  array<string, string>|null  $extraFields
+     * @param  array<int, int>|null  $productsOfInterest
      */
     public function __construct(
         public int $registryId,
@@ -45,6 +51,7 @@ final readonly class CreateLeadData
         public bool $convertToOpportunity = false,
         public ?int $stateId = null,
         public bool $stateIdSubmitted = false,
+        public ?array $productsOfInterest = null,
     ) {}
 
     /**
@@ -65,7 +72,21 @@ final readonly class CreateLeadData
             convertToOpportunity: (bool) ($data['convert_to_opportunity'] ?? false),
             stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
             stateIdSubmitted: array_key_exists('state_id', $data),
+            productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
         );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function normalizeIds(mixed $ids): array
+    {
+        return array_values(array_unique(array_map(static fn ($id): int => (int) $id, (array) $ids)));
+    }
+
+    public function hasProductsOfInterest(): bool
+    {
+        return $this->productsOfInterest !== null;
     }
 
     /**

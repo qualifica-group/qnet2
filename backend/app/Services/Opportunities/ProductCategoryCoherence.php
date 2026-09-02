@@ -9,29 +9,32 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * THE COHERENCE RULE of the products of interest (user directive 2026-07-31,
- * extended to the opportunities module by the user directive 2026-08-05): if
- * the record carries products of interest, every one of them must belong to
- * one of the product categories the record classifies itself with
- * (`opportunity_product_lines`). A product outside them is REFUSED and the
- * operator resolves it explicitly — either by adding the product category to
- * the record, or by dropping the product.
+ * extended to the opportunities module by the user directive 2026-08-05, and
+ * to the Lead module by spec 0094 D-5): if the record carries products of
+ * interest, every one of them must belong to one of the product categories
+ * the record classifies itself with (`opportunity_product_lines`, or —
+ * Lead — its Campaign's own lines). A product outside them is REFUSED and
+ * the operator resolves it explicitly — either by adding the product
+ * category to the record, or by dropping the product.
  *
- * Both modules write the SAME Opportunity rows through the same collections,
- * so the rule lives here (with the entity) and is enforced on EVERY write
- * channel of either module: request-management POST/PATCH (create form, work
- * panel, inline cell edit) and opportunities POST/PATCH (form, inline cell
- * edit). The `products_of_interest` half is enforced once, inside
- * OpportunityProductInterestWriter — the one writer every channel reaches;
- * the `product_lines` half (a category leaving the record orphans a persisted
- * product) is asserted by the two services that own that write.
+ * All three modules apply the same rule to their own products-of-interest
+ * collection, so it lives here (with the entity it originated on) and is
+ * enforced on EVERY write channel of each module: request-management
+ * POST/PATCH (create form, work panel, inline cell edit), opportunities
+ * POST/PATCH (form, inline cell edit), and leads POST/PATCH. The
+ * `products_of_interest` half is enforced once, inside
+ * OpportunityProductInterestWriter — the one writer every opportunity/
+ * request-management channel reaches; the `product_lines` half (a category
+ * leaving the record orphans a persisted product) is asserted by the
+ * services that own that write, one per module.
  *
  * This DELIBERATELY replaced, on the opportunities module too, the
  * "cross-category pick adds the missing product line" behaviour of
  * OpportunityProductLineCoverage — which now serves quotes only, its other
  * caller.
  *
- * The message names the record the way its own module does: two templates,
- * one rule.
+ * The message names the record the way its own module does: three
+ * templates, one rule.
  */
 final class ProductCategoryCoherence
 {
@@ -40,6 +43,9 @@ final class ProductCategoryCoherence
 
     /** The opportunities wording ("l'opportunità"), used by that module's channels. */
     public const string OPPORTUNITY_MESSAGE = 'These products of interest belong to a product category the opportunity does not carry: :products. Add that product category to the opportunity, or remove the product.';
+
+    /** The leads wording ("il lead"/campagna), used by that module's channels (spec 0094). */
+    public const string LEAD_MESSAGE = 'These products of interest belong to a product category the lead does not carry: :products. Add that product category to the campaign, or remove the product.';
 
     /**
      * The products sitting outside the covered categories, as

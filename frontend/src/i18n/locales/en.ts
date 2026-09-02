@@ -36,6 +36,7 @@ import { quoteWorkflows } from './en-quote-workflows'
 import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
+import { workOrders } from './en-work-orders'
 import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
@@ -394,6 +395,7 @@ export const en = {
   quotes,
   contractStatuses,
   contracts,
+  workOrders,
   commissionConfigurations,
   requestManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec

@@ -19,6 +19,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Spec 0047 (AC-003): `state`/`state_id` is the Regione (D1), derived
  * server-side from the sede — never user-editable directly.
+ *
+ * Spec 0094 (AC-030): `products_of_interest` mirrors
+ * OpportunityResource::summarizeProductsOfInterest() verbatim. Relies on
+ * LeadService::loadDetail() having eager-loaded `productsOfInterest.category`,
+ * so resolving it here never N+1s.
  */
 class LeadResource extends JsonResource
 {
@@ -44,6 +49,7 @@ class LeadResource extends JsonResource
             'lead_status' => $this->lifecycleStatus()->value,
             'notes' => $this->notes,
             'extra_fields' => $this->extra_fields,
+            'products_of_interest' => $this->summarizeProductsOfInterest($this->productsOfInterest),
             // spec 0040: the opportunity generated from this lead, if any
             // (D-2: at most one). The lead itself carries no flag/column for
             // this (D-5) — presence is derived purely from the relation.
@@ -109,5 +115,20 @@ class LeadResource extends JsonResource
     private function summarizeOpportunity(mixed $opportunity): ?array
     {
         return $opportunity === null ? null : ['id' => $opportunity->id, 'name' => $opportunity->name];
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductsOfInterest(iterable $products): array
+    {
+        return collect($products)
+            ->map(fn (Model $product): array => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'product_category' => $this->summarizeByName($product->category),
+            ])
+            ->values()
+            ->all();
     }
 }

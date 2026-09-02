@@ -150,12 +150,12 @@ class QualificaSampleLeadSeeder extends Seeder
             description: 'Campagna di esempio a supporto dei lead dimostrativi.',
             partnerId: null,
             operationalSiteId: null,
-            // The 4 classification fields are forced null on a linked
-            // campaign (BR-2) — they live on the project above.
+            // `pipeline_status_id`/`product_lines` (spec 0094) are forced
+            // null on a linked campaign (BR-2) — they live on the project
+            // above.
             pipelineStatusId: null,
-            businessFunctionId: null,
+            productLines: null,
             stateId: null,
-            productCategoryId: null,
             startDate: null,
             endDate: null,
             totalBudget: null,
@@ -181,9 +181,8 @@ class QualificaSampleLeadSeeder extends Seeder
             // 'new' pipeline status (spec 0039, D-3).
             pipelineStatusId: null,
             description: 'Progetto di esempio a supporto dei lead dimostrativi.',
-            businessFunctionId: $pair['business_function_id'],
+            productLines: [$pair],
             stateId: null,
-            productCategoryId: $pair['product_category_id'],
             partnerId: null,
             operationalSiteId: null,
             startDate: null,

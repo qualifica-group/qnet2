@@ -8,6 +8,7 @@ use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
+use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -85,6 +86,12 @@ class TableRowsRequest extends FormRequest
             // no-op key for every other domain (D-1: the allow-lists above
             // never depend on this scope, unlike productCategoryId).
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
+
+            // Spec 0095, D-8: scopes `work-orders` to one Quote's own
+            // Commesse (the Contratto detail's tab) — a no-op key for every
+            // other domain, mirroring `opportunityId` (AC-053: OMITTED by
+            // every existing caller, so their payload stays byte-identical).
+            'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
         ];
     }
 
@@ -163,6 +170,10 @@ class TableRowsRequest extends FormRequest
                 $definition->scopeToOpportunity($this->opportunityIdInput());
             }
 
+            if ($definition instanceof QuoteScopedTableDefinition) {
+                $definition->scopeToQuote($this->quoteIdInput());
+            }
+
             $this->resolvedDefinition = $definition;
         }
 
@@ -189,6 +200,17 @@ class TableRowsRequest extends FormRequest
     private function opportunityIdInput(): ?int
     {
         $value = $this->input('opportunityId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `quoteId` request input, coerced to int (spec 0095), mirroring
+     * `opportunityIdInput()`.
+     */
+    private function quoteIdInput(): ?int
+    {
+        $value = $this->input('quoteId');
 
         return is_numeric($value) ? (int) $value : null;
     }

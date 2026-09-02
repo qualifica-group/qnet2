@@ -7,10 +7,14 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { areCreateContactsValid, isCreateAddressValid } from '@/features/personal-data/create-validation'
+import {
+  describeAddressIssues,
+  describeCardIssues,
+  describeContactIssues,
+  isPersonalDataCardValid,
+} from '@/features/personal-data/personal-data-issues'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import { emptyProductLineRow } from '@/features/product-lines/types'
-import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { createRequest } from '@/features/request-management/api'
 import { buildRequestCreatePayload } from '@/features/request-management/request-create-payload'
@@ -89,6 +93,9 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { t } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
+  // Bumped on every refused save so the buffered identity card marks its own
+  // missing fields (it takes no part in this form's submit).
+  const [revalidateSignal, setRevalidateSignal] = useState(0)
   const [clientBlockError, setClientBlockError] = useState<string | null>(null)
   const [productLinesError, setProductLinesError] = useState<string | null>(null)
   const [rewardsError, setRewardsError] = useState<string | null>(null)
@@ -185,19 +192,15 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   // save until its required-by-type fields validate, mirroring the
   // registries create form's own `profileValid` gate.
   const identityValid = useMemo(
-    () =>
-      usingExistingRegistry ||
-      buildPersonalDataSchema(t).safeParse({
-        type: identityDraft.type,
-        first_name: identityDraft.first_name ?? undefined,
-        last_name: identityDraft.last_name ?? undefined,
-        company_name: identityDraft.company_name ?? undefined,
-        tax_code: identityDraft.tax_code ?? undefined,
-        vat_number: identityDraft.vat_number ?? undefined,
-        birth_date: identityDraft.birth_date ?? undefined,
-      }).success,
+    () => usingExistingRegistry || isPersonalDataCardValid(identityDraft, t),
     [usingExistingRegistry, identityDraft, t],
   )
+
+  /** Refuses the save, naming the offending fields and highlighting them inline. */
+  const refuseClientBlock = (messageKey: string, fields: string[]): void => {
+    setClientBlockError(t(messageKey, { fields: fields.join(' · ') }))
+    setRevalidateSignal((signal) => signal + 1)
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     setServerError(null)
@@ -207,15 +210,20 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
 
     if (!usingExistingRegistry) {
       if (!identityValid) {
-        setClientBlockError(t('requestManagement.form.create.errors.identityIncomplete'))
+        refuseClientBlock(
+          'requestManagement.form.create.errors.identityIncomplete',
+          describeCardIssues(identityDraft, t),
+        )
         return
       }
-      if (!isCreateAddressValid(addressDraft)) {
-        setClientBlockError(t('requestManagement.form.create.errors.addressIncomplete'))
+      const addressIssues = describeAddressIssues(addressDraft, t)
+      if (addressIssues.length > 0) {
+        refuseClientBlock('requestManagement.form.create.errors.addressIncomplete', addressIssues)
         return
       }
-      if (!areCreateContactsValid(contactsDraft, t)) {
-        setClientBlockError(t('requestManagement.form.create.errors.contactsInvalid'))
+      const contactIssues = describeContactIssues(contactsDraft, t)
+      if (contactIssues.length > 0) {
+        refuseClientBlock('requestManagement.form.create.errors.contactsInvalid', contactIssues)
         return
       }
     }
@@ -271,6 +279,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
     usingExistingRegistry,
     identityDraft,
     setIdentityDraft,
+    revalidateSignal,
     contactsDraft,
     setContactsDraft,
     addressDraft,

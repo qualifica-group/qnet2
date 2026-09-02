@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { GeoSelect, type GeoValue } from '@/features/geo/geo-select'
+import type { GeoScope } from '@/features/geo/geo-scope'
 import {
   DEFAULT_SITE_TYPE,
   SITE_TYPE_LABEL_KEYS,
@@ -29,6 +30,9 @@ const BLANK_ADDRESS: AddressDraft = {
   is_primary: true,
   site_type: DEFAULT_SITE_TYPE,
 }
+
+/** The cascade levels marked required when the caller enforces the city rule. */
+const CITY_REQUIRED_LEVELS: ReadonlyArray<GeoScope> = ['city']
 
 /** The geo cascade of a not-yet-started address, before anything is buffered. */
 const BLANK_GEO: GeoValue = {
@@ -124,12 +128,16 @@ export function AddressCreateField({
       <div className="flex flex-col gap-1.5">
         <label htmlFor="address-create-line1" className="text-sm font-medium">
           {t('personalData.addresses.line1')}
+          <span className="ml-1 text-destructive" aria-hidden="true">
+            *
+          </span>
         </label>
         <Input
           id="address-create-line1"
           autoComplete="address-line1"
           value={fields.line1}
           onChange={(event) => commit({ ...fields, line1: event.target.value })}
+          aria-required="true"
           aria-invalid={line1Error !== null}
           aria-describedby={line1Error ? 'address-create-line1-error' : undefined}
         />
@@ -165,7 +173,11 @@ export function AddressCreateField({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <GeoSelect value={geoValue} onChange={(next) => commit({ ...fields, ...next })} />
+        <GeoSelect
+          value={geoValue}
+          onChange={(next) => commit({ ...fields, ...next })}
+          requiredLevels={cityRequired ? CITY_REQUIRED_LEVELS : undefined}
+        />
         {cityError && (
           <span role="alert" className="text-sm text-destructive">
             {cityError}

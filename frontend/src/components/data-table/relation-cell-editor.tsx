@@ -203,7 +203,7 @@ export function RelationCellEditor(
                     aria-hidden="true"
                   />
                   {showAvatar ? (
-                    <UserAvatar name={item.label} src={item.avatar_url} className="size-5 shrink-0 text-[10px]" />
+                    <UserAvatar name={item.label} src={item.avatar_url} size="sm" className="shrink-0" />
                   ) : null}
                   <span className="truncate">{item.label}</span>
                 </button>

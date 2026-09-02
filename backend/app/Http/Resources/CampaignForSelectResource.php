@@ -18,6 +18,13 @@ use Illuminate\Http\Request;
  * auto-filled from the sede (user directive 2026-07-21): no state_id/
  * state_label here.
  *
+ * Spec 0094, D-1/D-2: `meta.product_category_ids` is NEW — the EFFECTIVE
+ * product-category ids (the linked project's when derived, else the
+ * campaign's own), so the Lead form's "Prodotti di interesse" picker and the
+ * import wizard filter `products/for-select` with no extra request. Relies on
+ * CampaignService::forSelectBaseQuery() eager-loading `productLines`/
+ * `project.productLines`.
+ *
  * @mixin Campaign
  */
 class CampaignForSelectResource extends ForSelectResource
@@ -33,8 +40,19 @@ class CampaignForSelectResource extends ForSelectResource
             'subtitle' => $this->code,
             'meta' => [
                 'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
+                'product_category_ids' => $this->effectiveProductCategoryIds(),
             ],
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function effectiveProductCategoryIds(): array
+    {
+        $lines = $this->project !== null ? $this->project->productLines : $this->productLines;
+
+        return $lines->pluck('product_category_id')->map(intval(...))->values()->all();
     }
 
     /**

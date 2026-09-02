@@ -121,6 +121,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // "Unita di Misura" lookup — name/symbol mandatory, `code` writable
         // only on create, D-1).
         'units-of-measure',
+        // spec 0093 `work-orders` (WorkOrdersAuthorization: the Commesse
+        // module resource — title/type mandatory, `code`/`quote_id` writable
+        // only on create, D-1/D-5).
+        'work-orders',
     ]);
 
     $userFieldKeys = collect($resources['users']['fields'])->pluck('key')->all();

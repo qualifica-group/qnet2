@@ -12,8 +12,10 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
 /**
- * The 4 contract domain actions (spec 0072, BR-2/3/4): validate, schedule,
- * terminate, reactivate. AC-006/007/009-017.
+ * The 3 contract domain actions this file covers (spec 0072, BR-2/3/4):
+ * validate, terminate, reactivate. AC-006/007/009-011/014-017. "Programma"
+ * (formerly "schedule") is covered by ContractProgrammableLinesTest/
+ * ContractWorkOrderGenerationTest (spec 0095, D-1).
  */
 uses(RefreshDatabase::class);
 
@@ -23,7 +25,7 @@ if (! function_exists('contractActionsUserWith')) {
      */
     function contractActionsUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'] as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
         }
 
@@ -355,71 +357,6 @@ it('validating with a non closed_won contract_status_id is 422, nothing persiste
 });
 
 // ---------------------------------------------------------------------------
-// AC-012/013 — schedule
-// ---------------------------------------------------------------------------
-
-it('AC-012: scheduling a contract persists the dates and status, and logs the activity', function () {
-    $contract = Contract::factory()->create();
-    $newStatus = ContractStatus::factory()->create(['is_active' => true]);
-    $actor = contractActionsUserWith(['schedule']);
-    Sanctum::actingAs($actor);
-
-    $expiryDate = now()->addYear()->toDateString();
-    $renewalDate = now()->addMonths(11)->toDateString();
-
-    $this->postJson("/api/contracts/{$contract->id}/schedule", [
-        'expiry_date' => $expiryDate,
-        'renewal_date' => $renewalDate,
-        'contract_status_id' => $newStatus->id,
-    ])->assertOk();
-
-    $contract->refresh();
-    expect($contract->contract_status_id)->toBe($newStatus->id)
-        ->and($contract->expiry_date->toDateString())->toBe($expiryDate)
-        ->and($contract->renewal_date->toDateString())->toBe($renewalDate);
-
-    expect(Activity::where('subject_id', $contract->id)->where('event', 'contract.scheduled')->exists())->toBeTrue();
-});
-
-it('AC-013: scheduling with renewal_date after expiry_date is 422, nothing persisted', function () {
-    $contract = Contract::factory()->create();
-    $status = ContractStatus::factory()->create(['is_active' => true]);
-    $actor = contractActionsUserWith(['schedule']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/contracts/{$contract->id}/schedule", [
-        'expiry_date' => now()->addMonths(6)->toDateString(),
-        'renewal_date' => now()->addYear()->toDateString(),
-        'contract_status_id' => $status->id,
-    ])->assertStatus(422)->assertJsonValidationErrors('renewal_date');
-
-    expect($contract->fresh()->expiry_date)->toBeNull();
-});
-
-it('scheduling a suspended contract is 422', function () {
-    $contract = Contract::factory()->create(['suspended_at' => now()]);
-    $status = ContractStatus::factory()->create(['is_active' => true]);
-    $actor = contractActionsUserWith(['schedule']);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/contracts/{$contract->id}/schedule", [
-        'expiry_date' => now()->addYear()->toDateString(),
-        'contract_status_id' => $status->id,
-    ])->assertStatus(422);
-});
-
-it('schedule is 403 without contracts.schedule', function () {
-    $contract = Contract::factory()->create();
-    $actor = contractActionsUserWith([]);
-    Sanctum::actingAs($actor);
-
-    $this->postJson("/api/contracts/{$contract->id}/schedule", [
-        'expiry_date' => now()->addYear()->toDateString(),
-        'contract_status_id' => ContractStatus::factory()->create(['is_active' => true])->id,
-    ])->assertForbidden();
-});
-
-// ---------------------------------------------------------------------------
 // AC-014/015/016 — terminate (BR-4)
 // ---------------------------------------------------------------------------
 
@@ -503,8 +440,7 @@ it('terminate is 403 without contracts.terminate', function () {
 });
 
 // ---------------------------------------------------------------------------
-// AC-017 — never a future date (validate/terminate; see handoff note re:
-// schedule, whose own endpoint doc does NOT declare this constraint)
+// AC-017 — never a future date (validate/terminate)
 // ---------------------------------------------------------------------------
 
 it('AC-017: validating with a future validated_at is 422 on the date field', function () {

@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Permission;
  * row actions:
  *
  * - open | pending → edit, change_status, validate, terminate
- * - closed_won     → terminate, schedule, reactivate
+ * - closed_won     → terminate, program, reactivate
  * - closed_lost    → reactivate
  *
  * The actor below holds EVERY ability, so what changes between the cases is
@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
 if (! function_exists('contractAvailabilityActor')) {
     function contractAvailabilityActor(): User
     {
-        $abilities = ['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'];
+        $abilities = ['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'];
 
         foreach ($abilities as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
@@ -71,7 +71,7 @@ it('offers edit, change_status, validate and terminate on an OPEN contract', fun
     expect($flags['validate'])->toBeTrue()
         ->and($flags['terminate'])->toBeTrue()
         ->and($flags['change_status'])->toBeTrue()
-        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['program'])->toBeFalse()
         ->and($flags['reactivate'])->toBeFalse();
 });
 
@@ -83,17 +83,17 @@ it('behaves the same on a PENDING contract', function () {
         ->and($flags['validate'])->toBeTrue()
         ->and($flags['terminate'])->toBeTrue()
         ->and($flags['change_status'])->toBeTrue()
-        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['program'])->toBeFalse()
         ->and($flags['reactivate'])->toBeFalse();
 });
 
-it('offers terminate, schedule and reactivate on a CLOSED_WON contract', function () {
+it('offers terminate, program and reactivate on a CLOSED_WON contract', function () {
     // Directive 2026-08-31 rev.3: a positively closed contract must be
     // reopenable too, so `reactivate` joins the two it already had.
     $flags = contractActionFlags(contractOnSystemStatus('validated', ['validated_at' => now()->subDay()]));
 
     expect($flags['terminate'])->toBeTrue()
-        ->and($flags['schedule'])->toBeTrue()
+        ->and($flags['program'])->toBeTrue()
         ->and($flags['reactivate'])->toBeTrue()
         ->and($flags['validate'])->toBeFalse()
         ->and($flags['change_status'])->toBeFalse();
@@ -107,7 +107,7 @@ it('offers only reactivate on a CLOSED_LOST contract', function () {
 
     expect($flags['reactivate'])->toBeTrue()
         ->and($flags['validate'])->toBeFalse()
-        ->and($flags['schedule'])->toBeFalse()
+        ->and($flags['program'])->toBeFalse()
         ->and($flags['terminate'])->toBeFalse()
         ->and($flags['change_status'])->toBeFalse();
 });
@@ -134,7 +134,7 @@ it('drops the lifecycle-refused keys from the grid row actions too', function ()
 
     expect($row)->not->toBeNull()
         ->and($row['actions'])->not->toContain('validate')
-        ->and($row['actions'])->not->toContain('schedule')
+        ->and($row['actions'])->not->toContain('program')
         ->and($row['actions'])->not->toContain('terminate')
         ->and($row['actions'])->not->toContain('change_status')
         ->and($row['actions'])->not->toContain('edit')

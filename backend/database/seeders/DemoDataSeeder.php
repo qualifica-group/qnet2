@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\WorkOrder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -23,14 +24,16 @@ class DemoDataSeeder extends Seeder
     {
         $this->call(DatabaseSeeder::class);
 
-        // Clear the most-downstream demo entities first: a Quote restricts
-        // (never cascades) its Opportunity, which itself restrict-references
+        // Clear the most-downstream demo entities first: a WorkOrder
+        // restricts (never cascades) its Quote (spec 0093, D-5), which
+        // itself restricts its Opportunity, which itself restrict-references
         // half the graph (registries, companies, sites, referents, leads),
         // and a Lead restricts referents/campaigns/sites — so on a re-run
         // the upstream delete-and-recreate seeders (e.g. DemoReferentSeeder)
         // would trip the FK restriction before the downstream seeders get a
-        // chance to clear their own rows. All three tables are re-seeded
+        // chance to clear their own rows. All four tables are re-seeded
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
+        WorkOrder::query()->delete();
         Quote::query()->delete();
         Opportunity::query()->delete();
         Lead::query()->delete();
@@ -105,6 +108,9 @@ class DemoDataSeeder extends Seeder
         // for the opportunities themselves and on DemoProductSeeder for the
         // offer/cost line products — must run after both.
         $this->call(DemoQuoteSeeder::class);
+        // Commesse (spec 0093): depends on DemoQuoteSeeder for the quotes and
+        // their own REVENUE lines — must run after it.
+        $this->call(DemoWorkOrderSeeder::class);
         // Plans a callback on some of the requests through the module's own
         // write path. Spec 0086 (D-1) made the Offerta that path's subject, so
         // this now depends on DemoQuoteSeeder and must run AFTER it.

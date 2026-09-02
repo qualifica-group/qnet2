@@ -36,6 +36,7 @@ use App\Tables\TagsTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
+use App\Tables\WorkOrdersTableDefinition;
 
 return [
 
@@ -93,6 +94,8 @@ return [
         'payment-methods' => PaymentMethodsTableDefinition::class,
         'quotes' => QuotesTableDefinition::class,
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
+        // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
+        'work-orders' => WorkOrdersTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
         'reward-types' => RewardTypesTableDefinition::class,
         'reward-statuses' => RewardStatusesTableDefinition::class,

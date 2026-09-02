@@ -12,6 +12,8 @@ import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
 import { cardOwnerRef } from '@/features/personal-data/drafts'
+import type { BlockedSection } from '@/features/personal-data/personal-data-issues'
+import { useRevealBlockedSection } from '@/features/personal-data/use-reveal-blocked-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import { DetailsTabContent } from '@/features/registries/registry-form-details-tab'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
@@ -26,6 +28,13 @@ interface RegistryFormBodyProps {
 /** One entry in the tab strip: its value, label, icon, and gating flags. */
 /** Tab selected when the form opens. */
 const DEFAULT_TAB = 'account'
+
+/** Which tab owns each anagraphic block, for the reveal on a refused save. */
+const TAB_OF_SECTION: Record<BlockedSection, string> = {
+  card: 'account',
+  contacts: 'contactInfo',
+  addresses: 'contactInfo',
+}
 
 interface RegistryFormTab {
   value: string
@@ -58,10 +67,16 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
     profileDraft,
     setProfileDraft,
     profileValid,
+    revalidateSignal,
+    blockedSection,
     selectedItems,
     onSubmit,
     personalDataFieldPermission,
   } = useRegistryForm({ mode, onSuccess })
+
+  // A highlighted field on a hidden tab is no highlight at all: a refused save
+  // brings its own block on screen.
+  useRevealBlockedSection(revalidateSignal, blockedSection, TAB_OF_SECTION, setActiveTab)
 
   // Section visibility, read from the same authorization context `MetaField`
   // uses (the anagraphic card has no permission-gated field, so Account is
@@ -135,6 +150,7 @@ export function RegistryFormBody({ mode, onSuccess, onCancel }: RegistryFormBody
                   value={profileDraft}
                   onChange={setProfileDraft}
                   fieldPermission={personalDataFieldPermission}
+                  revalidateSignal={revalidateSignal}
                 />
               </FormSection>
 

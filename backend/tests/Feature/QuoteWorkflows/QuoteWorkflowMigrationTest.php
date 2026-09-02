@@ -48,9 +48,18 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (24th), spec 0090's
     // `2026_09_01_130000_add_user_id_to_referents_table` (25th) and
     // `2026_09_01_140000_add_generates_contract_to_product_categories_table`
-    // (26th).
-    // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 26]);
+    // (26th), spec 0093's `2026_09_02_100000_create_work_orders_table` (27th)
+    // and `2026_09_02_100100_create_quote_line_work_order_table` (28th),
+    // spec 0094's `2026_09_02_200010_create_project_product_lines_table`
+    // (29th), `2026_09_02_200020_create_campaign_product_lines_table`
+    // (30th), `2026_09_02_200030_move_project_classification_to_product_lines`
+    // (31st), `2026_09_02_200040_move_campaign_classification_to_product_lines`
+    // (32nd), `2026_09_02_200050_create_lead_product_table` (33rd) and
+    // `2026_09_02_200060_add_product_ids_to_import_run_rows_table` (34th),
+    // and spec 0095's
+    // `2026_09_02_210000_change_quote_line_work_order_unique_constraint`
+    // (35th). Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 35]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -65,7 +74,7 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         // migration's down(): structure is reversible, its rows are not.
         ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue();
 
-    Artisan::call('migrate', ['--step' => 26]);
+    Artisan::call('migrate', ['--step' => 35]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()

@@ -2,17 +2,18 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Services\ProductLines\ProductLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Shared validation for the `product_lines` payload of the opportunity write
- * endpoints (spec 0040, amendment rev.3): a to-many collection of
+ * Shared validation for the `product_lines` payload of every module that
+ * carries the collection (spec 0040 amendment rev.3, generalized to
+ * projects/campaigns by spec 0094): a to-many collection of
  * {business_function_id, product_category_id} rows, REPLACING the former
- * single scalar columns. An opportunity must ALWAYS carry at least one row
+ * single scalar columns. A record must ALWAYS carry at least one row
  * (user directive 2026-07-17): create REQUIRES a non-empty collection, and
  * update — a full-replace sync — may omit `product_lines` (partial PATCH,
  * untouched) but may NOT clear it to `[]`.
@@ -44,7 +45,7 @@ trait ValidatesProductLines
     }
 
     /**
-     * The product-category ids already persisted on the opportunity being
+     * The product-category ids already persisted on the record being
      * updated. Empty on create (no route model), which is exactly the
      * "block only new associations" semantics of spec 0074 D-3.
      *
@@ -52,35 +53,41 @@ trait ValidatesProductLines
      */
     protected function exemptProductCategoryIds(): array
     {
-        $opportunity = $this->routeOpportunityForProductLines();
+        $owner = $this->routeModelForProductLines();
 
-        if ($opportunity === null) {
+        if ($owner === null) {
             return [];
         }
 
-        return $opportunity->productLines()
+        return $owner->productLines()
             ->pluck('product_category_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
     }
 
     /**
-     * The Opportunity `product_lines` is validated/persisted against: the
-     * route model directly for the opportunities module, or — spec 0086,
-     * D-2 — the Quote's own Opportunity for request-management, whose route
-     * parameter is `{quote}` since the record migrated off the Opportunity.
+     * The record `product_lines` is validated/persisted against, found
+     * generically among the route's bound models — the first one that
+     * itself exposes a `productLines()` relation, whatever module owns it
+     * (opportunities, projects, campaigns). Request-management is the one
+     * indirect case (spec 0086, D-2): its route parameter is `{quote}`,
+     * whose OWN Opportunity carries the collection, not the Quote itself.
      */
-    private function routeOpportunityForProductLines(): ?Opportunity
+    private function routeModelForProductLines(): ?Model
     {
-        $opportunity = $this->route('opportunity');
-
-        if ($opportunity instanceof Opportunity) {
-            return $opportunity;
-        }
-
         $quote = $this->route('quote');
 
-        return $quote instanceof Quote ? $quote->opportunity : null;
+        if ($quote instanceof Quote) {
+            return $quote->opportunity;
+        }
+
+        foreach ($this->route()->parameters() as $parameter) {
+            if ($parameter instanceof Model && method_exists($parameter, 'productLines')) {
+                return $parameter;
+            }
+        }
+
+        return null;
     }
 
     /**

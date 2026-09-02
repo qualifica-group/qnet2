@@ -108,4 +108,15 @@ export const enums = {
     completed: 'Completed',
     failed: 'Failed',
   },
+  // Work order type (spec 0093), the Work Orders grid's `type` badge column.
+  work_order_type: {
+    processing: 'Processing',
+    project: 'Project',
+  },
+  // Calculated work order status (spec 0093 D-3), the grid's `status` badge
+  // column — no DB column, derived from `is_force_closed`.
+  work_order_status: {
+    open: 'Open',
+    closed: 'Closed',
+  },
 }

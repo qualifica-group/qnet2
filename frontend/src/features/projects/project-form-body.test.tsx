@@ -35,6 +35,27 @@ vi.mock('@/features/projects/api', async () => {
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+/**
+ * `ProductLinesField`'s row picker resolves an unknown business-function
+ * label through this API directly (`use-product-lines-field.ts`'s
+ * `resolveLabel`), bypassing the mocked `AsyncPaginatedSelect` component —
+ * left un-mocked it fires a real, unauthenticated request (mirrors
+ * `opportunity-form-body.test.tsx`'s own `fetchForSelectMock`).
+ */
+vi.mock('@/features/for-select/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
+    '@/features/for-select/api',
+  )
+  return {
+    ...actual,
+    fetchForSelect: vi.fn().mockResolvedValue({
+      items: [],
+      pagination: { offset: 0, limit: 25, total: 0 },
+      export_link: null,
+    }),
+  }
+})
+
 const FULL_PERMISSIONS = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
@@ -79,6 +100,46 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
       {value ?? ''}
     </button>
   ),
+}))
+
+/**
+ * The row's category picker reads the category TREE (user directive
+ * 2026-08-03); this suite is about the surrounding form, so it stands in for
+ * the picker with a local, clickable double (mirrors the AsyncPaginatedSelect
+ * stub above) rather than the shared read-only
+ * `product-category-tree-select-stub` (which exposes no "pick" affordance,
+ * so it cannot satisfy a full happy-path submit).
+ */
+vi.mock('@/features/product-lines/product-category-tree-select', () => ({
+  ProductCategoryTreeSelect: ({
+    value,
+    onChange,
+    businessFunctionId,
+    disabled,
+    triggerLabel,
+  }: {
+    value: number | null
+    onChange: (id: number) => void
+    businessFunctionId: number | null
+    disabled?: boolean
+    triggerLabel: string
+  }) => {
+    const isDisabled = Boolean(disabled) || businessFunctionId === null
+    return (
+      <div>
+        <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
+        <span data-testid={`disabled-${triggerLabel}`}>{String(isDisabled)}</span>
+        <button
+          type="button"
+          disabled={isDisabled}
+          data-testid={`select-${triggerLabel}`}
+          onClick={() => onChange(4)}
+        >
+          {`select ${triggerLabel}`}
+        </button>
+      </div>
+    )
+  },
 }))
 
 /**
@@ -146,8 +207,6 @@ function project(
     description: null,
     pipeline_status_id: 3,
     pipeline_status: { id: 3, name: 'Active', color: 'blue' },
-    business_function_id: 2,
-    business_function: { id: 2, name: 'Sales' },
     country_id: 1,
     country: { id: 1, name: 'Italy' },
     state_id: null,
@@ -157,8 +216,7 @@ function project(
     city_id: null,
     city: null,
     geo_scope: 'country',
-    product_category_id: 4,
-    product_category: { id: 4, name: 'Widgets' },
+    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Widgets' } }],
     partner_id: null,
     partner: null,
     operational_site_id: null,
@@ -196,13 +254,13 @@ beforeEach(() => {
 
 /**
  * Fills the create-form fields made mandatory alongside name/status/country:
- * business_function + product_category (stubbed selects) and the planning
+ * the product_lines row 1 (stubbed selects, spec 0094) and the planning
  * dates (in the collapsed Planning & budget section, opened first). `code` is
  * auto-filled by the form from `fetchProjectNextCode`.
  */
 function completeRequiredCreateFields() {
-  fireEvent.click(screen.getByTestId('select-Business function'))
-  fireEvent.click(screen.getByTestId('select-Product category'))
+  fireEvent.click(screen.getByTestId('select-Business function 1'))
+  fireEvent.click(screen.getByTestId('select-Product category 1'))
   fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
   fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
   fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
@@ -389,31 +447,6 @@ describe('ProjectForm — geo hierarchy (spec 0027 BR-4/AC-010)', () => {
   })
 })
 
-describe('ProjectForm — product category depends on business function (spec 0023 REV)', () => {
-  it('disables the product category select until a business function is chosen, then enables it', async () => {
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Product category')).toBeDisabled()
-
-    fireEvent.click(screen.getByTestId('select-Business function'))
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeEnabled())
-  })
-
-  it('leaves the product category enabled in edit mode (a business function is already set)', async () => {
-    render(
-      <ProjectForm mode={{ type: 'edit', project: project() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Product category')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Product category')).toBeEnabled()
-  })
-})
-
 describe('ProjectForm — end_date validation (BR-6)', () => {
   it('rejects an end_date earlier than the start_date', async () => {
     render(
@@ -435,40 +468,5 @@ describe('ProjectForm — end_date validation (BR-6)', () => {
   })
 })
 
-describe('ProjectForm — Sede (operational site)', () => {
-  it('renders the Site field and pre-fills it from the loaded project in edit mode', async () => {
-    render(
-      <ProjectForm
-        mode={{
-          type: 'edit',
-          project: project({ operational_site_id: 8, operational_site: { id: 8, label: 'Warehouse A' } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Site')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Site')).toHaveTextContent('8')
-  })
-
-  it('sends the picked operational_site_id in the create payload', async () => {
-    createProjectMock.mockResolvedValue(project())
-
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme rollout' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fireEvent.click(screen.getByTestId('select-Site'))
-    completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createProjectMock).toHaveBeenCalledTimes(1))
-    expect(createProjectMock.mock.calls[0][0].operational_site_id).toBe(3)
-  })
-})
+// Sede (operational site) and product_lines (spec 0094) coverage lives in
+// `project-form-product-lines.test.tsx` (engineering.md §6 size split).

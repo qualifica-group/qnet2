@@ -47,6 +47,12 @@ export interface ExportDialogProps {
    * ⇒ today's unscoped export, unchanged.
    */
   opportunityId?: number | null
+  /**
+   * Row-set scope to one Contract's Offerta (spec 0095 D-8), forwarded
+   * verbatim into the create payload. Omitted/null ⇒ today's unscoped
+   * export, unchanged.
+   */
+  quoteId?: number | null
 }
 
 /**
@@ -64,6 +70,7 @@ export function ExportDialog({
   actionsColumnId,
   search,
   opportunityId,
+  quoteId,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -92,6 +99,7 @@ export function ExportDialog({
         Object.keys(gridState.filterModel).length > 0 ? gridState.filterModel : undefined,
       search: gridState.search !== '' ? gridState.search : undefined,
       ...(opportunityId != null ? { opportunityId } : {}),
+      ...(quoteId != null ? { quoteId } : {}),
     })
   }
 

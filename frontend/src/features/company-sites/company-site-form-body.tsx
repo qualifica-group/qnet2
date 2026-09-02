@@ -61,6 +61,7 @@ export function CompanySiteFormBody({
     profileDraft,
     setProfileDraft,
     profileValid,
+    revalidateSignal,
     personalDataFieldPermission,
     banksDraft,
     setBanksDraft,
@@ -127,6 +128,7 @@ export function CompanySiteFormBody({
                 siteName={siteName}
                 profileDraft={profileDraft}
                 setProfileDraft={setProfileDraft}
+                revalidateSignal={revalidateSignal}
                 personalDataFieldPermission={personalDataFieldPermission}
                 onLogoFileSelected={setPendingLogo}
                 onLogoUpload={handleLogoUpload}

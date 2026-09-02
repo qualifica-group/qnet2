@@ -244,10 +244,11 @@ class ImportController extends BaseApiController
     /**
      * PATCH /api/imports/{domain}/{importRun}/rows/{row} — inline-edit one
      * staged row (spec 0033, AC-017; extended by spec 0038 with the optional
-     * `geo` pin), valid only from `reviewing`. Re-runs the SAME
-     * StagedRowBuilder pipeline (recognizers + validateRow +
-     * resolveDuplicate) the original staging used, via StagedRowReviser, then
-     * recomputes the run's counters from the database.
+     * `geo` pin, spec 0094 with the per-row `product_ids` override), valid
+     * only from `reviewing`. Re-runs the SAME StagedRowBuilder pipeline
+     * (recognizers + validateRow + resolveDuplicate) the original staging
+     * used, via StagedRowReviser, then recomputes the run's counters from
+     * the database.
      */
     public function updateRow(UpdateImportRowRequest $request, string $domain, ImportRun $importRun, ImportRunRow $row): JsonResponse
     {
@@ -261,9 +262,10 @@ class ImportController extends BaseApiController
             $this->authorizeImport($definition, $actor);
             $this->assertReviewing($importRun);
 
-            $data = $request->safe()->only(['values', 'geo', 'operator_id', 'operational_site_id']);
+            $data = $request->safe()->only(['values', 'geo', 'operator_id', 'operational_site_id', 'product_ids']);
             $operatorIdSubmitted = array_key_exists('operator_id', $data);
             $siteIdSubmitted = array_key_exists('operational_site_id', $data);
+            $productIdsSubmitted = array_key_exists('product_ids', $data);
 
             $updated = $this->rowReviser->revise(
                 $definition,
@@ -276,6 +278,8 @@ class ImportController extends BaseApiController
                 $operatorIdSubmitted ? $data['operator_id'] : null,
                 $siteIdSubmitted,
                 $siteIdSubmitted ? $data['operational_site_id'] : null,
+                $productIdsSubmitted,
+                $productIdsSubmitted ? $data['product_ids'] : null,
             );
             $this->service->recomputeCounts($importRun->fresh());
 

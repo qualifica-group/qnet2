@@ -30,6 +30,16 @@ use RuntimeException;
  * non-ready run, so this per-row re-check exists only so a single bad row
  * (e.g. an operator override cleared mid-flight) can never reach
  * ConvertLeadToOpportunity's throwing path.
+ *
+ * "Prodotti di interesse" (spec 0094, D-4/AC-053/AC-054): the row's own
+ * `product_ids` override wins over the run's global `product_ids`, mirroring
+ * operator/site — resolved here into `CreateLeadData`/`UpdateLeadData`'s
+ * OWN `productsOfInterest`, never synced directly against
+ * LeadProductInterestWriter: LeadService::create()/update() is the ONE write
+ * path (it syncs BEFORE a create-branch conversion, inside the same
+ * transaction — bypassing it here would desync that ordering). An
+ * incoherent product therefore fails this row exactly like any other
+ * LeadService validation error, never silently.
  */
 final class LeadRowPersister
 {
@@ -44,6 +54,7 @@ final class LeadRowPersister
      * @param  array<string, mixed>  $globalConfig
      * @param  array<string, mixed>  $mapped  field id => resolved value (after recognizers)
      * @param  array<string, mixed>  $extraValues
+     * @param  array<int, int>|null  $productIdsOverride  the row's own product_ids (null = defer to the run's global value)
      */
     public function persist(
         User $actor,
@@ -55,6 +66,7 @@ final class LeadRowPersister
         ?int $operatorOverride = null,
         ?int $siteOverride = null,
         bool $convertToOpportunity = false,
+        ?array $productIdsOverride = null,
     ): void {
         $registry = $shouldUpdateRegistry && $duplicateRegistryId !== null
             ? $this->updateRegistry($actor, $duplicateRegistryId, $mapped)
@@ -70,6 +82,7 @@ final class LeadRowPersister
             $operatorOverride,
             $siteOverride,
             $convertToOpportunity,
+            $productIdsOverride,
         );
     }
 
@@ -121,6 +134,7 @@ final class LeadRowPersister
      * @param  array<string, mixed>  $globalConfig
      * @param  array<string, mixed>  $mapped
      * @param  array<string, mixed>  $extraValues
+     * @param  array<int, int>|null  $productIdsOverride
      */
     private function attachLead(
         User $actor,
@@ -132,6 +146,7 @@ final class LeadRowPersister
         ?int $operatorOverride,
         ?int $siteOverride,
         bool $convertToOpportunity,
+        ?array $productIdsOverride,
     ): void {
         $campaignId = $this->id($globalConfig, 'campaign_id');
 
@@ -140,10 +155,11 @@ final class LeadRowPersister
         }
 
         $sourceId = $this->id($globalConfig, 'source_id');
-        // The row's own overrides (spec 0045, mirrored for site) win over the
-        // run's global operator/operational site.
+        // The row's own overrides (spec 0045, mirrored for site/products)
+        // win over the run's global operator/operational site/product_ids.
         $effectiveOperatorId = $operatorOverride ?? $this->id($globalConfig, 'operator_id');
         $effectiveSiteId = $siteOverride ?? $this->id($globalConfig, 'operational_site_id');
+        $effectiveProductIds = $productIdsOverride ?? $this->ids($globalConfig, 'product_ids');
         $notes = $this->value($mapped, 'notes');
         $extraFields = $extraValues === [] ? null : $extraValues;
 
@@ -163,6 +179,7 @@ final class LeadRowPersister
                 notesSubmitted: true,
                 extraFields: $extraFields,
                 extraFieldsSubmitted: true,
+                productsOfInterest: $effectiveProductIds,
             ));
 
             return;
@@ -177,6 +194,7 @@ final class LeadRowPersister
             notes: $notes,
             extraFields: $extraFields,
             convertToOpportunity: $this->shouldConvert($convertToOpportunity, $effectiveOperatorId, $effectiveSiteId, $campaignId),
+            productsOfInterest: $effectiveProductIds,
         ), $actor);
     }
 
@@ -214,5 +232,27 @@ final class LeadRowPersister
         $value = $values[$field] ?? null;
 
         return $value === null || $value === '' ? null : (int) $value;
+    }
+
+    /**
+     * id()'s array counterpart — `product_ids` is a COLLECTION, id()'s
+     * `(int) $value` cast would silently mangle it (e.g. `(int) [1, 2]`
+     * truncates to `1`). Absent/non-array (no global `product_ids` field on
+     * this run) resolves to `[]`, never null: the row's global-config
+     * default is authoritative-but-empty, not "leave untouched" — this
+     * class always overwrites, mirroring every other field in attachLead().
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<int, int>
+     */
+    private function ids(array $values, string $field): array
+    {
+        $value = $values[$field] ?? null;
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_map(static fn (mixed $id): int => (int) $id, $value));
     }
 }

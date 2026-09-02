@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { forwardRef, useImperativeHandle } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -34,9 +35,22 @@ vi.mock('@/features/contracts/api', () => ({
   updateContract: vi.fn(),
   validateContract: vi.fn(),
   changeContractStatus: vi.fn(),
-  scheduleContract: vi.fn(),
   terminateContract: vi.fn(),
   reactivateContract: vi.fn(),
+  fetchContractProgrammableLines: vi.fn(),
+  createContractWorkOrder: vi.fn(),
+}))
+
+// The Commesse tab mounts the real `TableView`; stubbed the same way every
+// other detail-composing suite stubs it (e.g. `opportunity-quotes-section.test.tsx`)
+// so this suite exercises the actions bar refresh, not the generic grid.
+vi.mock('@/features/table/table-view', () => ({
+  TableView: forwardRef<{ refresh: () => void; clearSelection: () => void }, { onRowCountChanged?: (count: number | null) => void }>(
+    function TableViewStub(_props, ref) {
+      useImperativeHandle(ref, () => ({ refresh: vi.fn(), clearSelection: vi.fn() }))
+      return <div>work-orders-table-stub</div>
+    },
+  ),
 }))
 
 // The status picker mounts inside the dialog; stubbed to a plain trigger so
@@ -56,7 +70,7 @@ function permissions(actions: Partial<ResourcePermissions['actions']>): Resource
     fields: {},
     actions: {
       validate: false,
-      schedule: false,
+      program: false,
       terminate: false,
       reactivate: false,
       change_status: false,
@@ -148,22 +162,22 @@ beforeEach(() => {
 describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', () => {
   it('sostituisce i bottoni del gruppo precedente senza ricaricare la pagina', async () => {
     vi.mocked(validateContract).mockResolvedValue({
-      ...contract(WON_STATUS, { schedule: true, terminate: true }),
+      ...contract(WON_STATUS, { program: true, terminate: true }),
       validated_at: '2026-08-31',
     })
 
     renderView(contract(OPEN_STATUS, { validate: true, terminate: true, change_status: true }))
 
     expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Validate contract' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Validate' }))
 
-    // Nuovo gruppo (chiuso positivo): "Programma" compare disabilitato,
+    // Nuovo gruppo (chiuso positivo): "Programma" compare attivo,
     // "Valida"/"Modifica stato"/"Modifica dati" spariscono — subito, senza reload.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Schedule contract' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
     })
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()

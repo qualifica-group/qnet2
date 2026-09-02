@@ -14,11 +14,17 @@ namespace App\DataObjects\Leads;
  * the "was this key actually present" distinction a plain property cannot
  * express (AC-013: a PATCH with only `notes` must leave the 6 FKs untouched).
  * `extra_fields` (spec 0033) follows the same submitted-flag convention.
+ *
+ * `productsOfInterest` (spec 0094, D-5) follows the SAME null-means-
+ * untouched convention as UpdateOpportunityData's own field (an array,
+ * including empty, is an authoritative sync — AC-033): synced by
+ * App\Services\Leads\LeadProductInterestWriter, never mass-assigned.
  */
 final readonly class UpdateLeadData
 {
     /**
      * @param  array<string, string>|null  $extraFields
+     * @param  array<int, int>|null  $productsOfInterest
      */
     public function __construct(
         public ?int $registryId = null,
@@ -37,6 +43,7 @@ final readonly class UpdateLeadData
         public bool $notesSubmitted = false,
         public ?array $extraFields = null,
         public bool $extraFieldsSubmitted = false,
+        public ?array $productsOfInterest = null,
     ) {}
 
     /**
@@ -63,7 +70,21 @@ final readonly class UpdateLeadData
             notesSubmitted: array_key_exists('notes', $data),
             extraFields: array_key_exists('extra_fields', $data) ? $data['extra_fields'] : null,
             extraFieldsSubmitted: array_key_exists('extra_fields', $data),
+            productsOfInterest: array_key_exists('products_of_interest', $data) ? self::normalizeIds($data['products_of_interest']) : null,
         );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function normalizeIds(mixed $ids): array
+    {
+        return array_values(array_unique(array_map(static fn ($id): int => (int) $id, (array) $ids)));
+    }
+
+    public function hasProductsOfInterest(): bool
+    {
+        return $this->productsOfInterest !== null;
     }
 
     /**

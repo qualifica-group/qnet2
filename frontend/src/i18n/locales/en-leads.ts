@@ -59,6 +59,10 @@ export const leads = {
         title: 'Details',
         description: 'Site, source and operator associated with the lead.',
       },
+      productsOfInterest: {
+        title: 'Products of interest',
+        description: 'The products the lead is interested in, filtered by the chosen Campaign categories.',
+      },
       notes: {
         title: 'Notes',
         description: 'Free-form notes about the lead.',
@@ -92,6 +96,14 @@ export const leads = {
     },
     convertToOpportunity: 'Automatically convert to Opportunity',
     convertToOpportunityHint: 'The linked Opportunity will be created automatically with the Lead.',
+    productsOfInterest: {
+      // Spec 0094, D-5: changing Campaign while carrying products it no
+      // longer covers requires an explicit confirmation, never a silent removal.
+      campaignChangeTitle: 'Products no longer covered by the new campaign',
+      campaignChangeDescription:
+        'Switching campaign, these products are no longer covered by its categories: {{names}}. Remove them and continue?',
+      campaignChangeConfirm: 'Remove and continue',
+    },
     notes: 'Notes',
     notesPlaceholder: 'Write a note about this lead…',
     notesMax: 'Notes must be at most 5000 characters.',

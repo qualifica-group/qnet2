@@ -5,8 +5,7 @@ namespace App\Http\Requests\Projects;
 use App\DataObjects\Projects\CreateProjectData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesGeoHierarchy;
-use App\Http\Requests\Concerns\ValidatesProductCategoryBusinessFunction;
-use App\Rules\SelectableProductCategory;
+use App\Http\Requests\Concerns\ValidatesProductLines;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,6 +25,11 @@ use Illuminate\Validation\Rule;
  * an omitted FK falls back to the system_key='new' status in
  * ProjectService::create() (server-side default).
  *
+ * Spec 0094, D-1/D-2: `business_function_id`/`product_category_id` are
+ * REPLACED by `product_lines` (ValidatesProductLines, the same collection
+ * already in use on the Opportunity, amendment rev.3) — a to-many collection,
+ * REQUIRED (at least one row) to create.
+ *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('create', Project::class)). EnforcesFieldPermissions
  * (spec 0004) additionally rejects any submitted field the actor cannot edit
@@ -35,7 +39,7 @@ class StoreProjectRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesGeoHierarchy;
-    use ValidatesProductCategoryBusinessFunction;
+    use ValidatesProductLines;
 
     public function authorize(): bool
     {
@@ -48,24 +52,22 @@ class StoreProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return array_merge([
             'code' => ['nullable', 'string', 'max:32', Rule::unique('projects', 'code')],
             'name' => ['required', 'string', 'max:191'],
             'pipeline_status_id' => ['nullable', 'integer', Rule::exists('pipeline_statuses', 'id')],
             'description' => ['nullable', 'string'],
-            'business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
             'country_id' => ['required', 'integer', Rule::exists('countries', 'id')],
             'state_id' => ['nullable', 'integer', Rule::exists('states', 'id')],
             'province_id' => ['nullable', 'integer', Rule::exists('provinces', 'id')],
             'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')],
-            'product_category_id' => ['required', 'integer', new SelectableProductCategory],
             'partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'total_budget' => ['nullable', 'numeric', 'min:0'],
             'target_lead' => ['nullable', 'integer', 'min:0'],
-        ];
+        ], $this->productLinesRules(required: true));
     }
 
     public function withValidator(Validator $validator): void
@@ -82,13 +84,7 @@ class StoreProjectRequest extends FormRequest
                 ]);
             }
 
-            if (! $validator->errors()->hasAny(['business_function_id', 'product_category_id'])) {
-                $this->validateProductCategoryBusinessFunction(
-                    $validator,
-                    $this->filled('business_function_id') ? (int) $this->input('business_function_id') : null,
-                    $this->filled('product_category_id') ? (int) $this->input('product_category_id') : null,
-                );
-            }
+            $this->validateProductLines($validator);
         });
     }
 

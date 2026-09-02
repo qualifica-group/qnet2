@@ -3,6 +3,7 @@
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\PipelineStatus;
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\Referent;
 use App\Models\User;
@@ -56,12 +57,13 @@ it('maps a project to label "{code} — {name}" with the full campaign-form meta
     $status = PipelineStatus::factory()->create(['name' => 'Attivo']);
     $partner = Referent::factory()->create(['name' => 'Ada Partner']);
     $businessFunction = BusinessFunction::factory()->create(['name' => 'Marketing']);
+    $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id, 'name' => 'Widgets']);
     $project = Project::factory()->create([
         'pipeline_status_id' => $status->id,
         'partner_id' => $partner->id,
-        'business_function_id' => $businessFunction->id,
         'total_budget' => 1000,
     ]);
+    $project->productLines()->create(['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]);
     Campaign::factory()->forProject($project)->create(['total_budget' => 400]);
     Sanctum::actingAs($actor);
 
@@ -71,19 +73,20 @@ it('maps a project to label "{code} — {name}" with the full campaign-form meta
     expect($item['label'])->toBe(sprintf('%s — %s', $project->code, $project->name))
         ->and($item['meta']['pipeline_status'])->toMatchArray(['id' => $status->id, 'label' => 'Attivo'])
         ->and($item['meta']['partner'])->toMatchArray(['id' => $partner->id, 'label' => 'Ada Partner'])
-        ->and($item['meta']['business_function'])->toMatchArray(['id' => $businessFunction->id, 'label' => 'Marketing'])
+        ->and($item['meta']['product_lines'])->toBe([[
+            'business_function' => ['id' => $businessFunction->id, 'name' => 'Marketing'],
+            'product_category' => ['id' => $category->id, 'name' => 'Widgets'],
+        ]])
         ->and($item['meta']['total_budget'])->toBe('1000.00')
         ->and($item['meta']['allocated_budget'])->toBe('400.00')
         ->and($item['meta']['remaining_budget'])->toBe('600.00');
 });
 
-it('meta fields are null when the corresponding relation is unset', function () {
+it('meta fields are null/empty when the corresponding relation is unset (AC-017)', function () {
     $actor = projectUserWith(['viewAny']);
     $project = Project::factory()->create([
         'partner_id' => null,
-        'business_function_id' => null,
         'state_id' => null,
-        'product_category_id' => null,
         'total_budget' => null,
     ]);
     Sanctum::actingAs($actor);
@@ -92,9 +95,8 @@ it('meta fields are null when the corresponding relation is unset', function () 
     $item = collect($response->json('items'))->firstWhere('id', $project->id);
 
     expect($item['meta']['partner'])->toBeNull()
-        ->and($item['meta']['business_function'])->toBeNull()
+        ->and($item['meta']['product_lines'])->toBe([])
         ->and($item['meta']['state'])->toBeNull()
-        ->and($item['meta']['product_category'])->toBeNull()
         ->and($item['meta']['total_budget'])->toBeNull()
         ->and($item['meta']['remaining_budget'])->toBeNull();
 });

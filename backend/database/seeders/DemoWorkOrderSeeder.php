@@ -1,0 +1,74 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\DataObjects\WorkOrders\CreateWorkOrderData;
+use App\Enums\WorkOrderType;
+use App\Models\Quote;
+use App\Models\WorkOrder;
+use App\Services\WorkOrderService;
+use Faker\Factory as FakerFactory;
+use Faker\Generator;
+use Illuminate\Database\Seeder;
+
+/**
+ * Development seed for the work-orders module (spec 0093): one WorkOrder for
+ * every other already-seeded Quote that has at least one REVENUE line, each
+ * created through WorkOrderService::create() — the same path POST
+ * /api/work-orders uses — so the code (COM-0001...) and the REVENUE-line
+ * membership invariant (D-7) both come from the real write path, never a raw
+ * insert.
+ *
+ * Idempotent: clears its own table before reseeding (mirrors DemoQuoteSeeder).
+ * A no-op when there is no quote with at least one offer line to attach to.
+ */
+class DemoWorkOrderSeeder extends Seeder
+{
+    /** Every Nth eligible quote gets a commessa, so the demo dataset stays proportionate. */
+    private const int QUOTE_STRIDE = 2;
+
+    public function __construct(private readonly WorkOrderService $workOrders) {}
+
+    public function run(): void
+    {
+        WorkOrder::query()->delete();
+
+        $quotes = Quote::query()->with('offerLines')->orderBy('id')->get()
+            ->filter(fn (Quote $quote): bool => $quote->offerLines->isNotEmpty())
+            ->values();
+
+        if ($quotes->isEmpty()) {
+            return;
+        }
+
+        $faker = FakerFactory::create('it_IT');
+        $faker->seed(20260902);
+
+        foreach ($quotes as $index => $quote) {
+            if ($index % self::QUOTE_STRIDE !== 0) {
+                continue;
+            }
+
+            $this->workOrders->create($this->buildData($faker, $quote));
+        }
+    }
+
+    private function buildData(Generator $faker, Quote $quote): CreateWorkOrderData
+    {
+        $lineIds = $quote->offerLines->pluck('id')->take(2)->all();
+        $isForceClosed = $faker->boolean(20);
+
+        return new CreateWorkOrderData(
+            code: null,
+            quoteId: $quote->id,
+            title: sprintf('Commessa %s', $quote->title),
+            type: $faker->randomElement(WorkOrderType::cases()),
+            callbackDate: $faker->optional(0.4)->date(),
+            description: $faker->optional(0.6)->sentence(12),
+            internalNotes: $faker->optional(0.3)->sentence(8),
+            isForceClosed: $isForceClosed,
+            forceCloseReason: $isForceClosed ? $faker->sentence(6) : null,
+            quoteLineIds: $lineIds,
+        );
+    }
+}

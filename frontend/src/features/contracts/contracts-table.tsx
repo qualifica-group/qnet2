@@ -14,12 +14,13 @@ import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
  * Row-action keys whose real UI (a dialog with inputs, gated on its own
  * permission) lives ONLY inside `ContractActionsBar`/`ContractEditDialog`
  * on the detail view — never duplicated as a standalone grid dialog. The
- * backend's row-action catalog (spec 0072, MT-04) advertises them per-row
- * (`edit`, `change_status`, `validate`, `schedule`, `terminate`,
- * `reactivate`) so the grid still needs to react to a click: it opens the
- * detail, where the actual gated action button/dialog is.
+ * backend's row-action catalog (spec 0072, MT-04; `program` renamed from
+ * `schedule` in spec 0095) advertises them per-row (`edit`, `change_status`,
+ * `validate`, `program`, `terminate`, `reactivate`) so the grid still needs
+ * to react to a click: it opens the detail, where the actual gated action
+ * button/dialog is.
  */
-const ACTIONS_OPENING_DETAIL = new Set(['edit', 'change_status', 'validate', 'schedule', 'terminate', 'reactivate'])
+const ACTIONS_OPENING_DETAIL = new Set(['edit', 'change_status', 'validate', 'program', 'terminate', 'reactivate'])
 
 /**
  * The icon names `ContractColumnCatalog::actions()` advertises that the

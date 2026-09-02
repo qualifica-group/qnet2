@@ -12,6 +12,7 @@ import i18n from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { ReviewGeoCell } from '@/features/imports/wizard/review-geo-editor'
 import { ReviewOperatorCell } from '@/features/imports/wizard/review-operator-editor'
+import { ReviewProductsCell } from '@/features/imports/wizard/review-products-editor'
 import { ReviewResolutionCell } from '@/features/imports/wizard/review-resolution-cell'
 import { ReviewSiteCell } from '@/features/imports/wizard/review-site-editor'
 import { EXTRA_TARGET, IGNORE_TARGET } from '@/features/imports/wizard/types'
@@ -195,6 +196,11 @@ function resolveEditableFields(run: ImportRunDetail): Array<{ id: string; label:
  * except there is no run-level default to fall back to: the operational site
  * is a per-row-only field, set via this column's popup or the grid's bulk
  * assign bar.
+ *
+ * A `products` column follows `site` (spec 0094 D-4/AC-055): a non-editable
+ * button cell (`ReviewProductsCell`) showing the row's own products-of-interest
+ * override, the run's "uses default" hint, or "no products" — opening a popup
+ * to set/clear it, scoped to the run's campaign categories.
  */
 export function buildReviewColumnDefs(
   run: ImportRunDetail,
@@ -262,6 +268,17 @@ export function buildReviewColumnDefs(
       minWidth: 180,
       flex: 0,
       cellRenderer: ReviewSiteCell,
+      cellRendererParams: { readOnly },
+    },
+    {
+      colId: 'products',
+      headerName: t('review.columns.products'),
+      editable: false,
+      sortable: false,
+      filter: false,
+      minWidth: 200,
+      flex: 0,
+      cellRenderer: ReviewProductsCell,
       cellRendererParams: { readOnly },
     },
     // `field.label` is a backend default-namespace i18n key

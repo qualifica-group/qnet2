@@ -53,6 +53,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
+use App\Models\WorkOrder;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -200,6 +201,9 @@ class AppServiceProvider extends ServiceProvider
             // Spec 0078 (field-change-requests module): FieldChangeRequest
             // uses LogsModelActivity, same reasoning as document_layout above.
             'field_change_request' => FieldChangeRequest::class,
+            // Spec 0093 (work-orders module): WorkOrder uses LogsModelActivity,
+            // same reasoning as document_layout above.
+            'work_order' => WorkOrder::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

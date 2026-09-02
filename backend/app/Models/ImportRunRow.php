@@ -16,6 +16,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * ProcessImportJob to commit — the process phase never re-parses the source
  * file. Also backs the SSRM review grid, where `is_edited` flags a row
  * corrected inline before confirm.
+ *
+ * `product_ids` (spec 0094, D-4/AC-054): a plain JSON array column (no
+ * pivot — these are staged input, not yet a Lead's own products),
+ * three-state like `operator_id`/`operational_site_id` but for a
+ * collection: `null` inherits the run's global `product_ids`, `[]` means
+ * this row carries none, a non-empty array is the row's own explicit
+ * override. Resolved to labels by ImportRunRowResource, batched per page.
  */
 class ImportRunRow extends BaseModel
 {
@@ -37,6 +44,7 @@ class ImportRunRow extends BaseModel
         'is_edited',
         'operator_id',
         'operational_site_id',
+        'product_ids',
     ];
 
     protected $casts = [
@@ -54,6 +62,7 @@ class ImportRunRow extends BaseModel
         'is_edited' => 'bool',
         'operator_id' => 'int',
         'operational_site_id' => 'int',
+        'product_ids' => 'array',
     ];
 
     public function importRun(): BelongsTo

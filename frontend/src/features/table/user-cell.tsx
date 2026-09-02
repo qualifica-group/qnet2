@@ -1,5 +1,4 @@
 import type { ICellRendererParams } from 'ag-grid-community'
-import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/user-avatar'
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -23,9 +22,6 @@ export interface UserSummary {
 
 /** How many avatars are shown inline before collapsing into a "+N" chip. */
 const MAX_VISIBLE_AVATARS = 5
-
-/** Compact avatar size inside grid cells (matches the other table avatars). */
-const CELL_AVATAR_CLASS = 'size-6'
 
 function toUser(value: unknown): UserSummary | null {
   const user = value as UserSummary | null | undefined
@@ -59,7 +55,7 @@ export function UserCell({ value, column, node }: ICellRendererParams) {
   if (editable) {
     return (
       <div className="flex h-full items-center gap-2 overflow-hidden">
-        <UserAvatar name={user.name} src={user.avatar_url ?? null} className={cn(CELL_AVATAR_CLASS, 'shrink-0')} />
+        <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" className="shrink-0" />
         <span className="truncate">{user.name}</span>
       </div>
     )
@@ -68,7 +64,7 @@ export function UserCell({ value, column, node }: ICellRendererParams) {
   return (
     <div className="flex h-full items-center overflow-hidden">
       <UserProfileHoverCard user={user} triggerClassName="rounded-md">
-        <UserAvatar name={user.name} src={user.avatar_url ?? null} className={cn(CELL_AVATAR_CLASS, 'shrink-0')} />
+        <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" className="shrink-0" />
         <span className="truncate">{user.name}</span>
       </UserProfileHoverCard>
     </div>
@@ -94,7 +90,7 @@ export function UserStackCell({ value }: ICellRendererParams) {
       <AvatarGroup>
         {visible.map((user) => (
           <UserProfileHoverCard key={user.id} user={user} triggerClassName="rounded-full">
-            <UserAvatar name={user.name} src={user.avatar_url ?? null} className={CELL_AVATAR_CLASS} />
+            <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" />
           </UserProfileHoverCard>
         ))}
         {overflow.length > 0 && (
@@ -102,7 +98,7 @@ export function UserStackCell({ value }: ICellRendererParams) {
             <HoverCardTrigger asChild>
               <AvatarGroupCount
                 tabIndex={0}
-                className={cn(CELL_AVATAR_CLASS, 'cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring')}
+                className="cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={overflow.map((user) => user.name).join(', ')}
               >
                 +{overflow.length}

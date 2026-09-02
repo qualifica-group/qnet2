@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import {
   buildEditContractSchema,
-  buildScheduleContractSchema,
   buildTerminateContractSchema,
   buildValidateContractSchema,
 } from '@/features/contracts/contract-schema'
@@ -17,38 +16,6 @@ describe('buildValidateContractSchema', () => {
 
   it('requires a date', () => {
     expect(schema.safeParse({ validated_at: '', contract_status_id: null }).success).toBe(false)
-  })
-})
-
-describe('buildScheduleContractSchema', () => {
-  const schema = buildScheduleContractSchema(i18n.t)
-
-  it('requires expiry_date and contract_status_id', () => {
-    expect(schema.safeParse({ expiry_date: '', renewal_date: null, contract_status_id: null }).success).toBe(false)
-    expect(schema.safeParse({ expiry_date: '2020-12-31', renewal_date: null, contract_status_id: null }).success).toBe(
-      false,
-    )
-    expect(
-      schema.safeParse({ expiry_date: '2020-12-31', renewal_date: null, contract_status_id: 5 }).success,
-    ).toBe(true)
-  })
-
-  it('rejects a renewal_date after expiry_date', () => {
-    const result = schema.safeParse({
-      expiry_date: '2020-06-01',
-      renewal_date: '2020-07-01',
-      contract_status_id: 5,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('accepts a renewal_date on or before expiry_date', () => {
-    const result = schema.safeParse({
-      expiry_date: '2020-06-01',
-      renewal_date: '2020-05-01',
-      contract_status_id: 5,
-    })
-    expect(result.success).toBe(true)
   })
 })
 

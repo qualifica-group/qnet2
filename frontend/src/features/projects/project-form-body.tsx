@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch } from 'react-hook-form'
 import { FolderKanban, Loader2, Tags } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
@@ -10,10 +9,9 @@ import { Form, FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
-import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import { useProjectForm } from '@/features/projects/use-project-form'
 import { ProjectGeographySection } from '@/features/projects/project-geography-section'
 import { ProjectPlanningSection } from '@/features/projects/project-planning-section'
@@ -37,6 +35,10 @@ const SECTION_REVEAL_IDENTITY =
 const SECTION_REVEAL_CLASSIFICATION =
   'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300 motion-safe:delay-75'
 
+/** Banner for the `product_lines` 422 (collection-level or per-row, spec 0094): mirrors `request-create-form.tsx`'s own local constant. */
+const ERROR_BANNER_CLASS =
+  'flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive'
+
 /**
  * The project create/edit form UI: the manual/read-only `code` (spec 0025,
  * editable only in create — gated by the `code` field permission, editable
@@ -51,7 +53,7 @@ const SECTION_REVEAL_CLASSIFICATION =
  */
 export function ProjectFormBody({ mode, onSuccess, onCancel, initialCode }: ProjectFormBodyProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit } = useProjectForm({ mode, onSuccess, initialCode })
+  const { form, serverError, productLinesError, onSubmit } = useProjectForm({ mode, onSuccess, initialCode })
   const original = mode.type === 'edit' ? mode.project : mode.type === 'duplicate' ? mode.source : null
 
   const relationLabels = {
@@ -64,11 +66,6 @@ export function ProjectFormBody({ mode, onSuccess, onCancel, initialCode }: Proj
 
   const [customOpen, setCustomOpen] = useState(false)
   const customHasError = Boolean(form.formState.errors.custom_fields)
-
-  // The product category is scoped to the selected business function and stays
-  // disabled until one is picked; changing the function clears a now-incoherent
-  // category (mirrors the backend coherence rule and the opportunity picker).
-  const businessFunctionId = useWatch({ control: form.control, name: 'business_function_id' })
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -152,35 +149,6 @@ export function ProjectFormBody({ mode, onSuccess, onCancel, initialCode }: Proj
 
               <RelationSelectField
                 control={form.control}
-                name="business_function_id"
-                metaKey="business_function_id"
-                label={t('projects.form.businessFunction')}
-                resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('projects.form.businessFunctionSearch')}
-                selected={original?.business_function ?? null}
-                onValueChange={(next) => {
-                  if (next !== businessFunctionId) {
-                    form.setValue('product_category_id', null, { shouldDirty: true })
-                  }
-                }}
-                {...relationLabels}
-              />
-
-              <RelationSelectField
-                control={form.control}
-                name="product_category_id"
-                metaKey="product_category_id"
-                label={t('projects.form.productCategory')}
-                resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('projects.form.productCategorySearch')}
-                selected={original?.product_category ?? null}
-                forceDisabled={businessFunctionId === null}
-                params={businessFunctionId !== null ? { business_function_id: businessFunctionId } : undefined}
-                {...relationLabels}
-              />
-
-              <RelationSelectField
-                control={form.control}
                 name="partner_id"
                 metaKey="partner_id"
                 label={t('projects.form.partner')}
@@ -207,6 +175,31 @@ export function ProjectFormBody({ mode, onSuccess, onCancel, initialCode }: Proj
                 {...relationLabels}
               />
             </div>
+
+            {/* Spec 0094: replaces the former single business function +
+                product category selects with the shared row editor
+                (`ProductLinesField`, spec 0057), reused as-is (AC-045). */}
+            <MetaField
+              control={form.control}
+              name="product_lines"
+              metaKey="product_lines"
+              label={t('projects.form.productLines')}
+            >
+              {({ field, disabled }) => (
+                <ProductLinesField
+                  value={field.value}
+                  onChange={field.onChange}
+                  knownLines={original?.product_lines}
+                  disabled={disabled}
+                />
+              )}
+            </MetaField>
+
+            {productLinesError && (
+              <div role="alert" className={ERROR_BANNER_CLASS}>
+                {productLinesError}
+              </div>
+            )}
           </FormSection>
 
           <ProjectGeographySection control={form.control} setValue={form.setValue} />

@@ -127,9 +127,12 @@ class DemoProjectSeeder extends Seeder
             name: $faker->unique()->catchPhrase(),
             pipelineStatusId: $statuses[$index % $statuses->count()]->id,
             description: $faker->boolean(60) ? $faker->paragraph() : null,
-            businessFunctionId: $pair['business_function_id'] ?? null,
+            // Spec 0094, D-1/D-2: `product_lines` REPLACES the former
+            // `businessFunctionId`/`productCategoryId` scalars — one row when
+            // a coherent pair is available, none otherwise (degrades
+            // gracefully like every other optional lookup, see class doc).
+            productLines: $pair !== null ? [$pair] : [],
             stateId: $geo['state_id'],
-            productCategoryId: $pair['product_category_id'] ?? null,
             partnerId: $this->pick($partners, $index)?->id,
             operationalSiteId: null,
             startDate: $startDate->format('Y-m-d'),

@@ -155,28 +155,49 @@ describe('PersonalDataSection — field-permission gating (spec 0008)', () => {
     expect(screen.getByLabelText(/^Last name/)).toBeEnabled()
   })
 
-  it('AC-011 — required reflects the resolved flag (both directions)', () => {
+  /** The `<label>` whose text opens with `prefix` — the marker is part of it. */
+  const labelStartingWith = (prefix: string): HTMLElement =>
+    screen.getByText(
+      (_, element) =>
+        element?.tagName === 'LABEL' && element.textContent?.startsWith(prefix) === true,
+    )
+
+  // The resolver may only ADD required-ness. The authorization ceiling emits
+  // `required: false` for every `personal_data.*` key on purpose (the per-type
+  // rule is validation-layer logic), so honouring it alone would strip the
+  // asterisk off the very fields the schema refuses to save without — which is
+  // what every gated module (registries/referents/users) used to show.
+  it('AC-011 — required is the union of the resolved flag and the schema rule', () => {
     renderSection(
       <PersonalDataSection
         value={draft()}
         onChange={() => {}}
         fieldPermission={resolverFrom({
-          // Normally hardcoded required in the card UI: the resolver overrides it.
+          // Required by the card schema: the resolver cannot take the marker away.
           'personal_data.first_name': { required: false },
-          // Normally not required: the resolver can flag it required instead.
+          // Not required by the schema: the resolver can flag it required.
           'personal_data.tax_code': { required: true },
         })}
       />,
     )
 
-    const firstNameLabel = screen.getByText(
-      (_, element) => element?.tagName === 'LABEL' && element.textContent?.startsWith('First name') === true,
+    expect(labelStartingWith('First name').textContent).toContain('*')
+    expect(labelStartingWith('Tax code').textContent).toContain('*')
+  })
+
+  it('AC-011 — a locked field carries no required marker', () => {
+    renderSection(
+      <PersonalDataSection
+        value={draft()}
+        onChange={() => {}}
+        fieldPermission={resolverFrom({
+          'personal_data.first_name': { editable: false },
+        })}
+      />,
     )
-    const taxCodeLabel = screen.getByText(
-      (_, element) => element?.tagName === 'LABEL' && element.textContent?.startsWith('Tax code') === true,
-    )
-    expect(firstNameLabel.textContent).not.toContain('*')
-    expect(taxCodeLabel.textContent).toContain('*')
+
+    expect(labelStartingWith('First name').textContent).not.toContain('*')
+    expect(labelStartingWith('Last name').textContent).toContain('*')
   })
 
   it('AC-011 — a hidden contacts section is not rendered', () => {

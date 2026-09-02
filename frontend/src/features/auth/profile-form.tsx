@@ -35,7 +35,10 @@ import {
   draftToPayload,
   emptyPersonalDataDraft,
 } from '@/features/personal-data/drafts'
-import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
+import {
+  describeCardIssues,
+  isPersonalDataCardValid,
+} from '@/features/personal-data/personal-data-issues'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 
 interface ProfileValues {
@@ -59,6 +62,9 @@ export function ProfileForm() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
+  // Bumped on every refused save so the buffered card marks its own missing
+  // fields (it takes no part in this form's submit — see PersonalDataCardForm).
+  const [revalidateSignal, setRevalidateSignal] = useState(0)
   // Selectable locales come from the backend bootstrap config (GET /api/config),
   // never hardcoded on the frontend.
   const localeOptions = useEnumOptions('locale')
@@ -95,21 +101,15 @@ export function ProfileForm() {
     setServerError(null)
 
     // The registry card is mandatory: block the save until the required identity
-    // fields (name + surname, or company name) are valid. The card form shows the
-    // field-level messages inline; this is the gate before the request fires.
-    const profileValid = buildPersonalDataSchema(t).safeParse({
-      type: draft.type,
-      gender: draft.gender ?? undefined,
-      first_name: draft.first_name ?? undefined,
-      last_name: draft.last_name ?? undefined,
-      company_name: draft.company_name ?? undefined,
-      tax_code: draft.tax_code ?? undefined,
-      vat_number: draft.vat_number ?? undefined,
-      birth_date: draft.birth_date ?? undefined,
-    }).success
-
-    if (!profileValid) {
-      setServerError(t('personalData.section.incomplete'))
+    // fields (name + surname, or company name) are valid, naming what is missing
+    // and asking the card to mark those fields inline.
+    if (!isPersonalDataCardValid(draft, t)) {
+      setServerError(
+        t('personalData.section.incomplete', {
+          fields: describeCardIssues(draft, t).join(' · '),
+        }),
+      )
+      setRevalidateSignal((signal) => signal + 1)
       return
     }
 
@@ -192,7 +192,11 @@ export function ProfileForm() {
         />
 
         <div className="border-t pt-4">
-          <PersonalDataSection value={draft} onChange={setDraft} />
+          <PersonalDataSection
+            value={draft}
+            onChange={setDraft}
+            revalidateSignal={revalidateSignal}
+          />
         </div>
 
         {serverError && (

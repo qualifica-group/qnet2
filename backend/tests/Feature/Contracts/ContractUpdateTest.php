@@ -21,7 +21,7 @@ if (! function_exists('contractUpdateUserWith')) {
      */
     function contractUpdateUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'] as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
         }
 
@@ -110,6 +110,89 @@ it('PATCH with a nonexistent contract_status_id is 422', function () {
     $this->patchJson("/api/contracts/{$contract->id}", ['contract_status_id' => 999999])
         ->assertStatus(422)
         ->assertJsonValidationErrors('contract_status_id');
+});
+
+// ---------------------------------------------------------------------------
+// 422 — renewal_date after expiry_date (spec 0095: the rule the retired
+// `schedule` endpoint used to enforce, now this PATCH's own responsibility)
+// ---------------------------------------------------------------------------
+
+it('PATCH with both dates and renewal_date after expiry_date is 422, nothing persisted', function () {
+    $contract = Contract::factory()->create();
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/contracts/{$contract->id}", [
+        'expiry_date' => now()->addMonths(6)->toDateString(),
+        'renewal_date' => now()->addYear()->toDateString(),
+    ])->assertStatus(422)->assertJsonValidationErrors('renewal_date');
+
+    expect($contract->fresh()->expiry_date)->toBeNull()
+        ->and($contract->fresh()->renewal_date)->toBeNull();
+});
+
+it('PATCH sending only renewal_date is 422 against the CONTRACT\'s existing expiry_date', function () {
+    $contract = Contract::factory()->create(['expiry_date' => now()->addMonths(6)->toDateString()]);
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/contracts/{$contract->id}", [
+        'renewal_date' => now()->addYear()->toDateString(),
+    ])->assertStatus(422)->assertJsonValidationErrors('renewal_date');
+
+    expect($contract->fresh()->renewal_date)->toBeNull();
+});
+
+it('PATCH sending only expiry_date is 422 against the CONTRACT\'s existing renewal_date', function () {
+    $contract = Contract::factory()->create(['renewal_date' => now()->addYear()->toDateString()]);
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/contracts/{$contract->id}", [
+        'expiry_date' => now()->addMonths(6)->toDateString(),
+    ])->assertStatus(422)->assertJsonValidationErrors('renewal_date');
+
+    expect($contract->fresh()->expiry_date)->toBeNull();
+});
+
+it('PATCH sending only renewal_date is accepted when the contract has no expiry_date yet (no invented obligation)', function () {
+    $contract = Contract::factory()->create(['expiry_date' => null]);
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $renewalDate = now()->addYear()->toDateString();
+
+    $this->patchJson("/api/contracts/{$contract->id}", ['renewal_date' => $renewalDate])->assertOk();
+
+    expect($contract->fresh()->renewal_date->toDateString())->toBe($renewalDate)
+        ->and($contract->fresh()->expiry_date)->toBeNull();
+});
+
+it('PATCH explicitly clearing renewal_date to null is accepted even with an expiry_date set', function () {
+    $contract = Contract::factory()->create([
+        'expiry_date' => now()->addMonths(6)->toDateString(),
+        'renewal_date' => now()->addMonths(3)->toDateString(),
+    ]);
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/contracts/{$contract->id}", ['renewal_date' => null])->assertOk();
+
+    expect($contract->fresh()->renewal_date)->toBeNull();
+});
+
+it('PATCH with renewal_date equal to expiry_date is accepted (before_or_equal)', function () {
+    $contract = Contract::factory()->create();
+    $actor = contractUpdateUserWith(['update']);
+    Sanctum::actingAs($actor);
+
+    $sameDate = now()->addMonths(6)->toDateString();
+
+    $this->patchJson("/api/contracts/{$contract->id}", [
+        'expiry_date' => $sameDate, 'renewal_date' => $sameDate,
+    ])->assertOk();
+
+    expect($contract->fresh()->renewal_date->toDateString())->toBe($sameDate);
 });
 
 it('PATCH with an inactive contract_status_id is 422, nothing persisted', function () {

@@ -278,8 +278,8 @@ class ContractsTableDefinition extends AbstractTableDefinition
             $allowed[] = 'validate';
         }
 
-        if ($this->actionAvailability->maySchedule($row) && Gate::forUser($actor)->allows('schedule', $row)) {
-            $allowed[] = 'schedule';
+        if ($this->actionAvailability->mayProgram($row) && Gate::forUser($actor)->allows('program', $row)) {
+            $allowed[] = 'program';
         }
 
         if ($this->actionAvailability->mayChangeStatus($row) && Gate::forUser($actor)->allows('changeStatus', $row)) {

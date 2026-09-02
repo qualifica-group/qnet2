@@ -15,6 +15,7 @@ use App\Models\PipelineStatus;
 use App\Models\Project;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Concerns\RealignsCampaignGeo;
+use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Statuses\SystemStatusGuard;
 use App\Services\Table\TableQueryBuilder;
 use App\Tables\TableRegistry;
@@ -43,23 +44,26 @@ class ProjectService
         private readonly TableRegistry $tableRegistry,
         private readonly TableQueryBuilder $queryBuilder,
         private readonly SystemStatusGuard $systemStatusGuard,
+        private readonly ProductLineWriter $productLineWriter,
     ) {}
 
     /**
      * Relations eager-loaded for the detail/write-result read tree
-     * (ProjectResource), so a single query never N+1s across the 6
-     * classification FKs plus the 4 geo levels (spec 0027).
+     * (ProjectResource), so a single query never N+1s across the
+     * classification FKs plus the 4 geo levels (spec 0027). Spec 0094,
+     * D-1/D-2: `businessFunction`/`productCategory` are REPLACED by
+     * `productLines.businessFunction`/`productLines.productCategory`.
      *
      * @var array<int, string>
      */
     private const array DETAIL_RELATIONS = [
         'pipelineStatus',
-        'businessFunction',
+        'productLines.businessFunction',
+        'productLines.productCategory',
         'country',
         'state',
         'province',
         'city',
-        'productCategory',
         'partner',
         'operationalSite.addresses.city',
     ];
@@ -99,6 +103,11 @@ class ProjectService
             $project = new Project($attributes);
             $project->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
             $project->save();
+
+            // Spec 0094, D-1/D-2: `product_lines` is a to-many collection, not
+            // a mass-assignable column — StoreProjectRequest always requires
+            // at least one row.
+            $this->productLineWriter->sync($project, $data->productLines);
 
             return $project;
         });
@@ -140,6 +149,13 @@ class ProjectService
             if ($project->wasChanged(self::GEO_LEVELS)) {
                 $this->realignLinkedCampaignsGeo($project);
             }
+
+            // Spec 0094, D-1/D-2: `product_lines` may be omitted (partial
+            // PATCH, rows untouched) but never cleared to `[]`
+            // (UpdateProjectRequest's own `min:1`).
+            if ($data->hasProductLines()) {
+                $this->productLineWriter->sync($project, $data->productLines);
+            }
         });
 
         return $this->loadDetail($project);
@@ -161,9 +177,9 @@ class ProjectService
     /**
      * Minimal, searchable, paginated project list for the for-select
      * standard (ADR 0011, spec 0023), carrying the campaign-form default
-     * `meta` (partner/pipeline_status/business_function/
-     * state/product_category + the BR-7 budget figures) so the Campaign form
-     * can precompile its defaults with no extra request.
+     * `meta` (partner/pipeline_status/state/product_lines + the BR-7 budget
+     * figures) so the Campaign form can precompile its defaults with no
+     * extra request.
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
@@ -272,7 +288,7 @@ class ProjectService
     private function forSelectBaseQuery(): Builder
     {
         return Project::query()
-            ->select(['id', 'code', 'name', 'pipeline_status_id', 'business_function_id', 'country_id', 'state_id', 'province_id', 'city_id', 'product_category_id', 'partner_id', 'operational_site_id', 'total_budget'])
+            ->select(['id', 'code', 'name', 'pipeline_status_id', 'country_id', 'state_id', 'province_id', 'city_id', 'partner_id', 'operational_site_id', 'total_budget'])
             ->with(self::DETAIL_RELATIONS)
             ->withSum('campaigns as allocated_budget_sum', 'total_budget');
     }

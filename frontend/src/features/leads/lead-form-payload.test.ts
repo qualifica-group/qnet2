@@ -15,6 +15,7 @@ function values(overrides: Partial<LeadFormValues> = {}): LeadFormValues {
     state_id: null,
     notes: null,
     extra_fields: [],
+    products_of_interest: [],
     convert_to_opportunity: false,
     ...overrides,
   }
@@ -57,6 +58,7 @@ describe('buildCreatePayload', () => {
       state_id: 6,
       notes: 'Note',
       extra_fields: null,
+      products_of_interest: [],
       convert_to_opportunity: false,
     })
   })
@@ -73,8 +75,16 @@ describe('buildCreatePayload', () => {
       state_id: null,
       notes: null,
       extra_fields: null,
+      products_of_interest: [],
       convert_to_opportunity: false,
     })
+  })
+
+  /** Spec 0094, D-5: the create payload carries the chosen product ids verbatim. */
+  it('includes products_of_interest when products are chosen', () => {
+    const payload = buildCreatePayload(values({ products_of_interest: [7, 9] }))
+
+    expect(payload.products_of_interest).toEqual([7, 9])
   })
 
   /** Directive 2026-07-21: the Regione is a user input, sent unconditionally like the opportunity form. */
@@ -170,6 +180,31 @@ describe('buildUpdatePayload', () => {
   it('includes extra_fields as null when every row is removed', () => {
     const payload = buildUpdatePayload(values({ extra_fields: [] }), original({ extra_fields: { a: '1' } }))
     expect(payload).toEqual({ extra_fields: null })
+  })
+
+  /** Spec 0094, D-5: order-independent sparse diff, mirrors extra_fields above. */
+  it('omits products_of_interest when the selection is unchanged regardless of order', () => {
+    const payload = buildUpdatePayload(
+      values({ products_of_interest: [9, 7] }),
+      original({ products_of_interest: [{ id: 7, name: 'A', product_category: null }, { id: 9, name: 'B', product_category: null }] }),
+    )
+    expect(payload).toEqual({})
+  })
+
+  it('includes products_of_interest when the selection changed', () => {
+    const payload = buildUpdatePayload(
+      values({ products_of_interest: [7] }),
+      original({ products_of_interest: [{ id: 7, name: 'A', product_category: null }, { id: 9, name: 'B', product_category: null }] }),
+    )
+    expect(payload).toEqual({ products_of_interest: [7] })
+  })
+
+  it('includes products_of_interest: [] when the selection is cleared (AC-033)', () => {
+    const payload = buildUpdatePayload(
+      values({ products_of_interest: [] }),
+      original({ products_of_interest: [{ id: 7, name: 'A', product_category: null }] }),
+    )
+    expect(payload).toEqual({ products_of_interest: [] })
   })
 
   /** Spec 0044: edit-mode conversion is out of scope, the PATCH payload never carries the flag. */

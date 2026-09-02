@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -66,6 +66,20 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
   ),
 }))
 
+// The Commesse tab (spec 0095 D-8) mounts the real `TableView`; stubbed the
+// same way every other detail-composing suite stubs it (e.g.
+// `opportunity-quotes-section.test.tsx`) so this suite exercises the VIEW'S
+// OWN wiring, not the generic grid/AG Grid Enterprise setup.
+vi.mock('@/features/table/table-view', () => ({
+  TableView: forwardRef<
+    { refresh: () => void; clearSelection: () => void },
+    { onRowCountChanged?: (count: number | null) => void }
+  >(function TableViewStub(_props, ref) {
+    useImperativeHandle(ref, () => ({ refresh: vi.fn(), clearSelection: vi.fn() }))
+    return <div>work-orders-table-stub</div>
+  }),
+}))
+
 const confirmMock = vi.fn<ConfirmFn>()
 
 function contract(overrides: Partial<ContractDetailWithPermissions> = {}): ContractDetailWithPermissions {
@@ -123,7 +137,7 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
       fields: {},
       actions: {
         validate: true,
-        schedule: true,
+        program: true,
         terminate: true,
         reactivate: true,
         change_status: true,
@@ -265,7 +279,7 @@ describe('ContractDetailView — action gating (AC-044)', () => {
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit data' })).toBeInTheDocument()
     // Aperto: "Programma" belongs to the positive closure only.
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
   })
 
   it('omits "Validate contract" without contracts.validate', () => {
@@ -273,13 +287,13 @@ describe('ContractDetailView — action gating (AC-044)', () => {
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
   })
 
-  it('omits "Schedule contract" without contracts.schedule', () => {
+  it('omits "Program" without contracts.program', () => {
     renderView(
       validatedContract({
-        permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, schedule: false } },
+        permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, program: false } },
       }),
     )
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
   })
 
   it('omits "Terminate contract" without contracts.terminate', () => {
@@ -300,7 +314,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit data' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
 
@@ -310,14 +324,14 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     )
     expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
   })
 
-  it('su CHIUSO POSITIVO lascia Disdici, Programma (disabilitato) e Riapri', () => {
+  it('su CHIUSO POSITIVO lascia Disdici, Programma (attivo, spec 0095) e Riapri', () => {
     // Direttiva utente 2026-08-31 rev.3: anche la chiusura positiva si riapre.
     renderView(validatedContract())
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Schedule contract' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
@@ -338,7 +352,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     renderView(terminatedContract())
     expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schedule contract' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()

@@ -19,6 +19,8 @@ import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE, type UserForSelectItem } from '@/features/users/for-select-api'
 import { STATES_FOR_SELECT_RESOURCE } from '@/features/geo/state-for-select-api'
 import { useLeadForm } from '@/features/leads/use-lead-form'
+import { useLeadCampaignProductInterest } from '@/features/leads/use-lead-campaign-product-interest'
+import { LeadProductInterestSection } from '@/features/leads/lead-product-interest-section'
 import { NOTES_MAX_LENGTH } from '@/features/leads/lead-schema'
 import { ExtraFieldsEditor } from '@/features/leads/extra-fields-editor'
 import type { LeadDetail, LeadFormMode } from '@/features/leads/types'
@@ -72,7 +74,7 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
   const siteId = useWatch({ control: form.control, name: 'operational_site_id' })
 
   const [autoFilledSite, setAutoFilledSite] = useState<RelationFieldRef | null>(null)
-  const handleCampaignItemChange = (item: ForSelectItem | null) => {
+  const applyCampaignSitePrefill = (item: ForSelectItem | null) => {
     const campaign = item as CampaignForSelectItem | null
     const site = campaign?.meta?.operational_site
     if (site == null) return
@@ -80,6 +82,18 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
     setAutoFilledSite({ id: site.id, name: site.label })
     previousSiteIdRef.current = site.id
   }
+
+  // Prodotti di interesse <-> Campagna coherence (spec 0094, D-5): a
+  // Campaign pick applies the Sede prefill above immediately, or — when
+  // products already chosen fall outside the new campaign's categories —
+  // only after the operator's explicit confirmation (AC-042).
+  const campaignId = useWatch({ control: form.control, name: 'campaign_id' })
+  const { campaignCategoryIds, isCampaignChangePending, handleCampaignItemChange } =
+    useLeadCampaignProductInterest({
+      form,
+      original,
+      onCampaignApplied: applyCampaignSitePrefill,
+    })
 
   // Operatore -> Sede (AC-061): picking an Operatore hydrates its own Sede
   // from `meta` (no extra fetch), mirroring the Campaign->Sede chain above.
@@ -261,11 +275,19 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
             </div>
           </FormSection>
 
+          <LeadProductInterestSection
+            control={form.control}
+            campaignId={campaignId}
+            categoryIds={campaignCategoryIds}
+            knownProducts={original?.products_of_interest ?? []}
+            className={sectionRevealClassName(2)}
+          />
+
           <FormSection
             icon={StickyNote}
             title={t('leads.form.sections.notes.title')}
             description={t('leads.form.sections.notes.description')}
-            className={sectionRevealClassName(2)}
+            className={sectionRevealClassName(3)}
             collapsible
             open={notesOpen || notesHasError}
             onOpenChange={setNotesOpen}
@@ -302,7 +324,7 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
 
           <ExtraFieldsEditor
             control={form.control}
-            className={sectionRevealClassName(3)}
+            className={sectionRevealClassName(4)}
             collapsible
             open={extraOpen || extraHasError}
             onOpenChange={setExtraOpen}
@@ -322,7 +344,7 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
             <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
               {t('leads.form.cancel')}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || isCampaignChangePending}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
               {isSubmitting ? t('leads.form.saving') : t('leads.form.save')}
             </Button>

@@ -7,6 +7,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { GeoScope } from '@/features/geo/geo-scope'
+import type { ProductLine } from '@/features/product-lines/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** Hydrated projection of a plain `{id, name}` relation (business_function/state/product_category/partner). */
@@ -47,8 +48,6 @@ export interface ProjectDetail {
   description: string | null
   pipeline_status_id: number
   pipeline_status: PipelineStatusRef
-  business_function_id: number | null
-  business_function: ProjectRelationRef | null
   /** Geo cascade (spec 0027 BR-4): `country_id` is required server-side, the other three optional. */
   country_id: number | null
   country: ProjectRelationRef | null
@@ -60,8 +59,13 @@ export interface ProjectDetail {
   city: ProjectRelationRef | null
   /** Finest non-null geo level, derived server-side (spec 0027 D-2). Never re-derived here. */
   geo_scope: GeoScope | null
-  product_category_id: number | null
-  product_category: ProjectRelationRef | null
+  /**
+   * Business-function + product-category row collection (spec 0094, replaces
+   * the former single `business_function_id`/`product_category_id` scalar
+   * pair): the shared `ProductLine` shape, identical to the opportunity's own
+   * (`ProductLinesField`, spec 0057).
+   */
+  product_lines: ProductLine[]
   partner_id: number | null
   partner: ProjectRelationRef | null
   /** The Sede inherited by every campaign/lead created under this project (prefill, not a lock). */
@@ -91,25 +95,32 @@ export interface ProjectDetailWithPermissions extends ProjectDetail {
   permissions: ResourcePermissions
 }
 
+/** A `product_lines` row as sent to the server (create/update payload, spec 0094). */
+export interface ProjectProductLineInput {
+  business_function_id: number
+  product_category_id: number
+}
+
 /**
  * Payload for POST /projects (create). `code` is optional and manual
  * (spec 0025): omitted or empty falls back to server-side sequential
  * generation (`PRJ-xxxx`); PATCH never accepts it (immutable after create).
  * `pipeline_status_id` is nullable/optional (spec 0039 D-3): the server
- * falls back to the system "Nuovo" status when omitted.
+ * falls back to the system "Nuovo" status when omitted. `product_lines` is
+ * REQUIRED (min 1, spec 0094): the server replaces the entire row set on
+ * every write, so it is always sent in full, even on a bare create.
  */
 export interface CreateProjectPayload {
   code?: string
   name: string
   pipeline_status_id?: number | null
   description?: string | null
-  business_function_id?: number | null
+  product_lines: ProjectProductLineInput[]
   /** Geo cascade (spec 0027 BR-4): `country_id` is required on create. */
   country_id?: number | null
   state_id?: number | null
   province_id?: number | null
   city_id?: number | null
-  product_category_id?: number | null
   partner_id?: number | null
   operational_site_id?: number | null
   start_date?: string | null

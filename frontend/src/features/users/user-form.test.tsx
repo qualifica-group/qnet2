@@ -328,10 +328,13 @@ describe('UserForm — atomic personal data', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    // The card is mandatory: the request must not fire, and an error is shown.
+    // The card is mandatory: the request must not fire, and the error NAMES the
+    // fields left empty.
     await waitFor(() =>
       expect(
-        screen.getByText('Complete the required personal data fields.'),
+        screen.getByText(
+          'Complete the required personal data fields: First name: First name is required. · Last name: Last name is required.',
+        ),
       ).toBeInTheDocument(),
     )
     expect(createUserMock).not.toHaveBeenCalled()
@@ -358,7 +361,9 @@ describe('UserForm — atomic personal data', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
-      expect(screen.getByText('Fix the invalid contacts before saving.')).toBeInTheDocument(),
+      expect(
+        screen.getByText('Fix the contacts: Email: Enter a valid email address.'),
+      ).toBeInTheDocument(),
     )
     expect(createUserMock).not.toHaveBeenCalled()
   })
@@ -379,13 +384,13 @@ describe('UserForm — atomic personal data', () => {
 
     // The inline address is started (line1 filled) but no city is chosen.
     switchTab('Contact info')
-    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Via Roma 1' } })
+    fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
       expect(
-        screen.getByText('Enter the street and city to complete the address.'),
+        screen.getByText('Complete the address: City: The city is required.'),
       ).toBeInTheDocument(),
     )
     expect(createUserMock).not.toHaveBeenCalled()

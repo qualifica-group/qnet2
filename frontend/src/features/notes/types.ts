@@ -16,6 +16,7 @@ export interface NoteAuthor {
 export interface NoteMention {
   id: number
   name: string
+  avatar_url: string | null
 }
 
 /** Per-actor authorization computed server-side for the current user (D-8). */

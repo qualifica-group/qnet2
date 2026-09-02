@@ -76,8 +76,11 @@ final class ImportOpportunityConvertibility
             return $this->campaignProductLineCache[$campaignId];
         }
 
+        // Spec 0094, D-1/D-2: la classificazione non e' piu' una coppia di
+        // colonne sulla campagna ma una collezione, sua o del progetto a cui
+        // e' legata. Si carica quel che il predicato condiviso legge davvero.
         $campaign = Campaign::query()
-            ->with(['businessFunction', 'productCategory', 'project.businessFunction', 'project.productCategory'])
+            ->with(['productLines', 'project.productLines'])
             ->find($campaignId);
 
         return $this->campaignProductLineCache[$campaignId] = $campaign !== null

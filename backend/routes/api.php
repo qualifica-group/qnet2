@@ -351,6 +351,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/leads.php'; // Leads CRUD (spec 0024) + opportunity-defaults (spec 0040)
     require __DIR__.'/api/opportunities.php'; // Opportunities CRUD (spec 0040)
     require __DIR__.'/api/quotes.php'; // Quotes CRUD (spec 0065, MT-05)
+    require __DIR__.'/api/work-orders.php'; // Work orders / "Commesse" CRUD (spec 0093)
     require __DIR__.'/api/contracts.php'; // Contracts show/update + domain actions (spec 0072)
     require __DIR__.'/api/commission-configurations.php';
     require __DIR__.'/api/request-management.php'; // Work-panel show/update (spec 0049)

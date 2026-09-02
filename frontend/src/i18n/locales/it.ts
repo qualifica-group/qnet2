@@ -31,6 +31,7 @@ import { quoteWorkflows } from './it-quote-workflows'
 import { quotes } from './it-quotes'
 import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
+import { workOrders } from './it-work-orders'
 import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
@@ -380,6 +381,7 @@ export const it: TranslationResources = {
   quotes,
   contractStatuses,
   contracts,
+  workOrders,
   commissionConfigurations,
   requestManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`

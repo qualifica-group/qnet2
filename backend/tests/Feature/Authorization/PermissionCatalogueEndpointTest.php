@@ -126,12 +126,12 @@ it('AC-007: leads is in canonical ability order; contracts appends its extra act
     expect($leadsAbilities)->toBe(['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity']);
 
     // ContractPolicy drops create/delete/import and adds validate/terminate/
-    // schedule/changeStatus/reactivate (spec 0072): canonical first, then the
-    // extras alphabetically.
+    // program/changeStatus/reactivate (spec 0072; spec 0095 D-2 renamed
+    // schedule -> program): canonical first, then the extras alphabetically.
     $contractsAbilities = collect($resources['contracts']['permissions'])->pluck('ability')->all();
     expect($contractsAbilities)->toBe([
         'viewAny', 'view', 'update', 'export', 'viewActivity',
-        'changeStatus', 'reactivate', 'schedule', 'terminate', 'validate',
+        'changeStatus', 'program', 'reactivate', 'terminate', 'validate',
     ]);
 });
 

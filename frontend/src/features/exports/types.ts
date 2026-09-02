@@ -39,6 +39,12 @@ export interface CreateExportPayload {
    * generation job. Omitted ⇒ today's unscoped export, unchanged.
    */
   opportunityId?: number | null
+  /**
+   * Row-set scope to one Contract's Offerta (spec 0095 D-8, the Contract
+   * detail's Commesse tab export), same rule as `opportunityId`. Omitted ⇒
+   * today's unscoped export, unchanged.
+   */
+  quoteId?: number | null
 }
 
 /** The export run resource returned by every endpoint (`ExportRunResource`). */

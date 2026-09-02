@@ -21,12 +21,11 @@ function baseValues() {
     name: 'New project',
     description: null,
     pipeline_status_id: 1,
-    business_function_id: 5,
     country_id: 1,
     state_id: null,
     province_id: null,
     city_id: null,
-    product_category_id: 6,
+    product_lines: [{ business_function_id: 5, product_category_id: 6 }],
     partner_id: null,
     operational_site_id: null,
     start_date: '2026-01-01',
@@ -98,22 +97,52 @@ describe('buildCreateProjectSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects a null business_function_id (now required)', () => {
+})
+
+describe('buildCreateProjectSchema — product_lines (spec 0094)', () => {
+  it('rejects an empty product_lines collection (AC-045)', () => {
     const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
-    const result = schema.safeParse({ ...baseValues(), business_function_id: null })
+    const result = schema.safeParse({ ...baseValues(), product_lines: [] })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'business_function_id')).toBe(true)
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
     }
   })
 
-  it('rejects a null product_category_id (now required)', () => {
+  it('rejects a row missing its business_function_id', () => {
     const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
-    const result = schema.safeParse({ ...baseValues(), product_category_id: null })
+    const result = schema.safeParse({
+      ...baseValues(),
+      product_lines: [{ business_function_id: null, product_category_id: 6 }],
+    })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_category_id')).toBe(true)
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
     }
+  })
+
+  it('rejects a row missing its product_category_id', () => {
+    const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
+    const result = schema.safeParse({
+      ...baseValues(),
+      product_lines: [{ business_function_id: 5, product_category_id: null }],
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'product_lines')).toBe(true)
+    }
+  })
+
+  it('accepts multiple complete rows', () => {
+    const schema = buildCreateProjectSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
+    const result = schema.safeParse({
+      ...baseValues(),
+      product_lines: [
+        { business_function_id: 5, product_category_id: 6 },
+        { business_function_id: 7, product_category_id: 8 },
+      ],
+    })
+    expect(result.success).toBe(true)
   })
 })
 

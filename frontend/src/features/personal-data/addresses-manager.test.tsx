@@ -310,14 +310,14 @@ describe('AddressesManager (createMode)', () => {
     renderWithConfirm(<AddressesManager value={[]} onChange={() => {}} createMode />)
 
     expect(screen.queryByRole('button', { name: 'Add address' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Address')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Address\*?$/)).toBeInTheDocument()
   })
 
   it('creates the sole draft once any field is typed', () => {
     const onChange = vi.fn()
     renderWithConfirm(<AddressesManager value={[]} onChange={onChange} createMode />)
 
-    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Via Roma 1' } })
+    fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
 
     expect(onChange).toHaveBeenCalledTimes(1)
     const next = onChange.mock.calls[0][0] as AddressDraft[]
@@ -327,7 +327,7 @@ describe('AddressesManager (createMode)', () => {
 
   it('clears the buffer once every field is emptied again (optional address)', () => {
     renderWithConfirm(<ControlledAddresses />)
-    const line1 = screen.getByLabelText('Address')
+    const line1 = screen.getByLabelText(/^Address\*?$/)
 
     fireEvent.change(line1, { target: { value: 'Via Roma 1' } })
     fireEvent.change(line1, { target: { value: '' } })
@@ -367,7 +367,7 @@ describe('AddressesManager (createMode)', () => {
   it('is valid once line1 and the city are both set', () => {
     renderWithConfirm(<ControlledAddresses />)
 
-    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Via Roma 1' } })
+    fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
     fireEvent.click(screen.getByTestId('geo-select'))
 
     expect(screen.queryByText('The address is required.')).not.toBeInTheDocument()

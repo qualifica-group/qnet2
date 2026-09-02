@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\Country;
 use App\Models\PipelineStatus;
+use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -230,4 +232,67 @@ it('row.actions omits duplicate for an actor without projects.create', function 
         ->assertOk()->json('items'));
 
     expect($items->firstWhere('id', $project->id)['actions'])->not->toContain('duplicate');
+});
+
+// ---------------------------------------------------------------------------
+// AC-025/AC-026 — business_function/product_category AGGREGATED (to-many)
+// columns: comma-joined display, set filter, distinct values, never sortable
+// ---------------------------------------------------------------------------
+
+it('rows: business_function/product_category display the comma-joined names of every line (AC-025)', function () {
+    $actor = projectUserWith(['viewAny']);
+    $functionA = BusinessFunction::factory()->create(['name' => 'Marketing']);
+    $functionB = BusinessFunction::factory()->create(['name' => 'Sales']);
+    $categoryA = ProductCategory::factory()->create(['business_function_id' => $functionA->id, 'name' => 'Widgets']);
+    $categoryB = ProductCategory::factory()->create(['business_function_id' => $functionB->id, 'name' => 'Gadgets']);
+    $project = Project::factory()->create(['name' => 'Multi Line']);
+    $project->productLines()->create(['business_function_id' => $functionA->id, 'product_category_id' => $categoryA->id]);
+    $project->productLines()->create(['business_function_id' => $functionB->id, 'product_category_id' => $categoryB->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/projects/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+    $row = collect($response->json('items'))->firstWhere('id', $project->id);
+
+    expect($row['business_function'])->toBe('Marketing, Sales')
+        ->and($row['product_category'])->toBe('Widgets, Gadgets');
+});
+
+it('rows: the product_category set filter matches via whereHas on project_product_lines, never sorts (AC-025/AC-026)', function () {
+    $actor = projectUserWith(['viewAny']);
+    $category = ProductCategory::factory()->create(['name' => 'Widgets']);
+    $otherCategory = ProductCategory::factory()->create(['name' => 'Gadgets']);
+    $matching = Project::factory()->create(['name' => 'Has Widgets']);
+    $matching->productLines()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'product_category_id' => $category->id]);
+    $nonMatching = Project::factory()->create(['name' => 'Has Gadgets']);
+    $nonMatching->productLines()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'product_category_id' => $otherCategory->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/projects/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['product_category' => ['filterType' => 'set', 'values' => ['Widgets']]],
+    ])->assertOk();
+
+    $names = collect($response->json('items'))->pluck('name');
+    expect($names->all())->toBe(['Has Widgets']);
+
+    // Never sortable (AC-025): an attempted sort is rejected, not silently applied.
+    $this->postJson('/api/tables/projects/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'sortModel' => [['colId' => 'product_category', 'sort' => 'asc']],
+    ])->assertStatus(422)->assertJsonValidationErrors('sortModel.0.colId');
+});
+
+it('the product_category distinct values are the related names, scoped by the page query, no whereRaw (AC-026)', function () {
+    $actor = projectUserWith(['viewAny']);
+    $category = ProductCategory::factory()->create(['name' => 'Widgets']);
+    $project = Project::factory()->create();
+    $project->productLines()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'product_category_id' => $category->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/projects/values', ['columnId' => 'product_category'])
+        ->assertOk();
+
+    expect($response->json('data.values'))->toContain('Widgets');
 });

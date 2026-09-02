@@ -31,6 +31,8 @@ interface ProfileTabContentProps {
   profileDraft: PersonalDataDraft
   /** Emits the next anagraphic draft. */
   setProfileDraft: (next: PersonalDataDraft) => void
+  /** Bumped by the owner form when a save is refused, forwarded to the card. */
+  revalidateSignal: number
   /** Gating for the shared card/contacts/address components (spec 0008). */
   personalDataFieldPermission: PersonalDataFieldPermissionResolver
   onLogoFileSelected: (file: File | null) => void
@@ -54,6 +56,7 @@ export function ProfileTabContent({
   siteName,
   profileDraft,
   setProfileDraft,
+  revalidateSignal,
   personalDataFieldPermission,
   onLogoFileSelected,
   onLogoUpload,
@@ -120,6 +123,7 @@ export function ProfileTabContent({
           onChange={setProfileDraft}
           fieldPermission={personalDataFieldPermission}
           lockType="company"
+          revalidateSignal={revalidateSignal}
         />
       </FormSection>
 

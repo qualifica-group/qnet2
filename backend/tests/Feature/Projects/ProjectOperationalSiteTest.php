@@ -52,8 +52,10 @@ if (! function_exists('projectStoreExtras')) {
         $businessFunction = BusinessFunction::factory()->create();
 
         return [
-            'business_function_id' => $businessFunction->id,
-            'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            'product_lines' => [[
+                'business_function_id' => $businessFunction->id,
+                'product_category_id' => ProductCategory::factory()->create(['business_function_id' => $businessFunction->id])->id,
+            ]],
             'start_date' => '2026-01-01',
             'end_date' => '2026-12-31',
         ];

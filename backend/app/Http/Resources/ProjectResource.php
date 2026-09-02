@@ -19,6 +19,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * LeadResource/OperationalSiteForSelectResource use. Relies on
  * ProjectService::loadDetail() having eager-loaded
  * `operationalSite.addresses.city`.
+ *
+ * Spec 0094, D-1/D-2: `business_function_id`/`business_function`/
+ * `product_category_id`/`product_category` are REPLACED by `product_lines`
+ * (one row per funzione-aziendale + categoria-prodotto pair), mirroring
+ * OpportunityResource's own amendment rev.3 shape. Relies on
+ * ProjectService::DETAIL_RELATIONS eager-loading
+ * `productLines.businessFunction`/`productLines.productCategory`.
  */
 class ProjectResource extends JsonResource
 {
@@ -39,8 +46,6 @@ class ProjectResource extends JsonResource
             'pipeline_status' => $this->pipelineStatus !== null
                 ? ['id' => $this->pipelineStatus->id, 'name' => $this->pipelineStatus->name, 'color' => $this->pipelineStatus->color]
                 : null,
-            'business_function_id' => $this->business_function_id,
-            'business_function' => $this->summarize($this->businessFunction),
             'country_id' => $this->country_id,
             'country' => $this->summarize($this->country, geo: true),
             'state_id' => $this->state_id,
@@ -50,8 +55,7 @@ class ProjectResource extends JsonResource
             'city_id' => $this->city_id,
             'city' => $this->summarize($this->city, geo: true),
             'geo_scope' => GeoScopeLevel::for($this->country_id, $this->state_id, $this->province_id, $this->city_id)?->value,
-            'product_category_id' => $this->product_category_id,
-            'product_category' => $this->summarize($this->productCategory),
+            'product_lines' => $this->summarizeProductLines($this->productLines),
             'partner_id' => $this->partner_id,
             'partner' => $this->summarize($this->partner),
             'operational_site_id' => $this->operational_site_id,
@@ -89,6 +93,21 @@ class ProjectResource extends JsonResource
     private function formatMoney(float $value): string
     {
         return number_format($value, 2, '.', '');
+    }
+
+    /**
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     */
+    private function summarizeProductLines(iterable $lines): array
+    {
+        return collect($lines)
+            ->map(fn (Model $line): array => [
+                'id' => $line->id,
+                'business_function' => $this->summarize($line->businessFunction),
+                'product_category' => $this->summarize($line->productCategory),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

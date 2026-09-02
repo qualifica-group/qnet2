@@ -31,6 +31,16 @@ namespace App\DataObjects\Shared;
  *   ContractStatusService::forSelect (contract-statuses/for-select narrowed
  *   to the groups a given contract action may move to) — empty means no
  *   filter, so every other consumer is unaffected.
+ * - `quoteId` (spec 0093, D-8): ADDITIVE, consumed ONLY by
+ *   QuoteOfferLineForSelectService (quote-offer-lines/for-select scoped to
+ *   ONE quote's own REVENUE lines) — REQUIRED by that endpoint's own
+ *   FormRequest, but null by default so every other consumer is unaffected.
+ * - `exceptWorkOrderId` (spec 0095, D-7): ADDITIVE, consumed ONLY by
+ *   QuoteOfferLineForSelectService — excludes lines already programmed into
+ *   ANOTHER work order (D-4), but readmits the ones belonging to THIS one,
+ *   so the work-order edit form keeps offering its own already-selected
+ *   rows. Null by default (no exclusion widening) so every other consumer
+ *   is unaffected.
  */
 final readonly class ForSelectQuery
 {
@@ -49,6 +59,8 @@ final readonly class ForSelectQuery
         public array $categoryIds = [],
         public ?int $rootCategoryId = null,
         public array $statusGroups = [],
+        public ?int $quoteId = null,
+        public ?int $exceptWorkOrderId = null,
     ) {}
 
     /**
@@ -88,6 +100,8 @@ final readonly class ForSelectQuery
             categoryIds: $categoryIds,
             rootCategoryId: isset($data['root_category_id']) ? (int) $data['root_category_id'] : null,
             statusGroups: $statusGroups,
+            quoteId: isset($data['quote_id']) ? (int) $data['quote_id'] : null,
+            exceptWorkOrderId: isset($data['except_work_order_id']) ? (int) $data['except_work_order_id'] : null,
         );
     }
 

@@ -24,14 +24,18 @@ export const personalDataFieldLabels = {
 }
 
 export const personalData = {
+  // Etichette dei campi carta, indicizzate per path dello schema: le usa il
+  // riepilogo "quale campo manca" (`personal-data-issues.ts`) per nominare il
+  // campo che blocca il salvataggio.
+  fieldLabels: personalDataFieldLabels,
   section: {
     title: 'Dati anagrafici',
     subtitle: 'Scheda anagrafica, contatti e indirizzi.',
     loadError: 'Impossibile caricare i dati anagrafici. Riprova.',
     createHint: 'Salva prima la scheda per aggiungere contatti e indirizzi.',
-    incomplete: 'Completa i campi obbligatori dei dati anagrafici.',
-    addressIncomplete: "Inserisci l'indirizzo e la città per completare l'indirizzo.",
-    contactsInvalid: 'Correggi i contatti non validi prima di salvare.',
+    incomplete: 'Completa i campi obbligatori dei dati anagrafici: {{fields}}',
+    addressIncomplete: "Completa l'indirizzo: {{fields}}",
+    contactsInvalid: 'Correggi i contatti: {{fields}}',
     phoneRequired: 'Inserisci almeno un numero di telefono.',
   },
   form: {

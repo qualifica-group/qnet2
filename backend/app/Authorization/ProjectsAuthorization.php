@@ -21,6 +21,11 @@ use Illuminate\Database\Eloquent\Model;
  * spec 0039, D-3: `pipeline_status_id` is NO LONGER mandatory — the FK went
  * from `required` to `nullable` in StoreProjectRequest (server-side fallback
  * to the system_key='new' status when omitted, ProjectService::create()).
+ *
+ * Spec 0094, D-1/D-2: the former `business_function_id`/`product_category_id`
+ * scalars are REPLACED by a single `product_lines` field (a to-many
+ * collection), mirroring OpportunitiesAuthorization's own amendment rev.3
+ * field.
  */
 class ProjectsAuthorization extends AbstractResourceAuthorization
 {
@@ -44,12 +49,11 @@ class ProjectsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('pipeline_status_id', 'select'),
-            new FieldDefinition('business_function_id', 'select', mandatory: true),
+            new FieldDefinition('product_lines', 'multiselect', mandatory: true),
             new FieldDefinition('country_id', 'select', mandatory: true),
             new FieldDefinition('state_id', 'select'),
             new FieldDefinition('province_id', 'select'),
             new FieldDefinition('city_id', 'select'),
-            new FieldDefinition('product_category_id', 'select', mandatory: true),
             new FieldDefinition('partner_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
             new FieldDefinition('start_date', 'date', mandatory: true),
@@ -84,12 +88,11 @@ class ProjectsAuthorization extends AbstractResourceAuthorization
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'pipeline_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'business_function_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'country_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'state_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'province_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'city_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'product_category_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'partner_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operational_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'start_date' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),

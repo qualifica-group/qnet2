@@ -335,6 +335,13 @@ export interface SsrmSortModelItem {
  */
 export interface TableRowScope {
   opportunityId?: number
+  /**
+   * Row-set scope to one Contract's Offerta (spec 0095 D-8, the Contract
+   * detail's Commesse tab): Contratto/Offerta are 1:1, so filtering on
+   * `work_orders.quote_id` is a direct `where`, no join. A no-op for every
+   * domain but `work-orders`.
+   */
+  quoteId?: number
 }
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
@@ -367,6 +374,8 @@ export interface TableRowsPayload {
    * `rowScope` with a value; a no-op for every domain but `quotes`.
    */
   opportunityId?: number | null
+  /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above; a no-op for every domain but `work-orders`. */
+  quoteId?: number | null
 }
 
 /** Pagination metadata from the `paginatedResponse()` envelope. */
@@ -404,6 +413,8 @@ export interface TableColumnValuesPayload {
   productCategoryId?: number | null
   /** Row-set scope to one parent record (spec 0067 D-1), same rule as above. */
   opportunityId?: number | null
+  /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above. */
+  quoteId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

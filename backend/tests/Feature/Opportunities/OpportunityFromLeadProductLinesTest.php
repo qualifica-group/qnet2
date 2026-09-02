@@ -31,20 +31,17 @@ it('opportunity-defaults: product_lines carries the campaign\'s EFFECTIVE busine
 
     $response = $this->getJson("/api/leads/{$lead->id}/opportunity-defaults")->assertOk();
 
+    $line = $lead->campaign->productLines()->firstOrFail();
+
     expect($response->json('data.product_lines'))->toHaveCount(1);
-    expect($response->json('data.product_lines.0.business_function.id'))->toBe($lead->campaign->business_function_id);
-    expect($response->json('data.product_lines.0.product_category.id'))->toBe($lead->campaign->product_category_id);
+    expect($response->json('data.product_lines.0.business_function.id'))->toBe($line->business_function_id);
+    expect($response->json('data.product_lines.0.product_category.id'))->toBe($line->product_category_id);
 });
 
 it('opportunity-defaults: business_function/product_category come from the linked PROJECT\'s effective values (AC-061/AC-102)', function () {
     $actor = opportunityFromLeadActor(['create'], ['view']);
-    $businessFunction = BusinessFunction::factory()->create();
-    $productCategory = ProductCategory::factory()->create();
-
-    $project = Project::factory()->create([
-        'business_function_id' => $businessFunction->id,
-        'product_category_id' => $productCategory->id,
-    ]);
+    $project = Project::factory()->withProductLine()->create();
+    $projectLine = $project->productLines()->firstOrFail();
     $campaign = Campaign::factory()->forProject($project)->create();
 
     $lead = Lead::factory()->create(['campaign_id' => $campaign->id]);
@@ -52,13 +49,17 @@ it('opportunity-defaults: business_function/product_category come from the linke
 
     $response = $this->getJson("/api/leads/{$lead->id}/opportunity-defaults")->assertOk();
 
-    expect($response->json('data.product_lines.0.business_function.id'))->toBe($businessFunction->id);
-    expect($response->json('data.product_lines.0.product_category.id'))->toBe($productCategory->id);
+    expect($response->json('data.product_lines.0.business_function.id'))->toBe($projectLine->business_function_id);
+    expect($response->json('data.product_lines.0.product_category.id'))->toBe($projectLine->product_category_id);
 });
 
 it('opportunity-defaults: product_lines is empty when the campaign has neither business function nor product category (AC-102)', function () {
     $actor = opportunityFromLeadActor(['create'], ['view']);
-    $campaign = Campaign::factory()->create(['business_function_id' => null, 'product_category_id' => null]);
+    // Spec 0094 D-2: la classificazione non e' piu' una coppia di colonne
+    // annullabili. Una campagna SENZA classificazione e' una campagna senza
+    // righe, e la factory ne semina una di default: va rimossa esplicitamente.
+    $campaign = Campaign::factory()->create();
+    $campaign->productLines()->delete();
     $lead = Lead::factory()->create(['campaign_id' => $campaign->id]);
     Sanctum::actingAs($actor);
 
@@ -92,6 +93,7 @@ it('create with lead_id: the client-submitted product_lines (matching the defaul
     $lead = completeLead();
     $otherBusinessFunction = BusinessFunction::factory()->create();
     $otherCategory = ProductCategory::factory()->create(['business_function_id' => $otherBusinessFunction->id]);
+    $campaignLine = $lead->campaign->productLines()->firstOrFail();
     Sanctum::actingAs($actor);
 
     // Helper FIRST so the explicit product_lines below overrides its default.
@@ -99,11 +101,11 @@ it('create with lead_id: the client-submitted product_lines (matching the defaul
         'name' => 'From lead, product lines submitted',
         'lead_id' => $lead->id,
         'product_lines' => [
-            ['business_function_id' => $lead->campaign->business_function_id, 'product_category_id' => $lead->campaign->product_category_id],
+            ['business_function_id' => $campaignLine->business_function_id, 'product_category_id' => $campaignLine->product_category_id],
         ],
         // Mandatory since 2026-07-23; from the submitted category, so it adds
         // no product line of its own.
-        'products_of_interest' => [Product::factory()->create(['category_id' => $lead->campaign->product_category_id])->id],
+        'products_of_interest' => [Product::factory()->create(['category_id' => $campaignLine->product_category_id])->id],
     ]))->assertCreated();
 
     $opportunityId = $response->json('data.id');

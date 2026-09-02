@@ -1,5 +1,6 @@
 import type {
   CampaignDetail,
+  CampaignProductLineInput,
   CreateCampaignPayload,
   UpdateCampaignPayload,
 } from '@/features/campaigns/types'
@@ -7,12 +8,8 @@ import type { CampaignFormValues } from '@/features/campaigns/use-campaign-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 import { GEO_LEVEL_FIELDS, GEO_LEVELS, type GeoFieldName } from '@/features/campaigns/campaign-geo'
 
-/** The 3 BR-2 classification fields, never sent when the campaign is linked to a project. */
-const DERIVED_FIELDS = [
-  'pipeline_status_id',
-  'business_function_id',
-  'product_category_id',
-] as const
+/** The scalar BR-2 classification field, never sent when the campaign is linked to a project. `product_lines` (spec 0094) follows its own collection-shaped gating below. */
+const DERIVED_FIELDS = ['pipeline_status_id'] as const
 
 /**
  * BR-5 (spec 0027): only the geo levels NOT owned by the linked project are
@@ -33,14 +30,50 @@ function geoCreateFields(values: CampaignFormValues): Partial<Record<GeoFieldNam
 }
 
 /**
+ * Filters out any row still missing an id and casts the rest to the wire
+ * shape. Defensive only: the schema's `superRefine` (spec 0094) already
+ * blocks a standalone submit on an incomplete row — this exists because
+ * `CampaignFormValues.product_lines` stays nullable-per-id at the type level
+ * (each row is inline-editable).
+ */
+function completeProductLines(rows: CampaignFormValues['product_lines']): CampaignProductLineInput[] {
+  return rows.filter(
+    (row): row is CampaignProductLineInput =>
+      row.business_function_id !== null && row.product_category_id !== null,
+  )
+}
+
+/** Order-independent key of a product-line pair, for set comparison. */
+function productLineKey(line: CampaignProductLineInput): string {
+  return `${line.business_function_id}:${line.product_category_id}`
+}
+
+function sameProductLines(a: CampaignProductLineInput[], b: CampaignProductLineInput[]): boolean {
+  if (a.length !== b.length) {
+    return false
+  }
+  const keysA = new Set(a.map(productLineKey))
+  const keysB = new Set(b.map(productLineKey))
+  if (keysA.size !== keysB.size) {
+    return false
+  }
+  for (const key of keysA) {
+    if (!keysB.has(key)) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
  * Builds the create payload: generic fields + valued custom fields. `code` is
  * included only when set (trimmed, non-empty) — an empty/absent value falls
  * back to server-side sequential generation (spec 0025 AC-010). BR-2: when
- * `project_id` is set, the 3 classification fields are omitted entirely — the
- * backend derives/forces them from the project and rejects an explicit value
- * (AC-022) — regardless of what the (disabled, read-only) form controls
- * currently hold. BR-5 (spec 0027): the geo fields follow their own,
- * per-level lock instead (`geoCreateFields`).
+ * `project_id` is set, `pipeline_status_id` and `product_lines` are omitted
+ * entirely — the backend derives/forces them from the project and rejects an
+ * explicit value (AC-022, `prohibited`) — regardless of what the (disabled,
+ * read-only) form controls currently hold. BR-5 (spec 0027): the geo fields
+ * follow their own, per-level lock instead (`geoCreateFields`).
  */
 export function buildCreatePayload(values: CampaignFormValues): CreateCampaignPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
@@ -59,9 +92,8 @@ export function buildCreatePayload(values: CampaignFormValues): CreateCampaignPa
       : {
           // Nullable/optional (spec 0039 D-3): the server falls back to the system "Nuovo" status when omitted.
           pipeline_status_id: values.pipeline_status_id,
-          // Validated non-null by the schema's required-when-standalone superRefine before submit.
-          business_function_id: values.business_function_id,
-          product_category_id: values.product_category_id,
+          // Validated non-empty by the schema's required-when-standalone superRefine before submit.
+          product_lines: completeProductLines(values.product_lines),
         }),
     ...geoCreateFields(values),
     start_date: values.start_date || null,
@@ -103,11 +135,11 @@ function geoUpdateFields(
 /**
  * Builds a partial PATCH payload carrying only fields that changed from the
  * original campaign (spec 0023). `code` is never sent: it is immutable after
- * create (spec 0025 AC-011). BR-2: the 3 classification fields are only ever
- * included in the diff when the campaign is (or remains) standalone — a
- * transition to linked is carried entirely by the changed `project_id`, and
- * the backend zeroes the 3 fields server-side. BR-5: the geo fields follow
- * their own per-level diff (`geoUpdateFields`) instead.
+ * create (spec 0025 AC-011). BR-2: `pipeline_status_id` and `product_lines`
+ * are only ever included in the diff when the campaign is (or remains)
+ * standalone — a transition to linked is carried entirely by the changed
+ * `project_id`, and the backend zeroes/derives them server-side. BR-5: the
+ * geo fields follow their own per-level diff (`geoUpdateFields`) instead.
  */
 export function buildUpdatePayload(
   values: CampaignFormValues,
@@ -135,12 +167,21 @@ export function buildUpdatePayload(
     // A linked→standalone transition (BR-2): the campaign's own derived
     // columns were actually NULL in DB while `original` exposed the
     // project's EFFECTIVE values (read-through) — a diff against them would
-    // be misleading, so every required field is sent as-is.
+    // be misleading, so `pipeline_status_id`/`product_lines` are sent as-is,
+    // never diffed against the (misleading) effective original.
     const wasLinked = original.project_id !== null
     for (const field of DERIVED_FIELDS) {
       if (wasLinked || values[field] !== original[field]) {
         payload[field] = values[field]
       }
+    }
+    const originalProductLines = original.product_lines.map((line) => ({
+      business_function_id: line.business_function.id,
+      product_category_id: line.product_category.id,
+    }))
+    const currentProductLines = completeProductLines(values.product_lines)
+    if (wasLinked || !sameProductLines(currentProductLines, originalProductLines)) {
+      payload.product_lines = currentProductLines
     }
   }
   Object.assign(payload, geoUpdateFields(values, original))

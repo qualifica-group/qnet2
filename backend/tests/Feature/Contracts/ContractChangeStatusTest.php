@@ -23,7 +23,7 @@ if (! function_exists('changeStatusUserWith')) {
      */
     function changeStatusUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'schedule', 'changeStatus', 'reactivate'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'] as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
         }
 

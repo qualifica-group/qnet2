@@ -25,7 +25,7 @@ export function MentionBadge({ userId, name, avatarUrl, className }: MentionBadg
         className,
       )}
     >
-      <UserAvatar name={name} src={avatarUrl ?? null} className="size-4 shrink-0 text-[9px]" />
+      <UserAvatar name={name} src={avatarUrl ?? null} size="xs" className="shrink-0" />
       <span className="truncate text-xs font-medium">{name}</span>
     </UserProfileHoverCard>
   )

@@ -15,12 +15,11 @@ function values(overrides: Partial<ProjectFormValues> = {}): ProjectFormValues {
     name: 'Acme rollout',
     description: null,
     pipeline_status_id: 3,
-    business_function_id: null,
     country_id: 1,
     state_id: null,
     province_id: null,
     city_id: null,
-    product_category_id: null,
+    product_lines: [{ business_function_id: 5, product_category_id: 6 }],
     partner_id: null,
     operational_site_id: null,
     start_date: '',
@@ -40,8 +39,6 @@ function original(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
     description: null,
     pipeline_status_id: 3,
     pipeline_status: { id: 3, name: 'Active', color: 'blue' },
-    business_function_id: null,
-    business_function: null,
     country_id: 1,
     country: { id: 1, name: 'Italy' },
     state_id: null,
@@ -51,8 +48,7 @@ function original(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
     city_id: null,
     city: null,
     geo_scope: 'country',
-    product_category_id: null,
-    product_category: null,
+    product_lines: [{ id: 1, business_function: { id: 5, name: 'Sales' }, product_category: { id: 6, name: 'Widgets' } }],
     partner_id: null,
     partner: null,
     operational_site_id: null,
@@ -77,12 +73,11 @@ describe('buildCreatePayload', () => {
       name: 'Acme rollout',
       pipeline_status_id: 3,
       description: null,
-      business_function_id: null,
+      product_lines: [{ business_function_id: 5, product_category_id: 6 }],
       country_id: 1,
       state_id: null,
       province_id: null,
       city_id: null,
-      product_category_id: null,
       partner_id: null,
       operational_site_id: null,
       start_date: null,
@@ -178,5 +173,46 @@ describe('buildUpdatePayload', () => {
       original({ operational_site_id: 8 }),
     )
     expect(payload).toEqual({})
+  })
+})
+
+/** Spec 0094 (AC-045): the row editor's full-replace collection, diffed as an unordered set. */
+describe('product_lines (spec 0094)', () => {
+  it('filters out an incomplete row before sending it (create)', () => {
+    const payload = buildCreatePayload(
+      values({
+        product_lines: [
+          { business_function_id: 5, product_category_id: 6 },
+          { business_function_id: 7, product_category_id: null },
+        ],
+      }),
+    )
+    expect(payload.product_lines).toEqual([{ business_function_id: 5, product_category_id: 6 }])
+  })
+
+  it('omits product_lines from the update diff when the set is unchanged, regardless of row order', () => {
+    const payload = buildUpdatePayload(
+      values({
+        product_lines: [
+          { business_function_id: 7, product_category_id: 8 },
+          { business_function_id: 5, product_category_id: 6 },
+        ],
+      }),
+      original({
+        product_lines: [
+          { id: 1, business_function: { id: 5, name: 'Sales' }, product_category: { id: 6, name: 'Widgets' } },
+          { id: 2, business_function: { id: 7, name: 'Support' }, product_category: { id: 8, name: 'Gadgets' } },
+        ],
+      }),
+    )
+    expect(payload).not.toHaveProperty('product_lines')
+  })
+
+  it('includes product_lines in the update diff when the set changed', () => {
+    const payload = buildUpdatePayload(
+      values({ product_lines: [{ business_function_id: 9, product_category_id: 10 }] }),
+      original(),
+    )
+    expect(payload.product_lines).toEqual([{ business_function_id: 9, product_category_id: 10 }])
   })
 })

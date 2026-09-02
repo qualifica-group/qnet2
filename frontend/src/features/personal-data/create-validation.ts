@@ -5,12 +5,15 @@
  * (mirrors the existing `profileValid` gate on the anagraphic card).
  */
 import type { TFunction } from 'i18next'
-import { buildContactSchema } from '@/features/personal-data/contact-schema'
+import {
+  describeAddressIssues,
+  describeContactIssues,
+} from '@/features/personal-data/personal-data-issues'
 import type { AddressDraft, ContactDraft } from '@/features/personal-data/types'
 
 /** Optional until touched: an empty buffer is valid; a started address needs `line1` and a city. */
-export function isCreateAddressValid(addresses: AddressDraft[]): boolean {
-  return addresses.every((address) => Boolean(address.line1) && address.city_id != null)
+export function isCreateAddressValid(addresses: AddressDraft[], t: TFunction): boolean {
+  return describeAddressIssues(addresses, t).length === 0
 }
 
 /**
@@ -32,14 +35,5 @@ export function hasPhoneContact(contacts: ContactDraft[]): boolean {
 
 /** Every buffered contact must validate against the same per-type rules as the dialog form. */
 export function areCreateContactsValid(contacts: ContactDraft[], t: TFunction): boolean {
-  const schema = buildContactSchema(t)
-  return contacts.every(
-    (contact) =>
-      schema.safeParse({
-        type: contact.type,
-        value: contact.value,
-        label: contact.label ?? '',
-        is_primary: contact.is_primary,
-      }).success,
-  )
+  return describeContactIssues(contacts, t).length === 0
 }

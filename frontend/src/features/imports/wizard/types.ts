@@ -45,6 +45,20 @@ export interface ImportGlobalFieldDescriptor {
   required: boolean
   for_select_resource: string | null
   default: string | number | null
+  /**
+   * Whether the field accepts several ids at once (spec 0094 `data_contract`):
+   * `product_ids` is the first such field. Optional/absent means the legacy
+   * single-value behaviour (retro-compat with runs/fixtures predating the
+   * delta, mirroring `ImportRunDetail.review_fields`).
+   */
+  multiple?: boolean
+  /**
+   * Id of another global field this one is scoped by (spec 0094): `product_ids`
+   * depends on `campaign_id` — its picker is filtered by the chosen campaign's
+   * effective product categories and stays disabled until it is set. `null`/
+   * absent means no dependency, the legacy behaviour.
+   */
+  depends_on?: string | null
 }
 
 /** Mapping target sentinel: the column is intentionally not imported. */
@@ -79,7 +93,8 @@ export interface ImportRunDetail extends ImportRunSummary {
   detected_columns: DetectedColumn[] | null
   /** Column name (the file header, as returned in `detected_columns[].name`) -> field id | sentinel. */
   column_mapping: Record<string, string> | null
-  global_config: Record<string, string | number | null> | null
+  /** A `multiple` field's stored value (e.g. `product_ids`) is `number[]`; every other field is a scalar. */
+  global_config: Record<string, string | number | number[] | null> | null
   dedup_strategy: string | null
   /** Auto-map suggestion, present only from `configuring` onward. */
   suggested_mapping: Record<string, string> | null
@@ -124,7 +139,7 @@ export interface ImportMappingTemplate {
 /** Body of `PUT /imports/{domain}/{importRun}/configure`. */
 export interface ConfigureImportPayload {
   column_mapping: Record<string, string>
-  global_config: Record<string, string | number | null>
+  global_config: Record<string, string | number | number[] | null>
   dedup_strategy: string
 }
 
@@ -181,6 +196,17 @@ export interface ImportRunRowItem {
   /** Hydrated projection of `operational_site_id`, or `null` when unset. */
   operational_site: ImportRunRowOperationalSite | null
   /**
+   * Per-row product-of-interest override (spec 0094 D-4), applied via
+   * `PATCH .../rows/{row}` with `{ product_ids }`. `null` means the row
+   * inherits the run's global `product_ids` default (`global_config`); `[]`
+   * is an explicit "no products on this row" — the two are distinct states,
+   * mirroring `operator_id`'s null-inherits-default semantics but with an
+   * empty-array state `operator_id` has no equivalent for.
+   */
+  product_ids: number[] | null
+  /** Hydrated projection of `product_ids` (`{id,label}` per product), `[]` when unset/empty. */
+  products: ImportRunRowProduct[]
+  /**
    * Keyed by field id (mapped) or original column name (extra). Mostly
    * strings, but the geo fields (spec 0038) also carry the resolved
    * `country_id`/`state_id`/`province_id`/`city_id` as numbers (or `null`
@@ -200,6 +226,12 @@ export interface ImportRunRowOperator {
 export interface ImportRunRowOperationalSite {
   id: number
   name: string
+}
+
+/** A single hydrated product entry of `ImportRunRowItem.products`. */
+export interface ImportRunRowProduct {
+  id: number
+  label: string
 }
 
 /** Response shape of `POST /imports/{domain}/{importRun}/rows` (envelope `data`). */

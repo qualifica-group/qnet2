@@ -26,7 +26,7 @@ export const permissions = {
     // only by a few policies (e.g. ContractPolicy, RequestManagementPolicy).
     validate: 'Validate',
     terminate: 'Terminate',
-    schedule: 'Schedule',
+    program: 'Program',
     changeStatus: 'Change status',
     reactivate: 'Reopen',
     viewAll: 'View all',

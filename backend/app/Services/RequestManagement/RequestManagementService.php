@@ -195,8 +195,8 @@ final class RequestManagementService
             // Step 2-bis: "Informazioni aggiuntive" (user directive
             // 2026-08-07) — AFTER the product lines, so the set the values are
             // validated against is the one the panel will render next, not the
-            // pre-PATCH one (OpportunityProductLineWriter::sync() already
-            // unsets the stale relation). Reuses the Offerte writer verbatim,
+            // pre-PATCH one (ProductLineWriter::sync() already unsets the
+            // stale relation). Reuses the Offerte writer verbatim,
             // fed THIS module's applicable set (D-1).
             if (array_key_exists('attribute_values', $data)) {
                 $this->attributeValueWriter->apply(

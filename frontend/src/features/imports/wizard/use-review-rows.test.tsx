@@ -21,8 +21,9 @@ import type { ImportRunRowItem, ImportRunRowUpdateResult } from '@/features/impo
  * geo ids as a single block.
  *
  * The operator/site popup apply and combined bulk-assign coverage lives in
- * `use-review-rows-assign.test.tsx` — split out to stay within the
- * engineering size limits (`.claude/rules/engineering.md` §6).
+ * `use-review-rows-assign.test.tsx`, and the products popup apply
+ * (spec 0094 AC-055) in `use-review-rows-products.test.tsx` — split out to
+ * stay within the engineering size limits (`.claude/rules/engineering.md` §6).
  */
 
 const getImportRunRowsMock = vi.fn()
@@ -67,6 +68,8 @@ function rowItem(overrides: Partial<ImportRunRowItem> = {}): ImportRunRowItem {
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    product_ids: null,
+    products: [],
     values: { email: 'bad-email' },
     messages: ['Invalid email format'],
     ...overrides,

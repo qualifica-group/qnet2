@@ -121,7 +121,7 @@ export function NoteItem({
               </span>
             ) : null}
           </div>
-          <NoteBody body={note.body} />
+          <NoteBody body={note.body} mentions={note.mentions} />
         </div>
         <div className="flex items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover/note:opacity-100">
           {isRoot && onToggleReply ? (

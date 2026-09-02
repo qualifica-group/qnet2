@@ -4,11 +4,9 @@
 // a commercial deal against an Anagrafica, created manually or
 // generated from a Lead) gathered under one collapsible parent. Spec
 // 0082 removed the opportunity-statuses pick-list from this group: an
-// Opportunity's status is computed from its Quotes' statuses. No
-// "Commesse" module exists yet in this iteration — only the group's
-// name anticipates it. A route-less parent with children renders as a
-// collapsible group; it is dropped automatically when the actor can
-// see none of its children.
+// Opportunity's status is computed from its Quotes' statuses. A
+// route-less parent with children renders as a collapsible group; it is
+// dropped automatically when the actor can see none of its children.
 return [
     'key' => 'opportunities-group',
     'label' => 'navigation.opportunitiesAndCommesse',
@@ -43,6 +41,17 @@ return [
             'icon' => 'file-text',
             'route' => '/quotes',
             'permission' => 'quotes.view',
+        ],
+        [
+            // Work orders / "Commesse" (spec 0093): one or more product
+            // lines of a single Offerta, gated by their own `work-orders.*`
+            // permission set. Placed right after Offerte, the entity it is
+            // always scoped to.
+            'key' => 'work-orders',
+            'label' => 'navigation.workOrders',
+            'icon' => 'clipboard-list',
+            'route' => '/work-orders',
+            'permission' => 'work-orders.view',
         ],
         [
             // Contract statuses (spec 0072): the Contract working-state

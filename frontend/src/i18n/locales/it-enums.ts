@@ -107,4 +107,15 @@ export const enums = {
     completed: 'Completato',
     failed: 'Fallito',
   },
+  // Tipo commessa (spec 0093), colonna badge `type` della griglia Commesse.
+  work_order_type: {
+    processing: 'Lavorazione',
+    project: 'Progetto',
+  },
+  // Stato commessa calcolato (spec 0093 D-3), colonna badge `status` della
+  // griglia Commesse — nessuna colonna DB, deriva da `is_force_closed`.
+  work_order_status: {
+    open: 'Aperta',
+    closed: 'Chiusa',
+  },
 }

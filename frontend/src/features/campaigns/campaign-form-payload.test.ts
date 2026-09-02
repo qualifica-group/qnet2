@@ -22,8 +22,7 @@ function values(overrides: Partial<CampaignFormValues> = {}): CampaignFormValues
     partner_id: null,
     operational_site_id: null,
     pipeline_status_id: 1,
-    business_function_id: 2,
-    product_category_id: 4,
+    product_lines: [{ business_function_id: 2, product_category_id: 4 }],
     country_id: 10,
     state_id: 3,
     province_id: null,
@@ -53,8 +52,6 @@ function original(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     derived_from_project: false,
     pipeline_status_id: 1,
     pipeline_status: { id: 1, name: 'Active', color: 'blue' },
-    business_function_id: 2,
-    business_function: { id: 2, name: 'Sales' },
     country_id: 10,
     country: { id: 10, name: 'Italy' },
     state_id: 3,
@@ -65,8 +62,7 @@ function original(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     city: null,
     geo_scope: 'state',
     geo_locked_levels: [],
-    product_category_id: 4,
-    product_category: { id: 4, name: 'Hardware' },
+    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } }],
     start_date: null,
     end_date: null,
     total_budget: null,
@@ -87,8 +83,7 @@ describe('buildCreatePayload — standalone (BR-2/BR-5)', () => {
       partner_id: null,
       operational_site_id: null,
       pipeline_status_id: 1,
-      business_function_id: 2,
-      product_category_id: 4,
+      product_lines: [{ business_function_id: 2, product_category_id: 4 }],
       country_id: 10,
       state_id: 3,
       province_id: null,
@@ -113,12 +108,11 @@ describe('buildCreatePayload — standalone (BR-2/BR-5)', () => {
 })
 
 describe('buildCreatePayload — linked (BR-2/AC-020/AC-042)', () => {
-  it('omits the 3 classification fields when project_id is set, even if the form still holds values', () => {
+  it('omits pipeline_status_id and product_lines when project_id is set, even if the form still holds values', () => {
     const payload = buildCreatePayload(values({ project_id: 7 }))
 
     expect(payload).not.toHaveProperty('pipeline_status_id')
-    expect(payload).not.toHaveProperty('business_function_id')
-    expect(payload).not.toHaveProperty('product_category_id')
+    expect(payload).not.toHaveProperty('product_lines')
     expect(payload.project_id).toBe(7)
   })
 })
@@ -129,8 +123,6 @@ describe('buildCreatePayload — geo per-level lock (spec 0027 BR-5)', () => {
       values({
         project_id: 7,
         pipeline_status_id: null,
-        business_function_id: null,
-        product_category_id: null,
         country_id: null,
         state_id: 3,
         province_id: 5,
@@ -150,8 +142,6 @@ describe('buildCreatePayload — geo per-level lock (spec 0027 BR-5)', () => {
       values({
         project_id: 7,
         pipeline_status_id: null,
-        business_function_id: null,
-        product_category_id: null,
         geo_locked_levels: ['country', 'state', 'province', 'city'],
       }),
     )
@@ -177,7 +167,7 @@ describe('buildUpdatePayload', () => {
     expect(payload).not.toHaveProperty('code')
   })
 
-  it('includes the 3 classification fields on a linked→standalone transition, regardless of diff against the effective original', () => {
+  it('includes pipeline_status_id and product_lines on a linked→standalone transition, regardless of diff against the effective original', () => {
     // The campaign WAS linked (its own DB columns were NULL; `original` exposes
     // the project's effective values) and the user now unlinks it, keeping the
     // exact same ids the project had — a naive diff would wrongly omit them.
@@ -185,40 +175,66 @@ describe('buildUpdatePayload', () => {
       project_id: 5,
       derived_from_project: true,
       pipeline_status_id: 1,
-      business_function_id: 2,
-      product_category_id: 4,
+      product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } }],
     })
     const payload = buildUpdatePayload(
-      values({ project_id: null, pipeline_status_id: 1, business_function_id: 2, product_category_id: 4 }),
+      values({
+        project_id: null,
+        pipeline_status_id: 1,
+        product_lines: [{ business_function_id: 2, product_category_id: 4 }],
+      }),
       linkedOriginal,
     )
 
     expect(payload).toEqual({
       project_id: null,
       pipeline_status_id: 1,
-      business_function_id: 2,
-      product_category_id: 4,
+      product_lines: [{ business_function_id: 2, product_category_id: 4 }],
     })
   })
 
-  it('omits the 3 classification fields when the campaign stays linked, even if the diffed values differ', () => {
+  it('omits pipeline_status_id and product_lines when the campaign stays linked, even if the diffed values differ', () => {
     const linkedOriginal = original({
       project_id: 5,
       derived_from_project: true,
       pipeline_status_id: 9,
-      business_function_id: 9,
-      product_category_id: 9,
+      product_lines: [{ id: 1, business_function: { id: 9, name: 'Other' }, product_category: { id: 9, name: 'Other' } }],
     })
     const payload = buildUpdatePayload(values({ project_id: 5 }), linkedOriginal)
 
     expect(payload).not.toHaveProperty('pipeline_status_id')
-    expect(payload).not.toHaveProperty('business_function_id')
-    expect(payload).not.toHaveProperty('product_category_id')
+    expect(payload).not.toHaveProperty('product_lines')
   })
 
-  it('diffs the 3 classification fields normally when the campaign stays standalone', () => {
+  it('diffs pipeline_status_id normally when the campaign stays standalone', () => {
     const payload = buildUpdatePayload(values({ pipeline_status_id: 8 }), original())
     expect(payload).toEqual({ pipeline_status_id: 8 })
+  })
+
+  it('omits product_lines from the update diff when the set is unchanged, regardless of row order', () => {
+    const payload = buildUpdatePayload(
+      values({
+        product_lines: [
+          { business_function_id: 7, product_category_id: 8 },
+          { business_function_id: 2, product_category_id: 4 },
+        ],
+      }),
+      original({
+        product_lines: [
+          { id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } },
+          { id: 2, business_function: { id: 7, name: 'Support' }, product_category: { id: 8, name: 'Gadgets' } },
+        ],
+      }),
+    )
+    expect(payload).not.toHaveProperty('product_lines')
+  })
+
+  it('includes product_lines in the update diff when the set changed (standalone)', () => {
+    const payload = buildUpdatePayload(
+      values({ product_lines: [{ business_function_id: 9, product_category_id: 10 }] }),
+      original(),
+    )
+    expect(payload.product_lines).toEqual([{ business_function_id: 9, product_category_id: 10 }])
   })
 })
 

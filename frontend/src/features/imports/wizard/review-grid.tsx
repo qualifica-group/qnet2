@@ -17,8 +17,10 @@ import { buildReviewColumnDefs } from '@/features/imports/wizard/review-columns'
 import { ReviewBulkAssignBar, type ReviewBulkSelectionState } from '@/features/imports/wizard/review-bulk-assign-bar'
 import type { ReviewGeoGridContext } from '@/features/imports/wizard/review-geo-editor'
 import type { ReviewOperatorGridContext } from '@/features/imports/wizard/review-operator-editor'
+import type { ReviewProductsGridContext } from '@/features/imports/wizard/review-products-editor'
 import type { ReviewSiteGridContext } from '@/features/imports/wizard/review-site-editor'
 import { buildBulkAssignPayload, useReviewRows } from '@/features/imports/wizard/use-review-rows'
+import { useReviewProductsScope } from '@/features/imports/wizard/use-review-products-scope'
 import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operators-dialog'
 import type { ImportRunDetail, ImportRunRowCounts, ImportRunRowItem } from '@/features/imports/wizard/types'
 
@@ -141,6 +143,7 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
     handleApplyGeo,
     handleApplyOperator,
     handleApplySite,
+    handleApplyProducts,
     handleBulkAssign: handleBulkAssignRows,
   } = useReviewRows({
     domain,
@@ -156,24 +159,39 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
   const getRowId = useCallback((params: GetRowIdParams<ImportRunRowItem>) => String(params.data.id), [])
 
   const globalDefaultOperatorId = useMemo(() => resolveGlobalDefaultOperatorId(run), [run])
+  const { globalDefaultProductIds, campaignCategoryIds } = useReviewProductsScope(run)
 
-  // The geo/operator/site popups' apply callbacks are shared by all 4 geo
-  // columns, the operator column and the site column respectively, never
-  // column-specific, so they travel via `gridOptions.context` instead of
-  // `cellRendererParams` — every `ReviewGeoCell`/`ReviewOperatorCell`/
-  // `ReviewSiteCell` reads them off `params.context`, with no per-colDef prop
-  // drilling. `globalDefaultOperatorId` is read once here from the run, not
+  // The geo/operator/site/products popups' apply callbacks are shared by all
+  // 4 geo columns, the operator column, the site column and the products
+  // column respectively, never column-specific, so they travel via
+  // `gridOptions.context` instead of `cellRendererParams` — every
+  // `ReviewGeoCell`/`ReviewOperatorCell`/`ReviewSiteCell`/`ReviewProductsCell`
+  // reads them off `params.context`, with no per-colDef prop drilling.
+  // `globalDefaultOperatorId` is read once here from the run, not
   // prop-drilled per column either; `globalDefaultSiteId` is always `null`
   // (the operational site has no global-config default, spec delta).
-  const gridContext = useMemo<ReviewGeoGridContext & ReviewOperatorGridContext & ReviewSiteGridContext>(
+  const gridContext = useMemo<
+    ReviewGeoGridContext & ReviewOperatorGridContext & ReviewSiteGridContext & ReviewProductsGridContext
+  >(
     () => ({
       onApplyGeo: handleApplyGeo,
       onApplyOperator: handleApplyOperator,
       globalDefaultOperatorId,
       onApplySite: handleApplySite,
       globalDefaultSiteId: null,
+      onApplyProducts: handleApplyProducts,
+      hasGlobalDefaultProducts: globalDefaultProductIds.length > 0,
+      campaignCategoryIds,
     }),
-    [handleApplyGeo, handleApplyOperator, globalDefaultOperatorId, handleApplySite],
+    [
+      handleApplyGeo,
+      handleApplyOperator,
+      globalDefaultOperatorId,
+      handleApplySite,
+      handleApplyProducts,
+      globalDefaultProductIds,
+      campaignCategoryIds,
+    ],
   )
 
   const handleGridReady = useCallback((event: GridReadyEvent<ImportRunRowItem>) => {

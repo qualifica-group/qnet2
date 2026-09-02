@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
+use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -38,6 +39,14 @@ class TableRegistry
      */
     private const string QUOTES_DOMAIN = 'quotes';
 
+    /**
+     * The only domain wrapped in `QuoteScopedTableDefinition` (spec 0095):
+     * scoping the Commesse grid to one Quote (the Contratto detail's
+     * "Commesse" tab) is a `work-orders`-specific concept, not a generic
+     * table-framework one.
+     */
+    private const string WORK_ORDERS_DOMAIN = 'work-orders';
+
     public function __construct(private readonly Container $container) {}
 
     /**
@@ -45,7 +54,8 @@ class TableRegistry
      * `CustomFieldAwareTableDefinition` (spec 0021) when the domain is
      * custom-fieldable, THEN in `RequestManagementScopedTableDefinition`
      * (spec 0064/0084) for `request-management`, THEN in
-     * `OpportunityScopedTableDefinition` (spec 0067) for `quotes` — one line
+     * `OpportunityScopedTableDefinition` (spec 0067) for `quotes`, THEN in
+     * `QuoteScopedTableDefinition` (spec 0095) for `work-orders` — one line
      * each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
@@ -54,8 +64,9 @@ class TableRegistry
     {
         $definition = $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
         $definition = $this->wrapIfRequestManagementScoped($domain, $definition);
+        $definition = $this->wrapIfOpportunityScoped($domain, $definition);
 
-        return $this->wrapIfOpportunityScoped($domain, $definition);
+        return $this->wrapIfQuoteScoped($domain, $definition);
     }
 
     /**
@@ -145,6 +156,24 @@ class TableRegistry
 
         /** @var OpportunityScopedTableDefinition $wrapped */
         $wrapped = $this->container->make(OpportunityScopedTableDefinition::class, [
+            'inner' => $definition,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `QuoteScopedTableDefinition` (spec 0095) for `work-orders`
+     * only — every other domain is returned unchanged.
+     */
+    private function wrapIfQuoteScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::WORK_ORDERS_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var QuoteScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(QuoteScopedTableDefinition::class, [
             'inner' => $definition,
         ]);
 

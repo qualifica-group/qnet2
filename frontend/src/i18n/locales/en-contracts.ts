@@ -75,6 +75,10 @@ export const contracts = {
       contractDocuments: 'Contract documents',
       opportunityDocuments: 'Opportunity documents',
     },
+    workOrders: {
+      title: 'Work orders',
+      countLabel: '{{count}} work orders',
+    },
   },
   actions: {
     // FLAT paths (strings), consumed by `features/table/row-actions.tsx`
@@ -83,11 +87,10 @@ export const contracts = {
     // Must stay strings, never objects: dialog copy lives under the sibling
     // `*Dialog` keys below.
     validate: 'Validate contract',
-    schedule: 'Schedule contract',
+    program: 'Program',
     terminate: 'Terminate contract',
     reactivate: 'Reopen contract',
     changeStatus: 'Change status',
-    scheduleUnavailable: 'Not available yet',
 
     statusSearch: 'Search status…',
     statusPlaceholder: 'Select a status',
@@ -113,18 +116,24 @@ export const contracts = {
       dateRequired: 'Validation date is required.',
       dateFuture: 'Validation date cannot be in the future.',
     },
-    scheduleDialog: {
-      description: 'Set the expiry date, renewal date and destination status.',
-      expiryDate: 'Expiry date',
-      renewalDate: 'Renewal date',
-      status: 'Destination status',
-      confirm: 'Schedule',
-      saving: 'Saving…',
-      success: 'Contract scheduled successfully.',
-      genericError: 'Unable to schedule the contract. Please try again.',
-      expiryRequired: 'Expiry date is required.',
-      statusRequired: 'Destination status is required.',
-      renewalAfterExpiry: 'Renewal date cannot be after the expiry date.',
+    programDialog: {
+      description: "Select the offer's product lines to assign to the new work order.",
+      linesLabel: 'Product lines',
+      linesLoadError: 'Unable to load the product lines. Please try again.',
+      linesEmpty: 'No revenue line available on this offer.',
+      linesRequired: 'Select at least one line.',
+      lineSelectHeader: 'Select',
+      lineSelectLabel: 'Select {{name}}',
+      lineProductHeader: 'Product',
+      lineCategoryHeader: 'Category',
+      lineQuantityHeader: 'Quantity',
+      lineUnitOfMeasureHeader: 'UM',
+      lineStatusHeader: 'Status',
+      lineOccupied: 'Already in {{code}}',
+      confirm: 'Generate work order',
+      saving: 'Generating…',
+      success: 'Work order generated successfully.',
+      genericError: 'Unable to generate the work order. Please try again.',
     },
     terminateDialog: {
       description: 'Record the termination date and reason.',

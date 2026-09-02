@@ -28,8 +28,8 @@ if (! function_exists('leadUserWith')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-031/AC-034 — GET /api/meta/leads: the 7 fields (spec 0033 adds
-// `extra_fields`), permissions.fields shape
+// AC-031/AC-034 — GET /api/meta/leads: the 8 fields (spec 0033 adds
+// `extra_fields`, spec 0094 adds `products_of_interest`), permissions.fields shape
 // ---------------------------------------------------------------------------
 
 it('403 without leads.viewAny', function () {
@@ -49,7 +49,7 @@ it('200: field catalogue matches LeadsAuthorization::fields(), in order (AC-031)
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe([
-        'registry_id', 'campaign_id', 'operational_site_id', 'source_id', 'operator_id', 'notes', 'extra_fields',
+        'registry_id', 'campaign_id', 'operational_site_id', 'source_id', 'operator_id', 'notes', 'extra_fields', 'products_of_interest',
     ]);
 
     foreach ($response->json('permissions.fields') as $field) {
@@ -83,7 +83,7 @@ it('permissions.fields are readonly when the actor may not create', function () 
 // AC-034 — the resource surfaces in the Role matrix's field catalogue too
 // ---------------------------------------------------------------------------
 
-it('GET /api/authorization/fields includes leads with its 7 fields (AC-034)', function () {
+it('GET /api/authorization/fields includes leads with its 8 fields (AC-034)', function () {
     foreach (['viewAny', 'create'] as $ability) {
         Permission::findOrCreate("roles.{$ability}");
     }
@@ -99,6 +99,6 @@ it('GET /api/authorization/fields includes leads with its 7 fields (AC-034)', fu
     $leadsEntry = collect($response->json('data.resources'))->firstWhere('resource', 'leads');
     $keys = collect($leadsEntry['fields'])->pluck('key')->all();
     expect($keys)->toBe([
-        'registry_id', 'campaign_id', 'operational_site_id', 'source_id', 'operator_id', 'notes', 'extra_fields',
+        'registry_id', 'campaign_id', 'operational_site_id', 'source_id', 'operator_id', 'notes', 'extra_fields', 'products_of_interest',
     ]);
 });

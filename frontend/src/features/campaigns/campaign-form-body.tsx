@@ -11,10 +11,9 @@ import { Form, FormControl } from '@/components/ui/form'
 import { cn } from '@/lib/utils'
 import { MetaField } from '@/features/authorization/MetaField'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
-import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import { useCampaignForm } from '@/features/campaigns/use-campaign-form'
 import { CampaignProjectField } from '@/features/campaigns/campaign-project-field'
 import { CampaignRelationField } from '@/features/campaigns/campaign-relation-field'
@@ -43,29 +42,29 @@ function sectionRevealClassName(index: number): string {
   return cn(SECTION_REVEAL_CLASS, `[animation-delay:${index * 50}ms]`)
 }
 
+/** Banner for the `product_lines` 422 (collection-level or per-row, spec 0094): mirrors `request-create-form.tsx`'s own local constant. */
+const ERROR_BANNER_CLASS =
+  'flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm font-medium text-destructive'
+
 /**
  * The campaign create/edit form UI: the manual/read-only `code` (spec 0025,
  * editable only in create — gated by the `code` field permission, editable
  * in create and read-only in update), identity (name, description), the
  * optional Project link driving the AC-042/AC-043 derivation, the always-own
- * relations, the 3 BR-2 classification fields (forced read-only while
- * linked), the geo cascade (BR-4/BR-5, spec 0027 — some levels forced
- * read-only while the linked project fills them) and planning/budget — all
- * wrapped in `MetaField` (spec 0004). All non-render logic lives in
- * `useCampaignForm`.
+ * relations, the `pipeline_status_id` + `product_lines` BR-2 classification
+ * fields (forced read-only while linked, spec 0094: `product_lines` reuses
+ * `ProductLinesField`, AC-045/AC-046), the geo cascade (BR-4/BR-5, spec 0027
+ * — some levels forced read-only while the linked project fills them) and
+ * planning/budget — all wrapped in `MetaField` (spec 0004). All non-render
+ * logic lives in `useCampaignForm`.
  */
 export function CampaignFormBody({ mode, onSuccess, onCancel, initialCode }: CampaignFormBodyProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit } = useCampaignForm({ mode, onSuccess, initialCode })
+  const { form, serverError, productLinesError, onSubmit } = useCampaignForm({ mode, onSuccess, initialCode })
   const original = mode.type === 'edit' ? mode.campaign : mode.type === 'duplicate' ? mode.source : null
 
   const projectId = useWatch({ control: form.control, name: 'project_id' })
   const isLinked = projectId !== null
-
-  // Standalone only: the product category is scoped to the selected business
-  // function and disabled until one is picked; changing the function clears a
-  // now-incoherent category (mirrors the backend coherence rule).
-  const businessFunctionId = useWatch({ control: form.control, name: 'business_function_id' })
 
   const { errors, isSubmitting } = form.formState
   const [planningOpen, setPlanningOpen] = useState(false)
@@ -215,37 +214,35 @@ export function CampaignFormBody({ mode, onSuccess, onCancel, initialCode }: Cam
                 selected={original?.pipeline_status ?? null}
                 forceDisabled={isLinked}
               />
-
-              <CampaignRelationField
-                control={form.control}
-                name="business_function_id"
-                metaKey="business_function_id"
-                label={t('campaigns.form.businessFunction')}
-                resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('campaigns.form.businessFunctionSearch')}
-                selected={original?.business_function ?? null}
-                forceDisabled={isLinked}
-                required={!isLinked}
-                onValueChange={(next) => {
-                  if (next !== businessFunctionId) {
-                    form.setValue('product_category_id', null, { shouldDirty: true })
-                  }
-                }}
-              />
-
-              <CampaignRelationField
-                control={form.control}
-                name="product_category_id"
-                metaKey="product_category_id"
-                label={t('campaigns.form.productCategory')}
-                resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('campaigns.form.productCategorySearch')}
-                selected={original?.product_category ?? null}
-                forceDisabled={isLinked || businessFunctionId === null}
-                required={!isLinked}
-                params={businessFunctionId !== null ? { business_function_id: businessFunctionId } : undefined}
-              />
             </div>
+
+            {/* Spec 0094: replaces the former single business function +
+                product category selects with the shared row editor
+                (`ProductLinesField`, spec 0057). BR-2 read-only lock while
+                linked (AC-046): shows the linked project's EFFECTIVE rows,
+                never editable, never sent (payload builder omits it). */}
+            <MetaField
+              control={form.control}
+              name="product_lines"
+              metaKey="product_lines"
+              label={t('campaigns.form.productLines')}
+              required={!isLinked}
+            >
+              {({ field, disabled }) => (
+                <ProductLinesField
+                  value={field.value}
+                  onChange={field.onChange}
+                  knownLines={original?.product_lines}
+                  disabled={disabled || isLinked}
+                />
+              )}
+            </MetaField>
+
+            {productLinesError && (
+              <div role="alert" className={ERROR_BANNER_CLASS}>
+                {productLinesError}
+              </div>
+            )}
           </FormSection>
 
           <CampaignGeoSection

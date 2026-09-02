@@ -41,6 +41,8 @@ interface IdentityTabContentProps {
   onRetry: () => void
   profileDraft: PersonalDataDraft
   setProfileDraft: (next: PersonalDataDraft) => void
+  /** Bumped by the owner form when a save is refused, forwarded to the card. */
+  revalidateSignal: number
   personalDataFieldPermission: PersonalDataFieldPermissionResolver
   setPendingAvatar: (file: File | null) => void
   handleAvatarUpload: (file: File) => Promise<void>
@@ -57,6 +59,7 @@ export function IdentityTabContent({
   onRetry,
   profileDraft,
   setProfileDraft,
+  revalidateSignal,
   personalDataFieldPermission,
   setPendingAvatar,
   handleAvatarUpload,
@@ -114,6 +117,7 @@ export function IdentityTabContent({
           value={profileDraft}
           onChange={setProfileDraft}
           fieldPermission={personalDataFieldPermission}
+          revalidateSignal={revalidateSignal}
         />
       )}
     </FormSection>

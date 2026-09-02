@@ -11,6 +11,7 @@ import {
 } from '@/features/imports/wizard/review-columns'
 import { ReviewGeoCell } from '@/features/imports/wizard/review-geo-editor'
 import { ReviewOperatorCell } from '@/features/imports/wizard/review-operator-editor'
+import { ReviewProductsCell } from '@/features/imports/wizard/review-products-editor'
 import { ReviewResolutionCell } from '@/features/imports/wizard/review-resolution-cell'
 import { ReviewSiteCell } from '@/features/imports/wizard/review-site-editor'
 import type { ImportRunDetail, ImportRunRowItem } from '@/features/imports/wizard/types'
@@ -68,6 +69,8 @@ function rowItem(overrides: Partial<ImportRunRowItem> = {}): ImportRunRowItem {
     operator: null,
     operational_site_id: null,
     operational_site: null,
+    product_ids: null,
+    products: [],
     values: { email: 'mario@example.com' },
     messages: [],
     ...overrides,
@@ -89,6 +92,7 @@ describe('buildReviewColumnDefs', () => {
       'resolution',
       'operator',
       'site',
+      'products',
       'field:email',
       'extra:Notes column',
       'messages',
@@ -142,6 +146,7 @@ describe('buildReviewColumnDefs', () => {
       'resolution',
       'operator',
       'site',
+      'products',
       'field:first_name',
       'field:last_name',
       'messages',
@@ -161,6 +166,7 @@ describe('buildReviewColumnDefs', () => {
         'resolution',
         'operator',
         'site',
+        'products',
         'field:email',
         'extra:Notes column',
         'messages',
@@ -240,6 +246,18 @@ describe('buildReviewColumnDefs', () => {
       (col) => col.colId === 'site',
     )
     expect(readOnlySiteCol?.cellRendererParams).toEqual({ readOnly: true })
+  })
+
+  it('wires the products column to ReviewProductsCell, non-editable and disabled in readOnly mode (spec 0094 AC-055)', () => {
+    const productsCol = buildReviewColumnDefs(baseRun(), i18n.t.bind(i18n)).find((col) => col.colId === 'products')
+    expect(productsCol?.editable).toBe(false)
+    expect(productsCol?.cellRenderer).toBe(ReviewProductsCell)
+    expect(productsCol?.cellRendererParams).toEqual({ readOnly: false })
+
+    const readOnlyProductsCol = buildReviewColumnDefs(baseRun(), i18n.t.bind(i18n), true).find(
+      (col) => col.colId === 'products',
+    )
+    expect(readOnlyProductsCol?.cellRendererParams).toEqual({ readOnly: true })
   })
 
   it("the mapped field column's valueGetter/valueSetter read and write `values` by field id", () => {

@@ -12,10 +12,13 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\User;
+use App\Services\Leads\LeadProductInterestWriter;
+use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic for the `leads` resource (spec 0024): plain create/update/
@@ -46,10 +49,19 @@ class LeadService
         'opportunity',
         // spec 0047 (AC-003): Regione, derived from the sede.
         'state',
+        // spec 0094 (AC-030): LeadResource.products_of_interest[], each with
+        // its category — never lazy-loaded (preventLazyLoading).
+        'productsOfInterest.category',
     ];
 
     public function __construct(
         private readonly ConvertLeadToOpportunity $converter,
+        private readonly LeadProductInterestWriter $productInterestWriter,
+        // AC-034: the OTHER half of the coherence rule (mirrors
+        // OpportunityService's own pairing) — a `campaign_id` change that
+        // orphans a persisted product of interest, checked only when
+        // `products_of_interest` did NOT travel in the same payload.
+        private readonly ProductCategoryCoherence $coherence,
     ) {}
 
     public function loadDetail(Lead $lead): Lead
@@ -67,15 +79,19 @@ class LeadService
     {
         $attributes = $this->withResolvedStateId($data);
 
-        if (! $data->convertToOpportunity) {
+        $lead = DB::transaction(function () use ($attributes, $data, $actor): Lead {
             $lead = Lead::create($attributes);
 
-            return $this->loadDetail($lead);
-        }
+            // "Prodotti di interesse" (spec 0094, D-5): synced before a
+            // possible conversion, so ConvertLeadToOpportunity always finds
+            // the final, coherence-checked set already persisted.
+            if ($data->hasProductsOfInterest()) {
+                $this->productInterestWriter->sync($lead, $data->productsOfInterest);
+            }
 
-        $lead = DB::transaction(function () use ($attributes, $actor): Lead {
-            $lead = Lead::create($attributes);
-            $this->converter->handle($lead, $actor);
+            if ($data->convertToOpportunity) {
+                $this->converter->handle($lead, $actor);
+            }
 
             return $lead;
         });
@@ -97,12 +113,44 @@ class LeadService
             $attributes['state_id'] = $this->deriveStateId($data->operationalSiteId);
         }
 
-        // Unconditional save: fire the model's saved event even when no
-        // native attribute changed, so the HasCustomFields write pipeline
-        // (spec 0021) persists a custom-fields-only edit.
-        $lead->fill($attributes)->save();
+        DB::transaction(function () use ($lead, $data, $attributes): void {
+            // AC-034: captured BEFORE the save() overwrites `campaign_id`,
+            // so this only fires on a GENUINE change (not a resubmission of
+            // the same value).
+            $campaignChanging = $data->campaignIdSubmitted && $data->campaignId !== $lead->campaign_id;
+
+            // Unconditional save: fire the model's saved event even when no
+            // native attribute changed, so the HasCustomFields write pipeline
+            // (spec 0021) persists a custom-fields-only edit.
+            $lead->fill($attributes)->save();
+
+            if ($data->hasProductsOfInterest()) {
+                $this->productInterestWriter->sync($lead, $data->productsOfInterest);
+            } elseif ($campaignChanging) {
+                // AC-034: the OTHER half of the rule (mirrors
+                // OpportunityService::assertPersistedProductsStayCovered) —
+                // a PATCH that only re-points `campaign_id` must not leave
+                // the PERSISTED products uncovered by the NEW campaign. The
+                // 422 lands on `campaign_id`, the key the actor actually
+                // submitted (D-5) — no silent removal.
+                $this->assertPersistedProductsStayCovered($lead);
+            }
+        });
 
         return $this->loadDetail($lead);
+    }
+
+    /**
+     * @throws ValidationException a persisted product of interest is left uncovered by the new campaign
+     */
+    private function assertPersistedProductsStayCovered(Lead $lead): void
+    {
+        $this->coherence->assert(
+            $lead->productsOfInterest()->pluck('products.id')->map(intval(...))->all(),
+            $this->productInterestWriter->coveredCategoryIds($lead),
+            'campaign_id',
+            ProductCategoryCoherence::LEAD_MESSAGE,
+        );
     }
 
     /**

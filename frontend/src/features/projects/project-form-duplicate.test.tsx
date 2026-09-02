@@ -63,6 +63,9 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   }) => <button type="button" data-testid={`select-${labels.triggerLabel}`}>{value ?? ''}</button>,
 }))
 
+vi.mock('@/features/product-lines/product-category-tree-select', async () =>
+  await import('@/features/product-lines/product-category-tree-select-stub'))
+
 vi.mock('@/features/geo/geo-select', () => ({
   GeoSelect: ({ value }: { value: { country_id: number | null } }) => (
     <div data-testid="geo-select">{value.country_id ?? ''}</div>
@@ -86,8 +89,6 @@ function project(
     description: null,
     pipeline_status_id: 3,
     pipeline_status: { id: 3, name: 'Active', color: 'blue' },
-    business_function_id: 2,
-    business_function: { id: 2, name: 'Sales' },
     country_id: 1,
     country: { id: 1, name: 'Italy' },
     state_id: null,
@@ -97,8 +98,7 @@ function project(
     city_id: null,
     city: null,
     geo_scope: 'country',
-    product_category_id: 4,
-    product_category: { id: 4, name: 'Widgets' },
+    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Widgets' } }],
     partner_id: null,
     partner: null,
     operational_site_id: null,
@@ -151,8 +151,8 @@ describe('ProjectForm — duplicate (row action "duplicate")', () => {
     expect(screen.getByRole('textbox', { name: 'Code' })).toHaveValue('PRJ-0200')
     // Every other field is carried over from the source, unattended, into the visible controls.
     expect(screen.getByTestId('select-Status')).toHaveTextContent('3')
-    expect(screen.getByTestId('select-Business function')).toHaveTextContent('2')
-    expect(screen.getByTestId('select-Product category')).toHaveTextContent('4')
+    expect(screen.getByTestId('select-Business function 1')).toHaveTextContent('2')
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('4')
     expect(screen.getByTestId('geo-select')).toHaveTextContent('1')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -162,8 +162,7 @@ describe('ProjectForm — duplicate (row action "duplicate")', () => {
     const payload = createProjectMock.mock.calls[0][0] as Record<string, unknown>
     expect(payload.name).toBe('Acme rollout (copy)')
     expect(payload.code).toBe('PRJ-0200')
-    expect(payload.business_function_id).toBe(2)
-    expect(payload.product_category_id).toBe(4)
+    expect(payload.product_lines).toEqual([{ business_function_id: 2, product_category_id: 4 }])
     expect(payload.country_id).toBe(1)
     expect(payload.pipeline_status_id).toBe(3)
   })

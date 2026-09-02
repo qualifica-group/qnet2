@@ -107,7 +107,7 @@ export function CompanySiteDetailView({ companySiteId, onDefaultChange }: Compan
   return (
     <DetailPanel>
       <DetailHero
-        media={<UserAvatar name={site.name} src={site.logo_url} className="size-14" />}
+        media={<UserAvatar name={site.name} src={site.logo_url} size="xl" />}
         title={site.name}
         subtitle={card?.company_name ?? undefined}
         badges={

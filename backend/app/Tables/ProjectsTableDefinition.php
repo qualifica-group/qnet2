@@ -10,8 +10,10 @@ use App\Models\User;
 use App\Support\Geo\GeoNameLocalizer;
 use App\Tables\Projects\ProjectAdvancedFilterCatalog;
 use App\Tables\Projects\ProjectColumnCatalog;
+use App\Tables\Projects\ProjectRelationColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -19,9 +21,8 @@ use Illuminate\Support\Facades\Gate;
  * Table definition for the `projects` domain (spec 0023).
  *
  * Real columns (code, name, start_date, end_date, total_budget, target_lead,
- * created_at) are handled entirely by the generic engine. The 8
- * classification/geo FKs (pipeline_status,
- * business_function, country, state, province, city, product_category,
+ * created_at) are handled entirely by the generic engine. The 6
+ * classification/geo FKs (pipeline_status, country, state, province, city,
  * partner) have no real column of their own — each is DERIVED against the
  * related row's `name`, resolved here generically via DERIVED_RELATIONS: a
  * `whereHas` set filter (allow-listed columns only, never orderByRaw/
@@ -32,6 +33,11 @@ use Illuminate\Support\Facades\Gate;
  * `category`. `geo_scope` (spec 0027, D-2) is NOT in DERIVED_RELATIONS: it
  * has no FK/relation of its own (computed from the 4 geo ids), so it is
  * mapped directly in mapRow() and stays outside every filter/sort hook.
+ *
+ * Spec 0094, D-1/D-2: `business_function`/`product_category` are no longer
+ * simple to-one FKs — they are AGGREGATED (to-many, via `productLines`)
+ * columns, delegated to ProjectRelationColumns (file-size split,
+ * engineering.md §6), mirroring OpportunityRelationColumns.
  */
 class ProjectsTableDefinition extends AbstractTableDefinition
 {
@@ -42,23 +48,25 @@ class ProjectsTableDefinition extends AbstractTableDefinition
     private const int MAX_FILTER_VALUES = 200;
 
     /**
-     * Allow-list of the 8 classification/geo FKs with no real column of
+     * Allow-list of the 6 classification/geo FKs with no real column of
      * their own: relation accessor, related table and owning FK column,
      * keyed by the derived column id. Single source of truth for
      * applyDerivedFilter/applyDerivedSort/distinctValues below.
+     * `business_function`/`product_category` (spec 0094) are NOT here: they
+     * are AGGREGATED to-many columns, delegated to ProjectRelationColumns.
      *
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
     private const array DERIVED_RELATIONS = [
         'pipeline_status' => ['relation' => 'pipelineStatus', 'table' => 'pipeline_statuses', 'fk' => 'pipeline_status_id'],
-        'business_function' => ['relation' => 'businessFunction', 'table' => 'business_functions', 'fk' => 'business_function_id'],
         'country' => ['relation' => 'country', 'table' => 'countries', 'fk' => 'country_id'],
         'state' => ['relation' => 'state', 'table' => 'states', 'fk' => 'state_id'],
         'province' => ['relation' => 'province', 'table' => 'provinces', 'fk' => 'province_id'],
         'city' => ['relation' => 'city', 'table' => 'cities', 'fk' => 'city_id'],
-        'product_category' => ['relation' => 'productCategory', 'table' => 'product_categories', 'fk' => 'product_category_id'],
         'partner' => ['relation' => 'partner', 'table' => 'referents', 'fk' => 'partner_id'],
     ];
+
+    public function __construct(private readonly ProjectRelationColumns $relationColumns) {}
 
     /**
      * The subset of DERIVED_RELATIONS whose `name` is geo reference data and
@@ -93,10 +101,13 @@ class ProjectsTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         // Eager-load every classification FK to avoid N+1 when each row
-        // projects all 7 of them, plus the display-only `operational_site`
-        // column's composed-label source (mirrors LeadOperationalSiteColumn).
+        // projects all of them, plus `productLines.businessFunction`/
+        // `productLines.productCategory` (spec 0094, AGGREGATED columns) and
+        // the display-only `operational_site` column's composed-label source
+        // (mirrors LeadOperationalSiteColumn).
         return Project::query()
             ->with(array_column(self::DERIVED_RELATIONS, 'relation'))
+            ->with(['productLines.businessFunction', 'productLines.productCategory'])
             ->with('operationalSite.addresses.city');
     }
 
@@ -173,6 +184,11 @@ class ProjectsTableDefinition extends AbstractTableDefinition
         // colored status badge as leads (summarize() alone drops the color).
         $mapped['pipeline_status'] = $this->summarizePipelineStatus($row->pipelineStatus);
 
+        // Spec 0094, AC-025: AGGREGATED (to-many) columns — distinct related
+        // names, comma-joined.
+        $mapped['product_category'] = $this->summarizeNames($row->productLines->pluck('productCategory'));
+        $mapped['business_function'] = $this->summarizeNames($row->productLines->pluck('businessFunction'));
+
         $mapped['geo_scope'] = GeoScopeLevel::for($row->country_id, $row->state_id, $row->province_id, $row->city_id)?->value;
         $mapped['operational_site'] = $this->summarizeOperationalSite($row->operationalSite);
 
@@ -201,6 +217,19 @@ class ProjectsTableDefinition extends AbstractTableDefinition
         $name = $geo ? GeoNameLocalizer::toItalian($related->name) : $related->name;
 
         return ['id' => $related->id, 'name' => $name];
+    }
+
+    /**
+     * Display value for an AGGREGATED to-many column (spec 0094): the
+     * distinct related names, comma-joined — null when there is none.
+     *
+     * @param  Collection<int, Model|null>  $related
+     */
+    private function summarizeNames(Collection $related): ?string
+    {
+        $names = $related->filter()->pluck('name')->unique()->values();
+
+        return $names->isEmpty() ? null : $names->implode(', ');
     }
 
     /**
@@ -275,8 +304,10 @@ class ProjectsTableDefinition extends AbstractTableDefinition
 
     /**
      * Handle the 6 derived set filters via whereHas on the related row's
-     * name, generically resolved from DERIVED_RELATIONS. Every real column
-     * falls through to the generic engine.
+     * name, generically resolved from DERIVED_RELATIONS; `business_function`/
+     * `product_category` (spec 0094, AGGREGATED to-many) are delegated to
+     * ProjectRelationColumns. Every real column falls through to the generic
+     * engine.
      *
      * @param  Builder<Project>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -287,7 +318,7 @@ class ProjectsTableDefinition extends AbstractTableDefinition
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
-            return false;
+            return $this->relationColumns->applyFilter($query, $columnId, $filter);
         }
 
         $values = $filter['values'] ?? null;
@@ -347,6 +378,9 @@ class ProjectsTableDefinition extends AbstractTableDefinition
      * Excel-like distinct values (spec 0004/0005) for each of the 6 derived
      * columns: distinct related-row NAMES among the projects matching
      * `$query` (already scoped by every OTHER active filter).
+     * `business_function`/`product_category` (spec 0094, AGGREGATED to-many)
+     * are delegated to ProjectRelationColumns (AC-026: a join through
+     * `project_product_lines`, no whereRaw on user input).
      *
      * @param  Builder<Project>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -357,7 +391,7 @@ class ProjectsTableDefinition extends AbstractTableDefinition
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
         if ($config === null) {
-            return null;
+            return $this->relationColumns->distinctValues($columnId, $search, $query, $limit);
         }
 
         // Geo columns list options in Italian, so both the match against the

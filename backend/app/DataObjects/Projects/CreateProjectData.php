@@ -27,17 +27,26 @@ namespace App\DataObjects\Projects;
  * back to the system_key='new' status, resolved server-side in
  * ProjectService::create() (never here: a DTO stays pure data, no
  * App\Services\Statuses dependency).
+ *
+ * Spec 0094, D-1/D-2: `businessFunctionId`/`productCategoryId` are REPLACED
+ * by `productLines` — a to-many collection, ALWAYS required (min 1) at the
+ * StoreProjectRequest layer, delete-all + insert synced by
+ * ProjectService::create() inside the same transaction (like
+ * CreateOpportunityData's own `productLines`) — so it stays out of
+ * attributes().
  */
 final readonly class CreateProjectData
 {
+    /**
+     * @param  array<int, array{business_function_id: int, product_category_id: int}>  $productLines
+     */
     public function __construct(
         public ?string $code,
         public string $name,
         public ?int $pipelineStatusId,
         public ?string $description,
-        public ?int $businessFunctionId,
+        public array $productLines,
         public ?int $stateId,
-        public ?int $productCategoryId,
         public ?int $partnerId,
         public ?int $operationalSiteId,
         public ?string $startDate,
@@ -61,9 +70,8 @@ final readonly class CreateProjectData
             name: (string) $data['name'],
             pipelineStatusId: isset($data['pipeline_status_id']) ? (int) $data['pipeline_status_id'] : null,
             description: $data['description'] ?? null,
-            businessFunctionId: isset($data['business_function_id']) ? (int) $data['business_function_id'] : null,
+            productLines: self::normalizeProductLines($data['product_lines'] ?? []),
             stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
-            productCategoryId: isset($data['product_category_id']) ? (int) $data['product_category_id'] : null,
             partnerId: isset($data['partner_id']) ? (int) $data['partner_id'] : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
             startDate: $data['start_date'] ?? null,
@@ -86,9 +94,24 @@ final readonly class CreateProjectData
     }
 
     /**
+     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     */
+    private static function normalizeProductLines(mixed $rows): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'business_function_id' => (int) $row['business_function_id'],
+                'product_category_id' => (int) $row['product_category_id'],
+            ],
+            (array) $rows,
+        );
+    }
+
+    /**
      * The project attributes for a mass-assignment create (framework array
      * boundary). `code` is NOT included: the Service merges it in separately
-     * once generated (BR-1).
+     * once generated (BR-1). `productLines` is NOT included either: it is a
+     * to-many collection synced separately by ProjectService.
      *
      * @return array<string, mixed>
      */
@@ -98,12 +121,10 @@ final readonly class CreateProjectData
             'name' => $this->name,
             'pipeline_status_id' => $this->pipelineStatusId,
             'description' => $this->description,
-            'business_function_id' => $this->businessFunctionId,
             'country_id' => $this->countryId,
             'state_id' => $this->stateId,
             'province_id' => $this->provinceId,
             'city_id' => $this->cityId,
-            'product_category_id' => $this->productCategoryId,
             'partner_id' => $this->partnerId,
             'operational_site_id' => $this->operationalSiteId,
             'start_date' => $this->startDate,

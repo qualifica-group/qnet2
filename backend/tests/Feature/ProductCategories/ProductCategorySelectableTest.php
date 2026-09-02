@@ -215,6 +215,10 @@ it('opportunities update: resubmitting the OWN lines unchanged passes (AC-011)',
 // projects / campaigns / commission configurations — AC-012
 // ---------------------------------------------------------------------------
 
+// Spec 0094 (D-1/D-2) replaced the scalar business_function_id/
+// product_category_id pair with the product_lines collection on both
+// Projects and Campaigns: the payload and the rejected key move accordingly,
+// the assertion itself (an unselectable category is rejected) is unchanged.
 it('projects create: an unselectable category is rejected (AC-012)', function () {
     $function = BusinessFunction::factory()->create();
     $container = ProductCategory::factory()->create([
@@ -226,10 +230,11 @@ it('projects create: an unselectable category is rejected (AC-012)', function ()
         'name' => 'Rejected',
         'pipeline_status_id' => PipelineStatus::factory()->create()->id,
         'country_id' => Country::factory()->create()->id,
-        'business_function_id' => $function->id,
-        'product_category_id' => $container->id,
+        'product_lines' => [
+            ['business_function_id' => $function->id, 'product_category_id' => $container->id],
+        ],
         'start_date' => '2026-01-01',
-    ])->assertStatus(422)->assertJsonValidationErrors('product_category_id');
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 });
 
 it('campaigns create: an unselectable category is rejected (AC-012)', function () {
@@ -242,11 +247,12 @@ it('campaigns create: an unselectable category is rejected (AC-012)', function (
     $this->postJson('/api/campaigns', [
         'project_id' => null,
         'name' => 'Rejected',
-        'business_function_id' => $function->id,
-        'product_category_id' => $container->id,
+        'product_lines' => [
+            ['business_function_id' => $function->id, 'product_category_id' => $container->id],
+        ],
         'country_id' => Country::factory()->create()->id,
         'start_date' => '2026-01-01',
-    ])->assertStatus(422)->assertJsonValidationErrors('product_category_id');
+    ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 });
 
 it('commission configurations create: an unselectable category is rejected (AC-012)', function () {

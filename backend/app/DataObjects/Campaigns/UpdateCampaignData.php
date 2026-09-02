@@ -16,18 +16,27 @@ namespace App\DataObjects\Campaigns;
  * key actually present" distinction a plain null property cannot express.
  * `code` is never accepted (BR-1): no property for it at all.
  *
- * The BR-2 derivation (forcing the 3 classification fields null/required
- * depending on the EFFECTIVE `project_id` — submitted or, when absent,
- * the campaign's current one) needs the target Campaign and is therefore
- * resolved by CampaignService, not here (this DTO only carries what the
- * client actually submitted). `country_id`/`state_id`/`province_id`/
- * `city_id` (spec 0027, D-3) LEFT that group: they follow BR-5 instead — a
- * per-level refinement of the linked project's geo, also resolved by
- * CampaignService (it needs the loaded Project row to know which levels it
- * fills).
+ * The BR-2 derivation (forcing `pipeline_status_id` null/required and
+ * `productLines` empty-synced/required depending on the EFFECTIVE
+ * `project_id` — submitted or, when absent, the campaign's current one)
+ * needs the target Campaign and is therefore resolved by CampaignService,
+ * not here (this DTO only carries what the client actually submitted).
+ * `country_id`/`state_id`/`province_id`/`city_id` (spec 0027, D-3) LEFT that
+ * group: they follow BR-5 instead — a per-level refinement of the linked
+ * project's geo, also resolved by CampaignService (it needs the loaded
+ * Project row to know which levels it fills).
+ *
+ * Spec 0094, D-1/D-2: `businessFunctionId`/`productCategoryId` are REPLACED
+ * by `productLines` — a full-replace to-many collection, null-means-
+ * untouched like UpdateProjectData's own (no `*Submitted` flag: presence
+ * IS the signal, mirroring UpdateOpportunityData). Out of
+ * submittedAttributes() (not a mass-assignable column).
  */
 final readonly class UpdateCampaignData
 {
+    /**
+     * @param  array<int, array{business_function_id: int, product_category_id: int}>|null  $productLines
+     */
     public function __construct(
         public ?int $projectId = null,
         public bool $projectIdSubmitted = false,
@@ -40,8 +49,7 @@ final readonly class UpdateCampaignData
         public bool $operationalSiteIdSubmitted = false,
         public ?int $pipelineStatusId = null,
         public bool $pipelineStatusIdSubmitted = false,
-        public ?int $businessFunctionId = null,
-        public bool $businessFunctionIdSubmitted = false,
+        public ?array $productLines = null,
         public ?int $countryId = null,
         public bool $countryIdSubmitted = false,
         public ?int $stateId = null,
@@ -50,8 +58,6 @@ final readonly class UpdateCampaignData
         public bool $provinceIdSubmitted = false,
         public ?int $cityId = null,
         public bool $cityIdSubmitted = false,
-        public ?int $productCategoryId = null,
-        public bool $productCategoryIdSubmitted = false,
         public ?string $startDate = null,
         public bool $startDateSubmitted = false,
         public ?string $endDate = null,
@@ -81,8 +87,7 @@ final readonly class UpdateCampaignData
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
             pipelineStatusId: self::nullableInt($data, 'pipeline_status_id'),
             pipelineStatusIdSubmitted: array_key_exists('pipeline_status_id', $data),
-            businessFunctionId: self::nullableInt($data, 'business_function_id'),
-            businessFunctionIdSubmitted: array_key_exists('business_function_id', $data),
+            productLines: array_key_exists('product_lines', $data) ? self::normalizeProductLines($data['product_lines']) : null,
             countryId: self::nullableInt($data, 'country_id'),
             countryIdSubmitted: array_key_exists('country_id', $data),
             stateId: self::nullableInt($data, 'state_id'),
@@ -91,8 +96,6 @@ final readonly class UpdateCampaignData
             provinceIdSubmitted: array_key_exists('province_id', $data),
             cityId: self::nullableInt($data, 'city_id'),
             cityIdSubmitted: array_key_exists('city_id', $data),
-            productCategoryId: self::nullableInt($data, 'product_category_id'),
-            productCategoryIdSubmitted: array_key_exists('product_category_id', $data),
             startDate: array_key_exists('start_date', $data) ? $data['start_date'] : null,
             startDateSubmitted: array_key_exists('start_date', $data),
             endDate: array_key_exists('end_date', $data) ? $data['end_date'] : null,
@@ -140,10 +143,6 @@ final readonly class UpdateCampaignData
             $attributes['pipeline_status_id'] = $this->pipelineStatusId;
         }
 
-        if ($this->businessFunctionIdSubmitted) {
-            $attributes['business_function_id'] = $this->businessFunctionId;
-        }
-
         if ($this->countryIdSubmitted) {
             $attributes['country_id'] = $this->countryId;
         }
@@ -158,10 +157,6 @@ final readonly class UpdateCampaignData
 
         if ($this->cityIdSubmitted) {
             $attributes['city_id'] = $this->cityId;
-        }
-
-        if ($this->productCategoryIdSubmitted) {
-            $attributes['product_category_id'] = $this->productCategoryId;
         }
 
         if ($this->startDateSubmitted) {
@@ -181,6 +176,25 @@ final readonly class UpdateCampaignData
         }
 
         return $attributes;
+    }
+
+    public function hasProductLines(): bool
+    {
+        return $this->productLines !== null;
+    }
+
+    /**
+     * @return array<int, array{business_function_id: int, product_category_id: int}>
+     */
+    private static function normalizeProductLines(mixed $rows): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'business_function_id' => (int) $row['business_function_id'],
+                'product_category_id' => (int) $row['product_category_id'],
+            ],
+            (array) $rows,
+        );
     }
 
     /**

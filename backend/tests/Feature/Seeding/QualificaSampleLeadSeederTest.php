@@ -41,11 +41,15 @@ it('seeds the batch on one project/campaign, an Anagrafica per lead', function (
     expect(Lead::query()->count())->toBe(40)
         ->and(Registry::query()->count())->toBe(40)
         ->and(Lead::query()->where('campaign_id', $campaign->getKey())->count())->toBe(40)
-        // BR-2: a linked campaign's own classification is null — the pair
-        // lives on the project the conversion reads through.
+        // BR-2: a linked campaign owns no rows of its own — the collection
+        // lives on the project the conversion reads through. Spec 0094
+        // (D-1/D-2) replaced the scalar business_function_id/
+        // product_category_id columns with the productLines() collection:
+        // the old columns were dropped, so reading them back would return
+        // null in silence instead of failing the assertion.
         ->and($campaign->project_id)->toBe(Project::query()->sole()->getKey())
-        ->and($campaign->product_category_id)->toBeNull()
-        ->and(Project::query()->sole()->product_category_id)->toBe($category->getKey());
+        ->and($campaign->productLines()->count())->toBe(0)
+        ->and(Project::query()->sole()->productLines()->firstOrFail()->product_category_id)->toBe($category->getKey());
 });
 
 it('converts part of the batch, leaving the rest as plain leads', function () use ($seedClassification): void {

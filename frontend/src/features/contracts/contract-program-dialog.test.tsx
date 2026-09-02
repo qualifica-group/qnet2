@@ -1,0 +1,108 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import i18n from '@/i18n'
+import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
+import { workOrders as workOrdersEn } from '@/i18n/locales/en-work-orders'
+import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
+import { createContractWorkOrder, fetchContractProgrammableLines } from '@/features/contracts/api'
+import type { ContractProgrammableLine } from '@/features/contracts/types'
+
+/**
+ * Spec 0095 AC-060/061/062: occupied lines are visible but not selectable,
+ * the submit is blocked without a title or without any selected line, and a
+ * successful generation closes the dialog and reports the new Commessa up.
+ */
+
+vi.mock('@/features/contracts/api', () => ({
+  fetchContractProgrammableLines: vi.fn(),
+  createContractWorkOrder: vi.fn(),
+}))
+
+const FREE_LINE: ContractProgrammableLine = {
+  id: 10,
+  sort_order: 0,
+  product: { id: 1, code: 'P-1', name: 'Consulenza', category: { id: 5, name: 'Servizi' } },
+  quantity: '2.00',
+  unit_of_measure: { id: 1, name: 'Ora', symbol: 'h' },
+  work_order: null,
+}
+
+const OCCUPIED_LINE: ContractProgrammableLine = {
+  id: 11,
+  sort_order: 1,
+  product: { id: 2, code: 'P-2', name: 'Installazione', category: null },
+  quantity: '1.00',
+  unit_of_measure: null,
+  work_order: { id: 99, code: 'COM-0099' },
+}
+
+function renderDialog(onCreated = vi.fn()) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return {
+    onCreated,
+    ...render(
+      <QueryClientProvider client={client}>
+        <ContractProgramDialog open onOpenChange={vi.fn()} contractId={7} onCreated={onCreated} />
+      </QueryClientProvider>,
+    ),
+  }
+}
+
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+  i18n.addResourceBundle('en', 'translation', { contracts: contractsEn, workOrders: workOrdersEn }, true, true)
+})
+
+beforeEach(() => {
+  vi.mocked(fetchContractProgrammableLines).mockReset()
+  vi.mocked(createContractWorkOrder).mockReset()
+  vi.mocked(fetchContractProgrammableLines).mockResolvedValue([FREE_LINE, OCCUPIED_LINE])
+})
+
+describe('ContractProgramDialog', () => {
+  it('shows an occupied line as visible but not selectable, naming the occupying commessa (AC-060)', async () => {
+    renderDialog()
+
+    expect(await screen.findByText('Installazione')).toBeInTheDocument()
+    expect(screen.getByText('Already in COM-0099')).toBeInTheDocument()
+
+    const occupiedCheckbox = screen.getByRole('checkbox', { name: 'Select Installazione' })
+    expect(occupiedCheckbox).toBeDisabled()
+
+    const freeCheckbox = screen.getByRole('checkbox', { name: 'Select Consulenza' })
+    expect(freeCheckbox).not.toBeDisabled()
+  })
+
+  it('blocks submit without a title and without any selected line (AC-061)', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate work order' }))
+
+    expect(await screen.findByText('Title is required.')).toBeInTheDocument()
+    expect(screen.getByText('Select at least one line.')).toBeInTheDocument()
+    expect(createContractWorkOrder).not.toHaveBeenCalled()
+  })
+
+  it('generates the work order from the selected free line and reports it up (AC-062)', async () => {
+    const created = { id: 501, code: 'COM-0501' }
+    vi.mocked(createContractWorkOrder).mockResolvedValue(created as never)
+    const onCreated = vi.fn()
+    renderDialog(onCreated)
+    await screen.findByText('Consulenza')
+
+    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: 'Installazione impianto' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate work order' }))
+
+    await waitFor(() =>
+      expect(createContractWorkOrder).toHaveBeenCalledWith(7, {
+        title: 'Installazione impianto',
+        type: 'processing',
+        quote_line_ids: [10],
+      }),
+    )
+    expect(onCreated).toHaveBeenCalledWith(created)
+  })
+})

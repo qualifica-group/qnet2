@@ -50,6 +50,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   quotes: 'navigation.quotes',
   'contract-statuses': 'navigation.contractStatuses',
   contracts: 'navigation.contracts',
+  'work-orders': 'navigation.workOrders',
   'commission-configurations': 'navigation.commissionConfigurations',
   'request-management': 'navigation.requestManagement',
   'reward-types': 'navigation.rewardTypes',

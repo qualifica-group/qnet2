@@ -13,7 +13,9 @@ use App\Models\Contract;
  * `validated_at`/`terminated_at` reading):
  *
  * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici"
- * - closed_won     → "Disdici", "Programma" and "Riapri contratto", nothing else
+ * - closed_won     → "Disdici", "Programma" (spec 0095: generates work
+ *   orders from the offer's lines, no longer sets dates) and "Riapri
+ *   contratto", nothing else
  * - closed_lost    → "Riapri contratto", nothing else
  *
  * Single source of truth for both surfaces that offer those actions —
@@ -36,7 +38,12 @@ class ContractActionAvailability
         return $this->isWorking($contract) && ! $contract->isSuspended();
     }
 
-    public function maySchedule(Contract $contract): bool
+    /**
+     * "Programma" (spec 0095, D-2): identical rule to the RETIRED
+     * `maySchedule()` it replaces — same status group, same doubled gate
+     * (each caller ANDs this with the actor's `contracts.program` ability).
+     */
+    public function mayProgram(Contract $contract): bool
     {
         return $this->group($contract) === ContractStatusGroup::ClosedWon;
     }

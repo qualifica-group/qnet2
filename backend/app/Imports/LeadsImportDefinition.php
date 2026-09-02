@@ -65,7 +65,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
     }
 
     /**
-     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, default: mixed}>
+     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}>
      */
     public function globalConfig(): array
     {
@@ -236,6 +236,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
             $row->operator_id,
             $row->operational_site_id,
             $convertToOpportunity,
+            $row->product_ids,
         );
     }
 }

@@ -39,6 +39,8 @@ export interface BuildColDefsParams {
   productCategoryId?: number
   /** Opportunity row-set scope (spec 0067 D-1), forwarded to the Set Filter values callback. */
   opportunityId?: number
+  /** Contract's Offerta row-set scope (spec 0095 D-8), forwarded to the Set Filter values callback. */
+  quoteId?: number
   columns: TableColumn[]
   cellRenderers?: Record<string, CellRenderer>
   renderRowActions?: (params: ICellRendererParams) => ReactNode
@@ -58,6 +60,7 @@ export function buildColDefs({
   domain,
   productCategoryId,
   opportunityId,
+  quoteId,
   columns,
   cellRenderers,
   renderRowActions,
@@ -87,6 +90,7 @@ export function buildColDefs({
       t,
       productCategoryId,
       opportunityId,
+      quoteId,
     )
     return {
       colId: column.id,

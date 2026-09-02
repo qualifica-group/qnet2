@@ -241,7 +241,9 @@ describe('ReferentForm — create/edit (AC-020, AC-021, AC-022)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() =>
-      expect(screen.getByText('Complete the required personal data fields.')).toBeInTheDocument(),
+      expect(
+        screen.getByText(/^Complete the required personal data fields: /),
+      ).toBeInTheDocument(),
     )
     expect(createReferentMock).not.toHaveBeenCalled()
   })

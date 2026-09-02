@@ -17,6 +17,7 @@ import { ActivityLogSection } from '@/features/activity-log/activity-log-section
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName } from '@/features/geo/geo-scope'
+import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import type { CampaignDetailWithPermissions as CampaignDetailData } from '@/features/campaigns/types'
 
 interface CampaignDetailViewProps {
@@ -87,11 +88,8 @@ export function CampaignDetailView({ campaign }: CampaignDetailViewProps) {
           <DetailField label={t('campaigns.form.status')}>
             {campaign.pipeline_status?.name ?? <DetailEmpty />}
           </DetailField>
-          <DetailField label={t('campaigns.form.businessFunction')}>
-            {campaign.business_function?.name ?? <DetailEmpty />}
-          </DetailField>
-          <DetailField label={t('campaigns.form.productCategory')}>
-            {campaign.product_category?.name ?? <DetailEmpty />}
+          <DetailField label={t('campaigns.form.productLines')} full>
+            <ProductLinesReadOnlyList lines={campaign.product_lines} />
           </DetailField>
         </DetailGrid>
       </DetailSection>

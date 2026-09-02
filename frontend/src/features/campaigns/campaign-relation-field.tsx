@@ -5,19 +5,17 @@ import type { CampaignFormValues } from '@/features/campaigns/use-campaign-form'
 import type { CampaignRelationRef } from '@/features/campaigns/types'
 
 /**
- * The campaign's 5 single-relation fields, all sharing the exact same picker
- * shape: 2 always-own/editable (partner, operational_site) and 3 BR-2
- * classification fields that are only editable while the campaign is
- * standalone (`forceDisabled` while linked, AC-042/AC-043). `state_id` left
- * this group (spec 0027 D-3): it is now one of the 4 geo fields rendered by
- * `<GeoSelect>`, following BR-5 instead.
+ * The campaign's 3 single-relation fields, all sharing the exact same picker
+ * shape: 2 always-own/editable (partner, operational_site) and the
+ * `pipeline_status_id` BR-2 classification field, only editable while the
+ * campaign is standalone (`forceDisabled` while linked, AC-042/AC-043).
+ * `state_id` left this group (spec 0027 D-3): it is now one of the 4 geo
+ * fields rendered by `<GeoSelect>`, following BR-5 instead. `business_function_id`/
+ * `product_category_id` left this group too (spec 0094): they are now the
+ * `product_lines` row collection, rendered by `ProductLinesField` directly in
+ * `CampaignFormBody` (not through this thin wrapper).
  */
-type CampaignRelationFieldName =
-  | 'partner_id'
-  | 'operational_site_id'
-  | 'pipeline_status_id'
-  | 'business_function_id'
-  | 'product_category_id'
+type CampaignRelationFieldName = 'partner_id' | 'operational_site_id' | 'pipeline_status_id'
 
 interface CampaignRelationFieldProps {
   control: Control<CampaignFormValues>

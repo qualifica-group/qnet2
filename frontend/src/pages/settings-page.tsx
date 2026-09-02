@@ -91,11 +91,7 @@ export default function SettingsPage() {
         <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           {user && (
             <Card className="items-center gap-3 py-5 text-center">
-              <UserAvatar
-                name={user.name}
-                src={user.avatar_url}
-                className="size-16"
-              />
+              <UserAvatar name={user.name} src={user.avatar_url} size="2xl" />
               <div className="flex min-w-0 flex-col px-4">
                 <span className="truncate font-semibold leading-tight">
                   {user.name}

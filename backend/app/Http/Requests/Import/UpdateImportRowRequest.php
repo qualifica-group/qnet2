@@ -4,6 +4,7 @@ namespace App\Http\Requests\Import;
 
 use App\Imports\ImportDefinition;
 use App\Imports\ImportRegistry;
+use App\Imports\Leads\LeadImportProductCoherence;
 use App\Imports\Staging\StagedRowBuilder;
 use App\Models\City;
 use App\Models\ImportRun;
@@ -36,6 +37,15 @@ use Illuminate\Validation\Validator;
  * Presence is checked manually in withValidator() (not via
  * `required_without_all`), because the built-in rule cannot tell "submitted
  * as null to clear" apart from "not submitted at all".
+ *
+ * `product_ids` (spec 0094, D-4/AC-054): the per-row "Prodotti di interesse"
+ * override, mirroring operator_id/operational_site_id's three-state
+ * semantics but for an ARRAY — not submitted = row untouched, `null` =
+ * explicitly revert to inheriting the run's global `product_ids`, `[]` =
+ * this row carries none. Every submitted id must exist AND sit inside the
+ * effective product categories of the RUN's `global_config.campaign_id`
+ * (LeadImportProductCoherence — the same coherence rule
+ * ConfigureImportRequest applies to the global value, never duplicated).
  *
  * The {domain}/{importRun} route segments resolve BEFORE any rule below runs
  * (unknown domain -> 404 via bootstrap/app.php; unknown/unbound importRun ->
@@ -70,6 +80,8 @@ class UpdateImportRowRequest extends FormRequest
             'geo.city_id' => ['nullable', 'integer', 'exists:cities,id'],
             'operator_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
+            'product_ids' => ['sometimes', 'nullable', 'array'],
+            'product_ids.*' => ['integer', 'exists:products,id'],
         ];
     }
 
@@ -80,23 +92,52 @@ class UpdateImportRowRequest extends FormRequest
             $this->validateValuesAllowList($validator);
             $this->validateGeoKeys($validator);
             $this->validateGeoHierarchy($validator);
+            $this->validateProductIdsCoverage($validator);
         });
     }
 
     /**
-     * `values`/`geo`/`operator_id`/`operational_site_id` replace the old
-     * `required_without` pair: an explicit `operator_id: null` (clearing the
-     * override) must count as "submitted", which the built-in required-family
-     * rules cannot express for a nullable field — so presence is checked
-     * directly here instead.
+     * `values`/`geo`/`operator_id`/`operational_site_id`/`product_ids`
+     * replace the old `required_without` pair: an explicit `operator_id:
+     * null` (clearing the override) must count as "submitted", which the
+     * built-in required-family rules cannot express for a nullable field —
+     * so presence is checked directly here instead.
      */
     private function validateAtLeastOneSubmitted(Validator $validator): void
     {
-        if ($this->has('values') || $this->has('geo') || $this->has('operator_id') || $this->has('operational_site_id')) {
+        if ($this->has('values') || $this->has('geo') || $this->has('operator_id') || $this->has('operational_site_id') || $this->has('product_ids')) {
             return;
         }
 
-        $validator->errors()->add('values', 'At least one of values, geo, operator_id or operational_site_id is required.');
+        $validator->errors()->add('values', 'At least one of values, geo, operator_id, operational_site_id or product_ids is required.');
+    }
+
+    /**
+     * AC-054: a submitted, non-empty `product_ids` must sit inside the
+     * effective product categories of the RUN's own `global_config.
+     * campaign_id` — `null` (revert to the global default) and `[]`
+     * (explicitly none) both need no coverage check.
+     */
+    private function validateProductIdsCoverage(Validator $validator): void
+    {
+        $productIds = $this->input('product_ids');
+
+        if (! is_array($productIds) || $productIds === []) {
+            return;
+        }
+
+        $importRun = $this->route('importRun');
+        $campaignId = $importRun instanceof ImportRun ? ($importRun->global_config['campaign_id'] ?? null) : null;
+
+        $coherence = app(LeadImportProductCoherence::class);
+        $offending = $coherence->offendingProducts(
+            $campaignId === null ? null : (int) $campaignId,
+            array_map(static fn (mixed $id): int => (int) $id, $productIds),
+        );
+
+        if ($offending !== []) {
+            $validator->errors()->add('product_ids', $coherence->message($offending));
+        }
     }
 
     private function validateValuesAllowList(Validator $validator): void

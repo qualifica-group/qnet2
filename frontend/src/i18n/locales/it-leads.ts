@@ -59,6 +59,10 @@ export const leads = {
         title: 'Dettagli',
         description: 'Sede, fonte e operatore associati al lead.',
       },
+      productsOfInterest: {
+        title: 'Prodotti di interesse',
+        description: 'I prodotti che interessano il lead, filtrati dalle categorie della Campagna scelta.',
+      },
       notes: {
         title: 'Note',
         description: 'Annotazioni libere sul lead.',
@@ -92,6 +96,14 @@ export const leads = {
     },
     convertToOpportunity: 'Converti automaticamente in Opportunità',
     convertToOpportunityHint: "Alla creazione del Lead verrà generata automaticamente l'Opportunità collegata.",
+    productsOfInterest: {
+      // Spec 0094, D-5: cambiare Campagna lasciando prodotti non più coperti
+      // richiede una conferma esplicita, mai una rimozione silenziosa.
+      campaignChangeTitle: 'Prodotti non più coperti dalla nuova campagna',
+      campaignChangeDescription:
+        'Cambiando campagna questi prodotti non sono più coperti dalle sue categorie: {{names}}. Rimuoverli e continuare?',
+      campaignChangeConfirm: 'Rimuovi e continua',
+    },
     notes: 'Note',
     notesPlaceholder: 'Scrivi una nota su questo lead…',
     notesMax: 'Le note devono avere al massimo 5000 caratteri.',

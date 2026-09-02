@@ -111,7 +111,11 @@ abstract class AbstractImportDefinition implements ImportDefinition
      * Retro-compatible default: no global configuration step fields — the
      * 5 legacy domains have no values that apply to every row.
      *
-     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, default: mixed}>
+     * `multiple`/`depends_on` (spec 0094, AC-050) are additive: a scalar
+     * global field (every one before `leads`' `product_ids`) declares
+     * `multiple: false, depends_on: null` — no behaviour change.
+     *
+     * @return array<int, array{id: string, label: string, required: bool, for_select_resource: ?string, multiple: bool, depends_on: ?string, default: mixed}>
      */
     public function globalConfig(): array
     {

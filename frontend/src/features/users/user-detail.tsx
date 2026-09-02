@@ -70,7 +70,7 @@ export function UserDetailView({ userId }: UserDetailProps) {
   return (
     <DetailPanel>
       <DetailHero
-        media={<UserAvatar name={user.name} src={user.avatar_url} className="size-14" />}
+        media={<UserAvatar name={user.name} src={user.avatar_url} size="xl" />}
         title={user.name}
         subtitle={user.email}
       />
