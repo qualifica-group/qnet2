@@ -15,6 +15,7 @@ use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -71,6 +72,14 @@ class ExportService
         $definition = $this->tableRegistry->resolve($run->resource);
         /** @var User $actor */
         $actor = User::query()->findOrFail($run->user_id);
+
+        // Row-scoped definitions read the actor off the auth guard inside
+        // baseQuery() (RequestManagementScope, WorkOrderVisibilityScope), and
+        // those scopes are fail-closed: on a real queue connection there is no
+        // authenticated user in this job, so without this the export of a
+        // scoped resource would silently come out EMPTY instead of scoped.
+        // The queue worker forgets the guards after every job.
+        Auth::setUser($actor);
 
         /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, opportunityId?: int|null, quoteId?: int|null} $state */
         $state = $run->state;

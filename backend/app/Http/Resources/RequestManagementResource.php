@@ -99,6 +99,13 @@ class RequestManagementResource extends JsonResource
             'source' => $this->summarizeByName($opportunity->source),
             'reporter_id' => $quote->reporter_id,
             'reporter' => $this->summarizeByName($quote->reporter),
+            // Spec 0097, D-9 (user directive 2026-09-02): the "Supervisore",
+            // back on this panel — the Offerta's commission recipient
+            // (`CommissionRecipientRole::Supervisor`), NOT the ownership
+            // column spec 0087 moved to `operator_id` below. Same
+            // id + `{id, name}` pair as every other picker of this block.
+            'supervisor_id' => $quote->supervisor_id,
+            'supervisor' => $this->summarizeByName($quote->supervisor),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block — the site has no own name, so its ref is
             // {id, label} (OperationalSiteLabel), NOT summarizeByName().
@@ -116,6 +123,14 @@ class RequestManagementResource extends JsonResource
             // `quotes.supervisor_id` (D-13/D-14, INV-5).
             'operator_id' => $quote->operator_id,
             'operator' => $this->summarizeByName($quote->operator),
+            // Spec 0097, D-1: the Offerta's WHOLE team — the block that
+            // replaced the lone "Operatore" picker in this panel. Same shape
+            // and same criterion as QuoteResource's own `managers`
+            // (pivot-position ordered `{id, name, position}`), so the two
+            // forms hydrate the identical ManagerSlotsField from the
+            // identical payload. `operator_id`/`operator` STAY: the grid, the
+            // notifications and the transfer flow read them.
+            'managers' => $this->summarizeManagers($quote->managers),
             // Spec 0080/0087 D-8: the "Gestore Account" label overrides,
             // resolved from the OFFERTA's own team (its REVENUE lines'
             // categories, falling back to the Opportunity's product lines
@@ -173,6 +188,25 @@ class RequestManagementResource extends JsonResource
     private function summarizeByName(?Model $related): ?array
     {
         return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * The Offerta's Gestori Account, ordered by pivot position (the relation
+     * itself already applies that order) — byte-for-byte the projection
+     * QuoteResource::summarizeManagers() produces, the frontend rebuilding
+     * the ordered slots from the `position` of each row.
+     *
+     * @return array<int, array{id: int, name: string, position: int}>
+     */
+    private function summarizeManagers(iterable $managers): array
+    {
+        return collect($managers)
+            ->map(fn (Model $manager): array => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+                'position' => (int) $manager->pivot->position,
+            ])
+            ->all();
     }
 
     /**

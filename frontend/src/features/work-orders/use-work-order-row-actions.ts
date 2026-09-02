@@ -9,10 +9,10 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 export interface UseWorkOrderRowActionsOptions {
-  /** Called after anything that changes the displayed rows: a successful edit save, or a delete. */
+  /** Called after anything that changes the displayed rows: a delete. */
   onMutated: () => void
   /**
-   * Forces the open mode of view/edit instead of honoring the user's
+   * Forces the open mode of view instead of honoring the user's
    * preference (spec 0067 D-3 pattern): the Contract detail's Commesse tab
    * (spec 0095 D-9) uses this so opening a Commessa never abandons the
    * Contract. Omitted, the actor's own preference wins.
@@ -29,7 +29,7 @@ export interface UseWorkOrderRowActionsResult {
 }
 
 /**
- * The Commesse action catalog's BEHAVIOR (view/edit/delete/activity), owned
+ * The Commesse action catalog's BEHAVIOR (view/delete/activity), owned
  * once and shared by every surface that renders those actions: the
  * standalone Commesse grid (`WorkOrdersTable`) and the Contract detail's
  * Commesse tab (`ContractWorkOrdersSection`, spec 0095 D-9). Extracted so a
@@ -46,7 +46,7 @@ export function useWorkOrderRowActions({
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openView, openEdit, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
+  const { openView, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
   })
@@ -80,9 +80,6 @@ export function useWorkOrderRowActions({
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -93,7 +90,7 @@ export function useWorkOrderRowActions({
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

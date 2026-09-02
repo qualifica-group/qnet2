@@ -22,6 +22,7 @@ import {
   buildRequestCreateSchema,
   type RequestCreateFormValues,
 } from '@/features/request-management/request-create-schema'
+import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import { useRequestActorAttributionDefaults } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestFormContext } from '@/features/request-management/use-request-form-context'
@@ -36,7 +37,10 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   'registry_id',
   'source_id',
   'reporter_id',
-  'operator_id',
+  'supervisor_id',
+  // A per-slot 422 (`manager_slots.<n>`) has no control of its own — the team
+  // editor binds the array as a whole — so the block root carries it.
+  'manager_slots',
   'operational_site_id',
   // The coherence 422 (user directive 2026-07-31) lands here, on the picker
   // the actor was working in.
@@ -121,10 +125,14 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       product_lines: [emptyProductLineRow()],
       source_id: null,
       reporter_id: null,
-      // Seeded from the connected actor right after mount, not here: the
-      // abilities that decide whether these two are rendered at all can resolve
-      // after the form is built (`useRequestActorAttributionDefaults`).
-      operator_id: null,
+      supervisor_id: null,
+      // The team opens on `DEFAULT_MANAGER_SLOTS` empty cards, like the
+      // Offerte form's own (spec 0097 D-1): untouched, an all-null array never
+      // travels, and the server applies its own operator default. The operator
+      // slot is seeded from the connected actor right after mount, not here:
+      // the abilities that decide whether the block is rendered at all can
+      // resolve after the form is built (`useRequestActorAttributionDefaults`).
+      manager_slots: Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null),
       operational_site_id: null,
       products_of_interest: [],
       // "Linee dell'offerta": the form opens on ONE empty row (user directive
@@ -236,7 +244,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       productLines: values.product_lines,
       sourceId: values.source_id,
       reporterId: values.reporter_id,
-      operatorId: values.operator_id,
+      supervisorId: values.supervisor_id,
+      managerSlots: values.manager_slots,
       operationalSiteId: values.operational_site_id,
       productsOfInterest: values.products_of_interest,
       offerLines: values.offer_lines,

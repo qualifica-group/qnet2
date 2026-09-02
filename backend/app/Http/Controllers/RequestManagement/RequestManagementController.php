@@ -6,6 +6,7 @@ namespace App\Http\Controllers\RequestManagement;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
@@ -91,11 +92,15 @@ class RequestManagementController extends BaseApiController
             abort_unless($user->can('request-management.create'), 403);
 
             $data = $request->toData();
-            // Assigning the GA2 "Operatore" up front is a supervisory act
-            // (user directive 2026-07-29): creating a request never implies
-            // deciding who works it.
+            // Assigning the team up front is a supervisory act (user
+            // directive 2026-07-29; spec 0097, D-1: the lone GA2 "Operatore"
+            // is now one slot of `manager_slots`): creating a request never
+            // implies deciding who works it. An all-empty payload asks for
+            // nobody in particular — it resolves to the creating actor on the
+            // OPERATOR slot (RequestCreationService), the same default an
+            // absent key gets, so it stays open to every creator.
             abort_unless(
-                $data->operatorId === null || $user->can('request-management.assignOperator'),
+                $this->submittedManagerSlots($data) === [] || $user->can('request-management.assignOperator'),
                 403,
             );
             // Same rule for the Sede operativa (user directive 2026-08-03),
@@ -121,6 +126,20 @@ class RequestManagementController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
+    }
+
+    /**
+     * The user ids the create payload actually asks for — `[]` when the key
+     * was absent or every slot was left empty (spec 0097).
+     *
+     * @return array<int, int>
+     */
+    private function submittedManagerSlots(CreateRequestData $data): array
+    {
+        return array_values(array_filter(
+            $data->managerSlots ?? [],
+            static fn (?int $userId): bool => $userId !== null,
+        ));
     }
 
     /**
@@ -162,7 +181,18 @@ class RequestManagementController extends BaseApiController
                         'next_callback_at',
                         'source_id',
                         'reporter_id',
-                        'operator_id',
+                        // Spec 0097, D-9: the "Supervisore", the Offerta's
+                        // commission recipient — an attribution scalar
+                        // written like the two above, independent of the
+                        // team keys below (AC-014).
+                        'supervisor_id',
+                        // Spec 0097, D-5: the panel writes the WHOLE team.
+                        // `operator_id` is deliberately NOT in this list any
+                        // more — UpdateRequestRequest no longer validates it,
+                        // so it could never reach `validated()`; it survives
+                        // as `updateWork()`'s internal key for the grid cell,
+                        // the bulk assign and the transfer.
+                        'manager_slots',
                         // Spec 0056: the Sede operativa, same attribution block.
                         'operational_site_id',
                         // Spec 0059, AC-023: same sparse rule — absent means

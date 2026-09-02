@@ -5,10 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 import { seedAttributeValues, toAttributeValuesMap } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { opportunityDetailQueryKey } from '@/features/opportunities/api'
 import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
+import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { addressToDraft } from '@/features/personal-data/drafts'
 import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { updateRequestWork } from '@/features/request-management/api'
@@ -94,7 +96,14 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     rewards: (panel.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
     source_id: panel.source_id,
     reporter_id: panel.reporter_id,
-    operator_id: panel.operator_id,
+    supervisor_id: panel.supervisor_id,
+    // Spec 0097 D-1: the team, rebuilt from the pivot and padded out to the
+    // module-wide default so an operator always sees a full set of editable
+    // cards — a request whose Offerta has no G.A. yet would otherwise open on
+    // the bare "add slot" button, with no OPERATOR_MANAGER_POSITION to link
+    // the Sede to. Padding never reaches the wire: the payload's positional
+    // diff reads trailing empty slots as unchanged.
+    manager_slots: padManagerSlots(managerSlotsFromRefs(panel.managers ?? []), DEFAULT_MANAGER_SLOTS),
     operational_site_id: panel.operational_site_id,
   }
 }
@@ -182,7 +191,10 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     'rewards' as Path<RequestWorkFormValues>,
     'source_id' as Path<RequestWorkFormValues>,
     'reporter_id' as Path<RequestWorkFormValues>,
-    'operator_id' as Path<RequestWorkFormValues>,
+    'supervisor_id' as Path<RequestWorkFormValues>,
+    // A per-slot 422 (`manager_slots.<n>`) has no control of its own — the
+    // editor binds the array as a whole — so the block root carries it.
+    'manager_slots' as Path<RequestWorkFormValues>,
     'operational_site_id' as Path<RequestWorkFormValues>,
     // A per-code 422 (`attribute_values.<code>`) DOES have a matching control:
     // the layout renderer binds each field to that exact path, so the message
@@ -220,7 +232,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
     (errors) => {
       setSubmitError(
         t('requestManagement.workPanel.validation.summary', {
-          fields: describeInvalidFields(errors, panel.manager_labels, t).join(', '),
+          fields: describeInvalidFields(errors, t).join(', '),
         }),
       )
     },

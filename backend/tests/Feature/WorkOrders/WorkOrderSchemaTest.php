@@ -15,20 +15,23 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 
 it('schema: work_orders has every declared column, code unique, quote_id restrictOnDelete (AC-001)', function () {
-    foreach (['id', 'code', 'quote_id', 'title', 'type', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'created_at', 'updated_at'] as $column) {
+    // `start_date` (spec 0096, D-1) joins the declared set; the Responsabili
+    // live in their own `work_order_supervisor` pivot, not in a column.
+    foreach (['id', 'code', 'quote_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'created_at', 'updated_at'] as $column) {
         expect(Schema::hasColumn('work_orders', $column))->toBeTrue("missing column {$column}");
     }
 
     $quote = Quote::factory()->create();
+    $required = ['start_date' => '2026-09-10'];
 
     DB::table('work_orders')->insert([
         'code' => 'COM-9001', 'quote_id' => $quote->id, 'title' => 'Prima commessa', 'type' => 'processing',
-        'is_force_closed' => false, 'created_at' => now(), 'updated_at' => now(),
+        'is_force_closed' => false, 'created_at' => now(), 'updated_at' => now(), ...$required,
     ]);
 
     expect(fn () => DB::table('work_orders')->insert([
         'code' => 'COM-9001', 'quote_id' => $quote->id, 'title' => 'Duplicate code', 'type' => 'processing',
-        'is_force_closed' => false, 'created_at' => now(), 'updated_at' => now(),
+        'is_force_closed' => false, 'created_at' => now(), 'updated_at' => now(), ...$required,
     ]))->toThrow(QueryException::class);
 
     expect(fn () => DB::table('quotes')->where('id', $quote->id)->delete())->toThrow(QueryException::class);

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 
 /** Backend `code` column limit (`string(32)`), mirrors the quote/project pattern (D-1). */
 const CODE_MAX_LENGTH = 32
@@ -16,6 +17,15 @@ function baseFields(t: TFunction) {
       .min(1, t('workOrders.form.titleRequired'))
       .max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
     type: z.enum(['processing', 'project'], { message: t('workOrders.form.typeRequired') }),
+    start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
+    // "Responsabili" (spec 0096): at least one, mirroring the backend's own
+    // `supervisor_ids` required|array|min:1.
+    supervisor_ids: z.array(z.number()).min(1, t('workOrders.form.supervisorsRequired')),
+    // "Partecipanti": ordered, gap-aware slots — `null` is an empty slot, so
+    // the array is NOT filtered before validating its length.
+    participant_slots: z
+      .array(z.number().nullable())
+      .max(MAX_MANAGER_SLOTS, t('workOrders.form.participantsMax')),
     callback_date: z.string().nullable(),
     description: z.string().nullable(),
     internal_notes: z.string().nullable(),

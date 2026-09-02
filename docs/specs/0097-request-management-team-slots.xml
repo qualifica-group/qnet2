@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0097-request-management-team-slots" status="approved" owner="nicola" date="2026-09-02">
+
+  <goal>
+    Nel modulo "Gestione richieste" il form non espone piu' il solo "Operatore (GA2)" ma
+    l'INTERO TEAM dell'Offerta, con la stessa identica grafica del form Offerte
+    (`ManagerSlotsField`, slot ordinati "G.A. n"). Vale su entrambi i canali di scrittura
+    del form: pannello "Lavora" e form di creazione richiesta. Il gating per-campo resta,
+    su una CHIAVE NUOVA.
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nei file reali (non ipotizzati):
+      - Gestione richieste opera su `quotes` (spec 0086). Il team dell'Offerta ESISTE GIA':
+        pivot `quote_user` (`2026_08_31_110000`), chiave wire `manager_slots`, scritto
+        ESCLUSIVAMENTE da `App\Services\Quotes\QuoteManagerWriter::sync()` (spec 0087 D-4),
+        che allo Step 3 proietta `quotes.operator_id` dallo slot `ManagerPositions::OPERATOR`
+        (= 2). Pivot e colonna non possono divergere per costruzione.
+      - Il form richieste espone oggi SOLO lo slot 2, come campo scalare `operator_id`
+        (`request-attribution-section.tsx`, `request-create-attribution-section.tsx`).
+        `RequestOperatorWriter::slotsWithOperator()` legge gli slot correnti, sposta la
+        posizione OPERATOR e lascia INTATTI gli altri: gli altri G.A. esistono gia' sulle
+        Offerte del modulo, sono solo invisibili da qui.
+      - Il form Offerte usa `QuoteTeamSection` -> `ManagerSlotsField` (tutti gli slot,
+        etichette per-categoria via `labels`), gated da `MetaField name="manager_slots"`.
+      - `RequestManagementAuthorization::fields()` NON ha `manager_slots`: ha `operator_id`.
+      - `operator_id` e' ANCHE l'`editableField` della colonna di griglia `operator_ga2`
+        (`RequestColumnCatalog:269`). `editableField` e' insieme chiave-permesso
+        (`TableCellUpdateService:67`, `ResolvesColumnConfig:247`) E chiave di scrittura
+        (`updateCell($row, $fieldKey, $value)`): cancellare la chiave dal catalogo senza
+        toccare la colonna la renderebbe non editabile con un 422 "Column is not editable".
+      - `config/field-change-requests.php` protegge per `request-management` il solo
+        `source_id`: nessun impatto.
+      - `role_field_permissions` e' keyed su (`role_id`,`resource`,`field`): righe della
+        matrice ruoli con `field='operator_id'` diventerebbero orfane silenziose.
+      - Helper FE gia' condivisi: `managerSlotsFromRefs`, `padManagerSlots`,
+        `sameManagerSlots` (`src/lib/utils.ts`). `QuoteResource` espone `managers`
+        (`{id,name,position}`) e NON un `manager_slots`: il FE ricostruisce gli slot.
+      - `RequestCreationService::operatorManagerSlots()` costruisce gia' un array di slot
+        dall'operatore: il canale di creazione e' gia' nella forma giusta.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Scelta utente 2026-09-02: l'Operatore e' ASSORBITO nel team come slot 2. Il picker
+      singolo "Operatore" SPARISCE dai due form; resta il solo `ManagerSlotsField`.
+      `ManagerPositions::OPERATOR` = 2 resta la posizione che proietta `quotes.operator_id`.
+    </decision>
+    <decision id="D-2">
+      Scelta utente 2026-09-02: ambito = pannello "Lavora" E form di creazione.
+    </decision>
+    <decision id="D-3">
+      Scelta utente 2026-09-02: chiave-permesso NUOVA `manager_slots` (`multiselect`),
+      e la VECCHIA `operator_id` VA ELIMINATA dal catalogo (direttiva esplicita
+      "con la nuova chiave, elimina la vecchia"). Conseguenze obbligate:
+        (a) la colonna di griglia `operator_ga2` passa a `'editableField' => 'manager_slots'`
+            — cioe' e' gated dal permesso del TEAM;
+        (b) la sua SCRITTURA resta pero' sul solo slot operatore: `updateCell()` traduce la
+            cella in `['operator_id' => $value]` per `updateWork()`, che continua a
+            riconoscere quella UNICA chiave (invariante spec 0086 mt06, non toccata);
+        (c) una migrazione RINOMINA le righe gia' configurate in `role_field_permissions`
+            (`resource='request-management'`, `field='operator_id'` -> `'manager_slots'`),
+            reversibile: le restrizioni gia' impostate dagli amministratori non si perdono.
+    </decision>
+    <decision id="D-4">
+      NON si perde il legame reciproco Sede &lt;-&gt; Operatore (direttive utente 2026-07-23 /
+      2026-07-31, oggi cablate sul picker singolo). Smontare un campo non e' smontare le sue
+      REGOLE (lezione spec 0095): il legame si sposta sullo SLOT 2 del nuovo editor.
+      `ManagerSlotsField` riceve due prop OPZIONALI, non-breaking per Registries/
+      Opportunita'/Offerte che non le passano:
+        - `paramsFor?: (position: number) =&gt; Record&lt;string, string|number&gt; | undefined`
+        - `onItemChange?: (position: number, item: ForSelectItem | null) =&gt; void`
+      Solo la posizione 2 riceve `{operational_site_id}`; le altre restano non filtrate
+      (il team non e' vincolato alla sede, l'operativo si').
+    </decision>
+    <decision id="D-5">
+      `updateWork()` accetta la NUOVA chiave `manager_slots` accanto a quella esistente
+      `operator_id` (che resta il canale della cella di griglia, del bulk assign e del
+      transfer). Le due non possono viaggiare insieme: `prohibits` in `UpdateRequestRequest`.
+      Il write passa da `QuoteManagerWriter::sync(..., promoteToOpportunity: true)`, come
+      gia' fa `RequestOperatorWriter` (D-6 spec 0087: questo modulo non ha UI per rispondere
+      a un 422 di appartenenza, quindi opta sempre per la promozione).
+    </decision>
+    <decision id="D-6">
+      Il log attivita' e la notifica di assegnazione restano ANCORATI all'operatore: un
+      cambio di team che sposta lo slot 2 emette lo stesso `operator_id` in $changed/$old e
+      la stessa `AssignmentNotifier::notify()` di oggi. In piu' viene loggato `manager_slots`
+      quando cambia. Un cambio che NON tocca lo slot 2 non notifica nessuno.
+    </decision>
+  </decisions>
+
+  <data_contract>
+    READ — `GET/PATCH /api/request-management/{quote}` (`RequestManagementResource`):
+      + `managers: {id, name, position}[]`  (ordinato per pivot position; stessa shape di
+        `QuoteResource.managers`, prodotta dallo stesso criterio)
+      `operator_id`/`operator` RESTANO (li leggono griglia, notifiche e transfer).
+
+    WRITE — `PATCH /api/request-management/{quote}` (`UpdateRequestRequest`):
+      + `manager_slots: (int|null)[]`  `sometimes|array|max:12`, elementi `nullable|integer|exists:users,id`
+        + invarianti cross-elemento del trait condiviso `ValidatesManagerSlots`
+        + `prohibits:operator_id`
+      - `operator_id` RIMOSSO dalle regole del pannello (resta accettato da `updateWork()`
+        come chiave interna del canale griglia/bulk/transfer).
+
+    WRITE — `POST /api/request-management` (`StoreRequestRequest`):
+      - `operator_id` RIMOSSO
+      + `manager_slots: (int|null)[]` stesse regole. Default quando assente o con slot 2
+        vuoto: l'attore corrente sullo slot 2 (identico al default odierno `?? $actor->id`).
+
+    PERMESSI: chiave `manager_slots` (`multiselect`) al posto di `operator_id` in
+    `RequestManagementAuthorization`; ceiling `visibleEditable()`/`visibleReadonly()`
+    su `actorMayWrite()`, senza `required`.
+  </data_contract>
+
+  <acceptance>
+    AC-001 Il pannello "Lavora" mostra il team completo con `ManagerSlotsField` e le
+           etichette G.A. della categoria (le stesse che oggi rinominano "Operatore").
+    AC-002 Il form di creazione mostra lo stesso editor; alla creazione senza scelta
+           esplicita l'attore finisce sullo slot 2 (comportamento odierno invariato).
+    AC-003 Lo slot 2 resta filtrato per Sede operativa e conserva l'auto-fill reciproco
+           Sede &lt;-&gt; slot 2; gli altri slot non sono filtrati.
+    AC-004 Un attore il cui ruolo ha `manager_slots` non editabile riceve 422 su un cambio
+           di team; con `manager_slots` non visibile il blocco non e' renderizzato.
+    AC-005 La cella di griglia "Operatore" resta editabile e continua a scrivere il solo
+           slot 2; il suo permesso ora e' `manager_slots`.
+    AC-006 Le righe `role_field_permissions` gia' configurate su `operator_id` sopravvivono
+           alla migrazione come `manager_slots`, e il `down()` le riporta indietro.
+    AC-007 Spostare lo slot 2 via `manager_slots` notifica il nuovo operatore esattamente
+           come fa oggi il campo singolo; cambiare solo gli altri slot non notifica.
+    AC-008 `manager_slots` e `operator_id` insieme nello stesso PATCH -> 422.
+    AC-009 Nessuna regressione su bulk assign (`assign-operators`) e transfer: continuano a
+           passare da `RequestOperatorWriter::apply()`.
+  </acceptance>
+
+  <revision id="rev-2" date="2026-09-02" reason="direttiva utente in corso d'opera">
+    L'utente, visto il risultato, chiede due cose in piu'.
+
+    <decision id="D-7">
+      Il team non e' un blocco dentro "Attribuzione": e' una SEZIONE a se', identica per
+      grafica a quella del form Offerte (`QuoteTeamSection`: `FormSection` icona Users,
+      titolo + descrizione). Vale per il pannello "Lavora" e per il form di creazione
+      richiesta. `RequestAttributionSection` torna a contenere Fonte / Segnalatore / Sede.
+      ATTENZIONE: il legame Sede &lt;-&gt; slot 2 (D-4) attraversa ora due sezioni diverse.
+      La regola non cambia e non va duplicata: resta in `request-team-slots.ts`, e le due
+      sezioni continuano a scrivere sullo STESSO form RHF, quindi il legame va cablato dove
+      vive il form, non dentro una delle due sezioni.
+    </decision>
+
+    <decision id="D-8">
+      Nel form OFFERTE il campo "Supervisore" si sposta dalla sezione identita'
+      (`quote-form-body.tsx`, oggi accanto a commerciale/segnalatore) DENTRO
+      `QuoteTeamSection`. E' un puro spostamento: nessun cambio di contratto, di permesso o
+      di scrittura. L'idratazione passa oggi dall'helper locale `roleRef()` di
+      `quote-form-body.tsx` (il ref EREDITATO dall'Opportunita' vince su quello caricato):
+      quella regola va portata con il campo, non persa per strada.
+    </decision>
+
+    <decision id="D-9">
+      Il campo "Supervisore" TORNA anche in Gestione richieste, dentro la sezione Team.
+      Decisione esplicita dell'utente 2026-09-02, presa dopo che gli e' stato detto che
+      RIBALTA spec 0087 D-13/D-14/INV-5 ("il modulo non legge, non scrive, non deduce
+      `quotes.supervisor_id`"). Da oggi quel modulo lo scrive di nuovo.
+      NON e' un ritorno al vecchio `RequestSupervisorWriter`: quella classe accoppiava
+      `supervisor_id` alla proprieta' della richiesta e al pivot GA2. Qui `supervisor_id`
+      e' solo cio' che e' rimasto dopo spec 0087 — il ruolo percettore di provvigione
+      dell'Offerta (`CommissionRecipientRole::Supervisor`), uno scalare `fillable` su
+      `quotes` — e viaggia come `reporter_id`/`operational_site_id`, cioe' per
+      `RequestAttributionWriter::applyQuoteAttribution()`. La proprieta' operativa della
+      richiesta resta `operator_id`/slot 2 e non si tocca.
+
+      Contratto (aggiunta al data_contract):
+        READ  `RequestManagementResource`: + `supervisor_id`, `supervisor: {id,name}|null`
+        WRITE PATCH e POST: + `supervisor_id` `sometimes|nullable|integer|exists:users,id`
+        PERMESSI: + `FieldDefinition('supervisor_id','select')` in
+                  `RequestManagementAuthorization`, ceiling su `actorMayWrite()`,
+                  non `required`.
+    </decision>
+
+    <acceptance_addendum>
+      AC-010 Sia il pannello che il form di creazione mostrano una sezione Team distinta,
+             con dentro gli slot G.A. e il Supervisore.
+      AC-011 Il legame Sede &lt;-&gt; slot 2 continua a funzionare pur con Sede e slot in due
+             sezioni diverse (auto-fill e svuotamento reciproci invariati).
+      AC-012 Nel form Offerte il Supervisore e' nella sezione Team e conserva l'idratazione
+             ereditata dall'Opportunita' (`roleRef`).
+      AC-013 Gestione richieste scrive `supervisor_id` da entrambi i canali del form, con
+             gating per-campo proprio; un ruolo che non lo puo' editare riceve 422.
+      AC-014 `operator_id`/slot 2 e `supervisor_id` restano INDIPENDENTI: scrivere l'uno
+             non tocca l'altro, e la notifica di assegnazione resta appesa al solo slot 2.
+    </acceptance_addendum>
+  </revision>
+</spec>
+

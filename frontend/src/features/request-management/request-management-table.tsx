@@ -27,7 +27,8 @@ import { assignRequestOperators, deleteRequest, transferRequests } from '@/featu
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
-import { REQUEST_MANAGEMENT_DOMAIN, type TransferRequestsPayload } from '@/features/request-management/types'
+import type { TransferRequestsPayload } from '@/features/request-management/request-write-types'
+import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 
 /**
  * Domain icon overrides for the `documents`/`notes`/`transfer-contact` row

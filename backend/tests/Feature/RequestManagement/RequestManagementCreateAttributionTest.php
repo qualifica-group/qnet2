@@ -161,7 +161,10 @@ it('rejects a create without a source_id -> 422, no row created', function () {
 
 // ---------------------------------------------------------------------------
 // GA2 "Operatore" at creation (user directive 2026-07-29): a supervisory act,
-// gated by `request-management.assignOperator` ON TOP of `create`. Spec 0087,
+// gated by `request-management.assignOperator` ON TOP of `create`. Spec 0097,
+// D-1: submitted as one SLOT of `manager_slots` — filling ANY slot is the
+// supervisory act now, an all-empty payload asks for nobody and is open to
+// every creator. Spec 0087,
 // D-9/D-13: the resolved actor lands SOLELY on `quotes.operator_id`/the
 // Offerta's own GA2 pivot slot — `quotes.supervisor_id` is untouched (D-14,
 // INV-5), and the operator is only PROMOTED onto the Opportunity's own first
@@ -169,7 +172,7 @@ it('rejects a create without a source_id -> 422, no row created', function () {
 // (D-6).
 // ---------------------------------------------------------------------------
 
-it('creates with operator_id -> 201, the user lands on quotes.operator_id AND the Offerta\'s GA2 pivot slot, promoted onto the Opportunity\'s first free slot (D-9/D-13)', function () {
+it('creates with manager_slots -> 201, the OPERATOR slot lands on quotes.operator_id AND the Offerta\'s GA2 pivot slot, promoted onto the Opportunity\'s first free slot (D-9/D-13; spec 0097, D-1)', function () {
     $actor = requestManagementCreatorWith(['create', 'assignOperator']);
     $registry = Registry::factory()->create();
     $operator = User::factory()->create();
@@ -180,7 +183,7 @@ it('creates with operator_id -> 201, the user lands on quotes.operator_id AND th
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
         'source_id' => aSourceId(),
-        'operator_id' => $operator->id,
+        'manager_slots' => [null, $operator->id],
     ])->assertCreated();
 
     $quote = Quote::findOrFail($response->json('data.id'));
@@ -206,7 +209,7 @@ it('creates with operator_id -> 201, the user lands on quotes.operator_id AND th
     expect($opportunity->operatorManager())->toBeNull();
 });
 
-it('rejects operator_id from an actor without request-management.assignOperator -> 403, no row created', function () {
+it('rejects a filled manager_slots from an actor without request-management.assignOperator -> 403, no row created', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     $operator = User::factory()->create();
@@ -216,17 +219,17 @@ it('rejects operator_id from an actor without request-management.assignOperator 
         'registry_id' => $registry->id,
         'product_lines' => oneProductLine(),
         'source_id' => aSourceId(),
-        'operator_id' => $operator->id,
+        'manager_slots' => [null, $operator->id],
     ])->assertForbidden();
 
     expect(Opportunity::count())->toBe(0);
     expect(Quote::count())->toBe(0);
 });
 
-// An ABSENT operator_id is not "no operator": it defaults to the creating
-// actor (user directive 2026-08-04) — see
+// An ABSENT team is not "no operator": the OPERATOR slot defaults to the
+// creating actor (user directive 2026-08-04; spec 0097, AC-002) — see
 // RequestManagementCreateActorDefaultsTest for the whole default block.
-it('falls back to the creating actor as GA2 Operatore when operator_id is absent', function () {
+it('falls back to the creating actor as GA2 Operatore when manager_slots is absent', function () {
     $actor = requestManagementCreatorWith(['create']);
     $registry = Registry::factory()->create();
     decoyOpportunity();

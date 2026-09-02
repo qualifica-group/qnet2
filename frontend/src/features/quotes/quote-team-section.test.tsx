@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
+import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { QuoteTeamSection } from '@/features/quotes/quote-team-section'
 import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -15,6 +16,9 @@ import type { QuoteDetail } from '@/features/quotes/types'
  * live `useQuoteManagerLabels` resolution (own rules asserted in
  * `use-quote-manager-labels.test.tsx`), hydrates the trigger labels from the
  * loaded quote's `managers`, and shows the D-7 sync banner.
+ *
+ * Spec 0097 rev-2 D-8/AC-012: the Supervisore is a field of THIS section now,
+ * hydrated from the ref the caller already resolved (`roleRef`).
  */
 
 const fetchCategoryManagerLabelsMock = vi.fn()
@@ -38,6 +42,11 @@ vi.mock('@/features/for-select/api', async () => {
     fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params),
   }
 })
+
+/** The Supervisore picker's quick-create "+" asks for an ability; this section is not what gates it. */
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 vi.mock('@/components/form/manager-slots-field', () => ({
   ManagerSlotsField: ({
@@ -124,12 +133,23 @@ function quoteDetail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
   }
 }
 
+/** The picker strings `QuoteFormBody` builds once and hands to every section. */
+const SELECT_LABELS = {
+  placeholder: 'Select',
+  emptyLabel: 'No results',
+  errorLabel: 'Could not load the options.',
+  clearLabel: 'Clear',
+  retryLabel: 'Retry',
+}
+
 function TeamSectionHarness({
   values,
   original = null,
+  supervisor = null,
 }: {
   values: QuoteFormValues
   original?: QuoteDetail | null
+  supervisor?: RelationFieldRef | null
 }) {
   const form = useForm<QuoteFormValues>({ defaultValues: values })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -137,7 +157,12 @@ function TeamSectionHarness({
   return (
     <QueryClientProvider client={queryClient}>
       <Form {...form}>
-        <QuoteTeamSection control={form.control} original={original} />
+        <QuoteTeamSection
+          control={form.control}
+          original={original}
+          supervisor={supervisor}
+          labels={SELECT_LABELS}
+        />
       </Form>
     </QueryClientProvider>
   )
@@ -154,6 +179,17 @@ beforeEach(() => {
 })
 
 describe('QuoteTeamSection', () => {
+  // AC-012: the field moved here from the identity section, and it shows the
+  // ref the caller resolved (inherited from the Opportunity, or the loaded
+  // quote's own) rather than resolving one itself.
+  it('mounts the Supervisore picker, hydrated from the resolved ref', () => {
+    render(
+      <TeamSectionHarness values={baseValues({ supervisor_id: 61 })} supervisor={{ id: 61, name: 'Ivo Bianchi' }} />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Supervisor' })).toHaveTextContent('Ivo Bianchi')
+  })
+
   it('forwards no labels and no selection with nothing picked yet', () => {
     render(<TeamSectionHarness values={baseValues()} />)
 

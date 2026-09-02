@@ -20,7 +20,6 @@ import {
 } from '@/features/opportunities/for-select-api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteNotesTab } from '@/features/quotes/quote-notes-tab'
@@ -64,7 +63,7 @@ const SEEDED_LINE_QUANTITY = 1
 
 /**
  * The quote create/edit form UI (spec 0065 AC-070): testata fields (code,
- * title, opportunity, quote status, commercial/reporter/supervisor) OUTSIDE
+ * title, opportunity, quote status, commercial/reporter) OUTSIDE
  * the tabs, then a compact tab strip (Offerta/Costi/Note e pagamenti) and, always
  * visible below it regardless of the active tab, the live economic summary
  * (`QuoteLiveSummary`, AC-071). Every field is wrapped in `MetaField`
@@ -294,22 +293,17 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 initialRewards={original?.rewards}
                 labels={relationLabels}
               />
-
-              <RelationSelectField
-                control={form.control}
-                name="supervisor_id"
-                metaKey="supervisor_id"
-                label={t('quotes.form.supervisor')}
-                resource={USERS_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('quotes.form.supervisorSearch')}
-                selected={roleRef('supervisor', original?.supervisor ?? null)}
-                showAvatar
-                {...relationLabels}
-              />
             </div>
           </FormSection>
 
-          <QuoteTeamSection control={form.control} original={original} />
+          {/* Spec 0097 rev-2 D-8: the Supervisore lives in the team section
+              now, hydrated from the SAME `roleRef` rule as the roles above. */}
+          <QuoteTeamSection
+            control={form.control}
+            original={original}
+            supervisor={roleRef('supervisor', original?.supervisor ?? null)}
+            labels={relationLabels}
+          />
 
           <QuoteWorkflowStatusField
             control={form.control}

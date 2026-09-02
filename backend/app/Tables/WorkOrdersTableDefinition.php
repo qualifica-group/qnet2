@@ -9,11 +9,13 @@ use App\Enums\WorkOrderType;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
+use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -22,10 +24,17 @@ use Illuminate\Support\Facades\Gate;
  * `code`/`title`/`type`/`callback_date`/`is_force_closed`/`created_at`/
  * `updated_at` are real `work_orders` columns, handled entirely by the
  * generic engine. `contract_number`/`quote` are DERIVED through the `quote`
- * relation (D-2: `quotes.code`/`quotes.title`, never copied) and `status` is
- * the ONE computed column (D-3) — both delegated to WorkOrderDerivedColumns
+ * relation (D-2: `quotes.code`/`quotes.title`, never copied), `supervisors`
+ * is a to-many derived through the `work_order_supervisor` pivot (spec 0096,
+ * D-7) and `status` is the ONE computed column (D-3) — both delegated to WorkOrderDerivedColumns
  * (file-size split, engineering.md §6), so the `status` badge (mapRow) and
  * its `set` filter can never disagree (AC-034).
+ *
+ * baseQuery() is scoped by WorkOrderVisibilityScope (user directive
+ * 2026-09-02): without `work-orders.viewAll` the actor lists only the
+ * commesse where they are Responsabile or Partecipante. Rows, exports and
+ * distinct filter values all derive from this one query, so they are scoped
+ * by construction.
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
@@ -57,7 +66,17 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        return WorkOrder::query()->with(['quote']);
+        // `supervisors.avatar` is eager-loaded so the Responsabili cell can
+        // render real avatars and not just initials (spec 0096, AC-052),
+        // mirroring QuotesTableDefinition's own managers eager load.
+        // `participants` carries no column of its own: it is loaded so
+        // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
+        // per-row Gate calls in memory instead of querying (user
+        // directive 2026-09-02).
+        return WorkOrderVisibilityScope::scopeToActor(
+            WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants']),
+            Auth::user(),
+        );
     }
 
     /**
@@ -150,11 +169,29 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'contract_number' => $row->quote?->code,
             'quote' => $row->quote?->title,
             'type' => $row->type?->value,
+            'start_date' => $row->start_date,
+            'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
             'status' => $this->statusResolver->resolve($row)->value,
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
+        ];
+    }
+
+    /**
+     * A person summary carrying the inline avatar (data URI) so the
+     * Responsabili column renders real avatars, not just initials — the same
+     * shape and helper QuotesTableDefinition already emits (spec 0096).
+     *
+     * @return array{id: int, name: string, avatar_url: string|null}
+     */
+    private function userSummary(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $user->avatarDataUri(),
         ];
     }
 
@@ -170,10 +207,6 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
-        }
-
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {

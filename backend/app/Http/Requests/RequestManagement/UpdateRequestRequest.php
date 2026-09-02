@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Requests\RequestManagement;
 
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Quote;
+use App\Models\User;
+use App\Support\ManagerPositions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -65,9 +68,20 @@ use Illuminate\Validation\Rule;
  */
 class UpdateRequestRequest extends FormRequest
 {
-    use EnforcesFieldPermissions, ValidatesProductLines, ValidatesQuoteLines, ValidatesQuoteWorkflowStatus, ValidatesRequestClientProfile, ValidatesRewards {
+    use EnforcesFieldPermissions, ValidatesManagerSlots, ValidatesProductLines, ValidatesQuoteLines, ValidatesQuoteWorkflowStatus, ValidatesRequestClientProfile, ValidatesRewards {
         EnforcesFieldPermissions::currentFieldValue as private traitCurrentFieldValue;
     }
+
+    /** The team field's wire key, gated by the field-permission matrix (spec 0097, D-3). */
+    private const string MANAGER_SLOTS_FIELD = 'manager_slots';
+
+    /**
+     * The "the persisted team is NOT what was submitted" marker
+     * currentManagerSlots() reports through: a plain string, so no submitted
+     * `manager_slots` payload (an array, possibly empty) can compare equal to
+     * it once EnforcesFieldPermissions normalizes both sides.
+     */
+    private const string MANAGER_SLOTS_CHANGED = 'manager_slots:changed';
 
     public function authorize(): bool
     {
@@ -88,7 +102,13 @@ class UpdateRequestRequest extends FormRequest
             // 2026-07-29), so it is sparse but never clearable to `null`.
             'source_id' => ['sometimes', 'required', 'integer', 'exists:sources,id'],
             'reporter_id' => ['sometimes', 'nullable', 'integer', 'exists:referents,id'],
-            'operator_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            // "Supervisore" (spec 0097, D-9): the Offerta's commission
+            // recipient, back on this channel by user directive 2026-09-02
+            // with the SAME rule UpdateQuoteRequest declares for it — one
+            // field, one shape, two forms. It is an internal User (unlike
+            // the Segnalatore above, a Referent) and it is an independent
+            // scalar: it drives no pivot and no assignment (AC-014).
+            'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             // Spec 0056: the Sede operativa, same attribution block, same
             // sparse rule — absent means untouched, `null` clears it.
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
@@ -118,6 +138,33 @@ class UpdateRequestRequest extends FormRequest
             // 2026-07-31): `required: false` = sparse, but `min:1` still bars
             // a clear-to-empty, exactly like the opportunities PATCH.
             ...$this->productLinesRules(required: false),
+            // Spec 0097, D-1/D-3: the panel's attribution block writes the
+            // Offerta's WHOLE team, with the same ordered, gap-aware shape
+            // and the same shared trait the quotes endpoints use — the lone
+            // `operator_id` picker this endpoint used to take is GONE from
+            // the rules (it survives ONLY as `updateWork()`'s internal key
+            // for the grid cell / bulk assign / transfer channels, which
+            // never come through this FormRequest).
+            ...$this->managerSlotsRules(),
+            // …and that removal is declared, not silent (lead decision
+            // 2026-09-02). The two keys address the SAME pivot from two
+            // vocabularies — the whole team vs its OPERATOR slot alone — so a
+            // payload carrying both would have two writers racing on one
+            // collection, and one carrying `operator_id` ALONE would be
+            // validated, stripped by the controller and answered 200 with
+            // nothing written. That silent 200 is exactly the failure spec
+            // 0086 mt06 already paid for in production, so the key is
+            // REJECTED here rather than ignored: `prohibited` covers both
+            // shapes at once (AC-008), which is why `manager_slots` carries
+            // no `prohibits:operator_id` of its own — one rule, one truth.
+            //
+            // KNOWN LIMIT: Laravel's `prohibited` is `! required`, so it
+            // passes on an EMPTY value — a stale client sending
+            // `operator_id: null` still gets a 200 no-op. Left as is on
+            // purpose: null asks for no write, so nothing is lost, and a
+            // custom rule to catch it would cost more comprehension than the
+            // case is worth.
+            'operator_id' => ['prohibited'],
         ];
     }
 
@@ -137,18 +184,62 @@ class UpdateRequestRequest extends FormRequest
      * this endpoint's catalogued fields no longer live on the route-bound
      * Quote (spec 0086, D-2): `product_lines`/`next_callback_at` stayed
      * Opportunity-level (read through the Quote's own `opportunity`
-     * relation). `operator_id` needs no override any more (spec 0087, D-9):
-     * it is now a real column on the Quote itself, reached by the generic
-     * reader on its own. `source_id` likewise needs no override: Quote's own
-     * virtual `sourceId()` accessor (D-10) already reads through correctly.
+     * relation). `source_id` needs no override: Quote's own virtual
+     * `sourceId()` accessor (D-10) already reads through correctly.
+     *
+     * `manager_slots` (spec 0097) needs one for a different reason: it is a
+     * WIRE shape, not an attribute — the persisted side is the `quote_user`
+     * pivot, which the generic reader cannot reach (it looks for a
+     * `managerSlots` relation and finds none, so it reads null and every
+     * submission counts as a change, 422-ing an untouched block).
+     * UpdateQuoteRequest gates the identical key with no override and thus
+     * carries that coarser behaviour; it is out of this spec's scope, so the
+     * divergence is deliberate and reported, not silently mirrored.
      */
     protected function currentFieldValue(?Model $model, string $field): mixed
     {
+        if ($model instanceof Quote && $field === self::MANAGER_SLOTS_FIELD) {
+            return $this->currentManagerSlots($model);
+        }
+
         if ($model instanceof Quote && in_array($field, ['product_lines', 'next_callback_at'], true)) {
             return $this->traitCurrentFieldValue($model->opportunity, $field);
         }
 
         return $this->traitCurrentFieldValue($model, $field);
+    }
+
+    /**
+     * Answers the ONE question EnforcesFieldPermissions asks — "does the
+     * submitted value differ from the persisted one?" — for `manager_slots`,
+     * and answers it EXACTLY: the trait's own comparison normalizes lists
+     * order-insensitively, which would read a pure slot permutation (a move
+     * of the OPERATOR slot, i.e. a change of operator!) as a no-op and let it
+     * through a locked field.
+     *
+     * So the two sides are compared here in the pivot vocabulary the write
+     * path itself uses (ManagerPositions::syncMap(), userId => position):
+     * equal means the write would be a literal no-op, and the SUBMITTED
+     * value is handed back so the trait compares it with itself; different
+     * means a genuine change, reported through a sentinel no array payload
+     * can ever equal — including the empty array, which is a real change
+     * (it clears the whole team) and must never compare equal to "nothing".
+     */
+    private function currentManagerSlots(Quote $quote): mixed
+    {
+        $submitted = $this->input(self::MANAGER_SLOTS_FIELD);
+
+        $incoming = ManagerPositions::syncMap(is_array($submitted) ? array_values($submitted) : []);
+        $persisted = $quote->managers()->get()
+            ->mapWithKeys(static fn (User $manager): array => [
+                (int) $manager->id => ['position' => (int) $manager->pivot->position],
+            ])
+            ->all();
+
+        ksort($incoming);
+        ksort($persisted);
+
+        return $incoming === $persisted ? $submitted : self::MANAGER_SLOTS_CHANGED;
     }
 
     public function withValidator(Validator $validator): void
@@ -158,6 +249,7 @@ class UpdateRequestRequest extends FormRequest
             $quote = $this->route('quote');
 
             $this->validateProductLines($validator);
+            $this->validateManagerSlots($validator);
             $this->validateRewards($validator, $quote);
             // Spec 0077 / user directive 2026-08-07: an opportunity managed on
             // a `single` product category carries one offer row. Same shared

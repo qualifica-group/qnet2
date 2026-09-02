@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0098 — Attributi Flessibili sulle Commesse.
+  Estende: 0061 (nuovo contesto `work_order` sul pivot attribute_category),
+           0062 (layout configurabile anche per il contesto `work_order`),
+           0084 (stessa meccanica gia' generalizzata per l'Offerta),
+           0093/0095/0096 (modulo Commesse: form, dialog "Programma", righe offerta).
+-->
+<spec id="0098-work-order-attribute-context" status="approved" owner="nicola" date="2026-09-02">
+
+  <goal>
+    Portare gli Attributi Flessibili sul modulo Commesse RIUSANDO l'apparato gia' generalizzato
+    per l'Offerta: nuovo contesto `work_order`, layout configurabile per (categoria, work_order,
+    modalita'), sezione "Informazioni aggiuntive" nel form/dettaglio Commessa e nel dialog
+    "Programma" del Contratto. Catena finale:
+    Categoria Prodotto -> Attributi -> Layout Commessa -> Valori Attributi Commessa.
+  </goal>
+
+  <context>
+    Stato VERIFICATO del repo (2026-09-02), non ipotizzato.
+
+    L'apparato e' GIA' agnostico dal modulo: aggiungere un contesto e' additivo, non un clone.
+    - `App\Enums\AttributeContext` = { Product='product', Quote='quote' } + `inheritanceColumn()`.
+    - Pivot `attribute_category` (attribute_id, category_id, is_required, sort_order, context),
+      unique (attribute_id, category_id, context).
+    - Barriere di ereditarieta' per contesto: `product_categories.inherits_product_attributes`,
+      `inherits_quote_attributes` (migrazione 2026_08_06_100000).
+    - Risoluzione set: `App\RequestManagement\AttributeSetResolver::resolve(array $categoryIds,
+      AttributeContext $context): Collection&lt;ApplicableAttribute&gt;` — GIA' parametrizzata.
+    - Risoluzione layout multi-categoria: `App\RequestManagement\AttributeLayoutMerger::resolve(
+      array $categoryIds, AttributeContext $context, FormMode $formMode): ?array` — GIA'
+      parametrizzata.
+    - Value pipeline agnostica: `AttributeValueValidator` + `AttributeValueNormalizer`. Semantica
+      sparse-PATCH CONFERMATA leggendo il codice: un code applicabile ASSENTE dal payload non
+      viene mai controllato, quindi `is_required` vincola solo i code SOTTOMESSI.
+    - Layout: tabella `attribute_layouts` unique (product_category_id, context, form_mode),
+      `Services\ProductCategories\AttributeLayoutService` + `AttributeLayoutValidator`; il
+      `context` e' validato con `Rule::enum(AttributeContext::class)` in
+      `AttributeLayoutQueryRequest` / `UpdateAttributeLayoutRequest` / `EffectiveAttributesRequest`
+      / `Store|UpdateProductCategoryRequest` -> il nuovo case passa senza toccare quelle regole.
+    - Modello di riferimento da imitare: `App\Quotes\QuoteAttributeResolver` (sottile: sa solo
+      trasformare un Quote / una lista di product id in category id) +
+      `App\Services\Quotes\QuoteAttributeValueWriter` (merge sparso, forceFill, audit) +
+      `POST /api/quotes/form-context` (`QuoteFormContextRequest`).
+    - FE gia' agnostico: `features/attributes/attribute-layout-renderer.tsx`,
+      `features/request-management/applicable-attribute-adapter.ts` (`toEffectiveAttribute(a, context)`),
+      `features/quotes/quote-dynamic-fields-section.tsx` e `quote-detail-attributes.tsx` come modelli.
+    - Elenco contesti FE in UN SOLO posto: `ATTRIBUTE_LAYOUT_CONTEXTS` in
+      `features/product-categories/product-category-attribute-layout-shared.ts`; tipo
+      `AttributeContext` in `features/product-categories/types.ts`; enum zod in
+      `features/product-categories/product-category-schema.ts`.
+    - "Gestione Attributi" per-modulo = le sezioni di
+      `features/product-categories/attribute-assignment-editor.tsx` (oggi due:
+      `productAttributes`, `quoteAttributes`), non il form dell'entita' Attributo.
+
+    Aggancio Commessa -> Categoria Prodotto (VERIFICATO):
+    `WorkOrder::quoteLines()` BelongsToMany QuoteLine via pivot `quote_line_work_order`;
+    `QuoteLine` porta SOLO `product_id`; `Product::category` da' la categoria. Quindi le categorie
+    di una Commessa sono i `product.category_id` DISTINCT delle sue righe. Nessuna colonna
+    categoria da aggiungere.
+  </context>
+
+  <decisions source="user 2026-09-02 AskUserQuestion">
+    <d id="D-1">SORGENTE CATEGORIE = le righe DELLA COMMESSA (`workOrder.quoteLines`), non tutte
+      le `offerLines` del preventivo padre. Ogni Commessa vede solo gli attributi dei prodotti che
+      copre davvero; speculare a QuoteAttributeResolver che usa le offerLines del preventivo.</d>
+    <d id="D-2">CONTESTO NUOVO E INDIPENDENTE `work_order`, con barriera di ereditarieta' propria
+      `product_categories.inherits_work_order_attributes`. NON si riusa il contesto `quote`:
+      coerente con 0061/0084 (ogni contesto e' una lista separata) e permette attributi
+      solo-Commessa. Conseguenza accettata: l'admin deve assegnare gli attributi anche a questo
+      contesto, nulla appare per magia.</d>
+    <d id="D-3">POSIZIONE = sezione nel form Commessa SOTTO il blocco righe offerta (che determina
+      le categorie) e SOPRA `WorkOrderTeamSection`; piu' il dettaglio read-only. Editabile anche
+      in creazione dal dialog "Programma" del Contratto.</d>
+  </decisions>
+
+  <decisions source="technical">
+    <d id="D-4">NESSUN CLONE della logica di risoluzione. `AttributeSetResolver` e
+      `AttributeLayoutMerger` restano gli unici autori della risoluzione; il nuovo
+      `WorkOrderAttributeResolver` sa solo trasformare una Commessa (o una lista di
+      `quote_line_ids` non ancora salvata) in una lista di category id. Vietato duplicare
+      AttributeValueValidator/Normalizer.</d>
+    <d id="D-5">`work_orders.attribute_values` JSON nullable, FUORI da `#[Fillable]`, scritta
+      esclusivamente da `WorkOrderAttributeValueWriter` — stessa regola di
+      `quotes.attribute_values`.</d>
+    <d id="D-6">Ordine di scrittura in `WorkOrderService::create()/update()`: gli attributi si
+      validano DOPO `WorkOrderLineWriter::writeSubmitted()`, dentro la stessa transazione, cosi'
+      il set validato e' esattamente quello che il form ha renderizzato (identico a QuoteService).</d>
+    <d id="D-7">`POST /api/work-orders/form-context` con `quote_line_ids[]` serve SIA il form
+      Commessa SIA il dialog "Programma": e' l'unica sorgente della risoluzione live su righe non
+      ancora salvate. Lenient sull'assenza (nessuna riga -> set vuoto), mai 422.</d>
+    <d id="D-8">Le regole `Rule::enum(AttributeContext::class)` gia' in essere NON si toccano: il
+      nuovo case entra automaticamente in effective-attributes, layout GET/PUT e sync categoria.</d>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Enum: nuovo case `AttributeContext::WorkOrder = 'work_order'` + `inheritanceColumn()`.</item>
+      <item>Migrazione additiva: `product_categories.inherits_work_order_attributes` (bool, default
+        true, after `inherits_quote_attributes`) + `work_orders.attribute_values` (json nullable).</item>
+      <item>`WorkOrderAttributeResolver` + `WorkOrderAttributeValueWriter` (sottili).</item>
+      <item>`work-orders` CRUD: `attribute_values` in Store/Update request, DTO, Service, Resource.</item>
+      <item>`POST /api/work-orders/form-context`.</item>
+      <item>Categoria prodotto: terza sezione "Attributi Commessa" + toggle ereditarieta' +
+        `inherited_attributes` del nuovo contesto.</item>
+      <item>Configuratore layout: terzo contesto nel selettore (BE gia' pronto).</item>
+      <item>FE Commessa: sezione dinamica nel form, nel dettaglio e nel dialog "Programma".</item>
+      <item>i18n it/en. Test Pest + Vitest, ESEGUITI.</item>
+    </in>
+    <out>
+      <item>Colonne `attr.*` nelle griglie Commesse (non richiesto).</item>
+      <item>Migrazione dati / travaso di valori da altri contesti.</item>
+      <item>Qualsiasi modifica a AttributeSetResolver / AttributeLayoutMerger /
+        AttributeValueValidator / AttributeValueNormalizer oltre al passaggio del nuovo contesto.</item>
+      <item>Ereditarieta' del LAYOUT lungo la gerarchia (invariata: il layout non eredita).</item>
+    </out>
+  </scope>
+
+  <api-contract frozen="true">
+    <endpoint method="POST" uri="/api/work-orders/form-context" authz="work-orders.create OR work-orders.update">
+      request: { "quote_line_ids": [int, ...] }   <!-- sometimes|array; *.integer|exists:quote_lines,id -->
+      response: { "success": true, "data": {
+        "applicable_attributes": [ ApplicableAttribute... ],
+        "attribute_layout": { "sections": [...] } | null
+      } }
+    </endpoint>
+    <note>
+      `WorkOrderResource` guadagna, additivo e senza rinomine:
+        "attribute_values": object|null,
+        "applicable_attributes": [ ApplicableAttribute... ],
+        "attribute_layout": { "sections": [...] } | null   (FormMode::View)
+      `Store|UpdateWorkOrderRequest` e `GenerateContractWorkOrderRequest` guadagnano
+        'attribute_values' =&gt; ['sometimes', 'array']
+      Errori valore: 422 keyed `attribute_values.&lt;code&gt;` (invariato).
+      `ProductCategoryResource` guadagna `inherits_work_order_attributes` (bool).
+    </note>
+  </api-contract>
+
+  <frozen-names>
+    App\Enums\AttributeContext::WorkOrder = 'work_order'
+    product_categories.inherits_work_order_attributes
+    work_orders.attribute_values
+    App\WorkOrders\WorkOrderAttributeResolver  (resolve / layout / formContext)
+    App\Services\WorkOrders\WorkOrderAttributeValueWriter::apply()
+    App\Http\Requests\WorkOrders\WorkOrderFormContextRequest::quoteLineIds()
+    FE: AttributeContext = 'product' | 'quote' | 'work_order'
+    FE: ATTRIBUTE_LAYOUT_CONTEXTS = ['product', 'quote', 'work_order']
+    FE: features/work-orders/work-order-dynamic-fields-section.tsx
+    FE: features/work-orders/work-order-detail-attributes.tsx
+    i18n: attributeLayout.section.context.work_order
+    i18n: productCategories.form.sections.workOrderAttributes.{title,description}
+    i18n: workOrders.form.sections.dynamicFields.{title,empty}
+  </frozen-names>
+
+
+  <grounding-addendum date="2026-09-02" source="exploration pass, verificato nel repo">
+    Fatti accertati DOPO la stesura, che cambiano l'implementazione. Non ipotesi.
+
+    <fact id="G-1" severity="blocking">
+      `backend/tests/Feature/ProductCategories/ProductCategoryAttributeContextTest.php:67` FISSA la
+      lista dei case: `expect(array_column(AttributeContext::cases(), 'value'))->toBe(['product','quote'])`.
+      Il nuovo case lo rompe. Va aggiornato a `['product','quote','work_order']`: e' un requisito
+      CAMBIATO (D-2), non un test piegato per farlo passare — e va dichiarato come tale.
+    </fact>
+    <fact id="G-2" severity="blocking">
+      `EnforcesFieldPermissions` RIFIUTA ogni campo non dichiarato. `App\Authorization\WorkOrdersAuthorization::fields()`
+      (:37-54) non ha `attribute_values`: senza dichiararlo, `POST /api/work-orders` con attributi da' 422.
+      Precedente da copiare: `QuotesAuthorization.php:78` (`new FieldDefinition('attribute_values','custom')`)
+      e `:123` (`$mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly()`).
+      `GenerateContractWorkOrderRequest` NON usa il trait: gli basta la regola.
+    </fact>
+    <fact id="G-3">
+      `WorkOrderService::DETAIL_RELATIONS` si ferma a `quoteLines.product`, SENZA `.category`:
+      va esteso a `quoteLines.product.category` o il resolver N+1a per riga (AC-016).
+    </fact>
+    <fact id="G-4">
+      Nessuna migrazione serve su `attribute_category.context` / `attribute_layouts.context`: sono
+      VARCHAR semplici, senza enum/check a DB. `inheritanceColumn()` e' l'UNICO `match` esaustivo
+      sull'enum in tutto il backend; ogni altro consumatore e' parametrizzato o valida con
+      `Rule::enum`. Nessuna allow-list di stringhe da estendere.
+    </fact>
+    <fact id="G-5">
+      Punti che hardcodano la coppia due-contesti: `ProductCategoryService::inheritedAttributes()`
+      :165-166 (merge Product+Quote) e `Migrations\Sources\ProductCategoryAttributesSource` :247/:255
+      (stringhe di warning "expected product or quote").
+    </fact>
+    <fact id="G-6">
+      `WorkOrderLineWriter` impone REVENUE-only e "una riga, una sola Commessa" (UNIQUE su
+      `quote_line_id`). La prova di D-1 (AC-008) va costruita con due Commesse sullo stesso
+      preventivo e insiemi di righe DISGIUNTI.
+    </fact>
+    <fact id="G-7">
+      FE — le chiavi `productCategories.*` NON stanno in un locale product-categories: vivono in
+      `i18n/locales/{it,en}-products.ts` (:238-246 le sezioni attributi, :141 `attributesHelp`).
+      Il namespace `attributeLayout` e' registrato per SIDE EFFECT in
+      `features/attributes/layout-configurator/i18n.ts`, non da `i18n/index.ts`.
+      `i18n/locales/work-orders-i18n-parity.test.ts` fallisce se una chiave esiste in un solo locale.
+    </fact>
+    <fact id="G-8">
+      FE — il DETTAGLIO Offerta NON usa `AttributeLayoutRenderer`: `quote-detail-attributes.tsx` e'
+      una lista piatta `RecordSection` + `RecordField` con formatter locale, `null` se il set e' vuoto.
+      I Prodotti invece montano il renderer read-only. Per la Commessa si segue il modello OFFERTA.
+    </fact>
+    <fact id="G-9">
+      FE — il commento a `features/product-categories/types.ts:54-56` ("do not add it back") riguarda
+      SOLO il contesto ritirato `opportunity`. Aggiungere `work_order` non lo viola: il commento va
+      aggiornato di conseguenza, non lasciato in apparente contraddizione.
+    </fact>
+    <fact id="G-10">
+      FE — lo schema zod e' DINAMICO: `use-quote-form.ts` :222-256 ricostruisce lo schema quando
+      cambiano gli `applicable_attributes`, lo assegna a un `resolverRef` e semina con
+      `seedAttributeValues`. `quote-schema.ts` :263-311 aggiunge `requiredAttributeCodes()` +
+      `addMissingRequiredAttributes()` (issue path `['attribute_values', code]`), perche'
+      `buildAttributeValuesSchema` NON codifica `is_required`. Senza questa catena, un attributo
+      obbligatorio non viene mai validato lato client.
+    </fact>
+  </grounding-addendum>
+
+  <acceptance-criteria>
+    <ac id="AC-001">`AttributeContext::WorkOrder->inheritanceColumn()` === 'inherits_work_order_attributes'.</ac>
+    <ac id="AC-002">La migrazione e' reversibile: `down()` droppa entrambe le colonne.</ac>
+    <ac id="AC-003">Assegnare un attributo a una categoria con context='work_order' non altera i
+      set `product` / `quote` della stessa categoria (tre liste indipendenti).</ac>
+    <ac id="AC-004">`inherits_work_order_attributes=false` blocca SOLO l'ereditarieta' del contesto
+      work_order; `quote` continua a ereditare.</ac>
+    <ac id="AC-005">`GET /product-categories/{id}/effective-attributes?context=work_order` risponde
+      200 col set effettivo; un `context` fuori enum resta 422.</ac>
+    <ac id="AC-006">`GET|PUT` layout con `context=work_order` persiste una riga distinta da quelle
+      `product`/`quote` per la stessa (categoria, form_mode).</ac>
+    <ac id="AC-007">`WorkOrderAttributeResolver::resolve()` restituisce l'unione dedup-per-code
+      degli attributi work_order delle categorie DISTINCT dei prodotti delle SOLE `quoteLines`
+      della commessa; `is_required` piu' stringente vince.</ac>
+    <ac id="AC-008">Due Commesse dello stesso preventivo con righe di categorie diverse ricevono
+      set di attributi DIVERSI (prova di D-1).</ac>
+    <ac id="AC-009">Una Commessa senza righe collegate risolve set vuoto e layout null, senza errori.</ac>
+    <ac id="AC-010">`POST /api/work-orders` con `attribute_values` validi li persiste; il payload
+      NON puo' scrivere la colonna per mass assignment (assente da #[Fillable]).</ac>
+    <ac id="AC-011">Un code non applicabile -> 422 keyed `attribute_values.&lt;code&gt;`.</ac>
+    <ac id="AC-012">Un code applicabile con `is_required` e valore vuoto -> 422; lo stesso code
+      ASSENTE dal payload NON produce errore (semantica sparse gia' in essere).</ac>
+    <ac id="AC-013">`PATCH` sparso: un code omesso conserva il valore persistito.</ac>
+    <ac id="AC-014">La validazione degli attributi avviene DOPO la sync delle righe: cambiare
+      `quote_line_ids` e `attribute_values` nella stessa richiesta valida contro le righe NUOVE.</ac>
+    <ac id="AC-015">Un 422 sugli attributi ROLLBACKA anche righe/responsabili/partecipanti.</ac>
+    <ac id="AC-016">`WorkOrderResource` espone `attribute_values`, `applicable_attributes`,
+      `attribute_layout` senza N+1 (eager load in DETAIL_RELATIONS).</ac>
+    <ac id="AC-017">`POST /api/work-orders/form-context` risolve set+layout per i `quote_line_ids`
+      passati; lista vuota/assente -> set vuoto, layout null, 200.</ac>
+    <ac id="AC-018">form-context senza permesso -> 403.</ac>
+    <ac id="AC-019">`POST /api/contracts/{contract}/work-orders` accetta `attribute_values` e li
+      persiste sulla Commessa generata.</ac>
+    <ac id="AC-020">FE: il configuratore layout mostra tre contesti; scegliendo "Commessa" carica
+      e salva la riga `work_order`.</ac>
+    <ac id="AC-021">FE: il form Categoria Prodotto mostra la terza sezione "Attributi Commessa"
+      con il proprio toggle di ereditarieta' e la propria lista ereditata.</ac>
+    <ac id="AC-022">FE: nel form Commessa la sezione appare sotto le righe offerta; cambiando le
+      righe il set si ri-risolve; nessuna riga -> sezione non montata.</ac>
+    <ac id="AC-023">FE: con layout configurato la sezione rende le sezioni del layout, altrimenti
+      flat; il dettaglio rende gli stessi valori in read-only.</ac>
+    <ac id="AC-024">FE: il gate `MetaField metaKey="attribute_values"` avvolge il blocco (permessi
+      di campo rispettati come per l'Offerta).</ac>
+    <ac id="AC-025">i18n it/en complete: nessuna chiave mancante nei due file di locale.</ac>
+  </acceptance-criteria>
+
+  <verification>
+    Backend: `cd backend &amp;&amp; php artisan test` (suite intera, non solo i nuovi file) + `./vendor/bin/pint`.
+    Frontend: `cd frontend &amp;&amp; npx vitest run` + `npx tsc -b --force --pretty false` (MAI `tsc --noEmit`).
+    Nessun "dovrebbe passare": si riporta l'output reale.
+  </verification>
+
+</spec>

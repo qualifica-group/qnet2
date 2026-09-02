@@ -2,11 +2,17 @@
 <spec id="0096-work-order-supervisor-team-and-start-date" status="draft" owner="nicola" date="2026-09-02">
 
   <goal>
-    La Commessa acquisisce una DATA DI INIZIO e un SUPERVISORE, entrambi obbligatori e
-    richiesti gia' nel dialog "Programma" del Contratto (l'unico punto d'ingresso reale
-    della creazione, spec 0095 D-12). Dal form Commessa si assegna inoltre un TEAM di piu'
-    utenti, con la stessa identica grafica del team di Opportunita' e Offerte (slot
-    ordinati). Data inizio e supervisore restano modificabili dal form Commessa.
+    La Commessa acquisisce una DATA DI INIZIO e uno o piu' RESPONSABILI, entrambi
+    obbligatori e richiesti gia' nel dialog "Programma" del Contratto (l'unico punto
+    d'ingresso reale della creazione, spec 0095 D-12). Dal form Commessa si assegnano
+    inoltre i PARTECIPANTI, con la stessa identica grafica del team di Opportunita' e
+    Offerte (slot ordinati). Tutti e tre restano modificabili dal form Commessa.
+
+    REVISIONE 2026-09-02 (direttiva utente in corso d'opera, sostituisce la stesura
+    iniziale): il "supervisore" NON e' singolo — sono piu' persone — e si chiama
+    "Responsabili"; il "team" si chiama "Partecipanti". Sono DUE gruppi distinti.
+    Identificatori inglesi scelti dall'utente: `supervisors` / `participants`; le
+    denominazioni italiane vivono solo in i18n (engineering.md §1.2).
   </goal>
 
   <context>
@@ -37,11 +43,11 @@
         DUE VOLTE, come metodo `private` identico: `RegistryService:317` e
         `OpportunityService`. Un terzo copia-incolla in `WorkOrderService` sarebbe una
         violazione DRY conclamata (engineering.md §3/§8).
-      - Colonna supervisore in griglia: pattern gia' in vigore in
-        `QuoteRelationColumns::DERIVED_RELATIONS` (`'supervisor' => [relation, table:'users',
-        fk:'supervisor_id']`) con filtro `set` via `whereHas` e sort per sottoquery
-        correlata — nessun `orderByRaw` su input. `QuotesTableDefinition::userSummary()`
-        produce il payload avatar+nome che il renderer FE gia' sa disegnare.
+      - Colonna utenti in griglia: il precedente esatto per una TO-MANY e' la colonna
+        `managers` di `QuoteRelationColumns` (filtro `set` via `whereHas` su `users.name`,
+        NON ordinabile, distinct via join sul pivot) — nessun `orderByRaw` su input.
+        `QuotesTableDefinition::userSummary()` produce il payload avatar+nome che il
+        renderer FE (`UserStackCell`) gia' sa disegnare.
       - `WorkOrdersAuthorization` espone oggi 10 `FieldDefinition`; il precedente per i due
         nuovi campi utente e' `OpportunitiesAuthorization` (`supervisor_id` `select`,
         `manager_slots` `multiselect`).
@@ -51,57 +57,74 @@
         tutte e 11 le righe: il backfill NOT NULL e' fattibile senza inventare un utente.
       - `frontend/src/features/work-orders/work-order-form-body.tsx` e' a 232 righe: una
         sezione Team inline lo porterebbe oltre il soft limit di 300 (engineering.md §6).
+      - `WorkOrderResource` restituisce le date come CarbonImmutable grezza -> json_encode le
+        rende ISO-8601 complete, NON `Y-m-d`. Verificato eseguendo la Resource sul dato reale.
+        Vedi D-10: e' un bug preesistente che `start_date` erediterebbe.
   </context>
 
   <decisions>
 
     <decision id="D-1">
-      Due nuove colonne su `work_orders`, entrambe NOT NULL (decisione utente 2026-09-02,
-      "Entrambi obbligatori"):
-        `start_date` DATE NOT NULL (indicizzata: e' una colonna di griglia ordinabile/filtrabile)
-        `supervisor_id` FK -> `users` NOT NULL, `restrictOnDelete`
-      `restrictOnDelete` e non `nullOnDelete`: la colonna e' NOT NULL, quindi azzerarla alla
-      cancellazione dell'utente e' impossibile per costruzione. Il vincolo dice la verita'
-      sullo schema invece di produrre un errore di integrita' a runtime.
+      Una colonna nuova e un pivot nuovo (decisione utente 2026-09-02, "Entrambi obbligatori",
+      poi "supervisori sono piu' supervisori"):
+        `work_orders.start_date` DATE NOT NULL, indicizzata (colonna di griglia
+        ordinabile/filtrabile).
+        `work_order_supervisor` (work_order_id, user_id) UNIQUE sulla coppia, entrambe le FK
+        `cascadeOnDelete`. NON ordinato: i Responsabili sono un insieme, non c'e' un
+        "n-esimo responsabile".
+      Il vincolo "almeno un Responsabile" e' di LIVELLO REQUEST (`supervisor_ids` required,
+      min 1), non di DB: nessun motore esprime "questo pivot deve avere una riga" senza
+      trigger. Dichiararlo invece di far finta che il DB lo garantisca.
       `callback_date` NON viene toccata: e' la "data richiamo", un concetto diverso che resta
       nullable e indipendente.
     </decision>
 
     <decision id="D-2">
-      Backfill delle 11 righe esistenti, dentro la stessa migration, in tre passi
-      (colonna aggiunta nullable -> popolata -> resa NOT NULL), perche' MySQL rifiuta una
-      `ADD COLUMN ... NOT NULL` senza default su tabella non vuota:
-        `start_date`     = `DATE(work_orders.created_at)` — la sola data non arbitraria gia'
-                           presente sulla riga.
-        `supervisor_id`  = `quotes.supervisor_id` della propria Offerta, con fallback su
-                           `quotes.operator_id` (spec 0087 D-3: e' il proprietario operativo
-                           dell'Offerta). Copre 11/11 sul dato reale, verificato.
-      GUARDIA OBBLIGATORIA: se dopo il backfill resta anche una sola riga non risolta, la
-      migration si ferma con un messaggio che nomina gli id, PRIMA di applicare il NOT NULL.
-      Vietato inventare un utente di ripiego (il primo super-admin, l'id 1, l'utente corrente):
-      un dato inventato in una colonna di responsabilita' e' peggio di una migration che si
-      ferma. `down()` droppa le due colonne.
+      Backfill delle 11 righe esistenti:
+        `start_date` in tre passi nella stessa migration (colonna nullable -> popolata ->
+        NOT NULL), perche' MySQL rifiuta `ADD COLUMN ... NOT NULL` senza default su tabella
+        non vuota. Valore: `DATE(work_orders.created_at)`, la sola data non arbitraria gia'
+        presente sulla riga.
+        `work_order_supervisor`: UNA riga per commessa, con `quotes.supervisor_id` della
+        propria Offerta e fallback su `quotes.operator_id` (spec 0087 D-3, il proprietario
+        operativo dell'Offerta). Misurato sul dato reale PRIMA di scrivere: 4/11 hanno il
+        supervisor, 11/11 hanno l'operator -> la catena copre tutto.
+      GUARDIA OBBLIGATORIA: se resta anche una sola riga non risolta la migration si ferma
+      nominando gli id. Vietato inventare un utente di ripiego (il primo super-admin, l'id 1,
+      l'utente corrente): un dato inventato in una colonna di responsabilita' e' peggio di
+      una migration che si ferma.
     </decision>
 
     <decision id="D-3">
-      Il team riusa l'apparato `manager_slots` gia' condiviso, NON una seconda implementazione:
-        - pivot `user_work_order` (ordine alfabetico Laravel: `user` &lt; `work_order`),
-          copia byte-per-byte di `quote_user`: `work_order_id`, `user_id`, `position`,
-          UNIQUE(`work_order_id`,`user_id`) + UNIQUE(`work_order_id`,`position`), entrambi
-          `cascadeOnDelete`;
-        - relazione `WorkOrder::managers(): BelongsToMany` con `withPivot('position')` +
+      I Partecipanti riusano l'apparato a slot gia' condiviso, NON una seconda implementazione:
+        - pivot `work_order_participant`: `work_order_id`, `user_id`, `position`,
+          UNIQUE(`work_order_id`,`user_id`) + UNIQUE(`work_order_id`,`position`), entrambe le
+          FK `cascadeOnDelete` — copia di `quote_user`;
+        - relazione `WorkOrder::participants(): BelongsToMany` con `withPivot('position')` +
           `orderByPivot('position')`;
-        - chiave di payload `manager_slots`, validata dal trait `ValidatesManagerSlots`
-          esistente;
-        - FE: `ManagerSlotsField`, invariato.
-      NOMI: si tengono `manager_slots`/`managers()` anche se l'utente lo chiama "team".
-      Motivo (engineering.md §1.1/§1.2): e' lo STESSO concetto tecnico gia' battezzato nel
-      codebase, e riusarne il nome e' cio' che rende riusabili senza modifiche il trait di
-      validazione, `ManagerPositions` e il componente React. "Team" e' l'etichetta UTENTE e
-      vive dove devono vivere le etichette: in i18n.
-      Le righe dello slot editor si chiamano "Membro N" per questo modulo, passando la prop
-      `labels` gia' prevista dal componente (spec 0080) — nessuna modifica a
-      `ManagerSlotsField`.
+        - chiave di payload `participant_slots`, validata dal trait `ValidatesManagerSlots`;
+        - FE: `ManagerSlotsField` riusato, con la prop `labels` gia' prevista (spec 0080) per
+          rinominare le righe in "Partecipante N", PIU' una nuova prop opzionale `strings`.
+          CORREZIONE (segnalata dall'utente a implementazione avvenuta): `labels` rinomina solo
+          le RIGHE. Il resto delle stringhe del componente ("Aggiungi gestore account", "Cerca
+          gestori account", "Nessun gestore account trovato", l'errore e la nota finale) restava
+          in wording Gestori Account dentro il form Commesse — visibile, sbagliato. `strings`
+          copre le sole stringhe che NOMINANO le persone; ogni chiave e' opzionale e ricade sul
+          testo condiviso, quindi Registries/Opportunita'/Offerte/Gestione richieste sono
+          invariati. Le stringhe gia' neutre ("Sposta su", "Rimuovi slot", "Slot vuoto")
+          restano condivise. Lezione: rinominare un concetto in un componente condiviso non
+          finisce con l'etichetta piu' evidente — vanno cercate TUTTE le occorrenze del nome.
+      NOMI DEI PIVOT: entrambi espliciti (`work_order_supervisor`, `work_order_participant`)
+      invece della convenzione alfabetica Laravel. Con DUE relazioni utente sullo stesso
+      model, nessuna delle due puo' rivendicare il nome generico `user_work_order`.
+      TRAIT: `ValidatesManagerSlots::managerSlotsRules()`/`validateManagerSlots()` prendono
+      ora il nome del campo come PARAMETRO, con default `manager_slots`. Registries,
+      Opportunita' e Offerte chiamano invariati; la Commessa passa `participant_slots`. Una
+      sola regola, due nomi di campo — mai una seconda copia degli invarianti.
+      REVISIONE: la stesura iniziale prevedeva di riusare il nome `manager_slots`/`managers()`
+      anche per la Commessa. Non e' piu' possibile: con i Responsabili diventati anch'essi
+      una to-many, un `managers()` che significa "partecipanti" accanto a `supervisors()`
+      sarebbe una trappola di lettura.
     </decision>
 
     <decision id="D-4">
@@ -117,22 +140,22 @@
     </decision>
 
     <decision id="D-5">
-      Il dialog "Programma" del Contratto acquisisce `start_date` e `supervisor_id`, entrambi
-      obbligatori, e SOLO quelli: il team NON entra nel dialog (richiesta utente esplicita:
+      Il dialog "Programma" del Contratto acquisisce `start_date` e `supervisor_ids` (almeno
+      uno), e SOLO quelli: i Partecipanti NON entrano nel dialog (richiesta utente esplicita:
       "poi da form di commesse potranno essere assegnati anche piu' users nel team").
       Resta valida la regola di spec 0095 D-11 — nel dialog di generazione stanno tutte e sole
       le colonne che non possono restare vuote, niente campi speculativi.
       `CreateWorkOrderData::forContractGeneration()` prende quindi due parametri in piu' e
-      continua a passare `managerSlots: []`.
+      continua a passare `participantSlots: []`.
     </decision>
 
     <decision id="D-6">
       Dopo la creazione i tre campi sono TUTTI modificabili dal form Commessa (decisione utente):
       nessuno di essi e' immutabile, quindi nessuna regola `prohibited` — al contrario di
       `code`/`quote_id` (spec 0093 D-1/D-5). In `WorkOrdersAuthorization` diventano tre
-      `FieldDefinition` a pieno titolo (`start_date` `date` mandatory, `supervisor_id` `select`
-      mandatory, `manager_slots` `multiselect`), quindi nascondibili/bloccabili per ruolo come
-      ogni altro campo (spec 0004).
+      `FieldDefinition` a pieno titolo (`start_date` `date` mandatory, `supervisor_ids`
+      `multiselect` mandatory, `participant_slots` `multiselect`), quindi
+      nascondibili/bloccabili per ruolo come ogni altro campo (spec 0004).
       Conseguenza sul form: la sezione "Team" e' un file nuovo,
       `work-order-team-section.tsx`, modellato su `OpportunityTeamSection` — non righe
       aggiunte dentro `work-order-form-body.tsx`, gia' a 232 righe (soft limit 300).
@@ -143,10 +166,11 @@
       colonna):
         `start_date`  — colonna reale, `type: date`, sortable, filtro `date`. Zero codice
                         derivato: la gestisce il motore generico, come `callback_date`.
-        `supervisor`  — colonna derivata via relazione `users`, sortable (sottoquery
-                        correlata), filtro `set` via `whereHas` su `users.name`, resa con
-                        avatar+nome. Ricalca `QuoteRelationColumns` e ne riusa la forma;
-                        allow-list di colonne, mai input grezzo in SQL (backend.md §8).
+        `supervisors` — colonna derivata to-many via il pivot `work_order_supervisor`, resa
+                        come avatar-stack (`UserStackCell`, lo stesso di Offerte/Opportunita').
+                        NON ordinabile (una to-many non ha una chiave d'ordine singola);
+                        filtro `set` via `whereHas` su `users.name` con valori BINDATI, mai
+                        input grezzo in SQL (backend.md §8).
       In coda al catalogo (convenzione append-only spec 0001): le preferenze utente salvate
       sono indicizzate per id colonna, quindi i layout esistenti non si spostano.
     </decision>
@@ -159,39 +183,61 @@
     </decision>
 
     <decision id="D-9">
-      Il supervisore PUO' comparire anche fra i membri del team: nessun vincolo di mutua
+      Un Responsabile PUO' comparire anche fra i Partecipanti: nessun vincolo di mutua
       esclusione. Non e' stato richiesto, e imporlo bloccherebbe il caso reale del
-      supervisore che lavora anche sulla commessa. Resta invece in vigore il vincolo del
-      trait condiviso: lo stesso utente non puo' occupare due slot di team.
+      responsabile che lavora anche sulla commessa. Resta invece in vigore il vincolo del
+      trait condiviso: lo stesso utente non puo' occupare due slot di Partecipanti.
+    </decision>
+
+    <decision id="D-10">
+      BUG PREESISTENTE TROVATO E CORRETTO (non introdotto qui). `WorkOrderResource` restituiva
+      `callback_date` come timestamp ISO-8601 completo (`1982-09-16T00:00:00.000000Z`), perche'
+      il cast `date:Y-m-d` governa la serializzazione del MODEL, non una Resource che passa
+      la CarbonImmutable grezza a json_encode. Il valore finiva in un `&lt;input type="date"&gt;`,
+      che con una stringa ISO si renderizza VUOTO: aprire una commessa con "Data richiamo"
+      mostrava il campo vuoto, e un salvataggio successivo l'avrebbe azzerata.
+      `start_date` avrebbe ereditato lo stesso difetto ed e' OBBLIGATORIA. Entrambe le date
+      passano ora da `WorkOrderResource::formatDate()` -> `Y-m-d`. Trovato da un'asserzione
+      di questa spec, non da revisione a vista; coperto da un test di regressione dedicato.
+    </decision>
+
+    <decision id="D-11">
+      LIMITE DICHIARATO, non nascosto: `down()` della migration `start_date` droppa prima
+      l'indice e poi la colonna, in due Blueprint separati, perche' SQLite rifiuta di
+      droppare una colonna ancora referenziata da un indice. Round-trip up/down/up verificato
+      ESEGUENDOLO sia su SQLite sia su MySQL con i dati reali.
     </decision>
 
   </decisions>
 
   <scope>
     <in>
-      <item>Migration: `work_orders.start_date` + `work_orders.supervisor_id` con backfill guardato (D-1/D-2).</item>
-      <item>Migration: pivot `user_work_order` (D-3).</item>
-      <item>`WorkOrder`: `#[Fillable]` esteso, cast `start_date` date, relazioni `supervisor()` e `managers()`.</item>
+      <item>Migration: `work_orders.start_date` con backfill guardato (D-1/D-2).</item>
+      <item>Migration: pivot `work_order_supervisor` con backfill dall'Offerta (D-1/D-2).</item>
+      <item>Migration: pivot `work_order_participant` (D-3).</item>
+      <item>`WorkOrder`: `#[Fillable]` esteso, cast `start_date` date, relazioni `supervisors()` e `participants()`.</item>
+      <item>`ValidatesManagerSlots`: nome del campo parametrizzato, default invariato (D-3).</item>
+      <item>`WorkOrderResource::formatDate()`: correzione del bug date ISO su `callback_date`/`start_date` (D-10).</item>
       <item>`App\Support\ManagerPositions::syncMap()` + adeguamento di `RegistryService`/`OpportunityService` (D-4).</item>
-      <item>`CreateWorkOrderData`/`UpdateWorkOrderData`: `startDate`, `supervisorId`, `managerSlots`.</item>
+      <item>`CreateWorkOrderData`/`UpdateWorkOrderData`: `startDate`, `supervisorIds`, `participantSlots`.</item>
       <item>`StoreWorkOrderRequest`/`UpdateWorkOrderRequest`: nuove regole + `ValidatesManagerSlots`.</item>
-      <item>`GenerateContractWorkOrderRequest`: `start_date` + `supervisor_id` obbligatori (D-5).</item>
-      <item>`WorkOrderService::create()/update()`: sync del pivot dentro la transazione esistente.</item>
-      <item>`WorkOrderResource`: `start_date`, `supervisor`, `managers`.</item>
+      <item>`GenerateContractWorkOrderRequest`: `start_date` + `supervisor_ids` (min 1) obbligatori (D-5).</item>
+      <item>`WorkOrderService::create()/update()`: sync dei due pivot dentro la transazione esistente.</item>
+      <item>`WorkOrderResource`: `start_date`, `supervisors`, `participants`.</item>
       <item>`WorkOrdersAuthorization`: tre nuovi `FieldDefinition` + relativo ceiling (D-6).</item>
-      <item>`WorkOrderColumnCatalog` + `WorkOrderDerivedColumns` + `WorkOrdersTableDefinition`: colonne `start_date` e `supervisor` (D-7), con eager load `supervisor.avatar`.</item>
-      <item>FE: `contract-program-dialog.tsx` + `contract-program-schema.ts` (data inizio + supervisore).</item>
+      <item>`WorkOrderColumnCatalog` + `WorkOrderDerivedColumns` + `WorkOrdersTableDefinition`: colonne `start_date` e `supervisors` (D-7), con eager load `supervisors.avatar`.</item>
+      <item>FE: `contract-program-dialog.tsx` + `contract-program-schema.ts` (data inizio + responsabili).</item>
       <item>FE: `work-order-team-section.tsx` (nuovo), `work-order-schema.ts`, `use-work-order-form.ts`, `work-order-form-payload.ts`, `types.ts`, `work-order-detail.tsx`, `column-renderers.tsx`.</item>
       <item>i18n it/en; test Pest e Vitest ESEGUITI.</item>
     </in>
     <out>
-      <item>Notifiche di assegnazione a supervisore/team (D-8): segnalate, non implementate.</item>
-      <item>Colonna di griglia "team" (decisione utente: solo data inizio e supervisore).</item>
-      <item>Il team nel dialog "Programma" del Contratto (D-5).</item>
+      <item>Notifiche di assegnazione a responsabili/partecipanti (D-8): segnalate, non implementate.</item>
+      <item>Colonna di griglia "Partecipanti" (decisione utente: solo data inizio e responsabili).</item>
+      <item>I Partecipanti nel dialog "Programma" del Contratto (D-5).</item>
       <item>Modifiche a `callback_date` o alla sua semantica.</item>
-      <item>Vincolo di esclusione supervisore/team (D-9).</item>
+      <item>Vincolo di esclusione responsabili/partecipanti (D-9).</item>
       <item>Qualsiasi scoping di visibilita' basato su supervisore/team (chi vede quali commesse): `work-orders.viewAny` resta l'unico gate, invariato.</item>
-      <item>Modifiche a `ManagerSlotsField` o al trait `ValidatesManagerSlots`.</item>
+      <item>Modifiche NON retrocompatibili a `ManagerSlotsField`: la prop `strings` e' additiva e opzionale, ogni call site esistente resta invariato (D-3).</item>
     </out>
   </scope>
 
@@ -201,25 +247,25 @@
       <request>
         { title: string REQUIRED (max 191),
           type: "processing" | "project" REQUIRED,
-          start_date: "YYYY-MM-DD" REQUIRED,          // NUOVO
-          supervisor_id: int REQUIRED (exists:users),  // NUOVO
+          start_date: "YYYY-MM-DD" REQUIRED,                       // NUOVO
+          supervisor_ids: int[] REQUIRED, min 1 (exists:users),    // NUOVO
           quote_line_ids: int[] REQUIRED, min 1 }
         `quote_id` resta NON-input (spec 0095): dal contratto lato server.
-        `manager_slots` NON e' accettato qui (D-5).
+        `participant_slots` NON e' accettato qui (D-5).
       </request>
       <response status="201">
         { success: true, message: "Created", data: &lt;WorkOrderDetail&gt;, permissions: &lt;ResourcePermissions&gt; }
       </response>
       <errors>401; 403; 404; 422 su righe non valide/gia' programmate (invariato) o su
-        `start_date`/`supervisor_id` mancanti o non validi.</errors>
+        `start_date`/`supervisor_ids` mancanti, vuoti o non validi.</errors>
     </endpoint>
 
     <endpoint method="POST" path="/api/work-orders">
       <request>
         invariata +
         { start_date: "YYYY-MM-DD" REQUIRED,
-          supervisor_id: int REQUIRED (exists:users),
-          manager_slots?: (int|null)[]   // gap-aware, max 12, nessun utente in due slot
+          supervisor_ids: int[] REQUIRED, min 1 (exists:users),
+          participant_slots?: (int|null)[]   // gap-aware, max 12, nessun utente in due slot
         }
       </request>
       <response status="201">{ success, message, data: &lt;WorkOrderDetail&gt;, permissions }</response>
@@ -230,8 +276,8 @@
       <request>
         invariata +
         { start_date?: "YYYY-MM-DD" (se presente: non-null),
-          supervisor_id?: int (se presente: non-null, exists:users),
-          manager_slots?: (int|null)[]   // full-replace del pivot solo se la chiave e' inviata
+          supervisor_ids?: int[] (se presente: min 1, exists:users),
+          participant_slots?: (int|null)[]   // full-replace solo se la chiave e' inviata
         }
         `code`/`quote_id` restano `prohibited`. I tre nuovi campi NON sono prohibited (D-6).
       </request>
@@ -241,19 +287,21 @@
 
     <shape name="WorkOrderDetail">
       invariata +
-      { start_date: "YYYY-MM-DD",
-        supervisor: { id: int, name: string } | null,   // null solo in teoria: colonna NOT NULL
-        managers: [ { id: int, name: string, position: int } ]   // ordinati per position
+      { start_date: "YYYY-MM-DD",                              // Y-m-d, non ISO (D-10)
+        callback_date: "YYYY-MM-DD" | null,                     // idem, bug corretto (D-10)
+        supervisors: [ { id: int, name: string } ],             // >= 1, ordinati per nome
+        participants: [ { id: int, name: string, position: int } ]   // ordinati per position
       }
-      Stessa forma gia' emessa da `QuoteResource::summarizeManagers()`: nessuna seconda forma
-      di "team" nel contratto API.
+      `participants` ha la stessa forma gia' emessa da `QuoteResource::summarizeManagers()`:
+      nessuna seconda forma di slot nel contratto API.
     </shape>
 
     <endpoint method="POST" path="/api/tables/work-orders/rows">
       <request>invariata.</request>
       <response status="200">
-        invariata + colonne `start_date` (date) e `supervisor` ({ id, name, avatar }),
-        entrambe in coda al catalogo.
+        invariata + colonne `start_date` (date) e `supervisors`
+        ([{ id, name, avatar_url }], avatar-stack, non ordinabile), entrambe in coda al
+        catalogo.
       </response>
       <errors>403 senza `work-orders.viewAny`.</errors>
     </endpoint>
@@ -262,51 +310,53 @@
 
   <acceptance_criteria>
 
-    <criterion id="AC-001">La migration aggiunge `work_orders.start_date` (DATE NOT NULL, indicizzata) e `work_orders.supervisor_id` (FK `users`, NOT NULL, restrictOnDelete); `down()` le droppa entrambe.</criterion>
-    <criterion id="AC-002">Sulle 11 righe preesistenti il backfill valorizza `start_date` = data di `created_at` e `supervisor_id` = `quotes.supervisor_id`, con fallback `quotes.operator_id`. Verificato sul DB reale, non sulla sola SQLite di test.</criterion>
-    <criterion id="AC-003">Se anche una sola riga resta senza supervisore risolvibile, la migration ABORTISCE nominando gli id, prima di applicare il NOT NULL. Nessun utente di ripiego viene inventato.</criterion>
-    <criterion id="AC-004">`up()` seguito da `down()` seguito da `up()` e' idempotente e non lascia colonne o vincoli orfani.</criterion>
-    <criterion id="AC-005">La migration crea `user_work_order` con UNIQUE(`work_order_id`,`user_id`) e UNIQUE(`work_order_id`,`position`), entrambe le FK `cascadeOnDelete`.</criterion>
-    <criterion id="AC-010">`POST /api/contracts/{id}/work-orders` senza `start_date` o senza `supervisor_id` risponde 422 e NON crea nulla.</criterion>
-    <criterion id="AC-011">`supervisor_id` inesistente in `users` da 422.</criterion>
-    <criterion id="AC-012">Con payload completo, la commessa generata ha esattamente la `start_date` e il supervisore inviati, oltre alle righe selezionate; il `code` resta `COM-000N` progressivo (nessuna regressione su spec 0095 AC-030/AC-035).</criterion>
-    <criterion id="AC-013">`manager_slots` inviato a `POST /contracts/{id}/work-orders` viene ignorato o rifiutato, mai persistito: il team non si assegna dal dialog Contratto (D-5).</criterion>
-    <criterion id="AC-020">`POST /api/work-orders` esige `start_date` e `supervisor_id`: 422 se mancanti.</criterion>
-    <criterion id="AC-021">`POST /api/work-orders` con `manager_slots: [7, null, 9]` crea il pivot con l'utente 7 in `position` 1 e l'utente 9 in `position` 3: il buco e' preservato, non compattato.</criterion>
+    <criterion id="AC-001">La migration aggiunge `work_orders.start_date` (DATE NOT NULL, indicizzata); `down()` droppa prima l'indice e poi la colonna. I Responsabili sono un pivot, NON una colonna: `work_orders.supervisor_id` non esiste.</criterion>
+    <criterion id="AC-002">Sulle 11 righe preesistenti il backfill valorizza `start_date` = data di `created_at` e crea UNA riga `work_order_supervisor` con `quotes.supervisor_id`, fallback `quotes.operator_id`. Verificato sul DB reale, non sulla sola SQLite di test.</criterion>
+    <criterion id="AC-003">Se anche una sola commessa resta senza responsabile risolvibile, la migration ABORTISCE nominandone i codici. Nessun utente di ripiego viene inventato.</criterion>
+    <criterion id="AC-004">`up()` -> `down()` -> `up()` e' idempotente e non lascia colonne, indici o vincoli orfani. Verificato ESEGUENDOLO su SQLite E su MySQL con gli 11 record reali (D-11).</criterion>
+    <criterion id="AC-005">`work_order_supervisor` ha UNIQUE(`work_order_id`,`user_id`); `work_order_participant` ha anche UNIQUE(`work_order_id`,`position`). Tutte le FK `cascadeOnDelete`: eliminare la commessa porta via entrambi i pivot.</criterion>
+    <criterion id="AC-010">`POST /api/contracts/{id}/work-orders` senza `start_date`, o con `supervisor_ids` assente o vuoto, risponde 422 e NON crea nulla.</criterion>
+    <criterion id="AC-011">Un id in `supervisor_ids` inesistente in `users` da 422.</criterion>
+    <criterion id="AC-012">Con payload completo, la commessa generata ha esattamente la `start_date` e TUTTI i responsabili inviati, oltre alle righe selezionate; il `code` resta `COM-000N` progressivo (nessuna regressione su spec 0095 AC-030/AC-035).</criterion>
+    <criterion id="AC-013">`participant_slots` inviato a `POST /contracts/{id}/work-orders` viene ignorato, mai persistito: i Partecipanti non si assegnano dal dialog Contratto (D-5).</criterion>
+    <criterion id="AC-020">`POST /api/work-orders` esige `start_date` e almeno un `supervisor_ids`: 422 se mancanti o vuoti. Una commessa puo' averne PIU' di uno, restituiti ordinati per nome.</criterion>
+    <criterion id="AC-021">`POST /api/work-orders` con `participant_slots: [7, null, 9]` crea il pivot con l'utente 7 in `position` 1 e l'utente 9 in `position` 3: il buco e' preservato, non compattato.</criterion>
     <criterion id="AC-022">Lo stesso utente in due slot da 422 (regola del trait condiviso, non riscritta).</criterion>
     <criterion id="AC-023">Piu' di 12 slot pieni da 422.</criterion>
-    <criterion id="AC-024">`PATCH` con `manager_slots` fa FULL REPLACE del pivot; `PATCH` che NON invia la chiave lascia il pivot intatto.</criterion>
-    <criterion id="AC-025">`PATCH` con `start_date: null` o `supervisor_id: null` da 422: le colonne sono NOT NULL e la validazione lo dice prima del DB.</criterion>
-    <criterion id="AC-026">`PATCH` con `start_date`/`supervisor_id` validi li aggiorna: nessuno dei due e' immutabile (D-6), a differenza di `code`/`quote_id` che continuano a dare 422 alla sola presenza.</criterion>
-    <criterion id="AC-027">Un 422 in una qualsiasi fase della create non lascia scritture parziali: ne' la riga, ne' il codice consumato, ne' righe di pivot (la transazione esistente copre anche il nuovo sync).</criterion>
-    <criterion id="AC-030">`WorkOrderResource` espone `start_date`, `supervisor` e `managers` ordinati per `position`; `managers` ha la stessa shape `{id,name,position}` gia' emessa da `QuoteResource`.</criterion>
-    <criterion id="AC-031">Il dettaglio non fa N+1: `supervisor` e `managers` sono in `DETAIL_RELATIONS`, verificato con `Model::preventLazyLoading()` attivo in test.</criterion>
-    <criterion id="AC-040">Un ruolo senza permesso di scrittura riceve i tre campi `visible` + `readonly`; un ruolo con permesso li riceve `editable`, con `required: true` su `start_date` e `supervisor_id`.</criterion>
-    <criterion id="AC-041">Un utente che non puo' editare `manager_slots` e lo invia comunque riceve 422 da `EnforcesFieldPermissions` (nessuna scorciatoia rispetto agli altri campi).</criterion>
-    <criterion id="AC-050">La griglia Commesse mostra le colonne "Data inizio" e "Supervisore"; entrambe ordinabili; `start_date` filtrabile per data, `supervisor` filtrabile `set` sui nomi utente.</criterion>
-    <criterion id="AC-051">Il filtro `set` su `supervisor` passa da `whereHas` con allow-list: nessun `whereRaw`/`orderByRaw` costruito da input utente.</criterion>
-    <criterion id="AC-052">La cella Supervisore mostra avatar + nome, riusando il renderer utente gia' presente; nessun secondo renderer.</criterion>
+    <criterion id="AC-024">`PATCH` con `supervisor_ids` o `participant_slots` fa FULL REPLACE del pivot corrispondente; una chiave NON inviata lascia il suo pivot intatto (le due relazioni sono indipendenti).</criterion>
+    <criterion id="AC-025">`PATCH` con `start_date: null` o `supervisor_ids: []` da 422: la validazione lo dice prima del DB.</criterion>
+    <criterion id="AC-026">`PATCH` con `start_date`/`supervisor_ids` validi li aggiorna: nessuno dei due e' immutabile (D-6), a differenza di `code`/`quote_id` che continuano a dare 422 alla sola presenza.</criterion>
+    <criterion id="AC-027">Un 422 in una qualsiasi fase della create non lascia scritture parziali: ne' la riga, ne' il codice consumato, ne' righe nei due pivot utente (la transazione esistente copre anche i nuovi sync).</criterion>
+    <criterion id="AC-030">`WorkOrderResource` espone `start_date`, `supervisors` (ordinati per nome) e `participants` (ordinati per `position`, shape `{id,name,position}` identica a `QuoteResource`).</criterion>
+    <criterion id="AC-031">Il dettaglio non fa N+1: `supervisors` e `participants` sono in `DETAIL_RELATIONS`, verificato con `Model::preventLazyLoading()` attivo in test.</criterion>
+    <criterion id="AC-040">Un ruolo senza permesso di scrittura riceve i tre campi `visible` + `readonly`; un ruolo con permesso li riceve `editable`, con `required: true` su `start_date` e `supervisor_ids`.</criterion>
+    <criterion id="AC-041">Un utente che non puo' editare `participant_slots` e lo invia comunque viene respinto da `EnforcesFieldPermissions` (nessuna scorciatoia rispetto agli altri campi).</criterion>
+    <criterion id="AC-050">La griglia Commesse mostra "Data inizio" (ordinabile, filtro data) e "Responsabili" (NON ordinabile — e' una to-many — filtro `set` sui nomi utente).</criterion>
+    <criterion id="AC-051">Il filtro `set` su `supervisors` passa da `whereHas` con valori bindati: nessun `whereRaw`/`orderByRaw` costruito da input utente.</criterion>
+    <criterion id="AC-052">La cella Responsabili e' un avatar-stack che riusa `UserStackCell`, lo stesso renderer di Offerte/Opportunita'; nessun secondo renderer.</criterion>
     <criterion id="AC-053">La tabella Commesse dentro il tab del Contratto (spec 0095 D-8) mostra le stesse due colonne nuove senza modifiche al decorator `QuoteScopedTableDefinition`.</criterion>
     <criterion id="AC-054">I layout di griglia gia' salvati dagli utenti non cambiano ordine: le nuove colonne sono appese in coda.</criterion>
     <criterion id="AC-060">Nel dialog "Programma" compaiono "Data inizio" (date input) e "Supervisore" (picker utenti con avatar); il submit e' bloccato finche' entrambi non sono valorizzati, prima di qualsiasi chiamata di rete.</criterion>
-    <criterion id="AC-061">Il 422 del server su `start_date`/`supervisor_id` viene mappato sul campo corrispondente del dialog, non nel messaggio generico.</criterion>
+    <criterion id="AC-061">Il 422 del server su `start_date`/`supervisor_ids` viene mappato sul campo corrispondente del dialog, non nel messaggio generico.</criterion>
     <criterion id="AC-062">Chiudendo e riaprendo il dialog i due nuovi campi tornano ai default (nessun valore residuo dalla generazione precedente).</criterion>
-    <criterion id="AC-070">Il form Commessa ha una sezione "Team" con: Data inizio, Supervisore e l'editor di slot; la grafica e' quella di Opportunita'/Offerte perche' e' lo STESSO `ManagerSlotsField`, non una copia.</criterion>
-    <criterion id="AC-071">Le righe dello slot editor si leggono "Membro 1", "Membro 2", ... via la prop `labels`; `ManagerSlotsField` non viene modificato.</criterion>
-    <criterion id="AC-072">In edit gli slot sono idratati dai `managers` persistiti (nome visibile subito, nessun round-trip) e i buchi di `position` sono conservati.</criterion>
-    <criterion id="AC-073">Il PATCH parziale invia `manager_slots` SOLO quando la selezione differisce davvero da quella persistita (nessun sync a vuoto), riusando `sameManagerSlots`.</criterion>
-    <criterion id="AC-074">Il pannello di dettaglio Commessa mostra data inizio, supervisore e team.</criterion>
+    <criterion id="AC-070">Il form Commessa ha la sezione "Responsabili e partecipanti" con: Data inizio, Responsabili (multi con avatar) e l'editor di slot dei Partecipanti; la grafica e' quella di Opportunita'/Offerte perche' e' lo STESSO `ManagerSlotsField`, non una copia.</criterion>
+    <criterion id="AC-071">Le righe dello slot editor si leggono "Partecipante 1", "Partecipante 2", ... via la prop `labels`.</criterion>
+    <criterion id="AC-071b">Nel form Commesse NESSUNA stringa dell'editor nomina i "gestori account": il bottone dice "Aggiungi partecipante", e cosi' ricerca, stato vuoto, errore e nota finale. Gli altri moduli che usano lo stesso componente continuano a leggere "gestore account" invariati.</criterion>
+    <criterion id="AC-072">In edit gli slot sono idratati dai `participants` persistiti (nome visibile subito, nessun round-trip) e i buchi di `position` sono conservati.</criterion>
+    <criterion id="AC-073">Il PATCH parziale invia `participant_slots` solo se la disposizione differisce (confronto POSIZIONALE via `sameManagerSlots`: uno spostamento di slot E' una modifica) e `supervisor_ids` solo se l'insieme differisce (confronto d'insieme via `sameIdSet`: il riordino NON lo e').</criterion>
+    <criterion id="AC-074">Il pannello di dettaglio Commessa mostra data inizio, Responsabili e Partecipanti.</criterion>
     <criterion id="AC-075">`work-order-form-body.tsx` resta sotto le 300 righe (sezione Team in un file proprio).</criterion>
-    <criterion id="AC-080">Le suite Pest esistenti di Registries e Opportunities restano verdi SENZA modifiche dopo l'estrazione di `ManagerPositions::syncMap()` (D-4).</criterion>
+    <criterion id="AC-080">Le suite Pest esistenti di Registries, Opportunities e Quotes restano verdi SENZA modifiche dopo l'estrazione di `ManagerPositions::syncMap()` e la parametrizzazione di `ValidatesManagerSlots` (D-3/D-4).</criterion>
     <criterion id="AC-081">Le chiavi i18n it/en hanno lo stesso insieme di foglie e nessuna stringa vuota.</criterion>
     <criterion id="AC-082">Le suite gia' esistenti di spec 0093 e 0095 restano verdi (nessuna regressione sul flusso Programma esistente).</criterion>
+    <criterion id="AC-090">`start_date` e `callback_date` escono dalla Resource come `Y-m-d`, non come timestamp ISO: il campo data del form mostra il valore persistito invece di apparire vuoto (D-10, bug preesistente corretto e coperto da test di regressione).</criterion>
 
   </acceptance_criteria>
 
   <constraints>
     <item>Nessuna nuova dipendenza.</item>
-    <item>Riuso obbligatorio: `ValidatesManagerSlots`, `ManagerPositions`, `ManagerSlotsField`, `managerSlotsFromRefs`/`padManagerSlots`/`sameManagerSlots`, il pattern `QuoteRelationColumns` per la colonna supervisore, `WorkOrderService::create()` come punto unico. Vietate seconde implementazioni.</item>
-    <item>Identificatori in INGLESE: `start_date`, `supervisor_id`, `user_work_order`, `managers()`. "Data inizio"/"Team"/"Membro" esistono solo in i18n.</item>
+    <item>Riuso obbligatorio: `ValidatesManagerSlots`, `ManagerPositions`, `ManagerSlotsField`, `managerSlotsFromRefs`/`padManagerSlots`/`sameManagerSlots`, `UserStackCell`, il pattern `QuoteRelationColumns` per la colonna to-many, `WorkOrderService::create()` come punto unico. Vietate seconde implementazioni.</item>
+    <item>Identificatori in INGLESE: `start_date`, `supervisor_ids`, `participant_slots`, `work_order_supervisor`, `work_order_participant`, `supervisors()`, `participants()`. "Data inizio"/"Responsabili"/"Partecipanti" esistono solo in i18n.</item>
     <item>Authz server-side invariata e non aggirata: `work-orders.create/update` + field permissions su ogni nuovo campo.</item>
     <item>Nessun `whereRaw`/`orderByRaw` da input utente; nessun model Eloquent raw fuori dalle Resource.</item>
     <item>Il backfill non inventa dati: se non risolve, si ferma (AC-003).</item>

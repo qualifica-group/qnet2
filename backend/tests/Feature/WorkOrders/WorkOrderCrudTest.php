@@ -17,7 +17,7 @@ if (! function_exists('workOrderUserWith')) {
      */
     function workOrderUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
@@ -26,6 +26,14 @@ if (! function_exists('workOrderUserWith')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo("work-orders.{$ability}");
         }
+
+        // `viewAll` on top of the requested abilities: these suites predate
+        // the membership scoping (user directive 2026-09-02) and none of them
+        // is about it — the actor must see every commessa, as before. It
+        // widens nothing on its own: every gate still needs its own base
+        // ability, so the 403 assertions below keep their meaning. The
+        // scoping itself is covered by WorkOrderVisibilityTest.
+        $user->givePermissionTo('work-orders.viewAll');
 
         return $user;
     }
@@ -40,9 +48,9 @@ it('create: two consecutive creates without code get COM-0001 then COM-0002 (AC-
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $first = $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Prima', 'type' => 'processing'])
+    $first = $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Prima', 'type' => 'processing'])
         ->assertCreated();
-    $second = $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Seconda', 'type' => 'project'])
+    $second = $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Seconda', 'type' => 'project'])
         ->assertCreated();
 
     expect($first->json('data.code'))->toBe('COM-0001')
@@ -54,11 +62,11 @@ it('create: 201 with a manual code persists it verbatim, a duplicate code 422s (
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Manuale', 'type' => 'processing', 'code' => 'COM-9999'])
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Manuale', 'type' => 'processing', 'code' => 'COM-9999'])
         ->assertCreated()
         ->assertJsonPath('data.code', 'COM-9999');
 
-    $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Duplicata', 'type' => 'processing', 'code' => 'COM-9999'])
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Duplicata', 'type' => 'processing', 'code' => 'COM-9999'])
         ->assertStatus(422)->assertJsonValidationErrors('code');
 });
 
@@ -91,7 +99,7 @@ it('create: 422 when quote_id does not exist (AC-020)', function () {
     $actor = workOrderUserWith(['create']);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/work-orders', ['quote_id' => 999999, 'title' => 'Nope', 'type' => 'processing'])
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => 999999, 'title' => 'Nope', 'type' => 'processing'])
         ->assertStatus(422)->assertJsonValidationErrors('quote_id');
 });
 
@@ -116,7 +124,7 @@ it('create: 422 when a quote_line_id belongs to ANOTHER offer, no work order cre
 
     $countBefore = WorkOrder::count();
 
-    $this->postJson('/api/work-orders', [
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
         'quote_id' => $quote->id, 'title' => 'Bad lines', 'type' => 'processing',
         'quote_line_ids' => [$foreignLine->id],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
@@ -130,7 +138,7 @@ it('create: 422 when a quote_line_id is a COST line of the SAME offer (AC-023)',
     $costLine = QuoteLine::factory()->cost()->create(['quote_id' => $quote->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/work-orders', [
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
         'quote_id' => $quote->id, 'title' => 'Cost line', 'type' => 'processing',
         'quote_line_ids' => [$costLine->id],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
@@ -145,7 +153,7 @@ it('create: 201 with multiple valid REVENUE lines persists one pivot row each (A
     $lineB = QuoteLine::factory()->create(['quote_id' => $quote->id, 'sort_order' => 2]);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/work-orders', [
+    $response = $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
         'quote_id' => $quote->id, 'title' => 'Multi-line', 'type' => 'processing',
         'quote_line_ids' => [$lineA->id, $lineB->id],
     ])->assertCreated();
@@ -196,10 +204,10 @@ it('create: 422 when is_force_closed=true and force_close_reason is absent/empty
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'No reason', 'type' => 'processing', 'is_force_closed' => true])
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'No reason', 'type' => 'processing', 'is_force_closed' => true])
         ->assertStatus(422)->assertJsonValidationErrors('force_close_reason');
 
-    $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Empty reason', 'type' => 'processing', 'is_force_closed' => true, 'force_close_reason' => ''])
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Empty reason', 'type' => 'processing', 'is_force_closed' => true, 'force_close_reason' => ''])
         ->assertStatus(422)->assertJsonValidationErrors('force_close_reason');
 });
 
@@ -233,7 +241,7 @@ it('create/update: a submitted status is not persisted, not client-writable (AC-
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson('/api/work-orders', [
+    $response = $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
         'quote_id' => $quote->id, 'title' => 'Status ignored', 'type' => 'processing', 'status' => 'closed',
     ])->assertCreated();
 

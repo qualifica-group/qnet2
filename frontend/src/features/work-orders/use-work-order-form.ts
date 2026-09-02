@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,11 +21,17 @@ import {
 import type { WorkOrderDetail, WorkOrderFormMode } from '@/features/work-orders/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */
+/** Empty slots rendered on a fresh create, mirroring opportunities/quotes' own default. */
+const DEFAULT_PARTICIPANT_SLOTS = 4
+
 const SERVER_ERROR_FIELDS = [
   'code',
   'quote_id',
   'title',
   'type',
+  'start_date',
+  'supervisor_ids',
+  'participant_slots',
   'callback_date',
   'description',
   'internal_notes',
@@ -68,6 +75,14 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
         quote_id: workOrder.quote?.id ?? null,
         title: workOrder.title,
         type: workOrder.type,
+        start_date: workOrder.start_date,
+        supervisor_ids: workOrder.supervisors.map((supervisor) => supervisor.id),
+        // Gaps in `position` are meaningful: rebuild the sparse array rather
+        // than compacting the persisted participants into a dense list.
+        participant_slots: padManagerSlots(
+          managerSlotsFromRefs(workOrder.participants),
+          DEFAULT_PARTICIPANT_SLOTS,
+        ),
         callback_date: workOrder.callback_date,
         description: workOrder.description,
         internal_notes: workOrder.internal_notes,
@@ -81,6 +96,9 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
       quote_id: null,
       title: '',
       type: 'processing',
+      start_date: '',
+      supervisor_ids: [],
+      participant_slots: Array.from({ length: DEFAULT_PARTICIPANT_SLOTS }, () => null),
       callback_date: null,
       description: null,
       internal_notes: null,

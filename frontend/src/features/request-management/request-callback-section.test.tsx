@@ -77,6 +77,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     source: { id: 30, name: 'Web' },
     reporter_id: null,
     reporter: null,
+    supervisor_id: null,
+    supervisor: null,
     operator_id: null,
     operator: null,
     operational_site_id: null,

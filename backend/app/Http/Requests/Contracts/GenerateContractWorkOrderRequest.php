@@ -41,6 +41,13 @@ class GenerateContractWorkOrderRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['required', 'string', Rule::in(WorkOrderType::values())],
+            // Spec 0096, D-5: neither may be empty on a commessa, so both
+            // belong in this dialog under D-11's own rule ("exactly the
+            // fields that cannot be left empty"). Partecipanti are NOT here:
+            // they are assigned later from the work order's own form.
+            'start_date' => ['required', 'date'],
+            'supervisor_ids' => ['required', 'array', 'min:1'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'quote_line_ids' => ['required', 'array', 'min:1'],
             'quote_line_ids.*' => ['integer'],
         ];

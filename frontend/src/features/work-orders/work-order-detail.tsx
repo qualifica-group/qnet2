@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, ClipboardList, FileText, Hammer, History, Lock } from 'lucide-react'
+import { Boxes, ClipboardList, FileText, Hammer, History, Lock, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
@@ -19,6 +19,19 @@ import { ActivityLogSection } from '@/features/activity-log/activity-log-section
 import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine, WorkOrderType } from '@/features/work-orders/types'
 
 const WORK_ORDERS_DOMAIN = 'work-orders'
+
+/** Comma-free vertical list of people, so long names never truncate into each other. */
+function PeopleList({ names }: { names: string[] }) {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {names.map((name) => (
+        <li key={name} className="truncate">
+          {name}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 /** Colored status pill for the record header (D-3: calculated, sola lettura). */
 function WorkOrderStatusBadge({ isClosed }: { isClosed: boolean }) {
@@ -115,6 +128,9 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
               <RecordField label={t('workOrders.detail.status')}>
                 {t(workOrder.status.value === 'closed' ? 'workOrders.detail.statusClosed' : 'workOrders.detail.statusOpen')}
               </RecordField>
+              <RecordField label={t('workOrders.detail.startDate')}>
+                {formatDate(workOrder.start_date) || <DetailEmpty />}
+              </RecordField>
               <RecordField label={t('workOrders.detail.callbackDate')}>
                 {formatDate(workOrder.callback_date) || <DetailEmpty />}
               </RecordField>
@@ -126,6 +142,25 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
                   <span className="whitespace-pre-wrap">{workOrder.force_close_reason}</span>
                 </RecordField>
               ) : null}
+            </RecordFieldList>
+          </RecordSection>
+
+          <RecordSection title={t('workOrders.detail.sections.team')} icon={<Users />}>
+            <RecordFieldList>
+              <RecordField label={t('workOrders.detail.supervisors')}>
+                {workOrder.supervisors.length > 0 ? (
+                  <PeopleList names={workOrder.supervisors.map((supervisor) => supervisor.name)} />
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('workOrders.detail.participants')}>
+                {workOrder.participants.length > 0 ? (
+                  <PeopleList names={workOrder.participants.map((participant) => participant.name)} />
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
             </RecordFieldList>
           </RecordSection>
 

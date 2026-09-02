@@ -89,10 +89,17 @@ export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAtt
       .nullable()
       .refine((value): boolean => value !== null, t('requestManagement.form.create.validation.sourceRequired')),
     reporter_id: z.number().nullable(),
-    // The GA2 "Operatore" (user directive 2026-07-29): only submitted by an
-    // actor holding `request-management.assignOperator` — the field is not
-    // even rendered otherwise, and the endpoint rejects it server-side.
-    operator_id: z.number().nullable(),
+    // Spec 0097 rev-2 D-9: the created Offerta's Supervisore, available at
+    // creation like the other attribution ids and independent of the team's
+    // operator slot (AC-014).
+    supervisor_id: z.number().nullable(),
+    // The Offerta's team (spec 0097 D-1, replacing the single GA2 "Operatore"
+    // of the user directive 2026-07-29): ordered and gap-aware, index+1 =
+    // G.A. n. Only submitted by an actor holding
+    // `request-management.assignOperator` — the block is not even rendered
+    // otherwise, and the endpoint rejects it server-side. The cross-element
+    // invariants are `ValidatesManagerSlots`' own, not mirrored here.
+    manager_slots: z.array(z.number().nullable()),
     // Sede operativa (spec 0056, user directive 2026-07-31): optional, and
     // what scopes the operator list — the same reciprocal link the work panel
     // and the Lead form already carry.

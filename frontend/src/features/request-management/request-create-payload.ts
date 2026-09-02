@@ -11,7 +11,7 @@ import type {
   RequestClientContactPayload,
   RequestClientIdentityPayload,
   RequestRewardInput,
-} from '@/features/request-management/types'
+} from '@/features/request-management/request-write-types'
 
 /** The wire shape of the client's identity (full create, no `id`: the server always makes a new card). */
 function toClientIdentityPayload(draft: PersonalDataDraft): RequestClientIdentityPayload {
@@ -94,8 +94,14 @@ export interface BuildRequestCreatePayloadArgs {
   offerLines: QuoteLineFormValues[]
   sourceId: number | null
   reporterId: number | null
-  /** GA2 "Operatore": `null` whenever the actor may not assign one (the field is not rendered). */
-  operatorId: number | null
+  /** Spec 0097 rev-2 D-9: the created Offerta's Supervisore, `null` when none was picked. */
+  supervisorId: number | null
+  /**
+   * Spec 0097 D-1: the created Offerta's team, ordered and gap-aware. All-null
+   * (or empty) whenever the actor may not assign one — the block is not
+   * rendered then — which is what keeps the key off the wire below.
+   */
+  managerSlots: (number | null)[]
   /** Sede operativa (spec 0056): the field scoping the operator list, `null` when none was picked. */
   operationalSiteId: number | null
   rewards: RequestRewardInput[]
@@ -103,7 +109,7 @@ export interface BuildRequestCreatePayloadArgs {
    * The operative fields the work panel edits (user directive 2026-07-31).
    * Each is sent only when it carries something: on create there is no
    * persisted value a null/empty could clear, so the key would carry no
-   * information (the same rule `operator_id` and `rewards` already follow).
+   * information (the same rule `manager_slots` and `rewards` already follow).
    */
   nextCallbackAt: string | null
   generalNotes: string
@@ -130,7 +136,8 @@ export function buildRequestCreatePayload({
   offerLines,
   sourceId,
   reporterId,
-  operatorId,
+  supervisorId,
+  managerSlots,
   operationalSiteId,
   rewards,
   nextCallbackAt,
@@ -143,16 +150,23 @@ export function buildRequestCreatePayload({
   // Initial attribution rides along with EITHER anagrafica branch (it is
   // independent of the D-2 XOR): the Fonte/Segnalatore slots are always sent
   // (null clears them), and `rewards` only when at least one is picked — an
-  // empty array would be a no-op the server need not process. `operator_id`
-  // travels ONLY when set: an actor without `request-management.assignOperator`
-  // never renders the field, and sending an explicit null would be a key they
-  // are not entitled to submit at all. `operational_site_id` follows the same
-  // "only when set" rule for a simpler reason: on create there is no persisted
-  // value a null could clear, so the key would carry no information.
+  // empty array would be a no-op the server need not process. `manager_slots`
+  // travels ONLY once a slot is actually filled (spec 0097 D-1): an actor
+  // without `request-management.assignOperator` never renders the block, and
+  // an untouched set of empty cards carries no intent — omitted, the server
+  // applies its own default (the connected actor on the operator slot), which
+  // is exactly what the removed `operator_id` key used to leave it to.
+  // `operational_site_id` follows the same "only when set" rule for a simpler
+  // reason: on create there is no persisted value a null could clear, so the
+  // key would carry no information — and `supervisor_id` (spec 0097 rev-2
+  // D-9) rides with it: the create form has no `permissions` envelope to gate
+  // the field against, so sending an untouched null would earn a 422 from any
+  // actor who may not write it.
   const attribution = {
     source_id: sourceId,
     reporter_id: reporterId,
-    ...(operatorId !== null ? { operator_id: operatorId } : {}),
+    ...(supervisorId !== null ? { supervisor_id: supervisorId } : {}),
+    ...(managerSlots.some((slot) => slot !== null) ? { manager_slots: managerSlots } : {}),
     ...(operationalSiteId !== null ? { operational_site_id: operationalSiteId } : {}),
     ...(rewards.length > 0 ? { rewards } : {}),
   }

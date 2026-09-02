@@ -24,6 +24,38 @@ interface ManagerSlotsFieldProps {
    * this prop, and every existing call site, non-breaking.
    */
   labels?: Record<number, string>
+  /**
+   * Spec 0097 D-4: per-position `for-select` filter (1-based, like `labels`).
+   * Exists because ONE slot can be constrained while the others are not —
+   * Gestione richieste scopes its OPERATOR slot to the chosen Sede operativa
+   * (user directive 2026-07-23) while the rest of the team is not bound to a
+   * site. Returning `undefined` for a position leaves that list unfiltered,
+   * which is what every caller that does not pass the prop gets.
+   */
+  paramsFor?: (position: number) => Record<string, string | number> | undefined
+  /**
+   * Spec 0097 D-4: sibling of the value change exposing the whole picked
+   * `ForSelectItem`, not just its id — the reciprocal half of the link above
+   * needs the item's `meta` (the user's own Sede) to hydrate the dependent
+   * field. Fired on pick and on clear, like `AsyncPaginatedSelect`'s own.
+   */
+  onItemChange?: (position: number, item: ForSelectItem | null) => void
+  /**
+   * Spec 0096: per-module overrides for the strings that NAME the people being
+   * assigned. The defaults say "gestore account", which reads wrong wherever
+   * the slots are not Gestori Account — Commesse assigns "Partecipanti".
+   * Every key is optional and falls back to the shared `registries.form.*`
+   * wording, so callers that pass nothing are untouched. Deliberately covers
+   * only the noun-bearing strings: "Sposta su"/"Rimuovi slot"/"Slot vuoto"
+   * are already neutral and stay shared.
+   */
+  strings?: {
+    search?: string
+    empty?: string
+    error?: string
+    addSlot?: string
+    hint?: string
+  }
 }
 
 /**
@@ -35,7 +67,9 @@ interface ManagerSlotsFieldProps {
  * verbatim to the backend. Domain-agnostic (spec 0020, extracted for reuse by
  * Opportunities, spec 0040): every i18n string is the shared `registries.form.*`
  * namespace, generic enough that "G.A." reads the same across modules. Spec
- * 0080 lets a caller override the per-slot denomination via `labels`.
+ * 0080 lets a caller override the per-slot denomination via `labels`, and spec
+ * 0096 the noun-bearing strings around them via `strings` — Commesse assigns
+ * "Partecipanti", not "Gestori account".
  */
 export function ManagerSlotsField({
   value,
@@ -43,6 +77,9 @@ export function ManagerSlotsField({
   selectedItems,
   disabled = false,
   labels,
+  paramsFor,
+  onItemChange,
+  strings,
 }: ManagerSlotsFieldProps) {
   const { t } = useTranslation()
   const { quickCreated, renderAction } = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
@@ -101,14 +138,16 @@ export function ManagerSlotsField({
                 resource={USERS_FOR_SELECT_RESOURCE}
                 value={slot}
                 onChange={(id) => setSlot(index, id)}
+                onItemChange={(item) => onItemChange?.(index + 1, item)}
+                params={paramsFor?.(index + 1)}
                 selectedItem={selectedItemFor(slot)}
                 showAvatar
                 disabled={disabled}
                 labels={{
                   placeholder: t('registries.form.managerSlotEmpty'),
-                  searchPlaceholder: t('registries.form.managersSearch'),
-                  empty: t('registries.form.managersEmpty'),
-                  error: t('registries.form.managersError'),
+                  searchPlaceholder: strings?.search ?? t('registries.form.managersSearch'),
+                  empty: strings?.empty ?? t('registries.form.managersEmpty'),
+                  error: strings?.error ?? t('registries.form.managersError'),
                   clearLabel: t('common.clear'),
                   triggerLabel: slotLabel(index),
                   retry: t('common.retry'),
@@ -164,10 +203,10 @@ export function ManagerSlotsField({
         className="w-full justify-center border-dashed text-muted-foreground hover:border-solid hover:text-foreground"
       >
         <Plus aria-hidden="true" className="size-3.5" />
-        {t('registries.form.managersAddSlot')}
+        {strings?.addSlot ?? t('registries.form.managersAddSlot')}
       </Button>
 
-      <p className="text-xs text-muted-foreground">{t('registries.form.managersHint')}</p>
+      <p className="text-xs text-muted-foreground">{strings?.hint ?? t('registries.form.managersHint')}</p>
     </div>
   )
 }

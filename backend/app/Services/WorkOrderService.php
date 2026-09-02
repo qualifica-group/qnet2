@@ -9,6 +9,7 @@ use App\DataObjects\WorkOrders\UpdateWorkOrderData;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\WorkOrders\WorkOrderLineWriter;
+use App\Support\ManagerPositions;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -38,6 +39,8 @@ class WorkOrderService
     private const array DETAIL_RELATIONS = [
         'quote',
         'quoteLines.product',
+        'supervisors',
+        'participants',
     ];
 
     public function __construct(private readonly WorkOrderLineWriter $lineWriter) {}
@@ -77,6 +80,11 @@ class WorkOrderService
             // Step 2: validate + sync the REVENUE line membership (D-7).
             $this->lineWriter->writeSubmitted($workOrder, $data->quoteId, $data->quoteLineIds);
 
+            // Step 3: the two user pivots (spec 0096, D-1/D-3), inside the
+            // same transaction: a 422 from Step 2 rolls both back (AC-027).
+            $workOrder->supervisors()->sync($data->supervisorIds);
+            $workOrder->participants()->sync(ManagerPositions::syncMap($data->participantSlots));
+
             return $workOrder;
         });
 
@@ -97,15 +105,27 @@ class WorkOrderService
             $workOrder->save();
 
             $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
+
+            // Full-replace only when the key was actually submitted
+            // (AC-024): an untouched relation must not trigger a no-op sync.
+            if ($data->hasSupervisorIds()) {
+                $workOrder->supervisors()->sync($data->supervisorIds ?? []);
+                $workOrder->unsetRelation('supervisors');
+            }
+
+            if ($data->hasParticipantSlots()) {
+                $workOrder->participants()->sync(ManagerPositions::syncMap($data->participantSlots ?? []));
+                $workOrder->unsetRelation('participants');
+            }
         });
 
         return $this->loadDetail($workOrder);
     }
 
     /**
-     * Delete the work order. `quote_line_work_order` pivot rows cascade away
-     * via their own FK (AC-003/AC-060); the linked Quote/QuoteLine rows are
-     * untouched. No guard (D-11): nothing references a work order yet.
+     * Delete the work order. `quote_line_work_order`, `work_order_supervisor`
+     * and `work_order_participant` pivot rows cascade away via their own FKs
+     * (AC-003/AC-060); the linked Quote/QuoteLine/User rows are untouched. No guard (D-11): nothing references a work order yet.
      */
     public function delete(WorkOrder $workOrder): void
     {

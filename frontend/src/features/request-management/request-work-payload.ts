@@ -1,3 +1,4 @@
+import { managerSlotsFromRefs, sameManagerSlots } from '@/lib/utils'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -9,12 +10,14 @@ import type { RequestWorkFormValues } from '@/features/request-management/reques
 import type {
   RequestClientAddressPayload,
   RequestClientContactPayload,
-  RequestClientIdentity,
   RequestClientIdentityPayload,
+  UpdateRequestWorkPayload,
+} from '@/features/request-management/request-write-types'
+import type {
+  RequestClientIdentity,
   RequestContact,
   RequestProductLine,
   RequestWorkPanel,
-  UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
 
 /**
@@ -259,8 +262,19 @@ export function buildRequestWorkPayload(
     payload.reporter_id = values.reporter_id
   }
 
-  if (values.operator_id !== panel.operator_id) {
-    payload.operator_id = values.operator_id
+  // Spec 0097 rev-2 D-9: one more sparse attribution key, diffed on its own —
+  // it shares nothing with the operator slot below (AC-014).
+  if (values.supervisor_id !== panel.supervisor_id) {
+    payload.supervisor_id = values.supervisor_id
+  }
+
+  // Spec 0097 D-1: the team travels as ONE authoritative positional array, and
+  // only when that array actually changed from the loaded pivot. Compared
+  // POSITIONALLY (`sameManagerSlots`): an empty slot between two filled ones is
+  // information — G.A. 3 with no G.A. 2 is not the same team as the two of them
+  // packed together — so a set comparison would silently drop a real edit.
+  if (!sameManagerSlots(values.manager_slots, managerSlotsFromRefs(panel.managers ?? []))) {
+    payload.manager_slots = values.manager_slots
   }
 
   if (values.operational_site_id !== panel.operational_site_id) {

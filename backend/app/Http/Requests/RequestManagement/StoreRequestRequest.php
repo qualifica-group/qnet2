@@ -7,6 +7,7 @@ namespace App\Http\Requests\RequestManagement;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\DataObjects\Users\ProfileData;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesQuoteLines;
 use App\Http\Requests\Concerns\ValidatesRequestClientProfile;
@@ -32,9 +33,10 @@ use Illuminate\Validation\Rule;
  * `request-management.create`, which is what authorizes setting a request's
  * INITIAL attribution — `source_id` (Fonte), `reporter_id` (Segnalatore) and
  * the `rewards` block (buono, beneficiary = reporter). The one exception is
- * `operator_id` (GA2), a supervisory act that needs
+ * `manager_slots` (spec 0097, D-1/D-2: the whole team, replacing the lone
+ * `operator_id` picker this form used to carry), a supervisory act that needs
  * `request-management.assignOperator` ON TOP: the controller rejects a
- * non-null value from an actor without it. The per-field readonly
+ * payload filling any slot from an actor without it. The per-field readonly
  * matrix (RequestManagementAuthorization::fields()) governs who may LATER edit
  * those fields on an existing record through the work panel's PATCH, a
  * distinct lifecycle concern; enforcing it here would need a persisted model
@@ -42,6 +44,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreRequestRequest extends FormRequest
 {
+    use ValidatesManagerSlots;
     use ValidatesProductLines;
     use ValidatesQuoteLines;
     use ValidatesRequestClientProfile;
@@ -82,11 +85,13 @@ class StoreRequestRequest extends FormRequest
                 // semantics the opportunities create payload carries.
                 'source_id' => ['required', 'integer', Rule::exists('sources', 'id')],
                 'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
-                // The GA2 "Operatore" (user directive 2026-07-29). Optional
-                // here; submitting a non-null value additionally requires
-                // `request-management.assignOperator`, enforced by the
-                // controller (this class holds no authorization, see above).
-                'operator_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+                // "Supervisore" (spec 0097, D-9, user directive 2026-09-02):
+                // the created Offerta's commission recipient, same rule as
+                // the PATCH channel. Optional: an ABSENT key leaves the
+                // creation exactly as it was — the Offerta inherits the
+                // value through QuoteService's snapshot defaults, this form
+                // applies no default of its own.
+                'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
                 // "Prodotti di interesse" (user directive 2026-07-31): the
                 // same picker the work panel carries, available already at
                 // creation. OPTIONAL here — the operator often records them
@@ -125,6 +130,14 @@ class StoreRequestRequest extends FormRequest
             // to QuoteService::create() untouched, which is what covers the
             // opportunity's product lines with them (D-7).
             $this->offerLinesOnlyRules(),
+            // The Offerta's team (spec 0097, D-1/D-2): the same ordered,
+            // gap-aware shape the work panel and the Offerte form take,
+            // replacing the single "Operatore" picker. Optional here — an
+            // absent key (or an empty OPERATOR slot) means "the creating
+            // actor works it", the default RequestCreationService applies.
+            // Filling any slot additionally requires
+            // `request-management.assignOperator` (controller, see above).
+            $this->managerSlotsRules(),
             $this->clientProfileRules(),
             $this->productLinesRules(required: true),
             // Spec 0059: reward assignments for the reporter. Same shape/rules
@@ -147,6 +160,7 @@ class StoreRequestRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->validateClientProfile($validator);
             $this->validateProductLines($validator);
+            $this->validateManagerSlots($validator);
             // null opportunity: on create there is nothing persisted, so only
             // the "non-empty rewards require a submitted reporter_id" half of
             // the D-3 guard can fire here (the "cannot clear a reporter that
@@ -213,11 +227,18 @@ class StoreRequestRequest extends FormRequest
             productLines: self::normalizeProductLines((array) $validated['product_lines']),
             sourceId: isset($validated['source_id']) ? (int) $validated['source_id'] : null,
             reporterId: isset($validated['reporter_id']) ? (int) $validated['reporter_id'] : null,
+            supervisorId: isset($validated['supervisor_id']) ? (int) $validated['supervisor_id'] : null,
+            supervisorIdSubmitted: array_key_exists('supervisor_id', $validated),
             productsOfInterest: array_key_exists('products_of_interest', $validated)
                 ? array_values(array_unique(array_map(intval(...), (array) $validated['products_of_interest'])))
                 : null,
             rewards: array_key_exists('rewards', $validated) ? self::normalizeRewardTypeIds((array) $validated['rewards']) : null,
-            operatorId: isset($validated['operator_id']) ? (int) $validated['operator_id'] : null,
+            managerSlots: array_key_exists('manager_slots', $validated)
+                ? array_map(
+                    static fn (mixed $userId): ?int => $userId === null ? null : (int) $userId,
+                    array_values((array) $validated['manager_slots']),
+                )
+                : null,
             operationalSiteId: isset($validated['operational_site_id']) ? (int) $validated['operational_site_id'] : null,
             nextCallbackAt: $validated['next_callback_at'] ?? null,
             generalNotes: $validated['general_notes'] ?? null,

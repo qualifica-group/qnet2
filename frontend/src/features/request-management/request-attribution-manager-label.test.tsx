@@ -7,11 +7,11 @@ import { RequestWorkPanelScreen } from '@/features/request-management/request-wo
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
 /**
- * AC-045 (work panel side): the GA2 "Operatore" field relabels from the
- * request's own `manager_labels` (spec 0080), preferring it over a fetch —
- * the work panel already carries it. AC-032: with no resolved label the
- * field keeps today's exact "Operator (GA2)" string. Mirrors the minimal
- * panel/mock shape of `request-attribution-operator-link.test.tsx`.
+ * Spec 0080 AC-045 (work panel side), rebound by spec 0097 AC-001: the TEAM
+ * slots relabel from the request's own `manager_labels`, preferring it over a
+ * fetch — the work panel already carries it. With no resolved label each slot
+ * keeps the editor's default "Account manager n" denomination. Mirrors the
+ * minimal panel/mock shape of `request-attribution-operator-link.test.tsx`.
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
@@ -59,6 +59,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     source: { id: 30, name: 'Web' },
     reporter_id: null,
     reporter: null,
+    supervisor_id: null,
+    supervisor: null,
     operator_id: null,
     operator: null,
     operational_site_id: null,
@@ -104,21 +106,58 @@ beforeEach(() => {
   fetchRequestWorkPanelMock.mockReset()
 })
 
-describe('Work panel — Operatore field label (spec 0080)', () => {
-  it('AC-032: keeps "Operator (GA2)" when the request has no resolved manager_labels', async () => {
+describe('Work panel — team slot labels (spec 0080/0097)', () => {
+  it('keeps the default denominations when the request has no resolved manager_labels', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
     renderPanel()
 
-    expect(await screen.findByRole('button', { name: 'Operator (GA2)' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Account manager 2' })).toBeInTheDocument()
   })
 
-  it("AC-045: shows the request's own resolved level-2 label instead", async () => {
-    fetchRequestWorkPanelMock.mockResolvedValue(panel({ manager_labels: { '2': 'Consultant' } }))
+  /** AC-001: the WHOLE team is on screen, not the operator slot alone. */
+  it('renders one trigger per G.A. slot', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+
+    renderPanel()
+
+    expect(await screen.findByRole('button', { name: 'Account manager 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 4' })).toBeInTheDocument()
+  })
+
+  /**
+   * Data-loss guard (backend note on spec 0097 AC-007): the panel PADS the
+   * loaded pivot up to the default card count, it never TRUNCATES to it. The
+   * PATCH is a full replace, so a G.A. sitting past the default count — legal
+   * up to `ManagerPositions::MAX`, and reachable from the Offerte form — would
+   * be wiped by the next save if the editor stopped rendering its slot.
+   */
+  it('renders every slot of a team reaching beyond the default count', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({
+        managers: [
+          { id: 5, name: 'Ada Lovelace', position: 2 },
+          { id: 9, name: 'Grace Hopper', position: 6 },
+        ],
+      }),
+    )
+
+    renderPanel()
+
+    expect(await screen.findByRole('button', { name: 'Account manager 6' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 5' })).toBeInTheDocument()
+  })
+
+  it("shows the request's own resolved labels instead, per position", async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ manager_labels: { '1': 'Senior consultant', '2': 'Consultant' } }),
+    )
 
     renderPanel()
 
     expect(await screen.findByRole('button', { name: 'Consultant' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Operator (GA2)' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Senior consultant' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Account manager 2' })).not.toBeInTheDocument()
   })
 })

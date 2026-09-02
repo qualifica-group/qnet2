@@ -73,7 +73,7 @@ vi.mock('@/features/quotes/quote-document-api', () => ({
 
 const ROW: TableRow = {
   id: 9,
-  actions: ['view', 'edit', 'delete', 'activity', 'notes', 'generate_document'],
+  actions: ['view', 'delete', 'activity', 'notes', 'generate_document'],
   title: 'Offerta Acme',
   code: 'QUO-0009',
   opportunity: { id: 42, name: 'Opportunita Acme' },
@@ -279,10 +279,13 @@ describe('OpportunityQuotesSection — row actions (AC-060/061/065)', () => {
     expect(openViewMock).toHaveBeenCalledWith(ROW)
   })
 
-  it('delegates edit to openEdit', () => {
+  // L'azione "modifica" e' stata rimossa dal catalogo Offerte (direttiva
+  // utente 2026-09-02): se una riga la annuncia comunque, l'handler deve
+  // ignorarla invece di aprire il form.
+  it('ignores an edit action key', () => {
     renderPanel(3)
     act(() => screen.getByRole('button', { name: 'edit row' }).click())
-    expect(openEditMock).toHaveBeenCalledWith(ROW)
+    expect(openEditMock).not.toHaveBeenCalled()
   })
 
   it('opens the activity dialog for the row, reusing ResourceActivityDialog(resource="quotes")', () => {

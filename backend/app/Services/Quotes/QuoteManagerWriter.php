@@ -25,9 +25,10 @@ use Illuminate\Validation\ValidationException;
  * `Opportunity::managers()`/`Registry::managers()` are synced from — the
  * caller (StoreQuoteRequest/UpdateQuoteRequest path) hands it over verbatim.
  *
- * NOTE (D-4): `OpportunityService` performs the equivalent work inline
- * (managerSyncMap()/sync(), :226-229/:295-298/:400-411) — deliberately NOT
- * refactored onto this class here, out of this spec's scope.
+ * NOTE (D-4): `OpportunityService` performs the equivalent work inline —
+ * deliberately NOT refactored onto this class, out of that spec's scope. The
+ * slots-to-pivot-map conversion the two shared verbatim IS now deduplicated,
+ * in App\Support\ManagerPositions::syncMap() (spec 0096 D-4).
  */
 final class QuoteManagerWriter
 {
@@ -41,7 +42,7 @@ final class QuoteManagerWriter
     public function sync(Quote $quote, array $slots, bool $promoteToOpportunity): void
     {
         $opportunity = $this->resolveOpportunity($quote);
-        $syncMap = $this->managerSyncMap($slots);
+        $syncMap = ManagerPositions::syncMap($slots);
         $synchronized = $this->syncMode->isSynchronized($opportunity);
 
         // Step 1: outside synchronized categories, every mapped user must
@@ -70,28 +71,6 @@ final class QuoteManagerWriter
             $opportunity->managers()->sync($syncMap);
             $opportunity->unsetRelation('managers');
         }
-    }
-
-    /**
-     * Turns the ordered, gap-aware manager slots into the pivot sync map
-     * `[userId => ['position' => n]]` (mirrors OpportunityService::
-     * managerSyncMap()/RegistryService's own copy verbatim — identical pivot
-     * shape).
-     *
-     * @param  array<int, int|null>  $slots
-     * @return array<int, array{position: int}>
-     */
-    private function managerSyncMap(array $slots): array
-    {
-        $map = [];
-
-        foreach (array_values($slots) as $index => $userId) {
-            if ($userId !== null) {
-                $map[$userId] = ['position' => $index + 1];
-            }
-        }
-
-        return $map;
     }
 
     /**

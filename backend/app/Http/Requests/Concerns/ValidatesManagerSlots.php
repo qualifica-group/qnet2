@@ -8,13 +8,18 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Shared validation for the ordered, gap-aware `manager_slots` payload of the
- * registry write endpoints (spec 0020, "Gestori"): a list whose index+1 is the
- * static "G.A. n" position and whose null entries are intentionally empty slots.
+ * Shared validation for an ordered, gap-aware slot payload (spec 0020,
+ * "Gestori"): a list whose index+1 is the static position and whose null
+ * entries are intentionally empty slots.
  *
  * The base array/element rules live in managerSlotsRules(); the cross-element
- * invariants (at most MAX_MANAGERS filled, no manager in two slots) run in
+ * invariants (at most MAX_MANAGERS filled, no user in two slots) run in
  * validateManagerSlots(), called from each request's own withValidator().
+ *
+ * Both take the payload key as a parameter, defaulting to `manager_slots`:
+ * Registries/Opportunita'/Offerte call them unchanged, while the Commessa's
+ * own team submits the same SHAPE under `participant_slots` (spec 0096, D-3).
+ * One rule set, two field names — never a second copy of these invariants.
  *
  * @phpstan-require-extends FormRequest
  */
@@ -35,11 +40,11 @@ trait ValidatesManagerSlots
     /**
      * @return array<string, array<int, mixed>>
      */
-    protected function managerSlotsRules(): array
+    protected function managerSlotsRules(string $field = 'manager_slots'): array
     {
         return [
-            'manager_slots' => ['sometimes', 'array', 'max:'.self::MAX_MANAGER_SLOTS],
-            'manager_slots.*' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            $field => ['sometimes', 'array', 'max:'.self::MAX_MANAGER_SLOTS],
+            $field.'.*' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ];
     }
 
@@ -47,9 +52,9 @@ trait ValidatesManagerSlots
      * Cross-element rules: the number of FILLED slots is capped and a single
      * manager may occupy only one slot. Empty (null) slots are unconstrained.
      */
-    protected function validateManagerSlots(Validator $validator): void
+    protected function validateManagerSlots(Validator $validator, string $field = 'manager_slots'): void
     {
-        $slots = $this->input('manager_slots');
+        $slots = $this->input($field);
 
         if (! is_array($slots)) {
             return;
@@ -58,11 +63,11 @@ trait ValidatesManagerSlots
         $filled = array_values(array_filter($slots, static fn ($id): bool => $id !== null));
 
         if (count($filled) > self::MAX_MANAGERS) {
-            $validator->errors()->add('manager_slots', 'A registry has at most '.self::MAX_MANAGERS.' managers.');
+            $validator->errors()->add($field, 'At most '.self::MAX_MANAGERS.' users can fill these slots.');
         }
 
         if (count($filled) !== count(array_unique($filled))) {
-            $validator->errors()->add('manager_slots', 'A manager can occupy only one G.A. slot.');
+            $validator->errors()->add($field, 'A user can occupy only one slot.');
         }
     }
 }

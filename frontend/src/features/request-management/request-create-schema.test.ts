@@ -15,7 +15,10 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     product_lines: [{ business_function_id: 1, product_category_id: 11 }],
     source_id: 30,
     reporter_id: null,
-    operator_id: null,
+    supervisor_id: null,
+    // Spec 0097 D-1: the team replaces the single "Operatore" field; empty
+    // here, which the schema accepts (the server then applies its own default).
+    manager_slots: [null, null, null, null],
     operational_site_id: null,
     products_of_interest: [],
     // "Linee dell'offerta" (user directive 2026-08-07): part of the schema's

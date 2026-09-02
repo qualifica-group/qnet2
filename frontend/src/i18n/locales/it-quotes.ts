@@ -158,7 +158,7 @@ export const quotes = {
       },
       team: {
         title: 'Team',
-        description: "Gestori account di questa offerta.",
+        description: "Supervisore e gestori account di questa offerta.",
       },
       sites: {
         title: 'Società e sedi',

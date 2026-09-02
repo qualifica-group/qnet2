@@ -27,6 +27,29 @@ use Illuminate\Database\Eloquent\Model;
  * D-1 / 0083 D-2 rightly removed) but as the Offerta's — the record this
  * module operates on since spec 0086. Same keys, same shape and same
  * ceiling rule as QuotesAuthorization declares for them.
+ *
+ * Spec 0097, D-3: `operator_id` is GONE from this catalogue, replaced by
+ * `manager_slots` — the panel stopped editing the lone GA2 "Operatore" and
+ * started editing the Offerta's whole team, of which that operator is slot
+ * `ManagerPositions::OPERATOR`. Nothing became ungated: the grid column
+ * `operator_ga2`, which still writes that one slot, now hangs off the new
+ * key (see the field's own note below), and a migration renames the already
+ * configured `role_field_permissions` rows so no administrator restriction
+ * is lost in the move.
+ *
+ * Spec 0097, D-9 (user directive 2026-09-02): `supervisor_id` is BACK in this
+ * catalogue, and that deliberately REVERSES spec 0087 D-13/D-14/INV-5, which
+ * had stated this module "does not read, write or deduce
+ * `quotes.supervisor_id`". The reversal is narrow, and the narrowing is the
+ * whole point: what comes back is NOT the old ownership column. Since spec
+ * 0087 that field means one thing only — the Offerta's commission-recipient
+ * Supervisore (`CommissionRecipientRole::Supervisor`), a plain fillable
+ * scalar on `quotes` — while the request's operative ownership stays
+ * `operator_id`/the OPERATOR slot of `manager_slots`, which this key must
+ * never touch. So no `RequestSupervisorWriter` comes back with it: the field
+ * travels with `reporter_id`/`operational_site_id` through
+ * RequestAttributionWriter::applyQuoteAttribution(), coupled to no pivot, no
+ * assignment notification and no visibility scope (AC-014).
  */
 class RequestManagementAuthorization extends AbstractResourceAuthorization
 {
@@ -68,18 +91,34 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // never lets it be cleared (UpdateRequestRequest's `required`).
             new FieldDefinition('source_id', 'select', mandatory: true),
             new FieldDefinition('reporter_id', 'select'),
-            // `operator_id`: the ONE field key for the GA2 "Operatore"/
-            // Supervisore, on BOTH write channels — the panel's PATCH wire
-            // key AND the grid's `operator_ga2` column `editableField` (spec
-            // 0086, corrected in execution: a first cut named this field
-            // `supervisor_id` on the grid channel only, which silently
-            // decoupled it from `RequestManagementService::updateWork()`'s
-            // own `operator_id` check — the inline edit returned 200 without
-            // writing anything. The DB column the write actually lands on is
-            // `quotes.supervisor_id`, but that is RequestSupervisorWriter's
-            // own internal detail (plus the GA2 pivot sync, D-3): it never
-            // surfaces as a field-permission key.
-            new FieldDefinition('operator_id', 'select'),
+            // "Supervisore" (spec 0097, D-9): the Offerta's commission
+            // recipient, editable from this panel again — see the class
+            // docblock for why that reverses spec 0087 and how narrowly.
+            // NOT mandatory: an Offerta with no Supervisore is a legitimate
+            // state, so no role matrix has to keep the field filled.
+            new FieldDefinition('supervisor_id', 'select'),
+            // `manager_slots`: the Offerta's WHOLE team of Gestori Account,
+            // the key that REPLACED `operator_id` (spec 0097, D-3 — the
+            // panel no longer exposes the lone GA2 picker, it exposes the
+            // same ManagerSlotsField the Offerte form uses). Same
+            // `multiselect` declaration QuotesAuthorization gives its own
+            // `manager_slots`, so the two forms gate the identical block on
+            // identical terms.
+            //
+            // The old key's semantics did NOT disappear, they widened: the
+            // GA2 "Operatore" is slot `ManagerPositions::OPERATOR` of this
+            // very collection, and the grid column `operator_ga2` — which
+            // still WRITES that single slot — is now gated by THIS key
+            // (`editableField` => `manager_slots`, RequestColumnCatalog).
+            // The spec 0086 mt06 lesson that made `operator_id` the ONE key
+            // of both channels still holds and is unchanged: `editableField`
+            // is the LOGICAL permission key, never the DB column, and
+            // `updateWork()` keeps recognizing exactly one WRITE key per
+            // channel (`operator_id` for the cell/bulk/transfer, the new
+            // `manager_slots` for the panel) — WritesInlineEditableCells
+            // translates the cell's key back before calling it, so the two
+            // can never silently decouple into a 200 no-op again.
+            new FieldDefinition('manager_slots', 'multiselect'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
             // the operational-sites.viewAny ceiling rule this field shares).
@@ -132,7 +171,11 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'product_lines' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'source_id' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'operator_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            // Spec 0097, D-9: same ceiling QuotesAuthorization gives its own
+            // `supervisor_id` — the two forms gate the identical field on
+            // identical terms, no extra ability on top.
+            'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (mirrors OpportunitiesAuthorization).
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

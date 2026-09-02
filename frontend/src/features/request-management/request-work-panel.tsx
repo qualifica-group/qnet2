@@ -25,6 +25,7 @@ import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { RequestAttributionSection } from '@/features/request-management/request-attribution-section'
+import { RequestTeamSection } from '@/features/request-management/request-team-section'
 import { RequestCallbackSection } from '@/features/request-management/request-callback-section'
 import { RequestClientSection } from '@/features/request-management/request-client-section'
 import { RequestGeneralNotesCallout } from '@/features/request-management/request-general-notes-callout'
@@ -33,9 +34,13 @@ import { RequestProductLinesSection } from '@/features/request-management/reques
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
+import { useRequestSiteOperatorLink } from '@/features/request-management/use-request-site-operator-link'
 import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
 import { useRequestWorkForm } from '@/features/request-management/use-request-work-form'
-import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
+import type { RequestManagerRef, RequestWorkPanelWithPermissions } from '@/features/request-management/types'
+
+/** Hoisted: `panel.managers ?? []` inline would hand the team editor a new array reference on every render. */
+const EMPTY_MANAGERS: RequestManagerRef[] = []
 
 /**
  * DOM id bridging the sticky submit button to the RHF `<form>` (spec 0052
@@ -145,6 +150,11 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
     useRequestWorkForm(panel)
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
+  // Spec 0097 rev-2 D-7/AC-011: the Sede (Attribuzione) and the operator slot
+  // (Team) are two sections apart now, so their reciprocal link is cabled here
+  // — where the form they both write actually lives — and each section gets
+  // its own half.
+  const siteLink = useRequestSiteOperatorLink(form)
   // Watched here so `QuoteWorkflowStatusField` stays presentational: it is
   // what decides whether the transition note is demanded.
   const selectedStatusId = useWatch({ control: form.control, name: 'quote_workflow_status_id' })
@@ -268,10 +278,23 @@ function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
                 requestId={panel.id}
                 source={panel.source}
                 reporter={panel.reporter}
-                operator={panel.operator}
                 operationalSite={toRelationFieldRef(panel.operational_site)}
                 rewards={panel.rewards ?? []}
+                autoFilledSite={siteLink.autoFilledSite}
+                onSiteItemChange={siteLink.onSiteItemChange}
+              />
+
+              {/* Right after the Sede that scopes its operator slot (spec
+                  0097 rev-2 D-7): the Offerta's Supervisore and its whole
+                  team, in the Offerte form's own editor. */}
+              <RequestTeamSection
+                control={form.control}
+                managers={panel.managers ?? EMPTY_MANAGERS}
+                supervisor={panel.supervisor}
                 managerLabels={panel.manager_labels}
+                siteId={siteLink.siteId}
+                slotParamsFor={siteLink.slotParamsFor}
+                onSlotItemChange={siteLink.onSlotItemChange}
               />
 
               <RequestClientSection control={form.control} />

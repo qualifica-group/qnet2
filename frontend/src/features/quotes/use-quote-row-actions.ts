@@ -12,12 +12,12 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 export interface UseQuoteRowActionsOptions {
   /**
    * Called after anything that changes the displayed rows: a successful
-   * create/edit save, or a delete. The caller decides what "refresh" means for
+   * create save, or a delete. The caller decides what "refresh" means for
    * its own surface (purge an SSRM cache, invalidate a query).
    */
   onMutated: () => void
   /**
-   * Forces the open mode of view/edit/create instead of honoring the user's
+   * Forces the open mode of view/create instead of honoring the user's
    * preference (spec 0067 D-3): an EMBEDDED surface must never navigate away
    * from the record hosting it. Omitted, the actor's own preference wins.
    */
@@ -94,7 +94,7 @@ export function useQuoteRowActions({
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [notesTarget, setNotesTarget] = useState<QuoteNotesTarget | null>(null)
 
-  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener(QUOTES_DOMAIN, {
+  const { openCreate, openCreateWith, openView, sheet } = useModuleOpener(QUOTES_DOMAIN, {
     onSaved: onMutated,
     forceMode,
   })
@@ -124,9 +124,6 @@ export function useQuoteRowActions({
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -151,7 +148,7 @@ export function useQuoteRowActions({
           break
       }
     },
-    [openView, openEdit, runDelete, generateDocument],
+    [openView, runDelete, generateDocument],
   )
 
   const isBusy = useCallback(

@@ -16,6 +16,7 @@ import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteLine } from '@/features/quotes/types'
 import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'
+import { RequestCreateTeamSection } from '@/features/request-management/request-create-team-section'
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
@@ -23,7 +24,13 @@ import { RequestCreateHeader } from '@/features/request-management/request-creat
 import { RequestCreateProductsOfInterest } from '@/features/request-management/request-create-products-of-interest'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { useRequestCreateForm } from '@/features/request-management/use-request-create-form'
+import {
+  ASSIGN_OPERATOR_PERMISSION,
+  OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
+} from '@/features/request-management/use-request-actor-defaults'
+import { useRequestSiteOperatorLink } from '@/features/request-management/use-request-site-operator-link'
 
 /**
  * DOM id bridging the sticky header's save action to the RHF `<form>` below,
@@ -64,7 +71,7 @@ interface RequestCreateFormProps {
  *  - main column = the same sections in the same order: product lines and
  *    products of interest FIRST (user directive 2026-08-03 — they are the
  *    record's headline information), then the next callback, attribution,
- *    anagrafica.
+ *    team, anagrafica.
  *
  * The two differences are structural, not cosmetic: the panel's collaboration
  * block (note/documenti/storico) needs a record to hang off, and its summary
@@ -94,6 +101,21 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
     vatRatePercentFor,
     rememberVatRatePercent,
   } = useRequestCreateForm({ onSuccess })
+
+  // The two supervisory blocks of the attribution/team pair are rendered only
+  // for the actor holding their own ability (user directive 2026-08-03), the
+  // same two the store endpoint enforces server-side. Resolved here, where the
+  // form is, so the two sections cannot answer the question differently.
+  const { can } = useAbilities()
+  const canPickSite = can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)
+  const canAssignOperator = can(ASSIGN_OPERATOR_PERMISSION)
+
+  // Spec 0097 rev-2 D-7/AC-011: the Sede (Attribuzione) and the operator slot
+  // (Team) are two sections apart now, so their reciprocal link is cabled here
+  // — where the form they both write actually lives — and each section gets
+  // its own half. `canPickSite` suppresses the auto-fill for an actor who may
+  // not set the Sede at all: the key would come back 403 from the endpoint.
+  const siteLink = useRequestSiteOperatorLink(form, { canPickSite })
 
   // Spec 0075, D-5: the same rule the work panel applies — a product line
   // removed (or re-pointed) drops the products of interest it was covering,
@@ -194,7 +216,25 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
 
               <RequestCreateCallbackSection control={form.control} />
 
-              <RequestCreateAttributionSection form={form} rewardsError={rewardsError} />
+              <RequestCreateAttributionSection
+                form={form}
+                rewardsError={rewardsError}
+                canPickSite={canPickSite}
+                autoFilledSite={siteLink.autoFilledSite}
+                onSiteItemChange={siteLink.onSiteItemChange}
+              />
+
+              {/* Right after the Sede that scopes its operator slot (spec
+                  0097 rev-2 D-7): the Offerta's Supervisore and its whole
+                  team, the work panel's own section in create clothes. */}
+              <RequestCreateTeamSection
+                control={form.control}
+                canAssignOperator={canAssignOperator}
+                canPickSite={canPickSite}
+                siteId={siteLink.siteId}
+                slotParamsFor={siteLink.slotParamsFor}
+                onSlotItemChange={siteLink.onSlotItemChange}
+              />
 
               {/* "Informazioni aggiuntive" (user directive 2026-08-07): the
                   work panel's own section — literally the Offerte form's

@@ -157,3 +157,19 @@ function grantImportRunsPermissions(User $user, array $abilities): void
         $user->givePermissionTo('leads.import');
     }
 }
+
+/**
+ * The two things spec 0096 (D-1) made mandatory on every work order write:
+ * `start_date` and at least one Responsabile (`supervisor_ids`). Spread into
+ * a create payload (`...workOrderRequiredFields()`) so the ~30 existing call
+ * sites state the new requirement once instead of each inventing its own.
+ *
+ * @return array{start_date: string, supervisor_ids: array<int, int>}
+ */
+function workOrderRequiredFields(): array
+{
+    return [
+        'start_date' => '2026-09-10',
+        'supervisor_ids' => [User::factory()->create()->id],
+    ];
+}

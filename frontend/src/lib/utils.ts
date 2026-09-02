@@ -55,6 +55,20 @@ export function sameManagerSlots(a: (number | null)[], b: (number | null)[]): bo
   return true
 }
 
+/**
+ * Converts the wire `manager_labels` (string position keys, the shape every
+ * endpoint exposes them in) to the `Record<number, string>` `ManagerSlotsField`
+ * reads. Shared here for the same reason as the helpers above: since spec 0097
+ * both the Offerta form and Gestione richieste feed the same editor from the
+ * same wire map, and a second copy would be free to key it differently.
+ * `undefined` for an empty map — the editor's own "no resolved labels" state,
+ * which keeps the compact number badge.
+ */
+export function toManagerSlotLabels(source: Record<string, string>): Record<number, string> | undefined {
+  const entries = Object.entries(source).map(([position, label]) => [Number(position), label] as const)
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
 /** Shallow, key-for-key equality of two resolved G.A. label maps. */
 function sameManagerLabels(a: Record<string, string>, b: Record<string, string>): boolean {
   const aKeys = Object.keys(a)

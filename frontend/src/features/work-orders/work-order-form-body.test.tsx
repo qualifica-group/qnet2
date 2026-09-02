@@ -73,6 +73,9 @@ const EDIT_PERMISSIONS: ResourcePermissions = {
     title: EDITABLE,
     type: EDITABLE,
     callback_date: EDITABLE,
+    start_date: EDITABLE,
+    supervisor_ids: EDITABLE,
+    participant_slots: EDITABLE,
     quote_line_ids: EDITABLE,
     is_force_closed: EDITABLE,
     force_close_reason: EDITABLE,
@@ -98,6 +101,9 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     is_force_closed: false,
     force_close_reason: null,
     callback_date: null,
+    start_date: '2026-03-01',
+    supervisors: [{ id: 21, name: 'Ada Alberti' }],
+    participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],
     description: null,
     internal_notes: null,
     contract_number: 'QUO-0004',
@@ -180,5 +186,50 @@ describe('WorkOrderFormBody — offer picker (AC-071)', () => {
 
     expect(screen.getByRole('button', { name: 'Product lines' })).toBeDisabled()
     await waitFor(() => expect(fetchForSelectMock).not.toHaveBeenCalledWith('quote-offer-lines', expect.anything()))
+  })
+})
+
+/**
+ * Spec 0096 AC-070/071/072: the "Responsabili e partecipanti" section renders
+ * the three new fields, the slot rows are relabelled "Partecipante n" through
+ * `ManagerSlotsField`'s own `labels` prop (the component itself untouched),
+ * and edit-mode hydration preserves the persisted `position` gaps.
+ */
+describe('WorkOrderFormBody — responsabili e partecipanti (spec 0096)', () => {
+  it('renders start date, responsabili and the relabelled participant slots in edit mode', async () => {
+    renderForm({ type: 'edit', workOrder: workOrder() }, EDIT_PERMISSIONS)
+
+    expect(await screen.findByLabelText(/^Start date/)).toHaveValue('2026-03-01')
+    expect(screen.getByRole('button', { name: /Supervisors/ })).toBeInTheDocument()
+    // Relabelled rows, not the shared "Gestore account n" default.
+    expect(screen.getByText('Participant 1')).toBeInTheDocument()
+    expect(screen.queryByText(/Account manager 1/)).not.toBeInTheDocument()
+  })
+
+  it('names the people being assigned "participants" everywhere, not "account managers"', () => {
+    renderForm({ type: 'edit', workOrder: workOrder() }, EDIT_PERMISSIONS)
+
+    // The shared slot editor defaults to the Gestori Account wording; this
+    // module overrides it. Regression guard: the add button was the one place
+    // the leftover default was actually visible to the user.
+    expect(screen.getByRole('button', { name: 'Add participant' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /account manager/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/Participants are ordered/)).toBeInTheDocument()
+    expect(screen.queryByText(/account managers are/i)).not.toBeInTheDocument()
+  })
+
+  it('hydrates a partecipante parked on a later slot without compacting the gap', async () => {
+    const detail = workOrder()
+    renderForm(
+      {
+        type: 'edit',
+        workOrder: { ...detail, participants: [{ id: 31, name: 'Bruno Bianchi', position: 3 }] },
+      },
+      EDIT_PERMISSIONS,
+    )
+
+    // Slot 3 is filled and slots 1-2 stay as empty cards: the gap is data.
+    expect(await screen.findByText('Participant 3')).toBeInTheDocument()
+    expect(screen.getByText('Participant 1')).toBeInTheDocument()
   })
 })

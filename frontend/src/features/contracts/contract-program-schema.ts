@@ -5,11 +5,14 @@ import type { TFunction } from 'i18next'
 const TITLE_MAX_LENGTH = 191
 
 /**
- * "Programma" (spec 0095 D-11): `title` and `type` are required (`WorkOrder`
- * columns are NOT NULL with no default), plus at least one selected offer
- * line (AC-061). Messages reuse the work-order form's own strings
- * (`workOrders.form.*`) rather than duplicating them — same fields, same
- * rules, same wording.
+ * "Programma" (spec 0095 D-11, extended by spec 0096 D-5): the dialog carries
+ * exactly the fields a commessa cannot be left without — `title`, `type`,
+ * `start_date` and at least one Responsabile — plus at least one selected
+ * offer line (AC-061). The Partecipanti are deliberately absent: they are
+ * assigned later from the work order's own form.
+ *
+ * Messages reuse the work-order form's own strings (`workOrders.form.*`)
+ * rather than duplicating them — same fields, same rules, same wording.
  */
 export function buildContractProgramSchema(t: TFunction) {
   return z.object({
@@ -18,6 +21,8 @@ export function buildContractProgramSchema(t: TFunction) {
       .min(1, t('workOrders.form.titleRequired'))
       .max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
     type: z.enum(['processing', 'project'], { message: t('workOrders.form.typeRequired') }),
+    start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
+    supervisor_ids: z.array(z.number()).min(1, t('workOrders.form.supervisorsRequired')),
     quote_line_ids: z.array(z.number()).min(1, t('contracts.actions.programDialog.linesRequired')),
   })
 }
@@ -25,5 +30,5 @@ export function buildContractProgramSchema(t: TFunction) {
 export type ContractProgramFormValues = z.infer<ReturnType<typeof buildContractProgramSchema>>
 
 export function contractProgramDefaultValues(): ContractProgramFormValues {
-  return { title: '', type: 'processing', quote_line_ids: [] }
+  return { title: '', type: 'processing', start_date: '', supervisor_ids: [], quote_line_ids: [] }
 }

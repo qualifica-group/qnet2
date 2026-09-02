@@ -14,7 +14,10 @@ import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-labe
 import { WorkOrderClosureSection } from '@/features/work-orders/work-order-closure-section'
 import { WorkOrderNotesSection } from '@/features/work-orders/work-order-notes-section'
 import { WorkOrderQuoteLinesField } from '@/features/work-orders/work-order-quote-lines-field'
+import { WorkOrderTeamSection } from '@/features/work-orders/work-order-team-section'
 import type { WorkOrderDetail, WorkOrderFormMode, WorkOrderType } from '@/features/work-orders/types'
+import type { RelationFieldRef } from '@/components/form/relation-select-field'
+import type { ForSelectItem } from '@/features/for-select/types'
 
 /** Resource segment of the offers for-select endpoint (`GET /api/quotes/for-select`). */
 const QUOTES_FOR_SELECT_RESOURCE = 'quotes'
@@ -22,6 +25,10 @@ const QUOTES_FOR_SELECT_RESOURCE = 'quotes'
 const QUOTE_LABEL_SEPARATOR = ' — '
 
 const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
+
+/** Stable module-level references: a fresh `[]` per render would break memo/dep stability. */
+const EMPTY_SUPERVISORS: RelationFieldRef[] = []
+const EMPTY_PARTICIPANTS: ForSelectItem[] = []
 
 interface WorkOrderFormBodyProps {
   mode: WorkOrderFormMode
@@ -64,6 +71,15 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
 
   const selectedQuoteLines =
     mode.type === 'edit' ? mode.workOrder.quote_lines.map(quoteLineToForSelectItem) : undefined
+
+  const selectedSupervisors = mode.type === 'edit' ? mode.workOrder.supervisors : EMPTY_SUPERVISORS
+  const selectedParticipants =
+    mode.type === 'edit'
+      ? mode.workOrder.participants.map((participant) => ({
+          id: participant.id,
+          label: participant.name,
+        }))
+      : EMPTY_PARTICIPANTS
 
   const identityVisible =
     fieldPermission('code').visible ||
@@ -201,6 +217,12 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
               </MetaField>
             </FormSection>
           )}
+
+          <WorkOrderTeamSection
+            control={form.control}
+            supervisors={selectedSupervisors}
+            participants={selectedParticipants}
+          />
 
           <WorkOrderClosureSection control={form.control} onForceClosedChange={handleForceClosedChange} />
 

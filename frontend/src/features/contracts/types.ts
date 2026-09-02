@@ -162,13 +162,18 @@ export interface ContractProgrammableLine {
 }
 
 /**
- * Payload for POST /contracts/{id}/work-orders (spec 0095 D-6/D-11):
- * generates ONE work order from the selected offer lines. `quote_id` is
- * never a key here — the server resolves it from the contract (constraint).
+ * Payload for POST /contracts/{id}/work-orders (spec 0095 D-6/D-11, spec 0096
+ * D-5): generates ONE work order from the selected offer lines. `quote_id` is
+ * never a key here — the server resolves it from the contract (constraint) —
+ * and neither are the Partecipanti, assigned later from the commessa's form.
  */
 export interface CreateContractWorkOrderPayload {
   title: string
   type: WorkOrderType
+  /** `Y-m-d`. */
+  start_date: string
+  /** "Responsabili": at least one. */
+  supervisor_ids: number[]
   quote_line_ids: number[]
 }
 

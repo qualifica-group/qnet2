@@ -17,6 +17,8 @@ function panel(overrides: Partial<RequestWorkPanel> = {}): RequestWorkPanel {
     source: null,
     reporter_id: null,
     reporter: null,
+    supervisor_id: null,
+    supervisor: null,
     operator_id: null,
     operator: null,
     operational_site_id: null,
@@ -53,7 +55,8 @@ function formValues(overrides: Partial<RequestWorkFormValues> = {}): RequestWork
     rewards: [],
     source_id: null,
     reporter_id: null,
-    operator_id: null,
+    supervisor_id: null,
+    manager_slots: [],
     operational_site_id: null,
     attribute_values: {},
     quote_workflow_status_id: null,
@@ -66,25 +69,19 @@ describe('buildRequestWorkPayload — attribution (user directive 2026-07-22)', 
   it('sends only the attribution id that changed', () => {
     const payload = buildRequestWorkPayload(
       formValues({ source_id: 4 }),
-      panel({ source_id: null, reporter_id: 9, operator_id: 3 }),
+      panel({ source_id: null, reporter_id: 9 }),
     )
 
-    expect(payload).toEqual({ source_id: 4, reporter_id: null, operator_id: null })
+    expect(payload).toEqual({ source_id: 4, reporter_id: null })
   })
 
   it('omits every attribution key when none was touched', () => {
     const payload = buildRequestWorkPayload(
-      formValues({ source_id: 4, reporter_id: 9, operator_id: 3 }),
-      panel({ source_id: 4, reporter_id: 9, operator_id: 3 }),
+      formValues({ source_id: 4, reporter_id: 9 }),
+      panel({ source_id: 4, reporter_id: 9 }),
     )
 
     expect(payload).toEqual({})
-  })
-
-  it('sends an explicit null when an attribution field is cleared', () => {
-    const payload = buildRequestWorkPayload(formValues(), panel({ operator_id: 3 }))
-
-    expect(payload).toEqual({ operator_id: null })
   })
 
   /** Spec 0056: the operational site is a fourth attribution field, diffed the same way. */
@@ -101,6 +98,117 @@ describe('buildRequestWorkPayload — attribution (user directive 2026-07-22)', 
     const payload = buildRequestWorkPayload(formValues(), panel({ operational_site_id: 8 }))
 
     expect(payload).toEqual({ operational_site_id: null })
+  })
+
+  /**
+   * Spec 0097 rev-2 D-9/AC-013: the Supervisore is a fifth attribution field,
+   * diffed the same way — and AC-014, it is INDEPENDENT of the team: writing
+   * it puts no `manager_slots` on the wire.
+   */
+  it('sends supervisor_id when changed, alone', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ supervisor_id: 33, manager_slots: [null, 5, null, null] }),
+      panel({ supervisor_id: null, managers: [{ id: 5, name: 'Ada Lovelace', position: 2 }] }),
+    )
+
+    expect(payload).toEqual({ supervisor_id: 33 })
+  })
+
+  it('sends an explicit null when the supervisor is cleared', () => {
+    const payload = buildRequestWorkPayload(formValues(), panel({ supervisor_id: 33 }))
+
+    expect(payload).toEqual({ supervisor_id: null })
+  })
+
+  /** AC-014, the other way round: a team edit never drags the supervisor along. */
+  it('leaves supervisor_id off the wire when only the team changed', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ supervisor_id: 33, manager_slots: [null, 9, null, null] }),
+      panel({ supervisor_id: 33, managers: [{ id: 5, name: 'Ada Lovelace', position: 2 }] }),
+    )
+
+    expect(payload).toEqual({ manager_slots: [null, 9, null, null] })
+  })
+})
+
+/**
+ * Spec 0097 D-1: the team replaces the single `operator_id` key of this
+ * payload. One authoritative array, diffed POSITIONALLY against the loaded
+ * pivot — a gap is information, not noise.
+ */
+describe('buildRequestWorkPayload — team slots (spec 0097)', () => {
+  const ADA = { id: 5, name: 'Ada Lovelace', position: 2 }
+
+  it('sends the whole array when a slot changed', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [7, 5, null, null] }),
+      panel({ managers: [ADA] }),
+    )
+
+    expect(payload).toEqual({ manager_slots: [7, 5, null, null] })
+  })
+
+  it('omits the key when the padded form value matches the loaded pivot', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [null, 5, null, null] }),
+      panel({ managers: [ADA] }),
+    )
+
+    expect(payload).not.toHaveProperty('manager_slots')
+  })
+
+  it('sends the emptied array when the operator slot is cleared', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [null, null, null, null] }),
+      panel({ managers: [ADA] }),
+    )
+
+    expect(payload).toEqual({ manager_slots: [null, null, null, null] })
+  })
+
+  /**
+   * The gap-sensitivity guard: the same two users at DIFFERENT positions are a
+   * different team. A set comparison would call this untouched and drop a real
+   * reassignment on the floor.
+   */
+  it('sends the array when the same users only moved position', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [5, 7] }),
+      panel({
+        managers: [
+          { id: 7, name: 'Grace Hopper', position: 1 },
+          { id: 5, name: 'Ada Lovelace', position: 2 },
+        ],
+      }),
+    )
+
+    expect(payload).toEqual({ manager_slots: [5, 7] })
+  })
+
+  /**
+   * The other half of the same data-loss guard: a team reaching past the
+   * padded card count is left alone by an unrelated save. The key travels only
+   * on a real positional difference, and the loaded G.A. 6 is not one.
+   */
+  it('omits the key for a team reaching beyond the padded card count', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [null, 5, null, null, null, 9] }),
+      panel({
+        managers: [ADA, { id: 9, name: 'Grace Hopper', position: 6 }],
+      }),
+    )
+
+    expect(payload).not.toHaveProperty('manager_slots')
+  })
+
+  it('never sends operator_id: the panel writes the team only', () => {
+    const payload = buildRequestWorkPayload(
+      formValues({ manager_slots: [null, 9, null, null] }),
+      panel({ operator_id: 5, operator: { id: 5, name: 'Ada Lovelace' }, managers: [ADA] }),
+    )
+
+    expect(payload).not.toHaveProperty('operator_id')
+    expect(payload).toEqual({ manager_slots: [null, 9, null, null] })
   })
 })
 

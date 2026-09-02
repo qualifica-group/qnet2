@@ -11,6 +11,9 @@ const formValues: WorkOrderFormValues = {
   quote_id: 4,
   title: 'Installazione impianto',
   type: 'processing',
+  start_date: '2026-03-01',
+  supervisor_ids: [21],
+  participant_slots: [31, null],
   callback_date: null,
   description: null,
   internal_notes: null,
@@ -28,6 +31,9 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     status: { value: 'open', is_force_closed: false },
     is_force_closed: false,
     force_close_reason: null,
+    start_date: '2026-03-01',
+    supervisors: [{ id: 21, name: 'Ada Alberti' }],
+    participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],
     callback_date: null,
     description: null,
     internal_notes: null,
@@ -50,6 +56,9 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
       quote_id: 4,
       title: 'Installazione impianto',
       type: 'processing',
+      start_date: '2026-03-01',
+      supervisor_ids: [21],
+      participant_slots: [31, null],
       callback_date: null,
       description: null,
       internal_notes: null,
@@ -124,5 +133,41 @@ describe('buildUpdatePayload (spec 0093, AC-077)', () => {
     )
 
     expect(payload).toEqual({ is_force_closed: false, force_close_reason: null })
+  })
+})
+
+describe('buildUpdatePayload — responsabili and partecipanti (spec 0096, AC-073)', () => {
+  it('sends neither relation when both are unchanged', () => {
+    expect(buildUpdatePayload(formValues, original())).toEqual({})
+  })
+
+  it('sends supervisor_ids only when the responsabili actually change', () => {
+    expect(buildUpdatePayload({ ...formValues, supervisor_ids: [21, 22] }, original())).toEqual({
+      supervisor_ids: [21, 22],
+    })
+  })
+
+  it('treats a mere reorder of the responsabili as no change (it is a set)', () => {
+    const withTwo = original({ supervisors: [{ id: 21, name: 'Ada' }, { id: 22, name: 'Bruno' }] })
+
+    expect(buildUpdatePayload({ ...formValues, supervisor_ids: [22, 21] }, withTwo)).toEqual({})
+  })
+
+  it('sends participant_slots when a partecipante MOVES slot: position is meaningful', () => {
+    expect(buildUpdatePayload({ ...formValues, participant_slots: [null, 31] }, original())).toEqual({
+      participant_slots: [null, 31],
+    })
+  })
+
+  it('sends participant_slots when a partecipante is added', () => {
+    expect(buildUpdatePayload({ ...formValues, participant_slots: [31, 32] }, original())).toEqual({
+      participant_slots: [31, 32],
+    })
+  })
+
+  it('sends start_date only when it changes', () => {
+    expect(buildUpdatePayload({ ...formValues, start_date: '2026-04-02' }, original())).toEqual({
+      start_date: '2026-04-02',
+    })
   })
 })

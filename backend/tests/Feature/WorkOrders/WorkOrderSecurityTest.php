@@ -15,7 +15,7 @@ if (! function_exists('workOrderUserWith')) {
      */
     function workOrderUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
@@ -24,6 +24,14 @@ if (! function_exists('workOrderUserWith')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo("work-orders.{$ability}");
         }
+
+        // `viewAll` on top of the requested abilities: these suites predate
+        // the membership scoping (user directive 2026-09-02) and none of them
+        // is about it — the actor must see every commessa, as before. It
+        // widens nothing on its own: every gate still needs its own base
+        // ability, so the 403 assertions below keep their meaning. The
+        // scoping itself is covered by WorkOrderVisibilityTest.
+        $user->givePermissionTo('work-orders.viewAll');
 
         return $user;
     }
@@ -55,7 +63,7 @@ it('POST store: 403 without work-orders.create, no row created (AC-050)', functi
 
     $countBefore = WorkOrder::count();
 
-    $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'Nope', 'type' => 'processing'])->assertForbidden();
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields(), 'quote_id' => $quote->id, 'title' => 'Nope', 'type' => 'processing'])->assertForbidden();
 
     expect(WorkOrder::count())->toBe($countBefore);
 });
@@ -85,24 +93,26 @@ it('every work-orders endpoint requires authentication (401)', function () {
 
     $this->getJson('/api/work-orders/next-code')->assertUnauthorized();
     $this->getJson("/api/work-orders/{$target->id}")->assertUnauthorized();
-    $this->postJson('/api/work-orders', [])->assertUnauthorized();
+    $this->postJson('/api/work-orders', [...workOrderRequiredFields()])->assertUnauthorized();
     $this->patchJson("/api/work-orders/{$target->id}", [])->assertUnauthorized();
     $this->deleteJson("/api/work-orders/{$target->id}")->assertUnauthorized();
     $this->postJson('/api/tables/work-orders/rows', [])->assertUnauthorized();
 });
 
 // ---------------------------------------------------------------------------
-// AC-051 — permissions:sync creates exactly the 8 standard permissions
+// AC-051 — permissions:sync creates exactly the 9 work-orders permissions
 // ---------------------------------------------------------------------------
 
-it('permissions:sync creates all 8 work-orders.* permissions, derived from the Policy alone (AC-051)', function () {
+it('permissions:sync creates all 9 work-orders.* permissions, derived from the Policy alone (AC-051)', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+    foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
         expect(Permission::where('name', "work-orders.{$ability}")->exists())->toBeTrue();
     }
 
-    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(8);
+    // 9, not 8: `viewAll` joined the standard CRUD set with the
+    // membership scoping (user directive 2026-09-02).
+    expect(Permission::where('name', 'like', 'work-orders.%')->count())->toBe(9);
 });
 
 // ---------------------------------------------------------------------------

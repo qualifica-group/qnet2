@@ -24,6 +24,7 @@ final readonly class UpdateWorkOrderData
     public function __construct(
         public ?string $title = null,
         public ?WorkOrderType $type = null,
+        public ?string $startDate = null,
         public ?string $callbackDate = null,
         public bool $callbackDateSubmitted = false,
         public ?string $description = null,
@@ -35,6 +36,10 @@ final readonly class UpdateWorkOrderData
         public bool $forceCloseReasonSubmitted = false,
         /** @var array<int, int>|null */
         public ?array $quoteLineIds = null,
+        /** @var array<int, int>|null */
+        public ?array $supervisorIds = null,
+        /** @var array<int, int|null>|null */
+        public ?array $participantSlots = null,
     ) {}
 
     /**
@@ -47,6 +52,7 @@ final readonly class UpdateWorkOrderData
         return new self(
             title: array_key_exists('title', $data) ? (string) $data['title'] : null,
             type: array_key_exists('type', $data) ? WorkOrderType::from((string) $data['type']) : null,
+            startDate: array_key_exists('start_date', $data) ? (string) $data['start_date'] : null,
             callbackDate: array_key_exists('callback_date', $data) ? $data['callback_date'] : null,
             callbackDateSubmitted: array_key_exists('callback_date', $data),
             description: array_key_exists('description', $data) ? $data['description'] : null,
@@ -57,6 +63,8 @@ final readonly class UpdateWorkOrderData
             forceCloseReason: array_key_exists('force_close_reason', $data) ? $data['force_close_reason'] : null,
             forceCloseReasonSubmitted: array_key_exists('force_close_reason', $data),
             quoteLineIds: array_key_exists('quote_line_ids', $data) ? self::normalizeIds($data['quote_line_ids']) : null,
+            supervisorIds: array_key_exists('supervisor_ids', $data) ? self::normalizeIds($data['supervisor_ids']) : null,
+            participantSlots: array_key_exists('participant_slots', $data) ? self::normalizeSlots($data['participant_slots']) : null,
         );
     }
 
@@ -79,6 +87,14 @@ final readonly class UpdateWorkOrderData
 
         if ($this->type !== null) {
             $attributes['type'] = $this->type;
+        }
+
+        // start_date is a NOT NULL column validated `sometimes|required`
+        // (spec 0096 D-6): a null here can only mean "key absent", never
+        // "submitted as null", so no *Submitted flag is needed — same
+        // reasoning as `title` above.
+        if ($this->startDate !== null) {
+            $attributes['start_date'] = $this->startDate;
         }
 
         if ($this->callbackDateSubmitted) {
@@ -109,11 +125,36 @@ final readonly class UpdateWorkOrderData
         return $this->quoteLineIds !== null;
     }
 
+    public function hasSupervisorIds(): bool
+    {
+        return $this->supervisorIds !== null;
+    }
+
+    public function hasParticipantSlots(): bool
+    {
+        return $this->participantSlots !== null;
+    }
+
     /**
      * @return array<int, int>
      */
     private static function normalizeIds(mixed $ids): array
     {
         return array_values(array_unique(array_map(static fn (mixed $id): int => (int) $id, (array) $ids)));
+    }
+
+    /**
+     * The ordered, gap-aware `participant_slots` payload (spec 0096 D-3), kept
+     * POSITIONAL: nulls are empty slots and must survive, so this normalizes
+     * element types WITHOUT compacting — the exact opposite of normalizeIds().
+     *
+     * @return array<int, int|null>
+     */
+    private static function normalizeSlots(mixed $slots): array
+    {
+        return array_values(array_map(
+            static fn (mixed $id): ?int => $id === null ? null : (int) $id,
+            (array) $slots,
+        ));
     }
 }

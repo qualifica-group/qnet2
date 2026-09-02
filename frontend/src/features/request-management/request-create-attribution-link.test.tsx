@@ -15,6 +15,17 @@ import type { UserForSelectItem } from '@/features/users/for-select-api'
  * same `AsyncPaginatedSelect` stub keyed on the accessible trigger label, so
  * a pick can be driven without a real dropdown and the `params` each render
  * received are exposed for assertion.
+ *
+ * AC-003 (spec 0097): the link hangs off the TEAM editor's operator slot
+ * (`ManagerSlotsField`, position 2) instead of the retired single "Operatore"
+ * picker. With no active category tab the slot keeps the editor's own default
+ * denomination.
+ *
+ * AC-011 (spec 0097 rev-2): those two ends are now in two DIFFERENT sections
+ * — the Sede in "Attribuzione", the slot in "Team" — and the link is cabled by
+ * the form that owns them both (`useRequestSiteOperatorLink`). Every rule
+ * below is unchanged, which is the whole point of asserting them across the
+ * real form rather than one section.
  */
 
 vi.mock('@/features/request-management/api', () => ({
@@ -60,6 +71,12 @@ const OPERATOR_NO_SITE: UserForSelectItem = { id: 6, label: 'Bob Noyce', meta: u
 const SITE_A: ForSelectItem = { id: 77, label: 'Warehouse A' }
 const SITE_B: ForSelectItem = { id: 88, label: 'Warehouse B' }
 
+/** Default denomination of the operator slot (position 2), with no category label resolved. */
+const OPERATOR_SLOT_LABEL = 'Account manager 2'
+
+/** A neighbouring slot, to assert the Sede rules never spill onto the rest of the team. */
+const OTHER_SLOT_LABEL = 'Account manager 1'
+
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
     value,
@@ -85,7 +102,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
           onItemChange?.(next)
           return
         }
-        if (labels.triggerLabel === 'Operator (GA2)') {
+        if (labels.triggerLabel === OPERATOR_SLOT_LABEL) {
           const next = value === OPERATOR_WITH_SITE.id ? OPERATOR_NO_SITE : OPERATOR_WITH_SITE
           onChange(next.id)
           onItemChange?.(next)
@@ -113,7 +130,8 @@ function renderForm() {
 }
 
 const siteField = () => screen.getByTestId('select-Operational site')
-const operatorField = () => screen.getByTestId('select-Operator (GA2)')
+const operatorField = () => screen.getByTestId(`select-${OPERATOR_SLOT_LABEL}`)
+const otherSlotField = () => screen.getByTestId(`select-${OTHER_SLOT_LABEL}`)
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -124,17 +142,19 @@ beforeEach(() => {
 })
 
 describe('Create form — section order matches the work panel', () => {
-  it('renders product lines, then attribution, then the client details', () => {
+  it('renders product lines, then attribution, then the team, then the client details', () => {
     renderForm()
 
+    const sectionTitles = ['Product lines', 'Attribution', 'Team', 'Client details']
     const titles = screen
       .getAllByRole('heading')
       .map((heading) => heading.textContent)
-      .filter((title) => title === 'Attribution' || title === 'Product lines' || title === 'Client details')
+      .filter((title) => title !== null && sectionTitles.includes(title))
 
-    expect(titles).toEqual(['Product lines', 'Attribution', 'Client details'])
+    expect(titles).toEqual(sectionTitles)
   })
 
+  /** AC-011: the two ends of the link sit in two different sections now, in this order. */
   it('renders the Sede before the Operatore it scopes', () => {
     renderForm()
 
@@ -148,6 +168,17 @@ describe('Create form — the Sede scopes the Operatore picker', () => {
 
     expect(operatorField()).toHaveAttribute('data-params', '')
     expect(screen.queryByText('Only the operators of the selected site.')).not.toBeInTheDocument()
+  })
+
+  /** AC-003: only the operator slot is bound to the Sede — the rest of the team is not. */
+  it('leaves every other slot unfiltered once a Sede is picked', async () => {
+    renderForm()
+    fireEvent.click(siteField())
+
+    await waitFor(() =>
+      expect(operatorField()).toHaveAttribute('data-params', JSON.stringify({ operational_site_id: SITE_A.id })),
+    )
+    expect(otherSlotField()).toHaveAttribute('data-params', '')
   })
 
   it('re-scopes the picker as soon as a Sede is picked', async () => {
@@ -188,17 +219,19 @@ describe('Create form — Operatore auto-fills the Sede', () => {
   })
 })
 
-describe('Create form — changing the Sede clears the Operatore', () => {
-  it('clears an operator belonging to the previous Sede', async () => {
+describe('Create form — changing the Sede clears the operator slot', () => {
+  it('clears an operator belonging to the previous Sede, keeping the other slots', async () => {
     renderForm()
+    fireEvent.click(otherSlotField()) // a G.A. on another slot, untouched by the Sede rule
     fireEvent.click(operatorField()) // operator 5, Sede 66
     await waitFor(() => expect(siteField()).toHaveTextContent('66'))
 
     fireEvent.click(siteField()) // a REAL Sede pick, different from 66
 
-    // The stub renders `value ?? ''`, so an emptied operator has no text node
-    // at all — asserted positively, since `toHaveTextContent('')` passes on
-    // any content.
+    // The stub renders `value ?? ''`, so an emptied slot has no text node at
+    // all — asserted positively, since `toHaveTextContent('')` passes on any
+    // content.
     await waitFor(() => expect(operatorField().textContent).toBe(''))
+    expect(otherSlotField().textContent).not.toBe('')
   })
 })

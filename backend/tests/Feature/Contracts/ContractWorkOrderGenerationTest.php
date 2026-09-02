@@ -56,7 +56,7 @@ it('AC-030: 2 free lines create ONE work order with exactly those 2 lines and a 
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Prima lavorazione', 'type' => 'processing', 'quote_line_ids' => [$lineA->id, $lineB->id],
     ])->assertCreated();
 
@@ -77,11 +77,11 @@ it('AC-031: repeating the action on the SAME contract with other lines creates a
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $first = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $first = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Prima', 'type' => 'processing', 'quote_line_ids' => [$lineA->id],
     ])->assertCreated();
 
-    $second = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $second = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Seconda', 'type' => 'project', 'quote_line_ids' => [$lineB->id],
     ])->assertCreated();
 
@@ -100,7 +100,7 @@ it('AC-032: a line already programmed in another work order is 422, names the oc
 
     $countBefore = WorkOrder::count();
 
-    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Doppione', 'type' => 'processing', 'quote_line_ids' => [$line->id],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
 
@@ -116,11 +116,11 @@ it('AC-033: a line from ANOTHER offer, or a COST line, is 422', function () {
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Riga estranea', 'type' => 'processing', 'quote_line_ids' => [$foreignLine->id],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
 
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Riga di costo', 'type' => 'processing', 'quote_line_ids' => [$costLine->id],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
 
@@ -132,11 +132,11 @@ it('AC-034: quote_line_ids empty or absent is 422', function () {
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Senza righe', 'type' => 'processing', 'quote_line_ids' => [],
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
 
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Senza chiave', 'type' => 'processing',
     ])->assertStatus(422)->assertJsonValidationErrors('quote_line_ids');
 
@@ -149,12 +149,12 @@ it('AC-035: the generated work order has the same shape as one created via POST 
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view', 'work-orders.create']);
     Sanctum::actingAs($actor);
 
-    $viaContract = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $viaContract = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Via contratto', 'type' => 'processing', 'quote_line_ids' => [$line->id],
     ])->assertCreated();
 
     $otherQuote = Quote::factory()->create();
-    $viaDirect = $this->postJson('/api/work-orders', [
+    $viaDirect = $this->postJson('/api/work-orders', [...workOrderRequiredFields(),
         'quote_id' => $otherQuote->id, 'title' => 'Via diretta', 'type' => 'processing',
     ])->assertCreated();
 
@@ -170,7 +170,7 @@ it('quote_id is server-derived from the contract, never accepted from the client
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Ignora quote_id client', 'type' => 'processing',
         'quote_line_ids' => [$line->id], 'quote_id' => $otherQuote->id,
     ])->assertCreated();
@@ -184,7 +184,7 @@ it('403 without contracts.program, 403 when the contract is not ClosedWon, 404 o
     $noAbility = workOrderGenerationActorWith(['work-orders.view']);
     Sanctum::actingAs($noAbility);
 
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Negata', 'type' => 'processing', 'quote_line_ids' => [$line->id],
     ])->assertForbidden();
 
@@ -195,7 +195,7 @@ it('403 without contracts.program, 403 when the contract is not ClosedWon, 404 o
     $actor = workOrderGenerationActorWith(['contracts.program', 'work-orders.view']);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/contracts/{$notProgrammable->id}/work-orders", [
+    $this->postJson("/api/contracts/{$notProgrammable->id}/work-orders", [...workOrderRequiredFields(),
         'title' => 'Stato errato', 'type' => 'processing', 'quote_line_ids' => [$otherLine->id],
     ])->assertForbidden();
 
@@ -204,4 +204,70 @@ it('403 without contracts.program, 403 when the contract is not ClosedWon, 404 o
     ])->assertNotFound();
 
     expect(WorkOrder::count())->toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// spec 0096 — data inizio + Responsabili in the "Programma" dialog (D-5)
+// ---------------------------------------------------------------------------
+
+it('AC-010: generating without start_date or without a responsabile is 422 and creates nothing', function () {
+    $contract = generationContract();
+    $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
+    Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program']));
+
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        'title' => 'Senza responsabile', 'type' => 'processing', 'quote_line_ids' => [$line->id],
+    ])->assertStatus(422)->assertJsonValidationErrors(['start_date', 'supervisor_ids']);
+
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        'title' => 'Responsabili vuoti', 'type' => 'processing', 'quote_line_ids' => [$line->id],
+        'start_date' => '2026-09-10', 'supervisor_ids' => [],
+    ])->assertStatus(422)->assertJsonValidationErrors('supervisor_ids');
+
+    expect(WorkOrder::count())->toBe(0);
+});
+
+it('AC-011: an unknown supervisor id is 422', function () {
+    $contract = generationContract();
+    $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
+    Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program']));
+
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        'title' => 'Ignoto', 'type' => 'processing', 'quote_line_ids' => [$line->id],
+        'start_date' => '2026-09-10', 'supervisor_ids' => [999999],
+    ])->assertStatus(422)->assertJsonValidationErrors('supervisor_ids.0');
+});
+
+it('AC-012: the generated commessa carries the submitted start date and every responsabile', function () {
+    $contract = generationContract();
+    $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
+    $first = User::factory()->create(['name' => 'Ada Alberti']);
+    $second = User::factory()->create(['name' => 'Zoe Zanetti']);
+    Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program', 'work-orders.view']));
+
+    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        'title' => 'Programmata', 'type' => 'project', 'quote_line_ids' => [$line->id],
+        'start_date' => '2026-11-02', 'supervisor_ids' => [$second->id, $first->id],
+    ])->assertCreated();
+
+    expect($response->json('data.start_date'))->toBe('2026-11-02')
+        ->and($response->json('data.supervisors'))->toBe([
+            ['id' => $first->id, 'name' => 'Ada Alberti'],
+            ['id' => $second->id, 'name' => 'Zoe Zanetti'],
+        ]);
+});
+
+it('AC-013: participant_slots submitted to the Contract dialog are never persisted (D-5)', function () {
+    $contract = generationContract();
+    $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
+    $outsider = User::factory()->create();
+    Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program', 'work-orders.view']));
+
+    $response = $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        ...workOrderRequiredFields(),
+        'title' => 'Niente partecipanti', 'type' => 'processing', 'quote_line_ids' => [$line->id],
+        'participant_slots' => [$outsider->id],
+    ])->assertCreated();
+
+    expect($response->json('data.participants'))->toBe([]);
 });

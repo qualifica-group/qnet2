@@ -30,8 +30,11 @@ it('AC-040: the pivot rejects the same quote_line_id attached to a SECOND work o
 
 it('AC-042: PATCH resending the lines the work order ALREADY owns is not treated as a conflict', function () {
     Permission::findOrCreate('work-orders.update');
+    // `viewAll` lifts the membership scoping (user directive 2026-09-02):
+    // this test is about line ownership, not about who may see a commessa.
+    Permission::findOrCreate('work-orders.viewAll');
     $actor = User::factory()->create();
-    $actor->givePermissionTo('work-orders.update');
+    $actor->givePermissionTo(['work-orders.update', 'work-orders.viewAll']);
 
     $workOrder = WorkOrder::factory()->create();
     $lineA = QuoteLine::factory()->create(['quote_id' => $workOrder->quote_id]);
@@ -49,8 +52,11 @@ it('AC-042: PATCH resending the lines the work order ALREADY owns is not treated
 
 it('AC-042 (cross-check): PATCH on ANOTHER work order with an already-owned line is still 422', function () {
     Permission::findOrCreate('work-orders.update');
+    // `viewAll` lifts the membership scoping (user directive 2026-09-02):
+    // this test is about line ownership, not about who may see a commessa.
+    Permission::findOrCreate('work-orders.viewAll');
     $actor = User::factory()->create();
-    $actor->givePermissionTo('work-orders.update');
+    $actor->givePermissionTo(['work-orders.update', 'work-orders.viewAll']);
 
     $quote = Quote::factory()->create();
     $line = QuoteLine::factory()->create(['quote_id' => $quote->id]);

@@ -29,9 +29,10 @@ use Illuminate\Validation\ValidationException;
  * Each field lands on the model it lives on (D-2): "Fonte", planned
  * callback, the product-line classification and the client anagraphic block
  * are Opportunity-level (`quote.opportunity`); "Segnalatore", "Sede
- * operativa", the GA2 "Operatore", the reward assignments and the
- * offer's own REVENUE rows are Quote-level (D-3/D-4/D-7; spec 0087, D-9 for
- * the GA2 Operatore).
+ * operativa", "Supervisore", the GA2 "Operatore", the reward assignments and
+ * the offer's own REVENUE rows are Quote-level (D-3/D-4/D-7; spec 0087, D-9
+ * for the GA2 Operatore; spec 0097, D-9 for the Supervisore, an attribution
+ * scalar that is INDEPENDENT of that operator).
  *
  * This class ORCHESTRATES that sequence; the rules of each block live in a
  * writer of its own (RequestAttributionWriter, RequestProductLineWriter,
@@ -44,8 +45,8 @@ use Illuminate\Validation\ValidationException;
  *
  * Activity logging (D-9): the module's operational history stays anchored on
  * the OPPORTUNITY. `next_callback_at` is excluded from Opportunity::$fillable
- * (mass-assignment guard) and `reporter_id`/`operational_site_id` — though
- * fillable on Quote — would otherwise log under the Quote's OWN activity
+ * (mass-assignment guard) and `reporter_id`/`operational_site_id`/`supervisor_id`
+ * — though fillable on Quote — would otherwise log under the Quote's OWN activity
  * trail (a different resource than `request-management`'s, which reads the
  * Opportunity's thread). Both classes of field are therefore written with
  * the owning model's automatic log suspended where needed and reported into
@@ -84,6 +85,11 @@ final class RequestManagementService
         'opportunity.productLines.businessFunction',
         'opportunity.productLines.productCategory',
         'reporter',
+        // Spec 0097, D-9: the "Supervisore" — the Offerta's commission
+        // recipient, projected as `supervisor` by RequestManagementResource,
+        // so it is loaded here like every other picker's hydration ref
+        // (Model::preventLazyLoading() outside production).
+        'supervisor',
         // Spec 0056: the Sede operativa, also in the attribution block — the
         // site has no own name, its label composed from the primary address.
         'operationalSite.addresses.city',
@@ -96,6 +102,11 @@ final class RequestManagementService
         // `quotes.supervisor_id` is no longer read by this panel at all
         // (INV-5).
         'operator',
+        // Spec 0097: the Offerta's WHOLE team, the block that replaced the
+        // lone operator picker in the panel — projected as `managers` by
+        // RequestManagementResource, so it must be loaded here (the resource
+        // never lazy-loads: Model::preventLazyLoading() outside production).
+        'managers',
         // Spec 0086, D-7: "Linee dell'offerta" — the Offerta's own REVENUE
         // lines, replacing "prodotti di interesse" in this module's panel and
         // editable from it since the user directive 2026-08-07. Also one half
@@ -138,7 +149,7 @@ final class RequestManagementService
      * submitted keys change) and returns the SAME work-panel shape as
      * loadWorkPanel(), post-save.
      *
-     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, operator_id?: int|null, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
+     * @param  array{next_callback_at?: string|null, product_lines?: array<int, array{business_function_id: int, product_category_id: int}>, offer_lines?: array<int, array<string, mixed>>, source_id?: int|null, reporter_id?: int|null, supervisor_id?: int|null, operator_id?: int|null, manager_slots?: array<int, int|null>, operational_site_id?: int|null, rewards?: array<int, array{reward_type_id: int}>, attribute_values?: array<string, mixed>, quote_workflow_status_id?: int|null, note?: string|null, client_identity?: CreatePersonalData, client_contacts?: array<int, ContactInput>, client_address?: AddressInput}  $data
      * @return array{quote: Quote}
      */
     public function updateWork(Quote $quote, User $actor, array $data): array
@@ -223,9 +234,16 @@ final class RequestManagementService
             // never gets suspended.
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
 
-            // Step 3: the GA2 "Operatore" (spec 0087, D-9) — a pivot row plus
-            // a Quote column, written after both models are saved.
-            if (array_key_exists('operator_id', $data)) {
+            // Step 3: the Offerta's Gestori Account (spec 0087, D-9; spec
+            // 0097, D-5) — pivot rows plus a Quote column, written after both
+            // models are saved. TWO keys, never both at once (they address
+            // the same pivot from two vocabularies, and UpdateRequestRequest
+            // makes them mutually exclusive): `manager_slots` is the work
+            // panel's whole-team editor, `operator_id` the single-slot key of
+            // the grid cell, the bulk assign and the transfer.
+            if (array_key_exists('manager_slots', $data)) {
+                $this->attributionWriter->applyTeam($quote, (array) $data['manager_slots'], $actor, $changed, $old);
+            } elseif (array_key_exists('operator_id', $data)) {
                 $this->attributionWriter->applyOperator($quote, $data['operator_id'], $actor, $changed, $old);
             }
 

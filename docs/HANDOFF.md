@@ -3,6 +3,263 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## AZIONE "MODIFICA" RIMOSSA DA OFFERTE E COMMESSE (2026-09-02) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Eliminare l'azione di riga "Modifica" dalla tabella Offerte e dalla
+tabella Commesse.
+
+**Cosa e' stato fatto.**
+- Backend: rimossa la voce `edit` da `QuoteColumnCatalog::actions()` e da
+  `WorkOrderColumnCatalog::actions()`; rimosso il ramo `Gate::allows('update')` -> `'edit'`
+  da `QuotesTableDefinition::actionsFor()` e `WorkOrdersTableDefinition::actionsFor()`.
+- Frontend: rimosso il `case 'edit'` (e `openEdit`) da `useQuoteRowActions` e
+  `useWorkOrderRowActions` — l'azione non arriva piu' dal server, il ramo era codice morto.
+  Vale per TUTTE le superfici che condividono quei due hook: griglia Offerte, pannello
+  Offerte dentro l'Opportunita', griglia Commesse, tab Commesse del Contratto.
+- Test aggiornati: `QuoteTableTest`, `QuoteOpportunityScopeTest`, `QuoteDocumentGenerationTest`,
+  `WorkOrderQuoteScopeTest`, `opportunity-quotes-section.test.tsx` (ora asserisce che una
+  chiave `edit` residua viene IGNORATA), `contract-work-orders-section.test.tsx`.
+
+**Da sapere (non e' un bug).** Il form di modifica di Offerte/Commesse resta in codice e le
+rotte `/quotes/{id}/edit` e `/work-orders/{id}/edit` rispondono ancora, ma NON sono piu'
+raggiungibili dalla UI: non esiste altra affordance di modifica su questi due moduli. Le
+policy `update` e gli endpoint PUT restano invariati (li usa ancora l'editing inline della
+griglia). Se l'intento era eliminare del tutto la modifica, servono un secondo giro su
+rotte/screen/form e una decisione sui permessi `quotes.update` / `work-orders.update`.
+
+**Verifiche eseguite.** Pest `tests/Feature/{Quotes,WorkOrders,Contracts}`: 488 passed.
+Vitest `src/features/{quotes,work-orders,opportunities,contracts}`: 611 passed.
+`npx tsc -b --force`: EXIT=0. Pint --dirty: passed. ESLint sui file toccati: pulito.
+
+## COMMESSA: VISIBILITA' PER APPARTENENZA (2026-09-02) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Solo chi e' Responsabile o Partecipante di una Commessa la vede, salvo
+che l'utente abbia il permesso di vedere tutte le commesse o sia super-admin.
+
+**Decisioni prese (dichiarate, non re-litigare senza motivo).**
+- V-1 Nuovo permesso `work-orders.viewAll` (WorkOrderPolicy::abilities()), creato da
+  `permissions:sync` e assegnabile dal form Ruolo senza modifiche (prefisso gia' registrato in
+  `config/authorization.php`; label i18n generica `viewAll` gia' presente).
+- V-2 La regola RESTRINGE, non allarga: essere Responsabile NON sostituisce `work-orders.view`.
+- V-3 `update`/`delete` sono scoped come `view`: un record che non vedi non lo modifichi/cancelli
+  indovinandone l'id.
+- V-4 `viewActivity` resta resource-level; il confine per-record del log e' `view`, che
+  PolicyActivityLogAuthorizer gia' verifica sul record.
+
+**Nomi congelati.**
+- `App\Services\WorkOrders\WorkOrderVisibilityScope` — UNICA implementazione della regola,
+  statica e stateless come `RequestManagementScope` (la policy deve restare costruibile con
+  `new $class`: `permissions:sync` la istanzia cosi'). Metodi: `scopeToActor(Builder, ?User)` e
+  `isVisibleTo(User, WorkOrder)`; costante `VIEW_ALL_PERMISSION`.
+- Fail-closed: actor null -> `whereNull('work_orders.id')`, mai query non ristretta.
+
+**File toccati.**
+- `app/Services/WorkOrders/WorkOrderVisibilityScope.php` (nuovo)
+- `app/Policies/WorkOrderPolicy.php` (view/update/delete scoped, `viewAll`)
+- `app/Tables/WorkOrdersTableDefinition.php` (baseQuery scoped + eager load `participants`:
+  serve a far rispondere in memoria le 3 chiamate Gate per riga di `actionsFor()`)
+- `app/Services/ExportService.php` (`Auth::setUser($actor)` in `generate()`)
+- test: nuovo `tests/Feature/WorkOrders/WorkOrderVisibilityTest.php` (12 casi); helper attore di
+  Crud/Meta/Table/Security/Team/LineMembership aggiornati con `viewAll` (suite che precedono la
+  regola e non la riguardano).
+
+**Perche' `Auth::setUser` in ExportService.** `baseQuery()` legge l'attore da `Auth::user()`
+(pattern gia' in uso da RequestManagement). Il job di export gira in coda: con
+`QUEUE_CONNECTION=database` (il valore di `.env.example`) non c'e' utente autenticato, quindi uno
+scope fail-closed produrrebbe un export VUOTO invece che scoped. Correzione minima nel punto in
+cui l'attore e' gia' risolto da `$run->user_id`; vale anche per gli export di request-management.
+
+**Verificato (eseguito davvero).** `php artisan test` intero: 5833 test, 5832 passati, 0 falliti.
+Pint pulito sui file toccati. `npx tsc -b --force` EXIT=0 (nessun file frontend modificato).
+
+**Da sapere prima del deploy.**
+- Serve `php artisan permissions:sync` sugli ambienti esistenti: finche' non si assegna
+  `work-orders.viewAll` a un ruolo, solo i super-admin vedono tutte le commesse.
+- Conseguenza UX aperta: chi crea una commessa senza mettersi tra Responsabili/Partecipanti la
+  perde di vista subito dopo il salvataggio. Non implementato nulla in automatico: se si vuole,
+  decidere se il creatore va aggiunto d'ufficio ai Responsabili.
+
+## COMMESSA: DATA INIZIO + RESPONSABILI + PARTECIPANTI (2026-09-02, spec 0096) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Creando una Commessa dal popup del Contratto vanno impostate la data di
+inizio e i responsabili; dal form Commessa si assegnano poi i partecipanti.
+
+**Decisioni utente (NON re-litigare).**
+- D-A Data inizio e responsabili sono OBBLIGATORI, e obbligatori gia' nel dialog "Programma".
+- D-B CAMBIO IN CORSA: il "supervisore" NON e' singolo -> sono PIU' persone, si chiamano
+  "Responsabili". Il "team" si chiama "Partecipanti". Sono DUE gruppi distinti.
+- D-C Identificatori inglesi scelti dall'utente: `supervisors` / `participants`. Le
+  denominazioni italiane vivono SOLO in i18n.
+- D-D Tutti e tre i campi restano modificabili dal form Commessa (nessuno immutabile).
+- D-E Colonne di griglia: solo "Data inizio" e "Responsabili". NIENTE colonna Partecipanti.
+
+**Nomi congelati (usare esattamente questi).**
+- Colonna: `work_orders.start_date` (DATE NOT NULL, indice `work_orders_start_date_index`).
+- Pivot: `work_order_supervisor` (senza `position`) e `work_order_participant` (con `position`).
+  Nomi ESPLICITI, non la convenzione alfabetica: con due relazioni utente sullo stesso model
+  nessuna puo' chiamarsi `user_work_order`.
+- Relazioni: `WorkOrder::supervisors()` (orderBy users.name) e `WorkOrder::participants()`
+  (withPivot position + orderByPivot).
+- Payload: `supervisor_ids: int[]` (required, min 1) e `participant_slots: (int|null)[]`
+  (gap-aware, max 12). Resource: `supervisors[{id,name}]`, `participants[{id,name,position}]`.
+
+**Cosa NON va duplicato.**
+- `ValidatesManagerSlots` ora prende il NOME DEL CAMPO come parametro (default `manager_slots`):
+  Registries/Opportunita'/Offerte invariati, la Commessa passa `participant_slots`. Non scrivere
+  una seconda copia degli invarianti slot.
+- `ManagerPositions::syncMap()` e' il punto UNICO della conversione slot -> pivot map. Esisteva
+  in TRE copie private identiche (RegistryService, OpportunityService, QuoteManagerWriter): tutte
+  e tre ora delegano. Non reintrodurne una quarta.
+- `ManagerSlotsField` (FE): righe "Partecipante N" dalla prop `labels` (spec 0080) PIU' la nuova
+  prop opzionale `strings` per le stringhe che NOMINANO le persone (bottone "Aggiungi",
+  ricerca, stato vuoto, errore, nota finale). Segnalato dall'utente: `labels` da solo lasciava
+  "Aggiungi gestore account" dentro il form Commesse. Ogni chiave di `strings` e' opzionale e
+  ricade sul testo condiviso -> Registries/Opportunita'/Offerte/Gestione richieste invariati.
+  Regola: rinominare un concetto in un componente condiviso non finisce con l'etichetta piu'
+  evidente, vanno cercate TUTTE le occorrenze del nome.
+- La cella Responsabili riusa `UserStackCell`, lo stesso di Offerte/Opportunita'.
+
+**Fatto e verificato (ESEGUITO, non riferito).**
+- Migrazioni `2026_09_02_2200*`: round-trip up/down/up provato SIA su SQLite SIA su MySQL reale.
+  Backfill sui dati veri: 11/11 commesse con `start_date` (= data di `created_at`) e 11/11 con
+  almeno un responsabile (`quotes.supervisor_id` -> fallback `quotes.operator_id`, misurato 4/11
+  e 11/11 prima di scrivere la migration). Se una riga non si risolve, la migration ABORTISCE
+  nominando i codici: non inventa un utente.
+- Backend: `tests/Feature/WorkOrders` + `tests/Feature/Contracts` 197/197 verdi;
+  Registries+Opportunities+Quotes+Unit 1466/1466 verdi dopo l'estrazione DRY (AC-080).
+- Frontend: `tsc -b --force --pretty false` EXIT=0; ESLint pulito; vitest `work-orders`+`contracts`
+  152/152 verdi. Parita' chiavi i18n it/en verificata a script: 108 = 108, zero stringhe vuote.
+
+**BUG PREESISTENTE TROVATO E CORRETTO (spec 0093, non introdotto qui).**
+`WorkOrderResource` restituiva `callback_date` come timestamp ISO-8601 completo
+(`1982-09-16T00:00:00.000000Z`): il cast `date:Y-m-d` governa la serializzazione del MODEL, non
+una Resource che passa la CarbonImmutable grezza a json_encode. Quel valore finiva in un
+`<input type="date">`, che con una stringa ISO si renderizza VUOTO -> aprire una commessa con
+"Data richiamo" mostrava il campo vuoto e un salvataggio l'avrebbe azzerata. Ora entrambe le date
+passano da `WorkOrderResource::formatDate()`. Trovato da un'asserzione della spec 0096, non a
+vista. Test di regressione dedicato. LEZIONE: un cast di data sul Model non copre la Resource.
+
+**Limite dichiarato.** Su SQLite `down()` deve droppare l'indice PRIMA della colonna (SQLite
+rifiuta di droppare una colonna referenziata da un indice o da una FK). La stessa restrizione
+colpisce la migration preesistente `products.unit_of_measure_id`: non e' stata toccata.
+
+**Debito aperto / non fatto, dichiarato.**
+- NIENTE notifiche di assegnazione a responsabili/partecipanti. `ManagerPositions::attachedPositions()`
+  (spec 0081) le renderebbe cablabili in poche righe, ma l'utente non le ha chieste: segnalate.
+- Nessuno scoping di visibilita' per responsabile/partecipante: `work-orders.viewAny` resta l'unico
+  gate.
+- ATTENZIONE: durante questa sessione sono comparse nel working tree modifiche NON MIE su
+  `RequestManagement*` (a inizio sessione il tree era pulito) — lavoro concorrente di un'altra
+  sessione. NON toccarle. Al momento della verifica erano verdi (409/409).
+
+**FLAKY PREESISTENTE DA TENERE D'OCCHIO (non causato dalla spec 0096).**
+`DemoOpportunitySeederTest` -> "keeps every line of a deal on one business function and one branch
+root" fallisce a bassa frequenza SOLO nella suite intera, su
+`expect($multiLine)->toBeGreaterThan(0)` (la guardia anti-test-vacuo: pretende che il seeder abbia
+generato almeno una opportunita' con >1 riga prodotto). Evidenza raccolta:
+isolato 3/3 verde, intera directory `Opportunities` 2/2 verde (226 test), e su TRE giri di suite
+completa a codice invariato e' fallito UNA volta (verde 5801/5801, ROSSO, verde 5805/5805):
+frequenza ~1 su 3, con giri verdi prima e dopo.
+Meccanismo probabile: `DemoOpportunitySeeder::maybeManagerSlots()` consuma un numero VARIABILE di
+estrazioni dal faker (`boolean(50)`, poi `numberBetween(1, min(12, $supervisors->count()))` e
+`randomElements`). Lo stream del faker e' condiviso con `pickOffer()`, quindi qualunque
+spostamento a monte cambia quante righe prodotto riceve ogni opportunita' -> `$multiLine` puo'
+finire a 0 senza che nulla sia rotto.
+NON e' attribuibile a questa spec: l'unico punto di contatto con le Opportunita' e' il refactor
+`managerSyncMap` -> `ManagerPositions::syncMap` (logica identica, zero estrazioni faker).
+Chi lo affronta: rendere la guardia deterministica (seedare il draw o costruire a mano il caso
+multi-riga) invece di dipendere dall'estrazione. Non l'ho toccato: fuori scope.
+
+**Nota sul conteggio migration.** `tests/Feature/QuoteWorkflows/QuoteWorkflowMigrationTest.php`
+conta a mano quante migration rollbackare (`--step`). E' passato da 35 a 39 per includere le tre
+di questa spec piu' quella della 0097. Chi aggiunge una migration DEVE bumpare quel numero,
+altrimenti il test fallisce con un opaco "Failed asserting that true is false".
+
+**Prossimo passo.** Chiedere all'utente se committare (CLAUDE.md §3.6: mai commit senza via libera
+esplicito in quel momento).
+
+## TEAM COMPLETO IN GESTIONE RICHIESTE + SUPERVISORE NELLA SEZIONE TEAM (2026-09-02, spec 0097) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** In Gestione richieste non voglio solo l'operatore GA2: voglio tutto il team,
+come nel form Offerte, mantenendo il permesso di vederlo o meno. Poi, in corso d'opera: il team
+dev'essere una SEZIONE a se' come in Offerte; e il Supervisore va dentro la sezione Team, sia nel
+form Offerte sia in Gestione richieste.
+
+**Decisioni dell'utente (NON re-litigare).**
+- D-1 L'Operatore e' ASSORBITO nel team come slot 2. Il picker singolo sparisce dai due form.
+- D-2 Ambito: pannello "Lavora" E form di creazione richiesta.
+- D-3 Chiave-permesso NUOVA `manager_slots`; la vecchia `operator_id` ELIMINATA dal catalogo
+  ("con la nuova chiave, elimina la vecchia"). 
+- D-7 Il team e' una sezione a se', non un blocco dentro "Attribuzione".
+- D-8 Nel form Offerte il Supervisore scende dentro `QuoteTeamSection`.
+- D-9 Il Supervisore TORNA in Gestione richieste. Detto all'utente PRIMA che ribalta spec 0087
+  D-13/D-14/INV-5, confermato. Semantica ristretta: percettore di provvigione
+  (`CommissionRecipientRole::Supervisor`), NON proprieta' operativa della richiesta — quella resta
+  `operator_id`/slot 2. I due sono indipendenti. Nessun `RequestSupervisorWriter` e' tornato.
+
+**Tre conseguenze obbligate dall'eliminazione della vecchia chiave (nessuna era nella richiesta).**
+1. `editableField` e' insieme chiave-permesso E chiave di scrittura (`TableCellUpdateService:67`,
+   `ResolvesColumnConfig:247`). Cancellando `operator_id` dal catalogo, la cella inline
+   `operator_ga2` sarebbe morta con un 422 "Column is not editable". Ora la colonna e' gated da
+   `manager_slots` ma continua a scrivere il SOLO slot 2: la traduzione avviene in `updateCell()`.
+2. `role_field_permissions` e' keyed su (role_id, resource, field): senza migrazione le restrizioni
+   gia' configurate dagli amministratori diventavano orfane SILENZIOSE (la matrice avrebbe letto
+   "nessuna restrizione" su un campo restretto). Migrazione di rename reversibile,
+   `2026_09_02_230000`. Il ramo "conflitto UNIQUE" cancella una riga e quindi NON fa round-trip:
+   dichiarato nel docblock, non nascosto.
+3. Il legame Sede <-> Operatore (direttive 2026-07-23 / 2026-07-31) era cablato sul picker singolo.
+   Smontare un campo non e' smontare le sue REGOLE (lezione spec 0095): il legame e' stato spostato
+   sullo SLOT 2, non perso. `ManagerSlotsField` ha due prop OPZIONALI nuove (`paramsFor`,
+   `onItemChange`): Anagrafiche/Opportunita'/Offerte non le passano e sono invariate.
+
+**Decisione presa dal lead oltre la spec congelata.** `operator_id` mandato DA SOLO sulla PATCH del
+pannello era un 200 SILENZIOSO senza scrittura — precisamente il fallimento che spec 0086 mt06 ha
+gia' pagato in produzione, e creato da noi togliendo la chiave dalle regole. Ora e' `prohibited`
+-> 422. `prohibits:operator_id` rimosso da `manager_slots` (ridondante, seconda verita' divergente)
+e il wrapper `panelManagerSlotsRules()` cancellato invece di lasciarlo vuoto.
+LIMITE NOTO, verificato EMPIRICAMENTE con una probe, non dedotto: `prohibited` in Laravel e'
+`!required`, quindi tollera i vuoti -> `operator_id: null` resta un 200 no-op. Non inseguito di
+proposito (un null non chiede nessuna scrittura); documentato nel commento della regola.
+
+**Invarianti da rispettare.**
+- `QuoteManagerWriter::sync()` resta il SOLO writer del team dell'Offerta e proietta
+  `quotes.operator_id` dallo slot `ManagerPositions::OPERATOR` (=2). Non duplicare quella logica.
+- `padManagerSlots` NON deve MAI troncare: la PATCH e' un full-replace del pivot, e un troncamento
+  a 4 cancellerebbe un G.A. in posizione 5-12 (MAX=12, raggiungibili dal form Offerte). Coperto ora
+  da test su ENTRAMBI i lati (FE non tronca, BE confronta per posizione).
+- Il diff FE degli slot e' POSIZIONALE (`sameManagerSlots`), non a insieme: uno slot vuoto in mezzo
+  e' informazione.
+- Bulk assign e transfer NON sono cambiati: continuano a passare da `RequestOperatorWriter::apply()`.
+- La regola Sede<->slot 2 e' definita UNA volta in `request-team-slots.ts` e cablata UNA volta in
+  `use-request-site-operator-link.ts` (chiamato da chi possiede il form): il legame attraversa due
+  sezioni, se lo si ricabla dentro una sola, l'altra smette di reagire.
+
+**VERIFICATO DAL LEAD ESEGUENDO, non riferito dagli agenti.**
+Pest backend COMPLETA: 5834 test, 5833 passed, 1 skipped, 0 failed. Pint `--dirty --test` passed.
+`npx tsc -b --force` EXIT=0, zero `error TS`. Vitest COMPLETA: 545 file / 3903 test passed.
+
+**Buchi dichiarati.**
+- Resa responsive a 375/768/1024 delle due card nuove NON guardata a video (riusano
+  `FIELD_GRID_CLASS`/`FIELD_STACK_CLASS`, gli stessi primitivi delle sezioni esistenti). Nessun E2E.
+- `request-work-panel.tsx` 359 righe e `quote-form-body.tsx` 410: sopra il soft limit di 300 GIA'
+  DA PRIMA di questo lavoro, delta di questo giro ~+14 e ~0.
+- `QuoteWorkflowMigrationTest` ha `--step` portato da 35 a 39 per includere le migrazioni non
+  committate di ALTRE sessioni (work-orders) piu' la nostra. File condiviso senza owner: CHI
+  COMMITTA PER ULTIMO riallinea quel numero.
+- Flaky preesistenti visti da un agente e NON riprodotti in due giri completi del lead:
+  `CampaignCrudTest` (budget random), `DemoOpportunitySeederTest:147` (distribuzione random).
+- `tests/Unit/Migrations/ExternalApiClientTest.php` segfaulta in ISOLAMENTO (exit 139) secondo un
+  agente; non si e' manifestato nelle due suite complete del lead. Preesistente, estraneo a 0097.
+
+**Incidente di processo, da non ripetere.** Un teammate BACKEND ha ingaggiato un teammate frontend
+per lavoro FE che era gia' assegnato a un altro: per un momento due agenti hanno avuto mandato sugli
+stessi file. Se n'e' accorto l'agente ingaggiato, che si e' FERMATO prima di scrivere. Il dispatch e'
+del lead: un teammate non assegna lavoro fuori dalla propria ownership.
+
+**Prossimo passo.** In attesa del via libera per il commit (§3.6). Il working tree contiene almeno
+tre workstream di altre sessioni (work-orders/contracts, ProductLines/campaigns/leads,
+personal-data): un commit indiscriminato li mescolerebbe, vanno selezionati i soli file di 0097.
+
 ## RIGHE FA->CATEGORIA SU PROGETTO/CAMPAGNA + PRODOTTI DI INTERESSE SUL LEAD (2026-09-02, spec 0094) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** La Campagna non deve essere limitata a una sola coppia Funzione Aziendale ->

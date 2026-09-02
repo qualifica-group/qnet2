@@ -220,7 +220,7 @@ it('a GA2 assignment notification opens the Offerta, not the Opportunity, for a 
 
     expect($quote->id)->not->toBe($opportunity->id);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $recipient->id])->assertOk();
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $recipient->id]])->assertOk();
 
     Notification::assertSentTo($recipient, function (RecordAssignmentNotification $notification) use ($recipient, $quote): bool {
         expect($notification->toArray($recipient)['action_url'])->toBe("/request-management/{$quote->id}");

@@ -4,7 +4,8 @@ import type { AxiosError } from 'axios'
 import { fetchRequestFormContext } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import type { ProductLineRow } from '@/features/product-lines/types'
-import type { RequestFormContext, RequestProductLinePayload } from '@/features/request-management/types'
+import type { RequestProductLinePayload } from '@/features/request-management/request-write-types'
+import type { RequestFormContext } from '@/features/request-management/types'
 
 /**
  * Stable references for the empty case: a fresh `[]`/`null` on every render

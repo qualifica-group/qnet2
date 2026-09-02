@@ -10,9 +10,15 @@ use App\Services\Quotes\QuoteManagerWriter;
 use App\Support\ManagerPositions;
 
 /**
- * Writes an offer's GA2 "Operatore" in ONE operation (spec 0087, D-9): it
- * moves the `quote_user` OPERATOR slot (`App\Support\ManagerPositions::
- * OPERATOR`) onto the given user and lets that same write project
+ * Writes an offer's Gestori Account from the request-management module —
+ * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
+ * assign, the transfer), applySlots() replaces the WHOLE team (the work
+ * panel, spec 0097). Both funnel into the same single writer, so the two
+ * channels can never grow divergent rules.
+ *
+ * apply() (spec 0087, D-9) moves the `quote_user` OPERATOR slot
+ * (`App\Support\ManagerPositions::OPERATOR`) onto the given user and lets
+ * that same write project
  * `quotes.operator_id` — both delegated to `App\Services\Quotes\
  * QuoteManagerWriter` (D-4), the SOLE writer of an Offerta's Gestori Account,
  * so this class never duplicates its pivot/column coherence obligation
@@ -77,6 +83,55 @@ final class RequestOperatorWriter
     }
 
     /**
+     * The WHOLE team in one operation (spec 0097, D-5): the work panel edits
+     * every slot at once, so the submitted list replaces the Offerta's
+     * `quote_user` wholesale — through the SAME QuoteManagerWriter, with the
+     * same `promoteToOpportunity: true` this module always opts into (see the
+     * class docblock: no UI here can answer a 422 about appartenenza).
+     *
+     * Two DIFFERENT keys are reported into $changed/$old (D-6):
+     *  - `manager_slots` whenever the team genuinely moves, so the module's
+     *    operational history records the new arrangement;
+     *  - `operator_id` ONLY when the OPERATOR slot itself changes hands — it
+     *    is what the caller's assignment notification hangs off, and
+     *    reshuffling the other slots assigns nobody (AC-007).
+     * A submission that maps to the persisted arrangement writes nothing at
+     * all, exactly like apply()'s own no-op guard.
+     *
+     * @param  array<int, int|null>  $slots  ordered and gap-aware (index+1 = position), the shape QuoteManagerWriter::sync() consumes
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function applySlots(Quote $quote, array $slots, array &$changed, array &$old): void
+    {
+        $current = $this->currentPositions($quote);
+        $submitted = $this->submittedPositions($slots);
+
+        ksort($current);
+        ksort($submitted);
+
+        if ($current === $submitted) {
+            return;
+        }
+
+        $this->managerWriter->sync($quote, $slots, promoteToOpportunity: true);
+        $quote->unsetRelation('operator');
+
+        $old['manager_slots'] = $this->positionsToSlots($current);
+        $changed['manager_slots'] = $this->positionsToSlots($submitted);
+
+        $previousOperatorId = $current[ManagerPositions::OPERATOR] ?? null;
+        $newOperatorId = $submitted[ManagerPositions::OPERATOR] ?? null;
+
+        if ($previousOperatorId === $newOperatorId) {
+            return;
+        }
+
+        $old['operator_id'] = $previousOperatorId;
+        $changed['operator_id'] = $newOperatorId;
+    }
+
+    /**
      * The Offerta's CURRENT manager slots (index+1 = position, the shape
      * QuoteManagerWriter::sync() consumes) with the OPERATOR position moved
      * onto $operatorId: every other slot survives untouched. $operatorId is
@@ -88,10 +143,10 @@ final class RequestOperatorWriter
      */
     private function slotsWithOperator(Quote $quote, ?int $operatorId): array
     {
-        $positions = $quote->managers()->get()
-            ->reject(fn (User $manager): bool => $operatorId !== null && $manager->id === $operatorId)
-            ->mapWithKeys(fn (User $manager): array => [(int) $manager->pivot->position => $manager->id])
-            ->all();
+        $positions = array_filter(
+            $this->currentPositions($quote),
+            static fn (int $userId): bool => $operatorId === null || $userId !== $operatorId,
+        );
 
         if ($operatorId === null) {
             unset($positions[ManagerPositions::OPERATOR]);
@@ -99,12 +154,56 @@ final class RequestOperatorWriter
             $positions[ManagerPositions::OPERATOR] = $operatorId;
         }
 
+        return $this->positionsToSlots($positions);
+    }
+
+    /**
+     * The persisted team as `position => userId` — an explicit query, never a
+     * lazy-loaded property access (Model::preventLazyLoading()).
+     *
+     * @return array<int, int>
+     */
+    private function currentPositions(Quote $quote): array
+    {
+        return $quote->managers()->get()
+            ->mapWithKeys(static fn (User $manager): array => [
+                (int) $manager->pivot->position => (int) $manager->id,
+            ])
+            ->all();
+    }
+
+    /**
+     * The same `position => userId` view of a SUBMITTED slot list, read
+     * through the shared ManagerPositions::syncMap() so this class can never
+     * interpret the payload differently from the writer that will persist it.
+     *
+     * @param  array<int, int|null>  $slots
+     * @return array<int, int>
+     */
+    private function submittedPositions(array $slots): array
+    {
+        $byUser = array_map(
+            static fn (array $pivot): int => $pivot['position'],
+            ManagerPositions::syncMap($slots),
+        );
+
+        return array_flip($byUser);
+    }
+
+    /**
+     * The inverse projection: a `position => userId` map back into the
+     * ordered, gap-aware list the writer consumes and the wire carries.
+     *
+     * @param  array<int, int>  $positions
+     * @return array<int, int|null>
+     */
+    private function positionsToSlots(array $positions): array
+    {
         if ($positions === []) {
             return [];
         }
 
-        $size = max(array_keys($positions));
-        $slots = array_fill(0, $size, null);
+        $slots = array_fill(0, max(array_keys($positions)), null);
 
         foreach ($positions as $position => $userId) {
             $slots[$position - 1] = $userId;

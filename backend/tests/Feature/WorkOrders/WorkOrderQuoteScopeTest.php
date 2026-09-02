@@ -101,7 +101,7 @@ it('AC-052: per-row actions in a scoped grid still come from WorkOrderPolicy, ne
     ])->assertOk();
 
     $row = $response->json('items.0');
-    expect($row['actions'])->toBe(['view', 'edit'])
+    expect($row['actions'])->toBe(['view'])
         ->and($row['actions'])->not->toContain('delete');
 });
 

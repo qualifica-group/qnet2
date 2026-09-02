@@ -236,17 +236,28 @@ final class RequestColumnCatalog
                 // the request (updateWork's supervisor writer un-sets it and
                 // syncs the GA2 slot).
                 //
-                // `editableField` (spec 0086, AC corrected in execution after
-                // a real production bug, mt06): stays `operator_id` —
-                // UNCHANGED from before this migration. `editableField` is the
-                // LOGICAL key the cell sends to `updateWork()`, never the DB
-                // column name it lands on: `RequestManagementService::updateWork()`
-                // recognizes exactly ONE key for this write on BOTH channels
-                // (grid cell and work panel), and that key has always been
-                // `operator_id` — even before D-3, when it addressed a pivot
-                // row, not a same-named column. `supervisor_id` was a second,
-                // divergent key the service never learned: a silent 200 no-op
-                // (no write, no error) rather than a 422/404.
+                // `editableField` (spec 0097, D-3a): `manager_slots`. The
+                // key is BOTH the field-permission key and the key
+                // TableCellUpdateService hands to `updateCell()` — and the
+                // two now answer different questions for this column:
+                //  - PERMISSION: the cell writes a Gestore Account slot, and
+                //    the only catalogued key for that block is the TEAM's
+                //    (`operator_id` was deleted from
+                //    RequestManagementAuthorization, D-3), so this column is
+                //    gated by the team's permission;
+                //  - WRITE: still the single OPERATOR slot, never the whole
+                //    team — WritesInlineEditableCells translates the cell
+                //    back into `['operator_id' => $value]` before calling
+                //    `updateWork()` (D-3b).
+                // That translation is what keeps the spec 0086 mt06 lesson
+                // intact: `editableField` is the LOGICAL key, never the DB
+                // column, and `updateWork()` must RECOGNIZE the key it is
+                // handed. Sending it a key it never learned (`supervisor_id`,
+                // the first cut of spec 0086 D-3) produced a silent 200 no-op
+                // — no write, no error. Passing `manager_slots` raw would
+                // repeat the mistake in reverse: `updateWork()` does learn
+                // that key now, but it expects an ordered slot LIST there and
+                // the cell carries a single user id.
                 //
                 // `relation.scope` (user directive 2026-07-23): the picker is
                 // narrowed to the operators of the row's OWN operational site,
@@ -266,7 +277,7 @@ final class RequestColumnCatalog
                 'sortable' => false,
                 'filterable' => false,
                 'editable' => true,
-                'editableField' => 'operator_id',
+                'editableField' => 'manager_slots',
                 'relation' => [
                     'resource' => 'users',
                     'scope' => ['operational_site_id' => 'operational_site'],

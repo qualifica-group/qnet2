@@ -21,7 +21,10 @@ use Illuminate\Support\Facades\DB;
  * delegated entirely to WorkOrderStatusResolver so the badge and the filter
  * can never disagree — AC-034), `is_force_closed` (a real boolean column
  * rendered as `badge`+`set`, D-4) and `type` (a real WorkOrderType-cast
- * column, D-10).
+ * column, D-10) and `supervisors` (spec 0096 D-7, the Responsabili reached
+ * through the `work_order_supervisor` pivot — a to-many rendered as an avatar
+ * stack, not sortable, `set`-filtered via whereHas, exactly like
+ * QuoteRelationColumns' own `managers`).
  *
  * Every column id reaching this class comes from the definition's own static
  * catalogue (WorkOrderColumnCatalog) — never client input.
@@ -37,6 +40,17 @@ final class WorkOrderDerivedColumns
     private const string IS_FORCE_CLOSED_COLUMN = 'is_force_closed';
 
     private const string STATUS_COLUMN = 'status';
+
+    /** The Responsabili (spec 0096, D-7): a to-many over `work_order_supervisor`. */
+    private const string SUPERVISORS_COLUMN = 'supervisors';
+
+    private const string SUPERVISORS_RELATION = 'supervisors';
+
+    private const string SUPERVISORS_PIVOT = 'work_order_supervisor';
+
+    private const string USERS_TABLE = 'users';
+
+    private const string USER_LABEL_COLUMN = 'name';
 
     /** `work_orders.quote_id` -> `quotes` column, keyed by the public column id. */
     private const array QUOTE_SCALAR_COLUMNS = [
@@ -68,6 +82,12 @@ final class WorkOrderDerivedColumns
             return true;
         }
 
+        if ($columnId === self::SUPERVISORS_COLUMN) {
+            $this->applySupervisorsFilter($query, $this->setFilterValues($filter));
+
+            return true;
+        }
+
         $quoteColumn = self::QUOTE_SCALAR_COLUMNS[$columnId] ?? null;
 
         if ($quoteColumn === null) {
@@ -82,8 +102,32 @@ final class WorkOrderDerivedColumns
     }
 
     /**
+     * `set` filter on the responsabili's own `users.name`, via `whereHas`
+     * with BOUND values — never a raw fragment built from client input
+     * (backend.md §8). Matches a commessa when ANY of its responsabili is
+     * among the picked names, the same semantics the Offerta's `managers`
+     * column already has. The column id itself comes from the static
+     * catalogue, never from the request.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<int, string>  $values
+     */
+    private function applySupervisorsFilter(Builder $query, array $values): void
+    {
+        if ($values === []) {
+            return;
+        }
+
+        $query->whereHas(self::SUPERVISORS_RELATION, static function (Builder $userQuery) use ($values): void {
+            $userQuery->whereIn(self::USER_LABEL_COLUMN, $values);
+        });
+    }
+
+    /**
      * ORDER BY `quotes.code`/`quotes.title` via a correlated subquery — never
-     * a row-multiplying JOIN on the main query. `status`/`is_force_closed`/
+     * a row-multiplying JOIN on the main query. `supervisors` never reaches
+     * here: a to-many has no single sort key, so the catalogue declares it
+     * `sortable: false`. `status`/`is_force_closed`/
      * `type` never reach here: `status` is not sortable (excluded from the
      * whitelist upstream) and the other two are real columns, sorted by the
      * generic engine's plain ORDER BY.
@@ -126,8 +170,37 @@ final class WorkOrderDerivedColumns
             self::TYPE_COLUMN => $this->filterOptions($search, WorkOrderType::values()),
             self::IS_FORCE_CLOSED_COLUMN => $this->filterOptions($search, ['true', 'false']),
             self::STATUS_COLUMN => $this->filterOptions($search, WorkOrderStatus::values()),
+            self::SUPERVISORS_COLUMN => $this->distinctSupervisorNames($search, $query, $limit),
             default => null,
         };
+    }
+
+    /**
+     * Distinct responsabile names among the work orders matching $query —
+     * scoped by every OTHER active filter (Excel-like distinct values, spec
+     * 0004/0005), unlike the enum columns above which list their full
+     * declared set. Mirrors QuoteRelationColumns::distinctManagerNames(), a
+     * join through the pivot rather than a subquery on an own FK.
+     *
+     * @param  Builder<Model>  $query
+     * @return array<int, string>
+     */
+    private function distinctSupervisorNames(?string $search, Builder $query, int $limit): array
+    {
+        $workOrderIds = (clone $query)->select('work_orders.id');
+
+        return DB::table(self::USERS_TABLE)
+            ->join(self::SUPERVISORS_PIVOT, self::SUPERVISORS_PIVOT.'.user_id', '=', self::USERS_TABLE.'.id')
+            ->whereIn(self::SUPERVISORS_PIVOT.'.work_order_id', $workOrderIds)
+            ->when($search !== null && $search !== '', function ($builder) use ($search): void {
+                $builder->where(self::USERS_TABLE.'.'.self::USER_LABEL_COLUMN, 'like', '%'.$this->escapeLike($search).'%');
+            })
+            ->distinct()
+            ->orderBy(self::USERS_TABLE.'.'.self::USER_LABEL_COLUMN)
+            ->limit($limit)
+            ->pluck(self::USERS_TABLE.'.'.self::USER_LABEL_COLUMN)
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
     }
 
     /**
@@ -206,5 +279,10 @@ final class WorkOrderDerivedColumns
             ->select($column)
             ->whereColumn('quotes.id', 'work_orders.quote_id')
             ->limit(1);
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 }

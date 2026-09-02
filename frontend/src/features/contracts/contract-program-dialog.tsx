@@ -15,6 +15,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
+import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { createContractWorkOrder } from '@/features/contracts/api'
 import {
@@ -26,7 +28,13 @@ import { useContractProgrammableLines } from '@/features/contracts/use-contract-
 import { ContractProgramLinesTable } from '@/features/contracts/contract-program-lines-table'
 import type { WorkOrderDetail, WorkOrderType } from '@/features/work-orders/types'
 
-const SERVER_ERROR_FIELDS = ['title', 'type', 'quote_line_ids'] as const
+const SERVER_ERROR_FIELDS = [
+  'title',
+  'type',
+  'start_date',
+  'supervisor_ids',
+  'quote_line_ids',
+] as const
 const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
 
 interface ContractProgramDialogProps {
@@ -40,8 +48,10 @@ interface ContractProgramDialogProps {
 /**
  * "Programma" (spec 0095): picks a group of the contract's offer REVENUE
  * lines and generates ONE Commessa from them (D-3). Fields are limited to
- * `title`/`type` (D-11) — the rest of the Commessa is filled in later from
- * its own, already-existing form. Line data comes from
+ * what a commessa cannot be left without — `title`/`type` plus, since spec
+ * 0096 (D-5), "Data inizio" and at least one "Responsabile" — the rest,
+ * Partecipanti included, is filled in later from its own, already-existing
+ * form. Line data comes from
  * `GET /contracts/{id}/programmable-lines`, fetched only while open.
  */
 export function ContractProgramDialog({ open, onOpenChange, contractId, onCreated }: ContractProgramDialogProps) {
@@ -112,6 +122,20 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
 
               <FormField
                 control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required>{t('workOrders.form.startDate')}</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
@@ -135,6 +159,34 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="supervisor_ids"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel required>{t('workOrders.form.supervisors')}</FormLabel>
+                  <FormControl>
+                    <AsyncPaginatedMultiSelect
+                      resource={USERS_FOR_SELECT_RESOURCE}
+                      value={field.value}
+                      onChange={field.onChange}
+                      showAvatar
+                      labels={{
+                        placeholder: t('workOrders.form.supervisorsPlaceholder'),
+                        searchPlaceholder: t('workOrders.form.supervisorsSearch'),
+                        empty: t('workOrders.form.supervisorsEmpty'),
+                        error: t('workOrders.form.supervisorsError'),
+                        removeLabel: t('common.remove'),
+                        triggerLabel: t('workOrders.form.supervisors'),
+                        retry: t('common.retry'),
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

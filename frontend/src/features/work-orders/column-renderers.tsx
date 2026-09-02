@@ -1,5 +1,6 @@
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
+import { UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -14,14 +15,19 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * own `BooleanBadgeCell` (mirrors `contract-statuses`/`payment-methods`
  * `is_active`, shared `common.yes`/`common.no`). `code` renders as a compact
  * monospace badge (mirrors `unitOfMeasureColumnRenderers`); `callback_date`
- * is a date-only column; `created_at`/`updated_at` reuse the shared datetime
- * renderer. `title`/`contract_number`/`quote` stay on the AG Grid default
- * text cell.
+ * and `start_date` (spec 0096) are date-only columns; `created_at`/
+ * `updated_at` reuse the shared datetime renderer. `supervisors`
+ * ("Responsabili", spec 0096) is a to-many of `{id,name,avatar_url}` and
+ * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
+ * `managers` columns render with — no second avatar-stack cell.
+ * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
  */
 export const workOrderColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
   is_force_closed: (params) => <BooleanBadgeCell {...params} />,
   callback_date: (params) => <DateCell {...params} />,
+  start_date: (params) => <DateCell {...params} />,
+  supervisors: (params) => <UserStackCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
   updated_at: (params) => <DateTimeCell {...params} />,
 }

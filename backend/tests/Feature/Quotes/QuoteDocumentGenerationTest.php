@@ -275,7 +275,7 @@ it('AC-300: GET /api/tables/quotes/columns declares generate_document, gated by 
     expect(collect($columns['actions'])->firstWhere('key', 'generate_document'))->toBeNull();
 });
 
-it('AC-301: the 4 pre-existing row actions are unchanged and generate_document is gated like view', function () {
+it('AC-301: the pre-existing row actions are unchanged and generate_document is gated like view', function () {
     $fullActor = quoteAuthUserWith(['viewAny', 'view', 'update', 'delete', 'viewActivity']);
     $quote = Quote::factory()->create();
     Sanctum::actingAs($fullActor);
@@ -283,7 +283,7 @@ it('AC-301: the 4 pre-existing row actions are unchanged and generate_document i
     $response = $this->postJson('/api/tables/quotes/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('id', $quote->id);
 
-    expect($row['actions'])->toEqual(['view', 'edit', 'delete', 'activity', 'generate_document']);
+    expect($row['actions'])->toEqual(['view', 'delete', 'activity', 'generate_document']);
 
     $noViewActor = quoteAuthUserWith(['viewAny']);
     Sanctum::actingAs($noViewActor);

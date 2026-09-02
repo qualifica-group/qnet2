@@ -58,8 +58,13 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_02_200060_add_product_ids_to_import_run_rows_table` (34th),
     // and spec 0095's
     // `2026_09_02_210000_change_quote_line_work_order_unique_constraint`
-    // (35th). Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 35]);
+    // (35th), spec 0096's `2026_09_02_220000_add_start_date_to_work_orders_table`
+    // (36th), `2026_09_02_220100_create_work_order_supervisor_table` (37th)
+    // and `2026_09_02_220200_create_work_order_participant_table` (38th), and
+    // spec 0097's
+    // `2026_09_02_230000_rename_request_management_operator_field_permission`
+    // (39th). Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 39]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -74,7 +79,7 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         // migration's down(): structure is reversible, its rows are not.
         ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue();
 
-    Artisan::call('migrate', ['--step' => 35]);
+    Artisan::call('migrate', ['--step' => 39]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()

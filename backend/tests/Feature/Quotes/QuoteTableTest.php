@@ -86,10 +86,10 @@ it('columns: the action catalogue leads with view/generate_document/notes, the t
         ->pluck('key')
         ->all();
 
-    expect($keys)->toBe(['view', 'generate_document', 'notes', 'edit', 'delete', 'activity']);
+    expect($keys)->toBe(['view', 'generate_document', 'notes', 'delete', 'activity']);
 });
 
-it('rows: view/edit/delete/activity actions gated by QuotePolicy', function () {
+it('rows: view/delete/activity actions gated by QuotePolicy', function () {
     $fullActor = quoteTableUserWith(['viewAny', 'view', 'update', 'delete', 'viewActivity']);
     $opportunity = Opportunity::factory()->create();
     Quote::factory()->create(['opportunity_id' => $opportunity->id, 'title' => 'Riga completa']);
@@ -99,7 +99,7 @@ it('rows: view/edit/delete/activity actions gated by QuotePolicy', function () {
     $row = collect($response->json('items'))->firstWhere('title', 'Riga completa');
 
     expect($row)->not->toBeNull()
-        ->and($row['actions'])->toContain('view', 'edit', 'delete', 'activity');
+        ->and($row['actions'])->toContain('view', 'delete', 'activity');
 
     $readOnlyActor = quoteTableUserWith(['viewAny', 'view']);
     Sanctum::actingAs($readOnlyActor);
@@ -108,7 +108,7 @@ it('rows: view/edit/delete/activity actions gated by QuotePolicy', function () {
     $row = collect($response->json('items'))->firstWhere('title', 'Riga completa');
 
     expect($row['actions'])->toContain('view')
-        ->and($row['actions'])->not->toContain('edit', 'delete', 'activity');
+        ->and($row['actions'])->not->toContain('delete', 'activity');
 });
 
 it('rows: the quote_workflow_status column carries id/name/color for the badge', function () {

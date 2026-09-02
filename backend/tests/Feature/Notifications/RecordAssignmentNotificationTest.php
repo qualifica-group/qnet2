@@ -6,6 +6,7 @@ use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
+use App\Support\ManagerPositions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -207,7 +208,9 @@ it('notifies the operator assigned from the work panel, at the GA2 slot (AC-009)
 
     expect($quote->id)->not->toBe($quote->opportunity_id);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $operator->id])->assertOk();
+    // Spec 0097, D-1/D-6: the panel writes the whole team, the operator
+    // being its OPERATOR slot — the assignment notification is unchanged.
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $operator->id]])->assertOk();
 
     Notification::assertSentTo($operator, function (RecordAssignmentNotification $notification) use ($operator): bool {
         return str_contains(
@@ -245,12 +248,13 @@ it('reassigning the operator to the user already holding the slot notifies nobod
     // Spec 0087, D-9: the slot the "already holding it" no-op checks is now
     // `quotes.operator_id`, no longer `quotes.supervisor_id`.
     $quote = Quote::factory()->create(['operator_id' => $operator->id]);
+    $quote->managers()->attach($operator->id, ['position' => ManagerPositions::OPERATOR]);
     $quote->opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
     Sanctum::actingAs($actor);
 
     expect($quote->id)->not->toBe($quote->opportunity_id);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $operator->id])->assertOk();
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $operator->id]])->assertOk();
 
     Notification::assertNothingSent();
 });

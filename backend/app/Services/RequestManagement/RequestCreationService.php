@@ -82,7 +82,9 @@ final class RequestCreationService
             // `operational-sites.viewAny` never renders them, so an absent
             // key is exactly the case this default covers. A submitted value
             // (only an actor holding those abilities gets past the
-            // controller's guards) always wins.
+            // controller's guards) always wins. Spec 0097: the operator half
+            // now arrives as one SLOT of the submitted team, so the default
+            // fills that slot alone and leaves the rest of the team as sent.
             //
             // Spec 0087, D-13: the operator lands SOLELY on the Offerta's
             // own GA2 slot (Step 4 below) — the Opportunity no longer
@@ -91,7 +93,7 @@ final class RequestCreationService
             // CreateQuoteData's `promoteManagersToOpportunity`) appends the
             // operator to the Opportunity's first FREE manager slot, never
             // overwriting an already-occupied one.
-            $operatorId = $data->operatorId ?? $actor->id;
+            $managerSlots = $this->managerSlotsWithOperator($data->managerSlots, $actor);
             $operationalSiteId = $data->operationalSiteId ?? $this->actorOperationalSiteId($actor);
 
             // Step 2: the Opportunity, through the shared service. The
@@ -144,10 +146,13 @@ final class RequestCreationService
             // service's own concern here too, never duplicated.
             // `reporter_id`/`operational_site_id` are the SAME resolved
             // values just used for the Opportunity, so the two records never
-            // disagree at creation time. `supervisor_id` is deliberately NOT
-            // one of them any more (spec 0087, D-13): it follows the general
-            // inheritance rule (applySnapshotDefaults(), like commercial and
-            // reporter), never a value this channel picks. The operator
+            // disagree at creation time. `supervisor_id` travels too (spec
+            // 0097, D-9, user directive 2026-09-02) — as the Offerta's
+            // commission recipient, NOT as an ownership column — but only
+            // when the form actually submitted it: with the key absent the
+            // pair stays (null, false) and applySnapshotDefaults() resolves
+            // the value exactly as before, so a creation that never mentions
+            // the field produces what it has always produced. The operator
             // lands on the Offerta's own GA2 slot instead, via
             // `managerSlots`, promoted onto the Opportunity's first free
             // slot when it is not already one of its Gestori Account (D-6).
@@ -163,13 +168,13 @@ final class RequestCreationService
                 commercialIdSubmitted: false,
                 reporterId: $data->reporterId,
                 reporterIdSubmitted: true,
-                supervisorId: null,
-                supervisorIdSubmitted: false,
+                supervisorId: $data->supervisorId,
+                supervisorIdSubmitted: $data->supervisorIdSubmitted,
                 internalNotes: null,
                 operationalSiteId: $operationalSiteId,
                 operationalSiteIdSubmitted: true,
                 offerLines: $data->offerLines,
-                managerSlots: $this->operatorManagerSlots($operatorId),
+                managerSlots: $managerSlots,
                 promoteManagersToOpportunity: true,
             ), $actor);
 
@@ -264,21 +269,43 @@ final class RequestCreationService
     }
 
     /**
-     * The GA2 "Operatore" as ordered manager slots (user directive
-     * 2026-07-29; spec 0087, D-13: now feeds the Offerta's OWN
-     * `manager_slots`, via `QuoteManagerWriter`, no longer the Opportunity's)
-     * — `ManagerPositions::OPERATOR` expressed in the slots vocabulary
-     * (index+1 = position), so the operator sits at the OPERATOR index with
-     * every slot before it left empty. Always called with an operator: the
-     * actor is the default (see create()), so a request never lands without
-     * one.
+     * The submitted team (spec 0097, D-1) with the OPERATOR slot guaranteed
+     * filled: a request is always worked by somebody, and by default by
+     * whoever opened it (user directive 2026-08-04) — so an absent payload,
+     * or one leaving `ManagerPositions::OPERATOR` empty, receives the actor
+     * THERE (AC-002, the exact behaviour the former `operatorId ?? $actor->id`
+     * default had). Every other slot travels through untouched.
      *
+     * The actor is first dropped from any OTHER slot they were submitted in:
+     * a manager occupies exactly one slot (ValidatesManagerSlots' own
+     * invariant, which the default must not break), and the module's rule is
+     * that the creator is the operator — same "moved, never duplicated"
+     * treatment RequestOperatorWriter::slotsWithOperator() gives the panel.
+     *
+     * The result feeds QuoteManagerWriter through CreateQuoteData, which is
+     * what projects `quotes.operator_id` from the OPERATOR slot (spec 0087,
+     * D-13) and promotes anyone missing onto the Opportunity's first free
+     * slot.
+     *
+     * @param  array<int, int|null>|null  $slots
      * @return array<int, int|null>
      */
-    private function operatorManagerSlots(int $operatorId): array
+    private function managerSlotsWithOperator(?array $slots, User $actor): array
     {
-        $slots = array_fill(0, ManagerPositions::OPERATOR, null);
-        $slots[ManagerPositions::OPERATOR - 1] = $operatorId;
+        $slots = array_pad(array_values($slots ?? []), ManagerPositions::OPERATOR, null);
+        $operatorIndex = ManagerPositions::OPERATOR - 1;
+
+        if ($slots[$operatorIndex] !== null) {
+            return $slots;
+        }
+
+        foreach ($slots as $index => $userId) {
+            if ($userId === $actor->id) {
+                $slots[$index] = null;
+            }
+        }
+
+        $slots[$operatorIndex] = $actor->id;
 
         return $slots;
     }

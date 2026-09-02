@@ -15,7 +15,7 @@ if (! function_exists('workOrderUserWith')) {
      */
     function workOrderUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
@@ -24,6 +24,14 @@ if (! function_exists('workOrderUserWith')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo("work-orders.{$ability}");
         }
+
+        // `viewAll` on top of the requested abilities: these suites predate
+        // the membership scoping (user directive 2026-09-02) and none of them
+        // is about it — the actor must see every commessa, as before. It
+        // widens nothing on its own: every gate still needs its own base
+        // ability, so the 403 assertions below keep their meaning. The
+        // scoping itself is covered by WorkOrderVisibilityTest.
+        $user->givePermissionTo('work-orders.viewAll');
 
         return $user;
     }
@@ -45,12 +53,17 @@ it('200: field catalogue is in the frozen data_contract order, status is absent 
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'quote_line_ids'])
+    expect($keys)->toBe(['code', 'quote_id', 'title', 'type', 'start_date', 'supervisor_ids', 'participant_slots', 'callback_date', 'description', 'internal_notes', 'is_force_closed', 'force_close_reason', 'quote_line_ids'])
         ->and($keys)->not->toContain('status');
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['title']['mandatory'])->toBeTrue()
         ->and($fields['type']['mandatory'])->toBeTrue()
+        // Spec 0096, D-6: NOT NULL columns, hence mandatory — but plainly
+        // editable after create, unlike code/quote_id.
+        ->and($fields['start_date']['mandatory'])->toBeTrue()
+        ->and($fields['supervisor_ids']['mandatory'])->toBeTrue()
+        ->and($fields['participant_slots']['mandatory'])->toBeFalse()
         ->and($fields['code']['mandatory'])->toBeFalse();
 });
 
@@ -74,12 +87,15 @@ it('200: code/quote_id are editable only in create context, readonly once a mode
 });
 
 it('a restrictive DB row on the non-mandatory `description` field makes it readonly, and 422 if modified (AC-052)', function () {
-    foreach (['viewAny', 'view', 'update'] as $ability) {
+    // `viewAll` lifts the membership scoping (user directive 2026-09-02):
+    // this test is about the field-permission matrix, not about who may see
+    // a commessa.
+    foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
 
     $role = Role::create(['name' => 'work-order-description-locked']);
-    $role->givePermissionTo(['work-orders.view', 'work-orders.update']);
+    $role->givePermissionTo(['work-orders.view', 'work-orders.update', 'work-orders.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'work-orders',
         'field' => 'description',
@@ -105,12 +121,15 @@ it('a restrictive DB row on the non-mandatory `description` field makes it reado
 });
 
 it('a restrictive DB row on the mandatory `title` field is ignored (mandatory bypass), write succeeds (AC-052)', function () {
-    foreach (['viewAny', 'view', 'update'] as $ability) {
+    // `viewAll` lifts the membership scoping (user directive 2026-09-02):
+    // this test is about the field-permission matrix, not about who may see
+    // a commessa.
+    foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("work-orders.{$ability}");
     }
 
     $role = Role::create(['name' => 'work-order-title-locked']);
-    $role->givePermissionTo(['work-orders.view', 'work-orders.update']);
+    $role->givePermissionTo(['work-orders.view', 'work-orders.update', 'work-orders.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'work-orders',
         'field' => 'title',

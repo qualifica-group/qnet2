@@ -5,6 +5,7 @@ import {
   ASSIGN_OPERATOR_PERMISSION,
   OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
 } from '@/features/request-management/use-request-actor-defaults'
+import { OPERATOR_MANAGER_POSITION } from '@/features/request-management/types'
 import {
   COMPLETE_ROW,
   TEST_ACTOR_ID,
@@ -15,8 +16,9 @@ import {
 
 /**
  * User directive 2026-08-04: a new request is worked by whoever opened it, from
- * the Sede they belong to — the create form opens Operatore on the connected
- * actor and Sede operativa on the actor's own Sede.
+ * the Sede they belong to — the create form opens the team's OPERATOR slot
+ * (spec 0097 D-1) on the connected actor and Sede operativa on the actor's own
+ * Sede.
  *
  * Only the VISIBLE half is asserted here: whether the two values reach the
  * payload depends on the abilities that decide whether the fields are rendered
@@ -36,6 +38,9 @@ vi.mock('@/features/request-management/api', () => ({
 
 const BOTH_ABILITIES = [ASSIGN_OPERATOR_PERMISSION, OPERATIONAL_SITES_VIEW_ANY_PERMISSION]
 
+/** The id sitting on the team's operator slot, whatever the rest of the array holds. */
+const operatorSlot = (slots: (number | null)[]): number | null => slots[OPERATOR_MANAGER_POSITION - 1] ?? null
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -45,20 +50,29 @@ beforeEach(() => {
 })
 
 describe('create form — actor attribution defaults', () => {
-  it('opens the Operatore on the connected actor and the Sede on the actor own site', () => {
+  it('opens the operator slot on the connected actor and the Sede on the actor own site', () => {
     const { result } = renderCreateForm(vi.fn(), BOTH_ABILITIES)
 
-    expect(result.current.form.getValues('operator_id')).toBe(TEST_ACTOR_ID)
+    expect(operatorSlot(result.current.form.getValues('manager_slots'))).toBe(TEST_ACTOR_ID)
     expect(result.current.form.getValues('operational_site_id')).toBe(TEST_ACTOR_SITE_ID)
+  })
+
+  /** AC-002: the seeding writes ONE position — the rest of the team opens empty. */
+  it('leaves every other slot empty', () => {
+    const { result } = renderCreateForm(vi.fn(), BOTH_ABILITIES)
+
+    const slots = result.current.form.getValues('manager_slots')
+    expect(slots.length).toBeGreaterThan(OPERATOR_MANAGER_POSITION)
+    expect(slots.filter((slot) => slot !== null)).toEqual([TEST_ACTOR_ID])
   })
 
   it('seeds each field only under its own ability', () => {
     const operatorOnly = renderCreateForm(vi.fn(), [ASSIGN_OPERATOR_PERMISSION])
-    expect(operatorOnly.result.current.form.getValues('operator_id')).toBe(TEST_ACTOR_ID)
+    expect(operatorSlot(operatorOnly.result.current.form.getValues('manager_slots'))).toBe(TEST_ACTOR_ID)
     expect(operatorOnly.result.current.form.getValues('operational_site_id')).toBeNull()
 
     const siteOnly = renderCreateForm(vi.fn(), [OPERATIONAL_SITES_VIEW_ANY_PERMISSION])
-    expect(siteOnly.result.current.form.getValues('operator_id')).toBeNull()
+    expect(operatorSlot(siteOnly.result.current.form.getValues('manager_slots'))).toBeNull()
     expect(siteOnly.result.current.form.getValues('operational_site_id')).toBe(TEST_ACTOR_SITE_ID)
   })
 
@@ -73,6 +87,7 @@ describe('create form — actor attribution defaults', () => {
     await submitMinimalRequest(result)
 
     const payload = createRequestMock.mock.calls[0][0]
+    expect(payload).not.toHaveProperty('manager_slots')
     expect(payload).not.toHaveProperty('operator_id')
     expect(payload).not.toHaveProperty('operational_site_id')
   })
@@ -83,10 +98,9 @@ describe('create form — actor attribution defaults', () => {
 
     await submitMinimalRequest(result)
 
-    expect(createRequestMock.mock.calls[0][0]).toMatchObject({
-      operator_id: TEST_ACTOR_ID,
-      operational_site_id: TEST_ACTOR_SITE_ID,
-    })
+    const payload = createRequestMock.mock.calls[0][0] as { manager_slots: (number | null)[] }
+    expect(operatorSlot(payload.manager_slots)).toBe(TEST_ACTOR_ID)
+    expect(payload).toMatchObject({ operational_site_id: TEST_ACTOR_SITE_ID })
   })
 
   it('never overwrites a pick made after the seeding', async () => {
@@ -94,13 +108,13 @@ describe('create form — actor attribution defaults', () => {
     const { result } = renderCreateForm(vi.fn(), BOTH_ABILITIES)
 
     act(() => {
-      result.current.form.setValue('operator_id', 77)
+      result.current.form.setValue('manager_slots', [null, 77, null, null])
       result.current.form.setValue('operational_site_id', 88)
     })
     await submitMinimalRequest(result)
 
     expect(createRequestMock.mock.calls[0][0]).toMatchObject({
-      operator_id: 77,
+      manager_slots: [null, 77, null, null],
       operational_site_id: 88,
     })
   })

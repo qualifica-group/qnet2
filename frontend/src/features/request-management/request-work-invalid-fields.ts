@@ -1,8 +1,6 @@
 import type { FieldErrors } from 'react-hook-form'
 import type { TFunction } from 'i18next'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
-import { OPERATOR_MANAGER_LABEL_POSITION } from '@/features/request-management/types'
-import type { ManagerLabels } from '@/features/request-management/types'
 
 /**
  * Names the fields that refused the work panel's submit, for the summary shown
@@ -22,11 +20,13 @@ import type { ManagerLabels } from '@/features/request-management/types'
 const BUFFERED_BLOCKS = new Set(['client_identity', 'client_contacts', 'client_address'])
 
 /**
- * Human label of each root field of the form. `operator_id` mirrors the
- * attribution section's own resolution (spec 0080): the request's resolved
- * G.A. level-2 label when the category defines one, otherwise today's string.
+ * Human label of each root field of the form. Since spec 0097 the team is one
+ * field, `manager_slots` (a section of its own since rev-2): naming a single
+ * slot here would be wrong (any of them can be the one that refused the
+ * submit) and the per-slot G.A. denominations are already on screen, on the
+ * cards themselves.
  */
-function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined): Record<string, string> {
+function buildFieldLabels(t: TFunction): Record<string, string> {
   return {
     next_callback_at: t('requestManagement.workPanel.callback.label'),
     client_identity: t('requestManagement.workPanel.client.identityGroup'),
@@ -37,7 +37,8 @@ function buildFieldLabels(t: TFunction, managerLabels: ManagerLabels | undefined
     rewards: t('requestManagement.workPanel.attribution.rewards.fieldLabel'),
     source_id: t('requestManagement.workPanel.attribution.source'),
     reporter_id: t('requestManagement.workPanel.attribution.reporter'),
-    operator_id: managerLabels?.[OPERATOR_MANAGER_LABEL_POSITION] ?? t('requestManagement.workPanel.attribution.operator'),
+    supervisor_id: t('requestManagement.workPanel.team.supervisor'),
+    manager_slots: t('requestManagement.workPanel.team.managers'),
     operational_site_id: t('requestManagement.workPanel.attribution.operationalSite'),
   }
 }
@@ -63,12 +64,8 @@ function collectMessages(error: unknown): string[] {
 }
 
 /** Names the blocking fields. */
-export function describeInvalidFields(
-  errors: FieldErrors<RequestWorkFormValues>,
-  managerLabels: ManagerLabels | undefined,
-  t: TFunction,
-): string[] {
-  const labels = buildFieldLabels(t, managerLabels)
+export function describeInvalidFields(errors: FieldErrors<RequestWorkFormValues>, t: TFunction): string[] {
+  const labels = buildFieldLabels(t)
 
   return Object.entries(errors).flatMap(([key, error]) => {
     const label = labels[key] ?? key

@@ -19,6 +19,17 @@ import type { UserForSelectItem } from '@/features/users/for-select-api'
  * Mounted through the real panel (like `request-callback-section.test.tsx`)
  * because the payload diff lives in `useRequestWorkForm`/
  * `buildRequestWorkPayload`, not in the section.
+ *
+ * AC-003 (spec 0097): the link now hangs off the TEAM editor's operator slot
+ * (`ManagerSlotsField`, position 2) instead of the retired single "Operatore"
+ * picker — the field changed, its rules did not. The slot's trigger label is
+ * the editor's own default denomination, since this panel resolves no
+ * category G.A. labels.
+ *
+ * AC-011 (spec 0097 rev-2): those two ends are now in two DIFFERENT sections
+ * — the Sede in "Attribuzione", the slot in "Team" — and the link is cabled by
+ * the panel that owns the form (`useRequestSiteOperatorLink`). Every rule
+ * below is unchanged, which is exactly what mounting the real panel proves.
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
@@ -53,6 +64,12 @@ const OPERATOR_NO_SITE: UserForSelectItem = { id: 6, label: 'Bob Noyce', meta: u
 const SITE_A: ForSelectItem = { id: 77, label: 'Warehouse A' }
 const SITE_B: ForSelectItem = { id: 88, label: 'Warehouse B' }
 
+/** Default denomination of the operator slot (position 2), with no category label resolved. */
+const OPERATOR_SLOT_LABEL = 'Account manager 2'
+
+/** A neighbouring slot, to assert the Sede rules never spill onto the rest of the team. */
+const OTHER_SLOT_LABEL = 'Account manager 1'
+
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
     value,
@@ -78,7 +95,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
           onItemChange?.(next)
           return
         }
-        if (labels.triggerLabel === 'Operator (GA2)') {
+        if (labels.triggerLabel === OPERATOR_SLOT_LABEL) {
           const next = value === OPERATOR_WITH_SITE.id ? OPERATOR_NO_SITE : OPERATOR_WITH_SITE
           onChange(next.id)
           onItemChange?.(next)
@@ -114,6 +131,8 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     source: { id: 30, name: 'Web' },
     reporter_id: null,
     reporter: null,
+    supervisor_id: null,
+    supervisor: null,
     operator_id: null,
     operator: null,
     operational_site_id: null,
@@ -152,7 +171,8 @@ function renderPanel() {
 }
 
 const siteField = () => screen.getByTestId('select-Operational site')
-const operatorField = () => screen.getByTestId('select-Operator (GA2)')
+const operatorField = () => screen.getByTestId(`select-${OPERATOR_SLOT_LABEL}`)
+const otherSlotField = () => screen.getByTestId(`select-${OTHER_SLOT_LABEL}`)
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -171,6 +191,20 @@ describe('Work panel — the Sede scopes the Operatore picker', () => {
 
     await waitFor(() => expect(operatorField()).toHaveAttribute('data-params', ''))
     expect(screen.queryByText('Only the operators of the selected site.')).not.toBeInTheDocument()
+  })
+
+  /** AC-003: only the operator slot is bound to the Sede — the rest of the team is not. */
+  it('leaves every other slot unfiltered even with a Sede set', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(
+      panel({ operational_site_id: 77, operational_site: { id: 77, label: 'Warehouse A' } }),
+    )
+
+    renderPanel()
+
+    await waitFor(() =>
+      expect(operatorField()).toHaveAttribute('data-params', JSON.stringify({ operational_site_id: 77 })),
+    )
+    expect(otherSlotField()).toHaveAttribute('data-params', '')
   })
 
   it('passes the persisted Sede as `operational_site_id` on mount', async () => {
@@ -194,14 +228,14 @@ describe('Work panel — the Sede scopes the Operatore picker', () => {
         operational_site: { id: 77, label: 'Warehouse A' },
         permissions: {
           ...FULL_PERMISSIONS,
-          fields: { operator_id: hidden, operational_site_id: hidden },
+          fields: { manager_slots: hidden, operational_site_id: hidden },
         },
       }),
     )
 
     renderPanel()
 
-    await waitFor(() => expect(screen.queryByTestId('select-Operator (GA2)')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByTestId(`select-${OPERATOR_SLOT_LABEL}`)).not.toBeInTheDocument())
     expect(screen.queryByText('Only the operators of the selected site.')).not.toBeInTheDocument()
   })
 
@@ -222,7 +256,7 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
     renderPanel()
-    fireEvent.click(await screen.findByTestId('select-Operator (GA2)'))
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`))
 
     await waitFor(() => expect(siteField()).toHaveTextContent(String(OPERATOR_WITH_SITE.meta?.operational_site_id)))
   })
@@ -234,7 +268,7 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
 
     renderPanel()
     // The stub picks OPERATOR_WITH_SITE first, then OPERATOR_NO_SITE.
-    fireEvent.click(await screen.findByTestId('select-Operator (GA2)'))
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`))
     await waitFor(() => expect(siteField()).toHaveTextContent('66'))
     fireEvent.click(operatorField())
 
@@ -246,7 +280,7 @@ describe('Work panel — Operatore auto-fills the Sede', () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
     renderPanel()
-    fireEvent.click(await screen.findByTestId('select-Operator (GA2)'))
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`))
 
     await waitFor(() => expect(operatorField()).toHaveTextContent(String(OPERATOR_WITH_SITE.id)))
   })
@@ -257,7 +291,7 @@ describe('Work panel — changing the Sede clears the Operatore', () => {
     fetchRequestWorkPanelMock.mockResolvedValue(panel())
 
     renderPanel()
-    fireEvent.click(await screen.findByTestId('select-Operator (GA2)')) // operator 5, Sede 66
+    fireEvent.click(await screen.findByTestId(`select-${OPERATOR_SLOT_LABEL}`)) // operator 5, Sede 66
     await waitFor(() => expect(siteField()).toHaveTextContent('66'))
 
     fireEvent.click(siteField()) // a REAL Sede pick, different from 66
@@ -268,11 +302,16 @@ describe('Work panel — changing the Sede clears the Operatore', () => {
     await waitFor(() => expect(operatorField().textContent).toBe(''))
   })
 
-  it('submits both fields when the Sede pick reassigns the request', async () => {
+  /** AC-003: the Sede change empties the operator slot ALONE — G.A. 1 survives it. */
+  it('submits the emptied operator slot, keeping the rest of the team', async () => {
     fetchRequestWorkPanelMock.mockResolvedValue(
       panel({
         operator_id: 5,
         operator: { id: 5, name: 'Ada Lovelace' },
+        managers: [
+          { id: 7, name: 'Grace Hopper', position: 1 },
+          { id: 5, name: 'Ada Lovelace', position: 2 },
+        ],
         operational_site_id: 77,
         operational_site: { id: 77, label: 'Warehouse A' },
       }),
@@ -286,7 +325,7 @@ describe('Work panel — changing the Sede clears the Operatore', () => {
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalledTimes(1))
     expect(updateRequestWorkMock.mock.calls[0][1]).toEqual({
       operational_site_id: SITE_B.id,
-      operator_id: null,
+      manager_slots: [7, null, null, null],
     })
   })
 })

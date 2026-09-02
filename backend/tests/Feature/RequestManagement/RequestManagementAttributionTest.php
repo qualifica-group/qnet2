@@ -23,6 +23,13 @@ use Spatie\Permission\Models\Permission;
  * FREE manager slot when needed (D-6), never overwriting its existing GA2.
  * Readable AND writable from GET/PATCH /api/request-management/{quote},
  * sparse like every other key of that endpoint. AC-011/013/014.
+ *
+ * Spec 0097, D-1/D-5: the panel's write key for that operator is no longer
+ * `operator_id` but `manager_slots` — the WHOLE team, of which the operator
+ * is slot `ManagerPositions::OPERATOR`. The read keys `operator_id`/
+ * `operator` stay (grid, notifications, transfer), joined by `managers`.
+ * `operator_id` remains `updateWork()`'s internal key for the OTHER channels
+ * (grid cell, bulk assign, transfer), which never come through this endpoint.
  */
 uses(RefreshDatabase::class);
 
@@ -165,17 +172,20 @@ it('PATCH leaves the attribution untouched when its keys are absent (sparse)', f
         ->assertJsonPath('data.operator_id', $actor->id);
 });
 
-it('PATCH operator_id writes the Offerta\'s own GA2 slot and promotes the new operator onto the Opportunity\'s first free slot, without demoting the existing GA2 (spec 0087, D-9/D-13)', function () {
+it('PATCH manager_slots writes the Offerta\'s own GA2 slot and promotes the new operator onto the Opportunity\'s first free slot, without demoting the existing GA2 (spec 0087, D-9/D-13; spec 0097, D-5)', function () {
     $actor = attributionActor();
     $actor->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
     $quote = attributionQuote($actor);
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $newOperator->id])
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $newOperator->id]])
         ->assertOk()
         ->assertJsonPath('data.operator_id', $newOperator->id)
-        ->assertJsonPath('data.operator.name', $newOperator->name);
+        ->assertJsonPath('data.operator.name', $newOperator->name)
+        ->assertJsonPath('data.managers', [
+            ['id' => $newOperator->id, 'name' => $newOperator->name, 'position' => 2],
+        ]);
 
     $this->assertDatabaseHas('quotes', [
         'id' => $quote->id,
@@ -201,7 +211,7 @@ it('PATCH operator_id writes the Offerta\'s own GA2 slot and promotes the new op
     ]);
 });
 
-it('PATCH operator_id leaves the other manager slots untouched', function () {
+it('PATCH manager_slots leaves the Opportunity\'s other manager slots untouched', function () {
     $actor = attributionActor();
     $quote = attributionQuote($actor);
     $firstManager = User::factory()->create();
@@ -209,7 +219,7 @@ it('PATCH operator_id leaves the other manager slots untouched', function () {
     $newOperator = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => $newOperator->id])
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, $newOperator->id]])
         ->assertOk();
 
     $this->assertDatabaseHas('opportunity_user', [
@@ -219,15 +229,17 @@ it('PATCH operator_id leaves the other manager slots untouched', function () {
     ]);
 });
 
-it('PATCH operator_id null empties the Offerta\'s own GA2 slot, leaving the Opportunity\'s team untouched (spec 0087, D-9/D-13)', function () {
+it('PATCH manager_slots empties the Offerta\'s own GA2 slot, leaving the Opportunity\'s team untouched (spec 0087, D-9/D-13; spec 0097, D-5)', function () {
     $actor = attributionActor();
     $actor->givePermissionTo(Permission::findOrCreate('request-management.viewAll'));
     $quote = attributionQuote($actor);
+    $quote->managers()->sync([$actor->id => ['position' => 2]]);
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => null])
+    $this->patchJson("/api/request-management/{$quote->id}", ['manager_slots' => [null, null]])
         ->assertOk()
-        ->assertJsonPath('data.operator_id', null);
+        ->assertJsonPath('data.operator_id', null)
+        ->assertJsonPath('data.managers', []);
 
     $this->assertDatabaseHas('quotes', [
         'id' => $quote->id,
@@ -251,10 +263,10 @@ it('PATCH rejects an unknown fonte, segnalatore or operatore', function () {
     $this->patchJson("/api/request-management/{$quote->id}", [
         'source_id' => 999999,
         'reporter_id' => 999999,
-        'operator_id' => 999999,
+        'manager_slots' => [999999],
     ])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['source_id', 'reporter_id', 'operator_id']);
+        ->assertJsonValidationErrors(['source_id', 'reporter_id', 'manager_slots.0']);
 });
 
 it('exposes the three fields in the permissions metadata block', function () {
@@ -266,7 +278,7 @@ it('exposes the three fields in the permissions metadata block', function () {
         ->assertOk()
         ->assertJsonPath('permissions.fields.source_id.editable', true)
         ->assertJsonPath('permissions.fields.reporter_id.editable', true)
-        ->assertJsonPath('permissions.fields.operator_id.editable', true);
+        ->assertJsonPath('permissions.fields.manager_slots.editable', true);
 });
 
 it('denies the attribution write to an actor outside the D-3 scope', function () {

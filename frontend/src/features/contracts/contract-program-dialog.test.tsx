@@ -12,12 +12,35 @@ import type { ContractProgrammableLine } from '@/features/contracts/types'
  * Spec 0095 AC-060/061/062: occupied lines are visible but not selectable,
  * the submit is blocked without a title or without any selected line, and a
  * successful generation closes the dialog and reports the new Commessa up.
+ * Spec 0096 AC-060: "Data inizio" and "Responsabili" are required too.
  */
 
 vi.mock('@/features/contracts/api', () => ({
   fetchContractProgrammableLines: vi.fn(),
   createContractWorkOrder: vi.fn(),
 }))
+
+/** The Responsabili picker's own options source (spec 0096); one user is enough. */
+const SUPERVISOR = { id: 21, label: 'Ada Alberti' }
+
+vi.mock('@/features/for-select/use-for-select', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/use-for-select')>(
+    '@/features/for-select/use-for-select',
+  )
+  return {
+    ...actual,
+    useForSelect: () => ({
+      data: { pages: [{ items: [{ id: 21, label: 'Ada Alberti' }] }] },
+      isPending: false,
+      isError: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      refetch: vi.fn(),
+    }),
+    useForSelectLabels: () => new Map([[SUPERVISOR.id, SUPERVISOR.label]]),
+  }
+})
 
 const FREE_LINE: ContractProgrammableLine = {
   id: 10,
@@ -82,6 +105,9 @@ describe('ContractProgramDialog', () => {
 
     expect(await screen.findByText('Title is required.')).toBeInTheDocument()
     expect(screen.getByText('Select at least one line.')).toBeInTheDocument()
+    // Spec 0096, AC-060: the two new required fields block the submit too.
+    expect(screen.getByText('The start date is required.')).toBeInTheDocument()
+    expect(screen.getByText('Pick at least one supervisor.')).toBeInTheDocument()
     expect(createContractWorkOrder).not.toHaveBeenCalled()
   })
 
@@ -93,6 +119,9 @@ describe('ContractProgramDialog', () => {
     await screen.findByText('Consulenza')
 
     fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: 'Installazione impianto' } })
+    fireEvent.change(screen.getByLabelText(/^Start date/), { target: { value: '2026-03-01' } })
+    fireEvent.click(screen.getByRole('button', { name: /Supervisors/ }))
+    fireEvent.click(await screen.findByRole('option', { name: /Ada Alberti/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza' }))
     fireEvent.click(screen.getByRole('button', { name: 'Generate work order' }))
 
@@ -100,6 +129,8 @@ describe('ContractProgramDialog', () => {
       expect(createContractWorkOrder).toHaveBeenCalledWith(7, {
         title: 'Installazione impianto',
         type: 'processing',
+        start_date: '2026-03-01',
+        supervisor_ids: [21],
         quote_line_ids: [10],
       }),
     )

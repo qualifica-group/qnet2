@@ -113,7 +113,9 @@ it('keeps a submitted operator/Sede over the actor defaults', function () {
 
     $response = $this->postJson('/api/request-management', [
         ...aMinimalRequestPayload(),
-        'operator_id' => $otherOperator->id,
+        // Spec 0097, D-1: the operator is submitted as the OPERATOR slot of
+        // the team, no longer as a scalar `operator_id`.
+        'manager_slots' => [null, $otherOperator->id],
         'operational_site_id' => $otherSite->id,
     ])->assertCreated();
 

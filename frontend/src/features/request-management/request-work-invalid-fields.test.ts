@@ -5,29 +5,30 @@ import { describeInvalidFields } from '@/features/request-management/request-wor
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 
 /**
- * Spec 0080: the "Operatore" entry of the invalid-fields summary mirrors
- * `RequestAttributionSection`'s own label resolution — the request's resolved
- * G.A. level-2 label when present, otherwise today's string (AC-032).
+ * Spec 0097: the team is ONE field of the summary, `manager_slots` — the
+ * single "Operatore" entry (spec 0080, resolved from the request's own G.A.
+ * labels) no longer exists, since any of the slots can be the one that
+ * refused the submit.
  */
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-const OPERATOR_ERROR: FieldErrors<RequestWorkFormValues> = {
-  operator_id: { type: 'custom', message: '' },
+const TEAM_ERROR: FieldErrors<RequestWorkFormValues> = {
+  manager_slots: { type: 'custom', message: '' },
 }
 
-describe('describeInvalidFields — Operatore label (spec 0080)', () => {
-  it('AC-032: names the field "Operator" with no resolved manager_labels', () => {
-    const fields = describeInvalidFields(OPERATOR_ERROR, undefined, i18n.t.bind(i18n))
+describe('describeInvalidFields — team block (spec 0097)', () => {
+  it('names the whole team block, not one slot', () => {
+    const fields = describeInvalidFields(TEAM_ERROR, i18n.t.bind(i18n))
 
-    expect(fields).toEqual([i18n.t('requestManagement.workPanel.attribution.operator')])
+    expect(fields).toEqual([i18n.t('requestManagement.workPanel.team.managers')])
   })
 
-  it('AC-045: names the field with the resolved level-2 label instead', () => {
-    const fields = describeInvalidFields(OPERATOR_ERROR, { '2': 'Consultant' }, i18n.t.bind(i18n))
+  it('keeps naming the other attribution fields it always named', () => {
+    const fields = describeInvalidFields({ source_id: { type: 'custom', message: '' } }, i18n.t.bind(i18n))
 
-    expect(fields).toEqual(['Consultant'])
+    expect(fields).toEqual([i18n.t('requestManagement.workPanel.attribution.source')])
   })
 })

@@ -5,6 +5,7 @@ namespace App\Http\Requests\WorkOrders;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\Enums\WorkOrderType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,6 +21,10 @@ use Illuminate\Validation\Rule;
  * `quote_id` are writable ONLY here (D-1/D-5): permanently immutable once
  * persisted, enforced by UpdateWorkOrderRequest's own `prohibited` rules.
  *
+ * `participant_slots` (spec 0096, D-3) is validated by the shared
+ * ValidatesManagerSlots trait — the very same rules Registries, Opportunita'
+ * and Offerte submit under `manager_slots`, never a second copy.
+ *
  * `quote_line_ids`' membership invariant (D-7: must belong to `quote_id` AND
  * be REVENUE) is NOT checked here — it needs a query against the real rows,
  * so it is enforced server-side by
@@ -28,7 +33,9 @@ use Illuminate\Validation\Rule;
  */
 class StoreWorkOrderRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesManagerSlots;
+
+    private const string PARTICIPANT_SLOTS_FIELD = 'participant_slots';
 
     private const int CODE_MAX = 32;
 
@@ -50,6 +57,12 @@ class StoreWorkOrderRequest extends FormRequest
             'quote_id' => ['required', 'integer', 'exists:quotes,id'],
             'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['required', 'string', Rule::in(WorkOrderType::values())],
+            // Spec 0096, D-1: `start_date` is NOT NULL and a commessa always
+            // has at least one Responsabile — required here and in the
+            // Contract's "Programma" dialog alike.
+            'start_date' => ['required', 'date'],
+            'supervisor_ids' => ['required', 'array', 'min:1'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
             'internal_notes' => ['sometimes', 'nullable', 'string'],
@@ -64,12 +77,18 @@ class StoreWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Partecipanti (spec 0096, D-3): the SAME gap-aware slot shape
+            // Registries/Opportunita'/Offerte submit as `manager_slots`,
+            // validated by the shared trait under this module's own key —
+            // cap and "one slot per user" included.
+            ...$this->managerSlotsRules(self::PARTICIPANT_SLOTS_FIELD),
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->validateManagerSlots($validator, self::PARTICIPANT_SLOTS_FIELD);
             $this->enforceFieldPermissions($validator);
         });
     }

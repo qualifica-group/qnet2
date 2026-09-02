@@ -48,6 +48,19 @@ trait WritesInlineEditableCells
     private const string WORKFLOW_STATUS_COLUMN = 'quote_workflow_status';
 
     /**
+     * The `operator_ga2` column's field-permission key since spec 0097
+     * (D-3a): the TEAM, because the lone `operator_id` key no longer exists
+     * in RequestManagementAuthorization.
+     */
+    private const string MANAGER_SLOTS_FIELD = 'manager_slots';
+
+    /**
+     * ...and the key its WRITE still travels under (D-3b): the cell edits ONE
+     * user, the OPERATOR slot, not the whole team.
+     */
+    private const string OPERATOR_FIELD = 'operator_id';
+
+    /**
      * Every editable column of this domain writes through
      * RequestManagementService::updateWork() rather than a plain
      * `$row->update([...])`: `next_callback_at`/`source_id`/`product_lines`/
@@ -65,7 +78,7 @@ trait WritesInlineEditableCells
         /** @var User $actor */
         $actor = Auth::user();
 
-        $data = [$columnId => $value];
+        $data = [$this->writeKeyFor($columnId) => $value];
 
         // `note` is not part of this contract method's signature (spec 0053)
         // and is read from the ambient request the same way `$actor` is read
@@ -81,6 +94,22 @@ trait WritesInlineEditableCells
         $result = $this->service->updateWork($row, $actor, $data);
 
         return $result['quote'];
+    }
+
+    /**
+     * The `updateWork()` key a cell's field key writes under — the identity
+     * for every column but the GA2 "Operatore" (spec 0097, D-3b).
+     *
+     * That one arrives as `manager_slots` because its PERMISSION is the
+     * team's (the catalogue has no `operator_id` field any more, D-3), while
+     * its WRITE is still the single OPERATOR slot: `updateWork()` expects an
+     * ordered slot LIST under `manager_slots` and the cell carries one user
+     * id, so the two keys are translated here rather than teaching either
+     * side a second shape.
+     */
+    private function writeKeyFor(string $fieldKey): string
+    {
+        return $fieldKey === self::MANAGER_SLOTS_FIELD ? self::OPERATOR_FIELD : $fieldKey;
     }
 
     /**

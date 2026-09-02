@@ -224,7 +224,9 @@ class TestUsersSeeder extends Seeder
      *
      * User directive 2026-08-03: the "Sede operativa" and the GA2 "Operatore"
      * of a request are supervisory attribution — decided FOR a Commercial, not
-     * BY them. Supervisor and Marketing are untouched (no row = the full code
+     * BY them. Spec 0097, D-3: the operator's field key is now the TEAM's
+     * (`manager_slots`), the block that absorbed him — restricting it closes
+     * exactly the same channels, the grid's `operator_ga2` cell included. Supervisor and Marketing are untouched (no row = the full code
      * ceiling, spec 0006's "unrestricted" default).
      *
      * The matrix only ever RESTRICTS the ceiling
@@ -240,7 +242,7 @@ class TestUsersSeeder extends Seeder
      * @var array<string, array<int, string>>
      */
     private const array COMMERCIAL_HIDDEN_FIELDS = [
-        'request-management' => ['operational_site_id', 'operator_id'],
+        'request-management' => ['operational_site_id', 'manager_slots'],
     ];
 
     /**

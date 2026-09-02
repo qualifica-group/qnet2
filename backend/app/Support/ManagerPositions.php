@@ -64,4 +64,34 @@ final class ManagerPositions
 
         return $positions;
     }
+
+    /**
+     * Turn the ordered, gap-aware manager slots into the pivot sync map
+     * `[userId => ['position' => n]]`: index+1 is the 1-based "G.A. n"
+     * position, null slots are skipped so a removed manager leaves a
+     * persistent gap. The FormRequest (ValidatesManagerSlots) guarantees no
+     * duplicate user across slots.
+     *
+     * Lives here, beside attachedPositions() which consumes exactly this
+     * structure, because three owners now sync the same `manager_slots`
+     * shape (`registry_user`, `opportunity_user`, `user_work_order` — spec
+     * 0096 D-4). It was already duplicated verbatim as a private method in
+     * RegistryService and OpportunityService; a third copy would have made
+     * the DRY violation permanent.
+     *
+     * @param  array<int, int|null>  $slots
+     * @return array<int, array{position: int}>
+     */
+    public static function syncMap(array $slots): array
+    {
+        $map = [];
+
+        foreach (array_values($slots) as $index => $userId) {
+            if ($userId !== null) {
+                $map[$userId] = ['position' => $index + 1];
+            }
+        }
+
+        return $map;
+    }
 }

@@ -221,7 +221,17 @@ export function buildRequestWorkSchema(
       // — existence is a server-side rule, there is nothing to mirror here.
       source_id: z.number().nullable(),
       reporter_id: z.number().nullable(),
-      operator_id: z.number().nullable(),
+      // Spec 0097 rev-2 D-9: the Offerta's Supervisore, back in this module
+      // (user directive 2026-09-02) as one more attribution scalar —
+      // independent of the team's operator slot (AC-014).
+      supervisor_id: z.number().nullable(),
+      // Spec 0097 D-1: the whole team replaces the single "Operatore" picker.
+      // Ordered and gap-aware (index+1 = G.A. n, `null` = an empty slot), like
+      // the Offerta form's own field. No cross-element rule mirrored here: the
+      // filled cap and the "one slot per user" invariant are the shared
+      // `ValidatesManagerSlots`' own, and the client has nothing to check them
+      // earlier against.
+      manager_slots: z.array(z.number().nullable()),
       // Spec 0056: facoltativa, same attribution shape.
       operational_site_id: z.number().nullable(),
       // "Informazioni aggiuntive" (user directive 2026-08-07): one key per

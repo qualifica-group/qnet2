@@ -84,12 +84,13 @@ describe('useRequestCreateForm', () => {
   })
 
   /**
-   * The GA2 "Operatore" (user directive 2026-07-29) travels only when the
-   * supervisor actually picked one: an actor without
-   * `request-management.assignOperator` never renders the field, and the
-   * endpoint rejects the key from them outright.
+   * The team (spec 0097 D-1, replacing the single GA2 "Operatore" of the user
+   * directive 2026-07-29) travels only once a slot is actually filled: an
+   * actor without `request-management.assignOperator` never renders the block,
+   * the endpoint rejects the key from them outright, and an untouched set of
+   * empty cards is the server's own default to apply.
    */
-  it('sends operator_id when set, and omits the key entirely when it is not', async () => {
+  it('sends manager_slots once a slot is filled, and omits the key entirely while none is', async () => {
     createRequestMock.mockResolvedValue({ id: 45 })
     const { result } = renderCreateForm(vi.fn())
 
@@ -102,21 +103,22 @@ describe('useRequestCreateForm', () => {
       await result.current.onSubmit()
     })
 
-    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('operator_id')
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('manager_slots')
 
     act(() => {
-      result.current.form.setValue('operator_id', 55)
+      result.current.form.setValue('manager_slots', [null, 55, null, null])
     })
     await act(async () => {
       await result.current.onSubmit()
     })
 
-    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ operator_id: 55 })
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ manager_slots: [null, 55, null, null] })
+    expect(createRequestMock.mock.calls[1][0]).not.toHaveProperty('operator_id')
   })
 
   /**
    * Sede operativa (user directive 2026-07-31): the same field the work panel
-   * edits. Like `operator_id` it travels only when picked — on create there is
+   * edits. Like `manager_slots` it travels only when picked — on create there is
    * no persisted value a null could clear.
    */
   it('sends operational_site_id when set, and omits the key entirely when it is not', async () => {
@@ -142,6 +144,39 @@ describe('useRequestCreateForm', () => {
     })
 
     expect(createRequestMock.mock.calls[1][0]).toMatchObject({ operational_site_id: 12 })
+  })
+
+  /**
+   * Spec 0097 rev-2 D-9/AC-013: the Supervisore is written from this channel
+   * again. Sent only when picked, like the Sede above: with no `permissions`
+   * envelope to gate the field against, an untouched null would earn a 422
+   * from any actor who may not write it. AC-014: it travels ALONE — the team
+   * slots are untouched by it.
+   */
+  it('sends supervisor_id when picked, and omits the key entirely when it is not', async () => {
+    createRequestMock.mockResolvedValue({ id: 47 })
+    const { result } = renderCreateForm(vi.fn())
+
+    act(() => {
+      result.current.form.setValue('registry_id', 10)
+      result.current.form.setValue('product_lines', [COMPLETE_ROW])
+      result.current.form.setValue('source_id', TEST_SOURCE_ID)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[0][0]).not.toHaveProperty('supervisor_id')
+
+    act(() => {
+      result.current.form.setValue('supervisor_id', 33)
+    })
+    await act(async () => {
+      await result.current.onSubmit()
+    })
+
+    expect(createRequestMock.mock.calls[1][0]).toMatchObject({ supervisor_id: 33 })
+    expect(createRequestMock.mock.calls[1][0]).not.toHaveProperty('manager_slots')
   })
 
   it('blocks submit when product_lines is empty (D-3)', async () => {
@@ -179,7 +214,7 @@ describe('useRequestCreateForm', () => {
       product_lines: [COMPLETE_ROW],
       // Attribution slots ride along with either branch; the Fonte is
       // mandatory (user directive 2026-07-29), the Segnalatore empty by
-      // default, and `rewards`/`operator_id` omitted entirely until set.
+      // default, and `rewards`/`manager_slots` omitted entirely until set.
       source_id: TEST_SOURCE_ID,
       reporter_id: null,
     })

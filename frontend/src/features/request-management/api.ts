@@ -5,15 +5,17 @@ import type {
   AssignRequestOperatorsPayload,
   AssignRequestOperatorsResult,
   CreateRequestPayload,
+  RequestProductLinePayload,
+  TransferRequestsPayload,
+  TransferRequestsResult,
+  UpdateRequestWorkPayload,
+} from '@/features/request-management/request-write-types'
+import type {
   ManagerLabels,
   RequestFormContext,
   RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
-  RequestProductLinePayload,
-  TransferRequestsPayload,
-  TransferRequestsResult,
-  UpdateRequestWorkPayload,
 } from '@/features/request-management/types'
 
 /**

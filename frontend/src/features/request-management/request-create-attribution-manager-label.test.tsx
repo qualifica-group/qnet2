@@ -6,11 +6,11 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestCreateForm } from '@/features/request-management/request-create-form'
 
 /**
- * AC-045 (create form side): with no persisted request yet, the GA2
- * "Operatore" field relabels from the currently active category tab's
- * resolved labels (spec 0080, `useActiveCategoryManagerLabels`) — a fetch
- * skipped entirely without one active (AC-032: keeps today's exact
- * "Operator (GA2)" string).
+ * Spec 0080 AC-045 (create form side), rebound by spec 0097 AC-002: with no
+ * persisted request yet, the TEAM slots relabel from the currently active
+ * category tab's resolved labels (`useActiveCategoryManagerLabels`) — a fetch
+ * skipped entirely without one active, leaving the editor's own default
+ * "Account manager n" denominations.
  */
 
 const fetchCategoryManagerLabelsMock = vi.fn()
@@ -69,21 +69,31 @@ beforeEach(() => {
   window.localStorage.removeItem(CATEGORY_TAB_STORAGE_KEY)
 })
 
-describe('Create form — Operatore field label (spec 0080)', () => {
-  it('AC-032: keeps "Operator (GA2)" with no active category tab, no fetch made', () => {
+describe('Create form — team slot labels (spec 0080/0097)', () => {
+  it('keeps the default denominations with no active category tab, no fetch made', () => {
     renderForm()
 
-    expect(screen.getByRole('button', { name: 'Operator (GA2)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 2' })).toBeInTheDocument()
     expect(fetchCategoryManagerLabelsMock).not.toHaveBeenCalled()
   })
 
-  it("AC-045: shows the active tab's resolved level-2 label instead", async () => {
+  /** AC-002: the create form shows the same whole-team editor as the work panel. */
+  it('renders one trigger per G.A. slot', () => {
+    renderForm()
+
+    expect(screen.getByRole('button', { name: 'Account manager 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account manager 4' })).toBeInTheDocument()
+  })
+
+  it("shows the active tab's resolved labels instead, per position", async () => {
     window.localStorage.setItem(CATEGORY_TAB_STORAGE_KEY, '500')
-    fetchCategoryManagerLabelsMock.mockResolvedValue({ '2': 'Consultant' })
+    fetchCategoryManagerLabelsMock.mockResolvedValue({ '1': 'Senior consultant', '2': 'Consultant' })
 
     renderForm()
 
     expect(await screen.findByRole('button', { name: 'Consultant' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Senior consultant' })).toBeInTheDocument()
     expect(fetchCategoryManagerLabelsMock).toHaveBeenCalledWith(500)
   })
 })

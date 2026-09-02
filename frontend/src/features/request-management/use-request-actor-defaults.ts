@@ -3,9 +3,10 @@ import type { UseFormReturn } from 'react-hook-form'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useAuth } from '@/features/auth/use-auth'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
+import { OPERATOR_MANAGER_POSITION } from '@/features/request-management/types'
 
 /**
- * Supervisory ability gating the Operatore field (mirrors
+ * Supervisory ability gating the team block (mirrors
  * RequestManagementPolicy::assignOperator). Owned here, next to the default it
  * gates: the same ability decides whether the control is offered AND whether
  * its value may travel in the payload, and the two must never drift apart.
@@ -21,9 +22,11 @@ export const ASSIGN_OPERATOR_PERMISSION = 'request-management.assignOperator'
 export const OPERATIONAL_SITES_VIEW_ANY_PERMISSION = 'operational-sites.viewAny'
 
 /**
- * Opens the create form's Operatore and Sede operativa on the connected actor
- * and the actor's own Sede (user directive 2026-08-04): a request is worked by
- * whoever opened it, from the Sede they belong to.
+ * Opens the create form's operator slot and Sede operativa on the connected
+ * actor and the actor's own Sede (user directive 2026-08-04): a request is
+ * worked by whoever opened it, from the Sede they belong to. Since spec 0097
+ * the destination is the team's OPERATOR_MANAGER_POSITION card rather than a
+ * field of its own — the seeded VALUE is unchanged, only where it lands.
  *
  * This is the VISIBLE half of that rule only. The authority is
  * RequestCreationService, which applies the SAME default server-side to a
@@ -46,7 +49,13 @@ export function useRequestActorAttributionDefaults(form: UseFormReturn<RequestCr
   useEffect(() => {
     if (!seededOperatorRef.current && user !== null && can(ASSIGN_OPERATOR_PERMISSION)) {
       seededOperatorRef.current = true
-      form.setValue('operator_id', user.id)
+      // Positional write: every other slot keeps whatever the form opened on.
+      form.setValue(
+        'manager_slots',
+        form
+          .getValues('manager_slots')
+          .map((slot, index) => (index + 1 === OPERATOR_MANAGER_POSITION ? user.id : slot)),
+      )
     }
     if (!seededSiteRef.current && actorSiteId !== null && can(OPERATIONAL_SITES_VIEW_ANY_PERMISSION)) {
       seededSiteRef.current = true

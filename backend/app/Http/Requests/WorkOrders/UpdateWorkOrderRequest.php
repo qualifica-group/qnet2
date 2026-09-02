@@ -5,6 +5,7 @@ namespace App\Http\Requests\WorkOrders;
 use App\DataObjects\WorkOrders\UpdateWorkOrderData;
 use App\Enums\WorkOrderType;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Models\WorkOrder;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,9 @@ use Illuminate\Validation\Rule;
  */
 class UpdateWorkOrderRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesManagerSlots;
+
+    private const string PARTICIPANT_SLOTS_FIELD = 'participant_slots';
 
     private const int TITLE_MAX = 191;
 
@@ -49,6 +52,13 @@ class UpdateWorkOrderRequest extends FormRequest
             'quote_id' => ['prohibited'],
             'title' => ['sometimes', 'required', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['sometimes', 'required', 'string', Rule::in(WorkOrderType::values())],
+            // Spec 0096, D-6: editable after create (unlike code/quote_id).
+            // `required` rejects an explicit null, so the 422 comes from
+            // validation and not from the database; `min:1` keeps the "a
+            // commessa always has a Responsabile" floor on updates too.
+            'start_date' => ['sometimes', 'required', 'date'],
+            'supervisor_ids' => ['sometimes', 'required', 'array', 'min:1'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
             'internal_notes' => ['sometimes', 'nullable', 'string'],
@@ -61,12 +71,16 @@ class UpdateWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Full-replace of the partecipanti pivot when — and only when —
+            // the key is submitted (spec 0096, D-3/AC-024).
+            ...$this->managerSlotsRules(self::PARTICIPANT_SLOTS_FIELD),
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->validateManagerSlots($validator, self::PARTICIPANT_SLOTS_FIELD);
             $this->enforceFieldPermissions($validator);
         });
     }

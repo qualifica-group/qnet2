@@ -29,8 +29,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Business logic for the `opportunities` resource (spec 0040): create/
  * update/delete plus the BR-1 lead-derivation on create. `managerSlots`
- * sync mirrors RegistryService::syncPivots/managerSyncMap verbatim (the
- * pivot shape is identical, `opportunity_user` mirroring `registry_user`).
+ * sync goes through the shared App\Support\ManagerPositions::syncMap()
+ * (spec 0096 D-4): the pivot shape is identical across `registry_user`,
+ * `opportunity_user` and `user_work_order`.
  *
  * Spec 0082: the Opportunity carries NO status FK any more — its status is
  * computed from its quotes by App\Services\Opportunities\OpportunityStatusResolver,
@@ -236,7 +237,7 @@ class OpportunityService
             $attachedManagers = [];
 
             if ($data->hasManagerSlots()) {
-                $syncMap = $this->managerSyncMap($data->managerSlots);
+                $syncMap = ManagerPositions::syncMap($data->managerSlots);
                 $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
             }
 
@@ -305,7 +306,7 @@ class OpportunityService
             $attachedManagers = [];
 
             if ($data->hasManagerSlots()) {
-                $syncMap = $this->managerSyncMap($data->managerSlots);
+                $syncMap = ManagerPositions::syncMap($data->managerSlots);
                 $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
                 $this->propagateManagersToQuote($opportunity, $syncMap);
             }
@@ -400,27 +401,6 @@ class OpportunityService
         }
 
         return $attributes;
-    }
-
-    /**
-     * Turn the ordered, gap-aware manager slots into the pivot sync map
-     * `[userId => ['position' => n]]` (mirrors RegistryService::managerSyncMap
-     * verbatim — identical pivot shape).
-     *
-     * @param  array<int, int|null>  $slots
-     * @return array<int, array{position: int}>
-     */
-    private function managerSyncMap(array $slots): array
-    {
-        $map = [];
-
-        foreach (array_values($slots) as $index => $userId) {
-            if ($userId !== null) {
-                $map[$userId] = ['position' => $index + 1];
-            }
-        }
-
-        return $map;
     }
 
     /**

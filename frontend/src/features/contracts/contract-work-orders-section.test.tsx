@@ -44,7 +44,7 @@ vi.mock('@/features/work-orders/api', () => ({
   deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
 }))
 
-const ROW: TableRow = { id: 9, actions: ['view', 'edit', 'delete', 'activity'], title: 'Installazione impianto', code: 'COM-0009' }
+const ROW: TableRow = { id: 9, actions: ['view', 'delete', 'activity'], title: 'Installazione impianto', code: 'COM-0009' }
 
 const refreshMock = vi.fn()
 interface TableViewStubProps {

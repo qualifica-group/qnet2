@@ -23,11 +23,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * "state": the working status itself (`open`/`closed`) is ALWAYS computed at
  * read time by `App\Services\WorkOrders\WorkOrderStatusResolver` (D-3), never
  * a column on this table.
+ *
+ * `attribute_values` (spec 0098, D-5) is the dynamic "Informazioni
+ * aggiuntive" map, twin of `Quote::attribute_values` (spec 0084): JSON,
+ * DELIBERATELY absent from #[Fillable] — written exclusively by
+ * `App\Services\WorkOrders\WorkOrderAttributeValueWriter::apply()` after
+ * per-`code` validation, never by mass assignment.
  */
 #[Fillable([
     'quote_id',
     'title',
     'type',
+    'start_date',
     'callback_date',
     'description',
     'internal_notes',
@@ -46,8 +53,10 @@ class WorkOrder extends BaseModel
     {
         return [
             'type' => WorkOrderType::class,
+            'start_date' => 'date:Y-m-d',
             'callback_date' => 'date:Y-m-d',
             'is_force_closed' => 'boolean',
+            'attribute_values' => 'array',
         ];
     }
 
@@ -59,6 +68,38 @@ class WorkOrder extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * The internal Users accountable for this commessa — "Responsabili" in
+     * the UI (spec 0096, D-1). MANY, and at least one: the floor is enforced
+     * at the request layer (`supervisor_ids` required, min 1), not by the
+     * pivot, which no engine can constrain that way.
+     *
+     * An unordered set, deliberately unlike participants(): there is no
+     * "n-th responsabile" ranking to preserve.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function supervisors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'work_order_supervisor')->orderBy('users.name');
+    }
+
+    /**
+     * The commessa's team — "Partecipanti" in the UI (spec 0096, D-3): the
+     * SAME ordered, gap-aware slot apparatus as `Quote::managers()`/
+     * `Opportunity::managers()`, over its own `work_order_participant` pivot,
+     * so ValidatesManagerSlots, ManagerPositions::syncMap() and the shared
+     * ManagerSlotsField all apply unchanged.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function participants(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'work_order_participant')
+            ->withPivot('position')
+            ->orderByPivot('position');
     }
 
     /**

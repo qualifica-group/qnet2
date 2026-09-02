@@ -125,6 +125,30 @@ final class WorkOrderColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
+            [
+                // Spec 0096: a real NOT NULL `work_orders` column, handled by
+                // the generic engine exactly like `callback_date`.
+                'id' => 'start_date',
+                'label' => 'workOrders.columns.start_date',
+                'type' => 'date',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
+            ],
+            [
+                // Responsabili (spec 0096, D-7): a to-many over the
+                // `work_order_supervisor` pivot, rendered as an avatar stack.
+                // NOT sortable — no single sort key for a to-many, exactly
+                // like the Offerta's own `managers` column.
+                'id' => 'supervisors',
+                'label' => 'workOrders.columns.supervisors',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
         ];
     }
 
@@ -144,6 +168,8 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'status', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],
+            ['columnId' => 'start_date', 'type' => 'date'],
+            ['columnId' => 'supervisors', 'type' => 'set'],
         ];
     }
 
@@ -160,14 +186,6 @@ final class WorkOrderColumnCatalog
                 'type' => 'link',
                 'confirm' => false,
                 'permission' => 'work-orders.view',
-            ],
-            [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'work-orders.update',
             ],
             [
                 'key' => 'delete',

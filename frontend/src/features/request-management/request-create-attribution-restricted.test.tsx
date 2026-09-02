@@ -7,7 +7,8 @@ import { RequestCreateForm } from '@/features/request-management/request-create-
 
 /**
  * User directive 2026-08-03: the create form's two supervisory attribution
- * controls each render only for their own ability — "Operatore" for
+ * controls each render only for their own ability — the team block (spec 0097
+ * D-1, replacing the single "Operatore") for
  * `request-management.assignOperator`, "Sede operativa" for
  * `operational-sites.viewAny` (the same one the field's server-side ceiling
  * hangs off). A role restricted on both, like the seeded Commercial, sees
@@ -87,7 +88,8 @@ describe('Create form — supervisory attribution controls are gated one ability
     renderForm()
 
     expect(trigger('Operational site')).not.toBeInTheDocument()
-    expect(trigger('Operator (GA2)')).not.toBeInTheDocument()
+    expect(trigger('Account manager 1')).not.toBeInTheDocument()
+    expect(trigger('Account manager 2')).not.toBeInTheDocument()
     // The rest of the attribution block is unaffected by the restriction.
     expect(trigger('Source')).toBeInTheDocument()
   })
@@ -97,7 +99,7 @@ describe('Create form — supervisory attribution controls are gated one ability
     renderForm()
 
     expect(trigger('Operational site')).toBeInTheDocument()
-    expect(trigger('Operator (GA2)')).not.toBeInTheDocument()
+    expect(trigger('Account manager 2')).not.toBeInTheDocument()
   })
 
   it('renders both for an actor holding both abilities', () => {
@@ -106,6 +108,7 @@ describe('Create form — supervisory attribution controls are gated one ability
     renderForm()
 
     expect(trigger('Operational site')).toBeInTheDocument()
-    expect(trigger('Operator (GA2)')).toBeInTheDocument()
+    expect(trigger('Account manager 1')).toBeInTheDocument()
+    expect(trigger('Account manager 2')).toBeInTheDocument()
   })
 })

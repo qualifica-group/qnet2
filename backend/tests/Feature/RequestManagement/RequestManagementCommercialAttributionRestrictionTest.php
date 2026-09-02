@@ -14,11 +14,17 @@ use Laravel\Sanctum\Sanctum;
 
 /**
  * User directive 2026-08-03: the Commercial role neither SEES nor writes the
- * "Sede operativa" (`operational_site_id`) and the GA2 "Operatore"
- * (`operator_id`) of a request — attribution is decided FOR them. Supervisor
- * and Marketing are untouched. Spec 0086, D-2/D-3: the record is now a
- * `quotes` row; both fields live there (`operator_id` -> `quotes.operator_id`,
- * spec 0087 D-9 — no longer `quotes.supervisor_id`).
+ * "Sede operativa" (`operational_site_id`) and the GA2 "Operatore" of a
+ * request — attribution is decided FOR them. Supervisor and Marketing are
+ * untouched. Spec 0086, D-2/D-3: the record is now a `quotes` row; both
+ * fields live there (the operator on `quotes.operator_id`, spec 0087 D-9 —
+ * no longer `quotes.supervisor_id`).
+ *
+ * Spec 0097, D-3: the operator's field key is now `manager_slots` — the panel
+ * edits the whole team, the operator is its slot 2 — so the restriction is
+ * seeded and asserted on THAT key. Nothing else about the rule changes: the
+ * same three channels stay closed, the grid's `operator_ga2` cell included
+ * (its `editableField` moved to the same new key).
  *
  * The restriction is seeded by TestUsersSeeder (the role matrix is the source
  * of truth, not a hard-coded rule), so it is exercised against the real seeded
@@ -59,7 +65,7 @@ it('hides both fields from the commercial work panel envelope', function () {
         ->assertOk()
         ->json('permissions.fields');
 
-    foreach (['operational_site_id', 'operator_id'] as $field) {
+    foreach (['operational_site_id', 'manager_slots'] as $field) {
         expect($fields[$field]['visible'])->toBeFalse($field)
             ->and($fields[$field]['hidden'])->toBeTrue($field)
             ->and($fields[$field]['editable'])->toBeFalse($field);
@@ -81,7 +87,7 @@ it('leaves both fields visible and editable for the supervisor', function () {
         ->assertOk()
         ->json('permissions.fields');
 
-    foreach (['operational_site_id', 'operator_id'] as $field) {
+    foreach (['operational_site_id', 'manager_slots'] as $field) {
         expect($fields[$field]['visible'])->toBeTrue($field)
             ->and($fields[$field]['editable'])->toBeTrue($field);
     }
@@ -101,9 +107,13 @@ it('rejects the commercial PATCH of either field with a 422', function () {
         ->assertStatus(422)
         ->assertJsonValidationErrors(['operational_site_id']);
 
-    $this->patchJson("/api/request-management/{$quote->id}", ['operator_id' => User::factory()->create()->id])
+    // Spec 0097, AC-004: the team editor is the channel now — a genuine
+    // change of the OPERATOR slot on a locked `manager_slots`.
+    $this->patchJson("/api/request-management/{$quote->id}", [
+        'manager_slots' => [null, User::factory()->create()->id],
+    ])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['operator_id']);
+        ->assertJsonValidationErrors(['manager_slots']);
 
     $quote->refresh();
     expect($quote->operational_site_id)->toBeNull()
@@ -151,7 +161,7 @@ it('refuses either field on the commercial create, the one channel the matrix ca
     $this->postJson('/api/request-management', [...$payload, 'operational_site_id' => $site->id])
         ->assertForbidden();
 
-    $this->postJson('/api/request-management', [...$payload, 'operator_id' => $actor->id])
+    $this->postJson('/api/request-management', [...$payload, 'manager_slots' => [null, $actor->id]])
         ->assertForbidden();
 
     expect(Opportunity::count())->toBe(0);

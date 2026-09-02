@@ -52,6 +52,8 @@ class ContractWorkOrderController extends BaseApiController
                 quoteId: $contract->quote_id,
                 title: (string) $request->validated('title'),
                 type: WorkOrderType::from((string) $request->validated('type')),
+                startDate: (string) $request->validated('start_date'),
+                supervisorIds: (array) $request->validated('supervisor_ids'),
                 quoteLineIds: (array) $request->validated('quote_line_ids'),
             );
 

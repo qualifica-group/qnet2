@@ -19,6 +19,22 @@ export interface WorkOrderStatus {
   is_force_closed: boolean
 }
 
+/** A user projection for the Responsabili set (spec 0096, D-1). */
+export interface WorkOrderSupervisor {
+  id: number
+  name: string
+}
+
+/**
+ * One Partecipante (spec 0096, D-3) with its 1-based slot `position`; gaps in
+ * the sequence are meaningful and reconstructed by `managerSlotsFromRefs`.
+ */
+export interface WorkOrderParticipant {
+  id: number
+  name: string
+  position: number
+}
+
 /** `quote.code`/`quote.title` projection, hydrated for the "Offerta collegata" field/link (D-2). */
 export interface WorkOrderQuoteRef {
   id: number
@@ -53,7 +69,13 @@ export interface WorkOrderDetail {
   status: WorkOrderStatus
   is_force_closed: boolean
   force_close_reason: string | null
+  /** `Y-m-d` (spec 0096): a commessa always has a start date. */
+  start_date: string
   callback_date: string | null
+  /** "Responsabili": at least one, ordered by name server-side. */
+  supervisors: WorkOrderSupervisor[]
+  /** "Partecipanti": the ordered team, gaps preserved via `position`. */
+  participants: WorkOrderParticipant[]
   description: string | null
   internal_notes: string | null
   /** = `quote.code`, derived, read-only (D-2). */
@@ -80,12 +102,16 @@ export interface CreateWorkOrderPayload {
   quote_id: number
   title: string
   type: WorkOrderType
+  start_date: string
+  supervisor_ids: number[]
   callback_date?: string | null
   description?: string | null
   internal_notes?: string | null
   is_force_closed?: boolean
   force_close_reason?: string | null
   quote_line_ids?: number[]
+  /** Ordered, gap-aware slots; `null` is a deliberately empty one. */
+  participant_slots?: (number | null)[]
 }
 
 /**

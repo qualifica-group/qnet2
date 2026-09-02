@@ -117,6 +117,8 @@ function panel(): RequestWorkPanelWithPermissions {
     source: null,
     reporter_id: null,
     reporter: null,
+    supervisor_id: null,
+    supervisor: null,
     operator_id: null,
     operator: null,
     operational_site_id: null,

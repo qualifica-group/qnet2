@@ -19,7 +19,7 @@ if (! function_exists('workOrderUserWith')) {
      */
     function workOrderUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
@@ -29,6 +29,14 @@ if (! function_exists('workOrderUserWith')) {
             $user->givePermissionTo("work-orders.{$ability}");
         }
 
+        // `viewAll` on top of the requested abilities: these suites predate
+        // the membership scoping (user directive 2026-09-02) and none of them
+        // is about it — the actor must see every commessa, as before. It
+        // widens nothing on its own: every gate still needs its own base
+        // ability, so the 403 assertions below keep their meaning. The
+        // scoping itself is covered by WorkOrderVisibilityTest.
+        $user->givePermissionTo('work-orders.viewAll');
+
         return $user;
     }
 }
@@ -37,14 +45,14 @@ if (! function_exists('workOrderUserWith')) {
 // columns config — AC-040
 // ---------------------------------------------------------------------------
 
-it('GET /api/tables/work-orders/columns declares the 10 columns, status non-sortable + set filter (AC-040)', function () {
+it('GET /api/tables/work-orders/columns declares the 12 columns, status non-sortable + set filter (AC-040)', function () {
     $actor = workOrderUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'type', 'callback_date', 'is_force_closed', 'status', 'created_at', 'updated_at']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'type', 'callback_date', 'is_force_closed', 'status', 'created_at', 'updated_at', 'start_date', 'supervisors']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
