@@ -326,9 +326,14 @@ export const en = {
   },
   auth: {
     signInTitle: 'Sign in',
+    brandClaim: 'Your work, in one place.',
+    brandSupport:
+      'Quotes, work orders and commissions in a single flow, from the first talk to delivery.',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     signInSubtitle: 'Enter your credentials to access your account.',
     email: 'Email',
-    password: 'Your password',
+    password: 'Password',
     signIn: 'Sign in',
     signingIn: 'Signing in…',
     signOut: 'Sign out',

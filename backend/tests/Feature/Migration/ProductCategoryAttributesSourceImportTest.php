@@ -136,7 +136,7 @@ it('links attributes resolved by external id and by code, honouring the declared
         ->and($fresh->skipped_rows)->toBe(0);
 });
 
-it('links the same attribute to both contexts as two separate pivot rows', function () {
+it('links the same attribute to all three contexts as separate pivot rows', function () {
     seedMigrationsConfig();
     $attribute = Attribute::factory()->create(['old_id' => 7]);
     $category = ProductCategory::factory()->create(['old_id' => 1]);
@@ -145,6 +145,7 @@ it('links the same attribute to both contexts as two separate pivot rows', funct
         ['id' => 1, 'attributes' => [
             ['attribute_id' => 7, 'context' => 'product'],
             ['attribute_id' => 7, 'context' => 'quote'],
+            ['attribute_id' => 7, 'context' => 'work_order'],
         ]],
     ]);
 
@@ -152,9 +153,35 @@ it('links the same attribute to both contexts as two separate pivot rows', funct
 
     $links = categoryAttributeLinks($category);
 
-    expect($links)->toHaveCount(2)
-        ->and(array_map(fn (object $link): string => $link->context, $links))->toBe(['product', 'quote'])
+    expect($links)->toHaveCount(3)
+        ->and(array_map(fn (object $link): string => $link->context, $links))->toBe(['product', 'quote', 'work_order'])
         ->and(array_unique(array_map(fn (object $link): int => $link->attribute_id, $links)))->toBe([$attribute->id]);
+});
+
+// Spec 0098: the Commessa section is a THIRD independent context — an attribute
+// may be work_order-only, so the import must land it without any product/quote
+// counterpart, extras included.
+it('links a work-order-only attribute, honouring its per-assignment extras', function () {
+    seedMigrationsConfig();
+    $attribute = Attribute::factory()->create(['old_id' => null, 'code' => 'crew_size']);
+    $category = ProductCategory::factory()->create(['old_id' => 1]);
+
+    fakeProductCategoryAttributes([
+        ['id' => 1, 'attributes' => [
+            ['attribute_code' => 'crew_size', 'context' => 'work_order', 'is_required' => true, 'sort_order' => 4],
+        ]],
+    ]);
+
+    $fresh = runCategoryAttributesFor(migrationsSuperAdminActor());
+
+    $links = categoryAttributeLinks($category);
+
+    expect($links)->toHaveCount(1)
+        ->and($links[0]->attribute_id)->toBe($attribute->id)
+        ->and($links[0]->context)->toBe('work_order')
+        ->and((bool) $links[0]->is_required)->toBeTrue()
+        ->and($links[0]->sort_order)->toBe(4)
+        ->and($fresh->created_rows)->toBe(1);
 });
 
 it('applies the resolved links and warns on each unresolved attribute reference', function () {

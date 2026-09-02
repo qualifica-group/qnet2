@@ -14,6 +14,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { AuthNotice } from '@/features/auth/auth-notice'
+import { PasswordInput } from '@/features/auth/password-input'
 import { useAuth } from '@/features/auth/use-auth'
 
 interface LoginValues {
@@ -86,20 +88,21 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             <FormItem>
               <FormLabel>{t('auth.password')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {serverError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
+        {serverError && <AuthNotice tone="error">{serverError}</AuthNotice>}
 
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full transition-transform active:translate-y-px"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
         </Button>
       </form>

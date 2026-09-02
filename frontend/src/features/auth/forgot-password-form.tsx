@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { forgotPassword } from '@/features/auth/api'
+import { AuthNotice } from '@/features/auth/auth-notice'
 
 interface ForgotPasswordValues {
   email: string
@@ -70,13 +71,14 @@ export function ForgotPasswordForm({ onSuccess }: { onSuccess: () => void }) {
           )}
         />
 
-        {serverError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
+        {serverError && <AuthNotice tone="error">{serverError}</AuthNotice>}
 
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full transition-transform active:translate-y-px"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? t('auth.sending') : t('auth.sendResetLink')}
         </Button>
       </form>

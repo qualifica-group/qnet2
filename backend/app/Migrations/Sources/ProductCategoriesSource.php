@@ -111,9 +111,10 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
 
         // The external system carries a SINGLE inheritance flag; qnet splits it
-        // per usage context (Product / Quote, spec 0084), so the imported value
-        // seeds both barriers identically and is decoupled from qnet on
-        // afterwards.
+        // per usage context (Product / Quote / Commessa, spec 0084 + 0098), so
+        // the imported value seeds ALL THREE barriers identically and is
+        // decoupled from qnet on afterwards. Leaving `work_order` out would
+        // silently keep it inheriting on a category that opted out externally.
         $inheritsAttributes = array_key_exists('inherits_attributes', $record)
             ? (bool) $record['inherits_attributes']
             : true;
@@ -123,6 +124,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             parentId: $parentId,
             inheritsProductAttributes: $inheritsAttributes,
             inheritsQuoteAttributes: $inheritsAttributes,
+            inheritsWorkOrderAttributes: $inheritsAttributes,
             description: $this->mapDescription($record['description'] ?? null),
             requiresQuote: $this->mapRequiresQuote($record, $parentId),
             isSelectable: array_key_exists('is_selectable', $record)

@@ -3,6 +3,82 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## IMPORT /migrations: ATTRIBUTI FLESSIBILI DI COMMESSA (2026-09-02) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Come per l'import degli attributi flessibili per opportunita', voglio una
+migrazione in /migrations per gli attributi flessibili per categoria di prodotto di Commessa".
+
+**Grounding (non re-indagare).** NON esiste una sorgente di migrazione "per opportunita'" da
+clonare: l'import degli attributi per categoria e' UNA sola sorgente generica,
+`product-category-attributes` (`ProductCategoryAttributesSource`), che rilegge l'endpoint esterno
+`product-categories` e scrive il pivot `attribute_category`. Ogni link porta un `context`
+obbligatorio; da spec 0098 l'enum accetta gia' `product|quote|work_order`.
+
+**Decisione utente.** Estendere la sorgente esistente, NIENTE sorgente dedicata Commessa
+(sarebbe stato un clone: stesso endpoint, stesso payload). L'import Commessa passa dalla riga
+gia' presente in /migrations, "Product categories — link attributes", con `context: "work_order"`.
+
+**Cosa e' stato fatto (2 buchi chiusi).**
+- `ProductCategoriesSource::processRow` seminava il flag esterno `inherits_attributes` solo su
+  `inheritsProductAttributes`/`inheritsQuoteAttributes`: la terza barriera restava al default
+  `true` del DataObject, quindi una categoria esterna con `inherits_attributes: false`
+  continuava a ereditare gli attributi Commessa. Ora semina anche
+  `inheritsWorkOrderAttributes`.
+- `ProductCategoryAttributesSource::sampleResponse()` mostrava solo `product` e `quote`: il
+  sample e' l'UNICO posto dove chi integra scopre i contesti disponibili, quindi ora include un
+  link `work_order` con extra. Aggiornati anche i docblock (`product|quote|work_order`).
+
+**Fuori scope (nessuna modifica).** `attribute_layouts` non e' importato da nessuna sorgente
+(ne' per `quote` ne' per `work_order`); `MigrationOrder` invariato (la fase 5 copre gia'
+`product-category-attributes`); `config/migrations.php` invariato.
+
+**Verifica eseguita.** `pest tests/Feature/Migration tests/Unit/Migrations
+tests/Feature/ProductCategories` -> 441 passed, 1514 assertions. Pint passed.
+Test aggiornati: `ProductCategoriesSourceImportTest` asserisce le TRE barriere;
+`ProductCategoryAttributesSourceImportTest` copre i tre contesti sullo stesso attributo + un
+attributo solo-Commessa con `is_required`/`sort_order`.
+
+## REDESIGN SCHERMATE AUTH (2026-09-02) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Rifare login e tutto l'auth con una grafica "da CRM competitivo luxury,
+con effetto wow". Direzione scelta dall'utente fra tre proposte: **split brand navy** (pannello
+di marca a sinistra, form a destra).
+
+**Cosa e' stato fatto.** `AuthCard` (card centrata `max-w-sm` + breadcrumb) sostituita da
+`AuthShell`, una shell a due piani: pannello di marca su `--sidebar` (l'unico token navy in
+entrambi i temi) e colonna form su `--background`. Aggiunti `PasswordInput` (toggle di
+visibilita') e `AuthNotice` (banner esito, che sostituisce i 4 `<p role="alert">` duplicati).
+Il breadcrumb e' stato rimosso dalle schermate pubbliche: su `/login` stampava una sola voce.
+
+**Vincoli rispettati (NON re-litigare).**
+- Zero nuove dipendenze: niente Motion, niente GSAP. Una pagina di login non scrolla, quindi
+  tutto ScrollTrigger e' irrilevante. Il movimento e' CSS nativo in `auth-shell.css`, tutto
+  dentro `@media (prefers-reduced-motion: no-preference)`.
+- Zero modifiche a `index.css`: la scala di superfici resta quella calibrata.
+- Le tinte dell'aurora sono vincolate dal contrasto, non dal gusto: spark 26% e lit 62% sono i
+  massimi che tengono AA sotto la copy del pannello (6.71:1 e 5.85:1). Alzarle rompe AA.
+
+**Nomi congelati.** `AuthShell` (`features/auth/auth-shell.tsx`), `AuthNotice` con
+`tone: 'error' | 'success'`, `PasswordInput`. Chiavi i18n nuove: `auth.brandClaim`,
+`auth.brandSupport`, `auth.showPassword`, `auth.hidePassword`. `auth.password` cambiata da
+'La tua password'/'Your password' a 'Password' (era usata solo come label del campo login).
+
+**Verde misurato.** `tsc -b --force` exit 0, `eslint` exit 0, `vitest run` 555 file / 3974 test
+passati. Reso verificato a schermo con Playwright a 1440/768/375, light e dark: nessun overflow
+orizzontale, nessun errore di console.
+
+**DEBITO A11Y TROVATO, NON RISOLTO (fuori scope, decisione dell'utente).** Il token
+`--destructive` non raggiunge AA come colore di testo su nessuna superficie: 2.34:1 in light e
+1.99:1 in dark (misurati). Riguarda tutta l'app, non solo l'auth, perche' `FormMessage` usa
+`text-destructive` ovunque. `AuthNotice` lo aggira scrivendo il messaggio in `--foreground` e
+lasciando al token solo icona e filetto. Il fix vero e' ritarare `--destructive` in `index.css`
+(light ~`hsl(0 72% 42%)` = 6.47:1; in dark nessuna lightness regge AA sulla card, va rivisto
+insieme a `--card`). Serve via libera esplicita: tocca ogni schermata.
+
+**Nota di misura.** Il boundary contrast dei campi (`--field`/`--field-border` contro il loro
+host) e' sotto 3:1 ovunque nell'app: 1.15:1 e 1.64:1 sulla card, 1.42:1 sulla pagina. E'
+preesistente, non introdotto qui, ed e' leggermente migliore sulla pagina che sulla card.
+
 ## ATTRIBUTI FLESSIBILI SULLE COMMESSE (2026-09-02, spec 0098) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Portare gli Attributi Flessibili (gia' su Offerta) anche sulle Commesse,

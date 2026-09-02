@@ -1,6 +1,6 @@
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AuthCard } from '@/features/auth/auth-card'
+import { AuthShell } from '@/features/auth/auth-shell'
 import { LoginForm } from '@/features/auth/login-form'
 import { useAuth } from '@/features/auth/use-auth'
 
@@ -21,13 +21,19 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard title={t('auth.signInTitle')} description={t('auth.signInSubtitle')}>
-      <LoginForm onSuccess={() => navigate(redirectTo, { replace: true })} />
-      <div className="mt-4 text-center text-sm">
-        <Link to="/forgot-password" className="text-muted-foreground underline-offset-4 hover:underline">
+    <AuthShell
+      title={t('auth.signInTitle')}
+      description={t('auth.signInSubtitle')}
+      footer={
+        <Link
+          to="/forgot-password"
+          className="rounded-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
           {t('auth.forgotPasswordLink')}
         </Link>
-      </div>
-    </AuthCard>
+      }
+    >
+      <LoginForm onSuccess={() => navigate(redirectTo, { replace: true })} />
+    </AuthShell>
   )
 }

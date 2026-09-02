@@ -26,10 +26,11 @@ use RuntimeException;
  *
  * Each link identifies its attribute by EXTERNAL id (`attribute_id`, remapped
  * via `old_id`) or by qnet `attribute_code`, and MUST declare its `context`
- * (product|quote, spec 0061/0084): the same attribute can be assigned to a
- * category's Product section, its Offerta section, or both (two pivot rows),
- * so the destination is never guessed. `is_required`/`sort_order` are
- * optional per-assignment extras.
+ * (product|quote|work_order, spec 0061/0084/0098): the same attribute can be
+ * assigned to a category's Product section, its Offerta section, its Commessa
+ * section, or any combination (one pivot row each), so the destination is
+ * never guessed. `is_required`/`sort_order` are optional per-assignment
+ * extras.
  *
  * Writes go straight to the pivot and are ADDITIVE — never
  * ProductCategoryService::syncAttributes(), whose full-replace semantics would
@@ -69,7 +70,10 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
      * it is injected here to keep the copyable "expected response" faithful to
      * the real external contract — mirrors BusinessFunctionMembersSource::
      * sampleResponse(). Both accepted identifications (external `attribute_id`
-     * and qnet `attribute_code`) are shown, each with its mandatory `context`.
+     * and qnet `attribute_code`) are shown, and ALL THREE contexts appear
+     * (spec 0098 added `work_order`): the sample is the only place the caller
+     * discovers which destination sections exist, so omitting one would hide
+     * the Commessa import behind an undocumented string.
      *
      * @return array{items: array<int, array<string, mixed>>, pagination: array{total: int, offset: int, limit: int, total_pages: int}}
      */
@@ -79,6 +83,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $sample['items'][0]['attributes'] = [
             ['attribute_id' => 7, 'context' => 'product', 'is_required' => true, 'sort_order' => 0],
             ['attribute_code' => 'size', 'context' => 'quote'],
+            ['attribute_code' => 'size', 'context' => 'work_order', 'is_required' => true, 'sort_order' => 1],
         ];
 
         return $sample;

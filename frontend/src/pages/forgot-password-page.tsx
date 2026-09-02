@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AuthCard } from '@/features/auth/auth-card'
+import { AuthShell } from '@/features/auth/auth-shell'
+import { AuthNotice } from '@/features/auth/auth-notice'
 import { ForgotPasswordForm } from '@/features/auth/forgot-password-form'
 
 export default function ForgotPasswordPage() {
@@ -9,19 +10,23 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false)
 
   return (
-    <AuthCard title={t('auth.forgotPasswordTitle')} description={t('auth.forgotPasswordSubtitle')}>
+    <AuthShell
+      title={t('auth.forgotPasswordTitle')}
+      description={t('auth.forgotPasswordSubtitle')}
+      footer={
+        <Link
+          to="/login"
+          className="rounded-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+          {t('auth.backToSignIn')}
+        </Link>
+      }
+    >
       {submitted ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {t('auth.resetLinkSent')}
-        </p>
+        <AuthNotice tone="success">{t('auth.resetLinkSent')}</AuthNotice>
       ) : (
         <ForgotPasswordForm onSuccess={() => setSubmitted(true)} />
       )}
-      <div className="mt-4 text-center text-sm">
-        <Link to="/login" className="text-muted-foreground underline-offset-4 hover:underline">
-          {t('auth.backToSignIn')}
-        </Link>
-      </div>
-    </AuthCard>
+    </AuthShell>
   )
 }

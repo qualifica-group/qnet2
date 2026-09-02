@@ -1,0 +1,104 @@
+/* Motion and material of the authentication shell. It lives here, next to the
+   feature, rather than in `index.css`: these are keyframes and a noise mask,
+   which no Tailwind utility can express, and folding them into the global
+   stylesheet would push it past the 300-line split threshold.
+
+   Everything that moves animates `rotate`/`translate`/`opacity` only, so the
+   panel stays on the compositor: the aurora is an oversized pseudo-element
+   turning behind an `overflow: hidden` mask, never a `background-position`
+   repaint. */
+
+.auth-brand-panel {
+  /* Hues read off `public/brands/logo_esteso.svg`, so the panel is tinted by
+     the mark itself instead of a generic navy: #183e7a is the logo blue,
+     #006eb3 its highlight, #ed8525 its warm spark. They stay scoped to this
+     panel; the application's single accent remains `--primary`.
+     The mix ratios are load-bearing, not decorative: at these strengths the
+     brightest point of the aurora still holds AA under the panel copy
+     (spark 26% -> 6.71:1, lit 62% -> 5.85:1). Raising them breaks that. */
+  --auth-brand-deep: #183e7a;
+  --auth-brand-lit: #006eb3;
+  --auth-brand-spark: #ed8525;
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.auth-brand-panel::before {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  /* Square and oversized so a full turn never sweeps a corner into view. */
+  top: 50%;
+  left: 50%;
+  width: 170%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background:
+    radial-gradient(
+      38% 38% at 28% 30%,
+      color-mix(in oklab, var(--auth-brand-lit) 62%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      46% 46% at 72% 64%,
+      color-mix(in oklab, var(--auth-brand-deep) 78%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      24% 24% at 62% 18%,
+      color-mix(in oklab, var(--auth-brand-spark) 26%, transparent),
+      transparent 68%
+    );
+}
+
+/* Film grain, so the large flat navy does not band on wide gamut displays.
+   The panel does not scroll, so this repaints once instead of every frame. */
+.auth-brand-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes auth-aurora-turn {
+  from {
+    rotate: 0deg;
+  }
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* The staggered entrance is opt-in on motion, not opt-out: `opacity: 0` is
+   declared only inside this query, so under `reduce` the content is simply
+   there from the first paint instead of being animated to visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .auth-brand-panel::before {
+    animation: auth-aurora-turn 48s linear infinite;
+    will-change: rotate;
+  }
+
+  .auth-enter {
+    opacity: 0;
+    animation: auth-enter 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    /* One shared cascade across both halves, so the logo, the claim and the
+       form read as a single entrance rather than two competing ones. */
+    animation-delay: calc(var(--auth-step, 0) * 70ms);
+  }
+}

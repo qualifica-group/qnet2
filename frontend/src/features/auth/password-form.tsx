@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Form,
   FormControl,
@@ -15,6 +14,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { changePassword } from '@/features/auth/api'
+import { AuthNotice } from '@/features/auth/auth-notice'
+import { PasswordInput } from '@/features/auth/password-input'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 
 interface PasswordValues {
@@ -74,7 +75,7 @@ export function PasswordForm() {
             <FormItem>
               <FormLabel required>{t('settings.currentPassword')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -88,7 +89,7 @@ export function PasswordForm() {
             <FormItem>
               <FormLabel required>{t('settings.newPassword')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -102,18 +103,14 @@ export function PasswordForm() {
             <FormItem>
               <FormLabel required>{t('settings.confirmPassword')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {serverError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
+        {serverError && <AuthNotice tone="error">{serverError}</AuthNotice>}
 
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting

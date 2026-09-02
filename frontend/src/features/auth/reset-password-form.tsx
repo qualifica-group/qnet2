@@ -5,7 +5,6 @@ import { z } from 'zod'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Form,
   FormControl,
@@ -15,6 +14,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { resetPassword } from '@/features/auth/api'
+import { AuthNotice } from '@/features/auth/auth-notice'
+import { PasswordInput } from '@/features/auth/password-input'
 
 interface ResetPasswordFormProps {
   token: string
@@ -86,7 +87,7 @@ export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordForm
             <FormItem>
               <FormLabel required>{t('auth.newPassword')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -100,20 +101,21 @@ export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordForm
             <FormItem>
               <FormLabel required>{t('auth.confirmPassword')}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {serverError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
+        {serverError && <AuthNotice tone="error">{serverError}</AuthNotice>}
 
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full transition-transform active:translate-y-px"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? t('auth.resetting') : t('auth.resetPasswordSubmit')}
         </Button>
       </form>

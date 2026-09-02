@@ -315,9 +315,14 @@ export const it: TranslationResources = {
   },
   auth: {
     signInTitle: 'Accedi',
+    brandClaim: 'Il tuo lavoro, in un posto solo.',
+    brandSupport:
+      'Preventivi, commesse e provvigioni in un unico flusso, dalla trattativa alla consegna.',
+    showPassword: 'Mostra la password',
+    hidePassword: 'Nascondi la password',
     signInSubtitle: 'Inserisci le tue credenziali per accedere.',
     email: 'Email',
-    password: 'La tua password',
+    password: 'Password',
     signIn: 'Accedi',
     signingIn: 'Accesso in corso…',
     signOut: 'Esci',
