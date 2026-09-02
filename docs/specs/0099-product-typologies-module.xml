@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0099-product-typologies-module" status="draft" owner="nicola" date="2026-09-02">
+
+  <goal>
+    Introdurre il modulo di supporto "Tipologie Prodotto" come lookup a CRUD completo,
+    collegarlo al Prodotto con una relazione a database (non una stringa, non un enum) e
+    aggiungere al riepilogo economico dell'Offerta un riquadro che raggruppa per Tipologia
+    Prodotto gli importi delle righe, accanto al riquadro Commissioni gia' presente.
+    Flusso completo: Tipologia Prodotto -> Prodotto -> Riga Offerta -> importo riga ->
+    raggruppamento -> Riepilogo Offerta.
+  </goal>
+
+  <context>
+    Modulo di riferimento verificato nel repo, da riusare senza introdurre soluzioni
+    parallele: units-of-measure (spec 0088). E' il gemello strutturale di questa richiesta
+    — lookup lean a CRUD completo + FK sul Prodotto + proiezione sull'Offerta — ed e' il
+    modulo piu' recente, quindi il piu' allineato alle convenzioni correnti. 18 file
+    backend + 18 file frontend, tutti elencati in <scope>.
+
+    Fatti verificati che vincolano il disegno:
+      - COLLISIONE DI NOME. `products.product_type` esiste gia': colonna ENUM castata su
+        `App\Enums\ProductType` (un solo caso, SERVICE), etichettata "Tipo" in form,
+        griglia e dettaglio, esposta al client via `config/config.php` form_enums e
+        mappata dal migratore legacy `App\Migrations\Sources\ProductsSource`. Il nuovo
+        modulo NON puo' chiamarsi `ProductType` (vedi D-1).
+      - I permessi CRUD non hanno catalogo hardcoded: `permissions:sync` li deriva per
+        riflessione dalle Policy che estendono BasePolicy (8 ability). Creare la Policy
+        e' sufficiente.
+      - Il guard di cancellazione ha una convenzione universale nel repo:
+        `abort(409, '...')` dentro il `delete()` del Service, mai in Policy, mai eccezione
+        custom, piu' override di `deleteModel()` nella TableDefinition per propagarlo al
+        bulk-delete generico (UnitOfMeasureService, SourceService, ...).
+      - `QuoteLine` congela SOLO gli importi calcolati (net/vat/total, spec 0065 D-10/D-12)
+        piu' `unit_of_measure_id` (spec 0088 D-5, emenda puntuale). Tutto il resto del
+        prodotto (code, name, category, business function) e' letto VIVO dalla relazione
+        `product` a response time (spec 0065 D-7). Vedi D-5.
+      - Il riepilogo economico e' un unico componente `frontend/src/features/quotes/
+        quote-summary.tsx` con due alimentazioni: `QuoteLiveSummary` (anteprima client nel
+        form, zero chiamate di rete, `quote-totals.ts`) e `totalsFromPersistedSummary`
+        (dettaglio read-only, da `QuoteResource.summary`). Il riquadro Commissioni e' la
+        quarta card della stessa griglia. Entrambe le alimentazioni vanno estese.
+      - Il box Commissioni aggrega le sole righe RICAVO e calcola su
+        `round(quantity * unit_price)`, cioe' l'imponibile: la scelta D-6 sotto e' la
+        stessa base, non una nuova formula.
+
+    Naming: identificatori in INGLESE (CLAUDE.md §2, engineering.md §1.2). "Tipologia
+    Prodotto" vive solo nelle stringhe i18n.
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Nomi congelati: tabella `product_typologies`, model `App\Models\ProductTypology`,
+      slug risorsa e prefisso permessi `product-typologies`, FK
+      `products.product_typology_id`, rotta frontend `/product-typologies`, feature
+      frontend `features/product-typologies/`.
+      L'enum preesistente `App\Enums\ProductType` e la colonna `products.product_type`
+      restano INVARIATI: fuori scope. Decisione delegata all'assistente (utente
+      2026-09-02, "vedi tu come rinominarlo"); scelto il blast radius minimo — rimuovere
+      l'enum avrebbe toccato griglia, dettaglio, form, `config/config.php` e il migratore
+      dati legacy senza servire nessuno dei 8 punti della richiesta.
+      CONSEGUENZA DA ACCETTARE: nel form Prodotto convivono due campi vicini, "Tipo"
+      (enum, un solo valore) e "Tipologia" (relazione). Se il doppione da' fastidio, la
+      rimozione dell'enum e' un intervento successivo e indipendente.
+    </decision>
+
+    <decision id="D-2">
+      Campi del modulo: `name` (richiesto dall'utente), `description` (campo standard dei
+      moduli di configurazione gemelli: VatRate, PaymentMethod, UnitOfMeasure) e `code`.
+      `code` e' un'AGGIUNTA rispetto alla richiesta, motivata e funzionale al punto §7
+      della richiesta: e' cio' che permette a ProductService di risolvere la tipologia di
+      default SENZA confrontare il NOME "Ente" — la logica applicativa non tocca mai una
+      stringa di nome. Stesso pattern di PaymentMethod/UnitOfMeasure: snake_case, unique,
+      regex `^[a-z][a-z0-9_]*$`, immutabile dopo la create (`prohibited` in update).
+      Nessun `is_active`, nessun `sort_order`, nessun reorder (leanness di VatRate).
+    </decision>
+
+    <decision id="D-3">
+      `products.product_typology_id` e' NOT NULL con `restrictOnDelete` (utente 2026-09-02,
+      "Obbligatoria con default seedato"). Come per l'unita' di misura (spec 0088 D-4) NON
+      e' dichiarato `mandatory` nel catalogo field-permissions: quando il campo non arriva
+      nel payload, ProductService risolve la tipologia di default, cosi' il default e'
+      garantito senza rendere il campo non permissionabile.
+      La tipologia di DEFAULT e' la riga `code='institution'` (nome iniziale "Ente").
+      NOTA ESPLICITA, da approvare: rendere il campo obbligatorio impone di eleggere una
+      delle due righe seed a default, ed e' l'unico punto in cui una delle due righe ha un
+      ruolo privilegiato. E' una conseguenza diretta della scelta "obbligatoria", non del
+      disegno: il riepilogo (§5/§7) non conosce ne' `institution` ne' nessun altro code, e
+      la riga resta rinominabile/gestibile dal modulo come una qualsiasi.
+      Se preferisci evitarlo del tutto, l'alternativa e' la colonna NULLABLE con una voce
+      "Senza tipologia" nel riepilogo: dillo in approvazione e cambio D-3 e AC-003.
+    </decision>
+
+    <decision id="D-4">
+      La riga di default e' creata dalla MIGRATION, non dal seeder — migrations e seeder
+      girano in quest'ordine, ed e' l'unico modo per garantire che i prodotti gia'
+      esistenti abbiano una riga a cui puntare durante il backfill. Precedente identico:
+      2026_09_01_100000_create_units_of_measure_table.php (spec 0088, D-2).
+      Il Seeder richiesto al punto §2 (`ProductTypologySeeder`, seed PULITO senza prefisso
+      `Demo`, chiamato da `DatabaseSeeder` — non da `DemoDataSeeder`: sono reference data
+      di produzione, non fixture) fa `firstOrCreate(['code' => ...])` su ENTRAMBE le righe:
+      trova quella gia' inserita dalla migration senza duplicarla e aggiunge l'altra.
+      Idempotente su re-run, non sovrascrive un rename fatto dal modulo.
+      Righe iniziali: `institution` -> "Ente", `consultancy` -> "Consulenza".
+      Sono normali record: nessun enum, nessuna costante, nessuna condizione hardcoded,
+      nessuna logica basata sul nome (§2 e §8 della richiesta).
+    </decision>
+
+    <decision id="D-5">
+      La tipologia NON viene congelata sulla riga d'offerta: `quote_lines` NON prende
+      alcuna colonna. Si applica la regola di default della spec 0065 (D-7) — la riga
+      porta solo `product_id` e il resto del prodotto si legge vivo — e NON l'emendamento
+      della spec 0088 (D-5), che vale per la sola unita' di misura perche' quella
+      qualifica una QUANTITA' gia' congelata (10 Kg che diventano 10 Grammi e' un errore
+      aritmetico). La tipologia classifica il PRODOTTO, non la quantita': nessun importo
+      cambia valore. La richiesta stessa descrive una lettura viva ("recuperare il
+      Prodotto associato; individuare la relativa Tipologia Prodotto").
+      CONSEGUENZA DA ACCETTARE: ri-tipizzare un prodotto sposta retroattivamente gli
+      importi delle offerte gia' emesse da un bucket all'altro. Il TOTALE dell'offerta non
+      cambia mai (e' la somma degli stessi net_amount congelati), cambia solo la
+      ripartizione. Se serve il congelamento, e' una colonna aggiuntiva su `quote_lines`
+      e un writer: dillo in approvazione.
+    </decision>
+
+    <decision id="D-6">
+      Base di calcolo: `net_amount` (imponibile), righe RICAVO soltanto
+      (`line_type = Revenue`, cioe' il tab "Offerta"; le righe del tab "Costi" non entrano)
+      — utente 2026-09-02.
+      NESSUNA nuova formula (§6 della richiesta): il server somma i `net_amount` gia'
+      persistiti e congelati sulle righe (D-10/D-12 della spec 0065), esattamente come
+      `QuoteTotalsCalculator::aggregates()` calcola `revenue_net`. Quantita', prezzo,
+      sconti e modifiche manuali sono gia' dentro quel valore.
+      INVARIANTE VERIFICABILE: la somma dei bucket per tipologia == `summary.revenue.net`
+      dell'Offerta, sempre (AC-050). L'anteprima client replica la stessa aritmetica gia'
+      usata da `quote-totals.ts` (`round2(quantity * unitPrice)`), byte-per-byte come fa
+      oggi il box Commissioni.
+    </decision>
+
+    <decision id="D-7">
+      Il riquadro elenca TUTTE le righe di `product_typologies`, ordinate per `name`,
+      ognuna col proprio importo — 0.00 per le tipologie senza righe nell'Offerta (§7).
+      Nessun riferimento hardcoded a nessun nome: aggiungere "Formazione" dal modulo la fa
+      comparire nel riepilogo senza toccare una riga di codice (AC-053).
+      Il numero di tipologie e' quello di una lookup di configurazione (unita'), quindi
+      l'elenco completo e' interrogato senza paginazione; la card scrolla internamente
+      (`max-h` + `overflow-y-auto`) invece di allungare il riepilogo.
+    </decision>
+
+    <decision id="D-8">
+      Guard di cancellazione (§3): `ProductTypologyService::delete()` fa
+      `abort(409, 'This product typology is used by a product and cannot be deleted.')` se
+      `products()->exists()`, piu' override di `deleteModel()` nella TableDefinition perche'
+      il bulk-delete generico applichi lo STESSO guard. Nessun cascade: la FK e'
+      `restrictOnDelete`, quindi anche un delete che aggirasse il Service fallirebbe a
+      livello DB invece di rimuovere prodotti.
+      `quote_lines` NON e' un insieme referenziante (D-5: nessuna colonna), quindi il guard
+      ha una sola condizione, a differenza di UnitOfMeasureService che ne ha due.
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Modulo product-typologies backend: migration (con riga di default), model, 2 DTO, 3 FormRequest (store/update/for-select), policy, 2 resource (full/for-select), 2 controller (CRUD/for-select), service, TableDefinition + ColumnCatalog, ResourceAuthorization, factory, seeder pulito.</item>
+      <item>Registrazioni: config/tables.php, config/authorization.php, config/activity-log.php, config/navigation/products.php, morphMap in AppServiceProvider, routes/api/lookups.php.</item>
+      <item>Frontend modulo: features/product-typologies/ (api, for-select-api, types, schema, payload, form, form-body, detail, table, screens, column-renderers, use-form, use-form-meta), pagina, rotta in router.tsx, breadcrumb, i18n it/en + test di parita'.</item>
+      <item>Campo product_typology_id su Prodotti: migration additiva con backfill, model, DTO create/update, StoreProductRequest/UpdateProductRequest, ProductResource, ProductForSelectResource (meta), ProductsAuthorization, ProductColumnCatalog + ProductRelationColumns (colonna derivata: vista, filtro set, ordinamento, export), form create/edit, vista detail, i18n.</item>
+      <item>Riepilogo Offerta: nuova card "Riepilogo per Tipologia Prodotto" in quote-summary.tsx, alimentata sia dal persistito (QuoteResource.summary.product_typologies via nuovo QuoteTypologySummaryCalculator) sia dall'anteprima live del form.</item>
+      <item>QuoteLineResource: `product.product_typology` (lettura viva) per idratare la cache client in edit mode.</item>
+      <item>Aggiornamento di ASSIGNABLE_RESOURCES in permissions-i18n-parity.test.ts (38 -> 39).</item>
+    </in>
+    <out>
+      <item>Rimozione o rinomina dell'enum `App\Enums\ProductType` / colonna `products.product_type` (D-1).</item>
+      <item>Congelamento della tipologia su `quote_lines` (D-5).</item>
+      <item>Righe COSTO nel riepilogo (D-6).</item>
+      <item>Documento Word generato (spec 0070): l'allow-list delle ColumnKey resta invariata.</item>
+      <item>Riepilogo per tipologia su Opportunita', Contratto e Gestione Richieste: la richiesta nomina la sola Offerta.</item>
+      <item>is_active, sort_order, reorder, quick-create, import legacy (old_id / MigrationSource).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <entity name="product_typologies">
+      id BIGINT PK
+      code VARCHAR(64) UNIQUE NOT NULL          regex ^[a-z][a-z0-9_]*$, immutabile post-create
+      name VARCHAR(191) UNIQUE NOT NULL
+      description VARCHAR(500) NULL
+      created_at / updated_at
+    </entity>
+
+    <endpoint method="GET" path="/api/product-typologies/{productTypology}">
+      <response status="200">{ success, message, data: {id, code, name, description, created_at, updated_at}, permissions }</response>
+      <errors>403 senza product-typologies.view; 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/product-typologies">
+      <request>{ name, code, description? }</request>
+      <response status="201">{ success, message: 'Created', data: {...}, permissions }</response>
+      <errors>403 senza product-typologies.create; 422 name/code duplicati o regex code non valida</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/product-typologies/{productTypology}">
+      <request>{ name?, description? } - `code` prohibited</request>
+      <response status="200">{ success, message: 'OK', data: {...}, permissions }</response>
+      <errors>403 senza product-typologies.update; 422 se `code` e' presente nel payload</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/product-typologies/{productTypology}">
+      <response status="204">nessun body</response>
+      <errors>403 senza product-typologies.delete; 409 { success:false, message:'This product typology is used by a product and cannot be deleted.' }</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-typologies/for-select">
+      <request>search?, offset?, limit? (max 100), ids[]?</request>
+      <response status="200">{ items: [{id, label: name, subtitle: null, meta: {code}}], export_link, pagination }</response>
+      <errors>401 senza auth; nessun gate di permesso (ADR 0011)</errors>
+    </endpoint>
+
+    <delta entity="products">
+      product_typology_id BIGINT NOT NULL, restrictOnDelete, default risolto server-side su code 'institution'.
+      ProductResource aggiunge: 'product_typology_id' e 'product_typology': {id, name} | null.
+      ProductForSelectResource aggiunge in `meta`: 'product_typology': {id, name} | null.
+      StoreProductRequest:  ['sometimes','nullable','integer','exists:product_typologies,id']
+      UpdateProductRequest: ['sometimes','nullable','integer','exists:product_typologies,id']
+      Colonna derivata di griglia `product_typology` (come `category`/`unit_of_measure`):
+      visibile, ordinabile (subquery correlata), filtrabile `set` (whereHas su allow-list,
+      mai whereRaw), esportabile dal motore generico.
+    </delta>
+
+    <delta entity="quote_lines">
+      NESSUNA colonna nuova (D-5).
+      QuoteLineResource: dentro `product`, aggiunge 'product_typology': {id, name} | null
+      (lettura viva dalla relazione, eager-loaded da QuoteService::DETAIL_RELATIONS via
+      'offerLines.product.productTypology').
+    </delta>
+
+    <delta entity="quote summary">
+      QuoteResource.summary aggiunge, accanto a revenue/cost/margin/commissions:
+        'product_typologies': [ {id: int, name: string, net: string} ]
+      Ordinato per name, una voce per OGNI riga di product_typologies (net '0.00' se
+      l'offerta non ha righe di quella tipologia). `net` e' una stringa decimale a 2
+      cifre, come ogni altro importo del blocco summary (D-9 spec 0065).
+      Non e' condizionato da alcun permesso commissioni: e' un aggregato di importi di
+      riga, non di provvigioni.
+    </delta>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">La migration crea product_typologies con code/name unique e description nullable; down() e' reversibile.</criterion>
+    <criterion id="AC-002">La migration crea la riga di default code='institution', name='Ente'.</criterion>
+    <criterion id="AC-003">La migration di products aggiunge product_typology_id, associa OGNI prodotto preesistente alla tipologia di default, e lascia la colonna NOT NULL.</criterion>
+    <criterion id="AC-004">Il seed pulito (DatabaseSeeder) produce esattamente "Ente" e "Consulenza"; e' idempotente su re-run e non sovrascrive un rename fatto dal modulo.</criterion>
+
+    <criterion id="AC-010">POST /api/product-typologies con name+code -> 201 e riga persistita.</criterion>
+    <criterion id="AC-011">POST con code gia' esistente -> 422; con name gia' esistente -> 422.</criterion>
+    <criterion id="AC-012">POST con code non conforme a ^[a-z][a-z0-9_]*$ -> 422.</criterion>
+    <criterion id="AC-013">PATCH con `code` nel payload -> 422 anche per super-admin.</criterion>
+    <criterion id="AC-014">DELETE di una tipologia non referenziata -> 204 e riga rimossa.</criterion>
+    <criterion id="AC-015">DELETE di una tipologia associata a uno o piu' prodotti -> 409 con message esplicativo; la riga NON e' rimossa e NESSUN prodotto e' cancellato.</criterion>
+    <criterion id="AC-016">Il bulk-delete generico della tabella applica lo stesso guard: tipologia in uso -> non cancellata.</criterion>
+
+    <criterion id="AC-020">permissions:sync crea esattamente gli 8 permessi product-typologies.* e nessuno in piu'.</criterion>
+    <criterion id="AC-021">403 su show/store/update/destroy senza il rispettivo permesso; for-select 200 anche senza product-typologies.viewAny.</criterion>
+    <criterion id="AC-022">GET /api/tables/product-typologies/columns -> 403 senza viewAny, 200 con le colonne name/code/description/created_at/updated_at.</criterion>
+    <criterion id="AC-023">GET /api/meta/product-typologies espone i campi [code, name, description] nell'ordine congelato.</criterion>
+    <criterion id="AC-024">Una riga role_field_permissions che nega `description` rende il campo readonly nel meta e 422 se lo si modifica.</criterion>
+    <criterion id="AC-025">Il modulo compare nel permission-catalogue sotto l'area Prodotti con i suoi 8 permessi e i suoi 3 campi.</criterion>
+    <criterion id="AC-026">La tabella product-typologies supporta ricerca, filtri, ordinamento ed export dal motore generico, con le stesse azioni di riga (view/edit/delete/activity) degli altri lookup.</criterion>
+
+    <criterion id="AC-030">POST /api/products senza product_typology_id -> il prodotto creato ha la tipologia di default.</criterion>
+    <criterion id="AC-031">POST /api/products con product_typology_id valorizzato -> il prodotto usa quella tipologia.</criterion>
+    <criterion id="AC-032">ProductResource espone product_typology_id e product_typology {id,name}.</criterion>
+    <criterion id="AC-033">La griglia Prodotti mostra la colonna Tipologia; il filtro set restituisce solo i prodotti di quelle tipologie; l'ordinamento e l'export includono la colonna.</criterion>
+    <criterion id="AC-034">Il form Prodotto (create ed edit) mostra il picker Tipologia, idratato in edit e rispettoso di MetaField (nascosto se il permesso di campo lo nasconde); la vista dettaglio Prodotto mostra la tipologia.</criterion>
+    <criterion id="AC-035">Un utente il cui ruolo nega il campo `product_typology_id` non lo vede nel form e riceve 422 se lo invia comunque.</criterion>
+
+    <criterion id="AC-040">Il dettaglio Offerta mostra il riquadro "Riepilogo per Tipologia Prodotto" nella stessa area del riquadro Commissioni.</criterion>
+    <criterion id="AC-041">Offerta con Prodotto A (Ente, 2000) + Prodotto B (Ente, 3000) + Prodotto C (Consulenza, 2500) -> il riepilogo mostra Ente 5.000,00 e Consulenza 2.500,00.</criterion>
+    <criterion id="AC-042">Le righe del tab Costi non contribuiscono ad alcun bucket (D-6).</criterion>
+    <criterion id="AC-050">INVARIANTE: la somma di tutti i bucket == summary.revenue.net, su un'offerta con quantita' > 1, prezzi con decimali e aliquote IVA diverse per riga.</criterion>
+    <criterion id="AC-051">Una tipologia configurata ma senza righe nell'Offerta compare comunque, con importo 0,00.</criterion>
+    <criterion id="AC-052">Un'Offerta senza righe mostra tutte le tipologie a 0,00, non un riquadro vuoto.</criterion>
+    <criterion id="AC-053">Creando una nuova tipologia dal modulo, essa compare nel riepilogo di un'Offerta gia' esistente senza modifiche al codice (test: crea la riga, ricarica il dettaglio, la voce c'e').</criterion>
+    <criterion id="AC-054">Nessun file di produzione contiene le stringhe 'Ente'/'Consulenza' fuori dal seeder e dalla migration di default (grep di verifica).</criterion>
+    <criterion id="AC-060">Anteprima live nel form Offerta: aggiungendo/modificando una riga, il riquadro si aggiorna senza chiamate di rete e coincide con quanto il server persiste al salvataggio.</criterion>
+    <criterion id="AC-061">In create mode (nessuna riga ancora) il riquadro mostra gia' tutte le tipologie a 0,00.</criterion>
+    <criterion id="AC-062">Il riepilogo resta leggibile a 375px (nessuna scrollbar orizzontale) e la card scrolla internamente con molte tipologie.</criterion>
+
+    <criterion id="AC-070">Le chiavi i18n it/en del modulo hanno parita' esatta e nessuna stringa vuota.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: composer.json e package.json restano invariati.</item>
+    <item>Identificatori in inglese (CLAUDE.md §2). Etichette italiane solo in i18n.</item>
+    <item>Authorization server-side su ogni endpoint via ProductTypologyPolicy; nessuna eccezione.</item>
+    <item>Nessun throttle: regola di progetto backend.md §2 (decisione utente 2026-07-15).</item>
+    <item>File entro 300 righe soft / 500 hard; nessuna emoji nel codice (hook code-guard.js blocca).</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint pulito, `cd frontend &amp;&amp; npx tsc -b --force` pulito (mai --noEmit).</item>
+    <item>Deploy: serve `php artisan permissions:sync` sugli ambienti esistenti perche' i permessi product-typologies.* diventino assegnabili.</item>
+  </constraints>
+
+</spec>

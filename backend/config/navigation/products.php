@@ -45,5 +45,12 @@ return [
             'route' => '/units-of-measure',
             'permission' => 'units-of-measure.view',
         ],
+        [
+            'key' => 'product-typologies',
+            'label' => 'navigation.productTypologies',
+            'icon' => 'shapes',
+            'route' => '/product-typologies',
+            'permission' => 'product-typologies.view',
+        ],
     ],
 ];

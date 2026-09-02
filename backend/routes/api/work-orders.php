@@ -27,6 +27,13 @@ Route::get('work-orders/next-code', [WorkOrderController::class, 'nextCode']);
 // are narrow and the name must say so.
 Route::get('quote-offer-lines/for-select', QuoteOfferLineForSelectController::class);
 
+// Spec 0098, D-7: live preview of the dynamic "Informazioni aggiuntive" the
+// composed `quote_line_ids` resolve to, for BOTH the WorkOrder form and the
+// Contract's "Programma" dialog — declared ABOVE work-orders/{workOrder} so
+// the literal segment wins over the route-model-binding wildcard (mirrors
+// quotes/form-context).
+Route::post('work-orders/form-context', [WorkOrderController::class, 'formContext']);
+
 // WorkOrders CRUD. Authorization (work-orders.view/create/update/delete) is
 // enforced server-side in WorkOrderController via WorkOrderPolicy on every
 // endpoint.

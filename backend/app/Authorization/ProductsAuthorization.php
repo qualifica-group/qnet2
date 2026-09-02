@@ -52,6 +52,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             // server-side to the default unit, so the field stays restrictable
             // by the role field-permission matrix.
             new FieldDefinition('unit_of_measure_id', 'select'),
+            new FieldDefinition('product_typology_id', 'select'),
         ];
     }
 
@@ -86,6 +87,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'vat_rate_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supplier_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'product_typology_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

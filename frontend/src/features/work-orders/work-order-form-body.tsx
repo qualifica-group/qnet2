@@ -12,6 +12,7 @@ import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useWorkOrderForm } from '@/features/work-orders/use-work-order-form'
 import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-label'
 import { WorkOrderClosureSection } from '@/features/work-orders/work-order-closure-section'
+import { WorkOrderDynamicFieldsSection } from '@/features/work-orders/work-order-dynamic-fields-section'
 import { WorkOrderNotesSection } from '@/features/work-orders/work-order-notes-section'
 import { WorkOrderQuoteLinesField } from '@/features/work-orders/work-order-quote-lines-field'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-team-section'
@@ -53,7 +54,16 @@ interface WorkOrderFormBodyProps {
 export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: WorkOrderFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit, handleQuoteChange, handleForceClosedChange } = useWorkOrderForm({
+  const {
+    form,
+    serverError,
+    onSubmit,
+    handleQuoteChange,
+    handleForceClosedChange,
+    attributeContext,
+    attributesLoading,
+    hasPickedLines,
+  } = useWorkOrderForm({
     mode,
     onSuccess,
     initialCode,
@@ -217,6 +227,15 @@ export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: Wo
               </MetaField>
             </FormSection>
           )}
+
+          {hasPickedLines ? (
+            <WorkOrderDynamicFieldsSection
+              control={form.control}
+              attributes={attributeContext.applicable_attributes}
+              layout={attributeContext.attribute_layout}
+              isLoading={attributesLoading}
+            />
+          ) : null}
 
           <WorkOrderTeamSection
             control={form.control}

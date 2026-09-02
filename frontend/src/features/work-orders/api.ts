@@ -6,6 +6,7 @@ import type {
   UpdateWorkOrderPayload,
   WorkOrderDetail,
   WorkOrderDetailWithPermissions,
+  WorkOrderFormContext,
 } from '@/features/work-orders/types'
 
 /** Table/module domain key of this module, shared by every adapter (mirrors `QUOTES_DOMAIN`). */
@@ -20,6 +21,21 @@ export async function fetchWorkOrder(id: number): Promise<WorkOrderDetailWithPer
     ApiResponseWithPermissions<WorkOrderDetail, ResourcePermissions>
   >(`/work-orders/${id}`)
   return { ...data.data, permissions: data.permissions }
+}
+
+/**
+ * Spec 0098 (D-7): risolve gli attributi applicabili e il loro layout dalle
+ * righe offerta scelte finora, per una commessa che puo' non essere ancora
+ * salvata — la catena riga offerta -> prodotto -> categoria prodotto ->
+ * attributi (contesto `work_order`), valutata server-side. Lenient
+ * sull'assenza: nessuna riga risolve un set vuoto, mai 422. Serve sia il form
+ * Commessa sia il dialog "Programma" del Contratto.
+ */
+export async function fetchWorkOrderFormContext(quoteLineIds: number[]): Promise<WorkOrderFormContext> {
+  const { data } = await apiClient.post<ApiResponse<WorkOrderFormContext>>('/work-orders/form-context', {
+    quote_line_ids: quoteLineIds,
+  })
+  return data.data
 }
 
 /**

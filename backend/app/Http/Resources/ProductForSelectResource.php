@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Product;
+use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,11 @@ class ProductForSelectResource extends ForSelectResource
                 // `unit_of_measure_id` is still congelated server-side on save
                 // (D-5) — this is the pre-save preview, never an input.
                 'unit_of_measure' => $this->unitOfMeasureSummary($this->unitOfMeasure),
+                // Spec 0099: the product's typology, so the Offer's live
+                // summary preview can bucket a freshly picked row without a
+                // round trip. Read live through the product (D-5), never
+                // frozen onto the line.
+                'product_typology' => $this->productTypologySummary($this->productTypology),
             ],
         ];
     }
@@ -64,5 +70,17 @@ class ProductForSelectResource extends ForSelectResource
         }
 
         return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function productTypologySummary(?ProductTypology $productTypology): ?array
+    {
+        if ($productTypology === null) {
+            return null;
+        }
+
+        return ['id' => $productTypology->id, 'name' => $productTypology->name];
     }
 }

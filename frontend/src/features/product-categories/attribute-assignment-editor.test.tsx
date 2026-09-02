@@ -49,11 +49,12 @@ function renderEditor(
 }
 
 describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
-  it('renders both context sections with distinct titles and descriptions', () => {
+  it('renders all three context sections with distinct titles and descriptions', () => {
     renderEditor()
 
     expect(screen.getByRole('heading', { name: 'Product attributes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Quote attributes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Work order attributes' })).toBeInTheDocument()
     expect(
       screen.getByText('Loaded in the Product card (create/edit) for products in this category.'),
     ).toBeInTheDocument()
@@ -79,6 +80,19 @@ describe('AttributeAssignmentEditor — two-section model (spec 0061)', () => {
     expect(within(productSection).queryByText('RAM (GB)')).not.toBeInTheDocument()
     expect(within(quoteSection).getByText('RAM (GB)')).toBeInTheDocument()
     expect(within(quoteSection).queryByText('Color')).not.toBeInTheDocument()
+  })
+
+  // Spec 0098: the third, independent Commessa section.
+  it('adding an attribute from the work-order picker tags it with context "work_order"', () => {
+    const { onChange } = renderEditor()
+
+    const [, , workOrderPicker] = screen.getAllByRole('combobox')
+    fireEvent.click(workOrderPicker)
+    fireEvent.click(screen.getByRole('option', { name: 'Color' }))
+
+    expect(onChange).toHaveBeenCalledWith([
+      { attribute_id: 1, context: 'work_order', is_required: false, sort_order: 0 },
+    ])
   })
 
   it('adding an attribute from the product picker tags it with context "product"', () => {

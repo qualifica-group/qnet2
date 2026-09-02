@@ -28,6 +28,13 @@ interface UseQuoteLinesFieldArgs {
    * a percentage, only the product's own `meta` does.
    */
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+  /**
+   * Feeds the shared product -> typology cache (`use-quote-form.ts`) so the
+   * live per-typology summary (spec 0099) buckets the row the moment a
+   * product is picked. Optional: Gestione Richieste mounts this editor
+   * without that summary.
+   */
+  rememberProductTypology?: (productId: number, typologyId: number) => void
 }
 
 /**
@@ -58,7 +65,7 @@ export function lineValuesFromProduct(
  * and the product-driven precompilation (AC-074) — mirrors
  * `useProductLinesField`'s "add empty row / edit in place" shape.
  */
-export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent }: UseQuoteLinesFieldArgs) {
+export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent, rememberProductTypology }: UseQuoteLinesFieldArgs) {
   const addRow = () => onChange([...value, EMPTY_LINE_ROW])
 
   const removeRow = (index: number) => onChange(value.filter((_, rowIndex) => rowIndex !== index))
@@ -84,6 +91,11 @@ export function useQuoteLinesField({ value, onChange, variant, rememberVatRatePe
 
     if (item.meta.vat_rate_id !== null && item.meta.vat_rate !== null) {
       rememberVatRatePercent(item.meta.vat_rate_id, Number(item.meta.vat_rate))
+    }
+
+    // Spec 0099: the picked product's typology, for the live summary's buckets.
+    if (item.meta.product_typology) {
+      rememberProductTypology?.(item.id, item.meta.product_typology.id)
     }
 
     onChange(

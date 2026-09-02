@@ -4,14 +4,18 @@ namespace App\Http\Controllers\WorkOrders;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\Enums\FormMode;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\WorkOrders\StoreWorkOrderRequest;
 use App\Http\Requests\WorkOrders\UpdateWorkOrderRequest;
+use App\Http\Requests\WorkOrders\WorkOrderFormContextRequest;
+use App\Http\Resources\WorkOrderFormContextResource;
 use App\Http\Resources\WorkOrderResource;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\WorkOrderService;
+use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +41,31 @@ class WorkOrderController extends BaseApiController
         private readonly WorkOrderService $service,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
+        private readonly WorkOrderAttributeResolver $attributeResolver,
     ) {}
+
+    /**
+     * POST /api/work-orders/form-context (spec 0098, D-7): live preview of
+     * the applicable "Informazioni aggiuntive" and their layout for the
+     * `quote_line_ids` composed so far — serves BOTH the WorkOrder form and
+     * the Contract's "Programma" dialog. Authorization is the resource-level
+     * `create` OR `update` ability (frozen api-contract): neither maps to a
+     * single model instance here, so it is checked directly rather than via
+     * WorkOrderPolicy's own per-record `update`.
+     */
+    public function formContext(WorkOrderFormContextRequest $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            abort_unless($user !== null && ($user->can('work-orders.create') || $user->can('work-orders.update')), 403);
+
+            return $this->ok(new WorkOrderFormContextResource(
+                $this->attributeResolver->formContext($request->quoteLineIds(), FormMode::Create),
+            ));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
+    }
 
     /**
      * GET /api/work-orders/next-code — non-binding preview of the next

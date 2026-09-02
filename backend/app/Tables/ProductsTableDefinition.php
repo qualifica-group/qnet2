@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Tables\Products\ProductColumnCatalog;
@@ -56,7 +57,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         // Eager-load the derived relations to avoid N+1 when every row
         // projects them.
-        return Product::query()->with(['category', 'unitOfMeasure']);
+        return Product::query()->with(['category', 'unitOfMeasure', 'productTypology']);
     }
 
     /**
@@ -143,6 +144,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'price' => $row->price === null ? null : (float) $row->price,
             'category' => $this->categorySummary($row->category),
             'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
+            'product_typology' => $this->productTypologySummary($row->productTypology),
             'product_type' => $row->product_type,
             'created_at' => $row->created_at,
         ];
@@ -173,6 +175,21 @@ class ProductsTableDefinition extends AbstractTableDefinition
         }
 
         return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
+    }
+
+    /**
+     * Mirrors ProductResource's typology summary shape (spec 0099), so the
+     * grid cell and the detail view read the same fields.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function productTypologySummary(?ProductTypology $productTypology): ?array
+    {
+        if ($productTypology === null) {
+            return null;
+        }
+
+        return ['id' => $productTypology->id, 'name' => $productTypology->name];
     }
 
     /**

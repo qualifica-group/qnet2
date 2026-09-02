@@ -33,6 +33,7 @@ import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
 import { parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
 import { EMPTY_LINE_ROW, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
+import { useAllProductTypologies } from '@/features/product-typologies/for-select-api'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
 import type { QuoteDetail, QuoteFormMode } from '@/features/quotes/types'
@@ -80,10 +81,17 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
     onSubmit,
     vatRatePercentFor,
     rememberVatRatePercent,
+    productTypologyIdFor,
+    rememberProductTypology,
     attributeContext,
     attributesLoading,
     hasPickedProduct,
   } = useQuoteForm({ mode, onSuccess, initialCode })
+
+  // Spec 0099, D-7: the configured typology catalogue for the live summary's
+  // zero-filled buckets. Fetched HERE (cached reference data, one request)
+  // so `QuoteLiveSummary` stays a pure recompute with no fetching of its own.
+  const typologyOptions = useAllProductTypologies()
   const original = mode.type === 'edit' ? mode.quote : null
   // Watched here rather than inside the field so that component stays
   // presentational: it only decides whether the transition note is visible.
@@ -194,12 +202,17 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
         if (item.meta.vat_rate_id !== null && item.meta.vat_rate !== null) {
           rememberVatRatePercent(item.meta.vat_rate_id, Number(item.meta.vat_rate))
         }
+        // Spec 0099: the deep-link seeding path buckets its rows exactly like
+        // a manual pick does.
+        if (item.meta.product_typology) {
+          rememberProductTypology(item.id, item.meta.product_typology.id)
+        }
 
         return { ...EMPTY_LINE_ROW, ...lineValuesFromProduct(item, 'revenue'), quantity: SEEDED_LINE_QUANTITY }
       }),
       { shouldDirty: true },
     )
-  }, [seededProductIds, seededProductLabels, form, rememberVatRatePercent])
+  }, [seededProductIds, seededProductLabels, form, rememberVatRatePercent, rememberProductTypology])
 
   /** The inherited ref wins over the loaded quote's own, so the trigger relabels the moment it auto-fills; the forced Opportunity's own meta is the fallback source before any user pick. */
   const inheritedMeta = inheritedRoles ?? forcedOpportunityMeta
@@ -353,6 +366,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
                 knownLines={original?.offer_lines ?? []}
                 vatRatePercentFor={vatRatePercentFor}
                 rememberVatRatePercent={rememberVatRatePercent}
+                rememberProductTypology={rememberProductTypology}
                 quoteId={original?.id}
               />
             </TabsContent>
@@ -386,7 +400,12 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
             />
           ) : null}
 
-          <QuoteLiveSummary control={form.control} vatRatePercentFor={vatRatePercentFor} />
+          <QuoteLiveSummary
+            control={form.control}
+            vatRatePercentFor={vatRatePercentFor}
+            productTypologyIdFor={productTypologyIdFor}
+            typologyOptions={typologyOptions}
+          />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

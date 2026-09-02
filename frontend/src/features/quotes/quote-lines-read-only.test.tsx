@@ -14,7 +14,7 @@ function lineFixture(overrides: Partial<QuoteLine> = {}): QuoteLine {
   return {
     id: 1,
     product_id: 42,
-    product: { id: 42, code: 'PRD-0042', name: 'Widget Pro', category: null, business_function: null },
+    product: { id: 42, code: 'PRD-0042', name: 'Widget Pro', category: null, product_typology: null, business_function: null },
     quantity: '2.00',
     unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
     unit_price: '120.00',

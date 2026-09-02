@@ -47,6 +47,8 @@ class UpdateProductCategoryRequest extends FormRequest
             'inherits_product_attributes' => ['sometimes', 'boolean'],
             // Spec 0084: the third usage context's own inheritance barrier.
             'inherits_quote_attributes' => ['sometimes', 'boolean'],
+            // Spec 0098: the fourth usage context's own inheritance barrier.
+            'inherits_work_order_attributes' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string'],
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
             // Only meaningful on a ROOT category: under a parent the value is

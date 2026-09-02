@@ -17,6 +17,7 @@ use App\Authorization\PaymentMethodsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
+use App\Authorization\ProductTypologiesAuthorization;
 use App\Authorization\ProjectsAuthorization;
 use App\Authorization\QuotesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
@@ -95,6 +96,7 @@ return [
         'rewarded-referents' => RewardedReferentsAuthorization::class,
         'vat-rates' => VatRatesAuthorization::class,
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
+        'product-typologies' => ProductTypologiesAuthorization::class,
     ],
 
     /*

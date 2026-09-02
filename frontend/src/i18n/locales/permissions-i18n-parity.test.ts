@@ -69,6 +69,7 @@ const ASSIGNABLE_RESOURCES = [
   'sources',
   'tags',
   'units-of-measure',
+  'product-typologies',
   'users',
   'vat-rates',
 ]

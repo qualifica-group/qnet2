@@ -20,6 +20,7 @@ const formValues: WorkOrderFormValues = {
   is_force_closed: false,
   force_close_reason: null,
   quote_line_ids: [11, 12],
+  attribute_values: {},
 }
 
 function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
@@ -43,6 +44,9 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
       { id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },
       { id: 12, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
     ],
+    applicable_attributes: [],
+    attribute_layout: null,
+    attribute_values: {},
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -65,6 +69,7 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
       is_force_closed: false,
       force_close_reason: null,
       quote_line_ids: [11, 12],
+      attribute_values: {},
     })
   })
 
@@ -169,5 +174,65 @@ describe('buildUpdatePayload — responsabili and partecipanti (spec 0096, AC-07
     expect(buildUpdatePayload({ ...formValues, start_date: '2026-04-02' }, original())).toEqual({
       start_date: '2026-04-02',
     })
+  })
+})
+
+describe('buildCreatePayload / buildUpdatePayload — attribute_values (spec 0098)', () => {
+  it('create always sends the map, even when empty', () => {
+    expect(buildCreatePayload(formValues).attribute_values).toEqual({})
+  })
+
+  it('update omits the map when nothing changed from the seeded original', () => {
+    const withAttribute = original({
+      applicable_attributes: [
+        {
+          id: 1,
+          code: 'site_access',
+          name: 'Site access',
+          type: 'text',
+          description: null,
+          help_text: null,
+          placeholder: null,
+          icon: null,
+          config: null,
+          relation_target: null,
+          is_required: false,
+          sort_order: 0,
+          options: [],
+        },
+      ],
+      attribute_values: { site_access: 'Gate 3' },
+    })
+
+    expect(
+      buildUpdatePayload({ ...formValues, attribute_values: { site_access: 'Gate 3' } }, withAttribute),
+    ).toEqual({})
+  })
+
+  it('update sends the whole map when a code actually changed', () => {
+    const withAttribute = original({
+      applicable_attributes: [
+        {
+          id: 1,
+          code: 'site_access',
+          name: 'Site access',
+          type: 'text',
+          description: null,
+          help_text: null,
+          placeholder: null,
+          icon: null,
+          config: null,
+          relation_target: null,
+          is_required: false,
+          sort_order: 0,
+          options: [],
+        },
+      ],
+      attribute_values: { site_access: 'Gate 3' },
+    })
+
+    expect(
+      buildUpdatePayload({ ...formValues, attribute_values: { site_access: 'Gate 4' } }, withAttribute),
+    ).toEqual({ attribute_values: { site_access: 'Gate 4' } })
   })
 })

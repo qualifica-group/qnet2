@@ -19,6 +19,7 @@ import { sectors } from './it-sectors'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
+import { productTypologies } from './it-product-typologies'
 import { paymentMethods } from './it-payment-methods'
 import { tags } from './it-tags'
 import { pipelineStatuses } from './it-pipeline-statuses'
@@ -368,6 +369,7 @@ export const it: TranslationResources = {
   sources,
   vatRates,
   unitsOfMeasure,
+  productTypologies,
   paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

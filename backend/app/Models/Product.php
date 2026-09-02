@@ -30,8 +30,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `unit_of_measure_id` (spec 0088, D-4) is NOT NULL: when absent/null from a
  * write, ProductService resolves the default unit (`code='unit'`) so the
  * column is always populated without being a `mandatory` field-permission.
+ * `product_typology_id` (spec 0099, D-3) is the exact same arrangement,
+ * defaulting to the `code='institution'` typology.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -68,5 +70,10 @@ class Product extends BaseModel
     public function unitOfMeasure(): BelongsTo
     {
         return $this->belongsTo(UnitOfMeasure::class);
+    }
+
+    public function productTypology(): BelongsTo
+    {
+        return $this->belongsTo(ProductTypology::class);
     }
 }

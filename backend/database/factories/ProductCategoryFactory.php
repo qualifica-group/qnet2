@@ -23,6 +23,7 @@ class ProductCategoryFactory extends Factory
             'parent_id' => null,
             'inherits_product_attributes' => true,
             'inherits_quote_attributes' => true,
+            'inherits_work_order_attributes' => true,
             // Mirrors the column default. A factory-built tree bypasses
             // RequiresQuoteInheritance, so a test that needs a quoted BRANCH
             // must set the flag on every node it builds, exactly as the
@@ -43,6 +44,7 @@ class ProductCategoryFactory extends Factory
         return $this->state(fn (): array => [
             'inherits_product_attributes' => false,
             'inherits_quote_attributes' => false,
+            'inherits_work_order_attributes' => false,
         ]);
     }
 

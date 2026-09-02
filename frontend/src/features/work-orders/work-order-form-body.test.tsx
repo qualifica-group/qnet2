@@ -14,6 +14,8 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  * never re-enable via a permission override).
  */
 
+const fetchWorkOrderFormContextMock = vi.fn()
+
 vi.mock('@/features/work-orders/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/work-orders/api')>(
     '@/features/work-orders/api',
@@ -22,6 +24,7 @@ vi.mock('@/features/work-orders/api', async () => {
     ...actual,
     createWorkOrder: vi.fn(),
     updateWorkOrder: vi.fn(),
+    fetchWorkOrderFormContext: (...args: [number[]]) => fetchWorkOrderFormContextMock(...args),
   }
 })
 
@@ -109,6 +112,9 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
     quote_lines: [],
+    applicable_attributes: [],
+    attribute_layout: null,
+    attribute_values: {},
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     permissions: EDIT_PERMISSIONS,
@@ -139,6 +145,8 @@ beforeAll(async () => {
 beforeEach(() => {
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
+  fetchWorkOrderFormContextMock.mockReset()
+  fetchWorkOrderFormContextMock.mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
 })
 
 describe('WorkOrderFormBody — code/quote_id read-only in edit (AC-074)', () => {
@@ -231,5 +239,52 @@ describe('WorkOrderFormBody — responsabili e partecipanti (spec 0096)', () => 
     // Slot 3 is filled and slots 1-2 stay as empty cards: the gap is data.
     expect(await screen.findByText('Participant 3')).toBeInTheDocument()
     expect(screen.getByText('Participant 1')).toBeInTheDocument()
+  })
+})
+
+/** Spec 0098: the "Informazioni aggiuntive" section, gated on the SET of quote lines currently selected (AC-022/AC-024). */
+describe('WorkOrderFormBody — dynamic attribute fields (spec 0098)', () => {
+  it('AC-022: is not mounted at all when no quote line is linked', () => {
+    renderForm({ type: 'edit', workOrder: workOrder({ quote_lines: [] }) }, EDIT_PERMISSIONS)
+
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
+    expect(fetchWorkOrderFormContextMock).not.toHaveBeenCalled()
+  })
+
+  it('AC-022/AC-024: resolves and renders the section, gated behind the field permission, once lines are linked', async () => {
+    fetchWorkOrderFormContextMock.mockResolvedValue({
+      applicable_attributes: [
+        {
+          id: 1,
+          code: 'site_access',
+          name: 'Site access',
+          type: 'text',
+          description: null,
+          help_text: null,
+          placeholder: null,
+          icon: null,
+          config: null,
+          relation_target: null,
+          is_required: false,
+          sort_order: 0,
+          options: [],
+        },
+      ],
+      attribute_layout: null,
+    })
+
+    renderForm(
+      {
+        type: 'edit',
+        workOrder: workOrder({
+          quote_lines: [{ id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } }],
+        }),
+      },
+      EDIT_PERMISSIONS,
+    )
+
+    expect(await screen.findByText('Additional information')).toBeInTheDocument()
+    await waitFor(() => expect(fetchWorkOrderFormContextMock).toHaveBeenCalledWith([11]))
+    expect(await screen.findByLabelText('Site access')).toBeInTheDocument()
   })
 })

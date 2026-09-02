@@ -63,6 +63,7 @@ export function buildCreatePayload(
     vat_rate_id: values.vat_rate_id,
     supplier_id: values.supplier_id,
     unit_of_measure_id: values.unit_of_measure_id,
+    product_typology_id: values.product_typology_id,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
     ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
@@ -109,6 +110,9 @@ export function buildUpdatePayload(
   }
   if (values.unit_of_measure_id !== original.unit_of_measure_id) {
     payload.unit_of_measure_id = values.unit_of_measure_id
+  }
+  if (values.product_typology_id !== original.product_typology_id) {
+    payload.product_typology_id = values.product_typology_id
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

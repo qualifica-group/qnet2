@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
 use App\Models\Product;
+use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
@@ -47,12 +48,23 @@ class ProductService
     private const string DEFAULT_UNIT_OF_MEASURE_CODE = 'unit';
 
     /**
+     * The `product_typologies.code` ProductService falls back to whenever
+     * `product_typology_id` is absent or null (spec 0099, D-3) — the column
+     * is NOT NULL, so a product always resolves to a real typology.
+     *
+     * Resolved by CODE, never by name: this is what keeps requirement 7 true
+     * (no application logic anywhere compares the string "Ente"), and what
+     * lets the row be renamed from the module without breaking the default.
+     */
+    private const string DEFAULT_PRODUCT_TYPOLOGY_CODE = 'institution';
+
+    /**
      * Relations eager-loaded on every returned model, so ProductResource
      * never N+1s while hydrating the category summary.
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure'];
+    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure', 'productTypology'];
 
     /**
      * Columns projected by the for-select standard (ADR 0011; spec 0065,
@@ -61,7 +73,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -113,6 +125,7 @@ class ProductService
                 'vat_rate_id' => $data->vatRateId,
                 'supplier_id' => $data->supplierId,
                 'unit_of_measure_id' => $data->unitOfMeasureId,
+                'product_typology_id' => $data->productTypologyId,
             ]);
 
             if ($data->hasAttributeValues()) {
@@ -128,6 +141,8 @@ class ProductService
             // Spec 0088, D-4: absent/null falls back to the default unit — the
             // column is NOT NULL.
             $product->unit_of_measure_id ??= $this->resolveDefaultUnitOfMeasureId();
+            // Spec 0099, D-3: same fallback for the typology.
+            $product->product_typology_id ??= $this->resolveDefaultProductTypologyId();
             $product->save();
 
             return $product;
@@ -162,6 +177,8 @@ class ProductService
         // Spec 0088, D-4: a submitted null resets to the default unit — the
         // column is NOT NULL, so it can never actually persist as null.
         $product->unit_of_measure_id ??= $this->resolveDefaultUnitOfMeasureId();
+        // Spec 0099, D-3: a submitted null resets to the default typology.
+        $product->product_typology_id ??= $this->resolveDefaultProductTypologyId();
 
         // Unconditional save: fire the model's saved event even when no native
         // attribute changed, so the HasCustomFields write pipeline (spec 0021)
@@ -184,6 +201,15 @@ class ProductService
     private function resolveDefaultUnitOfMeasureId(): int
     {
         return (int) UnitOfMeasure::query()->where('code', self::DEFAULT_UNIT_OF_MEASURE_CODE)->value('id');
+    }
+
+    /**
+     * The default typology's id (`code='institution'`, spec 0099, D-3),
+     * resolved fresh on every call for the same reason as the unit above.
+     */
+    private function resolveDefaultProductTypologyId(): int
+    {
+        return (int) ProductTypology::query()->where('code', self::DEFAULT_PRODUCT_TYPOLOGY_CODE)->value('id');
     }
 
     /**
@@ -281,7 +307,7 @@ class ProductService
             ->get();
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol']);
+        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name']);
 
         return new ForSelectResult(
             items: $items,

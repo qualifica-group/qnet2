@@ -4,6 +4,8 @@ use App\Http\Controllers\ContractStatuses\ContractStatusController;
 use App\Http\Controllers\ContractStatuses\ContractStatusForSelectController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodController;
 use App\Http\Controllers\PaymentMethods\PaymentMethodForSelectController;
+use App\Http\Controllers\ProductTypologies\ProductTypologyController;
+use App\Http\Controllers\ProductTypologies\ProductTypologyForSelectController;
 use App\Http\Controllers\QuoteWorkflows\QuoteWorkflowController;
 use App\Http\Controllers\RewardStatuses\RewardStatusController;
 use App\Http\Controllers\RewardStatuses\RewardStatusForSelectController;
@@ -189,6 +191,22 @@ Route::get('units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 
 Route::post('units-of-measure', [UnitOfMeasureController::class, 'store']);
 Route::match(['put', 'patch'], 'units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 'update']);
 Route::delete('units-of-measure/{unitOfMeasure}', [UnitOfMeasureController::class, 'destroy']);
+
+// Product typologies CRUD (spec 0099): a standalone lookup classifying a
+// Product, read LIVE through the product by the Offer summary (D-5).
+// Authorization (product-typologies.view/create/update/delete) is enforced
+// server-side in ProductTypologyController via ProductTypologyPolicy on every
+// endpoint. Minimal searchable/paginated list for entity-backed selects
+// (for-select standard, ADR 0011). Declared ABOVE
+// product-typologies/{productTypology} so the literal `for-select` segment
+// wins over the bound wildcard. The only gate is auth:sanctum (ADR 0011,
+// amended 2026-07-31).
+Route::get('product-typologies/for-select', ProductTypologyForSelectController::class);
+
+Route::get('product-typologies/{productTypology}', [ProductTypologyController::class, 'show']);
+Route::post('product-typologies', [ProductTypologyController::class, 'store']);
+Route::match(['put', 'patch'], 'product-typologies/{productTypology}', [ProductTypologyController::class, 'update']);
+Route::delete('product-typologies/{productTypology}', [ProductTypologyController::class, 'destroy']);
 
 // Contract statuses CRUD (spec 0072): the Contract working-state pick-list,
 // combining reward-statuses' description/is_active shape with

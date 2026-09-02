@@ -60,6 +60,7 @@ class StoreProductRequest extends FormRequest
             // it is what lets CreateProductData tell "not submitted" from
             // "submitted null" apart via array_key_exists().
             'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
+            'product_typology_id' => ['sometimes', 'nullable', 'integer', 'exists:product_typologies,id'],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

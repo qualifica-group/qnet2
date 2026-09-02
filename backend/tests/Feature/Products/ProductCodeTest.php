@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -192,20 +193,23 @@ it('AC-008: the code migration backfills pre-existing rows with distinct PRD-* c
     // Step 1: undo the migration, back to the pre-migration schema (no
     // `code` column). `quote_lines.product_id` FKs on `products.id`, never
     // `code`, so nothing downstream depends on the column being present.
-    // Spec 0088 later added `unit_of_measure_id` (NOT NULL) to `products`,
-    // so a raw pre-existing-row insert below must supply it explicitly.
+    // Spec 0088 later added `unit_of_measure_id` and spec 0099
+    // `product_typology_id` (both NOT NULL) to `products`, so a raw
+    // pre-existing-row insert below must supply them explicitly.
     $migration->down();
 
     // Step 2: seed rows exactly as a pre-existing install would have them —
     // a raw insert, since the `code` column does not exist at this point.
     $category = ProductCategory::factory()->create();
     $unitOfMeasureId = UnitOfMeasure::where('code', 'unit')->value('id');
+    $productTypologyId = ProductTypology::where('code', 'institution')->value('id');
     $ids = collect(['Gamma', 'Alpha', 'Beta'])->map(
         fn (string $name) => DB::table('products')->insertGetId([
             'name' => $name,
             'category_id' => $category->id,
             'product_type' => 'SERVICE',
             'unit_of_measure_id' => $unitOfMeasureId,
+            'product_typology_id' => $productTypologyId,
             'created_at' => now(),
             'updated_at' => now(),
         ])
@@ -222,12 +226,14 @@ it('AC-008: the code migration backfills pre-existing rows with distinct PRD-* c
     // NOT NULL enforced.
     expect(fn () => DB::table('products')->insert([
         'name' => 'NullCode', 'category_id' => $category->id, 'product_type' => 'SERVICE',
-        'unit_of_measure_id' => $unitOfMeasureId, 'created_at' => now(), 'updated_at' => now(),
+        'unit_of_measure_id' => $unitOfMeasureId, 'product_typology_id' => $productTypologyId,
+        'created_at' => now(), 'updated_at' => now(),
     ]))->toThrow(QueryException::class);
 
     // UNIQUE enforced.
     expect(fn () => DB::table('products')->insert([
         'name' => 'DupeCode', 'category_id' => $category->id, 'product_type' => 'SERVICE', 'code' => 'PRD-0001',
-        'unit_of_measure_id' => $unitOfMeasureId, 'created_at' => now(), 'updated_at' => now(),
+        'unit_of_measure_id' => $unitOfMeasureId, 'product_typology_id' => $productTypologyId,
+        'created_at' => now(), 'updated_at' => now(),
     ]))->toThrow(QueryException::class);
 });

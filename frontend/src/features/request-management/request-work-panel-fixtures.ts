@@ -29,6 +29,7 @@ export const OFFER_LINE_FIBRA: QuoteLine = {
     code: 'FIB-1000',
     name: 'Fibra 1000',
     category: { id: 500, name: 'Consulting' },
+    product_typology: null,
     business_function: { id: 40, name: 'Sales' },
   },
   quantity: '1.00',

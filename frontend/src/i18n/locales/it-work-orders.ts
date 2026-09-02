@@ -41,6 +41,7 @@ export const workOrders = {
     description: 'Descrizione',
     internalNotes: 'Note commessa',
     linesEmpty: 'Nessuna riga prodotto collegata.',
+    additionalInformation: 'Informazioni aggiuntive',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     sections: {
@@ -124,6 +125,10 @@ export const workOrders = {
       notes: {
         title: 'Descrizione e note',
         description: 'Descrizione libera e note interne della commessa.',
+      },
+      dynamicFields: {
+        title: 'Informazioni aggiuntive',
+        empty: 'Nessun campo aggiuntivo per le righe prodotto selezionate.',
       },
     },
     hints: {

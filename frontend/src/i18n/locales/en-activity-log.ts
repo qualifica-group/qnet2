@@ -111,6 +111,7 @@ export const activityLog = {
     product_type: 'Type',
     inherits_product_attributes: 'Inherits product attributes',
     inherits_quote_attributes: 'Inherits quote attributes',
+    inherits_work_order_attributes: 'Inherits work order attributes',
     referent_type_id: 'Referent type',
     contact_scope: 'Contact scope',
     vat_group: 'VAT group',

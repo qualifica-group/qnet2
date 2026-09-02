@@ -19,6 +19,7 @@ use App\Tables\PaymentMethodsTableDefinition;
 use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
+use App\Tables\ProductTypologiesTableDefinition;
 use App\Tables\ProjectsTableDefinition;
 use App\Tables\QuotesTableDefinition;
 use App\Tables\QuoteWorkflowsTableDefinition;
@@ -102,6 +103,7 @@ return [
         'rewarded-referents' => RewardedReferentsTableDefinition::class,
         'vat-rates' => VatRatesTableDefinition::class,
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
+        'product-typologies' => ProductTypologiesTableDefinition::class,
     ],
 
 ];

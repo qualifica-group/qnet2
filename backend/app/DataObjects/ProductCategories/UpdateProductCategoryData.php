@@ -34,6 +34,9 @@ final readonly class UpdateProductCategoryData
         /** Spec 0084: the Offerta context's own inheritance barrier (App\Enums\AttributeContext::Quote), same submitted-flag convention as inheritsProductAttributes above. */
         public ?bool $inheritsQuoteAttributes = null,
         public bool $inheritsQuoteAttributesSubmitted = false,
+        /** Spec 0098: the Commessa context's own inheritance barrier (App\Enums\AttributeContext::WorkOrder), same submitted-flag convention. */
+        public ?bool $inheritsWorkOrderAttributes = null,
+        public bool $inheritsWorkOrderAttributesSubmitted = false,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
         public ?array $attributes = null,
@@ -71,6 +74,8 @@ final readonly class UpdateProductCategoryData
             inheritsProductAttributesSubmitted: array_key_exists('inherits_product_attributes', $data),
             inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : null,
             inheritsQuoteAttributesSubmitted: array_key_exists('inherits_quote_attributes', $data),
+            inheritsWorkOrderAttributes: array_key_exists('inherits_work_order_attributes', $data) ? (bool) $data['inherits_work_order_attributes'] : null,
+            inheritsWorkOrderAttributesSubmitted: array_key_exists('inherits_work_order_attributes', $data),
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
@@ -132,6 +137,10 @@ final readonly class UpdateProductCategoryData
 
         if ($this->inheritsQuoteAttributesSubmitted) {
             $attributes['inherits_quote_attributes'] = $this->inheritsQuoteAttributes;
+        }
+
+        if ($this->inheritsWorkOrderAttributesSubmitted) {
+            $attributes['inherits_work_order_attributes'] = $this->inheritsWorkOrderAttributes;
         }
 
         if ($this->descriptionSubmitted) {

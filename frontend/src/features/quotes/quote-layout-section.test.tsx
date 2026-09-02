@@ -103,6 +103,7 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
       revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
       cost: { net: '0.00', vat: '0.00', gross: '0.00' },
       margin: { net: '0.00' },
+    product_typologies: [],
     },
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',

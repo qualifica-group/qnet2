@@ -3,6 +3,153 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ATTRIBUTI FLESSIBILI SULLE COMMESSE (2026-09-02, spec 0098) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Portare gli Attributi Flessibili (gia' su Offerta) anche sulle Commesse,
+riusando struttura/componenti/flussi esistenti invece di duplicarli. Catena finale:
+Categoria Prodotto -> Attributi -> Layout Commessa -> Valori Attributi Commessa.
+
+**Perche' e' stato additivo e non un clone.** Spec 0084 (D-4) aveva gia' estratto la logica dal
+modulo: `AttributeSetResolver::resolve($categoryIds, $context)` e
+`AttributeLayoutMerger::resolve($categoryIds, $context, $mode)` erano gia' parametrizzati, e
+`inheritanceColumn()` e' l'UNICO `match` esaustivo sull'enum in tutto il backend (ogni altro
+consumatore valida con `Rule::enum`). Verificato dal verifier: `git diff --stat` VUOTO su
+AttributeSetResolver / AttributeLayoutMerger / AttributeValueValidator / AttributeValueNormalizer.
+
+**Decisioni utente (NON re-litigare).**
+- D-1 Categorie dalle righe DELLA COMMESSA (`workOrder.quoteLines`), non da tutte le `offerLines`
+  del preventivo padre. Due Commesse dello stesso preventivo possono avere set diversi.
+- D-2 Contesto NUOVO e indipendente `work_order`, non riuso di `quote`. Barriera propria
+  `product_categories.inherits_work_order_attributes`.
+- D-3 Sezione sotto le righe offerta, sopra Team; piu' dettaglio read-only e dialog "Programma".
+
+**Decisioni tecniche.**
+- D-6 Gli attributi si validano DOPO `WorkOrderLineWriter::writeSubmitted()`, stessa transazione:
+  altrimenti si validerebbe contro il set di righe sbagliato.
+- D-7 `POST /api/work-orders/form-context` con `quote_line_ids[]` serve SIA il form Commessa SIA
+  il dialog "Programma".
+
+**Nomi congelati.** `AttributeContext::WorkOrder='work_order'`;
+`product_categories.inherits_work_order_attributes`; `work_orders.attribute_values` (JSON, FUORI
+da `#[Fillable]`, scritta solo da `WorkOrderAttributeValueWriter::apply()`);
+`App\WorkOrders\WorkOrderAttributeResolver` (resolve/layout/formContext);
+`WorkOrderFormContextRequest::quoteLineIds()`;
+FE `ATTRIBUTE_LAYOUT_CONTEXTS = ['product','quote','work_order']`;
+FE `work-order-dynamic-fields-section.tsx` / `work-order-detail-attributes.tsx`.
+
+**Trappole trovate durante il lavoro (costano ore se le riscopri).**
+- `EnforcesFieldPermissions` RIFIUTA ogni campo non dichiarato: senza
+  `new FieldDefinition('attribute_values','custom')` in `WorkOrdersAuthorization`, ogni POST con
+  attributi da' 422.
+- `ProductCategoryAttributeContextTest` FISSA la lista dei case dell'enum: un contesto nuovo lo
+  rompe per forza, va aggiornato (requisito cambiato, non test piegato).
+- FE: le chiavi `productCategories.*` vivono in `i18n/locales/{it,en}-products.ts`, NON in un
+  locale product-categories.
+- FE: il DETTAGLIO Offerta non usa `AttributeLayoutRenderer` (lista piatta di `RecordField`); i
+  Prodotti si'. La Commessa segue il modello Offerta.
+- FE: `buildAttributeValuesSchema` NON codifica `is_required` — serve la catena
+  `requiredAttributeCodes` + `addMissingRequiredAttributes` + `resolverRef`, altrimenti un
+  obbligatorio non e' mai validato lato client.
+- FE: i default in edit vanno passati per `toAttributeValuesMap()` — PHP serializza una mappa
+  vuota come `[]`, non `{}`.
+
+**Semantica da conoscere.** `AttributeValueValidator` e' sparse-PATCH: un code applicabile ASSENTE
+dal payload non viene MAI controllato. Quindi `is_required` vincola solo i code SOTTOMESSI: lato
+server la generazione di una Commessa senza attributi non da' mai 422. L'unico blocco reale su un
+obbligatorio vuoto e' la validazione client aggiunta a `work-order-schema.ts` /
+`contract-program-schema.ts`.
+
+**Verificato (eseguito davvero, dal verifier indipendente).**
+`php artisan test` 5859 test, 5858 passati, 1 skip preesistente, 0 falliti, 24588 assert.
+`pint --test` passed. `npx tsc -b --force --pretty false` 0 errori. `npx vitest run` 3925/3925.
+NB: in locale serve `XDEBUG_MODE=off` davanti a `php artisan test`, altrimenti xdebug manda il
+processo in SIGSEGV (problema d'ambiente, non di codice).
+
+**Debito segnalato, NON risolto (fuori scope).**
+- `contract-program-schema.ts` e' la TERZA copia della logica "required-code -> issue"
+  (le altre in `quote-schema.ts` e `work-order-schema.ts`): candidato a un helper condiviso.
+- `ApplicableAttributeSummary` e' ridefinito localmente in 3 feature (quotes, request-management,
+  work-orders): scelta di disaccoppiamento, ma se il contratto cambia si toccano 3 file.
+- `ProductCategoryService.php` (355) e `product-category-form-body.tsx` (371) restano sopra il
+  soft limit di 300: preesistenti, non peggiorati in modo sostanziale da 0098.
+- `NoteMentionValidationTest` e' FLAKY su un'asserzione avatar/gravatar (probabile dipendenza di
+  rete). Preesistente, senza rapporto con questo lavoro.
+- Questo file (`docs/HANDOFF.md`) e' a ~572 KB contro il tetto dichiarato di ~50 KB: le voci
+  vecchie andrebbero spostate in `docs/handoff-archive/`.
+
+**Da sapere prima del commit.** Il commit `2e09ae81` (14:03, senza trailer Claude, quindi manuale)
+ha fotografato uno stato A META' di questa spec: mancano `WorkOrderFormContextRequest/Resource`,
+`WorkOrderAttributeValueWriter`, la migrazione e tutti i test. Nella working tree ci sono anche
+file di un ALTRO task in parallelo (`docs/specs/0099-product-typologies-module.xml` e le due
+migrazioni `product_typologies`): vanno tenuti fuori dal commit di 0098.
+
+## TIPOLOGIE PRODOTTO + RIEPILOGO OFFERTA (2026-09-02, spec 0099) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** Nuovo modulo di supporto "Tipologie Prodotto", collegato ai Prodotti,
+piu' un riquadro "Riepilogo per Tipologia Prodotto" nel riepilogo economico dell'Offerta,
+accanto alle Commissioni.
+
+**Decisioni utente (NON re-litigare).**
+- D-1 Nomi: tabella `product_typologies`, model `ProductTypology`, slug/permessi
+  `product-typologies`, FK `products.product_typology_id`, rotta `/product-typologies`.
+  Scelta delegata all'assistente. L'enum PREESISTENTE `App\Enums\ProductType` /
+  `products.product_type` (etichettato "Tipo", un solo caso SERVICE) resta INVARIATO: fuori
+  scope. Nel form Prodotto convivono quindi "Tipo" (enum) e "Tipologia" (relazione).
+- D-3 Campo OBBLIGATORIO: `product_typology_id` NOT NULL + restrictOnDelete, default
+  risolto server-side sul CODE `institution` ("Ente"). Tutti i prodotti preesistenti sono
+  stati backfillati su quella riga. Scelta esplicita dell'utente.
+- D-5 La tipologia NON e' congelata sulla riga d'offerta: si legge VIVA dal prodotto
+  (regola 0065 D-7). Conseguenza accettata: ri-tipizzare un prodotto ridistribuisce
+  retroattivamente gli importi tra i bucket delle offerte gia' emesse — il TOTALE
+  dell'Offerta non cambia mai, cambia solo la ripartizione.
+- D-6 Base di calcolo: `net_amount` (imponibile) delle sole righe RICAVO. Nessuna formula
+  nuova: e' la stessa somma che produce `revenue_net`.
+- D-7 Il riquadro elenca TUTTE le tipologie configurate, ordinate per nome, zero-filled.
+
+**Nomi congelati (usare esattamente questi).**
+- `App\Services\Quotes\QuoteTypologySummaryCalculator::totals(Quote): array{id,name,net}[]`
+  — UNICA autorita' dell'aggregato; nessun nome/code di tipologia compare al suo interno.
+- `QuoteResource.summary.product_typologies` (decimal string `net`), incondizionato: non e'
+  gated da alcun permesso commissioni.
+- `QuoteLineResource.product.product_typology` = `{id, name} | null`, letto vivo.
+- `ProductForSelectResource.meta.product_typology` — alimenta la cache client del preview.
+- FE: `useAllProductTypologies()` (catalogo completo, una query cached) sta in
+  `quote-form-body.tsx`, NON dentro `QuoteLiveSummary`, che resta un componente puro senza
+  data fetching (le sue opzioni arrivano come prop `typologyOptions`).
+- Il default si risolve SEMPRE per `code`, mai per nome: e' cio' che tiene vero il requisito
+  §7 (nessun riferimento hardcoded) e permette di rinominare "Ente" dal modulo.
+
+**Da sapere prima del deploy.**
+- Serve `php artisan permissions:sync` sugli ambienti esistenti (8 permessi
+  `product-typologies.*` creati; verificato: esattamente 8, nessuno in piu').
+- Due migrazioni nuove: `2026_09_03_100000_create_product_typologies_table` (crea anche la
+  riga di default `institution`) e `2026_09_03_100100_add_product_typology_id_to_products_table`
+  (nullable -> backfill -> NOT NULL + FK). La riga di default nasce nella MIGRATION, non nel
+  seeder, perche' il backfill deve avere un bersaglio.
+- `ProductTypologySeeder` e' seed PULITO (chiamato da `DatabaseSeeder`, senza prefisso
+  `Demo`), idempotente, e non sovrascrive un rename fatto dal modulo.
+
+**Test modificati e PERCHE'** (contratto ampliato, non test tampering):
+`ProductTableTest` (11 -> 12 colonne), `ProductCodeTest` e `UnitOfMeasureSchemaTest` (insert
+raw pre-migrazione devono fornire la nuova FK NOT NULL), `QuoteSummaryHttpTest` (il blocco
+`summary` ha una chiave in piu'), `FieldCatalogueEndpointTest` (una risorsa in piu'), piu' le
+fixture FE di quotes/contracts/request-management/products.
+
+**Verificato (ESEGUITO davvero).**
+- Pest `Products`+`ProductTypologies`+`UnitsOfMeasure`: 229/229.
+- Pest `Quotes`+`Contracts`+`RequestManagement`+`Authorization`+`WorkOrders`+`Leads`:
+  1153/1153, 5189 asserzioni.
+- Vitest suite INTERA: 555 file, 3974/3974.
+- `npx tsc -b --force`: EXIT=0. Pint `--dirty`: pulito. ESLint sui file toccati: pulito.
+- AC-054 verificato per grep: in `backend/app` l'unica occorrenza di "Ente" e' un commento;
+  nessuna logica confronta un nome di tipologia.
+
+**Nota di coordinamento (2026-09-02).** Durante questa lavorazione un'ALTRA sessione stava
+scrivendo nello stesso repo: prima su `features/work-orders` (spec 0098), poi ha allineato da
+sola alcune fixture di `features/products` usando i nomi congelati qui sopra. Le modifiche
+sono risultate convergenti, non conflittuali, ma prima di committare conviene rileggere
+`git diff` su `frontend/src/features/products/*.test.*`.
+
 ## AZIONE "MODIFICA" RIMOSSA DA OFFERTE E COMMESSE (2026-09-02) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** Eliminare l'azione di riga "Modifica" dalla tabella Offerte e dalla

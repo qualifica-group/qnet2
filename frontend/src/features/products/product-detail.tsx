@@ -70,6 +70,11 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
               {product.unit_of_measure.name}
             </DetailField>
           )}
+          {product.product_typology && (
+            <DetailField label={t('products.form.productTypology')}>
+              {product.product_typology.name}
+            </DetailField>
+          )}
         </DetailGrid>
       </DetailSection>
 

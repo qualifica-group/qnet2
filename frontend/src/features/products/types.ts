@@ -44,6 +44,12 @@ export interface ProductUnitOfMeasureSummary {
   symbol: string
 }
 
+/** Minimal typology projection hydrating the product's form/detail (spec 0099). */
+export interface ProductTypologySummary {
+  id: number
+  name: string
+}
+
 /**
  * Single product detail returned by GET/POST/PATCH /products (envelope
  * `data`). Matches `ProductResource`.
@@ -86,6 +92,14 @@ export interface ProductDetail {
    */
   unit_of_measure_id: number
   unit_of_measure: ProductUnitOfMeasureSummary | null
+  /**
+   * The product's typology (spec 0099, D-3): `NOT NULL` server-side —
+   * `ProductService` resolves the default typology (code `institution`) when
+   * omitted at create — so this is always a real id, never `null`.
+   * Distinct from `product_type`, the pre-existing enum column (D-1).
+   */
+  product_typology_id: number
+  product_typology: ProductTypologySummary | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
   /**
@@ -132,6 +146,8 @@ export interface CreateProductPayload {
   supplier_id: number | null
   /** `null`/omitted resolves server-side to the default unit (spec 0088, D-4). */
   unit_of_measure_id: number | null
+  /** `null`/omitted resolves server-side to the default typology (spec 0099, D-3). */
+  product_typology_id: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
   /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */

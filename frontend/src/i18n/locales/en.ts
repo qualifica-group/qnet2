@@ -24,6 +24,7 @@ import { sectors } from './en-sectors'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
+import { productTypologies } from './en-product-typologies'
 import { paymentMethods } from './en-payment-methods'
 import { tags } from './en-tags'
 import { pipelineStatuses } from './en-pipeline-statuses'
@@ -382,6 +383,7 @@ export const en = {
   sources,
   vatRates,
   unitsOfMeasure,
+  productTypologies,
   paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

@@ -14,9 +14,10 @@ import type { AttributeContext } from '@/features/product-categories/types'
 /**
  * The attribute usage contexts a layout can be configured for (spec 0061).
  * `quote` joined them with spec 0084: le "Informazioni aggiuntive" appartengono
- * al preventivo, non all'opportunita'.
+ * al preventivo, non all'opportunita'. `work_order` joined them with spec
+ * 0098, stessa meccanica per la Commessa.
  */
-export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'quote']
+export const ATTRIBUTE_LAYOUT_CONTEXTS: AttributeContext[] = ['product', 'quote', 'work_order']
 
 /**
  * Mirrors backend `App\Enums\LayoutFormScope` (spec 0062 D3 revised): the

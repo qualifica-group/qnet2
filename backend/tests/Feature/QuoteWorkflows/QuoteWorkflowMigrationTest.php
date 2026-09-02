@@ -63,8 +63,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // and `2026_09_02_220200_create_work_order_participant_table` (38th), and
     // spec 0097's
     // `2026_09_02_230000_rename_request_management_operator_field_permission`
-    // (39th). Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 39]);
+    // (39th), and spec 0098's
+    // `2026_09_02_240000_add_work_order_attribute_context_columns` (40th).
+    // Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 40]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()
@@ -77,9 +79,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeTrue()
         // The retired opportunity context's barrier comes back with its
         // migration's down(): structure is reversible, its rows are not.
-        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue();
+        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeTrue()
+        ->and(Schema::hasColumn('product_categories', 'inherits_work_order_attributes'))->toBeFalse()
+        ->and(Schema::hasColumn('work_orders', 'attribute_values'))->toBeFalse();
 
-    Artisan::call('migrate', ['--step' => 39]);
+    Artisan::call('migrate', ['--step' => 40]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeTrue()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeFalse()
@@ -90,7 +94,9 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
         ->and(Schema::hasColumn('product_categories', 'inherits_quote_attributes'))->toBeTrue()
         ->and(Schema::hasColumn('quotes', 'attribute_values'))->toBeTrue()
         ->and(Schema::hasColumn('opportunities', 'attribute_values'))->toBeFalse()
-        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeFalse();
+        ->and(Schema::hasColumn('product_categories', 'inherits_opportunity_attributes'))->toBeFalse()
+        ->and(Schema::hasColumn('product_categories', 'inherits_work_order_attributes'))->toBeTrue()
+        ->and(Schema::hasColumn('work_orders', 'attribute_values'))->toBeTrue();
 });
 
 it('renames opportunity-workflows.* permissions and prunes quote-statuses.* ones in place', function () {

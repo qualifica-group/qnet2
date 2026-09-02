@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\QuoteLine;
 use App\Models\UnitOfMeasure;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
@@ -17,7 +18,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @mixin QuoteLine
  *
  * One row of `offer_lines`/`cost_lines` (spec 0065 data_contract, MT-05). The
- * product is read LIVE (D-7): `code`/`name`/`category` come straight off the
+ * product is read LIVE (D-7): `code`/`name`/`category`/`product_typology`
+ * (spec 0099, D-5 — deliberately NOT frozen) come straight off the
  * eager-loaded `product`/`product.category` relation
  * (QuoteService::DETAIL_RELATIONS) — never duplicated on the row itself. The
  * 6 amount-bearing columns (`quantity`, `unit_price`, `net_amount`,
@@ -72,7 +74,7 @@ class QuoteLineResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, business_function: array{id: int, name: string}|null}|null
+     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, product_typology: array{id: int, name: string}|null, business_function: array{id: int, name: string}|null}|null
      */
     private function summarizeProduct(): ?array
     {
@@ -87,6 +89,10 @@ class QuoteLineResource extends JsonResource
             'code' => $product->code,
             'name' => $product->name,
             'category' => $this->summarizeByName($product->category),
+            // Spec 0099, D-5: read live through the product — the line freezes
+            // no typology, so it is what SEEDS the form's client-side bucket
+            // cache in edit mode.
+            'product_typology' => $this->summarizeProductTypology($product->productTypology),
             'business_function' => $this->summarizeBusinessFunction($product->category),
         ];
     }
@@ -111,6 +117,14 @@ class QuoteLineResource extends JsonResource
         $effective = app(CategoryHierarchy::class)->effectiveBusinessFunction($category);
 
         return $effective === null ? null : ['id' => $effective['id'], 'name' => $effective['name']];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeProductTypology(?ProductTypology $productTypology): ?array
+    {
+        return $productTypology === null ? null : ['id' => $productTypology->id, 'name' => $productTypology->name];
     }
 
     /**

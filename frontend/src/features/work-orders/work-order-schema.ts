@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
+import {
+  buildAttributeValuesSchema,
+  type TypedAttributeValuesSchema,
+} from '@/features/request-management/attribute-values-schema'
+import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
 
 /** Backend `code` column limit (`string(32)`), mirrors the quote/project pattern (D-1). */
 const CODE_MAX_LENGTH = 32
@@ -8,7 +14,7 @@ const CODE_MAX_LENGTH = 32
 const TITLE_MAX_LENGTH = 191
 
 /** Shared fields common to create and edit; `quote_id`/`code` requiredness differs per mode below. */
-function baseFields(t: TFunction) {
+function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
   return {
     code: z.string().max(CODE_MAX_LENGTH, t('workOrders.form.codeMax')),
     quote_id: z.number().nullable(),
@@ -32,6 +38,36 @@ function baseFields(t: TFunction) {
     is_force_closed: z.boolean(),
     force_close_reason: z.string().nullable(),
     quote_line_ids: z.array(z.number()),
+    // "Informazioni aggiuntive" (spec 0098): una chiave per `code`
+    // applicabile, forma per-tipo dal builder CONDIVISO — lo stesso che usano
+    // Offerta, Prodotti e Gestione Richieste (spec 0084/0061). La
+    // obbligatorieta' la aggiunge la superRefine sotto, cosi' vale sia in
+    // creazione che in modifica: il set risolto dalle righe offerta e'
+    // sempre quello che il form renderizza (D-6).
+    attribute_values: buildAttributeValuesSchema(attributes, t) as unknown as TypedAttributeValuesSchema,
+  }
+}
+
+/** I `code` applicabili marcati `is_required`: gli unici che una refine impone. */
+function requiredAttributeCodes(attributes: ApplicableAttributeSummary[]): string[] {
+  return attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+}
+
+/** Un'issue "campo obbligatorio" per ogni `code` required rimasto vuoto. */
+function addMissingRequiredAttributes(
+  values: Record<string, unknown>,
+  codes: string[],
+  t: TFunction,
+  ctx: z.RefinementCtx,
+): void {
+  for (const code of codes) {
+    if (isEmptyCustomFieldValue(values[code])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['attribute_values', code],
+        message: t('attributeValues.validation.required', { defaultValue: 'This field is required.' }),
+      })
+    }
   }
 }
 
@@ -61,10 +97,10 @@ function addForceCloseReasonIssue(
  * silently falling back to server generation. `quote_id` is required: every
  * work order is created inside exactly one offer's perimeter (D-5).
  */
-export function buildCreateWorkOrderSchema(t: TFunction) {
+export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
   return z
     .object({
-      ...baseFields(t),
+      ...baseFields(t, attributes),
       code: z
         .string()
         .min(1, t('workOrders.form.codeRequired'))
@@ -79,6 +115,7 @@ export function buildCreateWorkOrderSchema(t: TFunction) {
         })
       }
       addForceCloseReasonIssue(values, ctx, t)
+      addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
     })
 }
 
@@ -87,9 +124,10 @@ export function buildCreateWorkOrderSchema(t: TFunction) {
  * `quote_id` stay in the shape (the form still displays them) but render
  * read-only, enforced by field permissions (D-1/D-5), never by this schema.
  */
-export function buildUpdateWorkOrderSchema(t: TFunction) {
-  return z.object(baseFields(t)).superRefine((values, ctx) => {
+export function buildUpdateWorkOrderSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
+  return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
     addForceCloseReasonIssue(values, ctx, t)
+    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
   })
 }
 

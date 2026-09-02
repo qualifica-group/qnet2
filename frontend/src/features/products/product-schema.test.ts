@@ -29,6 +29,7 @@ function baseValues() {
     vat_rate_id: null,
     supplier_id: null,
     unit_of_measure_id: null,
+    product_typology_id: null,
     custom_fields: {},
     attribute_values: {},
   }

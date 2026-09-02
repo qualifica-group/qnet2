@@ -242,6 +242,11 @@ export const productCategories = {
         description:
           'Loaded in the Quote additional information, when a line uses a product from this category.',
       },
+      workOrderAttributes: {
+        title: 'Work order attributes',
+        description:
+          'Loaded in the Work order additional information, when one of its lines uses a product from this category.',
+      },
       managerLabels: {
         title: 'Account managers',
         description:
@@ -284,6 +289,7 @@ export const products = {
     price: 'Price',
     category: 'Category',
     unit_of_measure: 'Unit of measure',
+    product_typology: 'Typology',
     product_type: 'Type',
     business_function: 'Business function',
     created_at: 'Created at',
@@ -338,6 +344,11 @@ export const products = {
     unitOfMeasureSearch: 'Search units of measure…',
     unitOfMeasureEmpty: 'No units of measure found.',
     unitOfMeasureError: 'Unable to load units of measure.',
+    productTypology: 'Typology',
+    productTypologyPlaceholder: 'Select a typology…',
+    productTypologySearch: 'Search typologies…',
+    productTypologyEmpty: 'No typologies found.',
+    productTypologyError: 'Unable to load typologies.',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',

@@ -65,6 +65,8 @@ it('schema: products.unit_of_measure_id exists, NOT NULL, restrictOnDelete, ever
     $productId = DB::table('products')->insertGetId([
         'name' => 'Raw insert', 'code' => 'RAW-0001', 'category_id' => $category->id,
         'product_type' => 'SERVICE', 'unit_of_measure_id' => $unit->id,
+        // Spec 0099 added this NOT NULL FK after this test was written.
+        'product_typology_id' => DB::table('product_typologies')->where('code', 'institution')->value('id'),
         'created_at' => now(), 'updated_at' => now(),
     ]);
 
@@ -85,7 +87,10 @@ it('migration: an existing product is backfilled to the default unit id (AC-003)
     $category = ProductCategory::factory()->create();
     $productId = DB::table('products')->insertGetId([
         'name' => 'Pre-existing', 'code' => 'RAW-0002', 'category_id' => $category->id,
-        'product_type' => 'SERVICE', 'created_at' => now(), 'updated_at' => now(),
+        'product_type' => 'SERVICE',
+        // Spec 0099 added this NOT NULL FK after this test was written.
+        'product_typology_id' => DB::table('product_typologies')->where('code', 'institution')->value('id'),
+        'created_at' => now(), 'updated_at' => now(),
     ]);
 
     $backfillMigration->up();

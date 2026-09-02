@@ -416,7 +416,7 @@ describe('ContractDetailView — products (AC-046)', () => {
           {
             id: 1,
             product_id: 1,
-            product: { id: 1, code: 'P-1', name: 'Consulenza', category: null, business_function: null },
+            product: { id: 1, code: 'P-1', name: 'Consulenza', category: null, product_typology: null, business_function: null },
             quantity: '2.00',
             unit_of_measure: null,
             unit_price: '100.00',

@@ -34,6 +34,7 @@ use App\Models\PersonalData;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Project;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
@@ -157,6 +158,7 @@ class AppServiceProvider extends ServiceProvider
             'product_category' => ProductCategory::class,
             'product' => Product::class,
             'unit_of_measure' => UnitOfMeasure::class,
+            'product_typology' => ProductTypology::class,
             'source' => Source::class,
             'sector' => Sector::class,
             'tag' => Tag::class,

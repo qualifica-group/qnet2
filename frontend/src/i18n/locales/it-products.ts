@@ -244,6 +244,11 @@ export const productCategories = {
         description:
           "Caricati nelle Informazioni aggiuntive dell'Offerta, quando una riga usa un prodotto di questa categoria.",
       },
+      workOrderAttributes: {
+        title: 'Attributi Commessa',
+        description:
+          'Caricati nelle Informazioni aggiuntive della Commessa, quando una sua riga usa un prodotto di questa categoria.',
+      },
       managerLabels: {
         title: 'Gestori Account',
         description:
@@ -286,6 +291,7 @@ export const products = {
     price: 'Prezzo',
     category: 'Categoria',
     unit_of_measure: 'Unita di misura',
+    product_typology: 'Tipologia',
     product_type: 'Tipo',
     business_function: 'Funzione aziendale',
     created_at: 'Creato il',
@@ -340,6 +346,11 @@ export const products = {
     unitOfMeasureSearch: 'Cerca unita di misura…',
     unitOfMeasureEmpty: 'Nessuna unita di misura trovata.',
     unitOfMeasureError: 'Impossibile caricare le unita di misura.',
+    productTypology: 'Tipologia',
+    productTypologyPlaceholder: 'Seleziona una tipologia…',
+    productTypologySearch: 'Cerca tipologie…',
+    productTypologyEmpty: 'Nessuna tipologia trovata.',
+    productTypologyError: 'Impossibile caricare le tipologie.',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',

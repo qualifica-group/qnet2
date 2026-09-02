@@ -63,8 +63,11 @@ it('regression: AttributeSetResolver (quote context) never sees a Product-contex
 });
 
 it('regression: the retired opportunity context is no longer a valid enum value', function (): void {
+    // Spec 0098 adds the third `work_order` case (D-2) — the assertion below
+    // is updated to match, the requirement it guards (opportunity stays gone)
+    // is unchanged.
     expect(AttributeContext::tryFrom('opportunity'))->toBeNull()
-        ->and(array_column(AttributeContext::cases(), 'value'))->toBe(['product', 'quote']);
+        ->and(array_column(AttributeContext::cases(), 'value'))->toBe(['product', 'quote', 'work_order']);
 });
 
 // ---------------------------------------------------------------------------

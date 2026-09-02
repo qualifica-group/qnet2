@@ -18,9 +18,17 @@ use App\Enums\WorkOrderType;
  * mirrors UpdateUnitOfMeasureData. `quoteLineIds` is null when the key was
  * not submitted at all (leave the pivot untouched, AC-026) or an array
  * (possibly empty) when it was — a full-replace sync (AC-025).
+ *
+ * `attributeValues` (spec 0098, D-1/D-5) follows the SAME sparse convention
+ * as `App\DataObjects\Quotes\UpdateQuoteData`'s own field: `null` when the
+ * key was absent — and sparse WITHIN itself too, a code the map leaves out
+ * keeps its persisted value (WorkOrderAttributeValueWriter owns that merge).
  */
 final readonly class UpdateWorkOrderData
 {
+    /**
+     * @param  array<string, mixed>|null  $attributeValues
+     */
     public function __construct(
         public ?string $title = null,
         public ?WorkOrderType $type = null,
@@ -40,6 +48,7 @@ final readonly class UpdateWorkOrderData
         public ?array $supervisorIds = null,
         /** @var array<int, int|null>|null */
         public ?array $participantSlots = null,
+        public ?array $attributeValues = null,
     ) {}
 
     /**
@@ -65,6 +74,9 @@ final readonly class UpdateWorkOrderData
             quoteLineIds: array_key_exists('quote_line_ids', $data) ? self::normalizeIds($data['quote_line_ids']) : null,
             supervisorIds: array_key_exists('supervisor_ids', $data) ? self::normalizeIds($data['supervisor_ids']) : null,
             participantSlots: array_key_exists('participant_slots', $data) ? self::normalizeSlots($data['participant_slots']) : null,
+            attributeValues: array_key_exists('attribute_values', $data)
+                ? (array) $data['attribute_values']
+                : null,
         );
     }
 

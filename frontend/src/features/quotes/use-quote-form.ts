@@ -11,7 +11,11 @@ import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { managerSlotsFromRefs } from '@/lib/utils'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
-import { linesToFormValues, vatRatePercentsFromLines } from '@/features/quotes/quote-line-values'
+import {
+  linesToFormValues,
+  productTypologyIdsFromLines,
+  vatRatePercentsFromLines,
+} from '@/features/quotes/quote-line-values'
 import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import {
   buildCreateQuoteSchema,
@@ -69,6 +73,19 @@ function initialVatRatePercents(mode: QuoteFormMode): Record<number, number> {
     return {}
   }
   return vatRatePercentsFromLines([...mode.quote.offer_lines, ...mode.quote.cost_lines])
+}
+
+/**
+ * Seeds the shared product -> typology cache from the persisted OFFER rows
+ * (spec 0099, D-6: only revenue lines feed the per-typology summary), so the
+ * live preview buckets an edit-mode form correctly from the first render —
+ * the picker only exposes a typology for products picked in this session.
+ */
+function initialProductTypologyIds(mode: QuoteFormMode): Record<number, number> {
+  if (mode.type !== 'edit') {
+    return {}
+  }
+  return productTypologyIdsFromLines(mode.quote.offer_lines)
 }
 
 /**
@@ -268,6 +285,22 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     [vatRatePercentById],
   )
 
+  // Spec 0099: same shape as the VAT cache above — the product's typology is
+  // not on the row (D-5), so the live summary resolves it through this map,
+  // seeded from the persisted rows and topped up on every pick.
+  const [productTypologyIdByProductId, setProductTypologyIdByProductId] = useState<
+    Record<number, number>
+  >(() => initialProductTypologyIds(mode))
+  const rememberProductTypology = useCallback((productId: number, typologyId: number) => {
+    setProductTypologyIdByProductId((previous) =>
+      previous[productId] === typologyId ? previous : { ...previous, [productId]: typologyId },
+    )
+  }, [])
+  const productTypologyIdFor = useCallback(
+    (productId: number) => productTypologyIdByProductId[productId] ?? null,
+    [productTypologyIdByProductId],
+  )
+
   const confirm = useConfirm()
 
   /** One create/update attempt; `promoteManagers` rides the retry after the D-6 dialog is accepted. */
@@ -338,6 +371,8 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
     onSubmit,
     vatRatePercentFor,
     rememberVatRatePercent,
+    productTypologyIdFor,
+    rememberProductTypology,
     // Spec 0084 D-5: risolti QUI perche' lo schema ne dipende; il body li
     // consuma per rendere la sezione, senza risolverli una seconda volta.
     attributeContext,

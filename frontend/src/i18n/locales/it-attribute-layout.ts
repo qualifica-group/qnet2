@@ -52,6 +52,7 @@ export const attributeLayout = {
     context: {
       product: 'Prodotto',
       quote: 'Offerta',
+      work_order: 'Commessa',
     },
     modeLabel: 'Modalità form',
     mode: {

@@ -6,6 +6,8 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
@@ -56,6 +58,48 @@ export interface WorkOrderQuoteLine {
   product: WorkOrderQuoteLineProduct | null
 }
 
+/** A single labeled choice of an enum-type Attribute (spec 0049), local per module (mirrors `quotes.AttributeOptionRef`). */
+export interface WorkOrderAttributeOptionRef {
+  value: string
+  label: string
+  color: string | null
+}
+
+/**
+ * Spec 0098: summary of ONE Attribute applicable to this work order — the
+ * union, dedup-per-`code`, of the effective Attributes of every product
+ * category the work order's OWN quote lines cover, in context `work_order` —
+ * as exposed by `WorkOrderResource.applicable_attributes`. Kept LOCAL rather
+ * than imported from `features/quotes` to keep the two modules decoupled; it
+ * mirrors the same shape by frozen contract, not by import.
+ */
+export interface ApplicableAttributeSummary {
+  id: number
+  code: string
+  name: string
+  type: string
+  description: string | null
+  help_text: string | null
+  placeholder: string | null
+  icon: string | null
+  config: Record<string, unknown> | null
+  relation_target: Record<string, unknown> | null
+  is_required: boolean
+  sort_order: number
+  options: WorkOrderAttributeOptionRef[]
+}
+
+/**
+ * Wire shape of POST /api/work-orders/form-context (spec 0098, D-7): the
+ * dynamic fields the quote lines picked so far resolve to, for a work order
+ * that may not be saved yet — serves both the work order form and the
+ * contract's "Programma" dialog.
+ */
+export interface WorkOrderFormContext {
+  applicable_attributes: ApplicableAttributeSummary[]
+  attribute_layout: LayoutBlob | null
+}
+
 /**
  * Single work order detail returned by GET/POST/PATCH /work-orders (envelope
  * `data`). Matches `WorkOrderResource`.
@@ -82,6 +126,12 @@ export interface WorkOrderDetail {
   contract_number: string | null
   quote: WorkOrderQuoteRef | null
   quote_lines: WorkOrderQuoteLine[]
+  /** Spec 0098: i valori raccolti, uno per `code` applicabile. `{}` quando vuoto. */
+  attribute_values: Record<string, CustomFieldValue>
+  /** Il set risolto dalle categorie dei prodotti delle righe della commessa, contesto `work_order`. */
+  applicable_attributes: ApplicableAttributeSummary[]
+  /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
+  attribute_layout: LayoutBlob | null
   created_at: string
   updated_at: string
 }
@@ -112,6 +162,8 @@ export interface CreateWorkOrderPayload {
   quote_line_ids?: number[]
   /** Ordered, gap-aware slots; `null` is a deliberately empty one. */
   participant_slots?: (number | null)[]
+  /** Spec 0098: one key per applicable Attribute `code`; server merges sparsely on update. */
+  attribute_values?: Record<string, CustomFieldValue>
 }
 
 /**

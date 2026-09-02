@@ -13,6 +13,7 @@ import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type {
   ProductCategorySummary,
+  ProductTypologySummary,
   ProductUnitOfMeasureSummary,
 } from '@/features/products/types'
 
@@ -48,6 +49,20 @@ function CategoryCell({ value }: ICellRendererParams) {
   const category = value as ProductCategorySummary | null
   return category ? (
     <span>{category.name}</span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )
+}
+
+/**
+ * Renders the `product_typology` column (spec 0099, AC-033): the derived
+ * typology name, em dash when unset. Plain text like `category` — unlike
+ * `product_type` right next to it, which is an enum badge (D-1).
+ */
+function ProductTypologyCell({ value }: ICellRendererParams) {
+  const typology = value as ProductTypologySummary | null
+  return typology ? (
+    <span>{typology.name}</span>
   ) : (
     <span className="text-muted-foreground">—</span>
   )
@@ -103,5 +118,6 @@ export const productColumnRenderers: TableRendererMap = {
   price: (params) => <DecimalCell {...params} />,
   category: (params) => <CategoryCell {...params} />,
   unit_of_measure: (params) => <UnitOfMeasureCell {...params} />,
+  product_typology: (params) => <ProductTypologyCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

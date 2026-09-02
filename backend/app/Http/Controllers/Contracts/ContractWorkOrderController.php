@@ -55,6 +55,7 @@ class ContractWorkOrderController extends BaseApiController
                 startDate: (string) $request->validated('start_date'),
                 supervisorIds: (array) $request->validated('supervisor_ids'),
                 quoteLineIds: (array) $request->validated('quote_line_ids'),
+                attributeValues: $request->has('attribute_values') ? (array) $request->validated('attribute_values') : null,
             );
 
             $workOrder = $this->service->create($data);

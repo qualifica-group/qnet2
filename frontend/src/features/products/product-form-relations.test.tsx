@@ -105,6 +105,8 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     supplier: null,
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
+    product_typology_id: 1,
+    product_typology: { id: 1, name: 'Ente' },
     permissions: FULL_ACCESS,
     ...overrides,
   }

@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -30,6 +31,7 @@ class ProductFactory extends Factory
             'vat_rate_id' => null,
             'supplier_id' => null,
             'unit_of_measure_id' => UnitOfMeasure::factory(),
+            'product_typology_id' => ProductTypology::factory(),
         ];
     }
 

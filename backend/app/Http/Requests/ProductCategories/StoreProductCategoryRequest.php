@@ -47,6 +47,8 @@ class StoreProductCategoryRequest extends FormRequest
             'inherits_product_attributes' => ['sometimes', 'boolean'],
             // Spec 0084: the Offerta usage context's own inheritance barrier.
             'inherits_quote_attributes' => ['sometimes', 'boolean'],
+            // Spec 0098: the Commessa usage context's own inheritance barrier.
+            'inherits_work_order_attributes' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
             'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],
             // Only meaningful on a ROOT category: under a parent the value is

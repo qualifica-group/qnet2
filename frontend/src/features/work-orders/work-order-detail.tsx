@@ -16,6 +16,7 @@ import {
 } from '@/components/detail/record-panel'
 import { BADGE_BASE, BADGE_COLOR_CLASSES, formatDateTime } from '@/features/table/cell-renderers'
 import { ActivityLogSection } from '@/features/activity-log/activity-log-section'
+import { WorkOrderDetailAttributesSection } from '@/features/work-orders/work-order-detail-attributes'
 import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine, WorkOrderType } from '@/features/work-orders/types'
 
 const WORK_ORDERS_DOMAIN = 'work-orders'
@@ -193,6 +194,12 @@ export function WorkOrderDetailView({ workOrder }: WorkOrderDetailViewProps) {
               </RecordField>
             </RecordFieldList>
           </RecordSection>
+
+          <WorkOrderDetailAttributesSection
+            attributes={workOrder.applicable_attributes}
+            values={workOrder.attribute_values}
+            className="@2xl:col-span-2"
+          />
         </RecordSectionsGrid>
 
         {workOrder.permissions.actions.view_activity ? (

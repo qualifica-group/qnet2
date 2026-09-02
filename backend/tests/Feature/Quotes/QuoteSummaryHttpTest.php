@@ -85,12 +85,22 @@ it('AC-040: summary exposes revenue/cost {net,vat,gross} and margin.net over HTT
 
     $response = $this->getJson('/api/quotes/'.$created->json('data.id'))->assertOk();
 
-    expect($response->json('data.summary'))->toBe([
+    // Spec 0099: `product_typologies` is ADDITIVE to this frozen shape — one
+    // entry per configured typology, zero-filled (D-7). The revenue product's
+    // own typology carries the whole 30.00, so the block reconciles with
+    // `revenue.net` (AC-050); the cost line contributes nothing (AC-042).
+    $summary = $response->json('data.summary');
+    $typologies = $summary['product_typologies'];
+    unset($summary['product_typologies']);
+
+    expect($summary)->toBe([
         'revenue' => ['net' => '30.00', 'vat' => '6.60', 'gross' => '36.60'],
         'cost' => ['net' => '10.00', 'vat' => '2.20', 'gross' => '12.20'],
         'margin' => ['net' => '20.00'],
         'commissions' => ['commercial' => '0.00', 'reporter' => '0.00', 'supervisor' => '0.00', 'supplier' => '0.00'],
     ]);
+
+    expect(collect($typologies)->sum(fn (array $entry): float => (float) $entry['net']))->toBe(30.0);
 });
 
 it('AC-042: a quote without lines exposes every summary value at 0.00 over HTTP', function () {
@@ -104,12 +114,21 @@ it('AC-042: a quote without lines exposes every summary value at 0.00 over HTTP'
 
     $response = $this->getJson('/api/quotes/'.$created->json('data.id'))->assertOk();
 
-    expect($response->json('data.summary'))->toBe([
+    // Spec 0099, AC-052: an offer with no lines still lists every configured
+    // typology, each at 0.00 — never an empty block.
+    $summary = $response->json('data.summary');
+    $typologies = $summary['product_typologies'];
+    unset($summary['product_typologies']);
+
+    expect($summary)->toBe([
         'revenue' => ['net' => '0.00', 'vat' => '0.00', 'gross' => '0.00'],
         'cost' => ['net' => '0.00', 'vat' => '0.00', 'gross' => '0.00'],
         'margin' => ['net' => '0.00'],
         'commissions' => ['commercial' => '0.00', 'reporter' => '0.00', 'supervisor' => '0.00', 'supplier' => '0.00'],
     ]);
+
+    expect($typologies)->not->toBeEmpty()
+        ->and(collect($typologies)->pluck('net')->unique()->all())->toBe(['0.00']);
 });
 
 it('aggregates the commission totals without inheriting the sort_order ordering of Quote::lines()', function () {

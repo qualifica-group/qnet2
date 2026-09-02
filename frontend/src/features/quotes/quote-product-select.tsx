@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
-import type { QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
+import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
 
 /**
  * The `meta` block additive to `GET /products/for-select` (spec 0065 D-1/
  * AC-009): `code`/`price`/`cost`/`vat_rate_id`/`vat_rate_name`/`vat_rate`/
- * `unit_of_measure`.
+ * `unit_of_measure`/`product_typology`.
  * Typed HERE (not in `features/products/for-select-api.ts`, out of this
  * module's write surface) the same way `ProjectForSelectItem`/
  * `OperationalSiteForSelectItem` extend the base `ForSelectItem` for their
@@ -24,6 +24,12 @@ export interface QuoteProductForSelectMeta {
   vat_rate: string | null
   /** Spec 0088: the product's own unit, shown on the row before the save congelates the line's own. */
   unit_of_measure: QuoteLineUnitOfMeasureRef | null
+  /**
+   * Spec 0099: the product's typology, so a freshly picked row lands in the
+   * right bucket of the live per-typology summary with no round trip. Never
+   * an input — the line stores no typology (D-5).
+   */
+  product_typology: QuoteLineCategoryRef | null
 }
 
 export interface QuoteProductForSelectItem extends ForSelectItem {

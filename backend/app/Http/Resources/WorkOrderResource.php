@@ -2,10 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\FormMode;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\RequestManagement\ApplicableAttribute;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
+use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -17,6 +20,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `contract_number` is `quote.code`, derived and read-only (D-2) — never a
  * column of its own. `quote_lines` composes its label live from
  * `product.code`/`product.name` (D-8, spec 0065 D-7's own precedent).
+ *
+ * Spec 0098 (frozen api-contract): `attribute_values` is the raw work-order
+ * -level values map (`{}` when null); `applicable_attributes` is the union/
+ * dedup-by-code set of THIS work order's own `quote_lines`' effective
+ * category attributes (App\WorkOrders\WorkOrderAttributeResolver, context
+ * `work_order`); `attribute_layout` completes the trio with the merged,
+ * multi-category layout (spec 0062), `FormMode::View` since this resource IS
+ * the detail's read-only render. Relies on
+ * WorkOrderService::DETAIL_RELATIONS already eager-loading
+ * `quoteLines.product.category`, so resolving all three never N+1s.
  *
  * @mixin WorkOrder
  */
@@ -49,6 +62,13 @@ class WorkOrderResource extends JsonResource
             'contract_number' => $this->quote?->code,
             'quote' => $this->summarizeQuote(),
             'quote_lines' => $this->summarizeQuoteLines(),
+            // Cast to object, non array: un array PHP vuoto serializza come
+            // `[]`, e il form legge la chiave come una MAPPA (Zod
+            // `z.object`) — con `[]` la validazione fallisce su un campo che
+            // nessun input rende (stesso precedente di QuoteResource).
+            'attribute_values' => (object) ($this->attribute_values ?? []),
+            'applicable_attributes' => $this->resolveApplicableAttributes(),
+            'attribute_layout' => app(WorkOrderAttributeResolver::class)->layout($this->resource, FormMode::View),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -134,5 +154,17 @@ class WorkOrderResource extends JsonResource
                 'product' => $product === null ? null : ['id' => $product->id, 'code' => $product->code, 'name' => $product->name],
             ];
         })->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveApplicableAttributes(): array
+    {
+        return app(WorkOrderAttributeResolver::class)
+            ->resolve($this->resource)
+            ->map(fn (ApplicableAttribute $attribute): array => $attribute->toArray())
+            ->values()
+            ->all();
     }
 }

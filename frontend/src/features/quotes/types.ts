@@ -133,6 +133,12 @@ export interface QuoteLineProductRef {
   code: string
   name: string
   category: QuoteLineCategoryRef | null
+  /**
+   * The product's typology, read LIVE through the product (spec 0099, D-5) —
+   * deliberately NOT frozen onto the line, unlike `unit_of_measure`. Seeds
+   * the live summary's per-typology bucket cache in edit mode.
+   */
+  product_typology: QuoteLineCategoryRef | null
   business_function: QuoteLineCategoryRef | null
 }
 
@@ -204,6 +210,21 @@ export interface QuoteSummary {
   cost: QuoteAmountBreakdown
   margin: { net: string }
   commissions?: Record<'commercial' | 'reporter' | 'supervisor' | 'supplier', string>
+  /**
+   * Spec 0099 (D-6/D-7): the REVENUE lines' imponibile grouped by the
+   * typology of their product — one entry per CONFIGURED typology, ordered by
+   * name and zero-filled, so a typology with no line in this offer still
+   * shows at 0.00. Sums to `revenue.net` by construction.
+   */
+  product_typologies: QuoteTypologyTotal[]
+}
+
+/** One bucket of the per-typology offer summary (spec 0099). */
+export interface QuoteTypologyTotal {
+  id: number
+  name: string
+  /** decimal(15,2) as a string, like every other amount in the summary block. */
+  net: string
 }
 
 /**

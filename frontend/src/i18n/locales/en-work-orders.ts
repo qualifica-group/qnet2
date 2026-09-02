@@ -41,6 +41,7 @@ export const workOrders = {
     description: 'Description',
     internalNotes: 'Work order notes',
     linesEmpty: 'No product line is linked yet.',
+    additionalInformation: 'Additional information',
     created_at: 'Created at',
     updated_at: 'Updated at',
     sections: {
@@ -124,6 +125,10 @@ export const workOrders = {
       notes: {
         title: 'Description and notes',
         description: 'Free-form description and internal notes for the work order.',
+      },
+      dynamicFields: {
+        title: 'Additional information',
+        empty: 'No additional fields for the selected product lines.',
       },
     },
     hints: {

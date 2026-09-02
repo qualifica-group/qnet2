@@ -87,6 +87,7 @@ export const permissions = {
     sources: 'Fonti',
     tags: 'Tag',
     'units-of-measure': 'Unita di Misura',
+    'product-typologies': 'Tipologie Prodotto',
     'vat-rates': 'IVA',
   },
   areas: {

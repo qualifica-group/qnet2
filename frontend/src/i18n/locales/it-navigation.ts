@@ -24,6 +24,7 @@ export const navigation = {
   sources: 'Fonti',
   vatRates: 'IVA',
   unitsOfMeasure: 'Unita di Misura',
+  productTypologies: 'Tipologie Prodotto',
   paymentMethods: 'Modalità di Pagamento',
   tags: 'Tag',
   projects: 'Progetti',

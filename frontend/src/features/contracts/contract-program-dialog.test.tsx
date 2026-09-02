@@ -7,6 +7,7 @@ import { workOrders as workOrdersEn } from '@/i18n/locales/en-work-orders'
 import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
 import { createContractWorkOrder, fetchContractProgrammableLines } from '@/features/contracts/api'
 import type { ContractProgrammableLine } from '@/features/contracts/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
  * Spec 0095 AC-060/061/062: occupied lines are visible but not selectable,
@@ -18,6 +19,16 @@ import type { ContractProgrammableLine } from '@/features/contracts/types'
 vi.mock('@/features/contracts/api', () => ({
   fetchContractProgrammableLines: vi.fn(),
   createContractWorkOrder: vi.fn(),
+}))
+
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+const fetchWorkOrderFormContextMock = vi.fn()
+vi.mock('@/features/work-orders/api', () => ({
+  fetchWorkOrderFormContext: (...args: [number[]]) => fetchWorkOrderFormContextMock(...args),
 }))
 
 /** The Responsabili picker's own options source (spec 0096); one user is enough. */
@@ -81,6 +92,17 @@ beforeEach(() => {
   vi.mocked(fetchContractProgrammableLines).mockReset()
   vi.mocked(createContractWorkOrder).mockReset()
   vi.mocked(fetchContractProgrammableLines).mockResolvedValue([FREE_LINE, OCCUPIED_LINE])
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({
+    fields: [],
+    permissions: {
+      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+      fields: {},
+      actions: {},
+    },
+  })
+  fetchWorkOrderFormContextMock.mockReset()
+  fetchWorkOrderFormContextMock.mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
 })
 
 describe('ContractProgramDialog', () => {
@@ -132,8 +154,47 @@ describe('ContractProgramDialog', () => {
         start_date: '2026-03-01',
         supervisor_ids: [21],
         quote_line_ids: [10],
+        attribute_values: {},
       }),
     )
     expect(onCreated).toHaveBeenCalledWith(created)
+  })
+})
+
+/** Spec 0098 (AC-019): resolved live from the lines picked in this dialog. */
+describe('ContractProgramDialog — dynamic attribute fields (spec 0098)', () => {
+  it('is not mounted before any line is selected, and appears once one is', async () => {
+    fetchWorkOrderFormContextMock.mockResolvedValue({
+      applicable_attributes: [
+        {
+          id: 1,
+          code: 'site_access',
+          name: 'Site access',
+          type: 'text',
+          description: null,
+          help_text: null,
+          placeholder: null,
+          icon: null,
+          config: null,
+          relation_target: null,
+          is_required: false,
+          sort_order: 0,
+          options: [],
+        },
+      ],
+      attribute_layout: null,
+    })
+
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
+    expect(fetchWorkOrderFormContextMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza' }))
+
+    expect(await screen.findByText('Additional information')).toBeInTheDocument()
+    await waitFor(() => expect(fetchWorkOrderFormContextMock).toHaveBeenCalledWith([10]))
+    expect(await screen.findByLabelText('Site access')).toBeInTheDocument()
   })
 })

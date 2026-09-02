@@ -1,3 +1,5 @@
+import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type {
   CreateWorkOrderPayload,
@@ -29,6 +31,10 @@ export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrder
     is_force_closed: values.is_force_closed,
     force_close_reason: values.is_force_closed ? values.force_close_reason : null,
     quote_line_ids: values.quote_line_ids,
+    // Spec 0098: la mappa viaggia sempre alla create — non c'e' nulla di
+    // persistito da conservare, quindi il merge sparso lato server non serve
+    // (mirrors `quotes`' `buildCreatePayload`).
+    attribute_values: values.attribute_values,
   }
 }
 
@@ -87,6 +93,25 @@ export function buildUpdatePayload(
   const originalLineIds = original.quote_lines.map((line) => line.id)
   if (!sameIdSet(values.quote_line_ids, originalLineIds)) {
     payload.quote_line_ids = values.quote_line_ids
+  }
+
+  // Spec 0098: la mappa viaggia solo se un valore e' cambiato — il server fa
+  // un merge SPARSO, quindi mandarla identica sarebbe un no-op costoso; i
+  // `code` sono quelli VIVI (le righe possono aver cambiato categoria in
+  // questo stesso form), non quelli persistiti (mirrors `quotes`' `buildUpdatePayload`).
+  const originalAttributeValues = seedAttributeValues(
+    original.applicable_attributes,
+    original.attribute_values,
+  )
+  const attributeValuesChanged = Object.keys(values.attribute_values).some(
+    (code) =>
+      !isEqualCustomFieldValue(
+        values.attribute_values[code] ?? null,
+        originalAttributeValues[code] ?? null,
+      ),
+  )
+  if (attributeValuesChanged) {
+    payload.attribute_values = values.attribute_values
   }
 
   return payload

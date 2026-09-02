@@ -46,16 +46,17 @@ export interface ProductCategoryTreeNode {
 export type CategoryManagementMode = 'single' | 'multiple'
 
 /**
- * The two attribute-catalogue usage contexts (spec 0061): the same catalogue
- * attribute can be assigned to a category for Product, for Offerta, or both
- * (two separate pivot rows). There is no default — every caller names its
- * context, and the endpoints 422 without one.
+ * The three attribute-catalogue usage contexts (spec 0061, extended by spec
+ * 0098): the same catalogue attribute can be assigned to a category for
+ * Product, for Offerta, for Commessa, or any combination (one pivot row per
+ * context). There is no default — every caller names its context, and the
+ * endpoints 422 without one.
  *
  * Spec 0084 retired the `'opportunity'` context: its dynamic section moved to
  * the Offerta, leaving the category-side configuration unread. Do not add it
  * back.
  */
-export type AttributeContext = 'product' | 'quote'
+export type AttributeContext = 'product' | 'quote' | 'work_order'
 
 /**
  * A category's manager-label overrides (spec 0080): position ("1".."4",
@@ -117,6 +118,8 @@ export interface ProductCategoryDetail {
   inherits_product_attributes: boolean
   /** Spec 0084: same barrier for OFFERTA attributes — fully independent of the product one. */
   inherits_quote_attributes: boolean
+  /** Spec 0098: same barrier for COMMESSA attributes — fully independent of the other two. */
+  inherits_work_order_attributes: boolean
   description: string | null
   attributes: ProductCategoryAttributeAssignment[]
   inherited_attributes: ProductCategoryInheritedAttribute[]
@@ -222,6 +225,7 @@ export interface CreateProductCategoryPayload {
   parent_id?: number | null
   inherits_product_attributes?: boolean
   inherits_quote_attributes?: boolean
+  inherits_work_order_attributes?: boolean
   description?: string | null
   attributes?: AttributeAssignmentInput[]
   /** Own business function; omit or null when the category has none of its own (spec 0023). */

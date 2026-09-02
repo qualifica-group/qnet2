@@ -12,7 +12,11 @@ import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
 import { QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
-import { QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
+import {
+  QuoteSummary,
+  totalsFromPersistedSummary,
+  typologyBucketsFromPersistedSummary,
+} from '@/features/quotes/quote-summary'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
@@ -157,6 +161,7 @@ function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
             supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
             supplier: Number(quote.summary.commissions?.supplier ?? 0),
           }}
+          typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
         />
       </div>
     </Tabs>

@@ -45,6 +45,7 @@ class ProductCategoryService
                 'parent_id' => $data->parentId,
                 'inherits_product_attributes' => $data->inheritsProductAttributes,
                 'inherits_quote_attributes' => $data->inheritsQuoteAttributes,
+                'inherits_work_order_attributes' => $data->inheritsWorkOrderAttributes,
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
                 'is_selectable' => $data->isSelectable,
@@ -154,9 +155,10 @@ class ProductCategoryService
     /**
      * The category's inherited attributes across every context, each row
      * tagged `context` (spec 0061; spec 0084 replaces `opportunity` with
-     * `quote`) — the config page's read-only side list feeds the "Attributi
-     * Prodotto" AND "Attributi Offerta" sections in one flat response, the
-     * frontend splitting by that tag.
+     * `quote`; spec 0098 adds `work_order`) — the config page's read-only
+     * side list feeds the "Attributi Prodotto", "Attributi Offerta" AND
+     * "Attributi Commessa" sections in one flat response, the frontend
+     * splitting by that tag.
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -164,6 +166,7 @@ class ProductCategoryService
     {
         return $this->hierarchy->ancestorAttributes($category, AttributeContext::Product)
             ->merge($this->hierarchy->ancestorAttributes($category, AttributeContext::Quote))
+            ->merge($this->hierarchy->ancestorAttributes($category, AttributeContext::WorkOrder))
             ->values();
     }
 

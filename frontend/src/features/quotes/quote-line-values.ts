@@ -171,3 +171,20 @@ export function vatRatePercentsFromLines(lines: QuoteLine[]): Record<number, num
   }
   return entries
 }
+
+/**
+ * The product -> typology mapping the persisted rows already carry (spec
+ * 0099, D-5), seeding the cache the live per-typology summary reads: the
+ * `products/for-select` picker only exposes a typology for a product the user
+ * picks IN this session, so an edit-mode form would otherwise start with
+ * every pre-existing row unbucketed.
+ */
+export function productTypologyIdsFromLines(lines: QuoteLine[]): Record<number, number> {
+  const entries: Record<number, number> = {}
+  for (const line of lines) {
+    if (line.product?.product_typology) {
+      entries[line.product_id] = line.product.product_typology.id
+    }
+  }
+  return entries
+}

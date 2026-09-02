@@ -113,6 +113,7 @@ function category(
     parent: { id: 1, name: 'Electronics' },
     inherits_product_attributes: true,
     inherits_quote_attributes: true,
+    inherits_work_order_attributes: true,
     description: null,
     attributes: [],
     inherited_attributes: [],

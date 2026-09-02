@@ -1,9 +1,15 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
 import { useWorkOrderForm } from '@/features/work-orders/use-work-order-form'
+
+vi.mock('@/features/work-orders/api', () => ({
+  createWorkOrder: vi.fn(),
+  updateWorkOrder: vi.fn(),
+  fetchWorkOrderFormContext: vi.fn().mockResolvedValue({ applicable_attributes: [], attribute_layout: null }),
+}))
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

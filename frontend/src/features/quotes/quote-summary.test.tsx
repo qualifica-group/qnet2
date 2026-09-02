@@ -49,7 +49,11 @@ function Harness() {
         type="number"
         {...form.register('offer_lines.0.quantity', { valueAsNumber: true })}
       />
-      <QuoteLiveSummary control={form.control} vatRatePercentFor={(id) => (id === 5 ? 22 : null)} />
+      <QuoteLiveSummary
+        control={form.control}
+        vatRatePercentFor={(id) => (id === 5 ? 22 : null)}
+        productTypologyIdFor={() => null}
+      />
     </>
   )
 }
@@ -93,6 +97,7 @@ describe('totalsFromPersistedSummary (spec 0065 D-9)', () => {
       revenue: { net: '30.00', vat: '6.60', gross: '36.60' },
       cost: { net: '10.00', vat: '2.20', gross: '12.20' },
       margin: { net: '20.00' },
+    product_typologies: [],
     }
 
     render(<QuoteSummary totals={totalsFromPersistedSummary(summary)} />)
@@ -106,6 +111,7 @@ describe('totalsFromPersistedSummary (spec 0065 D-9)', () => {
       revenue: { net: '10.00', vat: '2.20', gross: '12.20' },
       cost: { net: '30.00', vat: '6.60', gross: '36.60' },
       margin: { net: '-20.00' },
+    product_typologies: [],
     }
 
     render(<QuoteSummary totals={totalsFromPersistedSummary(summary)} />)

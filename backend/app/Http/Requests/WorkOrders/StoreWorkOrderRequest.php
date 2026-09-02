@@ -77,6 +77,11 @@ class StoreWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Spec 0098: "Informazioni aggiuntive" — per-code applicability/
+            // type/required validated separately, server-side, by
+            // WorkOrderAttributeValueWriter (WorkOrderService::create()),
+            // never here (mirrors StoreQuoteRequest's own `attribute_values`).
+            'attribute_values' => ['sometimes', 'array'],
             // Partecipanti (spec 0096, D-3): the SAME gap-aware slot shape
             // Registries/Opportunita'/Offerte submit as `manager_slots`,
             // validated by the shared trait under this module's own key —

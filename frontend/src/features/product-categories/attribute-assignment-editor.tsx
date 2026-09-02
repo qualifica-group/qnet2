@@ -25,18 +25,22 @@ interface AttributeAssignmentEditorProps {
   productInheritToggle?: ReactNode
   /** Spec 0084: same, for the Offerta section — the two barriers are independent. */
   quoteInheritToggle?: ReactNode
+  /** Spec 0098: same, for the Commessa section — a third, independent barrier. */
+  workOrderInheritToggle?: ReactNode
 }
 
 /**
- * The category form's attribute-assignment editor (spec 0061): TWO clearly
- * separated, graphically distinct sections — "Attributi Prodotto" (loaded in
- * the Product card) and "Attributi Offerta" (the Offerta's "Informazioni
- * aggiuntive", spec 0084) — each its own picker/list/inherited-list, filtered
- * from the same flat `value`/`inherited` arrays by `context`. The same catalogue
- * attribute may be assigned to either section, or both (two independent rows
- * in `value`, distinguished by `context`). Each section also hosts its OWN
- * "inherit from parent" switch, injected by the form as a slot so the RHF and
- * field-permission wiring stays out of here.
+ * The category form's attribute-assignment editor (spec 0061, extended by
+ * spec 0098): THREE clearly separated, graphically distinct sections —
+ * "Attributi Prodotto" (loaded in the Product card), "Attributi Offerta" (the
+ * Offerta's "Informazioni aggiuntive", spec 0084) and "Attributi Commessa"
+ * (the Commessa's own, spec 0098) — each its own picker/list/inherited-list,
+ * filtered from the same flat `value`/`inherited` arrays by `context`. The
+ * same catalogue attribute may be assigned to any subset of the three
+ * sections (up to three independent rows in `value`, distinguished by
+ * `context`). Each section also hosts its OWN "inherit from parent" switch,
+ * injected by the form as a slot so the RHF and field-permission wiring stays
+ * out of here.
  */
 export function AttributeAssignmentEditor({
   value,
@@ -46,6 +50,7 @@ export function AttributeAssignmentEditor({
   disabled,
   productInheritToggle,
   quoteInheritToggle,
+  workOrderInheritToggle,
 }: AttributeAssignmentEditorProps) {
   const { t } = useTranslation()
 
@@ -104,6 +109,19 @@ export function AttributeAssignmentEditor({
           onAdd={(attributeId) => addAssignment('quote', attributeId)}
           onUpdate={(attributeId, patch) => updateAssignment('quote', attributeId, patch)}
           onRemove={(attributeId) => removeAssignment('quote', attributeId)}
+        />
+
+        <AttributeAssignmentSection
+          title={t('productCategories.form.sections.workOrderAttributes.title')}
+          description={t('productCategories.form.sections.workOrderAttributes.description')}
+          assignments={byContext('work_order')}
+          known={known}
+          inherited={inheritedByContext('work_order')}
+          inheritToggle={workOrderInheritToggle}
+          disabled={disabled}
+          onAdd={(attributeId) => addAssignment('work_order', attributeId)}
+          onUpdate={(attributeId, patch) => updateAssignment('work_order', attributeId, patch)}
+          onRemove={(attributeId) => removeAssignment('work_order', attributeId)}
         />
       </div>
     </TooltipProvider>

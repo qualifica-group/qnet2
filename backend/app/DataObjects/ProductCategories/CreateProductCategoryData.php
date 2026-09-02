@@ -22,6 +22,8 @@ final readonly class CreateProductCategoryData
         public bool $inheritsProductAttributes = true,
         /** Spec 0084: the Offerta context's own inheritance barrier (App\Enums\AttributeContext::Quote), same default-true convention as inheritsProductAttributes. */
         public bool $inheritsQuoteAttributes = true,
+        /** Spec 0098: the Commessa context's own inheritance barrier (App\Enums\AttributeContext::WorkOrder), same default-true convention. */
+        public bool $inheritsWorkOrderAttributes = true,
         public ?string $description = null,
         public ?array $attributes = null,
         public ?int $businessFunctionId = null,
@@ -53,6 +55,7 @@ final readonly class CreateProductCategoryData
             parentId: array_key_exists('parent_id', $data) && $data['parent_id'] !== null ? (int) $data['parent_id'] : null,
             inheritsProductAttributes: array_key_exists('inherits_product_attributes', $data) ? (bool) $data['inherits_product_attributes'] : true,
             inheritsQuoteAttributes: array_key_exists('inherits_quote_attributes', $data) ? (bool) $data['inherits_quote_attributes'] : true,
+            inheritsWorkOrderAttributes: array_key_exists('inherits_work_order_attributes', $data) ? (bool) $data['inherits_work_order_attributes'] : true,
             description: array_key_exists('description', $data) ? $data['description'] : null,
             attributes: array_key_exists('attributes', $data) ? (array) $data['attributes'] : null,
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,

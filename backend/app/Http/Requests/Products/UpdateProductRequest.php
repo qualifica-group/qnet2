@@ -61,6 +61,7 @@ class UpdateProductRequest extends FormRequest
             // Spec 0088, D-4: a submitted null resets to the default unit in
             // ProductService (the column is NOT NULL).
             'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
+            'product_typology_id' => ['sometimes', 'nullable', 'integer', 'exists:product_typologies,id'],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

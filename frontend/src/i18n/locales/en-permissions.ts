@@ -86,6 +86,7 @@ export const permissions = {
     sources: 'Sources',
     tags: 'Tags',
     'units-of-measure': 'Units of Measure',
+    'product-typologies': 'Product Typologies',
     'vat-rates': 'VAT',
   },
   areas: {

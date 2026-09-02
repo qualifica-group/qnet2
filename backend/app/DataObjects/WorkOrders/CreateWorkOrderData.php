@@ -93,8 +93,13 @@ final readonly class CreateWorkOrderData
      * The team (`participantSlots`) deliberately stays empty here — it is
      * assigned later from the work order's own form.
      *
+     * `attributeValues` (spec 0098, AC-019): the "Programma" dialog carries
+     * its own "Informazioni aggiuntive" section, same `null`-means-absent
+     * convention as `fromValidated()`.
+     *
      * @param  array<int, int>  $quoteLineIds
      * @param  array<int, int>  $supervisorIds
+     * @param  array<string, mixed>|null  $attributeValues
      */
     public static function forContractGeneration(
         int $quoteId,
@@ -103,6 +108,7 @@ final readonly class CreateWorkOrderData
         string $startDate,
         array $supervisorIds,
         array $quoteLineIds,
+        ?array $attributeValues = null,
     ): self {
         return new self(
             code: null,
@@ -118,6 +124,7 @@ final readonly class CreateWorkOrderData
             quoteLineIds: self::normalizeIds($quoteLineIds),
             supervisorIds: self::normalizeIds($supervisorIds),
             participantSlots: [],
+            attributeValues: $attributeValues,
         );
     }
 

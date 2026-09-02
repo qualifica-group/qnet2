@@ -23,6 +23,10 @@ use App\Enums\ProductType;
  * absent leaves the persisted FK untouched; submitted as null resets it to
  * the default unit, resolved by ProductService (the column is NOT NULL, so a
  * literal null can never actually reach the database).
+ *
+ * `productTypologyId` (spec 0099, D-3) is the exact same shape: absent leaves
+ * the persisted FK untouched, submitted as null resets it to the default
+ * typology resolved by ProductService.
  */
 final readonly class UpdateProductData
 {
@@ -47,6 +51,8 @@ final readonly class UpdateProductData
         public bool $supplierIdSubmitted = false,
         public ?int $unitOfMeasureId = null,
         public bool $unitOfMeasureIdSubmitted = false,
+        public ?int $productTypologyId = null,
+        public bool $productTypologyIdSubmitted = false,
         public ?array $attributeValues = null,
     ) {}
 
@@ -75,6 +81,8 @@ final readonly class UpdateProductData
             supplierIdSubmitted: array_key_exists('supplier_id', $data),
             unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
             unitOfMeasureIdSubmitted: array_key_exists('unit_of_measure_id', $data),
+            productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
+            productTypologyIdSubmitted: array_key_exists('product_typology_id', $data),
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
         );
     }
@@ -128,6 +136,10 @@ final readonly class UpdateProductData
 
         if ($this->unitOfMeasureIdSubmitted) {
             $attributes['unit_of_measure_id'] = $this->unitOfMeasureId;
+        }
+
+        if ($this->productTypologyIdSubmitted) {
+            $attributes['product_typology_id'] = $this->productTypologyId;
         }
 
         return $attributes;

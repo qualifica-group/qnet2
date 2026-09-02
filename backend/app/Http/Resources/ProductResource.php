@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Models\UnitOfMeasure;
 use App\Models\VatRate;
@@ -58,6 +59,9 @@ class ProductResource extends JsonResource
             // Spec 0088, D-4: always populated (NOT NULL, defaulted server-side).
             'unit_of_measure_id' => $this->unit_of_measure_id,
             'unit_of_measure' => $this->unitOfMeasureSummary($this->unitOfMeasure),
+            // Spec 0099, D-3: always populated (NOT NULL, defaulted server-side).
+            'product_typology_id' => $this->product_typology_id,
+            'product_typology' => $this->productTypologySummary($this->productTypology),
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,
@@ -121,5 +125,17 @@ class ProductResource extends JsonResource
         }
 
         return ['id' => $unitOfMeasure->id, 'name' => $unitOfMeasure->name, 'symbol' => $unitOfMeasure->symbol];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function productTypologySummary(?ProductTypology $productTypology): ?array
+    {
+        if ($productTypology === null) {
+            return null;
+        }
+
+        return ['id' => $productTypology->id, 'name' => $productTypology->name];
     }
 }

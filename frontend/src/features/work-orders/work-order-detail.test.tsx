@@ -42,6 +42,9 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
       { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
       { id: 12, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },
     ],
+    applicable_attributes: [],
+    attribute_layout: null,
+    attribute_values: {},
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {
@@ -109,6 +112,45 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getByText('Force close reason')).toBeInTheDocument()
     expect(screen.getByText('Cliente insolvente')).toBeInTheDocument()
     expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
+  })
+})
+
+describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', () => {
+  it('renders no section when the work order resolves no applicable attribute', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
+  })
+
+  it('renders one field per applicable attribute, formatted read-only', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          applicable_attributes: [
+            {
+              id: 1,
+              code: 'site_access',
+              name: 'Site access',
+              type: 'text',
+              description: null,
+              help_text: null,
+              placeholder: null,
+              icon: null,
+              config: null,
+              relation_target: null,
+              is_required: false,
+              sort_order: 0,
+              options: [],
+            },
+          ],
+          attribute_values: { site_access: 'Gate 3' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Additional information')).toBeInTheDocument()
+    expect(screen.getByText('Site access')).toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
   })
 })
 

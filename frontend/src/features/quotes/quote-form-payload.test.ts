@@ -70,6 +70,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
       revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
       cost: { net: '0.00', vat: '0.00', gross: '0.00' },
       margin: { net: '0.00' },
+    product_typologies: [],
     },
     created_at: '2026-07-29T00:00:00Z',
     updated_at: '2026-07-29T00:00:00Z',
@@ -251,7 +252,7 @@ describe('buildUpdatePayload', () => {
         {
           id: 1,
           product_id: 7,
-          product: { id: 7, code: 'PRD-0001', name: 'Servizio A', category: null, business_function: null },
+          product: { id: 7, code: 'PRD-0001', name: 'Servizio A', category: null, product_typology: null, business_function: null },
           quantity: '3.00',
           unit_of_measure: null,
           unit_price: '10.00',
@@ -277,7 +278,7 @@ describe('buildUpdatePayload', () => {
         {
           id: 1,
           product_id: 7,
-          product: { id: 7, code: 'PRD-0001', name: 'Servizio A', category: null, business_function: null },
+          product: { id: 7, code: 'PRD-0001', name: 'Servizio A', category: null, product_typology: null, business_function: null },
           quantity: '3.00',
           unit_of_measure: null,
           unit_price: '10.00',
@@ -305,7 +306,7 @@ describe('buildUpdatePayload', () => {
         {
           id: 2,
           product_id: 3,
-          product: { id: 3, code: 'PRD-0002', name: 'Servizio B', category: null, business_function: null },
+          product: { id: 3, code: 'PRD-0002', name: 'Servizio B', category: null, product_typology: null, business_function: null },
           quantity: '1.00',
           unit_of_measure: null,
           unit_price: '5.00',

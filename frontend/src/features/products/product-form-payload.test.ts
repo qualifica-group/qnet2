@@ -30,6 +30,8 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     supplier: null,
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
+    product_typology_id: 1,
+    product_typology: { id: 1, name: 'Ente' },
     ...overrides,
   }
 }
@@ -45,9 +47,10 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     product_type: 'SERVICE',
     vat_rate_id: null,
     supplier_id: null,
-    // Matches `original()`'s own default so the "nothing changed" PATCH
-    // assertions below stay accurate; individual tests override it.
+    // Match `original()`'s own defaults so the "nothing changed" PATCH
+    // assertions below stay accurate; individual tests override them.
     unit_of_measure_id: 1,
+    product_typology_id: 1,
     custom_fields: {},
     attribute_values: {},
     ...overrides,
@@ -66,6 +69,9 @@ describe('buildCreatePayload', () => {
       vat_rate_id: null,
       supplier_id: null,
       unit_of_measure_id: 1,
+      // Spec 0099, D-3: sent like `unit_of_measure_id` — a null here makes the
+      // server resolve the default typology.
+      product_typology_id: 1,
     })
   })
 

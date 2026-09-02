@@ -87,6 +87,9 @@ class QuoteService
         'layout',
         'paymentMethod',
         'offerLines.product.category',
+        // Spec 0099, D-5: the typology is read live through the product by
+        // QuoteLineResource, so it is eager-loaded like the category above.
+        'offerLines.product.productTypology',
         'offerLines.quote',
         'offerLines.vatRate',
         'offerLines.commissions.recipient',
@@ -99,6 +102,7 @@ class QuoteService
         // rehydrates its "abbinamento buono" control from.
         'rewards.rewardType',
         'costLines.product.category',
+        'costLines.product.productTypology',
         'costLines.quote',
         'costLines.vatRate',
         'costLines.commissions.recipient',

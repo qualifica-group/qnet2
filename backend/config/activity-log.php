@@ -16,6 +16,7 @@ use App\Models\PaymentMethod;
 use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Project;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
@@ -218,6 +219,9 @@ return [
         ],
         'units-of-measure' => [
             'model' => UnitOfMeasure::class,
+        ],
+        'product-typologies' => [
+            'model' => ProductTypology::class,
         ],
         'work-orders' => [
             'model' => WorkOrder::class,

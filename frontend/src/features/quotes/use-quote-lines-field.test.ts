@@ -20,6 +20,7 @@ const PRODUCT: QuoteProductForSelectItem = {
     vat_rate_name: 'IVA 22%',
     vat_rate: '22.00',
     unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
+    product_typology: { id: 3, name: 'Consulenza' },
   },
 }
 

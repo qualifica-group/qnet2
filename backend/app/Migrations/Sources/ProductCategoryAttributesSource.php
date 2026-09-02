@@ -229,9 +229,10 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
     }
 
     /**
-     * The destination section of the assignment (spec 0061) is MANDATORY on
-     * every link: the same attribute can legitimately belong to the Product
-     * section, the Offerta section, or both, so an absent or unknown context
+     * The destination section of the assignment (spec 0061; spec 0098 adds
+     * the third) is MANDATORY on every link: the same attribute can
+     * legitimately belong to the Product section, the Offerta section, the
+     * Commessa section, or any combination, so an absent or unknown context
      * is never defaulted — it is a non-fatal warning that ignores the link.
      * A link still carrying the retired `opportunity` context (spec 0084)
      * lands on the unknown-context branch, which is the intended outcome.
@@ -244,7 +245,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $raw = trim((string) ($link['context'] ?? ''));
 
         if ($raw === '') {
-            $warnings[] = 'Attribute link without context (expected product or quote); link ignored.';
+            $warnings[] = 'Attribute link without context (expected product, quote or work_order); link ignored.';
 
             return null;
         }
@@ -252,7 +253,7 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         $context = AttributeContext::tryFrom($raw);
 
         if ($context === null) {
-            $warnings[] = "Unknown attribute link context [{$raw}] (expected product or quote); link ignored.";
+            $warnings[] = "Unknown attribute link context [{$raw}] (expected product, quote or work_order); link ignored.";
         }
 
         return $context;

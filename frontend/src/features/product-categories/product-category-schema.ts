@@ -73,6 +73,7 @@ function baseFields(t: TFunction) {
     parent_id: z.number().nullable(),
     inherits_product_attributes: z.boolean(),
     inherits_quote_attributes: z.boolean(),
+    inherits_work_order_attributes: z.boolean(),
     description: z.string().nullable(),
     business_function_id: z.number().nullable(),
     requires_quote: z.boolean(),
@@ -83,7 +84,7 @@ function baseFields(t: TFunction) {
     attributes: z.array(
       z.object({
         attribute_id: z.number(),
-        context: z.enum(['product', 'quote']),
+        context: z.enum(['product', 'quote', 'work_order']),
         is_required: z.boolean(),
         sort_order: z.number().int(),
       }),

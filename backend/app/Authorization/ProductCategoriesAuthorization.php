@@ -47,6 +47,8 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('inherits_product_attributes', 'boolean'),
             // Spec 0084: the Offerta usage context's own inheritance barrier.
             new FieldDefinition('inherits_quote_attributes', 'boolean'),
+            // Spec 0098: the Commessa usage context's own inheritance barrier.
+            new FieldDefinition('inherits_work_order_attributes', 'boolean'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('business_function_id', 'select'),
             new FieldDefinition('requires_quote', 'boolean'),
@@ -82,6 +84,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'parent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'inherits_product_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'inherits_quote_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'inherits_work_order_attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'requires_quote' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

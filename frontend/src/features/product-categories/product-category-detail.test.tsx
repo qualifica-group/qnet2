@@ -46,6 +46,7 @@ function category(
     parent: { id: 1, name: 'Electronics' },
     inherits_product_attributes: true,
     inherits_quote_attributes: true,
+    inherits_work_order_attributes: true,
     description: null,
     attributes: [],
     inherited_attributes: [],
@@ -137,6 +138,26 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
     render(<ProductCategoryDetailView category={category()} />)
 
     expect(screen.queryByRole('heading', { name: 'Product attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Work order attributes' })).not.toBeInTheDocument()
+  })
+
+  // Spec 0098: a third, independent context section.
+  it('shows an own attribute under its own "Work order attributes" section', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          attributes: [
+            { attribute_id: 4, code: 'site_access', name: 'Site access', type: 'text', is_required: false, sort_order: 0, context: 'work_order' },
+          ],
+        })}
+      />,
+    )
+
+    const workOrderSection = screen
+      .getByRole('heading', { name: 'Work order attributes' })
+      .closest('section') as HTMLElement
+    expect(within(workOrderSection).getByText('Site access')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
   })
 

@@ -23,6 +23,10 @@ use Illuminate\Database\Eloquent\Model;
  * `participant_slots` ("Partecipanti") is the optional team, the same
  * `multiselect` field type OpportunitiesAuthorization declares for its own
  * slot field.
+ *
+ * `attribute_values` (spec 0098): declared EXPLICITLY, same `custom` type and
+ * visible/editable-when-may-write ceiling as `attribute_values` on
+ * QuotesAuthorization — no contextual exception.
  */
 class WorkOrdersAuthorization extends AbstractResourceAuthorization
 {
@@ -50,6 +54,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('is_force_closed', 'select'),
             new FieldDefinition('force_close_reason', 'textarea'),
             new FieldDefinition('quote_line_ids', 'select'),
+            new FieldDefinition('attribute_values', 'custom'),
         ];
     }
 
@@ -89,6 +94,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'is_force_closed' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'force_close_reason' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_line_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

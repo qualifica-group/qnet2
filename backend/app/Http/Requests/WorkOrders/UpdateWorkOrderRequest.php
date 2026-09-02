@@ -71,6 +71,10 @@ class UpdateWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Spec 0098: "Informazioni aggiuntive", same sparse-PATCH
+            // convention as UpdateQuoteRequest — validated server-side by
+            // WorkOrderAttributeValueWriter (WorkOrderService::update()).
+            'attribute_values' => ['sometimes', 'array'],
             // Full-replace of the partecipanti pivot when — and only when —
             // the key is submitted (spec 0096, D-3/AC-024).
             ...$this->managerSlotsRules(self::PARTICIPANT_SLOTS_FIELD),

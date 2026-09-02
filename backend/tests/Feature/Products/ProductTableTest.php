@@ -34,7 +34,7 @@ if (! function_exists('productUserWith')) {
 // AC-018 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 11 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 12 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = productUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/products/columns')->assertForbidden();
@@ -49,7 +49,10 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['code', 'name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_type', 'created_at']);
+    // Spec 0099: `product_typology` (the new lookup relation) sits between
+    // `unit_of_measure` and the pre-existing `product_type` enum column, which
+    // this module deliberately leaves in place (D-1).
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_typology', 'product_type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()

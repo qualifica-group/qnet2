@@ -14,6 +14,7 @@ use App\Services\Commissions\QuoteCommissionPayloadRedactor;
 use App\Services\Commissions\QuoteCommissionSummaryCalculator;
 use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Services\Quotes\QuoteManagerSyncMode;
+use App\Services\Quotes\QuoteTypologySummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Database\Eloquent\Model;
@@ -62,6 +63,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * bounded, controlled query), relying on `offerLines.product.category`/
  * `opportunity.customFieldValueRow` already being eager-loaded so it never
  * N+1s beyond that one query.
+ *
+ * `summary.product_typologies` (spec 0099, D-6/D-7) is likewise DERIVED at
+ * request time by QuoteTypologySummaryCalculator: the revenue lines' frozen
+ * `net_amount` grouped by the typology of their product, one entry per
+ * configured typology (zero-filled). Unlike `summary.commissions` it carries
+ * no commission data, so it is unconditional — no permission gates it.
  *
  * `summary.*.gross` is DERIVED here (net + vat) at request time — NEVER
  * persisted (D-9): the 5 persisted aggregates (`revenue_net`, `revenue_vat`,
@@ -276,6 +283,8 @@ class QuoteResource extends JsonResource
             'revenue' => $this->amountTriplet($this->revenue_net, $this->revenue_vat),
             'cost' => $this->amountTriplet($this->cost_net, $this->cost_vat),
             'margin' => ['net' => $this->margin_net],
+            // Spec 0099: sums to `revenue.net` above, by construction (D-6).
+            'product_typologies' => app(QuoteTypologySummaryCalculator::class)->totals($this->resource),
         ];
 
         if ($mayViewCommissions) {

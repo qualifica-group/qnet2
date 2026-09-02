@@ -7,6 +7,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteLine } from '@/features/quotes/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
@@ -175,6 +176,8 @@ export interface CreateContractWorkOrderPayload {
   /** "Responsabili": at least one. */
   supervisor_ids: number[]
   quote_line_ids: number[]
+  /** Spec 0098 (AC-019): one key per applicable Attribute `code`, resolved from `quote_line_ids`. */
+  attribute_values: Record<string, CustomFieldValue>
 }
 
 /**

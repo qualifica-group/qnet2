@@ -50,6 +50,8 @@ interface QuoteLinesFieldProps {
   knownVatRates: QuoteLineVatRateRef[]
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+  /** Spec 0099: feeds the live per-typology summary's bucket cache on pick. */
+  rememberProductTypology?: (productId: number, typologyId: number) => void
   commissionContext?: QuoteCommissionContext
   /**
    * `false` mounts the editor WITHOUT the provvigioni column and without the
@@ -78,6 +80,7 @@ export function QuoteLinesField({
   knownVatRates,
   vatRatePercentFor,
   rememberVatRatePercent,
+  rememberProductTypology,
   commissionContext,
   withCommissions = true,
 }: QuoteLinesFieldProps) {
@@ -89,6 +92,7 @@ export function QuoteLinesField({
     onChange,
     variant,
     rememberVatRatePercent,
+    rememberProductTypology,
   })
 
   const productById = (id: number | null) => (id === null ? undefined : knownProducts.find((p) => p.id === id))

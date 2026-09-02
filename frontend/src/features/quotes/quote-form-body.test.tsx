@@ -103,6 +103,7 @@ function quoteFixture(): QuoteDetailWithPermissions {
       revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
       cost: { net: '0.00', vat: '0.00', gross: '0.00' },
       margin: { net: '0.00' },
+    product_typologies: [],
     },
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -115,7 +116,7 @@ function offerLineFixture(): QuoteLine {
   return {
     id: 1,
     product_id: 7,
-    product: { id: 7, name: 'Product 7', code: 'P7', category: null, business_function: null },
+    product: { id: 7, name: 'Product 7', code: 'P7', category: null, product_typology: null, business_function: null },
     quantity: '1.00',
     unit_of_measure: null,
     unit_price: '100.00',

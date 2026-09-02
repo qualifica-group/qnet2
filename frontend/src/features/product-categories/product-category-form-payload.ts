@@ -55,6 +55,7 @@ export function buildCreatePayload(
     parent_id: values.parent_id,
     inherits_product_attributes: values.inherits_product_attributes,
     inherits_quote_attributes: values.inherits_quote_attributes,
+    inherits_work_order_attributes: values.inherits_work_order_attributes,
     description: values.description,
     attributes: values.attributes,
     business_function_id: values.business_function_id,
@@ -100,6 +101,9 @@ export function buildUpdatePayload(
   }
   if (values.inherits_quote_attributes !== original.inherits_quote_attributes) {
     payload.inherits_quote_attributes = values.inherits_quote_attributes
+  }
+  if (values.inherits_work_order_attributes !== original.inherits_work_order_attributes) {
+    payload.inherits_work_order_attributes = values.inherits_work_order_attributes
   }
   if (values.description !== original.description) {
     payload.description = values.description

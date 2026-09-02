@@ -213,6 +213,13 @@ export function ProductCategoryDetailView({ category }: ProductCategoryDetailVie
         inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'quote')}
       />
 
+      <CategoryAttributesContextSection
+        title={t('productCategories.form.sections.workOrderAttributes.title')}
+        description={t('productCategories.form.sections.workOrderAttributes.description')}
+        own={category.attributes.filter((attribute) => attribute.context === 'work_order')}
+        inherited={category.inherited_attributes.filter((attribute) => attribute.context === 'work_order')}
+      />
+
       <ProductCategoryAttributeLayoutPreview categoryId={category.id} />
 
       {category.permissions.actions.view_activity ? (

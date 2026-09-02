@@ -375,7 +375,7 @@ describe('buildRequestWorkPayload (spec 0049 AC-062)', () => {
     const persisted: RequestWorkPanel['offer_lines'] = [{
       id: 700,
       product_id: 900,
-      product: { id: 900, code: 'FIB', name: 'Fibra', category: null, business_function: null },
+      product: { id: 900, code: 'FIB', name: 'Fibra', category: null, product_typology: null, business_function: null },
       quantity: '2.00',
       unit_of_measure: null,
       unit_price: '100.00',

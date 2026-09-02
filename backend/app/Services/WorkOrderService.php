@@ -8,6 +8,7 @@ use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\DataObjects\WorkOrders\UpdateWorkOrderData;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
+use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Support\ManagerPositions;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,13 @@ use Illuminate\Support\Facades\DB;
  * membership invariant (D-7, delegated to WorkOrderLineWriter) and the D-4
  * force-close/reason pairing. The controller stays thin; this Service is the
  * single authority.
+ *
+ * Spec 0098 (D-6): the dynamic "Informazioni aggiuntive"
+ * (WorkOrderAttributeValueWriter) is written AFTER
+ * WorkOrderLineWriter::writeSubmitted(), inside the SAME transaction as
+ * every other step — the applicable set validated against is exactly the one
+ * the form rendered its fields from, and a 422 there rolls back the whole
+ * write (AC-014/AC-015).
  */
 class WorkOrderService
 {
@@ -38,12 +46,18 @@ class WorkOrderService
      */
     private const array DETAIL_RELATIONS = [
         'quote',
-        'quoteLines.product',
+        // Spec 0098, AC-016: `.category` deepened so WorkOrderResource's
+        // attribute trio (`applicable_attributes`/`attribute_layout`) never
+        // N+1s on top of the pre-existing `quote_lines` projection.
+        'quoteLines.product.category',
         'supervisors',
         'participants',
     ];
 
-    public function __construct(private readonly WorkOrderLineWriter $lineWriter) {}
+    public function __construct(
+        private readonly WorkOrderLineWriter $lineWriter,
+        private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
+    ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
     {
@@ -80,6 +94,17 @@ class WorkOrderService
             // Step 2: validate + sync the REVENUE line membership (D-7).
             $this->lineWriter->writeSubmitted($workOrder, $data->quoteId, $data->quoteLineIds);
 
+            // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
+            // AFTER the quote lines, so the applicable set validated against
+            // is the one THOSE lines' categories produce, exactly the set the
+            // create form rendered its fields from.
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($workOrder, $data->attributeValues, $changed, $old);
+                $workOrder->save();
+            }
+
             // Step 3: the two user pivots (spec 0096, D-1/D-3), inside the
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
             $workOrder->supervisors()->sync($data->supervisorIds);
@@ -105,6 +130,18 @@ class WorkOrderService
             $workOrder->save();
 
             $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
+
+            // "Informazioni aggiuntive" (spec 0098, D-6): validated against
+            // the applicable set as it is AFTER any submitted
+            // `quote_line_ids` replace it above — i.e. the set the form
+            // rendered its fields from — then merged sparsely (a code the
+            // map leaves out keeps its persisted value).
+            if ($data->attributeValues !== null) {
+                $changed = [];
+                $old = [];
+                $this->attributeValueWriter->apply($workOrder, $data->attributeValues, $changed, $old);
+                $workOrder->save();
+            }
 
             // Full-replace only when the key was actually submitted
             // (AC-024): an untouched relation must not trigger a no-op sync.

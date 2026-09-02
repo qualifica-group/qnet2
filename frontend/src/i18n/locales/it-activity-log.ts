@@ -102,6 +102,7 @@ export const activityLog = {
     product_type: 'Tipo',
     inherits_product_attributes: 'Eredita attributi prodotto',
     inherits_quote_attributes: 'Eredita attributi offerta',
+    inherits_work_order_attributes: 'Eredita attributi commessa',
     referent_type_id: 'Tipo referente',
     contact_scope: 'Ambito contatto',
     vat_group: 'Gruppo IVA',
