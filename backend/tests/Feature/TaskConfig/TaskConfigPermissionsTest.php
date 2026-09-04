@@ -187,6 +187,9 @@ it('AC-051: the meta exposes the configurator fields, with completion_percentage
 
     if ($resource === 'task-statuses') {
         $expected[] = 'completion_percentage';
+        // The PHASE (D-5): ordinary configuration on task-statuses, and a
+        // field the other four configurators do not have at all.
+        $expected[] = 'group';
     }
 
     expect($keys)->toEqualCanonicalizing($expected)

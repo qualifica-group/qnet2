@@ -72,21 +72,24 @@ describe('buildTaskSchema — closure feedback (D-7)', () => {
     expect(result.success).toBe(true)
   })
 
-  it('does not require it on a CUSTOM status, which belongs to no phase (AC-034/D-5)', () => {
+  it('does not require it while no status is picked yet', () => {
     expect(buildTaskSchema(i18n.t, null).safeParse(closing).success).toBe(true)
   })
 
-  it('does not require it on a non-closing system status', () => {
-    expect(buildTaskSchema(i18n.t, 'in_validation').safeParse(closing).success).toBe(true)
-  })
+  it.each(['open', 'pending', 'in_validation'] as const)(
+    'does not require it in the non-closing phase "%s"',
+    (group) => {
+      expect(buildTaskSchema(i18n.t, group).safeParse(closing).success).toBe(true)
+    },
+  )
+
 })
 
-describe('isClosingStatus — the rule branches on the system key, never on a label (AC-024)', () => {
-  it('recognizes exactly the two closing keys', () => {
+describe('isClosingStatus — the rule branches on the phase, never on a label (AC-024)', () => {
+  it('recognizes exactly the two closing phases', () => {
     expect(isClosingStatus('closed_positive')).toBe(true)
     expect(isClosingStatus('closed_negative')).toBe(true)
     expect(isClosingStatus('open')).toBe(false)
-    expect(isClosingStatus('in_progress')).toBe(false)
     expect(isClosingStatus('pending')).toBe(false)
     expect(isClosingStatus('in_validation')).toBe(false)
     expect(isClosingStatus(null)).toBe(false)

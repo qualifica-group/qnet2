@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -61,8 +62,10 @@ if (! function_exists('taskActorWith')) {
 }
 
 /**
- * The two closing system statuses (D-5). A CUSTOM status is deliberately
- * absent: belonging to no phase, it is never closing (AC-034).
+ * The two PROTECTED closing statuses (D-5). An ordinary row in a closing
+ * PHASE closes just the same since the 2026-09-04 rectification — covered
+ * separately below, because it is reached through `group` and not through a
+ * `system_key`.
  */
 dataset('closingTaskStatuses', [
     'closed_positive' => [TaskStatusSystemKey::ClosedPositive],
@@ -153,21 +156,51 @@ it('AC-033: 200 without feedback when requires_closure_feedback is false', funct
     $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $closing->id]);
 });
 
-it('AC-034: 200 without feedback when the target status is CUSTOM (system_key NULL), the accepted consequence of D-5', function () {
+it('AC-034: 200 without feedback when the target status is ordinary and its phase is NOT closing', function () {
     $actor = taskActorWith(['view', 'update']);
-    // A custom status at 100 per cent: the percentage is NOT what makes a
-    // status closing — only the system_key is (D-5).
-    $custom = TaskStatus::factory()->completion(100)->create(['name' => 'Archiviato']);
-    expect($custom->system_key)->toBeNull();
+    // An ordinary status at 100 per cent, in the `Open` phase: the
+    // PERCENTAGE is not what makes a status closing, the PHASE is (D-5).
+    $ordinary = TaskStatus::factory()->completion(100)->group(TaskStatusGroup::Open)
+        ->create(['name' => 'Archiviato']);
+    expect($ordinary->system_key)->toBeNull();
 
     $task = Task::factory()->forCreator($actor)->requiringClosureFeedback()
         ->inStatus(TaskStatus::factory()->completion(0)->create())->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => $custom->id])->assertOk();
+    $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => $ordinary->id])->assertOk();
 
-    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $custom->id]);
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $ordinary->id]);
 });
+
+it('D-5 rectified: an ORDINARY status in a closing phase demands the feedback like a protected one', function (TaskStatusGroup $group) {
+    $actor = taskActorWith(['view', 'update']);
+    // No `system_key`, yet closing: this is exactly what the pre-2026-09-04
+    // shape could not express, and the reason `group` exists.
+    $closing = TaskStatus::factory()->group($group)->create();
+    expect($closing->system_key)->toBeNull()
+        ->and($closing->isClosing())->toBeTrue();
+
+    $open = TaskStatus::factory()->completion(0)->create();
+    $task = Task::factory()->forCreator($actor)->requiringClosureFeedback()->inStatus($open)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tasks/{$task->id}", ['task_status_id' => $closing->id])
+        ->assertStatus(422)->assertJsonValidationErrors('closure_feedback');
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $open->id]);
+
+    // ...and it goes through once the feedback is there, so the rule is the
+    // SAME rule, not a second one.
+    $this->patchJson("/api/tasks/{$task->id}", [
+        'task_status_id' => $closing->id, 'closure_feedback' => 'Motivazione.',
+    ])->assertOk();
+
+    $this->assertDatabaseHas('tasks', ['id' => $task->id, 'task_status_id' => $closing->id]);
+})->with([
+    'closed_positive' => [TaskStatusGroup::ClosedPositive],
+    'closed_negative' => [TaskStatusGroup::ClosedNegative],
+]);
 
 // ---------------------------------------------------------------------------
 // AC-035 — the rule is evaluated on the RESULTING record, not on the payload

@@ -12,7 +12,8 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  * Spec 0101 AC-087: the form composes the SHARED `ColorTokenPicker` and
  * `IconPicker`, so a color is picked as a palette token (never typed as a hex)
  * and an icon as a curated lucide name. AC-043: a system row keeps only
- * name/color/icon/completion_percentage writable.
+ * name/color/icon/completion_percentage writable, so its `group` phase is
+ * locked like `description`/`is_active`.
  *
  * Labels are resolved through `i18n.t` rather than hardcoded English: the
  * locale catalogue for this module is delivered by its own microtask, and the
@@ -45,6 +46,7 @@ const ALL_EDITABLE: ResourcePermissions = {
     description: EDITABLE,
     color: EDITABLE,
     icon: EDITABLE,
+    group: EDITABLE,
     is_active: EDITABLE,
     completion_percentage: EDITABLE,
   },
@@ -75,6 +77,11 @@ function percentageInput(): HTMLElement {
   return screen.getByLabelText(labelFor('taskStatuses.form.completionPercentage'))
 }
 
+/** The group phase picker, wired as a `Select` exactly like the contract statuses one. */
+function groupCombobox(): HTMLElement {
+  return screen.getByRole('combobox', { name: i18n.t('taskStatuses.form.group.label') })
+}
+
 const COLOR_PLACEHOLDER = 'customFields.form.colorPickerPlaceholder'
 const ICON_PLACEHOLDER = 'customFields.form.iconPickerPlaceholder'
 
@@ -90,6 +97,7 @@ function taskStatus(
     sort_order: 3,
     is_active: true,
     system_key: null,
+    group: 'pending',
     completion_percentage: 25,
     created_at: null,
     updated_at: null,
@@ -124,6 +132,7 @@ describe('TaskStatusForm — create (spec 0101)', () => {
     expect(screen.getByLabelText(labelFor('taskStatuses.form.icon'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t(ICON_PLACEHOLDER))).toBeInTheDocument()
     expect(percentageInput()).toBeInTheDocument()
+    expect(groupCombobox()).toHaveTextContent(i18n.t('taskStatuses.form.group.open'))
   })
 
   it('shows an accessible inline error and does not call the API when name is empty', async () => {
@@ -180,6 +189,7 @@ describe('TaskStatusForm — create (spec 0101)', () => {
       color: 'emerald',
       icon: null,
       description: null,
+      group: 'open',
       is_active: true,
       completion_percentage: 0,
     })
@@ -205,6 +215,7 @@ describe('TaskStatusForm — edit (spec 0101)', () => {
     ).toBeInTheDocument()
     expect(screen.getByLabelText(labelFor('taskStatuses.form.icon'))).toHaveTextContent('star')
     expect(percentageInput()).toHaveValue(25)
+    expect(groupCombobox()).toHaveTextContent(i18n.t('taskStatuses.form.group.pending'))
   })
 
   it('submits only the changed field on a partial update, never sort_order', async () => {
@@ -260,7 +271,7 @@ describe('TaskStatusForm — edit (spec 0101)', () => {
     await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
   })
 
-  it('locks description and the active switch on a system row (AC-043)', () => {
+  it('locks description, the group phase and the active switch on a system row (AC-043)', () => {
     render(
       <TaskStatusForm
         mode={{ type: 'edit', taskStatus: taskStatus({ system_key: 'closed_positive' }) }}
@@ -271,6 +282,7 @@ describe('TaskStatusForm — edit (spec 0101)', () => {
     )
 
     expect(screen.getByLabelText(labelFor('taskStatuses.form.description'))).toBeDisabled()
+    expect(groupCombobox()).toBeDisabled()
     expect(screen.getByRole('switch')).toBeDisabled()
     // name / color / icon / completion_percentage stay writable (MUTABLE_SYSTEM_FIELDS).
     expect(screen.getByLabelText(labelFor('taskStatuses.form.name'))).toBeEnabled()

@@ -3,32 +3,31 @@
 namespace App\Enums;
 
 /**
- * The six mandatory phases every Task status configurator carries (spec
- * 0101, D-5), persisted as `task_statuses.system_key` (nullable — custom
- * rows have none). Unlike `App\Enums\StatusSystemKey` (contract/pipeline/
- * reward statuses), these six keys ARE the fases: there is no separate
- * `group` column, so this enum is the ONLY place the phase set is declared.
- * Never mass-assignable (the six rows are created by the migration; only
- * `App\Services\Statuses\SystemStatusGuard` protects them afterwards).
+ * The PROTECTED rows of the Task status configurator (spec 0101, D-5 as
+ * rectified by the user directive 2026-09-04), persisted as
+ * `task_statuses.system_key` — UNIQUE, and NULL on every ordinary row.
+ * A row carrying one of these keys cannot be deleted and accepts only the
+ * changes App\Services\Statuses\SystemStatusGuard allows.
+ *
+ * These three are the minimum the module needs to stay usable whatever the
+ * admin configures: a Task must always have a status to be opened in, and
+ * one to be closed in on each outcome. Everything else — how many working
+ * or validation steps sit in between, and what they are called — is ordinary
+ * configuration.
+ *
+ * NOT the phase set: that is App\Enums\TaskStatusGroup (`task_statuses.group`),
+ * a MANY-to-one classification. `system_key` is UNIQUE and could never carry
+ * it — the reason the two are separate columns, exactly as in
+ * `contract_statuses`. The three keys dropped here (`in_progress`, `pending`,
+ * `in_validation`) were phases mislabelled as system keys; they live on as
+ * TaskStatusGroup cases.
+ *
+ * Never mass-assignable: the rows are created by the migration, and only
+ * SystemStatusGuard protects them afterwards.
  */
 enum TaskStatusSystemKey: string
 {
     case Open = 'open';
-    case InProgress = 'in_progress';
-    case Pending = 'pending';
-    case InValidation = 'in_validation';
     case ClosedPositive = 'closed_positive';
     case ClosedNegative = 'closed_negative';
-
-    /**
-     * Whether this phase is a closing one — the trigger condition for
-     * `App\Services\Tasks\TaskClosureFeedbackGuard` (D-7).
-     */
-    public function isClosing(): bool
-    {
-        return match ($this) {
-            self::ClosedPositive, self::ClosedNegative => true,
-            default => false,
-        };
-    }
 }

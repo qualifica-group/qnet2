@@ -17,7 +17,11 @@ import { StatusDescriptionHint } from '@/features/quote-workflows/status-descrip
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName, type GeoScope, type GeoScopeNames } from '@/features/geo/geo-scope'
-import type { ContractStatusGroupValue, StatusGroupValue } from '@/features/status-reorder/types'
+import type {
+  ContractStatusGroupValue,
+  StatusGroupValue,
+  TaskStatusGroupValue,
+} from '@/features/status-reorder/types'
 
 /**
  * Cross-module cell library. Every table (projects, campaigns, leads, imports,
@@ -206,18 +210,26 @@ export function ColorSwatchCell({ value }: ICellRendererParams) {
 
 /**
  * Static swatch token per status group (spec 0039: no per-row color stored).
- * Covers both vocabularies: the shared 3-value one (pipeline / opportunity
- * statuses) and the contract statuses one (spec 0072 D-5, a dedicated enum
- * sharing the same 4 string values), whose closed phase carries its
- * outcome — closed_won reuses the positive green family, closed_lost the red
- * of the flat `closed`.
+ * Covers all three vocabularies: the shared 3-value one (pipeline /
+ * opportunity statuses), the contract statuses one (spec 0072 D-5) and the
+ * task statuses one (spec 0101 D-5), whose closed phases carry their outcome —
+ * `closed_won`/`closed_positive` reuse the positive green family,
+ * `closed_lost`/`closed_negative` the red of the flat `closed`. `in_validation`
+ * is a waiting phase like `pending`, but a distinct one, so it reads as blue
+ * rather than sharing the orange.
  */
-const GROUP_SWATCH_TOKENS: Record<StatusGroupValue | ContractStatusGroupValue, string> = {
+const GROUP_SWATCH_TOKENS: Record<
+  StatusGroupValue | ContractStatusGroupValue | TaskStatusGroupValue,
+  string
+> = {
   open: 'green',
   pending: 'orange',
+  in_validation: 'blue',
   closed: 'red',
   closed_won: 'emerald',
   closed_lost: 'red',
+  closed_positive: 'emerald',
+  closed_negative: 'red',
 }
 
 /**
@@ -230,7 +242,12 @@ export function GroupCell({
   labelPrefix,
 }: ICellRendererParams & { labelPrefix: string }) {
   const { t } = useTranslation()
-  const group = value as StatusGroupValue | ContractStatusGroupValue | null | undefined
+  const group = value as
+    | StatusGroupValue
+    | ContractStatusGroupValue
+    | TaskStatusGroupValue
+    | null
+    | undefined
   if (!group) {
     return <EmptyCell align="left" />
   }

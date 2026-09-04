@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
+import { TASK_STATUS_GROUPS } from '@/features/status-reorder/types'
 import { TaskStatusesTable } from '@/features/task-statuses/task-statuses-table'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
@@ -221,5 +222,27 @@ describe('TaskStatusesTable — inactive badge copy', () => {
     expect(translate(`${KEY}.absent`)).toBe(`${KEY}.absent`)
 
     expect(translate(KEY)).not.toBe(KEY)
+  })
+})
+
+/**
+ * `GroupCell` resolves its label through a TEMPLATE LITERAL
+ * (`taskStatuses.form.group.<value>`), so a value with no copy renders the raw
+ * key straight into the grid and nothing else fails. Same silent failure mode
+ * as the badge above, so it gets the same discriminating guard — one assertion
+ * per fixed phase value, in both languages.
+ */
+describe('TaskStatusesTable — group column copy', () => {
+  const GROUP_KEYS = [
+    'taskStatuses.columns.group',
+    'taskStatuses.form.group.label',
+    ...TASK_STATUS_GROUPS.map((group) => `taskStatuses.form.group.${group}`),
+  ]
+
+  it.each(['en', 'it'])('resolves every %s phase label from the real bundle', (lng) => {
+    const translate = i18n.getFixedT(lng)
+
+    expect(translate('taskStatuses.form.group.absent')).toBe('taskStatuses.form.group.absent')
+    expect(GROUP_KEYS.filter((key) => translate(key) === key)).toEqual([])
   })
 })

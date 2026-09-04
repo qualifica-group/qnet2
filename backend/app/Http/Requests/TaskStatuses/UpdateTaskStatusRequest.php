@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\TaskStatuses;
 
 use App\DataObjects\TaskStatuses\UpdateTaskStatusData;
+use App\Enums\TaskStatusGroup;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\TaskStatus;
 use App\Support\BadgeTokens;
@@ -27,6 +28,8 @@ use Illuminate\Validation\Rule;
  * App\Support\BadgeTokens' allow-lists (AC-046).
  *
  * `sort_order` and `system_key` are `prohibited` (AC-045).
+ * `group` is `sometimes|required`: submitting it null/empty is a 422, not a
+ * way back to "no phase".
  * On a SYSTEM row (`system_key` valorised) every submitted key beyond
  * name/color/icon/completion_percentage is rejected one layer further in, by
  * App\Services\Statuses\SystemStatusGuard (AC-043): the guard needs the
@@ -62,6 +65,7 @@ class UpdateTaskStatusRequest extends FormRequest
             'icon' => ['sometimes', 'nullable', 'string', Rule::in(BadgeTokens::icons())],
             'is_active' => ['sometimes', 'boolean'],
             'completion_percentage' => ['sometimes', 'required', 'integer', 'min:0', 'max:100'],
+            'group' => ['sometimes', 'required', 'string', Rule::enum(TaskStatusGroup::class)],
             'sort_order' => ['prohibited'],
             'system_key' => ['prohibited'],
         ];

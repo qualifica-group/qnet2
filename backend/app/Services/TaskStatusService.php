@@ -22,9 +22,8 @@ use Illuminate\Support\Collection;
  * backfill (AC-021).
  *
  * `sort_order` is server-managed — placed by StatusOrderManager::placeNew()
- * on create, resequenced by reorder(); the six mandatory system rows (D-5)
- * are protected by the shared SystemStatusGuard on both update() and
- * delete().
+ * on create, resequenced by reorder(); the three protected rows (D-5) are
+ * guarded by the shared SystemStatusGuard on both update() and delete().
  *
  * The controller stays thin; this Service is the single authority.
  */
@@ -36,14 +35,15 @@ class TaskStatusService
      * the deactivated rows it asked for via `include_inactive`): a column
      * left out here would silently serialize as null, not as false.
      *
-     * Identity, the badge
-     * attributes (`color`/`icon`), the system phase (D-5) and the
-     * completion the Task form projects from the picked status (D-6,
-     * AC-084).
+     * Identity, the badge attributes (`color`/`icon`), the protection key
+     * and the PHASE (D-5), and the completion the Task form projects from
+     * the picked status (D-6, AC-084). `group` cannot be left out: the
+     * resource reads it as an enum, and a missing column would be null
+     * rather than a phase.
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'system_key', 'completion_percentage'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'name', 'color', 'icon', 'is_active', 'system_key', 'group', 'completion_percentage'];
 
     public function __construct(
         private readonly StatusOrderManager $orderManager,
@@ -82,7 +82,7 @@ class TaskStatusService
      * a side effect (AC-041). Defense in depth: the FK is also
      * restrictOnDelete at the schema layer. The generic bulk-delete goes
      * through the SAME method via TaskStatusesTableDefinition::deleteModel(). The
-     * system-row guard (D-8c) runs FIRST: one of the six mandatory rows is
+     * system-row guard (D-8c) runs FIRST: one of the three protected rows is
      * never deletable, regardless of whether it happens to be unreferenced
      * (AC-042).
      */
@@ -101,7 +101,7 @@ class TaskStatusService
      * Resequences every custom row to $orderedIds' order and returns the
      * fresh, complete, ordered list (AC-047). See
      * App\Services\Statuses\StatusOrderManager::reorder() for the
-     * validation/renormalization rules: the six system rows are pinned
+     * validation/renormalization rules: the protected rows are pinned
      * (head/tail) and can neither be moved nor omitted.
      *
      * @param  array<int, int>  $orderedIds

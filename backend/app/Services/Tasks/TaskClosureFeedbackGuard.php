@@ -20,10 +20,12 @@ use Illuminate\Validation\ValidationException;
  * record (AC-035) and a violation leaves the Task untouched (AC-030). This
  * cannot live in a FormRequest, which knows nothing of the persisted row.
  *
- * "Closing" is decided by `system_key` alone (TaskStatus::isClosing(),
- * App\Enums\TaskStatusSystemKey), never by a label (AC-023/AC-024) — so a
- * CUSTOM status (`system_key` NULL) is never closing and never triggers the
- * rule, the consequence D-5 declares and AC-034 pins.
+ * "Closing" is decided by the PHASE (TaskStatus::isClosing() ->
+ * App\Enums\TaskStatusGroup::isClosing()), never by a label (AC-023/AC-024)
+ * and no longer by `system_key`: since the 2026-09-04 rectification of D-5
+ * an ORDINARY status an admin placed in a closing phase triggers this rule
+ * exactly like a protected one, which is what D-5 named as the fix for the
+ * consequence AC-034 used to pin.
  */
 final class TaskClosureFeedbackGuard
 {

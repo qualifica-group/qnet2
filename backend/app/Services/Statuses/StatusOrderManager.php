@@ -20,11 +20,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * TaskStatus share the exact same name/system_key/sort_order shape,
  * differing only in which system rows pin to the HEAD
  * (`$modelClass::SYSTEM_HEAD_KEYS` — `[New]` for PipelineStatus/
- * ContractStatus, `[Pending]` for RewardStatus, the four WORKING phases for
- * TaskStatus) and which pin to the TAIL (`$modelClass::SYSTEM_TAIL_KEYS` —
+ * ContractStatus, `[Pending]` for RewardStatus, `[Open]` for TaskStatus) and
+ * which pin to the TAIL (`$modelClass::SYSTEM_TAIL_KEYS` —
  * PipelineStatus: `[Closed]`; RewardStatus: `[Won, Lost]`; ContractStatus:
- * `[Suspended, Cancelled, Terminated]`, spec 0072 D-2; TaskStatus: the two
- * CLOSING phases, spec 0101 D-5). The `opportunity_statuses`/`quote_statuses`
+ * `[Suspended, Cancelled, Terminated]`, spec 0072 D-2; TaskStatus: its two protected
+ * CLOSING rows, spec 0101 D-5). The `opportunity_statuses`/`quote_statuses`
  * configurators this class once also covered are gone (spec 0082/0083): an
  * Opportunity's/Offerta's status is COMPUTED/criteria-resolved, no longer a
  * flat configurable pick-list.

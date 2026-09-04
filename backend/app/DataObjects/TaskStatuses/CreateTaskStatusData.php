@@ -17,6 +17,9 @@ namespace App\DataObjects\TaskStatuses;
  * server-side allow-list (D-4).
  * `completionPercentage` is REQUIRED (D-6): the Task's completion is a
  * PROJECTION of its status, so every status must declare one.
+ * `group` is REQUIRED too (App\Enums\TaskStatusGroup): every row declares
+ * the phase it belongs to — it is what decides whether reaching the status
+ * closes the Task (D-7).
  */
 final readonly class CreateTaskStatusData
 {
@@ -27,6 +30,7 @@ final readonly class CreateTaskStatusData
         public ?string $icon,
         public bool $isActive,
         public int $completionPercentage,
+        public string $group,
     ) {}
 
     /**
@@ -43,6 +47,7 @@ final readonly class CreateTaskStatusData
             icon: array_key_exists('icon', $data) ? $data['icon'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
             completionPercentage: (int) $data['completion_percentage'],
+            group: (string) $data['group'],
         );
     }
 
@@ -61,6 +66,7 @@ final readonly class CreateTaskStatusData
             'icon' => $this->icon,
             'is_active' => $this->isActive,
             'completion_percentage' => $this->completionPercentage,
+            'group' => $this->group,
         ];
     }
 }

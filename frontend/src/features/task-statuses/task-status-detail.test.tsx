@@ -8,7 +8,8 @@ import type { TaskStatusDetailWithPermissions } from '@/features/task-statuses/t
 /**
  * Spec 0101: the detail shows the name (hero title), description, the palette
  * color as its localized token name, the icon as its canonical lucide name,
- * the completion percentage, the server-managed order and the active flag. Purely
+ * the phase label, the completion percentage, the server-managed order and the
+ * active flag. Purely
  * presentational, so the Activity Log gate is exercised directly on the
  * `permissions.actions.view_activity` prop.
  *
@@ -39,6 +40,7 @@ function taskStatus(
     sort_order: 3,
     is_active: true,
     system_key: null,
+    group: 'pending',
     completion_percentage: 25,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
@@ -71,6 +73,12 @@ describe('TaskStatusDetailView — detail fields', () => {
     expect(screen.getByText('Yes')).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-01-01T09:00:00Z'))).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-02-15T14:30:00Z'))).toBeInTheDocument()
+  })
+
+  it('shows the localized label of the phase the status belongs to', () => {
+    render(<TaskStatusDetailView taskStatus={taskStatus({ group: 'in_validation' })} />)
+
+    expect(screen.getByText(i18n.t('taskStatuses.form.group.in_validation'))).toBeInTheDocument()
   })
 
   it('shows the completion percentage projected onto every task in this status (D-6)', () => {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\ExportRun;
 use App\Models\Task;
@@ -94,6 +95,20 @@ it('AC-020: TaskResource.completion_percentage equals the status percentage', fu
         ->assertOk()
         ->assertJsonPath('data.completion_percentage', 35)
         ->assertJsonPath('data.task_status.completion_percentage', 35);
+});
+
+it('D-5: the status ref carries the PHASE, so the client can mirror D-7 off the persisted status', function () {
+    $actor = taskActorWith(['view']);
+    // An ORDINARY row in a closing phase: the case the client cannot decide
+    // from `system_key` alone since the 2026-09-04 rectification.
+    $closing = TaskStatus::factory()->group(TaskStatusGroup::ClosedNegative)->create();
+    $task = Task::factory()->forCreator($actor)->inStatus($closing)->create();
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$task->id}")
+        ->assertOk()
+        ->assertJsonPath('data.task_status.group', 'closed_negative')
+        ->assertJsonPath('data.task_status.system_key', null);
 });
 
 it('AC-020: moving the Task to another status changes the percentage with no write to tasks', function () {

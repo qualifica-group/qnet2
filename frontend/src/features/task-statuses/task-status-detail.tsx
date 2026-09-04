@@ -25,8 +25,9 @@ interface TaskStatusDetailViewProps {
  * Read-only detail of a single task status. Purely presentational: the caller
  * (the table's "view" sheet) fetches the fresh detail and passes it down.
  * Composed from the shared detail kit for a consistent CRM look. `color` is
- * shown as its swatch + localized token name and `icon` as the resolved
- * glyph + its canonical name, both from the shared palette/catalogue.
+ * shown as its swatch + localized token name, `icon` as the resolved glyph +
+ * its canonical name (both from the shared palette/catalogue) and `group` as
+ * the localized label of its fixed phase.
  */
 export function TaskStatusDetailView({ taskStatus }: TaskStatusDetailViewProps) {
   const { t } = useTranslation()
@@ -64,6 +65,9 @@ export function TaskStatusDetailView({ taskStatus }: TaskStatusDetailViewProps) 
             ) : (
               <DetailEmpty />
             )}
+          </DetailField>
+          <DetailField label={t('taskStatuses.detail.group')}>
+            {t(`taskStatuses.form.group.${taskStatus.group}`)}
           </DetailField>
           <DetailField label={t('taskStatuses.detail.completionPercentage')}>
             {`${taskStatus.completion_percentage}%`}

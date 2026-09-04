@@ -23,10 +23,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * eager-loaded already SCOPED by TaskService (AC-066), so this resource does
  * no filtering of its own and cannot drift from the query.
  *
- * Nothing here keys off a status LABEL (AC-024): `system_key` is exposed as
- * the raw enum value so the client can drive behaviour off the phase, and
- * `color`/`icon` come from the configurator row so a badge changes with its
- * configuration and not with the code (AC-072).
+ * Nothing here keys off a status LABEL (AC-024): the status ref exposes the
+ * raw enum values of BOTH `system_key` (protection) and `group` (the PHASE)
+ * so the client can drive behaviour off them. `group` is what the closure
+ * rule branches on since the 2026-09-04 rectification of D-5, and the client
+ * mirrors D-7 for UX off the PERSISTED status too — a partial PATCH that
+ * changes nothing else must still be able to tell whether the task is
+ * already in a closing phase, which it cannot do from `system_key` alone
+ * (an ORDINARY row closes just as well now). `color`/`icon` come from the
+ * configurator row so a badge changes with its configuration and not with
+ * the code (AC-072).
  *
  * @mixin Task
  */
@@ -109,6 +115,7 @@ class TaskResource extends JsonResource
             'color' => $status->color,
             'icon' => $status->icon,
             'system_key' => $status->system_key?->value,
+            'group' => $status->group->value,
             'completion_percentage' => $status->completion_percentage,
         ];
     }

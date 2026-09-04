@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\TaskStatus;
 use App\Support\BadgeTokens;
@@ -18,12 +19,17 @@ class TaskStatusFactory extends Factory
     private static int $nextSortOrder = 0;
 
     /**
-     * Default: a CUSTOM row — `system_key` null, therefore belonging to no
-     * phase and never a closing status (D-5). The six mandatory system rows
-     * are created by the migration, not built through this factory: a test
-     * that needs one queries it by `system_key`, and `system_key` is not
-     * mass-assignable anyway, so the `system()` state below writes it
-     * directly.
+     * Default: an ORDINARY row — `system_key` null — in the `Open` phase.
+     * `group` is FIXED at Open rather than randomized because it is not a
+     * cosmetic attribute: D-7 makes a status in a CLOSING phase demand a
+     * closure feedback, so a random phase would make the feedback tests pass
+     * or fail depending on the roll. A test that needs a specific phase opts
+     * in through the `group()` state below.
+     *
+     * The protected system rows are created by the migrations, not built
+     * through this factory: a test that needs one queries it by
+     * `system_key`, which is not mass-assignable anyway — hence the
+     * `system()` state's forceFill.
      *
      * `completion_percentage` is deliberately FIXED at 0 rather than
      * randomized: it is not a cosmetic attribute — it is the value AC-020/
@@ -42,8 +48,14 @@ class TaskStatusFactory extends Factory
             'sort_order' => self::$nextSortOrder++,
             'is_active' => true,
             'system_key' => null,
+            'group' => TaskStatusGroup::Open,
             'completion_percentage' => 0,
         ];
+    }
+
+    public function group(TaskStatusGroup $group): static
+    {
+        return $this->state(fn () => ['group' => $group]);
     }
 
     public function completion(int $percentage): static

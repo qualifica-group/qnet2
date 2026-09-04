@@ -87,7 +87,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     handleRegistryChange,
     handleStatusItemChange,
     completionPercentage,
-    statusSystemKey,
+    statusGroup,
   } = useTaskForm({ mode, onSuccess })
 
   const task = persistedTask(mode)
@@ -134,7 +134,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
             workOrder={workOrderRefOf(task)}
           />
 
-          <TaskClosureSection control={form.control} statusSystemKey={statusSystemKey} />
+          <TaskClosureSection control={form.control} statusGroup={statusGroup} />
 
           {serverError ? (
             <p className="text-sm font-medium text-destructive" role="alert">

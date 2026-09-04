@@ -6,20 +6,17 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 
 /**
  * `App\Enums\TaskStatusSystemKey` (D-5). The ONLY thing application logic may
  * branch on: a status LABEL never enters a condition (AC-024). A custom
- * status created by an admin carries `null` here and therefore belongs to no
- * phase.
+ * status created by an admin carries `null` here and is therefore never a
+ * closing one. The working phases (`in_progress`/`pending`/`in_validation`)
+ * are NOT system keys: they live on the status `group`, which both system and
+ * custom rows carry.
  */
-export type TaskStatusSystemKey =
-  | 'open'
-  | 'in_progress'
-  | 'pending'
-  | 'in_validation'
-  | 'closed_positive'
-  | 'closed_negative'
+export type TaskStatusSystemKey = 'open' | 'closed_positive' | 'closed_negative'
 
 /** Badge projection shared by type/priority/importance/category (`{id,name,color,icon}`). */
 export interface TaskLookupRef {
@@ -31,9 +28,15 @@ export interface TaskLookupRef {
   icon: string | null
 }
 
-/** The status projection: a lookup ref plus the two columns only `task_statuses` has (D-4). */
+/**
+ * The status projection: a lookup ref plus the columns only `task_statuses`
+ * has. `group` is the PHASE and is what the closure rule branches on since the
+ * 2026-09-04 rectification of D-5; `system_key` survives for protection only
+ * (which rows may not be deleted/reordered), no longer for closure.
+ */
 export interface TaskStatusRef extends TaskLookupRef {
   system_key: TaskStatusSystemKey | null
+  group: TaskStatusGroupValue
   completion_percentage: number
 }
 

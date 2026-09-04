@@ -17,7 +17,8 @@ namespace App\DataObjects\TaskStatuses;
  *
  * `sort_order`/`system_key` is GONE — server-managed (AC-045).
  * `completionPercentage` is `sometimes|required|integer` at the FormRequest
- * layer, so it needs no submitted flag either.
+ * layer, so it needs no submitted flag either, and neither does `group`
+ * (`sometimes|required|string`): a non-null value always means "submitted".
  */
 final readonly class UpdateTaskStatusData
 {
@@ -31,6 +32,7 @@ final readonly class UpdateTaskStatusData
         public ?bool $isActive = null,
         public bool $isActiveSubmitted = false,
         public ?int $completionPercentage = null,
+        public ?string $group = null,
     ) {}
 
     /**
@@ -50,6 +52,7 @@ final readonly class UpdateTaskStatusData
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             isActiveSubmitted: array_key_exists('is_active', $data),
             completionPercentage: array_key_exists('completion_percentage', $data) ? (int) $data['completion_percentage'] : null,
+            group: array_key_exists('group', $data) ? (string) $data['group'] : null,
         );
     }
 
@@ -88,6 +91,10 @@ final readonly class UpdateTaskStatusData
 
         if ($this->completionPercentage !== null) {
             $attributes['completion_percentage'] = $this->completionPercentage;
+        }
+
+        if ($this->group !== null) {
+            $attributes['group'] = $this->group;
         }
 
         return $attributes;

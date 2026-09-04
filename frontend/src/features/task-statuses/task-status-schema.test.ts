@@ -8,8 +8,8 @@ import {
 /**
  * Spec 0101 AC-046: `color` must be a palette TOKEN and `icon` a name of the
  * curated lucide catalogue, and `completion_percentage` an integer in 0..100.
- * The client mirrors the server allow-lists (defense in depth), it does not
- * replace them.
+ * `group` is the fixed 5-value phase enum, required on create. The client
+ * mirrors the server allow-lists (defense in depth), it does not replace them.
  */
 
 beforeAll(async () => {
@@ -21,6 +21,7 @@ const VALID_VALUES = {
   description: null,
   color: 'blue',
   icon: 'star',
+  group: 'pending',
   is_active: true,
   completion_percentage: 25,
 }
@@ -78,11 +79,32 @@ describe('buildCreateTaskStatusSchema (spec 0101)', () => {
     const schema = buildCreateTaskStatusSchema(i18n.t)
     expect(schema.safeParse({ ...VALID_VALUES, completion_percentage }).success).toBe(true)
   })
+
+  it.each(['open', 'pending', 'in_validation', 'closed_positive', 'closed_negative'] as const)(
+    'accepts the group value "%s"',
+    (group) => {
+      const schema = buildCreateTaskStatusSchema(i18n.t)
+      expect(schema.safeParse({ ...VALID_VALUES, group }).success).toBe(true)
+    },
+  )
+
+  it('rejects a group value outside the fixed enum', () => {
+    const schema = buildCreateTaskStatusSchema(i18n.t)
+    expect(schema.safeParse({ ...VALID_VALUES, group: 'in_progress' }).success).toBe(false)
+  })
+
+  it('rejects a missing group (required on create)', () => {
+    const schema = buildCreateTaskStatusSchema(i18n.t)
+    const withoutGroup: Partial<typeof VALID_VALUES> = { ...VALID_VALUES }
+    delete withoutGroup.group
+    expect(schema.safeParse(withoutGroup).success).toBe(false)
+  })
 })
 
 describe('buildUpdateTaskStatusSchema', () => {
   it('has the same shape as the create schema', () => {
     const schema = buildUpdateTaskStatusSchema(i18n.t)
     expect(schema.safeParse(VALID_VALUES).success).toBe(true)
+    expect(schema.safeParse({ ...VALID_VALUES, group: 'closed_negative' }).success).toBe(true)
   })
 })

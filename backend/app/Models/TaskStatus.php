@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -18,45 +19,46 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * backfill (AC-021).
  *
  * `system_key` is DELIBERATELY absent from #[Fillable] — never
- * mass-assignable, written only by the create migration, protected
- * afterwards by App\Services\Statuses\SystemStatusGuard. Unlike
- * ContractStatus there is no `group` column: the six keys of
- * App\Enums\TaskStatusSystemKey already ARE the phases (D-5), so a status
- * with a NULL `system_key` belongs to no phase and is therefore never a
- * closing one (the accepted consequence recorded in AC-034).
+ * mass-assignable, written only by the migrations, protected afterwards by
+ * App\Services\Statuses\SystemStatusGuard. Since the 2026-09-04
+ * rectification of D-5 it marks only the three PROTECTED rows
+ * (App\Enums\TaskStatusSystemKey), NOT the phase: the phase is `group`
+ * (App\Enums\TaskStatusGroup), exactly as on ContractStatus. `system_key`
+ * is UNIQUE and could never carry a many-to-one classification — five
+ * statuses share the `open` phase in the client's own vocabulary.
+ *
+ * `group` IS fillable: every row, system or custom, declares a phase, and a
+ * custom row in a closing phase closes the Task like any other (isClosing()
+ * below). On a system row SystemStatusGuard still rejects it, so the
+ * migration's phase assignment stays put.
  *
  * `sort_order` stays fillable: server-managed by
  * App\Services\Statuses\StatusOrderManager, never accepted at the
  * FormRequest layer (AC-045).
  */
-#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'completion_percentage'])]
+#[Fillable(['name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'completion_percentage', 'group'])]
 class TaskStatus extends BaseModel
 {
     /** @use HasFactory<TaskStatusFactory> */
     use HasFactory, LogsModelActivity;
 
     /**
-     * The system rows pinned to the HEAD of the sort_order sequence
-     * (StatusOrderManager), in the order they must appear: the four WORKING
-     * phases, `Open` at 0 through `InValidation`. Named by system_key, never
-     * by label — the label is admin-configurable and means nothing to this
-     * code (D-5). A custom status is never a closing one, so it belongs among
-     * these, which is exactly where the manager places it — between the head
-     * and the tail.
+     * The system row pinned to the HEAD of the sort_order sequence
+     * (StatusOrderManager): the single protected opening status, at 0.
+     * Named by system_key, never by label — the label is admin-configurable
+     * and means nothing to this code (D-5). Every other row, protected or
+     * not, is placed between this head and the closing tail below.
      *
      * @var array<int, TaskStatusSystemKey>
      */
     public const array SYSTEM_HEAD_KEYS = [
         TaskStatusSystemKey::Open,
-        TaskStatusSystemKey::InProgress,
-        TaskStatusSystemKey::Pending,
-        TaskStatusSystemKey::InValidation,
     ];
 
     /**
      * The system rows pinned to the TAIL, in the order they must appear: the
-     * two CLOSING phases. Pinned last so no custom row can ever be ordered
-     * after a closing status.
+     * two protected CLOSING rows. Pinned last so no ordinary row is ever
+     * ordered after them.
      *
      * @var array<int, TaskStatusSystemKey>
      */
@@ -75,6 +77,7 @@ class TaskStatus extends BaseModel
             'is_active' => 'bool',
             'completion_percentage' => 'int',
             'system_key' => TaskStatusSystemKey::class,
+            'group' => TaskStatusGroup::class,
         ];
     }
 
@@ -91,8 +94,8 @@ class TaskStatus extends BaseModel
     }
 
     /**
-     * Whether this is one of the six mandatory system rows rather than a
-     * custom, admin-created status.
+     * Whether this is one of the three protected system rows rather than an
+     * ordinary, admin-managed status.
      */
     public function isSystem(): bool
     {
@@ -101,11 +104,12 @@ class TaskStatus extends BaseModel
 
     /**
      * Whether reaching this status closes the Task — the trigger condition
-     * of App\Services\Tasks\TaskClosureFeedbackGuard (D-7). A custom status
-     * is never closing (D-5).
+     * of App\Services\Tasks\TaskClosureFeedbackGuard (D-7). Decided on the
+     * PHASE, so an ordinary status an admin placed in a closing phase closes
+     * the Task exactly like a protected one (D-5 as rectified 2026-09-04).
      */
     public function isClosing(): bool
     {
-        return $this->system_key?->isClosing() ?? false;
+        return $this->group->isClosing();
     }
 }

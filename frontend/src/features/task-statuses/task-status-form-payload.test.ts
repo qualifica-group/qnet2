@@ -16,6 +16,7 @@ const formValues: TaskStatusFormValues = {
   description: 'Follow-up on the client request',
   color: 'blue',
   icon: 'star',
+  group: 'pending',
   is_active: true,
   completion_percentage: 25,
 }
@@ -30,6 +31,7 @@ function original(overrides: Partial<TaskStatusDetail> = {}): TaskStatusDetail {
     sort_order: 3,
     is_active: true,
     system_key: null,
+    group: 'pending',
     completion_percentage: 25,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -44,6 +46,7 @@ describe('buildCreatePayload (spec 0101)', () => {
       color: 'blue',
       icon: 'star',
       description: 'Follow-up on the client request',
+      group: 'pending',
       is_active: true,
       completion_percentage: 25,
     })
@@ -81,6 +84,12 @@ describe('buildUpdatePayload (spec 0101)', () => {
     })
   })
 
+  it('includes only the changed group', () => {
+    expect(buildUpdatePayload({ ...formValues, group: 'in_validation' }, original())).toEqual({
+      group: 'in_validation',
+    })
+  })
+
   it('includes only the changed completion percentage (AC-044)', () => {
     expect(
       buildUpdatePayload({ ...formValues, completion_percentage: 100 }, original()),
@@ -89,7 +98,15 @@ describe('buildUpdatePayload (spec 0101)', () => {
 
   it('never carries sort_order or system_key, even on a fully changed form', () => {
     const payload = buildUpdatePayload(
-      { ...formValues, name: 'Renamed', color: 'teal', icon: '', is_active: false, completion_percentage: 90 },
+      {
+        ...formValues,
+        name: 'Renamed',
+        color: 'teal',
+        icon: '',
+        group: 'closed_positive',
+        is_active: false,
+        completion_percentage: 90,
+      },
       original(),
     )
     expect(payload).not.toHaveProperty('sort_order')

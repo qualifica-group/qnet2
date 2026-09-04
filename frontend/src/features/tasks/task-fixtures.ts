@@ -30,7 +30,8 @@ export function taskStatus(overrides: Partial<TaskStatusRef> = {}): TaskStatusRe
     name: 'In lavorazione',
     color: 'blue',
     icon: null,
-    system_key: 'in_progress',
+    system_key: 'open',
+    group: 'open',
     completion_percentage: 25,
     ...overrides,
   }

@@ -25,12 +25,16 @@ const SERVER_ERROR_FIELDS = [
   'description',
   'color',
   'icon',
+  'group',
   'is_active',
   'completion_percentage',
 ] as const
 
 /** Default percentage of a brand-new custom status: it starts at the "open" end. */
 const DEFAULT_COMPLETION_PERCENTAGE = 0
+
+/** Phase a brand-new custom status is born in, matching its default percentage. */
+const DEFAULT_GROUP = 'open'
 
 export type TaskStatusFormValues = CreateTaskStatusFormValues & UpdateTaskStatusFormValues
 
@@ -64,6 +68,7 @@ export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
         description: mode.taskStatus.description,
         color: mode.taskStatus.color,
         icon: mode.taskStatus.icon ?? '',
+        group: mode.taskStatus.group,
         is_active: mode.taskStatus.is_active,
         completion_percentage: mode.taskStatus.completion_percentage,
       }
@@ -73,6 +78,7 @@ export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
       description: null,
       color: '',
       icon: '',
+      group: DEFAULT_GROUP,
       is_active: true,
       completion_percentage: DEFAULT_COMPLETION_PERCENTAGE,
     }

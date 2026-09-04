@@ -9,19 +9,21 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { isClosingStatus } from '@/features/tasks/task-schema'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
-import type { TaskStatusSystemKey } from '@/features/tasks/types'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 
 interface TaskClosureSectionProps {
   control: Control<TaskFormValues>
-  /** `system_key` of the status currently picked; the ONLY thing this rule branches on (AC-024). */
-  statusSystemKey: TaskStatusSystemKey | null
+  /** `group` (phase) of the status currently picked; the ONLY thing this rule branches on (AC-024). */
+  statusGroup: TaskStatusGroupValue | null
 }
 
 /**
  * "Feedback di chiusura" (D-7). The flag is a plain `MetaField`; the feedback
  * itself is marked required exactly when the flag is on AND the picked status
- * has a closing `system_key` — a condition on live FORM state that the
- * backend's field-permission ceiling cannot express, so it is decided here.
+ * sits in a closing PHASE — a condition on live FORM state that the backend's
+ * field-permission ceiling cannot express, so it is decided here. An ordinary
+ * status in a closing phase closes the task like a seeded one (rectification
+ * of 2026-09-04), so the rule must not look at `system_key`.
  *
  * This REPLICATES the server rule for UX, it does not replace it: the
  * authority stays `TaskClosureFeedbackGuard`, which evaluates the RESULTING
@@ -32,7 +34,7 @@ interface TaskClosureSectionProps {
  * order's "motivo chiusura", the feedback is a value one may record ahead of
  * the closure, and unmounting it would silently drop what the user typed.
  */
-export function TaskClosureSection({ control, statusSystemKey }: TaskClosureSectionProps) {
+export function TaskClosureSection({ control, statusGroup }: TaskClosureSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const requiresFeedback = useWatch({ control, name: 'requires_closure_feedback' })
@@ -41,7 +43,7 @@ export function TaskClosureSection({ control, statusSystemKey }: TaskClosureSect
     return null
   }
 
-  const feedbackRequired = requiresFeedback && isClosingStatus(statusSystemKey)
+  const feedbackRequired = requiresFeedback && isClosingStatus(statusGroup)
 
   return (
     <FormSection

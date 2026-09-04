@@ -166,6 +166,7 @@ export const taskStatuses = {
     color: 'Colore',
     icon: 'Icona',
     sort_order: 'Ordine',
+    group: 'Fase',
     is_active: 'Attivo',
     completion_percentage: 'Completamento',
     created_at: 'Creato il',
@@ -178,6 +179,7 @@ export const taskStatuses = {
     color: 'Colore',
     icon: 'Icona',
     sort_order: 'Ordine',
+    group: 'Fase',
     isActive: 'Attivo',
     completionPercentage: 'Percentuale di completamento',
     created_at: 'Creato il',
@@ -193,6 +195,14 @@ export const taskStatuses = {
     description: 'Descrizione',
     color: 'Colore',
     icon: 'Icona',
+    group: {
+      label: 'Fase',
+      open: 'Aperto',
+      pending: 'In pending',
+      in_validation: 'Da validare',
+      closed_positive: 'Chiuso con esito positivo',
+      closed_negative: 'Chiuso con esito negativo',
+    },
     isActive: 'Attivo',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -224,18 +234,19 @@ export const taskStatuses = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione, colore, icona e stato.',
+        description: 'Nome, descrizione, colore, icona, fase e stato.',
       },
     },
   },
   reorder: {
     openButton: 'Riordina',
     title: 'Riordina Stati Task',
-    // Verificato su `TaskStatus::SYSTEM_HEAD_KEYS` (open, in_progress,
-    // pending, in_validation) e `SYSTEM_TAIL_KEYS` (closed_positive,
-    // closed_negative): quattro fissati in testa, due in coda (AC-047).
+    // Verificato su `TaskStatus::SYSTEM_HEAD_KEYS` (open) e
+    // `SYSTEM_TAIL_KEYS` (closed_positive, closed_negative): uno fissato in
+    // testa, due in coda (AC-047). Le ex chiavi di testa in_progress/pending/
+    // in_validation ora sono fasi, portate da `group`, non righe di sistema.
     subtitle:
-      'Trascina gli stati personalizzati per riordinarli. I sei stati di sistema restano fissi in testa e in coda.',
+      'Trascina gli stati personalizzati per riordinarli. I tre stati di sistema restano fissi in testa e in coda.',
     dragHandleLabel: 'Trascina per riordinare',
     loadError: "Impossibile caricare l'elenco. Riprova.",
     saved: 'Ordine aggiornato correttamente.',

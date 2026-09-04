@@ -52,7 +52,8 @@ if (! function_exists('taskConfigActorWith')) {
 if (! function_exists('taskConfigStorePayload')) {
     /**
      * The minimum valid store payload for $resource: `task-statuses` is the
-     * only one carrying `completion_percentage` (D-4).
+     * only one carrying `completion_percentage` and `group` (D-4/D-5) —
+     * both are REQUIRED there and rejected on the other four.
      *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
@@ -63,6 +64,7 @@ if (! function_exists('taskConfigStorePayload')) {
 
         if ($resource === 'task-statuses') {
             $payload['completion_percentage'] = 40;
+            $payload['group'] = 'open';
         }
 
         return [...$payload, ...$overrides];

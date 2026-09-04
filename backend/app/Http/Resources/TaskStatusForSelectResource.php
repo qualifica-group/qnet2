@@ -20,10 +20,11 @@ use Illuminate\Http\Request;
  * otherwise show deactivated rows indistinguishable from the rest; it
  * survives ForSelectResource::toArray()'s array_filter, which only strips
  * null OPTIONAL keys at the top level and never descends into `meta`.
- * `meta.system_key` (D-5) lets a select recognize/pin the six system rows,
- * and `meta.completion_percentage` (D-6) lets the Task form show the DERIVED
- * percentage update as another status is picked, with no extra request
- * (AC-084).
+ * `meta.system_key` (D-5) lets a select recognize/pin the three protected
+ * rows, `meta.group` carries the phase (so a select can group or filter by
+ * it without a second lookup), and `meta.completion_percentage` (D-6) lets
+ * the Task form show the DERIVED percentage update as another status is
+ * picked, with no extra request (AC-084).
  *
  * @mixin TaskStatus
  */
@@ -42,6 +43,7 @@ class TaskStatusForSelectResource extends ForSelectResource
                 'icon' => $this->icon,
                 'is_active' => $this->is_active,
                 'system_key' => $this->system_key,
+                'group' => $this->group->value,
                 'completion_percentage' => $this->completion_percentage,
             ],
         ];

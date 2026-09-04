@@ -157,27 +157,52 @@
     </decision>
 
     <decision id="D-5">
-      CHIAVE DI SISTEMA DELLO STATO. `task_statuses.system_key` e' l'unico riferimento
-      che la logica applicativa usa; la label non entra MAI in una condizione.
-      Enum `App\Enums\TaskStatusSystemKey` (string-backed), sei casi congelati:
-        Open='open', InProgress='in_progress', Pending='pending',
-        InValidation='in_validation', ClosedPositive='closed_positive',
-        ClosedNegative='closed_negative'.
-      Le sei righe sono create dalla MIGRATION (non dal seeder), cosi' che esistano
-      prima di qualunque backfill e di qualunque seed. Percentuali iniziali:
-        open 0, in_progress 25, pending 50, in_validation 75,
-        closed_positive 100, closed_negative 0.
-      La percentuale di `closed_negative` e' CONFIGURABILE come tutte le altre (era la
-      richiesta esplicita): 0 e' solo il valore iniziale.
-      NESSUNA colonna `group`, a differenza di `contract_statuses`/`pipeline_statuses`
-      che hanno sia `system_key` sia `group`. Qui le sei chiavi SONO le fasi: duplicarle
-      in un `group` creerebbe due fonti di verita' per lo stesso fatto.
-      CONSEGUENZA DA APPROVARE: uno stato CUSTOM (creato dall'admin, `system_key` NULL)
-      non appartiene ad alcuna fase, quindi non e' mai uno stato di chiusura e non fa
-      scattare la richiesta di feedback (D-7). Se in futuro serve che anche uno stato
-      custom sia "di chiusura", si aggiunge `group` e si allarga `TaskStatusResolver`:
-      unico punto da toccare. Se preferisci `group` fin da subito, dillo in approvazione
-      e cambio D-5, D-7 e i relativi AC.
+      FASE E PROTEZIONE DELLO STATO, DUE COLONNE (RETTIFICATO su direttiva utente
+      2026-09-04: "voglio una gestione su stati task come contract-statuses").
+      `task_statuses` prende la stessa forma a due colonne di `contract_statuses`:
+
+        - `group` = la FASE, enum `App\Enums\TaskStatusGroup` (string-backed), cinque
+          casi: Open='open', Pending='pending', InValidation='in_validation',
+          ClosedPositive='closed_positive', ClosedNegative='closed_negative'.
+          NOT NULL, default 'open'. Classificazione MOLTI-a-uno: piu' stati stanno
+          nella stessa fase. E' la sola cosa su cui la logica decide (D-7).
+        - `system_key` = la PROTEZIONE, enum `App\Enums\TaskStatusSystemKey` ridotto a
+          tre casi: Open, ClosedPositive, ClosedNegative. UNIQUE, NULL su ogni riga
+          ordinaria. Marca solo le righe non cancellabili.
+
+      PERCHE' DUE COLONNE E NON UNA (la revisione che ha causato la rettifica).
+      La versione precedente usava `system_key` come insieme delle fasi. Ma
+      `system_key` e' UNIQUE: puo' marcare AL MASSIMO UNA riga per valore, quindi il
+      configuratore era di fatto limitato a sei stati, uno per fase. Il vocabolario
+      reale del cliente ne ha dieci, dei quali cinque nella fase "aperto" e due in
+      "da validare". Una classificazione molti-a-uno richiede una colonna non unica:
+      esattamente il motivo per cui `contract_statuses` ha entrambe.
+
+      Le tre chiavi ritirate (`in_progress`, `pending`, `in_validation`) erano fasi
+      travestite da chiavi di sistema: sopravvivono come valori di TaskStatusGroup.
+      Le tre che restano sono il minimo che tiene il modulo utilizzabile comunque sia
+      configurato: un posto dove aprire un Task e uno dove chiuderlo per ciascun esito.
+
+      MIGRATION. `2026_09_04_100400` resta com'e' (mai modificare una migration gia'
+      committata): crea le sei righe bootstrap. `2026_09_04_110000` aggiunge `group`,
+      lo popola dalla `system_key` di ciascuna riga, e RITIRA le tre righe-fase — de-key
+      incondizionato (la chiave non esiste piu' nell'enum, il cast fallirebbe in
+      lettura) e delete solo se la riga e' ancora quella creata dalla migration e
+      nessun Task la referenzia. `down()` le rimette.
+      Percentuali iniziali delle tre righe protette: open 0, closed_positive 100,
+      closed_negative 0. Restano tutte CONFIGURABILI (era la richiesta esplicita):
+      quei valori sono solo gli iniziali.
+
+      CONSEGUENZA RISOLTA. Uno stato ORDINARIO messo dall'admin in una fase di chiusura
+      ORA chiude il Task come uno protetto, e fa scattare il feedback (D-7). E' il fix
+      che la vecchia D-5 aveva gia' indicato come strada da prendere: la conseguenza
+      che AC-034 fissava non esiste piu'.
+
+      VOCABOLARIO DEL CLIENTE. Le dieci righe operative non stanno nella migration ma
+      nel seed di produzione (`QualificaTaskTaxonomySeeder`, catalogo in
+      `QualificaCatalog\TaskTaxonomyCatalogue`), su richiesta utente. La label non entra
+      MAI in una condizione: il seeder stesso aggancia le righe protette per
+      `system_key`, mai per nome.
     </decision>
 
     <decision id="D-6">
@@ -198,7 +223,9 @@
     <decision id="D-7">
       FEEDBACK ALLA CHIUSURA, validato SERVER-SIDE. Se il Task risultante dal save ha
       `requires_closure_feedback = true` E il `task_status_id` risultante punta a uno
-      stato con `system_key` in {closed_positive, closed_negative}, allora
+      stato la cui FASE (`group`) e' in {closed_positive, closed_negative} — non piu'
+      la sua `system_key`, rettifica D-5 del 2026-09-04, quindi anche uno stato
+      ordinario creato dall'admin fa scattare la regola — allora
       `closure_feedback` deve essere una stringa non vuota (dopo trim), altrimenti 422
       sul campo `closure_feedback`.
       La regola guarda lo STATO RISULTANTE, non quello inviato: in un PATCH parziale che
@@ -496,7 +523,8 @@
   <acceptance_criteria>
 
     <criterion id="AC-001">Le migration creano le 5 tabelle di configurazione con name unique, color NOT NULL, icon nullable, sort_order, is_active; `down()` reversibile su tutte.</criterion>
-    <criterion id="AC-002">La migration di `task_statuses` crea le 6 righe di sistema con le system_key open/in_progress/pending/in_validation/closed_positive/closed_negative e le percentuali 0/25/50/75/100/0.</criterion>
+    <criterion id="AC-002">Dopo entrambe le migration, `task_statuses` porta ESATTAMENTE tre righe con `system_key` — open/closed_positive/closed_negative, percentuali 0/100/0 — e le tre righe-fase create da `2026_09_04_100400` (in_progress/pending/in_validation) sono state ritirate. Le system_key persistite coincidono con i casi di `TaskStatusSystemKey`, ne' piu' ne' meno.</criterion>
+    <criterion id="AC-002b">`task_statuses` porta una colonna `group` NOT NULL valorizzata su OGNI riga (App\Enums\TaskStatusGroup, 5 valori); `group` e' accettato in store (required) e update (sometimes|required), ed e' rifiutato da `SystemStatusGuard` su una riga protetta.</criterion>
     <criterion id="AC-003">La migration `tasks` crea tutte le colonne del data_contract, NON crea `completion_percentage` e NON crea alcuna colonna di ricorrenza; `parent_task_id` e le 6 FK di configurazione sono restrictOnDelete.</criterion>
     <criterion id="AC-004">Le migration dei due pivot creano `task_assignee` e `task_watcher` con unique (task_id, user_id) e cascadeOnDelete su entrambi i lati.</criterion>
     <criterion id="AC-005">Il seed pulito e' idempotente su re-run e non sovrascrive un rename fatto dal modulo.</criterion>
@@ -520,13 +548,13 @@
     <criterion id="AC-031">Stesso caso con `closure_feedback` fatto di soli spazi -> 422.</criterion>
     <criterion id="AC-032">Stesso caso con feedback valorizzato -> 200 e stato cambiato.</criterion>
     <criterion id="AC-033">Task con `requires_closure_feedback = false` portato a `closed_negative` senza feedback -> 200.</criterion>
-    <criterion id="AC-034">Task con flag true portato a uno stato CUSTOM (system_key NULL) senza feedback -> 200 (conseguenza dichiarata di D-5).</criterion>
+    <criterion id="AC-034">Task con flag true portato a uno stato ORDINARIO (system_key NULL) la cui fase NON e' di chiusura, senza feedback -> 200, anche se quello stato ha `completion_percentage` 100: e' la fase a decidere, non la percentuale. Portato invece a uno stato ordinario in fase closed_positive/closed_negative -> 422 su `closure_feedback`, esattamente come su una riga protetta (rettifica D-5 del 2026-09-04).</criterion>
     <criterion id="AC-035">La regola vale in PATCH parziale che invia SOLO `task_status_id`: flag e feedback sono letti dal record persistito.</criterion>
 
     <criterion id="AC-040">DELETE di uno stato/tipologia/categoria/priorita'/importanza non usata da alcun Task -> 204.</criterion>
     <criterion id="AC-041">DELETE di una riga usata da almeno un Task -> 409 con messaggio che nomina la risorsa; la riga NON e' rimossa e nessun Task e' cancellato.</criterion>
     <criterion id="AC-042">DELETE di uno stato con `system_key` valorizzata -> 422, anche se non e' usato da alcun Task.</criterion>
-    <criterion id="AC-043">PATCH di uno stato di sistema che invia `is_active` -> 422; che invia solo `name`, `color`, `icon`, `completion_percentage` -> 200.</criterion>
+    <criterion id="AC-043">PATCH di uno stato di sistema che invia `is_active` -> 422; che invia `group` -> 422 (la fase di una riga protetta e' fissata dalla migration); che invia solo `name`, `color`, `icon`, `completion_percentage` -> 200.</criterion>
     <criterion id="AC-044">La percentuale di `closed_negative` e' modificabile da 0 a un altro valore e il cambiamento si riflette sui Task in quello stato (richiesta esplicita: valore configurabile).</criterion>
     <criterion id="AC-045">`system_key` e `sort_order` non sono mai accettati nel payload di store/update di nessuno dei 5 configuratori -> 422. NON vale per `completion_percentage` sui quattro lookup puri (rettifica RITIRATA in build 2026-09-04, dopo obiezione di `backend-config`): li' quella chiave non e' server-managed ne' parte del contratto, e' semplicemente sconosciuta come lo sarebbe `foo`, e vietarne UNA fra le infinite ignote non ha un punto d'arresto principiato. Cio' che i cinque moduli vietano uniformemente e' lo stato SERVER-MANAGED (`system_key`, `sort_order`), che e' la ragione per cui quei due sono `prohibited` anche sui lookup che non ne hanno la colonna. Il contratto garantisce che `completion_percentage` non diventi mai un dato su quelle quattro tabelle, non che venga rifiutato.</criterion>
     <criterion id="AC-046">`color` fuori dalla palette -> 422; `icon` fuori dal catalogo lucide curato -> 422; `completion_percentage` a 101 o -1 -> 422.</criterion>

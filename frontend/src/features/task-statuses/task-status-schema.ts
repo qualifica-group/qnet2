@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { isKnownIconName } from '@/features/custom-fields/icon-catalog'
+import { TASK_STATUS_GROUPS } from '@/features/status-reorder/types'
 
 /**
  * Zod schema for the task status create/edit form, built as a factory so
@@ -11,6 +12,7 @@ import { isKnownIconName } from '@/features/custom-fields/icon-catalog'
  * curated lucide name with the empty string meaning "unset" (mapped to `null`
  * by the payload builder). Both are checked against the same allow-lists the
  * backend validates with, so this is defense in depth, not the only guard.
+ * `group` is a fixed 5-value enum, required on create like the backend rule.
  * `sort_order` and `system_key` are server-managed and have no form field.
  */
 
@@ -42,6 +44,10 @@ function baseFields(t: TFunction) {
     icon: z
       .string()
       .refine((name) => name === '' || isKnownIconName(name), t('taskStatuses.form.iconInvalid')),
+    // Fixed 5-value enum (the phase of the status). System rows only ever accept
+    // name/color/icon/completion_percentage, so the control is disabled for them
+    // in the form body and this field never diverges from its hydrated value.
+    group: z.enum(TASK_STATUS_GROUPS),
     is_active: z.boolean(),
     completion_percentage: z
       .number({ error: t('taskStatuses.form.completionPercentageRequired') })

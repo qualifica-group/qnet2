@@ -119,11 +119,22 @@ const SHARED_KEYS = [
 /** What `task_statuses` carries on top of the shared set (D-5/D-6). */
 const STATUS_ONLY_KEYS = [
   'columns.completion_percentage',
+  'columns.group',
   'detail.completionPercentage',
+  'detail.group',
   'form.completionPercentage',
   'form.completionPercentageInvalid',
   'form.completionPercentageRange',
   'form.completionPercentageRequired',
+  // The `group` phase enum: the label plus one entry per fixed value. The grid
+  // cell and the detail both resolve these through a template literal, so a
+  // missing one degrades in silence.
+  'form.group.label',
+  'form.group.open',
+  'form.group.pending',
+  'form.group.in_validation',
+  'form.group.closed_positive',
+  'form.group.closed_negative',
   'form.hints.systemStatusFields',
   'form.newTaskStatus',
 ]

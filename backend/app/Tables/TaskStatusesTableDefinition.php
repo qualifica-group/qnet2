@@ -106,10 +106,11 @@ class TaskStatusesTableDefinition extends AbstractTableDefinition
             'icon' => $row->icon,
             'sort_order' => $row->sort_order,
             'is_active' => $row->is_active,
-            // spec 0101, D-5/D-6: the six mandatory system rows (the grid
-            // hides `delete` on them) and the completion every Task in this
-            // status projects.
+            // spec 0101, D-5/D-6: the three protected rows (the grid hides
+            // `delete` on them), the PHASE every row declares, and the
+            // completion every Task in this status projects.
             'system_key' => $row->system_key,
+            'group' => $row->group->value,
             'completion_percentage' => $row->completion_percentage,
             'created_at' => $row->created_at,
         ];
@@ -117,7 +118,7 @@ class TaskStatusesTableDefinition extends AbstractTableDefinition
 
     /**
      * Allowed action keys for a single row, via TaskStatusPolicy.
-     * `delete` is OMITTED for one of the six system rows (D-8c — never
+     * `delete` is OMITTED for one of the three protected rows (D-8c — never
      * deletable); `edit` REMAINS (name/color/icon/completion_percentage are
      * still editable, AC-043).
      *

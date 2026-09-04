@@ -52,6 +52,27 @@ export const REWARD_STATUS_GROUPS = ['pending', 'closed_won', 'closed_lost'] as 
 /** One of the three fixed reward status group values. */
 export type RewardStatusGroupValue = (typeof REWARD_STATUS_GROUPS)[number]
 
+/**
+ * Task statuses classify on their OWN enum (backend `App\Enums\
+ * TaskStatusGroup`, spec 0101 D-5), same anti-coupling rule as the three
+ * above and NOT a reuse of `CONTRACT_STATUS_GROUPS`: the vocabulary is a
+ * different one (five values, `in_validation` is a phase of its own) and the
+ * closed phase names its outcome `closed_positive`/`closed_negative`, not
+ * `closed_won`/`closed_lost`. Sharing the constant would tie two modules that
+ * are free to diverge — exactly what splitting `WorkflowStatusGroup` off the
+ * shared `StatusGroup` was for.
+ */
+export const TASK_STATUS_GROUPS = [
+  'open',
+  'pending',
+  'in_validation',
+  'closed_positive',
+  'closed_negative',
+] as const
+
+/** One of the five fixed task status group values. */
+export type TaskStatusGroupValue = (typeof TASK_STATUS_GROUPS)[number]
+
 /** One row as reordered in the sheet: id, display name and its pin state. */
 export interface StatusReorderItem {
   id: number

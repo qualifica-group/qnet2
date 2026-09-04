@@ -12,9 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  *
  * No contextual rules: every field's ceiling is visible+editable when the
  * actor may write (create/update), else visible+readonly, mirroring
- * ContractStatusesAuthorization. `sort_order` and `system_key` are absent from
- * fields(): server-managed / never client-writable, so they are neither
- * permissionable nor submittable (AC-045).
+ * ContractStatusesAuthorization. `group` is a permissionable `select` there
+ * as here — the phase is ordinary configuration, not a system attribute.
+ * `sort_order` and `system_key` are absent from fields(): server-managed /
+ * never client-writable, so they are neither permissionable nor submittable
+ * (AC-045).
  */
 class TaskStatusesAuthorization extends AbstractResourceAuthorization
 {
@@ -40,6 +42,7 @@ class TaskStatusesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('icon', 'text'),
             new FieldDefinition('is_active', 'boolean'),
             new FieldDefinition('completion_percentage', 'number', mandatory: true),
+            new FieldDefinition('group', 'select', mandatory: true),
         ];
     }
 
@@ -65,6 +68,7 @@ class TaskStatusesAuthorization extends AbstractResourceAuthorization
             'icon' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'completion_percentage' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'group' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
         ];
     }
 

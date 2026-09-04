@@ -80,13 +80,15 @@ it('AC-001: down() drops the pure lookup, up() recreates it empty', function (st
         ->and(DB::table($table)->count())->toBe(0);
 })->with('pureTaskLookups');
 
-it('AC-001: task_statuses has the same shape plus system_key and completion_percentage', function () {
-    foreach (['id', 'name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'system_key', 'completion_percentage', 'created_at', 'updated_at'] as $column) {
+it('AC-001: task_statuses has the same shape plus system_key, group and completion_percentage', function () {
+    foreach (['id', 'name', 'description', 'color', 'icon', 'sort_order', 'is_active', 'system_key', 'group', 'completion_percentage', 'created_at', 'updated_at'] as $column) {
         expect(Schema::hasColumn('task_statuses', $column))->toBeTrue("task_statuses is missing column {$column}");
     }
 
-    // D-5: the six keys ARE the phases — no `group` column duplicating them.
-    expect(Schema::hasColumn('task_statuses', 'group'))->toBeFalse('task_statuses must not carry a group column');
+    // D-5 as rectified 2026-09-04: `system_key` marks the protected rows and
+    // `group` carries the PHASE, the same two-column shape contract_statuses
+    // has. `system_key` is UNIQUE and could not express a many-to-one phase.
+    expect(Schema::hasColumn('task_statuses', 'group'))->toBeTrue('task_statuses must carry a group column');
 
     expect(fn () => DB::table('task_statuses')->insert(['name' => 'Aperto', 'color' => 'blue', 'created_at' => now(), 'updated_at' => now()]))
         ->toThrow(QueryException::class);
@@ -103,7 +105,7 @@ it('AC-001: task_statuses.system_key is UNIQUE, so a second row cannot claim a s
     ]))->toThrow(QueryException::class);
 });
 
-it('AC-001: down() drops task_statuses, up() recreates it with the six system rows', function () {
+it('AC-001: down() drops task_statuses, up() recreates it with its six bootstrap rows', function () {
     $migration = require database_path('migrations/2026_09_04_100400_create_task_statuses_table.php');
 
     $migration->down();
@@ -111,20 +113,26 @@ it('AC-001: down() drops task_statuses, up() recreates it with the six system ro
 
     $migration->up();
     expect(Schema::hasTable('task_statuses'))->toBeTrue()
-        // up() is not "empty" here: the six mandatory rows are part of it (D-5).
+        // up() is not "empty" here: its six bootstrap rows are part of it.
+        // Three of them are retired by 2026_09_04_110000, which is NOT
+        // re-run by this test — hence six and not three.
         ->and(DB::table('task_statuses')->count())->toBe(6);
 });
 
 // ---------------------------------------------------------------------------
-// AC-002 — the six system rows, created by the migration
+// AC-002 — the protected rows, created by the migrations
+//
+// Six were created by 2026_09_04_100400 and three of them retired by
+// 2026_09_04_110000: `in_progress`/`pending`/`in_validation` were PHASES
+// mislabelled as system keys and now live on as App\Enums\TaskStatusGroup
+// values (user directive 2026-09-04). What survives is the minimum the
+// module needs: somewhere to open a Task, and somewhere to close it on each
+// outcome.
 // ---------------------------------------------------------------------------
 
-it('AC-002: the migration created the six system rows with the declared keys and percentages', function () {
+it('AC-002: the migrations left the three protected rows with the declared keys and percentages', function () {
     $expected = [
         'open' => 0,
-        'in_progress' => 25,
-        'pending' => 50,
-        'in_validation' => 75,
         'closed_positive' => 100,
         'closed_negative' => 0,
     ];
@@ -141,12 +149,12 @@ it('AC-002: the migration created the six system rows with the declared keys and
     }
 });
 
-it('AC-002: the six system keys are exactly the TaskStatusSystemKey cases, no more and no fewer', function () {
+it('AC-002: the persisted system keys are exactly the TaskStatusSystemKey cases, no more and no fewer', function () {
     $persisted = TaskStatus::query()->whereNotNull('system_key')->pluck('system_key')
         ->map(fn (TaskStatusSystemKey $key): string => $key->value)->all();
 
     expect($persisted)->toEqualCanonicalizing(array_column(TaskStatusSystemKey::cases(), 'value'))
-        ->and($persisted)->toHaveCount(6);
+        ->and($persisted)->toHaveCount(3);
 });
 
 it('AC-002: only closed_positive and closed_negative are closing phases', function () {
@@ -214,7 +222,7 @@ it('AC-005: re-running the clean seed neither duplicates the system rows nor und
     seedCleanReferenceData();
     seedCleanReferenceData();
 
-    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(6)
+    expect(TaskStatus::query()->whereNotNull('system_key')->count())->toBe(3)
         ->and(TaskStatus::query()->whereKey($renamed->id)->value('name'))->toBe('Terminato');
 });
 

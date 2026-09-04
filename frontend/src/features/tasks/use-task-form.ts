@@ -110,7 +110,12 @@ function editDefaults(task: TaskDetail): TaskFormValues {
   }
 }
 
-/** The persisted status projected into the picker's own `meta` shape, so both sources read alike. */
+/**
+ * The persisted status projected into the picker's own `meta` shape, so both
+ * sources read alike. `TaskResource.statusRef()` projects `group` precisely so
+ * an edit form can tell it is already in a closing phase before the user
+ * touches the picker — something `system_key` alone can no longer answer.
+ */
 function persistedStatusMeta(mode: TaskFormMode): TaskStatusForSelectMeta | null {
   if (mode.type !== 'edit') {
     return null
@@ -118,6 +123,7 @@ function persistedStatusMeta(mode: TaskFormMode): TaskStatusForSelectMeta | null
   const { task_status: status } = mode.task
   return {
     system_key: status.system_key,
+    group: status.group,
     completion_percentage: status.completion_percentage,
     color: status.color,
     icon: status.icon,
@@ -154,8 +160,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
 
   // Stable indirection (mirrors `useWorkOrderForm`): `useForm` gets a resolver
   // whose identity never changes but which always runs the latest schema —
-  // the D-7 rule depends on the picked status' `system_key`, which is not a
-  // form value.
+  // the D-7 rule depends on the picked status' `group`, which is not a form
+  // value.
   const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t)))
 
   const form = useForm<TaskFormValues>({
@@ -164,8 +170,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   })
 
   const schema = useMemo(
-    () => buildTaskSchema(t, statusMeta?.system_key ?? null),
-    [t, statusMeta?.system_key],
+    () => buildTaskSchema(t, statusMeta?.group ?? null),
+    [t, statusMeta?.group],
   )
 
   useEffect(() => {
@@ -216,7 +222,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     handleStatusItemChange,
     /** Derived, read-only, never submitted (D-6/AC-084); `null` while no status is picked. */
     completionPercentage: statusMeta?.completion_percentage ?? null,
-    /** Drives the D-7 client rule and the closure section's visibility. */
-    statusSystemKey: statusMeta?.system_key ?? null,
+    /** The picked status' PHASE: drives the D-7 client rule and the closure section. */
+    statusGroup: statusMeta?.group ?? null,
   }
 }

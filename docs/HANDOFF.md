@@ -3,6 +3,101 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — VOCABOLARIO DI PRODUZIONE + FASE DEGLI STATI (`group`) — VERDE, NON COMMITTATO (2026-09-04)
+
+**Richiesta utente.** Seed di produzione per i configuratori Task (tipologie, categorie,
+priorita', importanze) con icone e colori; poi gli stati task "come contract-statuses",
+con cinque key di sistema: aperto, in pending, da validare, chiuso con esito positivo,
+chiuso con esito negativo.
+
+**Il vincolo che ha cambiato il progetto.** `task_statuses.system_key` e' UNIQUE: puo'
+marcare AL PIU' UNA riga per valore. Usarla come insieme delle fasi cappava il
+configuratore a sei stati, uno per fase, mentre il vocabolario del cliente ne ha dieci
+(cinque in "aperto", due in "da validare"). Una classificazione MOLTI-a-uno vuole una
+colonna non unica: e' esattamente perche' `contract_statuses` ha ENTRAMBE le colonne.
+Da qui la rettifica di D-5, con il pattern di contract-statuses adottato alla lettera.
+
+**Forma finale di `task_statuses`.**
+- `group` (NOT NULL, default `open`) = la FASE. Enum NUOVO `App\Enums\TaskStatusGroup`,
+  cinque casi: open, pending, in_validation, closed_positive, closed_negative.
+  E' la SOLA cosa su cui la logica decide.
+- `system_key` (UNIQUE, nullable) = la PROTEZIONE. `App\Enums\TaskStatusSystemKey`
+  ridotto a TRE casi: Open, ClosedPositive, ClosedNegative. Le tre chiavi ritirate
+  (in_progress, pending, in_validation) erano fasi travestite da chiavi.
+
+**Conseguenza risolta, da tenere a mente.** "Chiudere" NON dipende piu' da `system_key`
+ma da `group`: uno stato ORDINARIO messo dall'admin in fase di chiusura chiude il Task e
+fa scattare il feedback (D-7). La vecchia AC-034 ("uno stato custom non chiude mai") non
+vale piu' ed e' stata riscritta. Chi tocca la catena di chiusura branch-a sulla FASE, mai
+sulla `system_key` e mai sulla label (AC-024 resta).
+
+**Migration.** `2026_09_04_100400` NON toccata (gia' committata). Nuova
+`2026_09_04_120000_add_group_to_task_statuses_table`: aggiunge `group`, lo popola dalla
+`system_key` di ogni riga, e ritira le tre righe-fase — de-key incondizionato (la chiave
+non esiste piu' nell'enum, il cast fallirebbe in lettura) e delete SOLO se la riga e'
+ancora quella creata dalla migration e nessun Task la referenzia. `down()` le rimette.
+ATTENZIONE al timestamp: `2026_09_04_110000` era gia' occupato da
+`move_next_callback_from_opportunities_to_quotes_table` — la mia e' `120000`.
+
+**Seed di produzione.** `QualificaTaskTaxonomySeeder` (step 3 di
+`QualificaProductionDataSeeder`), cataloghi in
+`QualificaCatalog\TaskTaxonomyCatalogue`. `sort_order` MAI scritto a mano: viene dagli
+order manager (`LookupOrderManager` per i quattro lookup puri, `StatusOrderManager` per
+gli stati, che pinna testa/coda). Idempotente su `name`; le tre righe protette sono
+agganciate per `system_key` e riscritte SOLO finche' portano il nome bootstrap, cosi' un
+rename fatto dal modulo sopravvive (AC-005).
+
+Righe: 7 tipologie, 15 categorie, 5 priorita', 4 importanze, 11 stati.
+
+Stati risultanti (sort_order / nome / fase / protetta):
+```
+  0 Da assegnare            open              [protetta]
+ 10 Assegnato               open
+ 20 In preanalisi           open
+ 30 Preanalisi da validare  in_validation
+ 40 Preanalisi validata     open
+ 50 In corso                open
+ 60 In attesa controparte   pending
+ 70 Interrotto              pending
+ 80 Esecuzione da validare  in_validation
+ 90 Esecuzione validata     closed_positive   [protetta]
+100 Chiuso negativo         closed_negative   [protetta]
+```
+
+**DA CONFERMARE CON L'UTENTE (non deciso).**
+1. `Interrotto` e' in `pending` per decisione utente: nessuno dei suoi dieci stati chiude
+   in negativo, percio' e' stata TENUTA la riga di sistema `Chiuso negativo` come
+   atterraggio della fase (altrimenti il feedback di chiusura negativa non scatta mai).
+   Da rinominare (`Annullato`?) o da sostituire spostando `Interrotto` li'.
+2. Tre normalizzazioni di testo rispetto a quanto scritto dall'utente, per l'omogeneita'
+   che chiedeva: `visite`->`Visita`, `critico`->`Critica`, `maximum`->`Massima`.
+
+**Contratto API esteso.** `TaskResource.task_status` proietta anche `group` (mai null).
+Serviva: il client replica D-7 per UX leggendo lo stato PERSISTITO, che prima esponeva
+solo `system_key` — senza `group` li' la regola non era esprimibile.
+`TaskStatusResource`, `TaskStatusForSelectResource` (`meta.group`) e `mapRow` lo espongono
+tutti; `TaskStatusService::FOR_SELECT_COLUMNS` DEVE includere `group`, altrimenti la
+Resource legge null e il cast esplode.
+
+**Frontend.** `TASK_STATUS_GROUPS` in `features/status-reorder/types.ts`; `group` come
+`Select` in `MetaField`, disabilitato sulle righe protette (specchio di
+`SystemStatusGuard`); `GroupCell` in griglia; i18n it/en (etichetta del campo: "Fase").
+`isClosingStatus` e tutta la catena di chiusura ora passano dal `group`. Il test che
+conta sta nell'HOOK, non nello schema: a livello di schema `'closed_negative'` come key o
+come fase e' la stessa stringa, quindi li' non discrimina nulla.
+
+**Verificato (eseguito davvero).** Backend `6304/6304` (1 skipped preesistente, 26.560
+asserzioni), Pint pulito. Frontend `280/280`, `tsc -b --force` EXIT 0, `eslint` EXIT 0.
+Seed rieseguito due volte: nessun duplicato, nessun rename sovrascritto.
+`QuoteWorkflowMigrationTest` porta il contatore di rollback da 50 a 52 (aggiungere una
+migration significa alzare quel numero, il test lo dice da solo).
+
+**NON MIO, NON TOCCATO.** `frontend/src/i18n/locales/en-imports.ts` e `it-imports.ts`
+hanno una riga `product_ids` aggiunta da un'altra sessione. Non ripristinata: sarebbe
+lavoro non committato di qualcun altro.
+
+---
+
 ## PIVOT POSIZIONALI — SYNC SENZA COLLISIONE DI `position` — VERDE, NON COMMITTATO (2026-09-04)
 
 **Bug.** `DemoQuoteSeeder` falliva con `UniqueConstraintViolationException: Duplicate entry '24-1'

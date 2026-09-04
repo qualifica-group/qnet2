@@ -149,6 +149,7 @@ export const taskStatuses = {
     color: 'Color',
     icon: 'Icon',
     sort_order: 'Order',
+    group: 'Phase',
     is_active: 'Active',
     completion_percentage: 'Completion',
     created_at: 'Created at',
@@ -161,6 +162,7 @@ export const taskStatuses = {
     color: 'Color',
     icon: 'Icon',
     sort_order: 'Order',
+    group: 'Phase',
     isActive: 'Active',
     completionPercentage: 'Completion percentage',
     created_at: 'Created at',
@@ -176,6 +178,14 @@ export const taskStatuses = {
     description: 'Description',
     color: 'Color',
     icon: 'Icon',
+    group: {
+      label: 'Phase',
+      open: 'Open',
+      pending: 'Pending',
+      in_validation: 'To validate',
+      closed_positive: 'Closed (positive outcome)',
+      closed_negative: 'Closed (negative outcome)',
+    },
     isActive: 'Active',
     save: 'Save',
     saving: 'Saving…',
@@ -207,18 +217,19 @@ export const taskStatuses = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, color, icon and status.',
+        description: 'Name, description, color, icon, phase and status.',
       },
     },
   },
   reorder: {
     openButton: 'Reorder',
     title: 'Reorder Task Statuses',
-    // Verified against `TaskStatus::SYSTEM_HEAD_KEYS` (open, in_progress,
-    // pending, in_validation) and `SYSTEM_TAIL_KEYS` (closed_positive,
-    // closed_negative): four pinned first, two pinned last (AC-047).
+    // Verified against `TaskStatus::SYSTEM_HEAD_KEYS` (open) and
+    // `SYSTEM_TAIL_KEYS` (closed_positive, closed_negative): one pinned first,
+    // two pinned last (AC-047). The former head keys in_progress/pending/
+    // in_validation are phases now, carried by `group`, not system rows.
     subtitle:
-      'Drag the custom statuses to reorder them. The six system statuses stay pinned at the top and at the bottom.',
+      'Drag the custom statuses to reorder them. The three system statuses stay pinned at the top and at the bottom.',
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',

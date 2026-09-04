@@ -5,6 +5,7 @@ import type {
   ForSelectParams,
   PaginatedResponse,
 } from '@/features/for-select/types'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 import type { TaskStatusSystemKey } from '@/features/task-statuses/types'
 
 /** Resource segment for the task-statuses for-select endpoint. */
@@ -14,8 +15,9 @@ export const TASK_STATUSES_FOR_SELECT_RESOURCE = 'task-statuses'
  * The presentation bag this resource projects alongside `{id, label}`, so a
  * picker can draw the SAME badge as the grid without a second request.
  * `completion_percentage` is what makes the Task form's derived percentage
- * (spec 0101 AC-084) update on status change with no extra call, and
- * `system_key` is what identifies the six system rows (D-5).
+ * (spec 0101 AC-084) update on status change with no extra call, `system_key`
+ * is what identifies the three system rows (D-5) and `group` the phase every
+ * row belongs to, system or custom.
  */
 export interface TaskStatusForSelectMeta {
   /** Palette token of `BADGE_COLOR_TOKENS`, never a hex. */
@@ -23,6 +25,7 @@ export interface TaskStatusForSelectMeta {
   /** Curated lucide name of `ICON_NAMES`, or null when unset. */
   icon: string | null
   system_key: TaskStatusSystemKey
+  group: TaskStatusGroupValue
   completion_percentage: number
 }
 

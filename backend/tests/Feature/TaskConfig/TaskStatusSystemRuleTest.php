@@ -15,9 +15,14 @@ uses(RefreshDatabase::class);
 | System-row rules for `task-statuses` (spec 0101, AC-042/043/044/047)
 |--------------------------------------------------------------------------
 |
-| The six mandatory rows are created by the migration, so every test reads
+| The three PROTECTED rows are created by the migrations, so every test reads
 | them back rather than building them: `system_key` is UNIQUE and is not
 | mass-assignable, so a second `open` row could not be created anyway.
+|
+| Since the 2026-09-04 rectification of D-5 `system_key` marks protection
+| only; the PHASE is `group` (App\Enums\TaskStatusGroup), which is why the
+| dataset below lists three keys and not six — `in_progress`/`pending`/
+| `in_validation` were phases, and are now group values.
 |
 | The shared guard is App\Services\Statuses\SystemStatusGuard, whose
 | MUTABLE_SYSTEM_FIELDS spec 0101 widened to name/color/icon/
@@ -58,9 +63,6 @@ if (! function_exists('systemTaskStatus')) {
  */
 dataset('systemTaskStatusKeys', [
     'open' => [TaskStatusSystemKey::Open],
-    'in_progress' => [TaskStatusSystemKey::InProgress],
-    'pending' => [TaskStatusSystemKey::Pending],
-    'in_validation' => [TaskStatusSystemKey::InValidation],
     'closed_positive' => [TaskStatusSystemKey::ClosedPositive],
     'closed_negative' => [TaskStatusSystemKey::ClosedNegative],
 ]);
@@ -94,26 +96,27 @@ it('AC-042: the generic bulk-delete cannot remove a system status either', funct
 });
 
 // ---------------------------------------------------------------------------
-// AC-043 — the four mutable keys on a system row, and nothing else
+// AC-043 — the four mutable keys on a system row, and nothing else. `group`
+// is NOT among them: the phase of a protected row is fixed by the migration.
 // ---------------------------------------------------------------------------
 
 it('AC-043: a system row accepts name, color, icon and completion_percentage together', function () {
     Sanctum::actingAs(taskStatusSystemActorWith(['update']));
-    $pending = systemTaskStatus(TaskStatusSystemKey::Pending);
+    $closedNegative = systemTaskStatus(TaskStatusSystemKey::ClosedNegative);
 
-    $this->patchJson("/api/task-statuses/{$pending->id}", [
-        'name' => 'In attesa', 'color' => 'teal', 'icon' => 'clock', 'completion_percentage' => 55,
+    $this->patchJson("/api/task-statuses/{$closedNegative->id}", [
+        'name' => 'Annullato', 'color' => 'teal', 'icon' => 'clock', 'completion_percentage' => 55,
     ])
         ->assertOk()
-        ->assertJsonPath('data.name', 'In attesa')
+        ->assertJsonPath('data.name', 'Annullato')
         ->assertJsonPath('data.color', 'teal')
         ->assertJsonPath('data.icon', 'clock')
         ->assertJsonPath('data.completion_percentage', 55)
-        ->assertJsonPath('data.system_key', 'pending');
+        ->assertJsonPath('data.system_key', 'closed_negative');
 
     $this->assertDatabaseHas('task_statuses', [
-        'id' => $pending->id, 'name' => 'In attesa', 'color' => 'teal',
-        'icon' => 'clock', 'completion_percentage' => 55, 'system_key' => 'pending',
+        'id' => $closedNegative->id, 'name' => 'Annullato', 'color' => 'teal',
+        'icon' => 'clock', 'completion_percentage' => 55, 'system_key' => 'closed_negative',
     ]);
 });
 
@@ -167,6 +170,19 @@ it('AC-043: a system row rejects a key even when the value is the one already pe
     $this->assertDatabaseHas('task_statuses', ['id' => $open->id, 'is_active' => true, 'description' => null]);
 });
 
+it('AC-043: a system row rejects group, so its phase cannot be moved', function () {
+    Sanctum::actingAs(taskStatusSystemActorWith(['update']));
+    $open = systemTaskStatus(TaskStatusSystemKey::Open);
+
+    // `group` passes the FormRequest (it is a legal value) and is stopped by
+    // SystemStatusGuard, one layer further in: the phase of a protected row
+    // is fixed by the migration, not admin-configurable.
+    $this->patchJson("/api/task-statuses/{$open->id}", ['group' => 'closed_negative'])
+        ->assertStatus(422);
+
+    $this->assertDatabaseHas('task_statuses', ['id' => $open->id, 'group' => 'open']);
+});
+
 it('AC-043: a CUSTOM row still accepts is_active and description', function () {
     Sanctum::actingAs(taskStatusSystemActorWith(['update']));
     $custom = TaskStatus::factory()->create();
@@ -207,7 +223,7 @@ it('AC-044: closed_negative stays a CLOSING status after its percentage moves', 
 
     $this->patchJson("/api/task-statuses/{$closedNegative->id}", ['completion_percentage' => 100])->assertOk();
 
-    // The phase comes from system_key, never from the percentage (D-5).
+    // Closing comes from the PHASE (`group`), never from the percentage (D-5).
     expect($closedNegative->fresh()->isClosing())->toBeTrue();
 });
 
@@ -230,8 +246,8 @@ it('AC-047: a valid permutation resequences the customs in the requested order',
     expect($rows[$third->id]['sort_order'])->toBeLessThan($rows[$first->id]['sort_order'])
         ->and($rows[$first->id]['sort_order'])->toBeLessThan($rows[$second->id]['sort_order']);
 
-    // The head phases stay before every custom and the closing phases after
-    // them: a custom status is never a closing one (D-5).
+    // The protected opening row stays before every ordinary one and the two
+    // protected closing rows after them (D-5).
     $headMax = collect(TaskStatus::SYSTEM_HEAD_KEYS)
         ->map(fn (TaskStatusSystemKey $key): int => systemTaskStatus($key)->fresh()->sort_order)->max();
     $tailMin = collect(TaskStatus::SYSTEM_TAIL_KEYS)

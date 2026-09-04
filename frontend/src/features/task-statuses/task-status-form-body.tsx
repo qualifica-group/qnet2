@@ -7,9 +7,17 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, useFormField } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
+import { TASK_STATUS_GROUPS, type TaskStatusGroupValue } from '@/features/status-reorder/types'
 import { useTaskStatusForm } from '@/features/task-statuses/use-task-status-form'
 import type { TaskStatusDetail, TaskStatusFormMode } from '@/features/task-statuses/types'
 
@@ -20,7 +28,24 @@ interface TaskStatusFormBodyProps {
 }
 
 /** The metadata keys this form owns, in render order. */
-const FIELD_KEYS = ['name', 'description', 'color', 'icon', 'completion_percentage', 'is_active'] as const
+const FIELD_KEYS = [
+  'name',
+  'description',
+  'color',
+  'icon',
+  'group',
+  'completion_percentage',
+  'is_active',
+] as const
+
+/** i18n key per fixed group value, kept out of the JSX so the option list stays a plain map. */
+const GROUP_LABEL_KEYS: Record<TaskStatusGroupValue, string> = {
+  open: 'taskStatuses.form.group.open',
+  pending: 'taskStatuses.form.group.pending',
+  in_validation: 'taskStatuses.form.group.in_validation',
+  closed_positive: 'taskStatuses.form.group.closed_positive',
+  closed_negative: 'taskStatuses.form.group.closed_negative',
+}
 
 /** Formats the raw RHF value for a controlled `<input type="number">`; an emptied field is NaN. */
 function numberInputValue(value: number): string {
@@ -33,10 +58,10 @@ function numberInputValue(value: number): string {
  * comes from the resolved `ResourcePermissions` — no hardcoded permission
  * logic lives here. `color` and `icon` reuse the shared `ColorTokenPicker`
  * and `IconPicker` (spec 0101 AC-087), never a bespoke copy.
- * A system row (D-5) forces `description` and `is_active` disabled whatever
- * the field permissions say, mirroring `SystemStatusGuard::assertUpdatable`
- * server-side, whose `MUTABLE_SYSTEM_FIELDS` is name/color/icon/
- * completion_percentage.
+ * A system row (D-5) forces `description`, `group` and `is_active` disabled
+ * whatever the field permissions say, mirroring
+ * `SystemStatusGuard::assertUpdatable` server-side, whose
+ * `MUTABLE_SYSTEM_FIELDS` is name/color/icon/completion_percentage.
  * All non-render logic lives in `useTaskStatusForm`.
  */
 export function TaskStatusFormBody({ mode, onSuccess, onCancel }: TaskStatusFormBodyProps) {
@@ -124,6 +149,35 @@ export function TaskStatusFormBody({ mode, onSuccess, onCancel }: TaskStatusForm
                     disabled={disabled}
                     readOnly={readOnly}
                   />
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="group"
+                metaKey="group"
+                label={t('taskStatuses.form.group.label')}
+                hint={systemFieldsHint}
+              >
+                {({ field, disabled }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(next) => field.onChange(next as TaskStatusGroupValue)}
+                    disabled={disabled || isSystemRow}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TASK_STATUS_GROUPS.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {t(GROUP_LABEL_KEYS[group])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </MetaField>
 

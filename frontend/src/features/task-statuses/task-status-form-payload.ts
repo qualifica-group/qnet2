@@ -17,6 +17,7 @@ export function buildCreatePayload(values: TaskStatusFormValues): CreateTaskStat
     color: values.color,
     icon: iconValue(values.icon),
     description: values.description,
+    group: values.group,
     is_active: values.is_active,
     completion_percentage: values.completion_percentage,
   }
@@ -44,6 +45,9 @@ export function buildUpdatePayload(
   }
   if (iconValue(values.icon) !== original.icon) {
     payload.icon = iconValue(values.icon)
+  }
+  if (values.group !== original.group) {
+    payload.group = values.group
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active

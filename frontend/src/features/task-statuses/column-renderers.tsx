@@ -1,5 +1,5 @@
 import { DateTimeCell } from '@/features/table/cell-renderers'
-import { BooleanBadgeCell, ColorSwatchCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, ColorSwatchCell, GroupCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -8,11 +8,13 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * configurators (`contract-statuses`, `quote-statuses`). `name`/
  * `description`/`sort_order`/`icon`/`completion_percentage` fall back to the AG Grid
  * default cells; `color` renders a swatch dot + localized token name;
+ * `group` renders the fixed 5-value phase enum as a colored dot + label;
  * `is_active` renders a colored yes/no badge; `created_at` reuses the shared
  * datetime renderer. The catalogue exposes no `updated_at` column.
  */
 export const taskStatusColumnRenderers: TableRendererMap = {
   color: (params) => <ColorSwatchCell {...params} />,
+  group: (params) => <GroupCell {...params} labelPrefix="taskStatuses.form.group" />,
   is_active: (params) => <BooleanBadgeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

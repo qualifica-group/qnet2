@@ -6,20 +6,17 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 
 /**
- * The six frozen system keys of `task_statuses` (spec 0101 D-5, backend enum
+ * The three frozen system keys of `task_statuses` (spec 0101 D-5, backend enum
  * `App\Enums\TaskStatusSystemKey`); `null` on an ordinary custom row. The
  * label never enters a condition — this key is the only reference.
+ * `in_progress`/`pending`/`in_validation` are NOT keys here: they are phases,
+ * carried by `group`, and a row may sit in one of them without being a system
+ * row at all.
  */
-export type TaskStatusSystemKey =
-  | 'open'
-  | 'in_progress'
-  | 'pending'
-  | 'in_validation'
-  | 'closed_positive'
-  | 'closed_negative'
-  | null
+export type TaskStatusSystemKey = 'open' | 'closed_positive' | 'closed_negative' | null
 
 /**
  * Single task status detail returned by GET/POST/PATCH /task-statuses
@@ -38,8 +35,10 @@ export interface TaskStatusDetail {
   icon: string | null
   sort_order: number
   is_active: boolean
-  /** Marks one of the six system rows (D-5): never writable, never sent. */
+  /** Marks one of the three system rows (D-5): never writable, never sent. */
   system_key: TaskStatusSystemKey
+  /** The phase the status belongs to; always present, never null. */
+  group: TaskStatusGroupValue
   /** 0-100. The Task's completion percentage is a projection of this (D-6). */
   completion_percentage: number
   created_at: string | null
@@ -65,6 +64,7 @@ export interface CreateTaskStatusPayload {
   color: string
   icon?: string | null
   description?: string | null
+  group: TaskStatusGroupValue
   is_active?: boolean
   completion_percentage: number
 }

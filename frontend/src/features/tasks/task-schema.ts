@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import type { TaskStatusSystemKey } from '@/features/tasks/types'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 
 /** Backend `title` column limit (`string(191)`). */
 const TITLE_MAX_LENGTH = 191
@@ -8,19 +8,24 @@ const TITLE_MAX_LENGTH = 191
 const MIN_ESTIMATED_MINUTES = 0
 
 /**
- * The two system keys that mark a closure (D-5/D-7). The ONLY thing the
- * closure-feedback rule may branch on: a status label never enters a
- * condition (AC-024). A custom status (`system_key === null`) is never a
- * closing one, which is the declared consequence of D-5.
+ * The two PHASES that mark a closure (D-7). The ONLY thing the
+ * closure-feedback rule may branch on: a status label never enters a condition
+ * (AC-024), and neither does `system_key` any more.
+ *
+ * Rectification of 2026-09-04: closing used to be decided by the system key,
+ * so an ordinary row "was never a closing one" — that consequence of D-5 no
+ * longer holds. Every row carries a phase, system or custom alike, so a status
+ * an admin created and put in a closing phase closes the task exactly like a
+ * seeded one, and the server 422s on the missing feedback either way.
  */
-export const CLOSING_STATUS_SYSTEM_KEYS: readonly TaskStatusSystemKey[] = [
+export const CLOSING_STATUS_GROUPS: readonly TaskStatusGroupValue[] = [
   'closed_positive',
   'closed_negative',
 ]
 
-/** Whether the given system key closes the task (D-7). */
-export function isClosingStatus(systemKey: TaskStatusSystemKey | null | undefined): boolean {
-  return systemKey !== null && systemKey !== undefined && CLOSING_STATUS_SYSTEM_KEYS.includes(systemKey)
+/** Whether the given phase closes the task (D-7). */
+export function isClosingStatus(group: TaskStatusGroupValue | null | undefined): boolean {
+  return group !== null && group !== undefined && CLOSING_STATUS_GROUPS.includes(group)
 }
 
 /**
@@ -92,11 +97,11 @@ function addMissingStatusIssue(values: RefinedValues, ctx: z.RefinementCtx, t: T
  */
 function addMissingClosureFeedbackIssue(
   values: RefinedValues,
-  systemKey: TaskStatusSystemKey | null,
+  statusGroup: TaskStatusGroupValue | null,
   ctx: z.RefinementCtx,
   t: TFunction,
 ): void {
-  if (!values.requires_closure_feedback || !isClosingStatus(systemKey)) {
+  if (!values.requires_closure_feedback || !isClosingStatus(statusGroup)) {
     return
   }
   if ((values.closure_feedback ?? '').trim() === '') {
@@ -109,17 +114,17 @@ function addMissingClosureFeedbackIssue(
 }
 
 /**
- * Builds the task form schema. `statusSystemKey` is the `system_key` of the
- * status currently picked, read off the picker's own `meta` (see
- * `taskStatusMetaOf`) rather than off the form values: it is not a writable
- * field, so it never becomes part of the payload. One schema for create and
- * edit — the partial PATCH diff is computed by the payload builder, not by a
- * second shape that could drift.
+ * Builds the task form schema. `statusGroup` is the `group` of the status
+ * currently picked, read off the picker's own `meta` (see `taskStatusMetaOf`)
+ * rather than off the form values: it is not a writable field, so it never
+ * becomes part of the payload. One schema for create and edit — the partial
+ * PATCH diff is computed by the payload builder, not by a second shape that
+ * could drift.
  */
-export function buildTaskSchema(t: TFunction, statusSystemKey: TaskStatusSystemKey | null = null) {
+export function buildTaskSchema(t: TFunction, statusGroup: TaskStatusGroupValue | null = null) {
   return z.object(baseFields(t)).superRefine((values, ctx) => {
     addMissingStatusIssue(values, ctx, t)
-    addMissingClosureFeedbackIssue(values, statusSystemKey, ctx, t)
+    addMissingClosureFeedbackIssue(values, statusGroup, ctx, t)
   })
 }
 
