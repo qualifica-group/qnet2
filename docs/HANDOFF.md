@@ -3,6 +3,54 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED PRODUZIONE: PRODOTTI "AUTOIMPIEGO" E "YISU" (2026-09-04) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Nel seed di produzione voglio aggiungere prodotto Yisu alla categoria Yisu e
+Autoimpiego per la categoria Autoimpiego."
+
+**Cosa e' stato fatto.** Nuova costante `CatalogProducts::SINGLE_OFFER_SUBCATEGORIES =
+['Autoimpiego', 'Yisu']`: un prodotto SERVICE per sottocategoria, con lo STESSO NOME della
+categoria, filato direttamente su di essa. Cost/price a 0 e nessun valore di attributo — come i
+corsi GOL, si compilano dopo dal CRUD. Le due sottocategorie diventano quindi `is_selectable = true`
+(prima erano container): `QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES` le assorbe via spread da
+quella costante, quindi la regola resta UNA — "una sottocategoria e' target di classificazione se e
+solo se ospita prodotti propri" (come "Autofinanziato").
+
+**Split obbligato.** Aggiungendo il metodo il seeder sfondava il limite hard di 500 righe
+(engineering.md §6): tutta la parte prodotti e' stata estratta in
+`database/seeders/QualificaCatalog/CatalogProducts.php` (168 righe), sullo stesso idioma di
+`CatalogRootRules` — `app(CatalogProducts::class)->seed()` allo step 3 di `run()`. Vi sono migrati
+`seedTrainingCourses`, `seedSelfFundedCourses`, `disambiguate`, l'upsert condiviso (rinominato
+`seedCourse` -> `seedProduct`, ora serve anche prodotti non-corso) e le due costanti pubbliche
+`TOTAL_HOURS_ATTRIBUTE` / `DELIVERY_MODE_ATTRIBUTE`, che `QualificaCatalogSeeder` referenzia in
+`CATALOG_PRODUCT_ATTRIBUTES`. `QualificaCatalogSeeder` e' sceso a 360 righe.
+
+**Nomi da rispettare.** `CatalogProducts::SINGLE_OFFER_SUBCATEGORIES` (pubblica, letta anche dai
+test), `CatalogProducts::seed()`, `seedProduct()`. Aggiungere una sottocategoria mono-offerta =
+aggiungerla a quella costante, nient'altro.
+
+**Non serviva toccare** `QualificaContactProcessingSeeder`: il suo `layoutCategories()` prende
+l'INTERO ramo Formazione via `CategoryHierarchy::descendantIds`, quindi Autoimpiego/Yisu avevano gia'
+la sezione "Dati Lavorazione Contatto" in contesto `quote` e `work_order`. Idem
+`QualificaWorkflowSeeder` (i workflow #10/#11 erano gia' agganciati a quelle categorie) e
+`QualificaClassroomLayoutSeeder` (stesso ramo).
+
+**Conteggio prodotti seed: 262 -> 264.** Aggiornate le asserzioni in
+`QualificaCatalogSeederTest` (nuova costante di file `TOTAL_SEEDED_PRODUCTS`) e in
+`QualificaProductionDataSeederTest` (due punti). La lista `$selectable` del test spec-0074 ora
+include `Autoimpiego` e `Yisu`; la lista `$containers` non li contiene piu'.
+
+**Verificato (eseguito).** `php artisan test --filter="QualificaCatalogSeederTest|
+QualificaProductionDataSeederTest|QualificaClassroomLayoutSeederTest|QualificaWorkflowSeederTest|
+QualificaContactProcessingSeederTest"` -> 56 test, 463 asserzioni, tutti verdi. Pint pulito sui
+file toccati. Nessuna modifica frontend, quindi typecheck non pertinente.
+
+**Prossimi passi.** Lanciare il seed di produzione (`php artisan db:seed --class=
+QualificaProductionDataSeeder`) e verificare a video che i due prodotti compaiano; poi decidere se
+committare.
+
+---
+
 ## SEED PRODUZIONE: ATTRIBUTI + LAYOUT COMMESSA (2026-09-02) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** "Come per gli attributi e layout delle opportunita', voglio farlo anche con

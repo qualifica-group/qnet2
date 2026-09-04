@@ -12,6 +12,7 @@ use App\Models\Source;
 use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
+use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
@@ -22,6 +23,12 @@ use Illuminate\Support\Facades\Http;
 // The client's hard-coded reference data, split out of QualificaTemplateSeeder
 // (which now provisions custom field STRUCTURE only).
 uses(RefreshDatabase::class);
+
+/**
+ * Every product the catalogue seeds: the GOL courses, the self-funded ones and
+ * one per CatalogProducts::SINGLE_OFFER_SUBCATEGORIES.
+ */
+const TOTAL_SEEDED_PRODUCTS = 264;
 
 it('provisions the client source catalogue, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
@@ -90,10 +97,11 @@ it('seeds the first two catalogue levels as containers, third level only selecta
 
     // Roots AND every subcategory under them, whether or not they already have
     // children: the catalogue classifies on its third level (user directive
-    // 2026-08-03). "Autofinanziato" is the declared exception below.
+    // 2026-08-03). The declared exceptions below are the subcategories that
+    // host their own offer.
     $containers = [
         'Formazione', 'Consulenza',
-        'GOL', 'Autoimpiego', 'Yisu', 'DIL',
+        'GOL', 'DIL',
         'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
@@ -106,9 +114,11 @@ it('seeds the first two catalogue levels as containers, third level only selecta
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
         'Autofinanziato',
+        'Autoimpiego',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
+        'Yisu',
     ]);
 });
 
@@ -121,6 +131,27 @@ it('seeds "Autofinanziato" as a classification target, it hosts the self-funded 
         // The reason it must be one: its products are filed directly on it.
         ->and(Product::query()->where('category_id', $autofinanziato->id)->count())
         ->toBe(count(SelfFundedCourseCatalogue::COURSES));
+});
+
+it('seeds one product named after each single-offer subcategory, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
+
+    foreach (CatalogProducts::SINGLE_OFFER_SUBCATEGORIES as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+
+        // The reason it must be a classification target: its product is filed
+        // directly on it.
+        expect($category->is_selectable)->toBeTrue();
+
+        $products = Product::query()->where('category_id', $category->id)->get();
+
+        expect($products)->toHaveCount(1)
+            ->and($products->first()->name)->toBe($name)
+            ->and($products->first()->product_type)->toBe(ProductType::Service)
+            ->and((float) $products->first()->price)->toBe(0.0)
+            ->and((float) $products->first()->cost)->toBe(0.0);
+    }
 });
 
 it('realigns a container category seeded as selectable before the flag existed', function (): void {
@@ -254,8 +285,10 @@ it('seeds every GOL training course under its own region, idempotently', functio
         expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
     }
 
-    // Outside the regions, only the self-funded courses are seeded.
-    expect(Product::query()->count())->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES));
+    // Outside the regions: the self-funded courses, plus the one product of
+    // each single-offer subcategory ("Autoimpiego", "Yisu").
+    expect(Product::query()->count())
+        ->toBe(array_sum($expectedPerRegion) + count(SelfFundedCourseCatalogue::COURSES) + count(CatalogProducts::SINGLE_OFFER_SUBCATEGORIES));
 });
 
 it('files each course with its duration in the inherited "Ore complessive" attribute', function (): void {
@@ -413,5 +446,5 @@ it('does not ask when no external system is configured', function (): void {
     test()->artisan('db:seed', ['--class' => QualificaCatalogSeeder::class])->assertSuccessful();
 
     expect(MassMigrationRun::query()->count())->toBe(0)
-        ->and(Product::query()->count())->toBe(262);
+        ->and(Product::query()->count())->toBe(TOTAL_SEEDED_PRODUCTS);
 });

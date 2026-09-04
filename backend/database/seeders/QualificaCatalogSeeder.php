@@ -2,19 +2,15 @@
 
 namespace Database\Seeders;
 
-use App\DataObjects\Products\CreateProductData;
 use App\Enums\AttributeContext;
-use App\Enums\ProductType;
-use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
-use App\Services\ProductService;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
+use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
-use Database\Seeders\QualificaCatalog\TrainingCourseCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
@@ -31,25 +27,22 @@ use Illuminate\Database\Seeder;
  *     false`, spec 0074): they group the tree and hand their attributes down,
  *     while products, opportunity lines, projects, campaigns and commission
  *     rules are classified on the third level, today the `GOL - <Regione>`
- *     rows — plus the one subcategory that hosts its offer directly,
- *     "Autofinanziato" (see SELECTABLE_SUBCATEGORIES). The "Formazione"
- *     branch also carries its product-context attributes (spec 0061) —
- *     "Ore complessive" and the
+ *     rows — plus the subcategories that host their offer directly,
+ *     "Autofinanziato", "Autoimpiego" and "Yisu" (see
+ *     SELECTABLE_SUBCATEGORIES). The "Formazione" branch also carries its
+ *     product-context attributes (spec 0061) — "Ore complessive" and the
  *     "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue —
  *     assigned to the root and inherited by every descendant, then grouped
  *     into form sections by QualificaClassroomLayoutSeeder (spec 0062). The
  *     counterpart of the OFFERTA and COMMESSA contexts ("Dati Lavorazione
  *     Contatto", scoped to Formazione / Autofinanziato / the two Consulenza
  *     leaves) is delegated to QualificaContactProcessingSeeder;
- *   - the GOL training courses (QualificaCatalog\TrainingCourseCatalogue): one
- *     SERVICE product per funded course, filed under its own region's
- *     `GOL - <Regione>` category and carrying its duration in that attribute.
- *     Cost/price stay 0 — they are edited later through the CRUD modules;
- *   - the self-funded courses (QualificaCatalog\SelfFundedCourseCatalogue):
- *     one SERVICE product per row under the "Autofinanziato" subcategory,
- *     with its list price and its delivery mode ("Modalità di svolgimento",
- *     an enum attribute assigned to that subcategory alone). No other product
- *     is seeded;
+ *   - every product of the catalogue, delegated to
+ *     QualificaCatalog\CatalogProducts once the tree exists: the GOL courses
+ *     under their own region, the self-funded ones under "Autofinanziato"
+ *     with their price and delivery mode, and one product named after each
+ *     single-offer subcategory ("Autoimpiego", "Yisu"). No other product is
+ *     seeded;
  *   - the ROOT-OWNED rules of the two roots (how many product lines a card
  *     carries, how many offers an opportunity may hold), delegated to
  *     QualificaCatalog\CatalogRootRules once the whole tree exists — it
@@ -158,13 +151,15 @@ class QualificaCatalogSeeder extends Seeder
      * of grouping children. "Autofinanziato" is one — seedSelfFundedCourses()
      * files every self-funded course directly on it, so a container there would
      * leave those products under a category nothing can be classified on (user
-     * directive 2026-08-03). Bound by identity to the catalogue that files
-     * them, so a rename breaks loudly instead of silently demoting the node.
+     * directive 2026-08-03). CatalogProducts::SINGLE_OFFER_SUBCATEGORIES are the others, for
+     * the same reason. Bound by identity to the catalogues that file the
+     * products, so a rename breaks loudly instead of silently demoting a node.
      *
      * @var list<string>
      */
     private const array SELECTABLE_SUBCATEGORIES = [
         SelfFundedCourseCatalogue::CATEGORY,
+        ...CatalogProducts::SINGLE_OFFER_SUBCATEGORIES,
     ];
 
     /**
@@ -191,29 +186,16 @@ class QualificaCatalogSeeder extends Seeder
      */
     private const array CATALOG_PRODUCT_ATTRIBUTES = [
         'Formazione' => [
-            ['code' => self::TOTAL_HOURS_ATTRIBUTE, 'name' => 'Ore complessive', 'type' => 'integer'],
+            ['code' => CatalogProducts::TOTAL_HOURS_ATTRIBUTE, 'name' => 'Ore complessive', 'type' => 'integer'],
             ...ClassroomAttributeCatalogue::ATTRIBUTES,
         ],
         SelfFundedCourseCatalogue::CATEGORY => [
-            ['code' => self::DELIVERY_MODE_ATTRIBUTE, 'name' => 'Modalità di svolgimento', 'type' => 'enum', 'options' => [
+            ['code' => CatalogProducts::DELIVERY_MODE_ATTRIBUTE, 'name' => 'Modalità di svolgimento', 'type' => 'enum', 'options' => [
                 ['value' => SelfFundedCourseCatalogue::IN_PERSON, 'label' => 'In presenza'],
                 ['value' => SelfFundedCourseCatalogue::ONLINE, 'label' => 'Online'],
             ]],
         ],
     ];
-
-    /**
-     * `attribute_values` key (an Attribute `code`) holding a training course's
-     * duration — shared by the definition above and by the course seed.
-     */
-    private const string TOTAL_HOURS_ATTRIBUTE = 'total_hours';
-
-    /**
-     * `attribute_values` key (an Attribute `code`) holding a self-funded
-     * course's delivery mode — shared by the definition above and by the
-     * course seed.
-     */
-    private const string DELIVERY_MODE_ATTRIBUTE = 'delivery_mode';
 
     /**
      * @param  bool  $askForLegacyImport  Offer to chain the q-crm import once
@@ -234,10 +216,9 @@ class QualificaCatalogSeeder extends Seeder
         // Step 2: the category tree and the attribute the courses below need.
         $this->seedCatalog();
 
-        // Step 3: the courses, which resolve their category from step 2 and
+        // Step 3: the products, which resolve their category from step 2 and
         // their attributes from the assignments it sets up.
-        $this->seedTrainingCourses();
-        $this->seedSelfFundedCourses();
+        app(CatalogProducts::class)->seed();
 
         // Step 4: the "stati di lavorazione", which key their matching
         // criterion on the categories of step 2.
@@ -375,108 +356,5 @@ class QualificaCatalogSeeder extends Seeder
         }
 
         return $category;
-    }
-
-    /**
-     * The GOL training courses (TrainingCourseCatalogue): one product per row,
-     * in its own region's `GOL - <Regione>` category, carrying its duration in
-     * the `total_hours` attribute the Formazione root hands down.
-     */
-    private function seedTrainingCourses(): void
-    {
-        $service = app(ProductService::class);
-
-        foreach (TrainingCourseCatalogue::COURSES as $categoryName => $courses) {
-            // The category is created by seedCatalog() above: a miss means the
-            // two lists drifted apart, which must fail loudly rather than
-            // silently drop a whole region's courses.
-            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-
-            foreach ($this->disambiguate($courses) as $course) {
-                // Cost/price stay 0: a funded course is not sold to the learner.
-                $this->seedCourse($service, $category, $course['name'], 0.0, [
-                    self::TOTAL_HOURS_ATTRIBUTE => $course['hours'],
-                ]);
-            }
-        }
-    }
-
-    /**
-     * The self-funded courses (SelfFundedCourseCatalogue): one product per row
-     * under the single "Autofinanziato" subcategory, priced, carrying its
-     * duration in the inherited `total_hours` and its delivery mode in the
-     * `delivery_mode` attribute assigned to that subcategory.
-     */
-    private function seedSelfFundedCourses(): void
-    {
-        $service = app(ProductService::class);
-
-        // Created by seedCatalog() above: a miss means the two lists drifted
-        // apart, which must fail loudly rather than silently drop the courses.
-        $category = ProductCategory::query()->where('name', SelfFundedCourseCatalogue::CATEGORY)->firstOrFail();
-
-        foreach (SelfFundedCourseCatalogue::COURSES as $course) {
-            $this->seedCourse($service, $category, $course['name'], $course['price'], [
-                self::TOTAL_HOURS_ATTRIBUTE => $course['hours'],
-                self::DELIVERY_MODE_ATTRIBUTE => $course['delivery_mode'],
-            ]);
-        }
-    }
-
-    /**
-     * A course name repeating inside one region is a DISTINCT course with its
-     * own duration (user decision 2026-07-27): every occurrence of a repeated
-     * name takes an "(N ore)" suffix — the duration is the only discriminator
-     * the source list carries — so the two survive as separate products
-     * instead of collapsing onto the same natural key. A name occurring once
-     * is left untouched.
-     *
-     * @param  list<array{name: string, hours: int}>  $courses
-     * @return list<array{name: string, hours: int}>
-     */
-    private function disambiguate(array $courses): array
-    {
-        $occurrences = array_count_values(array_column($courses, 'name'));
-
-        return array_map(
-            static fn (array $course): array => $occurrences[$course['name']] > 1
-                ? ['name' => sprintf('%s (%d ore)', $course['name'], $course['hours']), 'hours' => $course['hours']]
-                : $course,
-            $courses,
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributeValues
-     */
-    private function seedCourse(
-        ProductService $service,
-        ProductCategory $category,
-        string $name,
-        float $price,
-        array $attributeValues,
-    ): void {
-        // Natural key (name, category) — scoped to the category because the
-        // SAME course runs in several regions. An already-seeded course is
-        // left untouched, so a manual edit survives the re-run.
-        $exists = Product::query()
-            ->where('name', $name)
-            ->where('category_id', $category->id)
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
-        $service->create(new CreateProductData(
-            name: $name,
-            description: null,
-            // Cost is filled in later through the CRUD modules.
-            cost: 0.0,
-            price: $price,
-            categoryId: $category->id,
-            productType: ProductType::Service,
-            attributeValues: $attributeValues,
-        ));
     }
 }
