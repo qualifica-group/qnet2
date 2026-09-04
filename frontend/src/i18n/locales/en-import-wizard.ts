@@ -207,12 +207,20 @@ export const importWizard = {
       cancel: 'Cancel',
     },
     bulkAssign: {
-      toolbarLabel: 'Bulk-assign operator/site to the selected rows',
+      toolbarLabel: 'Bulk-assign operator, site, or products to the selected rows',
       count: '{{count}} row(s) selected',
       all: 'All rows selected',
       allExcept: 'All rows selected ({{count}} excluded)',
+      actionsLabel: 'Actions ({{count}})',
       assign: 'Assign operators',
       success: 'Assigned to {{count}} row(s).',
+      products: {
+        menuLabel: 'Assign products',
+        title: 'Assign products',
+        description: 'Assign products of interest to {{count}} selected row(s).',
+        apply: 'Apply',
+        cancel: 'Cancel',
+      },
     },
   },
   summary: {

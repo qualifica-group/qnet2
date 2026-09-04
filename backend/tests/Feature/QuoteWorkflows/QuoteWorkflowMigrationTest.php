@@ -64,9 +64,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // spec 0097's
     // `2026_09_02_230000_rename_request_management_operator_field_permission`
     // (39th), and spec 0098's
-    // `2026_09_02_240000_add_work_order_attribute_context_columns` (40th).
+    // `2026_09_02_240000_add_work_order_attribute_context_columns` (40th),
+    // spec 0103's `2026_09_03_100000_create_product_typologies_table` (41st)
+    // and `2026_09_03_100100_add_product_typology_id_to_products_table`
+    // (42nd), and spec 0101's eight task migrations,
+    // `2026_09_04_100000_create_task_types_table` (43rd) through
+    // `2026_09_04_100700_create_task_watcher_table` (50th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 40]);
+    Artisan::call('migrate:rollback', ['--step' => 50]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

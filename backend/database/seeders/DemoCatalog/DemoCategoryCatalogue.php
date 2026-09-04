@@ -15,8 +15,10 @@ namespace Database\Seeders\DemoCatalog;
  * and both resolve from categories.
  *
  * Names are deliberately distinct from the Qualifica ones ("Formazione",
- * "Consulenza"): the two seeds use `name` as the natural key, so a database
- * carrying both must not collapse them onto the same rows.
+ * "Consulenza"), but distinctness is not enough on a database carrying both
+ * catalogues — a legacy row can hold any label: the seeders resolve a demo
+ * category by its POSITION in this tree (root + parent), never by name alone
+ * (Concerns\ResolvesDemoCategories).
  *
  * `code` is the English identifier (natural key, `^[a-z0-9_]+$`), prefixed
  * `demo_` so a demo attribute is never mistaken for a client one in the

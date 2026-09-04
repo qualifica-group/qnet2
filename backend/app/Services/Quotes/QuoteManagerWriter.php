@@ -8,6 +8,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\Support\ManagerPositions;
+use App\Support\PositionalPivotSync;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -56,7 +57,7 @@ final class QuoteManagerWriter
         }
 
         // Step 2: full-replace sync of the Offerta's own pivot.
-        $quote->managers()->sync($syncMap);
+        PositionalPivotSync::sync($quote->managers(), $syncMap);
         $quote->unsetRelation('managers');
 
         // Step 3: `quotes.operator_id` always mirrors the OPERATOR slot,
@@ -68,7 +69,7 @@ final class QuoteManagerWriter
         // Opportunita's own pivot — a direct sync(), never a call back into
         // this method, so the bidirectionality terminates (D-7, R-2).
         if ($synchronized) {
-            $opportunity->managers()->sync($syncMap);
+            PositionalPivotSync::sync($opportunity->managers(), $syncMap);
             $opportunity->unsetRelation('managers');
         }
     }

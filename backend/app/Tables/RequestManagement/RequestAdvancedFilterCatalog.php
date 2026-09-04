@@ -21,13 +21,15 @@ use App\Enums\AdvancedFilterType;
  * 0086) — only the dot-path prefix changed, the generic id-based `whereHas`
  * default is otherwise untouched.
  *
- * `expected_close_range`/`next_callback_range` (AC-013) target real
- * `opportunities` columns (`expected_close_date`/`next_callback_at`), NOT
- * `quotes` ones: RequestManagementTableDefinition::applyAdvancedFilter()
- * overrides the generic default to scope AdvancedFilterApplier inside a
+ * `expected_close_range` (AC-013) targets a real `opportunities` column
+ * (`expected_close_date`), NOT a `quotes` one:
+ * RequestManagementTableDefinition::applyAdvancedFilter() overrides the
+ * generic default to scope AdvancedFilterApplier inside a
  * `whereHas('opportunity', ...)` closure — the generic default's plain
  * `$query->where($target, ...)` would target a column that does not exist on
- * `quotes`.
+ * `quotes`. `next_callback_range` needs no such override since the user
+ * directive 2026-09-04: `quotes.next_callback_at` is a real column of the
+ * queried table.
  *
  * `operational_site` is a PICKER, not free text (user directive 2026-07-31):
  * an id-based `relation` filter over the `operational-sites/for-select` route

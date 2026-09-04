@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -117,9 +118,10 @@ it('create: next_callback_at and general_notes are persisted and read back', fun
     expect($response->json('data.next_callback_at'))->toBe('2026-09-01T10:30');
     expect($response->json('data.context.general_notes'))->toBe('Il cliente richiama a settembre.');
 
-    $opportunity = Opportunity::query()->sole();
-    expect($opportunity->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-09-01T10:30')
-        ->and($opportunity->general_notes)->toBe('Il cliente richiama a settembre.');
+    // The callback lands on the created Offerta (user directive 2026-09-04),
+    // the general notes stay on the Opportunity.
+    expect(Quote::query()->sole()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-09-01T10:30')
+        ->and(Opportunity::query()->sole()->general_notes)->toBe('Il cliente richiama a settembre.');
 });
 
 // REQUIREMENT CHANGE (user directive 2026-08-07): `attribute_values` used to
@@ -157,7 +159,6 @@ it('create: none of the operative fields submitted leaves the record exactly as 
         'product_lines' => [$line],
     ])->assertCreated();
 
-    $opportunity = Opportunity::query()->sole();
-    expect($opportunity->next_callback_at)->toBeNull()
-        ->and($opportunity->general_notes)->toBeNull();
+    expect(Quote::query()->sole()->next_callback_at)->toBeNull()
+        ->and(Opportunity::query()->sole()->general_notes)->toBeNull();
 });

@@ -11,9 +11,14 @@ import type {
 /** Page size for the one-shot reads below: statuses are a small lookup table, never paginated. */
 const STATUS_PAGE_SIZE = 100
 
-/** A for-select item extended with the `system_key` marker (spec 0039), not modeled on the generic `ForSelectItem`. */
+/**
+ * A for-select item extended with the markers this sheet needs (spec 0039,
+ * widened by spec 0101), not modeled on the generic `ForSelectItem`. Both are
+ * optional: a resource that projects neither yields `systemKey: null`
+ * (unpinned) and `isActive: undefined` (unmarked).
+ */
 interface StatusForSelectItem extends ForSelectItem {
-  meta?: { system_key: SystemStatusKey }
+  meta?: { system_key?: SystemStatusKey; is_active?: boolean }
 }
 
 /**
@@ -37,15 +42,29 @@ export async function reorderStatuses(
  * Fetches the full ordered status list (system + custom) used to seed the
  * reorder sheet. Statuses are always ordered `sort_order,name,id` server-side,
  * so a single page covers the complete set — no pagination needed for this
- * one-shot read.
+ * one-shot read. INACTIVE rows are included: see `include_inactive` below.
  */
 export async function fetchStatusesForReorder(resource: string): Promise<StatusReorderItem[]> {
-  const response = await fetchForSelect(resource, { limit: STATUS_PAGE_SIZE })
+  const response = await fetchForSelect(resource, {
+    limit: STATUS_PAGE_SIZE,
+    // The reorder endpoints validate `ordered_ids` against the FULL set of
+    // reorderable rows (`StatusOrderManager`: every custom row;
+    // `LookupOrderManager`: every row), while a for-select answers with the
+    // ACTIVE ones only. Without this flag a single deactivated row makes the
+    // sheet send an incomplete set, and every drag 422s "none missing" —
+    // permanently, until an admin reactivates it (spec 0101 AC-047/AC-049).
+    // Additive and default-off server-side: a resource that does not declare
+    // it in `rules()` drops it in `validated()`, so the other modules reusing
+    // this sheet are unaffected. Sent as `1` because `ForSelectParams.params`
+    // carries no boolean; Laravel's `boolean` rule accepts it.
+    params: { include_inactive: 1 },
+  })
   const items = response.items as StatusForSelectItem[]
   return items.map((item) => ({
     id: item.id,
     name: item.label,
     systemKey: item.meta?.system_key ?? null,
+    isActive: item.meta?.is_active,
   }))
 }
 

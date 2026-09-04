@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
-import { StatusReorderSheet } from '@/features/status-reorder/status-reorder-sheet'
+import {
+  StatusReorderSheet,
+  type StatusReorderSheetLabels,
+} from '@/features/status-reorder/status-reorder-sheet'
 import type { StatusReorderItem } from '@/features/status-reorder/types'
 
 /**
@@ -84,7 +87,13 @@ async function flushSensorAttach() {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-function renderSheet(onReordered = vi.fn(), resource = 'pipeline-statuses') {
+function renderSheet(
+  onReordered = vi.fn(),
+  resource = 'pipeline-statuses',
+  // Annotated, not inferred: inferring from LABELS would narrow the type to
+  // its own literal shape and reject the optional `inactiveBadge`.
+  labels: StatusReorderSheetLabels = LABELS,
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -92,7 +101,7 @@ function renderSheet(onReordered = vi.fn(), resource = 'pipeline-statuses') {
         open
         onOpenChange={vi.fn()}
         resource={resource}
-        labels={LABELS}
+        labels={labels}
         onReordered={onReordered}
       />
     </QueryClientProvider>,
@@ -270,5 +279,52 @@ describe('StatusReorderSheet — opportunity statuses, 3 system rows', () => {
     expect(screen.getAllByRole('button', { name: LABELS.dragHandleLabel })).toHaveLength(2)
     const rows = screen.getAllByRole('listitem')
     expect(rows.map((row) => row.textContent)).toEqual(['New', 'Alpha', 'Bravo', 'Won', 'Lost'])
+  })
+})
+
+/**
+ * Spec 0101: the sheet lists DEACTIVATED rows too, because the reorder
+ * endpoints validate `ordered_ids` against the full set. A badge explains why
+ * a row absent from every picker shows up here. The marker is driven by an
+ * explicit `isActive === false`, never by falsiness — the modules whose
+ * for-select projects no `is_active` leave it `undefined` and must render
+ * nothing at all.
+ */
+const INACTIVE_BADGE = 'Inactive'
+
+/** Task priorities: pure lookup, no system row, one row deactivated. */
+const LOOKUP_ITEMS: StatusReorderItem[] = [
+  { id: 1, name: 'High', systemKey: null, isActive: true },
+  { id: 2, name: 'Obsolete', systemKey: null, isActive: false },
+]
+
+describe('StatusReorderSheet — inactive marker (spec 0101)', () => {
+  it('badges only the deactivated row, and lists it as draggable', async () => {
+    fetchStatusesForReorderMock.mockResolvedValue(LOOKUP_ITEMS)
+
+    renderSheet(vi.fn(), 'task-priorities', { ...LABELS, inactiveBadge: INACTIVE_BADGE })
+
+    await screen.findByText('Obsolete')
+    expect(screen.getAllByText(INACTIVE_BADGE)).toHaveLength(1)
+    // Deactivated does NOT mean pinned: the backend demands it in `ordered_ids`.
+    expect(screen.getAllByRole('button', { name: LABELS.dragHandleLabel })).toHaveLength(2)
+  })
+
+  it('renders no badge for a resource that projects no is_active (the modules in production)', async () => {
+    // ITEMS carries no `isActive` at all: pipeline/contract/reward statuses
+    // and payment methods must be visually untouched by this change.
+    renderSheet(vi.fn(), 'pipeline-statuses', { ...LABELS, inactiveBadge: INACTIVE_BADGE })
+
+    await screen.findByText('New')
+    expect(screen.queryByText(INACTIVE_BADGE)).not.toBeInTheDocument()
+  })
+
+  it('renders no badge when the caller supplies no label, even on a deactivated row', async () => {
+    fetchStatusesForReorderMock.mockResolvedValue(LOOKUP_ITEMS)
+
+    renderSheet(vi.fn(), 'task-priorities')
+
+    await screen.findByText('Obsolete')
+    expect(screen.queryByText(INACTIVE_BADGE)).not.toBeInTheDocument()
   })
 })

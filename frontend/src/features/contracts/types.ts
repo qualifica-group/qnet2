@@ -7,7 +7,6 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteLine } from '@/features/quotes/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
@@ -166,7 +165,8 @@ export interface ContractProgrammableLine {
  * Payload for POST /contracts/{id}/work-orders (spec 0095 D-6/D-11, spec 0096
  * D-5): generates ONE work order from the selected offer lines. `quote_id` is
  * never a key here — the server resolves it from the contract (constraint) —
- * and neither are the Partecipanti, assigned later from the commessa's form.
+ * and neither are the Partecipanti nor gli attributi dinamici, compilati
+ * dopo dal form della commessa (decisione utente 2026-09-04).
  */
 export interface CreateContractWorkOrderPayload {
   title: string
@@ -176,8 +176,6 @@ export interface CreateContractWorkOrderPayload {
   /** "Responsabili": at least one. */
   supervisor_ids: number[]
   quote_line_ids: number[]
-  /** Spec 0098 (AC-019): one key per applicable Attribute `code`, resolved from `quote_line_ids`. */
-  attribute_values: Record<string, CustomFieldValue>
 }
 
 /**

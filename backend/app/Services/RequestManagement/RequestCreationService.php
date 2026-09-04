@@ -44,7 +44,7 @@ use Illuminate\Validation\ValidationException;
  *
  * D-4: the reward beneficiary is now the Offerta's OWN Segnalatore, so
  * `rewards` is deliberately withheld from CreateOpportunityData and synced
- * onto the freshly created Quote instead (Step 3) — never through
+ * onto the freshly created Quote instead (Step 5) — never through
  * OpportunityService's own reward channel, which would target the wrong
  * owner.
  */
@@ -87,7 +87,7 @@ final class RequestCreationService
             // fills that slot alone and leaves the rest of the team as sent.
             //
             // Spec 0087, D-13: the operator lands SOLELY on the Offerta's
-            // own GA2 slot (Step 4 below) — the Opportunity no longer
+            // own GA2 slot (Step 3 below) — the Opportunity no longer
             // receives it from here. Appartenenza (D-6) is still guaranteed:
             // QuoteManagerWriter's own promotion path (reused here through
             // CreateQuoteData's `promoteManagersToOpportunity`) appends the
@@ -99,11 +99,11 @@ final class RequestCreationService
             // Step 2: the Opportunity, through the shared service. The
             // initial attribution (source/reporter/Sede operativa) travels
             // with it; every other relation stays unset (out of scope, D-4).
-            // `rewards` is withheld (see class docblock) — Step 4 syncs them
+            // `rewards` is withheld (see class docblock) — Step 5 syncs them
             // onto the Offerta instead. `managerSlots` is null (spec 0087,
             // D-13): the Opportunity is born with no Gestori Account of its
             // own from this channel — the operator is promoted onto it (if
-            // needed) only when the Offerta's own GA2 is written, Step 4.
+            // needed) only when the Offerta's own GA2 is written, Step 3.
             $opportunity = $this->opportunityService->create(new CreateOpportunityData(
                 registryId: $registry->id,
                 referentId: null,
@@ -131,13 +131,7 @@ final class RequestCreationService
                 generalNotes: $data->generalNotes,
             ), $actor);
 
-            // Step 3: the planned callback, submitted at creation too (user
-            // directive 2026-07-31) — NOT mass-assignable (D-4 guard), so
-            // written AFTER the insert like every other operative field of
-            // this panel.
-            $this->applyOperativeFields($opportunity, $data);
-
-            // Step 4: the Offerta itself (spec 0086, D-5), always through
+            // Step 3: the Offerta itself (spec 0086, D-5), always through
             // QuoteService::create() — the ONE entry point that generates
             // `code`, bootstraps `quote_workflow_status_id` and recalculates
             // every aggregate. Its REVENUE rows travel with it when the form
@@ -177,6 +171,13 @@ final class RequestCreationService
                 managerSlots: $managerSlots,
                 promoteManagersToOpportunity: true,
             ), $actor);
+
+            // Step 4: the planned callback, submitted at creation too (user
+            // directive 2026-07-31) — on the OFFERTA since the user directive
+            // 2026-09-04, and NOT mass-assignable (D-4 guard), so written
+            // AFTER its insert like every other operative field of this
+            // panel.
+            $this->applyOperativeFields($quote, $data);
 
             // Step 5: reward assignments (D-4/D-12, AC-023) — the Offerta's
             // own Segnalatore is the beneficiary, so the sync runs only once
@@ -260,11 +261,11 @@ final class RequestCreationService
      * submitted means nothing to save: the early return keeps a plain create
      * at the single insert it has always been.
      */
-    private function applyOperativeFields(Opportunity $opportunity, CreateRequestData $data): void
+    private function applyOperativeFields(Quote $quote, CreateRequestData $data): void
     {
         if ($data->nextCallbackAt !== null) {
-            $opportunity->next_callback_at = $data->nextCallbackAt;
-            $opportunity->save();
+            $quote->next_callback_at = $data->nextCallbackAt;
+            $quote->save();
         }
     }
 

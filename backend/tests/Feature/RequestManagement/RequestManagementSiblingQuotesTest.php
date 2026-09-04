@@ -50,9 +50,11 @@ if (! function_exists('siblingQuotes')) {
     /**
      * ONE Opportunity carrying two Offerte, deliberately diverging on every
      * per-Quote dimension the row projects — the shared fields (source,
-     * product_categories, next_callback_at, client anagraphic) come from the
-     * SAME Opportunity by construction; only what is explicitly set below
-     * (operator/site/lines) differs between the two.
+     * product_categories, client anagraphic) come from the SAME Opportunity
+     * by construction; only what is explicitly set below (operator/site/
+     * lines/next_callback_at) differs between the two. REQUIREMENT CHANGED
+     * (user directive 2026-09-04): the planned callback left the shared set
+     * — it is a `quotes` column now, so the two siblings plan their own.
      *
      * @return array{opportunity: Opportunity, first: Quote, second: Quote}
      */
@@ -64,7 +66,6 @@ if (! function_exists('siblingQuotes')) {
         $opportunity = Opportunity::factory()->create([
             'registry_id' => $registry->id,
             'source_id' => Source::factory()->create()->id,
-            'next_callback_at' => now()->addDay(),
         ]);
         OpportunityProductLine::factory()->for($opportunity)->create([
             'product_category_id' => $category->id,
@@ -73,14 +74,19 @@ if (! function_exists('siblingQuotes')) {
         $firstSite = OperationalSite::factory()->withAddress()->create();
         $secondSite = OperationalSite::factory()->withAddress()->create();
 
+        // `next_callback_at` is not fillable either (the mass-assignment
+        // guard travelled with the column): forceFill, like `is_transferred`
+        // right below.
         $first = Quote::factory()->for($opportunity)->create([
             'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $firstSite->id,
         ]);
+        $first->forceFill(['next_callback_at' => now()->addDay()])->save();
         $second = Quote::factory()->for($opportunity)->create([
             'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $secondSite->id,
         ]);
+        $second->forceFill(['next_callback_at' => now()->addDays(5)])->save();
         // `is_transferred` is not fillable (D-6 system flag): set directly,
         // mirroring RequestContactTransferGridTest's own precedent.
         $second->is_transferred = true;
@@ -115,13 +121,13 @@ it('AC-006: two sibling offers share the opportunity-level fields and diverge on
     // Shared: read through the SAME Opportunity, byte-identical on both rows.
     expect($firstRow['source'])->toBe($secondRow['source'])
         ->and($firstRow['product_categories'])->toBe($secondRow['product_categories'])
-        ->and($firstRow['next_callback_at'])->toBe($secondRow['next_callback_at'])
         ->and($firstRow['first_name'])->toBe($secondRow['first_name'])
         ->and($firstRow['last_name'])->toBe($secondRow['last_name']);
 
     // Independent: each Quote's own columns, never mirrored across siblings.
     expect($firstRow['operator_ga2']['id'])->not->toBe($secondRow['operator_ga2']['id'])
         ->and($firstRow['operational_site']['id'])->not->toBe($secondRow['operational_site']['id'])
+        ->and($firstRow['next_callback_at'])->not->toBe($secondRow['next_callback_at'])
         ->and($firstRow['is_transferred'])->toBeFalse()
         ->and($secondRow['is_transferred'])->toBeTrue()
         ->and(collect($firstRow['offer_lines'])->pluck('id')->all())

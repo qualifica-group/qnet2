@@ -41,6 +41,12 @@ class ContractStatusForSelectRequest extends FormRequest
             'ids.*' => ['integer'],
             'status_groups' => ['sometimes', 'array'],
             'status_groups.*' => [Rule::enum(ContractStatusGroup::class)],
+            // Lifts the default `is_active = true` filter. Needed by the shared
+            // reorder sheet ONLY: it seeds itself from this endpoint, while
+            // StatusOrderManager validates `ordered_ids` against every custom
+            // row regardless of `is_active` — so without this, deactivating one
+            // custom status made every drag fail with 422 "none missing".
+            'include_inactive' => ['sometimes', 'boolean'],
         ];
     }
 

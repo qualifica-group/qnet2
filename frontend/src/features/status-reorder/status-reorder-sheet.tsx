@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -15,12 +16,21 @@ import { useStatusReorder } from '@/features/status-reorder/use-status-reorder'
 interface StatusReorderRow extends SortableListItem {
   name: string
   systemKey: string | null
+  /** `undefined` for every resource that projects no `is_active`: renders nothing. */
+  isActive?: boolean
 }
 
 export interface StatusReorderSheetLabels {
   title: string
   subtitle: string
   dragHandleLabel: string
+  /**
+   * Marks a deactivated row. OPTIONAL on purpose: only the modules whose
+   * for-select projects `is_active` (the five Task configurators, spec 0101)
+   * ever receive such a row, and the others must not grow a required label
+   * for a badge they can never render.
+   */
+  inactiveBadge?: string
   loadError: string
   saved: string
   forbidden: string
@@ -45,6 +55,12 @@ interface StatusReorderSheetProps {
  * pin to the leading/trailing edges — no handle, not draggable — and every
  * completed drag persists immediately (`POST /{resource}/reorder`),
  * optimistic on the visual order and reverted on a 403/422.
+ *
+ * A row the module has DEACTIVATED is listed too (the reorder endpoints
+ * validate `ordered_ids` against the full set, so omitting it would 422 every
+ * drag) and carries a badge explaining why it appears here but in no picker.
+ * The test is `isActive === false`, never falsy: a resource projecting no
+ * `is_active` leaves it `undefined` and must render no badge at all.
  */
 export function StatusReorderSheet({
   open,
@@ -62,7 +78,13 @@ export function StatusReorderSheet({
   })
 
   const rows = useMemo<StatusReorderRow[]>(
-    () => items.map((item) => ({ id: String(item.id), name: item.name, systemKey: item.systemKey })),
+    () =>
+      items.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        systemKey: item.systemKey,
+        isActive: item.isActive,
+      })),
     [items],
   )
 
@@ -95,7 +117,16 @@ export function StatusReorderSheet({
               items={rows}
               isPinned={(row) => row.systemKey !== null}
               dragHandleLabel={labels.dragHandleLabel}
-              renderItem={(row) => <span className="truncate">{row.name}</span>}
+              renderItem={(row) => (
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{row.name}</span>
+                  {row.isActive === false && labels.inactiveBadge ? (
+                    <Badge variant="secondary" className="shrink-0">
+                      {labels.inactiveBadge}
+                    </Badge>
+                  ) : null}
+                </span>
+              )}
               onReorder={onReorder}
             />
           )}

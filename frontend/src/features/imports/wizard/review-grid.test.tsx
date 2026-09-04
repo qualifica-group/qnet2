@@ -9,10 +9,12 @@ import type { ImportRunDetail } from '@/features/imports/wizard/types'
 /**
  * Checkbox multi-selection over the SSRM review grid drives a bulk operator
  * assign: the toolbar appears only once AG Grid's own server-side selection
- * state is non-empty, its trigger opens the SHARED "Assegna operatori" popup
- * (spec 0048 AC-050) whose input maps 1:1 onto the bulk PATCH payload
- * (`buildBulkAssignPayload`, unit-tested in `use-review-rows-assign.test.tsx`),
- * and a successful assign refreshes the SSRM cache and clears the selection.
+ * state is non-empty, its "Azioni" dropdown's "Assegna operatori" entry opens
+ * the SHARED "Assegna operatori" popup (spec 0048 AC-050) whose input maps
+ * 1:1 onto the bulk PATCH payload (`buildBulkAssignPayload`, unit-tested in
+ * `use-review-rows-assign.test.tsx`), and a successful assign refreshes the
+ * SSRM cache and clears the selection. The dropdown's own two-entry contract
+ * and the "Assegna prodotti" flow are covered by `review-bulk-assign-bar.test.tsx`.
  * `AgGridReact` is stubbed — this codebase never mounts the real grid in
  * tests (see `data-table.test.tsx`); the stub exposes the grid api AG Grid
  * would otherwise own and lets the test fire `onSelectionChanged` directly.
@@ -59,6 +61,14 @@ vi.mock('@/features/imports/wizard/use-review-rows', () => ({
     operational_site_id: input.operational_site_id,
     mode: input.mode,
     ...(input.mode === 'single' ? { operator_id: input.operator_id } : {}),
+    select_all: selection.selectAll,
+    row_ids: selection.toggledNodes.map(Number),
+  }),
+  buildBulkAssignProductsPayload: (
+    selection: { selectAll: boolean; toggledNodes: string[] },
+    productIds: number[],
+  ) => ({
+    product_ids: productIds,
     select_all: selection.selectAll,
     row_ids: selection.toggledNodes.map(Number),
   }),
@@ -163,7 +173,9 @@ function fireSelectionChanged(
 }
 
 function openAssignPopup() {
-  fireEvent.click(screen.getByRole('button', { name: 'Assign operators' }))
+  // Radix' DropdownMenu trigger opens on `pointerdown`, not `click`.
+  fireEvent.pointerDown(screen.getByRole('button', { name: /^Actions/ }), { button: 0, ctrlKey: false })
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Assign operators' }))
 }
 
 describe('ReviewGrid — bulk assign via the shared popup', () => {

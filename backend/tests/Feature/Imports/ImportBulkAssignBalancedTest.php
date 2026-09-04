@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\ImportStatus;
+use App\Models\Campaign;
 use App\Models\EmploymentProfile;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\OperationalSite;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -163,4 +165,40 @@ it('AC-021: mode=balanced on a Sede with zero operators is 422 and modifies noth
     ])->assertStatus(422);
 
     expect($row->fresh()->operator_id)->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// spec 0094 increment — mode=balanced combined with bulk `product_ids`
+// ---------------------------------------------------------------------------
+
+it('mode=balanced writes product_ids on every targeted row while still distributing operators', function () {
+    $actor = balancedAssignActor(['import']);
+    $site = OperationalSite::factory()->withAddress()->create();
+    $operatorA = balancedAssignOperatorAtSite($site);
+    $operatorB = balancedAssignOperatorAtSite($site);
+    $campaign = Campaign::factory()->create();
+    $category = $campaign->productLines()->first()->productCategory;
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    $run = ImportRun::factory()->create([
+        'user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Reviewing,
+        'global_config' => ['campaign_id' => $campaign->id],
+    ]);
+    $row1 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 1]);
+    $row2 = ImportRunRow::factory()->create(['import_run_id' => $run->id, 'row_number' => 2]);
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/imports/leads/{$run->id}/rows/assign", [
+        'mode' => 'balanced',
+        'operational_site_id' => $site->id,
+        'product_ids' => [$product->id],
+        'row_ids' => [$row1->id, $row2->id],
+    ])->assertOk()->assertJsonPath('data.updated', 2);
+
+    $assignedOperatorIds = collect([$row1->fresh()->operator_id, $row2->fresh()->operator_id]);
+
+    expect($assignedOperatorIds->unique()->sort()->values()->all())->toBe([$operatorA->id, $operatorB->id])
+        ->and($row1->fresh()->product_ids)->toBe([$product->id])
+        ->and($row1->fresh()->is_edited)->toBeTrue()
+        ->and($row2->fresh()->product_ids)->toBe([$product->id])
+        ->and($row2->fresh()->is_edited)->toBeTrue();
 });

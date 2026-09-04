@@ -1,12 +1,19 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { UserCog } from 'lucide-react'
+import { ChevronDown, Package, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   AssignOperatorsDialog,
   type AssignOperatorsDialogInput,
 } from '@/features/leads/assign-operators-dialog'
+import { ReviewBulkProductsDialog } from '@/features/imports/wizard/review-bulk-products-dialog'
 
 /**
  * Selection shape consumed by the bar, mirroring AG Grid's own server-side
@@ -29,13 +36,17 @@ export interface ReviewBulkAssignBarProps {
    */
   totalRows: number
   /**
-   * The Sede to precompile in the popup (spec 0048 AC-031), when the caller
-   * could cheaply determine the current selection shares one — `null`
-   * otherwise (mixed sites, any unset, or a `selectAll` selection).
+   * The Sede to precompile in the operators popup (spec 0048 AC-031), when
+   * the caller could cheaply determine the current selection shares one —
+   * `null` otherwise (mixed sites, any unset, or a `selectAll` selection).
    */
   defaultSiteId?: number | null
-  /** PATCHes the combined bulk assignment; rejects (already toasted by the caller) on failure. */
+  /** Scopes the products popup's picker exactly like `ProductsOfInterestField`/the per-row popup. */
+  campaignCategoryIds: number[]
+  /** PATCHes the combined bulk operator/site assignment; rejects (already toasted by the caller) on failure. */
   onAssign: (input: AssignOperatorsDialogInput) => Promise<void>
+  /** PATCHes the combined bulk products assignment; rejects (surfaced inline by the popup) on failure. */
+  onAssignProducts: (productIds: number[]) => Promise<void>
 }
 
 function resolveSelectionLabel(selection: ReviewBulkSelectionState, t: TFunction): string {
@@ -57,13 +68,25 @@ function resolveSelectionCount(selection: ReviewBulkSelectionState, totalRows: n
 
 /**
  * Compact toolbar shown above the review grid only while the SSRM selection
- * is non-empty: the selection count (or "All") and a single trigger opening
- * the SAME "Assegna operatori" popup the Lead table uses (spec 0048 AC-050),
- * instead of duplicating a pair of operator/site pickers here.
+ * is non-empty: the selection count (or "All") and a single "Azioni" dropdown
+ * (client directive 2026-07-21: never a row of loose buttons, mirrors
+ * `use-bulk-actions-slot.tsx`'s pattern) with two entries — "Assegna
+ * operatori", opening the SAME popup the Lead table uses (spec 0048 AC-050),
+ * and "Assegna prodotti" (spec 0094 bulk delta), opening a dedicated
+ * assign-only products popup.
  */
-export function ReviewBulkAssignBar({ selection, totalRows, defaultSiteId, onAssign }: ReviewBulkAssignBarProps) {
+export function ReviewBulkAssignBar({
+  selection,
+  totalRows,
+  defaultSiteId,
+  campaignCategoryIds,
+  onAssign,
+  onAssignProducts,
+}: ReviewBulkAssignBarProps) {
   const { t } = useTranslation('importWizard')
-  const [open, setOpen] = useState(false)
+  const [operatorsOpen, setOperatorsOpen] = useState(false)
+  const [productsOpen, setProductsOpen] = useState(false)
+  const selectionCount = resolveSelectionCount(selection, totalRows)
 
   return (
     <div
@@ -72,22 +95,40 @@ export function ReviewBulkAssignBar({ selection, totalRows, defaultSiteId, onAss
       aria-label={t('review.bulkAssign.toolbarLabel')}
     >
       <span className="font-medium">{resolveSelectionLabel(selection, t)}</span>
-      <Button
-        type="button"
-        size="sm"
-        className="h-7 gap-1.5 px-2.5 text-xs"
-        onClick={() => setOpen(true)}
-      >
-        <UserCog className="size-3.5" aria-hidden="true" />
-        {t('review.bulkAssign.assign')}
-      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="secondary" size="sm" className="h-7 gap-1.5 px-2.5 text-xs">
+            {t('review.bulkAssign.actionsLabel', { count: selectionCount })}
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setOperatorsOpen(true)}>
+            <UserCog className="size-3.5" aria-hidden="true" />
+            {t('review.bulkAssign.assign')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setProductsOpen(true)}>
+            <Package className="size-3.5" aria-hidden="true" />
+            {t('review.bulkAssign.products.menuLabel')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <AssignOperatorsDialog
-        open={open}
-        onOpenChange={setOpen}
-        selectionCount={resolveSelectionCount(selection, totalRows)}
+        open={operatorsOpen}
+        onOpenChange={setOperatorsOpen}
+        selectionCount={selectionCount}
         defaultSiteId={defaultSiteId}
         onAssign={onAssign}
+      />
+
+      <ReviewBulkProductsDialog
+        open={productsOpen}
+        onOpenChange={setProductsOpen}
+        selectionCount={selectionCount}
+        campaignCategoryIds={campaignCategoryIds}
+        onApply={onAssignProducts}
       />
     </div>
   )

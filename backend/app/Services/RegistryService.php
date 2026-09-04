@@ -11,6 +11,7 @@ use App\Models\Registry;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Support\ManagerPositions;
+use App\Support\PositionalPivotSync;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -302,7 +303,7 @@ class RegistryService
 
         $syncMap = ManagerPositions::syncMap($data->managerSlots);
 
-        return ManagerPositions::attachedPositions($syncMap, $registry->managers()->sync($syncMap));
+        return ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($registry->managers(), $syncMap));
     }
 
     /**

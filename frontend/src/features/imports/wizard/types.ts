@@ -279,11 +279,18 @@ export interface ImportRunRowUpdateResult {
  * `operational_site_id`, enumerating the Sede's operators server-side).
  * Optional for backward compat with the legacy (pre-0048) caller contract,
  * where at least one of `operator_id`/`operational_site_id` alone sufficed.
+ *
+ * `product_ids` (spec 0094 bulk delta): sent by the review bar's "Assegna
+ * prodotti" dropdown action instead of the operator/site/mode fields —
+ * assign-only, at least 1 element when present, never `null`/`[]` (those
+ * bulk-clear shortcuts stay row-scoped, see
+ * `UpdateImportRunRowPayload.product_ids`).
  */
 export interface BulkAssignImportRowPayload {
   operator_id?: number
   operational_site_id?: number
   mode?: 'single' | 'balanced'
+  product_ids?: number[]
   select_all: boolean
   row_ids: number[]
 }

@@ -50,6 +50,12 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\Task;
+use App\Models\TaskCategory;
+use App\Models\TaskImportance;
+use App\Models\TaskPriority;
+use App\Models\TaskStatus;
+use App\Models\TaskType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\UserTablePreference;
@@ -206,6 +212,16 @@ class AppServiceProvider extends ServiceProvider
             // Spec 0093 (work-orders module): WorkOrder uses LogsModelActivity,
             // same reasoning as document_layout above.
             'work_order' => WorkOrder::class,
+            // Spec 0101 (tasks module): Task and its five configurators all use
+            // LogsModelActivity, same reasoning as document_layout above — without
+            // these aliases the very first save() of any of them throws
+            // ClassMorphViolationException under the strict map.
+            'task' => Task::class,
+            'task_status' => TaskStatus::class,
+            'task_type' => TaskType::class,
+            'task_category' => TaskCategory::class,
+            'task_priority' => TaskPriority::class,
+            'task_importance' => TaskImportance::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

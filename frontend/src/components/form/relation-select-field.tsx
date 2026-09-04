@@ -32,6 +32,15 @@ interface RelationSelectFieldProps<
   searchPlaceholder: string
   /** The loaded detail's hydrated `{id, name}` projection for this relation (edit mode), or a just-picked ref (create-mode prefill). */
   selected: RelationFieldRef | null
+  /**
+   * Keeps the record's PERSISTED value selectable even when the for-select
+   * endpoint never returns it — the case for any picker fed by a
+   * visibility-scoped endpoint (see `AsyncPaginatedSelect.pinnedItem`).
+   * Without it, a user who changes the selection can never pick the original
+   * back. Pass only the ref the caller already holds from its own detail
+   * payload; omitted, the picker behaves exactly as before.
+   */
+  pinned?: RelationFieldRef | null
   /** Forces the field read-only regardless of field permissions (e.g. a derived/linked value). */
   forceDisabled?: boolean
   /** Overrides the required marker when requiredness is form-state-dependent; forwarded to `MetaField.required`. */
@@ -92,6 +101,7 @@ export function RelationSelectField<
   resource,
   searchPlaceholder,
   selected,
+  pinned = null,
   forceDisabled = false,
   required,
   onValueChange,
@@ -134,6 +144,7 @@ export function RelationSelectField<
               }}
               onItemChange={onItemChange}
               selectedItem={toForSelectItem(quickCreatedMatch ?? selected)}
+              pinnedItem={toForSelectItem(pinned)}
               showAvatar={showAvatar}
               disabled={isDisabled}
               params={params}

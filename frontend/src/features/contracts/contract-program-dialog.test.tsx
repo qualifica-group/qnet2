@@ -7,23 +7,19 @@ import { workOrders as workOrdersEn } from '@/i18n/locales/en-work-orders'
 import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
 import { createContractWorkOrder, fetchContractProgrammableLines } from '@/features/contracts/api'
 import type { ContractProgrammableLine } from '@/features/contracts/types'
-import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
  * Spec 0095 AC-060/061/062: occupied lines are visible but not selectable,
  * the submit is blocked without a title or without any selected line, and a
  * successful generation closes the dialog and reports the new Commessa up.
  * Spec 0096 AC-060: "Data inizio" and "Responsabili" are required too.
+ * Decisione utente 2026-09-04: gli attributi dinamici della commessa NON
+ * compaiono in questo dialog (revoca AC-019 di spec 0098).
  */
 
 vi.mock('@/features/contracts/api', () => ({
   fetchContractProgrammableLines: vi.fn(),
   createContractWorkOrder: vi.fn(),
-}))
-
-const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
 const fetchWorkOrderFormContextMock = vi.fn()
@@ -92,15 +88,6 @@ beforeEach(() => {
   vi.mocked(fetchContractProgrammableLines).mockReset()
   vi.mocked(createContractWorkOrder).mockReset()
   vi.mocked(fetchContractProgrammableLines).mockResolvedValue([FREE_LINE, OCCUPIED_LINE])
-  fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({
-    fields: [],
-    permissions: {
-      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-      fields: {},
-      actions: {},
-    },
-  })
   fetchWorkOrderFormContextMock.mockReset()
   fetchWorkOrderFormContextMock.mockResolvedValue({ applicable_attributes: [], attribute_layout: null })
 })
@@ -154,47 +141,22 @@ describe('ContractProgramDialog', () => {
         start_date: '2026-03-01',
         supervisor_ids: [21],
         quote_line_ids: [10],
-        attribute_values: {},
       }),
     )
     expect(onCreated).toHaveBeenCalledWith(created)
   })
 })
 
-/** Spec 0098 (AC-019): resolved live from the lines picked in this dialog. */
-describe('ContractProgramDialog — dynamic attribute fields (spec 0098)', () => {
-  it('is not mounted before any line is selected, and appears once one is', async () => {
-    fetchWorkOrderFormContextMock.mockResolvedValue({
-      applicable_attributes: [
-        {
-          id: 1,
-          code: 'site_access',
-          name: 'Site access',
-          type: 'text',
-          description: null,
-          help_text: null,
-          placeholder: null,
-          icon: null,
-          config: null,
-          relation_target: null,
-          is_required: false,
-          sort_order: 0,
-          options: [],
-        },
-      ],
-      attribute_layout: null,
-    })
-
+/** Decisione utente 2026-09-04: nessun attributo dinamico in questo dialog. */
+describe('ContractProgramDialog — no dynamic attribute fields', () => {
+  it('does not mount the "Additional information" block, nor resolve attributes, when a line is picked', async () => {
     renderDialog()
     await screen.findByText('Consulenza')
 
-    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
-    expect(fetchWorkOrderFormContextMock).not.toHaveBeenCalled()
-
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Consulenza' }))
 
-    expect(await screen.findByText('Additional information')).toBeInTheDocument()
-    await waitFor(() => expect(fetchWorkOrderFormContextMock).toHaveBeenCalledWith([10]))
-    expect(await screen.findByLabelText('Site access')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Select Consulenza' })).toBeChecked())
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
+    expect(fetchWorkOrderFormContextMock).not.toHaveBeenCalled()
   })
 })

@@ -84,7 +84,7 @@ it('AC-008: PATCH the work panel with the SAME source_id -> 200, other fields sa
     ])->assertOk();
 
     expect($quote->opportunity->fresh()->source_id)->toBe($quote->opportunity->source_id)
-        ->and($quote->opportunity->fresh()->next_callback_at?->toDateString())->toBe('2026-09-01');
+        ->and($quote->fresh()->next_callback_at?->toDateString())->toBe('2026-09-01');
 });
 
 // ---------------------------------------------------------------------------

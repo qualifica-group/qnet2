@@ -25,6 +25,7 @@ export const quotes = {
     company: 'Società',
     companySite: 'Società sede',
     operationalSite: 'Sede operativa',
+    nextCallbackAt: 'Prossimo richiamo',
   },
   advancedFilters: {
     opportunity: 'Opportunità',

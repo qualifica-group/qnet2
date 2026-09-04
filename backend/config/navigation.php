@@ -46,6 +46,7 @@ return [
         require __DIR__.'/navigation/dashboard.php',
         require __DIR__.'/navigation/marketing-leads.php',
         require __DIR__.'/navigation/opportunities.php',
+        require __DIR__.'/navigation/tasks.php',
         require __DIR__.'/navigation/registries.php',
         require __DIR__.'/navigation/products.php',
         require __DIR__.'/navigation/rewards.php',

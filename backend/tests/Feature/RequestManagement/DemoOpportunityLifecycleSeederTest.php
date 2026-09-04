@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
@@ -66,7 +66,9 @@ function seedLifecycleDependencies(): void
 it('plans a callback on some of the seeded requests', function (): void {
     seedDemoLifecycle();
 
-    $withCallback = Opportunity::query()->whereNotNull('next_callback_at')->count();
+    // REQUIREMENT CHANGED (user directive 2026-09-04): the planned callback
+    // is a `quotes` column now, so the assertion follows it onto the Offerta.
+    $withCallback = Quote::query()->whereNotNull('next_callback_at')->count();
 
     expect($withCallback)->toBeGreaterThan(0);
 });
@@ -75,9 +77,9 @@ it('is a no-op without an actor allowed to write notes', function (): void {
     seedLifecycleDependencies();
     test()->seed(DemoQuoteSeeder::class);
 
-    $before = Opportunity::query()->pluck('next_callback_at', 'id');
+    $before = Quote::query()->pluck('next_callback_at', 'id');
 
     test()->seed(DemoOpportunityLifecycleSeeder::class);
 
-    expect(Opportunity::query()->pluck('next_callback_at', 'id')->all())->toEqual($before->all());
+    expect(Quote::query()->pluck('next_callback_at', 'id')->all())->toEqual($before->all());
 });

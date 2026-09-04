@@ -8,6 +8,7 @@ use App\Enums\WorkflowStatusSystemKey;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Services\QuoteWorkflowService;
+use Database\Seeders\Concerns\ResolvesDemoCategories;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
 use Database\Seeders\DemoCatalog\DemoWorkflowStatusCatalogue;
 use Illuminate\Database\Seeder;
@@ -39,12 +40,14 @@ use Illuminate\Database\Seeder;
  */
 class DemoCategoryWorkflowSeeder extends Seeder
 {
+    use ResolvesDemoCategories;
+
     public function __construct(private readonly QuoteWorkflowService $workflows) {}
 
     public function run(): void
     {
         foreach (DemoCategoryCatalogue::categoryNames() as $categoryName) {
-            $category = ProductCategory::query()->where('name', $categoryName)->first();
+            $category = $this->demoCategory($categoryName);
 
             if ($category === null) {
                 // Demo tree not seeded (partial run): nothing to match on.

@@ -124,3 +124,24 @@ it('create: accepts exactly 12 filled manager_slots (AC-052)', function () {
 
     expect($response->json('data.managers'))->toHaveCount(12);
 });
+
+it('update: swapping two managers between slots is accepted, not a 500 on the (opportunity, position) unique constraint', function () {
+    $actor = opportunityUserWith(['create', 'update']);
+    $userOne = User::factory()->create();
+    $userTwo = User::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $opportunityId = $this->postJson('/api/opportunities', array_merge([
+        'name' => 'Swapped managers',
+        'manager_slots' => [$userOne->id, $userTwo->id],
+    ], mandatoryOpportunityFks()))->assertCreated()->json('data.id');
+
+    $response = $this->putJson("/api/opportunities/{$opportunityId}", [
+        'manager_slots' => [$userTwo->id, $userOne->id],
+    ])->assertOk();
+
+    expect($response->json('data.managers'))->toBe([
+        ['id' => $userTwo->id, 'name' => $userTwo->name, 'position' => 1],
+        ['id' => $userOne->id, 'name' => $userOne->name, 'position' => 2],
+    ]);
+});

@@ -351,3 +351,84 @@ describe('AsyncPaginatedSelect', () => {
   })
 
 })
+
+/**
+ * `pinnedItem` (spec 0101): an endpoint narrowed by a visibility scope
+ * legitimately omits rows the actor may not browse — including, on an edit
+ * form, the value already persisted on the record. Without the pin the user
+ * could change the selection and never pick the original back.
+ */
+describe('AsyncPaginatedSelect — pinnedItem', () => {
+  const PINNED: ForSelectItem = { id: 99, label: 'COM-0001 — Rifacimento impianto' }
+
+  it('offers the pinned option even when the server returns none', () => {
+    useForSelectMock.mockReturnValue(queryState({ data: pagesOf([]) }))
+    renderSelect({ value: 99, pinnedItem: PINNED })
+    open()
+
+    expect(screen.getByRole('option', { name: /COM-0001/ })).toBeInTheDocument()
+    // The empty state belongs to a genuinely empty list, not to a pinned one.
+    expect(screen.queryByText('No users found.')).not.toBeInTheDocument()
+  })
+
+  it('lets the user pick the pinned option back after changing the selection', () => {
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 1, label: 'COM-0002 — Altro' }]) }),
+    )
+    const { onChange } = renderSelect({ value: 1, pinnedItem: PINNED })
+    open()
+
+    fireEvent.click(screen.getByRole('option', { name: /COM-0001/ }))
+
+    expect(onChange).toHaveBeenCalledWith(99)
+  })
+
+  it('leads the list, before the server rows', () => {
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 1, label: 'AAA first alphabetically' }]) }),
+    )
+    renderSelect({ value: 99, pinnedItem: PINNED })
+    open()
+
+    const rendered = screen.getAllByRole('option').map((node) => node.textContent ?? '')
+    expect(rendered[0]).toContain('COM-0001')
+  })
+
+  it('does NOT duplicate a pin the server also returns', () => {
+    useForSelectMock.mockReturnValue(queryState({ data: pagesOf([PINNED]) }))
+    renderSelect({ value: 99, pinnedItem: PINNED })
+    open()
+
+    expect(screen.getAllByRole('option', { name: /COM-0001/ })).toHaveLength(1)
+  })
+
+  it("prefers the server's row over the pin, so a stale pinned label never wins", () => {
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 99, label: 'COM-0001 — Renamed upstream' }]) }),
+    )
+    renderSelect({ value: 99, pinnedItem: PINNED })
+    open()
+
+    expect(screen.getByRole('option', { name: /Renamed upstream/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Rifacimento impianto/ })).not.toBeInTheDocument()
+  })
+
+  it('changes nothing when omitted: the list is exactly the server rows', () => {
+    useForSelectMock.mockReturnValue(
+      queryState({ data: pagesOf([{ id: 1, label: 'Only row' }]) }),
+    )
+    renderSelect({ value: 1 })
+    open()
+
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option', { name: 'Only row' })).toBeInTheDocument()
+  })
+
+  it('still shows the empty state when there is neither a pin nor a row', () => {
+    useForSelectMock.mockReturnValue(queryState({ data: pagesOf([]) }))
+    renderSelect()
+    open()
+
+    expect(screen.getByText('No users found.')).toBeInTheDocument()
+  })
+})

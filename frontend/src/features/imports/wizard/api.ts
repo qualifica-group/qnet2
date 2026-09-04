@@ -135,8 +135,9 @@ export async function updateImportRunRow(
 }
 
 /**
- * Bulk-assigns an operator and/or an operational site to a selection of
- * staged rows (`PATCH .../rows/assign`, distinct from the single-row
+ * Bulk-assigns an operator and/or an operational site, or products of
+ * interest (spec 0094 bulk delta, `product_ids`), to a selection of staged
+ * rows (`PATCH .../rows/assign`, distinct from the single-row
  * `.../rows/{row}`). `payload` mirrors AG Grid's own server-side selection
  * state 1:1 — see `BulkAssignImportRowPayload`.
  */

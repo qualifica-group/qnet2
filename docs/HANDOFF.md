@@ -3,6 +3,511 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## PIVOT POSIZIONALI — SYNC SENZA COLLISIONE DI `position` — VERDE, NON COMMITTATO (2026-09-04)
+
+**Bug.** `DemoQuoteSeeder` falliva con `UniqueConstraintViolationException: Duplicate entry '24-1'
+for key 'opportunity_user_opportunity_id_position_unique'` da `QuoteManagerWriter::sync()` (Step 4).
+NON e' un problema del seeder: e' un bug del write path, riproducibile da UI.
+
+**Root cause.** `registry_user`, `opportunity_user`, `quote_user`, `work_order_participant` hanno
+UNIQUE `(owner_id, position)`. `BelongsToMany::sync()` scrive riga per riga (attach dei nuovi,
+`updateExistingPivot` per gli altri): qualsiasi payload che SPOSTA un membro di slot duplica
+temporaneamente una `position` e sbatte sul vincolo prima che l'occupante sia rinumerato. Due
+gestori che si scambiano GA1/GA2, o un nuovo gestore che prende uno slot occupato mentre il
+titolare scende, sono edit ordinari: davano 500.
+
+**Fatto.**
+- Nuovo `App\Support\PositionalPivotSync::sync(BelongsToMany, $syncMap)`: libera PRIMA le
+  posizioni di chi esce o si sposta (detach), poi inserisce le nuove assegnazioni. Restituisce la
+  stessa shape `{attached, detached, updated}` di `sync()`, cosi'
+  `ManagerPositions::attachedPositions()` continua a distinguere assegnazione (notifica) da
+  semplice rinumerazione (non notifica, decisione utente 2026-08-04). Lossless: quei pivot non
+  hanno timestamp ne' altre colonne.
+- Tutti gli 8 punti di scrittura passano dal primitivo: `QuoteManagerWriter` (quote_user +
+  opportunity_user), `OpportunityService` (create/update + `propagateManagersToQuote`),
+  `RegistryService`, `WorkOrderService` (create/update).
+
+**Verificato.** 3 test di regressione nuovi (senza il fix falliscono tutti e tre con l'errore
+reale): `tests/Unit/Services/Quotes/QuoteManagerWriterTest.php` (swap GA1/GA2 su quote_user;
+replica su opportunity_user di una mappa che sposta il GA1 — il caso esatto del seed) e
+`tests/Feature/Opportunities/OpportunityManagerSlotsTest.php` (PUT che scambia due gestori: era
+500). Suite eseguite: `tests/Unit/Services` + Registries + Notifications (232), Opportunities +
+WorkOrders + Quotes (632), RequestManagement (425) -> tutte verdi. Pint pulito.
+
+## SEED DEMO — CATEGORIA RISOLTA PER POSIZIONE, NON PER NOME — VERDE, NON COMMITTATO (2026-09-04)
+
+**Bug.** `php artisan db:seed --class=DemoDataSeeder` falliva in `DemoProductSeeder` con
+`ValidationException: The "demo_consulting_days" attribute is not part of the applicable
+attribute set` (+ `demo_seniority`), da `AttributeValueValidator::assertKnownCodes`.
+
+**Root cause.** `product_categories.name` NON e' unico a livello tabella. I seeder demo
+risolvevano la categoria col solo nome (`where('name', $categoryName)`), quindi su un DB che
+porta anche il catalogo cliente il nome "Consulenza IT" matchava la riga legacy "CONSULENZA IT"
+(figlia di "Consulenza", collation MySQL case-insensitive). Conseguenza: il `firstOrCreate` non
+creava mai la foglia demo, e attributi/layout/prodotti/workflow finivano scritti contro la
+categoria del cliente — il cui set di attributi non contiene i codici `demo_*`.
+
+**Fatto.**
+- Nuovo concern `Database\Seeders\Concerns\ResolvesDemoCategories`: `demoCategory()` /
+  `demoCategoryOrFail()` risolvono per POSIZIONE nell'albero demo (root = nome + `parent_id IS
+  NULL`; figlio = nome + id della propria root).
+- `DemoProductCategorySeeder`: `firstOrCreate` ora chiave su (name, parent_id) sia per la root
+  sia per i figli; `seedAttributes`/`seedLayouts` usano il concern.
+- `DemoProductSeeder` e `DemoCategoryWorkflowSeeder`: stessa risoluzione (il secondo mantiene lo
+  skip silenzioso su albero non seminato).
+- Docblock di `DemoCategoryCatalogue` aggiornato: la distinzione dei nomi non basta, la
+  risoluzione e' posizionale.
+
+**Verificato.** `pest tests/Feature/Products tests/Feature/Seeding
+tests/Feature/Quotes/DemoQuoteSeederTest.php tests/Feature/Opportunities/DemoOpportunitySeederTest.php
+tests/Feature/RequestManagement/DemoOpportunityLifecycleSeederTest.php` -> 230 passed / 1139
+assertions. Pint pulito. Nuovo test di regressione in
+`tests/Feature/Products/DemoProductCategorySeederTest.php` ("never adopts a same-named category of
+another branch"): senza il fix riproduce ESATTAMENTE l'errore riportato.
+
+**Da fare.** Ri-eseguire `php artisan db:seed --class=DemoDataSeeder` sul DB di sviluppo (il run
+precedente si e' fermato a meta'). Verificato che nessun prodotto/layout/workflow demo era finito
+sulla categoria cliente id 83 prima del fix: nessuna bonifica dati necessaria.
+
+## "PROSSIMO RICHIAMO" DALL'OPPORTUNITA' ALL'OFFERTA — VERDE, NON COMMITTATO (2026-09-04)
+
+**Direttiva utente.** Il campo "data richiamo" si sposta da Opportunita' a Offerte; Gestione
+Richieste lo legge/scrive sul nuovo proprietario; la colonna sparisce dal lato Opportunita' e
+compare nella griglia Offerte.
+
+**Fatto.**
+- Migration `2026_09_04_110000_move_next_callback_from_opportunities_to_quotes_table`: aggiunge
+  `next_callback_at` (indicizzata) + `next_callback_reminded_at` a `quotes`, TRAVASA da ogni
+  Opportunita' alle sue Offerte (1 -> N, senza perdita) e le droppa da `opportunities`. La `down()`
+  le ricrea VUOTE (N -> 1 non ha un vincitore univoco): stesso precedente della migration
+  2026_08_06_100000 di spec 0084.
+- `Quote`: i due cast `datetime`, e le colonne DELIBERATAMENTE fuori da `#[Fillable]` — con la
+  colonna viaggia la guardia mass-assignment (spec 0052 D-2) e, di conseguenza, l'assenza dal log
+  automatico (`logFillable`). `Opportunity`: cast rimossi.
+- `RequestManagementService::applyNextCallbackAt(Quote ...)`: invariante del marker invariata;
+  l'entry di activity resta ESPLICITA e ancorata all'Opportunita' (D-9), quindi
+  `GET /api/activity-log/request-management/{opportunity_id}` non cambia.
+- `RequestCreationService`: il richiamo si applica DOPO l'insert dell'Offerta (step rinumerati).
+- Griglia `request-management`: `next_callback_at` esce da `RequestRelationColumns::
+  OPPORTUNITY_SCALAR_COLUMNS` e da `OPPORTUNITY_RANGE_ADVANCED_FILTERS` — e' una colonna reale della
+  tabella interrogata, quindi sort/filtro/distinct passano dal motore generico e
+  `hasFilterValues: false` sparisce. `UpdateRequestRequest::currentFieldValue()` non lo dirotta piu'
+  sull'Opportunita'.
+- Griglia `quotes`: nuova colonna `next_callback_at` APPESA IN FONDO (datetime, sortable,
+  filtro date, sola lettura) + proiezione in `mapRow`; renderer FE `DateTimeCell optionalTime` e
+  chiavi i18n `quotes.columns.nextCallbackAt` (it/en).
+- `DemoOpportunityLifecycleSeeder`: ora percorre TUTTE le Offerte — il dedupe una-per-Opportunita'
+  esisteva solo perche' la cella era condivisa.
+
+**Nomi/contratti da rispettare.** La wire key resta `next_callback_at` ovunque (panel, griglia,
+POST/PATCH, matrice permessi per-campo, chiave i18n activity-log): il contratto FE non e' cambiato,
+e' cambiato solo il model che possiede la colonna. Formato filo invariato: `Y-m-d\TH:i`.
+
+**Test cambiati perche' il REQUISITO e' cambiato** (dichiarati): `RequestManagementSiblingQuotesTest`
+(il richiamo passa dalle asserzioni "condiviso tra sorelle" a quelle "indipendente per offerta"),
+`QuoteTableTest` (lista id colonne + `next_callback_at`), `RequestManagementCallbackTest`,
+`RequestManagementNextCallbackInlineEditTest`, `RequestManagementCreateOperativeFieldsTest`,
+`DemoOpportunityLifecycleSeederTest`, `ProtectedFieldWriteChannelsTest` (le asserzioni seguono la
+colonna sulla Quote).
+
+**Verifica ESEGUITA.** `migrate:fresh` + `migrate:rollback` + re-apply verdi (SQLite);
+`pest tests/Feature/RequestManagement tests/Feature/FieldChangeRequests tests/Feature/Quotes
+tests/Feature/Table tests/Feature/Opportunities` -> **1239 test / 5231 asserzioni, tutti verdi**;
+`pint --dirty --test` passed; `cd frontend && npx tsc -b --force` EXIT=0; eslint pulito sui file
+toccati; vitest su `quotes` + `request-management` verde (l'unico rosso,
+`request-work-panel-submit`, e' un timeout sotto carico parallelo: 6/6 verde da solo, file non
+toccato da questo lavoro).
+
+**Fuori scope, segnalato non implementato.** Nessun advanced filter `next_callback_range` sulla
+griglia Offerte; la colonna li' e' in sola lettura (il canale di scrittura resta Gestione Richieste).
+Sul modulo Opportunita' non c'era nulla da togliere: il campo non era mai esposto (griglia, form o
+Resource), viveva solo sulla sua tabella — "sparisce da opportunita'" si realizza col drop della
+colonna.
+
+**Prossimo passo.** In attesa dell'ok utente per il commit (CLAUDE.md §3.6).
+
+## IMPORT LEAD — ASSEGNAZIONE MASSIVA PRODOTTI NELLA REVIEW (2026-09-04) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Importazione lead: se il prodotto non viene selezionato nel primo step, deve
+poter essere selezionato e modificato nell'ultimo step; voglio anche un bottone (come assegna
+operatore) che al selezionamento di piu' righe assegni il prodotto."
+
+**Accertamento che ha ridotto lo scope.** Meta' della richiesta era GIA' implementata dalla spec 0094
+(D-4/AC-055): `product_ids` e' un global field OPZIONALE allo step 1
+(`LeadImportFieldCatalog.php:62`, `'required' => false`, `depends_on => campaign_id`) e la review ha
+gia' la colonna prodotti editabile per riga (`review-products-editor.tsx`, tri-stato `null` = eredita
+il default del run / `[]` = nessun prodotto / array = override). Mancava SOLO il bulk su selezione
+multipla. Chi rilegge non ri-progetti il per-riga: si estende.
+
+**Decisioni utente prese in questa sessione (vincolanti).**
+- D-1: il bulk **ASSEGNA soltanto**. Niente scorciatoie "usa predefinito" (`null`) o "nessun prodotto"
+  (`[]`) nel popup massivo: azzerare/ereditare resta un'operazione PER RIGA su `PATCH .../rows/{row}`.
+  Coerente con il docblock gia' presente in `BulkAssignRequest` ("Bulk-only ASSIGNS").
+- D-2: **un solo dropdown "Azioni (N)"**, non una fila di bottoni sciolti — stessa forma che la
+  tabella generica impone gia' (direttiva cliente 2026-07-21, `use-bulk-actions-slot.tsx:70`). Le due
+  voci ("Assegna operatori", "Assegna prodotti") aprono ciascuna il PROPRIO popup. Scartata l'ipotesi
+  del popup unico operatore+sede+prodotti: avrebbe richiesto di modificare `AssignOperatorsDialog`,
+  condiviso da tabella Lead, transfer richieste (0079) e wizard import.
+
+**Contratto API (delta puramente ADDITIVO, nessuna nuova rotta, nessun nuovo permesso).**
+`PATCH /api/imports/{domain}/{importRun}/rows/assign` body `+= product_ids?: number[]`
+— `sometimes|array|min:1`, ogni id `exists:products,id`. Mai `null`, mai `[]`. Combinabile
+liberamente con `operator_id`/`operational_site_id`/`mode`. Response invariata: `{ updated: <int> }`.
+Ogni id deve stare nelle categorie effettive di `global_config.campaign_id`, controllato riusando
+`LeadImportProductCoherence` (lo STESSO servizio del per-riga, mai reimplementato).
+
+**TRAPPOLA DEL MOTORE — costa ore se riscoperta.** `import_run_rows.product_ids` e' una colonna JSON
+con cast `'array'` sul Model, ma `ImportRunRow::query()->update([...])` passa dal QUERY BUILDER, che
+**non applica i cast Eloquent** (`Eloquent\Builder::update()` chiama `toBase()->update()` diretto).
+Bindare l'array PHP grezzo rompe con un errore di conversione. Serve `json_encode()` ESPLICITO prima
+della mass update — fatto in ENTRAMBI i rami di `ImportService`: `bulkAssign()` (single) e
+`bulkAssignBalanced()` (loop per gruppo operatore). Verificato empiricamente: il test falliva prima
+del fix e passa dopo. Non "semplificare" togliendo il `json_encode`.
+
+**File toccati.**
+- BE: `Http/Requests/Import/BulkAssignRequest.php` (regole + `validateProductIdsCoverage()` +
+  `productIds(): ?array`; `validateAtLeastOneAssignment()` allargata a `product_ids`),
+  `Services/ImportService.php` (`bulkAssign`/`bulkAssignBalanced` con `?array $productIds = null` IN
+  CODA, cosi' nessun chiamante pre-esistente si rompe), `Http/Controllers/Import/ImportController.php`.
+- FE: NUOVO `features/imports/wizard/review-bulk-products-dialog.tsx`; `review-bulk-assign-bar.tsx`
+  (da bottone sciolto a dropdown, nuove prop OBBLIGATORIE `campaignCategoryIds` e `onAssignProducts`);
+  `use-review-rows.ts` (`buildBulkAssignProductsPayload`, puro — la mutation esistente e'
+  payload-agnostica ed e' RIUSATA, niente logica toast/invalidazione duplicata); `review-grid.tsx`
+  (`handleBulkAssignProducts`); `types.ts`; `api.ts` (solo docblock); i18n `it/en-import-wizard.ts`.
+
+**Nomi da rispettare.** `product_ids` (mai `product_id`); `BulkAssignRequest::productIds()`;
+`buildBulkAssignProductsPayload`; chiavi i18n `review.bulkAssign.actionsLabel` e
+`review.bulkAssign.products.*`.
+
+**ATTENZIONE per chi tocca il frontend.** Il wizard di import usa la selezione SSRM
+`getServerSideSelectionState()` (`selectAll: 'all'` + `toggledNodes`); la tabella generica NO — usa
+`selectAll: 'currentPage'` e cammina i nodi caricati (`data-table.tsx:308-321`), quindi solo id
+espliciti. Le due semantiche sono INCOMPATIBILI: riusare l'hook `useBulkActionsSlot` nel wizard
+romperebbe il caso "seleziona tutte le righe del run". Va replicato il pattern VISIVO, non l'hook.
+
+**Verifica ESEGUITA (gate verifier indipendente, non il teammate che ha scritto il codice).**
+`pest tests/Feature/Imports` -> **192 test / 655 asserzioni, tutti verdi**. `pint --dirty --test` ->
+EXIT 0. `vitest run src/features/imports src/i18n` -> **37 file / 345 test passed**.
+`tsc -b --force --pretty false` -> EXIT 0. `eslint src/features/imports/wizard` -> 0 errori (2 warning
+PRE-ESISTENTI in `import-step-mapping.tsx`/`import-step-upload.tsx`, non toccati).
+Parita' i18n `importWizard` verificata a mano con un test diagnostico temporaneo (poi cancellato):
+`onlyEn: []`, `onlyIt: []`. Il namespace `importWizard` NON ha un test di parita' automatico, a
+differenza di `permissions`: chi aggiunge chiavi la controlli a mano.
+
+**ROSSO NON NOSTRO, da girare al proprietario di quel lavoro.**
+Suite backend COMPLETA: `6271 test, 6269 passed, 1 failed, 1 skipped`. L'unico fallimento e'
+`QuoteWorkflowMigrationTest` (riga ~76, AC-004 rollback). Root cause accertata: il test fa
+`migrate:rollback --step 50` assumendo 50 migrazioni impilate sopra la rename
+`2026_08_05_120000_rename_opportunity_workflows_to_quote_workflows_table.php`, ma ora ce ne sono 51 —
+e' comparsa la migrazione untracked `2026_09_04_110000_move_next_callback_from_opportunities_to_
+quotes_table.php` di un altro lavoro in corso, senza bumpare il conteggio. Con `--step 50` la rename
+non viene raggiunta e l'asserzione fallisce. **Non e' causato dal delta import**: nessun file del
+delta e' coinvolto. Chi possiede quel lavoro porti `QuoteWorkflowMigrationTest.php:74` a `--step 51`
+e verifichi se la riga ~91 (`migrate --step 40`) vada a `41`, quando committa quella migrazione.
+NB: un run precedente aveva mostrato anche 4 fallimenti in `TaskConfigCrudTest`, NON riproducibili
+alla riesecuzione pulita (`TaskConfigCrudTest` isolato: 61/61 verde) — order-dependent/transitori.
+
+**Prossimo passo.** Prova a video del bulk prodotti nella review (selezione multipla -> Azioni ->
+Assegna prodotti), poi decidere se committare. NON committato: in attesa di via libera esplicito.
+
+## MODULO TASK (spec 0101) — FASE 1 COMPLETA E VERDE, NON COMMITTATA (2026-09-04)
+
+**Stato.** Build della spec `docs/specs/0101-tasks-module.xml` (Fase 1) APPROVATA dall'utente e
+avviata. La prima sessione si e' interrotta a meta' del gate; ripresa e chiusa in questa. I microtask
+T-03..T-07 girano ora in parallelo su teammate a write surface disgiunta.
+
+**Fatto e VERIFICATO (gate T-01/T-02).**
+- 8 migration `2026_09_04_100000..100700`: le 4 lookup pure (`task_types`, `task_categories`,
+  `task_priorities`, `task_importances`), `task_statuses`, `tasks`, e i DUE pivot `task_assignee` /
+  `task_watcher`. `migrate:fresh` verde.
+- `task_statuses` porta le 6 righe di sistema create DALLA MIGRATION (non dal seeder):
+  open=0, in_progress=25, pending=50, in_validation=75, closed_positive=100, closed_negative=0.
+- `tasks` NON ha `completion_percentage` (e' una proiezione dello stato, D-6) e nessuna colonna di
+  ricorrenza (D-3). `parent_task_id` + le 6 FK di configurazione sono `restrictOnDelete`.
+- Model: `Task` (relazioni complete, `creator_id` FUORI da `#[Fillable]`, D-10), `TaskStatus`
+  (`isSystem()`, `isClosing()`, cast `system_key` -> enum), piu' i 4 lookup.
+- `App\Enums\TaskStatusSystemKey` (6 casi + `isClosing()`), `App\Support\BadgeTokens`
+  (`::colors()` 14 token, `::icons()` catalogo lucide curato) — allow-list SERVER-SIDE, niente hex.
+- 6 factory: `TaskFactory` (`forCreator`/`inStatus`/`childOf`/`requiringClosureFeedback`),
+  `TaskStatusFactory` (`completion(int)`, `system(TaskStatusSystemKey)` via forceFill perche'
+  `system_key` non e' fillable), piu' le 4 lookup.
+- `SystemStatusGuard` ESTESO: `TaskStatus` nell'union di `assertDeletable`/`assertUpdatable`, e
+  `MUTABLE_SYSTEM_FIELDS` allargata a `['name','color','icon','completion_percentage']`.
+
+**Decisione presa qui, da rispettare.** Il messaggio 422 del guard resta LETTERALMENTE
+`'System statuses accept only name and color changes.'` benche' il set di campi sia piu' ampio:
+NOVE test esistenti (pipeline/contract/reward) asseriscono quella stringa esatta e AC-048 pretende
+che quella suite resti verde. Riscriverli sarebbe stato blast radius fuori scope. C'e' un commento
+nel guard che lo spiega: non "correggerlo" in futuro senza aggiornare i 9 test.
+
+**Verifica ESEGUITA.** `php artisan migrate:fresh` verde su tutte le migration; ispezione DB delle 6
+righe di sistema e assenza di `tasks.completion_percentage` confermate via tinker;
+`./vendor/bin/pest tests/Feature/PipelineStatuses tests/Feature/ContractStatuses
+tests/Feature/RewardStatuses` -> **176 test / 667 asserzioni, tutti verdi** (AC-048 soddisfatto dopo
+l'allargamento del guard); `./vendor/bin/pint --dirty` -> passed.
+
+**Sbloccati durante la lane parallela (segnalati da `backend-config`, applicati sul gate).**
+- `TaskStatus` ora dichiara `SYSTEM_HEAD_KEYS = [Open, InProgress, Pending, InValidation]` e
+  `SYSTEM_TAIL_KEYS = [ClosedPositive, ClosedNegative]`: `StatusOrderManager` le legge come
+  `$modelClass::SYSTEM_*`, senza sarebbe stato fatal error al primo reorder. La ripartizione non e'
+  arbitraria: per D-5 uno stato custom non e' mai di chiusura, quindi deve collocarsi FRA "In
+  validazione" e i due closed, mai dopo.
+- `StatusOrderManager`: `TaskStatus` aggiunto alle 6 union `class-string<...>` e al `@return`.
+  Nessun cambio di logica, la classe era gia' generica sul class-string.
+- **`AppServiceProvider::boot()` — morph map.** `Relation::enforceMorphMap()` e' STRICT e
+  `LogsModelActivity::bootLogsActivity()` chiama `getMorphClass()` su OGNI create/update, prima
+  ancora di controllare se il logging e' attivo: senza alias, il primo `save()` di qualunque dei 6
+  model nuovi lanciava `ClassMorphViolationException`. Registrati `task`, `task_status`, `task_type`,
+  `task_category`, `task_priority`, `task_importance`. NON e' lavoro di T-08: e' gia' fatto.
+  Chiunque aggiunga un model con `LogsModelActivity` deve registrarlo qui.
+
+**Verifica ESEGUITA su questo delta.** Prova a runtime su `task_statuses` con due righe custom:
+`placeNew` -> 0/10/20/30 sistema, 40/50 custom, 60/70 i due closed; `reorder([B,A])` scambia le sole
+custom lasciando testa e coda pinnate; `ordered_ids` incompleto -> 422 e con riga di sistema -> 422
+(entrambi i rami di AC-047). Ri-eseguita la suite dei tre configuratori preesistenti dopo la modifica
+al manager CONDIVISO: **176/176 verdi**. `pint --dirty --test` -> EXIT 0.
+ATTENZIONE per chi scrive test: `sort_order` e' server-managed e si riassesta alla prima scrittura
+(la migration scrive 40/50 per i due closed, che diventano 60/70 appena esiste una custom). Asserire
+l'ORDINE RELATIVO e il pinning, mai i numeri letterali.
+
+**VINCOLI DEL MOTORE NON DOCUMENTATI ALTROVE — scoperti in questo build, costano ore se riscoperti.**
+- `Relation::enforceMorphMap()` e' STRICT e `LogsModelActivity::bootLogsActivity()` chiama
+  `getMorphClass()` a OGNI create/update, prima di controllare se il logging e' attivo: un model con
+  quel trait NON registrato in `AppServiceProvider` esplode al primo `save()`. Registrati i 6 alias.
+- La colonna `id` delle griglie NON si dichiara: la inietta `App\Tables\Concerns\InjectsDefaultIdColumn`,
+  usata da `AbstractTableDefinition`, che instrada `resolveConfig`/`sortableColumnIds`/`filterableColumnMap`/
+  `searchableColumnIds` attraverso `columnsWithDefaultId()`. Cercare `'id'` dentro
+  `AbstractTableDefinition.php` NON la trova (il call site non contiene il letterale) e porta alla
+  conclusione sbagliata che manchi: e' successo in questa sessione. Un modulo che dichiara `id` vince
+  sull'iniettata, ma diventa l'unico diverso dagli altri — non farlo senza motivo.
+- `FieldDefinition` espone `->key`, NON `->name`.
+- Ogni `columnId` dichiarato nei `filters()` DEVE esistere in `columns()`, e `mapRow()` deve coprire
+  ogni colonna dichiarata: passa il lint e rompe a runtime.
+- `PermissionCatalogueBuilder::areasFromNavigation()` salta ogni voce di navigazione SENZA `children`.
+  Una voce top-level che porta un `permission` non arriva mai al form dei Ruoli: i permessi esistono e
+  sono assegnabili via API, ma nessun ruolo puo' riceverli dalla UI. `tasks` e' il PRIMO caso
+  (`dashboard` non ha permesso) e la trappola colpirebbe ogni futuro modulo top-level.
+- PRECISAZIONE sul falso verde di `tsc --noEmit` (CLAUDE.md §5 / frontend.md §10): il falso verde e'
+  specificamente l'invocazione ROOT senza `-p`, perche' `tsconfig.json` e' solution-style
+  (`files: []` + `references`) e carica ZERO file. Misurato con `--listFiles`: root -> 0 file;
+  `--noEmit -p tsconfig.app.json` -> 3567 file realmente compilati. Quindi una verifica fatta con
+  `-p tsconfig.app.json` e' VALIDA, non va liquidata come falso verde. Resta comunque
+  `npx tsc -b --force --pretty false` il comando canonico: e' quello del hook Stop e copre anche
+  `tsconfig.node.json`.
+- `ForSelectResource::toArray()` filtra solo le chiavi di PRIMO livello: un `false` annidato dentro
+  `meta` sopravvive.
+
+**TRAPPOLA PEST: `Sanctum::actingAs()` cambia il guard di default.** Dopo quella chiamata il driver
+di default diventa `sanctum`, quindi un `Permission::findOrCreate()` successivo stampa il guard
+`sanctum` mentre `User` risolve le abilities su `web` -> `There is no permission named X for guard
+web`. NON e' cache stale: flushare `PermissionRegistrar` non aiuta. Rimedio: costruire TUTTI gli
+attori prima della prima `actingAs()`.
+
+**LAVORARE IN PARALLELO SU UN ALBERO CHE SI MUOVE — regole imparate a caro prezzo.**
+- Una misura senza timestamp non vale nulla. In questa build due teammate hanno riportato lo stesso
+  fatto in modo opposto nello stesso quarto d'ora, entrambi onestamente: descrivevano l'albero prima
+  e dopo una modifica di un terzo. Dire "misurato in questa run", mai "e' cosi'".
+- **Vale anche, e soprattutto, per le CITAZIONI DELLA SPEC.** AC-045 e' cambiata tre volte in una
+  giornata (estesa, poi ritirata) e ha prodotto TRE round-trip fra teammate che l'avevano letta
+  correttamente in momenti diversi. Nessuno e' stato disattento: mancava l'ora di lettura. Regola
+  adottata: chi cita un `<criterion>` a sostegno di una decisione allega il momento in cui l'ha letto,
+  e chi riceve la citazione rilegge prima di agire. Sarebbe costato zero round-trip invece di tre.
+- Corollario che ha salvato la situazione: un test che asserisce l'INVARIANTE garantito da un AC
+  ("la chiave non diventa mai un dato") invece del codice di stato resta verde sotto entrambe le
+  letture di una spec in movimento, e fallisce solo su un difetto vero.
+- Nessuno riapre una questione sulla base di un file letto prima. Se un fatto conta, si rilegge in
+  quel momento.
+- La SUITE COMPLETA non e' misurabile mentre altri scrivono: tentata durante il build, e' andata in
+  **segfault (exit 139)**; un'altra run ha prodotto 5373 test invece di ~6260 con `QueryException`
+  spuri, tutti evaporati in isolamento. Le suite CIRCOSCRITTE sono l'unica misura affidabile finche'
+  l'albero non si ferma. (I test usano `sqlite :memory:` da `phpunit.xml`, quindi NON e' contesa sul
+  database: e' pressione di risorse, aggravata da Xdebug caricato.)
+- `pint --dirty` prende TUTTO il working tree, non i propri file: con piu' scrittori ci si riformatta
+  a vicenda. Passare a pint i path di propria competenza.
+
+**ATTENZIONE — al momento della scrittura un'ALTRA sessione Claude lavorava su questo stesso working
+tree** su una feature diversa (spostamento di "prossimo richiamo" da Opportunita' a Offerta + wizard
+di import): ~26 file backend, ~10 frontend, piu' la migration
+`2026_09_04_110000_move_next_callback_from_opportunities_to_quotes_table.php`. Da quel lavoro
+derivano due rossi che NON appartengono alla spec 0101: `QuoteWorkflowMigrationTest` (il loro
+`--step` va portato da 50 a 51) e 13 test in `frontend/src/features/imports/wizard/`. Un
+`git add -A` su questo albero inghiottirebbe il loro lavoro in un commit del modulo Task.
+
+**DECISIONE MOTIVATA: l'accordo di genere delle stringhe i18n NON e' asserito da alcun test.**
+`it-task-lookups.ts` distingue "Disattivata" (i 4 lookup femminili, generati da `lookupBundle()`) da
+"Disattivato" (`taskStatuses`, maschile) — l'unico punto in cui i cinque bundle divergono oltre al
+nome dell'entita', e il tipo di dettaglio che finisce sbagliato in produzione senza che un test di
+parita' (che fissa le CHIAVI, non i valori) se ne accorga. Si e' deciso di NON aggiungere una rete:
+fissare il copy in un test accoppia la verifica a stringhe di cui e' proprietario un altro modulo, e
+al primo ritocco produce un rosso che non segnala alcun difetto — cioe' il tipo di test che si impara
+a ignorare. Il copy e' materiale da revisione umana. Non "riparare" questa assenza con un test fragile.
+
+**ZONA CIECA DEL LINT: `src/components/ui/**` e' IGNORATO da ESLint** (`eslint.config.js:11`, sorgenti
+shadcn vendorizzate tenute verbatim per gli aggiornamenti upstream). Qualunque modifica li' dentro NON
+e' coperta dal lint: restano solo `tsc -b` e i test. In questa build ci e' atterrata una modifica
+condivisa reale — la prop `pinnedItem` di `AsyncPaginatedSelect` — compensata con 30 test su quel
+file. NON si tocca la ignore list per ottenere copertura (l'hook `config-protection.js` lo vieta):
+si compensa con i test e si dichiara il rischio.
+
+**COMPONENTE CONDIVISO ESTESO in questa build.** `AsyncPaginatedSelect` ha una nuova prop opzionale
+`pinnedItem?: ForSelectItem | null` (e `RelationSelectField` la inoltra come `pinned`), che antepone
+un'opzione alla lista deduplicando per `id`, con la riga del server che vince sulla freschezza.
+Serve a una classe di problemi destinata a ricapitare: un picker alimentato da un endpoint SCOPED
+(`WorkOrderVisibilityScope`, `TaskVisibilityScope`, `RequestManagementScope`) che porti un valore
+persistito fuori scope non lo ritrova piu' fra le opzioni, quindi l'utente che cambia selezione non
+puo' tornare indietro. Il chiamante passa SOLO un valore che gia' possiede (dal dettaglio caricato),
+quindi nessuna nuova divulgazione. 21 call-site diretti + 34 via `RelationSelectField` restano
+invariati (default `null`). NON risolvere questo caso allargando lo scope lato server ne' facendo
+bypassare `ids[]`: sarebbe un oracolo di enumerazione.
+
+**TRAPPOLA DEI TEST FRONTEND: una fixture non deve MAI coincidere con una stringa i18n.**
+Emersa due volte in questo build, la seconda molto piu' grave della prima.
+1. Sintomo blando: fixture `description: 'Description'`. Finche' i bundle i18n non esistono la label
+   renderizza come chiave grezza e un solo nodo fa match; appena la traduzione risolve, label e valore
+   sono fratelli nel DOM e `getByText` diventa ambiguo -> rosso. Si corregge cambiando il VALORE della
+   fixture, MAI l'asserzione: `getAllByText`/`within()` nascondono l'ambiguita' invece di rimuoverla.
+2. Sintomo grave, VERDE E CIECO: nei `*-table.test.tsx` il messaggio 409 iniettato come "messaggio del
+   backend" era IDENTICO a `<ns>.form.deleteInUse`, cioe' al fallback statico. L'asserzione
+   `toHaveBeenCalledWith(message)` passava sia se il codice mostrava il messaggio del server (D-8b,
+   voluto) sia se ripiegava in silenzio sul fallback: il test non discriminava piu' fra il
+   comportamento corretto e la regressione che doveva sorvegliare. Corretto rendendo la fixture
+   inequivocabilmente "di server" (`'...is used by 3 tasks...'`).
+REGOLA: un valore di fixture che finisce a schermo deve essere impossibile da confondere con il copy.
+Verificarlo MECCANICAMENTE e a RUNTIME, non con una regex sul sorgente: i bundle costruiscono le
+stringhe con helper e template literal (`lookupBundle()`), che una regex non vede — il primo tentativo
+a regex ne perse 4 su 6.
+
+**DIFETTI PREESISTENTI EMERSI, non introdotti da noi.**
+- `applyServerValidationErrors` (`frontend/src/features/auth/form-errors.ts`) ritorna `true` per
+  QUALUNQUE 422, anche senza aver mappato un campo. Poiche' ogni form fa
+  `if (!applyServerValidationErrors(...)) setServerError(generico)`, un 422 message-only non produce
+  ne' errore di campo ne' banner: l'utente preme Salva e non succede nulla. NON corretto (file
+  condiviso da tutti i form in produzione, serve regressione completa). Aggirato alla sorgente: i
+  guard del modulo Task emettono `ValidationException::withMessages` field-scoped.
+- Riordino rotto quando esiste una riga custom DISATTIVATA: la sheet condivisa si alimenta dal
+  for-select (che filtra `is_active`), mentre il guard valida su tutte le righe custom -> 422 a ogni
+  drag. `contract-statuses` CORRETTO su approvazione utente (`include_inactive` nelle `rules()` +
+  onorato nel `forSelect`). **`reward-statuses` e `payment-methods` hanno lo STESSO bug, NON corretti,
+  decisione utente pendente.** `pipeline-statuses` e' sano (non filtra `is_active`).
+- `QuoteWorkflowMigrationTest` hardcoda `migrate:rollback --step` PIU' un blocco di commento che
+  enumera a mano ogni migration. Era gia' stale prima di noi (la spec 0103 ne aveva aggiunte 2 senza
+  aggiornarlo). Portato da 40 a **50** per le nostre otto. **In una sola giornata quel numero si e'
+  rotto tre volte: 40 -> 50 -> 51** (il 51 e' dovuto alla migration dell'altra sessione, e spetta a
+  loro).
+  PROPOSTA NON IMPLEMENTATA, fuori scope 0101 ma da valutare: il test potrebbe DERIVARE il conteggio
+  invece di hardcodarlo — contare le migration che ordinano dopo `rename_opportunity_workflows_to_
+  quote_workflows` e aggiungere 1 — il che ritirerebbe anche il blocco di commento con 51 nomi di file
+  mantenuto a mano. E' la stessa forma di trappola latente di `PermissionCatalogueBuilder`: una regola
+  codificata come costante che ogni aggiunta futura invalida in silenzio. Chi la prende, la prenda una
+  volta sola invece di bumpare il numero una quarta volta.
+- La sheet di riordino legge UNA pagina da `STATUS_PAGE_SIZE = 100`. Ora che include anche le righe
+  inattive, oltre quella soglia il riordino fallisce con un 422 generico e fuorviante. Rischio basso
+  sui lookup, meno basso sugli stati (le custom si accumulano). Rimedio minimo: alzare quel limite,
+  non paginare la sheet. NON corretto.
+
+**GATE FINALE T-10, misurato dal verifier (che non ha scritto una riga del modulo) e ri-misurato da me.**
+Pest sul perimetro esteso (Tasks, TaskConfig, Authorization, Navigation, ContractStatuses, Contracts,
+WorkOrders, Pipeline/Reward Statuses): **893 test, 893 passed, 4319 asserzioni**. Vitest: **591 file,
+4322 test, 0 falliti**. `npx tsc -b --force --pretty false`: **EXIT=0**. `pint --test` su `app/`,
+`database/` e i test nuovi: **passed**. ESLint sulle aree del modulo: **EXIT=0**.
+`php artisan permissions:sync`: **49 permessi** — `tasks` 9 (8 BasePolicy + `tasks.viewAll`) e 8 per
+ciascuno dei 5 configuratori, nessuno in piu' (AC-050).
+
+**DEBITO NOTO E DELIBERATO: il messaggio 422 di `SystemStatusGuard` e' FALSO.**
+`SystemStatusGuard.php:75` dice `'System statuses accept only name and color changes.'`, ma dalla
+spec 0101 il guard accetta QUATTRO campi (`MUTABLE_SYSTEM_FIELDS` = `name`, `color`, `icon`,
+`completion_percentage`). Il messaggio comunica quindi all'utente che `icon` non e' modificabile su
+una riga di sistema mentre lo e' — l'opposto di cio' che AC-043 verifica, e vale per TUTTI E QUATTRO
+i configuratori di stato, non solo per i Task.
+NON e' stato corretto per una scelta di blast radius: NOVE test esistenti su pipeline/contract/reward
+asseriscono quella stringa verbatim, e AC-048 pretende che quella suite resti verde. Correggerla
+significa riscrivere nove asserzioni in cinque file di moduli in produzione — legittimo, ma non
+dentro la 0101.
+Mitigazione applicata: i test NUOVI non asseriscono quella stringa (asseriscono lo status e il fatto
+che la chiave non venga scritta), cosi' il costo della correzione futura resta a nove asserzioni e non
+cresce. Chi la corregge, corregga la frase E le nove asserzioni nello stesso passaggio.
+Portata reale, da non sottostimare: il frontend di questo progetto non mostra mai quella frase (usa
+una propria stringa i18n, e il 422 e' comunque irraggiungibile dal suo form, che disabilita i campi
+non mutabili). Ma il messaggio E' il contratto dell'API: qualunque altro consumer — un client
+esterno, uno script, un futuro schermo che facesse passthrough — legge una frase che DICE IL
+CONTRARIO del comportamento reale. Non e' debito cosmetico: e' un'API che mente su se stessa,
+mitigata solo dal fatto che oggi il nostro unico consumer non la ascolta.
+
+**TRE GAP CHIUSI DAL GATE, che nessun verde mostrava** (+16 test). Vale la pena ricordarli perche'
+sono il tipo di buco che una suite verde non puo' rivelare da sola:
+1. `GET /api/work-orders/for-select` aveva **ZERO test**, pur portando un vincolo di non-divulgazione
+   scritto nella spec. Era entrato in scope in corso d'opera senza generare un criterio, quindi
+   nessuno aveva mai commissionato il test. Ora e' **AC-056**, 11 test, incluso il ramo `ids[]` (che
+   e' cio' che impedisce all'endpoint di diventare un oracolo di enumerazione) e il confronto diretto
+   fra il picker e la griglia Commesse, che e' l'invariante vero.
+2. AC-048 poggiava su un invariante che **nulla asseriva**: l'allargamento di `MUTABLE_SYSTEM_FIELDS`
+   vale per tutti e quattro i tipi di stato, e i tre preesistenti sono protetti solo dal fatto che le
+   loro `rules()` non dichiarano `icon`/`completion_percentage`. Ora e' **AC-057**, che interroga le
+   FormRequest reali (non un grep) e include una asserzione di riflessione sulla costante, cosi' il
+   giorno che il guard si restringe il test fallisce e puo' essere ritirato consapevolmente.
+3. AC-063 asseriva **solo** `assertDatabaseHas`: un 403, un 404 o un 500 lo avrebbero fatto passare
+   identico. Ora ha status + riga di controllo dentro lo scope che deve sparire nella stessa chiamata.
+
+**RETTIFICA DI LETTERA su AC-048**: diceva che i tre configuratori preesistenti "rifiutano" `icon` e
+`completion_percentage`. Non li rifiutano: sono chiavi non dichiarate, quindi `validated()` le scarta
+e la risposta e' 200 senza effetto, mai un 422. Il criterio descriveva un comportamento che il sistema
+non ha.
+
+**STATO DEI MICROTASK.** Gate T-01/T-02, T-03 (5 configuratori) + T-03b (reorder su tutti e 5) +
+T-03c (`include_inactive`), T-04 (modulo Task + i 4 guard/resolver) + T-04b
+(`work-orders/for-select`, SCOPED da `WorkOrderVisibilityScope`), T-05/T-05b/T-05c (frontend
+configuratori), T-06 (frontend Task), T-07 (test degli AC), T-08 (registrazioni `config/` + rotte):
+tutti CONSEGNATI. In corso: T-09 (rotte/pagine/i18n), il fix AC-055, il fix AC-046, il marcatore
+delle righe inattive. Manca il gate finale T-10 (verifier).
+
+**DUE ROSSI NOTI al momento della scrittura.** AC-055 (`tasks` assente dal permission-catalogue per il
+difetto del builder descritto sopra) e AC-046 (manca `prohibited` su `completion_percentage` nelle
+FormRequest dei 4 lookup puri: accettano il campo e lo ignorano invece di rifiutarlo). Suite Task
+116/117.
+
+**CONSEGUENZA ACCETTATA di D-9, documentata nel codice.** Un utente vede l'etichetta di una Commessa
+fuori dal suo scope sul dettaglio del Task (D-9 non oscura le etichette dei record collegati), ma se
+apre il picker non puo' riselezionarla, perche' `work-orders/for-select` e' scoped anche sul percorso
+di idratazione `ids[]`. E' inerente alla decisione D-9, non un difetto: non aprire una carve-out su
+`ids[]`, riaprirebbe il canale di divulgazione.
+
+**Deploy.** Servira' `php artisan permissions:sync` sugli ambienti esistenti perche' i nuovi permessi
+diventino assegnabili.
+
+## PROGRAMMA DA CONTRATTO: NIENTE ATTRIBUTI DINAMICI NEL DIALOG (2026-09-04) — VERDE, NON COMMITTATO
+
+**Richiesta utente.** "Quando programmo da contratto per creare una commessa, quando scelgo la riga
+dell'offerta escono gli attributi flessibili della commessa: non voglio che escano."
+
+**Cosa e' stato fatto (solo frontend).** Rimossa da `ContractProgramDialog` l'intera sezione
+"Informazioni aggiuntive" introdotta da spec 0098 AC-019 — quella AC e' quindi REVOCATA da questa
+decisione utente, non reintrodurla:
+- `contract-program-dialog.tsx`: via `WorkOrderDynamicFieldsSection`, `useWorkOrderFormContext`,
+  `seedAttributeValues`, `useResourceMeta('work-orders')` + `ResourcePermissionsProvider` e
+  l'indirezione `resolverRef`/`useEffect` che ricostruiva lo schema sugli attributi risolti. Il
+  resolver e' ora statico (`zodResolver(buildContractProgramSchema(t))`), come negli altri dialog
+  contratto (terminate/validate/reactivate).
+- `contract-program-schema.ts`: niente piu' campo `attribute_values`, niente `superRefine` sui
+  required, niente parametro `attributes`. `contractProgramDefaultValues()` non emette piu' la mappa.
+- `types.ts`: `CreateContractWorkOrderPayload` non porta piu' `attribute_values`.
+
+**Perche' e' sicuro lato backend.** `GenerateContractWorkOrderRequest` valida `attribute_values` come
+`sometimes`, e `WorkOrderService::create()` chiama `WorkOrderAttributeValueWriter` SOLO se
+`$data->attributeValues !== null`: payload senza la chiave -> nessuna validazione dei required,
+commessa creata senza valori. Gli attributi si compilano dopo, dal form della commessa
+(`WorkOrderDynamicFieldsSection` resta viva li', non e' stata toccata).
+
+**Residuo segnalato, NON toccato (fuori scope).** Backend: `attribute_values` in
+`GenerateContractWorkOrderRequest`, il parametro `attributeValues` di
+`CreateWorkOrderData::forContractGeneration()` e i test backend relativi sono ora un percorso che
+nessun client alimenta. Da rimuovere solo su richiesta esplicita.
+
+**Verifica eseguita.** `npx vitest run src/features/contracts src/features/work-orders` -> 20 file /
+172 test verdi; `npx eslint` sui 5 file toccati -> pulito; `npx tsc -b --force --pretty false` ->
+EXIT 0. Test aggiornati al nuovo requisito: rimosso il describe "dynamic attribute fields (spec
+0098)" e sostituito da una regressione che asserisce che, scelta una riga, il blocco "Additional
+information" NON compare e `fetchWorkOrderFormContext` non viene mai chiamata.
+
 ## SEED PRODUZIONE: PRODOTTI "AUTOIMPIEGO" E "YISU" (2026-09-04) — VERDE, NON COMMITTATO
 
 **Richiesta utente.** "Nel seed di produzione voglio aggiungere prodotto Yisu alla categoria Yisu e

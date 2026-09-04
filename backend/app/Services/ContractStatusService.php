@@ -162,7 +162,11 @@ class ContractStatusService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = ContractStatus::query()->select(['id', 'name', 'system_key'])->where('is_active', true);
+        $base = ContractStatus::query()->select(['id', 'name', 'system_key']);
+
+        if (! $query->includeInactive) {
+            $base->where('is_active', true);
+        }
 
         // Directive 2026-08-31 rev.2: each contract action offers only the
         // groups it may move to (`status_groups[]`).

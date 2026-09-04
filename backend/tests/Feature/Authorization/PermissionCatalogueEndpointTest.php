@@ -164,3 +164,45 @@ it('AC-008: an active custom field on leads appears as custom.<key> with its adm
 
     expect(collect($leads['fields'])->pluck('key')->contains('custom.budget'))->toBeFalse();
 });
+
+// A top-level navigation entry (no `children`) that carries a real resource
+// permission is a MODULE, not just a link: spec 0101's Task was the first one
+// the app ever had, and it was silently absent from the Role form because
+// areasFromNavigation() skipped every childless item. `dashboard` is the
+// control: top-level too, but permission-less, so it must stay out.
+//
+// The navigation is synthesized here rather than asserted against the shipped
+// config on purpose — the rule under test is the BUILDER's, and it must keep
+// holding wherever a future module happens to sit in the menu.
+it('a permissioned top-level navigation item becomes its own single-resource area', function () {
+    config(['navigation.items' => [
+        ['key' => 'dashboard', 'label' => 'navigation.dashboard', 'icon' => null, 'route' => '/', 'permission' => null],
+        ['key' => 'tasks', 'label' => 'navigation.tasks', 'icon' => 'list-checks', 'route' => '/tasks', 'permission' => 'tasks.view'],
+    ]]);
+
+    Sanctum::actingAs(actorWithRolesAbility('viewAny'));
+
+    $areas = collect($this->getJson(ENDPOINT)->assertOk()->json('data.areas'))->keyBy('key');
+
+    expect($areas->has('tasks'))->toBeTrue()
+        ->and($areas['tasks']['label_key'])->toBe('navigation.tasks')
+        ->and(collect($areas['tasks']['resources'])->pluck('resource')->all())->toBe(['tasks'])
+        ->and(collect($areas['tasks']['resources'][0]['permissions'])->pluck('name')->all())->toContain('tasks.view')
+        ->and($areas['tasks']['resources'][0]['fields'])->not->toBeEmpty()
+        // The control: no permission gate, so still not a module.
+        ->and($areas->has('dashboard'))->toBeFalse();
+});
+
+it('a top-level navigation item with no assignable permissions creates no empty area', function () {
+    // `migrations`-style entry: a real menu link with no permission gate of
+    // its own, and a permission whose resource is not in the catalogue.
+    config(['navigation.items' => [
+        ['key' => 'nowhere', 'label' => 'navigation.nowhere', 'icon' => null, 'route' => '/nowhere', 'permission' => 'not-a-resource.view'],
+    ]]);
+
+    Sanctum::actingAs(actorWithRolesAbility('viewAny'));
+
+    $areas = collect($this->getJson(ENDPOINT)->assertOk()->json('data.areas'))->pluck('key');
+
+    expect($areas->all())->not->toContain('nowhere');
+});

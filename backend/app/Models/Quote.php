@@ -91,6 +91,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * #[Fillable], the same discipline as `code`/the 5 aggregates. Replaces
  * `supervisor_id` as the Gestione Richieste ownership column (D-9); the
  * former column keeps its own commission-recipient role only (D-13/D-14).
+ *
+ * `next_callback_at`/`next_callback_reminded_at` (user directive
+ * 2026-09-04, migrated off the Opportunity): the "Prossimo richiamo" is
+ * per-OFFER now, no longer one shared cell per deal. DELIBERATELY absent
+ * from #[Fillable] — the same mass-assignment guard they carried on the
+ * Opportunity (spec 0052, D-2): RequestManagementService is their only
+ * writer, and it owns the reminder-marker invariant (a changed instant
+ * zeroes the marker). Being outside #[Fillable] also keeps them out of the
+ * automatic log (LogsModelActivity::logFillable), so the operative history
+ * stays the single EXPLICIT entry anchored on the Opportunity (D-9).
  */
 #[Fillable([
     'title',
@@ -122,6 +132,8 @@ class Quote extends BaseModel
             'cost_vat' => 'decimal:2',
             'margin_net' => 'decimal:2',
             'attribute_values' => 'array',
+            'next_callback_at' => 'datetime',
+            'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
         ];
     }

@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DataObjects\Shared\ForSelectQuery;
+use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\DataObjects\WorkOrders\UpdateWorkOrderData;
 use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
+use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Support\ManagerPositions;
+use App\Support\PositionalPivotSync;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -75,6 +82,88 @@ class WorkOrderService
     }
 
     /**
+     * Minimal, searchable, paginated commessa list for the for-select
+     * standard (ADR 0011), mirroring OpportunityService::forSelect. Added by
+     * spec 0101 (T-04b): the Task form's "Commessa" picker needs it, and
+     * spec 0093 never shipped one.
+     *
+     * The rows are narrowed by WorkOrderVisibilityScope exactly as
+     * WorkOrdersTableDefinition::baseQuery() narrows the grid (spec 0096,
+     * user directive 2026-09-02). Without it this endpoint would leak, with
+     * code and title, the very commesse the Commesse table hides from the
+     * actor — the disclosure a membership scope exists to close.
+     */
+    public function forSelect(ForSelectQuery $query): ForSelectResult
+    {
+        $base = $this->forSelectBaseQuery();
+
+        if ($query->hasSearch()) {
+            $base->where(function (Builder $scoped) use ($query): void {
+                $scoped->where('code', 'like', '%'.$query->search.'%')
+                    ->orWhere('title', 'like', '%'.$query->search.'%');
+            });
+        }
+
+        $total = (clone $base)->count();
+
+        /** @var Collection<int, WorkOrder> $page */
+        $page = $base->orderBy('code')
+            ->orderBy('id')
+            ->offset($query->offset)
+            ->limit($query->limit)
+            ->get();
+
+        return new ForSelectResult(
+            items: $this->appendHydratedForSelectIds($page, $query),
+            total: $total,
+            offset: $query->offset,
+            limit: $query->limit,
+        );
+    }
+
+    /**
+     * The SCOPED, minimally-projected for-select base query.
+     * WorkOrderForSelectResource composes its label from `code` + `title`,
+     * so nothing else is selected and no relation is loaded.
+     *
+     * @return Builder<WorkOrder>
+     */
+    private function forSelectBaseQuery(): Builder
+    {
+        return WorkOrderVisibilityScope::scopeToActor(
+            WorkOrder::query()->select(['work_orders.id', 'work_orders.code', 'work_orders.title']),
+            Auth::user(),
+        );
+    }
+
+    /**
+     * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
+     * not already on the page, deduplicated. They bypass the search filter —
+     * but NOT the visibility scope, which is a security boundary and not a
+     * filter, so an out-of-scope id stays absent even when asked for by id.
+     * Total is unaffected.
+     *
+     * @param  Collection<int, WorkOrder>  $page
+     * @return Collection<int, WorkOrder>
+     */
+    private function appendHydratedForSelectIds(Collection $page, ForSelectQuery $query): Collection
+    {
+        if (! $query->hasIds()) {
+            return $page;
+        }
+
+        $missingIds = array_values(array_diff($query->ids, $page->pluck('id')->all()));
+
+        if ($missingIds === []) {
+            return $page;
+        }
+
+        return $page->concat(
+            $this->forSelectBaseQuery()->whereKey($missingIds)->orderBy('code')->orderBy('id')->get()
+        );
+    }
+
+    /**
      * Create a new work order. A manual `code` (D-1) is persisted as
      * submitted; otherwise one is generated inside the transaction with a
      * pessimistic lock, so two concurrent creates never collide. The line
@@ -108,7 +197,7 @@ class WorkOrderService
             // Step 3: the two user pivots (spec 0096, D-1/D-3), inside the
             // same transaction: a 422 from Step 2 rolls both back (AC-027).
             $workOrder->supervisors()->sync($data->supervisorIds);
-            $workOrder->participants()->sync(ManagerPositions::syncMap($data->participantSlots));
+            PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots));
 
             return $workOrder;
         });
@@ -151,7 +240,7 @@ class WorkOrderService
             }
 
             if ($data->hasParticipantSlots()) {
-                $workOrder->participants()->sync(ManagerPositions::syncMap($data->participantSlots ?? []));
+                PositionalPivotSync::sync($workOrder->participants(), ManagerPositions::syncMap($data->participantSlots ?? []));
                 $workOrder->unsetRelation('participants');
             }
         });

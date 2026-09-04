@@ -26,13 +26,15 @@ use Illuminate\Validation\ValidationException;
  * — the operative endpoints have their OWN authorization
  * (`request-management.*`) and their own write rules.
  *
- * Each field lands on the model it lives on (D-2): "Fonte", planned
- * callback, the product-line classification and the client anagraphic block
- * are Opportunity-level (`quote.opportunity`); "Segnalatore", "Sede
- * operativa", "Supervisore", the GA2 "Operatore", the reward assignments and
- * the offer's own REVENUE rows are Quote-level (D-3/D-4/D-7; spec 0087, D-9
- * for the GA2 Operatore; spec 0097, D-9 for the Supervisore, an attribution
- * scalar that is INDEPENDENT of that operator).
+ * Each field lands on the model it lives on (D-2): "Fonte", the
+ * product-line classification and the client anagraphic block are
+ * Opportunity-level (`quote.opportunity`); "Segnalatore", "Sede operativa",
+ * "Supervisore", the GA2 "Operatore", the reward assignments, the offer's
+ * own REVENUE rows and the planned callback are Quote-level (D-3/D-4/D-7;
+ * spec 0087, D-9 for the GA2 Operatore; spec 0097, D-9 for the Supervisore,
+ * an attribution scalar that is INDEPENDENT of that operator; user directive
+ * 2026-09-04 for the callback, moved off the Opportunity so two sibling
+ * offers plan their own).
  *
  * This class ORCHESTRATES that sequence; the rules of each block live in a
  * writer of its own (RequestAttributionWriter, RequestProductLineWriter,
@@ -44,7 +46,7 @@ use Illuminate\Validation\ValidationException;
  * GET").
  *
  * Activity logging (D-9): the module's operational history stays anchored on
- * the OPPORTUNITY. `next_callback_at` is excluded from Opportunity::$fillable
+ * the OPPORTUNITY. `next_callback_at` is excluded from Quote::$fillable
  * (mass-assignment guard) and `reporter_id`/`operational_site_id`/`supervisor_id`
  * — though fillable on Quote — would otherwise log under the Quote's OWN activity
  * trail (a different resource than `request-management`'s, which reads the
@@ -198,12 +200,13 @@ final class RequestManagementService
                 $this->offerLineWriter->apply($quote, $actor, (array) $data['offer_lines'], $changed, $old);
             }
 
-            // Step 2: next planned callback (spec 0052 D-1/D-4) — sparse:
-            // key absent leaves the persisted value untouched, `null` clears
-            // it. A real value change also zeroes the reminder marker so a
-            // rescheduled date is not skipped by the future reminder job.
+            // Step 2: next planned callback (spec 0052 D-1/D-4; user
+            // directive 2026-09-04: on the OFFER now) — sparse: key absent
+            // leaves the persisted value untouched, `null` clears it. A real
+            // value change also zeroes the reminder marker so a rescheduled
+            // date is not skipped by the future reminder job.
             if (array_key_exists('next_callback_at', $data)) {
-                $this->applyNextCallbackAt($opportunity, $data['next_callback_at'], $changed, $old);
+                $this->applyNextCallbackAt($quote, $data['next_callback_at'], $changed, $old);
             }
 
             // Step 2-bis: "Informazioni aggiuntive" (user directive
@@ -358,21 +361,27 @@ final class RequestManagementService
     }
 
     /**
-     * `next_callback_at` (spec 0052 D-1/D-2): NOT in Opportunity::$fillable,
-     * assigned directly here (never mass-assigned). $value is whatever the
-     * request submitted — a date string or null — and the 'datetime' cast
-     * normalizes it as soon as it is set, so both sides of the comparison
-     * below read back through the SAME cast (D-4 invariant: the reminder
-     * marker is zeroed if and only if the resolved instant actually changes).
+     * `next_callback_at` (spec 0052 D-1/D-2; user directive 2026-09-04: the
+     * column lives on the OFFER now): NOT in Quote::$fillable, assigned
+     * directly here (never mass-assigned). $value is whatever the request
+     * submitted — a date string or null — and the 'datetime' cast normalizes
+     * it as soon as it is set, so both sides of the comparison below read
+     * back through the SAME cast (D-4 invariant: the reminder marker is
+     * zeroed if and only if the resolved instant actually changes).
+     *
+     * No disableLogging() here, unlike the Quote-level attribution fields:
+     * both columns sit outside #[Fillable], so the automatic log
+     * (logFillable) never sees them and the caller's EXPLICIT entry on the
+     * Opportunity stays the single record of the change (D-9).
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      */
-    private function applyNextCallbackAt(Opportunity $opportunity, mixed $value, array &$changed, array &$old): void
+    private function applyNextCallbackAt(Quote $quote, mixed $value, array &$changed, array &$old): void
     {
-        $previous = $opportunity->next_callback_at;
-        $opportunity->next_callback_at = $value;
-        $current = $opportunity->next_callback_at;
+        $previous = $quote->next_callback_at;
+        $quote->next_callback_at = $value;
+        $current = $quote->next_callback_at;
 
         if ($this->callbackInstantKey($previous) === $this->callbackInstantKey($current)) {
             return;
@@ -380,7 +389,7 @@ final class RequestManagementService
 
         $old['next_callback_at'] = $this->callbackInstantKey($previous);
         $changed['next_callback_at'] = $this->callbackInstantKey($current);
-        $opportunity->next_callback_reminded_at = null;
+        $quote->next_callback_reminded_at = null;
     }
 
     /**

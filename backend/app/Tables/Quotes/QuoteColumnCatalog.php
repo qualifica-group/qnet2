@@ -20,6 +20,13 @@ namespace App\Tables\Quotes;
  * SPECIALLY-derived column (the site has no label column at all: it is
  * identified by its primary address), delegated by QuotesTableDefinition to
  * the shared OperationalSiteColumn exactly as on Opportunities.
+ *
+ * `next_callback_at` ("Prossimo richiamo", user directive 2026-09-04) is a
+ * real `quotes` column too — moved off the Opportunity with the planning it
+ * represents — so the generic engine sorts and date-filters it with no
+ * derived handling. Read-only here: the Offerta's callback is planned from
+ * Gestione Richieste, the module that owns the write path (the
+ * reminder-marker invariant lives behind RequestManagementService).
  */
 final class QuoteColumnCatalog
 {
@@ -115,6 +122,18 @@ final class QuoteColumnCatalog
             self::derivedColumn('company', 'quotes.columns.company'),
             self::derivedColumn('company_site', 'quotes.columns.companySite'),
             self::derivedColumn('operational_site', 'quotes.columns.operationalSite'),
+            // Appended LAST for the same reason as the three above (spec
+            // 0001): a column inserted mid-catalogue would shift every user's
+            // persisted layout.
+            [
+                'id' => 'next_callback_at',
+                'label' => 'quotes.columns.nextCallbackAt',
+                'type' => 'datetime',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
+            ],
         ];
     }
 

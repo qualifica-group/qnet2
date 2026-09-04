@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0101-tasks-module" status="draft" owner="nicola" date="2026-09-04">
+
+  <goal>
+    Introdurre il modulo Task del gestionale: un'attivita' tracciabile, gerarchica
+    (sotto-task ricorsivi), collegabile ad Anagrafica, Referente, Opportunita' e Commessa,
+    con creatore/richiedente/assegnatari/osservatori, e cinque moduli di configurazione
+    (Stati, Tipologie, Categorie, Priorita', Importanza) che ne governano gli attributi
+    visuali e funzionali. La percentuale di completamento NON e' un campo del Task: e'
+    una proiezione dello Stato corrente. FASE 1 di 2.
+  </goal>
+
+  <context>
+    Fatti VERIFICATI nel repo (non ipotizzati), che vincolano il disegno:
+
+      - "Anagrafica" e' `App\Models\Registry` / tabella `registries`. NON `Company`
+        (societa' interne del gruppo) e NON `PersonalData` (scheda identita' polimorfa).
+        "Commessa" e' `App\Models\WorkOrder` / `work_orders` (spec 0093). "Opportunita'"
+        e' `App\Models\Opportunity`. "Programma" NON e' un'entita': e' un'azione sul
+        Contratto che genera Commesse.
+      - I referenti di un'anagrafica passano dal pivot `referent_registry`
+        (`Registry::referents()`, `Referent::registries()`). L'endpoint dipendente
+        ESISTE GIA': `GET /api/referents/for-select?registry_id={id}`
+        (`routes/api/referents.php:29`, filtro in `ReferentService.php:144-148`).
+        Nessun endpoint nuovo da creare per il campo Referente.
+      - Il pattern frontend "select dipendente + reset del figlio quando cambia il padre"
+        ESISTE GIA' ed e' esattamente il nostro caso: `RelationSelectField` con
+        `params={registryId !== null ? { registry_id: registryId } : undefined}` in
+        `features/opportunities/opportunity-client-section.tsx:82-93`, e il reset
+        ESPLICITO nell'handler del padre (mai in `useEffect`) in
+        `features/opportunities/opportunity-registry-field.tsx:54-58`. Si riusa, non si
+        reinventa.
+      - Il canone dei configuratori di stato e' UNICO e condiviso:
+        `App\Services\Statuses\SystemStatusGuard` (riga con `system_key` valorizzata:
+        non cancellabile -> `abort(422)`; in update accetta SOLO le chiavi elencate in
+        `MUTABLE_SYSTEM_FIELDS`, oggi `['name','color']`, controllo per CHIAVE INVIATA
+        non per valore) e `App\Services\Statuses\StatusOrderManager` (ordine
+        server-managed, `sort_order` mai nelle `rules()`, endpoint `reorder` gated su
+        `.update`). Il guard e' gia' condiviso da PipelineStatus, RewardStatus,
+        ContractStatus.
+      - Il guard di cancellazione ha una convenzione universale: `abort(409, '...')`
+        dentro il `delete()` del Service (stringa INGLESE hardcoded, non chiave i18n),
+        PIU' override di `deleteModel()` nella TableDefinition perche' il bulk-delete
+        generico applichi lo stesso guard. Mai in Policy, mai eccezione custom.
+        Difesa in profondita': FK `restrictOnDelete`.
+      - `system_key` NON e' mai mass-assignabile: assente da `rules()` E da `#[Fillable]`
+        sul Model. Scritto solo da migration.
+      - `ColorTokenPicker` (`features/custom-fields/components/color-token-picker.tsx`) e
+        `IconPicker` (`components/icon-picker.tsx`, catalogo curato `ICON_NAMES`)
+        ESISTONO GIA'. Il colore e' un TOKEN di palette (`BADGE_COLOR_TOKENS`: slate,
+        gray, red, orange, amber, yellow, green, emerald, teal, blue, indigo, violet,
+        purple, pink), MAI un hex: il badge di griglia mappa il token per nome via
+        `BADGE_COLOR_CLASSES` in `features/table/cell-renderers.tsx`.
+      - NESSUNA tabella di lookup ha oggi la colonna `icon`. L'unica `icon` sta su
+        `attributes`, `attribute_options`, `custom_field_definitions`,
+        `custom_field_options`. I nostri cinque configuratori sono i primi lookup a
+        prenderla (vedi D-4).
+      - I permessi CRUD NON hanno catalogo hardcoded: `permissions:sync`
+        (`app/Console/Commands/SyncPermissions.php:76-84`) fa glob su `app/Policies/*.php`
+        e deriva per riflessione le 8 ability di `BasePolicy` (viewAny, view, create,
+        update, delete, export, import, viewActivity). Creare la Policy basta.
+      - Lo scope di visibilita' per appartenenza esiste in DUE punti soltanto:
+        `App\Services\WorkOrders\WorkOrderVisibilityScope` (spec 0096) e
+        `RequestManagementScope`. Statici e stateless perche' `permissions:sync`
+        istanzia le Policy con `new $class`. Fail-closed: attore null ->
+        `whereNull('whereNull('[tabella].id')lt;table&gt;.id')`. Opportunita', Anagrafiche e Utenti NON sono scoped.
+      - I pivot many-to-many con User hanno nome ESPLICITO quando il model ne ha piu' di
+        uno (`work_order_supervisor`, `work_order_participant`): il default alfabetico
+        non e' reclamabile da due relazioni. Sync con `sync()` (full-replace, mai
+        `syncWithoutDetaching`) DENTRO la transazione del Service, e solo se la chiave
+        e' stata submitted (PATCH parziale). Resource espone `[{id, name}]`.
+      - NON esiste alcuna ricorrenza ne' alcuno scheduler nel repo: `routes/console.php`
+        contiene solo `inspire`. I job in coda invece sono un pattern consolidato
+        (`app/Jobs/`, 9 job).
+      - Envelope di progetto: `{ success, message, data }` piu' il blocco `permissions`
+        su show/store/update (`ResourcePermissionsBuilder`, spec 0004). Gli endpoint
+        `for-select` rispondono FUORI envelope (`{items, pagination}`, ADR 0011) e non
+        portano permesso di risorsa.
+      - Il numero 0100 e' rivendicato dal Modulo Report (i suoi file sono su disco in
+        `backend/app/Reporting/`): questa spec prende 0101, la Fase 2 prendera' 0102.
+
+    Naming: identificatori in INGLESE (CLAUDE.md §2, engineering.md §1.2). "Task",
+    "Stato Task", "Anagrafica", "Commessa" vivono SOLO nelle stringhe i18n.
+    Nessuna collisione: in `app/` non esiste oggi nessuna classe `Task*`.
+  </context>
+
+  <decisions>
+
+    <decision id="D-1">
+      Nomi congelati. Tabella `tasks`, model `App\Models\Task`, slug risorsa / prefisso
+      permessi / dominio tabella `tasks`, rotta frontend `/tasks`, feature
+      `frontend/src/features/tasks/`, namespace i18n `tasks`.
+      Configuratori: `task_statuses`/`TaskStatus`/`task-statuses`,
+      `task_types`/`TaskType`/`task-types`, `task_categories`/`TaskCategory`/`task-categories`,
+      `task_priorities`/`TaskPriority`/`task-priorities`,
+      `task_importances`/`TaskImportance`/`task-importances`.
+      Pivot con nome esplicito (il Model ha due relazioni User, il default alfabetico non
+      e' reclamabile da entrambe): `task_assignee`, `task_watcher`.
+    </decision>
+
+    <decision id="D-2">
+      FASATURA (utente 2026-09-04). Questa spec e' la FASE 1: i cinque configuratori +
+      il Task completo (CRUD, tabella backend-driven, form create/edit/view, permessi
+      CRUD e di campo, sotto-task, percentuale derivata dallo stato, feedback alla
+      chiusura, flag bloccato/contestato, scope di visibilita').
+      La FASE 2 (spec 0102, da scrivere dopo il verde della Fase 1) contiene SOLO le
+      sezioni "Task collegati" dentro il dettaglio di Opportunita', Commessa e
+      Anagrafica. E' separata perche' tocca la write surface di tre moduli esistenti:
+      tenerla fuori mantiene il blast radius della Fase 1 confinato ai file nuovi.
+    </decision>
+
+    <decision id="D-3">
+      PIANIFICAZIONE RICORRENTE: FUORI SCOPE, in entrambe le fasi (utente 2026-09-04,
+      "per ora non prevederla"). Nessuna tabella `task_recurrences`, nessuna colonna di
+      ricorrenza su `tasks`, nessuna sezione nel form, nessun filtro "Task ricorrenti",
+      nessun comando Artisan, nessuno scheduler.
+      CONSEGUENZA ACCETTATA: il campo "Pianificazione ricorrente" e il filtro "Task
+      ricorrenti" presenti nella richiesta originale NON vengono implementati.
+      Quando la ricorrenza tornera', il disegno corretto resta quello discusso: tabella
+      dedicata separata dall'occorrenza, cosi' che modificare un task storico non alteri
+      la pianificazione. Nulla in questa spec lo pregiudica: `tasks` non prende colonne
+      che andrebbero poi rimosse.
+    </decision>
+
+    <decision id="D-4">
+      FORMA DEI CONFIGURATORI. I quattro configuratori non-stato (Tipologie, Categorie,
+      Priorita', Importanza) sono lookup PURI, senza `system_key` (utente 2026-09-04):
+        id, name (unique, NOT NULL), description (nullable), color (NOT NULL),
+        icon (nullable), sort_order (default 0), is_active (default true), timestamps.
+      Nessuna riga protetta: ogni riga e' rinominabile e cancellabile, salvo il guard
+      "in uso" (D-8). Nessun peso numerico: l'ordinamento per gravita' e' `sort_order`.
+      `task_statuses` ha ESATTAMENTE la stessa forma PIU' due colonne: `system_key`
+      (string(16) nullable unique) e `completion_percentage` (unsignedTinyInteger,
+      default 0, range 0-100).
+      `color` e' un TOKEN della palette esistente, non un hex: colonna string(32) con
+      validazione `Rule::in(BADGE_COLOR_TOKENS)` server-side, cosi' il badge di griglia
+      lo sa mappare. `icon` e' un nome lucide kebab-case del catalogo curato
+      (`ICON_NAMES`), colonna string(64) nullable: prima volta che un lookup la prende
+      (vedi context), quindi la validazione e' un `Rule::in` su una allow-list
+      server-side condivisa, non testo libero.
+      I cinque moduli condividono lo STESSO flusso: stesse 8 ability, stesse rotte,
+      stessa TableDefinition, stesso ColorTokenPicker/IconPicker, stesso guard di
+      cancellazione. Cambia solo il nome della risorsa.
+      ORDINAMENTO (rettifica dell'utente 2026-09-04, in corso di build). La prima
+      stesura congelava l'endpoint `reorder` sul solo `task-statuses` lasciando
+      `sort_order` `prohibited` ovunque: la colonna esisteva ma nessuna UI poteva
+      cambiarla, quindi i quattro lookup restavano ordinati per data di creazione e
+      la frase qui sopra "l'ordinamento per gravita' e' `sort_order`" era di fatto
+      non implementabile su Priorita' e Importanza. Rettificato: TUTTI E CINQUE i
+      moduli espongono `reorder`, coerentemente con lo "stesso flusso" dichiarato.
+      `sort_order` resta `prohibited` in store/update su tutti e cinque: e'
+      server-managed, si cambia SOLO dall'endpoint dedicato.
+      I quattro lookup puri NON riusano `StatusOrderManager`, che e' `system_key`-aware
+      e pinna righe di testa/coda che qui non esistono: usano
+      `App\Services\Lookups\LookupOrderManager`, resequencer semplice su tutte le
+      righe. `task-statuses` continua a usare `StatusOrderManager` (D-5).
+    </decision>
+
+    <decision id="D-5">
+      CHIAVE DI SISTEMA DELLO STATO. `task_statuses.system_key` e' l'unico riferimento
+      che la logica applicativa usa; la label non entra MAI in una condizione.
+      Enum `App\Enums\TaskStatusSystemKey` (string-backed), sei casi congelati:
+        Open='open', InProgress='in_progress', Pending='pending',
+        InValidation='in_validation', ClosedPositive='closed_positive',
+        ClosedNegative='closed_negative'.
+      Le sei righe sono create dalla MIGRATION (non dal seeder), cosi' che esistano
+      prima di qualunque backfill e di qualunque seed. Percentuali iniziali:
+        open 0, in_progress 25, pending 50, in_validation 75,
+        closed_positive 100, closed_negative 0.
+      La percentuale di `closed_negative` e' CONFIGURABILE come tutte le altre (era la
+      richiesta esplicita): 0 e' solo il valore iniziale.
+      NESSUNA colonna `group`, a differenza di `contract_statuses`/`pipeline_statuses`
+      che hanno sia `system_key` sia `group`. Qui le sei chiavi SONO le fasi: duplicarle
+      in un `group` creerebbe due fonti di verita' per lo stesso fatto.
+      CONSEGUENZA DA APPROVARE: uno stato CUSTOM (creato dall'admin, `system_key` NULL)
+      non appartiene ad alcuna fase, quindi non e' mai uno stato di chiusura e non fa
+      scattare la richiesta di feedback (D-7). Se in futuro serve che anche uno stato
+      custom sia "di chiusura", si aggiunge `group` e si allarga `TaskStatusResolver`:
+      unico punto da toccare. Se preferisci `group` fin da subito, dillo in approvazione
+      e cambio D-5, D-7 e i relativi AC.
+    </decision>
+
+    <decision id="D-6">
+      PERCENTUALE DERIVATA. `tasks` NON ha colonna `completion_percentage`: sarebbe un
+      dato ridondante che puo' divergere dallo stato. La percentuale e' letta dalla
+      relazione `taskStatus` a response time.
+      UNICO punto di calcolo: `App\Services\Tasks\TaskStatusResolver`, che possiede sia
+      `completionPercentage(Task)` sia `applySort(Builder, direction)` e
+      `applyFilter(Builder, ...)` per la colonna derivata di griglia (ordinamento via
+      subquery correlata, mai `orderByRaw` su input). Stesso principio di
+      `WorkOrderStatusResolver` (spec 0093 D-3): badge, colonna, ordinamento e filtro
+      non possono divergere per costruzione.
+      `completion_percentage` non compare in `TasksAuthorization::fields()`: non e' un
+      campo scrivibile, quindi non e' permissionabile ne' inviabile. Un payload che lo
+      contiene -> 422 (`prohibited`).
+    </decision>
+
+    <decision id="D-7">
+      FEEDBACK ALLA CHIUSURA, validato SERVER-SIDE. Se il Task risultante dal save ha
+      `requires_closure_feedback = true` E il `task_status_id` risultante punta a uno
+      stato con `system_key` in {closed_positive, closed_negative}, allora
+      `closure_feedback` deve essere una stringa non vuota (dopo trim), altrimenti 422
+      sul campo `closure_feedback`.
+      La regola guarda lo STATO RISULTANTE, non quello inviato: in un PATCH parziale che
+      cambia solo lo stato, il flag e il feedback vengono letti dal record persistito.
+      Implementata in `App\Services\Tasks\TaskClosureFeedbackGuard`, invocata dal Service
+      dentro la transazione, non nella FormRequest (la FormRequest non conosce lo stato
+      persistito in un PATCH parziale). Il frontend replica la regola per UX, ma non la
+      sostituisce.
+    </decision>
+
+    <decision id="D-8">
+      CANCELLAZIONE. Tre guardie distinte, tutte con la convenzione del repo
+      (`abort()` nel Service + override `deleteModel()` nella TableDefinition, cosi' che
+      il bulk-delete generico non le aggiri):
+        a) Task con sotto-task -> `abort(409, 'This task has sub-tasks and cannot be
+           deleted.')`. Il conteggio dei figli IGNORA lo scope di visibilita' (D-9): la
+           correttezza del vincolo non dipende da chi guarda.
+        b) Riga di configurazione in uso da almeno un Task -> `abort(409, 'This task
+           [risorsa] is used by a task and cannot be deleted.')`, uno per modulo con il
+           nome della risorsa.
+        c) Riga di stato con `system_key` valorizzata -> `abort(422, ...)` via
+           `SystemStatusGuard`, gia' condiviso.
+      NESSUN cascade su relazioni funzionalmente rilevanti: `tasks.parent_task_id` e le
+      sei FK verso i configuratori sono `restrictOnDelete`, cosi' che anche un delete che
+      aggirasse il Service fallisca a livello DB. Fanno eccezione i DUE pivot utente
+      (`task_assignee`, `task_watcher`), `cascadeOnDelete` su entrambi i lati come i
+      pivot di Commessa: sono righe di associazione, non dati.
+    </decision>
+
+    <decision id="D-9">
+      VISIBILITA' PER APPARTENENZA (utente 2026-09-04). Nuovo
+      `App\Services\Tasks\TaskVisibilityScope`, statico e stateless come
+      `WorkOrderVisibilityScope` (la Policy deve restare costruibile con `new $class`).
+      Metodi `scopeToActor(Builder, ?User)` e `isVisibleTo(User, Task)`; costante
+      `VIEW_ALL_PERMISSION = 'tasks.viewAll'`.
+      Un Task e' visibile all'attore se ne e' CREATORE, RICHIEDENTE, ASSEGNATARIO o
+      OSSERVATORE, oppure se ha `tasks.viewAll`. Fail-closed: attore null ->
+      `whereNull('tasks.id')`.
+      La regola RESTRINGE, non allarga: essere assegnatario NON sostituisce `tasks.view`.
+      `update`/`delete` sono scoped come `view` (un record che non vedi non lo modifichi
+      indovinandone l'id). Applicata anche in `baseQuery()` della TableDefinition e
+      quindi all'export (`ExportService` gia' fa `Auth::setUser($actor)`).
+      CONSEGUENZA ACCETTATA, la stessa gia' nota sulle Commesse: chi crea un Task senza
+      mettersi tra assegnatari/osservatori lo vede comunque, perche' resta il CREATORE.
+      SCOPE DEI COLLEGAMENTI: la non-divulgazione richiesta e' garantita per i TASK.
+      Le etichette dei record collegati (Opportunita', Commessa, Anagrafica) NON sono
+      oscurate per-riga: e' l'opzione che l'utente non ha scelto. Un utente che vede un
+      Task vede il nome dell'opportunita' collegata anche se non ha
+      `opportunities.view`. Se serve l'oscuramento, e' un intervento successivo e
+      indipendente su `TaskResource` + le colonne derivate.
+    </decision>
+
+    <decision id="D-10">
+      CREATORE non e' client-writable. `tasks.creator_id` e' NOT NULL, valorizzato
+      server-side con l'attore in create, IMMUTABILE in update (`prohibited`), assente da
+      `#[Fillable]`. Il RICHIEDENTE (`requester_id`) e' invece un campo normale,
+      nullable, scelto dall'utente: e' esattamente la distinzione richiesta.
+      Assegnatari e Osservatori sono i due pivot; un utente puo' essere entrambi.
+    </decision>
+
+    <decision id="D-11">
+      DATE E ORE. `start_date`, `end_date`, `completion_date` sono colonne `date`;
+      `start_time`, `end_time` sono colonne `time`, separate dalle date come nella
+      richiesta (non fuse in datetime): il Task puo' avere un orario senza una data e
+      viceversa. `estimated_minutes` e' `unsignedInteger` nullable (minuti, come
+      richiesto): niente conversioni implicite, niente stringhe "2h30".
+      Nessun vincolo di ordinamento fra le date e' imposto in questa fase (un
+      `end_date anteriore a start_date` e' accettato): non e' stato richiesto e imporlo
+      silenziosamente sarebbe una regola di business inventata. Segnalato, non
+      implementato.
+      `App\Authorization\FieldDefinition` non ha oggi un tipo `time` (i tipi esistenti
+      sono boolean, collection, color, custom, date, email, image, json, lines,
+      multiselect, number, password, select, text, textarea): `start_time`/`end_time`
+      sono dichiarati `text` con validazione `date_format:H:i` server-side. Aggiungere un
+      tipo `time` al catalogo condiviso e' fuori scope.
+    </decision>
+
+    <decision id="D-12">
+      SOTTO-TASK. `tasks.parent_task_id` FK auto-referenziale nullable,
+      `restrictOnDelete`. Un Task non puo' essere padre di se stesso ne' creare un ciclo:
+      validazione server-side in `App\Services\Tasks\TaskHierarchyGuard`
+      (`abort(422)` su self-parent e su ciclo, risalendo la catena dei padri).
+      Profondita' NON limitata: nessun limite e' stato richiesto e imporne uno sarebbe
+      una regola inventata.
+      Il dettaglio Task espone i figli in `TaskResource.subtasks` (array lean:
+      id, title, stato con label/colore/icona, percentuale, assegnatari) filtrato dallo
+      scope di visibilita'. NESSUN endpoint nuovo: la sezione Sotto-task legge il
+      dettaglio gia' caricato, e "crea sotto-task" apre il form Task normale con
+      `parent_task_id` precompilato e bloccato.
+    </decision>
+
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend, cinque moduli di configurazione (task-statuses, task-types, task-categories, task-priorities, task-importances), ciascuno: migration, model, DTO create/update, FormRequest store/update/for-select, Policy, Resource + ForSelectResource, Controller CRUD + ForSelectController, Service, TableDefinition + ColumnCatalog, ResourceAuthorization, factory, seeder pulito.</item>
+      <item>Backend Task: migration `tasks` + 2 migration pivot (`task_assignee`, `task_watcher`), model `Task`, DTO create/update, FormRequest store/update/for-select, `TaskPolicy`, `TaskResource` + `TaskForSelectResource`, `TaskController` + `TaskForSelectController`, `TaskService`, `TasksTableDefinition` + `TaskColumnCatalog` + `TaskRelationColumns`, `TasksAuthorization`, factory, `TaskStatusResolver`, `TaskVisibilityScope`, `TaskClosureFeedbackGuard`, `TaskHierarchyGuard`, enum `TaskStatusSystemKey`.</item>
+      <item>Estensione di `App\Services\Statuses\SystemStatusGuard`: `TaskStatus` aggiunto all'union dei tipi accettati, e `MUTABLE_SYSTEM_FIELDS` allargata a `['name','color','icon','completion_percentage']`. Sicuro per i tre stati esistenti: le loro `rules()` non dichiarano `icon` ne' `completion_percentage`, quindi quelle chiavi non possono mai arrivare al guard da quei form.</item>
+      <item>Allow-list server-side condivisa dei token colore e dei nomi icona (`App\Support\BadgeTokens`), usata dalle FormRequest dei sei moduli: nessun hex libero, nessun nome lucide inventato.</item>
+      <item>`GET /api/work-orders/for-select` (buco della spec emerso in build 2026-09-04): il
+        `data_contract` del Task espone `work_order_id` e il form deve poterla scegliere, ma
+        l'endpoint NON esisteva — la stesura aveva verificato solo quello dei Referenti.
+        Nuovo `WorkOrderForSelectController` + `WorkOrderService::forSelect()` + rotta, in
+        aggiunta al modulo work-orders esistente (nessuna modifica ai suoi file attuali).
+        VINCOLO: applica `WorkOrderVisibilityScope::scopeToActor()`, altrimenti il picker
+        divulgherebbe Commesse che la tabella Commesse nasconde allo stesso utente.</item>
+      <item>Registrazioni: `config/tables.php` (6 domini), `config/authorization.php` (6 risorse), `config/activity-log.php`, `config/navigation/` (voce Task nel dominio operativo + i 5 configuratori sotto Configurazione), `routes/api/tasks.php` (nuovo file, richiesto da `routes/api.php` dentro il gruppo `auth:sanctum`) e i 5 blocchi in `routes/api/lookups.php`.</item>
+      <item>Frontend, sei feature complete (`features/tasks/` + 5 configuratori): api, for-select-api, types, schema Zod, form-payload, use-*-form, use-*-form-meta, form, form-body, detail, table, screens, column-renderers, piu' le sezioni estratte del form Task (anagrafica/referente, persone, pianificazione, classificazione, chiusura, sotto-task) per restare sotto le 300 righe per file.</item>
+      <item>Sei pagine + sei rotte in `router.tsx`, breadcrumb, i18n it/en con test di parita', aggiornamento di `ASSIGNABLE_RESOURCES` in `permissions-i18n-parity.test.ts` (+6).</item>
+      <item>Tabella Task backend-driven con le colonne richieste, badge colore/icona/label su Stato, Tipologia, Categoria, Priorita', Importanza, ricerca, filtri, ordinamenti, paginazione server, selezione colonne, export e preferenze tabella dal motore generico.</item>
+    </in>
+    <out>
+      <item>Pianificazione ricorrente in ogni sua forma: tabella, colonne, form, filtro, job, scheduler (D-3, utente 2026-09-04).</item>
+      <item>Sezioni "Task collegati" dentro Opportunita', Commessa e Anagrafica: sono la FASE 2, spec 0102 (D-2).</item>
+      <item>Oscuramento per-riga delle etichette dei record collegati che l'attore non avrebbe diritto di vedere (D-9).</item>
+      <item>Colonna `group` sugli stati Task; chiave di sistema sui quattro configuratori non-stato; peso numerico su Priorita'/Importanza (D-4, D-5).</item>
+      <item>Notifiche, promemoria, allegati, note, attributi dinamici, time-tracking reale (consuntivo vs stimato), commenti: nessuno e' stato richiesto.</item>
+      <item>Vincoli di coerenza fra le date, limite di profondita' dei sotto-task, propagazione automatica di stato/percentuale dal padre ai figli o viceversa (D-11, D-12).</item>
+      <item>Nuovo tipo `time` nel catalogo `FieldDefinition` (D-11). Import legacy (`old_id`/MigrationSource). Quick-create.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <entity name="task_statuses">
+      id BIGINT PK
+      name VARCHAR(191) UNIQUE NOT NULL
+      description VARCHAR(500) NULL
+      color VARCHAR(32) NOT NULL          token di BADGE_COLOR_TOKENS
+      icon VARCHAR(64) NULL               nome lucide kebab-case di ICON_NAMES
+      sort_order INT NOT NULL DEFAULT 0   server-managed (StatusOrderManager)
+      is_active BOOLEAN NOT NULL DEFAULT true
+      system_key VARCHAR(16) NULL UNIQUE  mai fillable, mai in rules()
+      completion_percentage TINYINT UNSIGNED NOT NULL DEFAULT 0   range 0-100
+      created_at / updated_at
+      INDEX (is_active, sort_order)
+      6 righe di sistema create dalla migration (D-5).
+    </entity>
+
+    <entity name="task_types / task_categories / task_priorities / task_importances">
+      Identiche fra loro: id, name UNIQUE NOT NULL, description NULL, color NOT NULL,
+      icon NULL, sort_order DEFAULT 0, is_active DEFAULT true, timestamps,
+      INDEX (is_active, sort_order). NESSUN system_key, NESSUNA percentuale (D-4).
+    </entity>
+
+    <entity name="tasks">
+      id BIGINT PK
+      title VARCHAR(191) NOT NULL
+      description TEXT NULL
+      registry_id BIGINT NULL           -> registries        nullOnDelete
+      referent_id BIGINT NULL           -> referents         nullOnDelete
+      parent_task_id BIGINT NULL        -> tasks             restrictOnDelete
+      task_type_id BIGINT NULL          -> task_types        restrictOnDelete
+      task_status_id BIGINT NOT NULL    -> task_statuses     restrictOnDelete
+      task_priority_id BIGINT NULL      -> task_priorities   restrictOnDelete
+      task_importance_id BIGINT NULL    -> task_importances  restrictOnDelete
+      task_category_id BIGINT NULL      -> task_categories   restrictOnDelete
+      opportunity_id BIGINT NULL        -> opportunities     nullOnDelete
+      work_order_id BIGINT NULL         -> work_orders       nullOnDelete
+      requester_id BIGINT NULL          -> users             nullOnDelete
+      creator_id BIGINT NOT NULL        -> users             restrictOnDelete, server-side (D-10)
+      start_date DATE NULL
+      end_date DATE NULL
+      completion_date DATE NULL
+      start_time TIME NULL
+      end_time TIME NULL
+      estimated_minutes INT UNSIGNED NULL
+      is_blocked BOOLEAN NOT NULL DEFAULT false
+      requires_closure_feedback BOOLEAN NOT NULL DEFAULT false
+      closure_feedback TEXT NULL
+      created_at / updated_at
+      INDEX (task_status_id), (registry_id), (parent_task_id), (start_date), (end_date)
+      NESSUNA colonna completion_percentage (D-6). NESSUNA colonna di ricorrenza (D-3).
+    </entity>
+
+    <entity name="task_assignee / task_watcher">
+      id, task_id -> tasks cascadeOnDelete, user_id -> users cascadeOnDelete,
+      UNIQUE (task_id, user_id). Nessun `position`: sono insiemi non ordinati (D-8).
+    </entity>
+
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">
+        { success, message, data: {
+            id, title, description,
+            registry_id, registry: {id, name}|null,
+            referent_id, referent: {id, name}|null,
+            parent_task_id, parent_task: {id, title}|null,
+            task_type_id, task_type: {id, name, color, icon}|null,
+            task_status_id, task_status: {id, name, color, icon, system_key, completion_percentage},
+            task_priority_id, task_priority: {id, name, color, icon}|null,
+            task_importance_id, task_importance: {id, name, color, icon}|null,
+            task_category_id, task_category: {id, name, color, icon}|null,
+            opportunity_id, opportunity: {id, name}|null,
+            work_order_id, work_order: {id, code, title}|null,
+            requester_id, requester: {id, name}|null,
+            creator: {id, name},
+            assignees: [{id, name}], watchers: [{id, name}],
+            start_date, end_date, completion_date, start_time, end_time,
+            estimated_minutes, is_blocked,
+            requires_closure_feedback, closure_feedback,
+            completion_percentage: int,          derivato dallo stato (D-6)
+            subtasks: [{id, title, task_status:{id,name,color,icon}, completion_percentage, assignees:[{id,name}]}],
+            created_at, updated_at
+          }, permissions }
+      </response>
+      <errors>403 senza tasks.view o fuori dallo scope di visibilita' (D-9); 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks">
+      <request>
+        { title (required), task_status_id (required),
+          description?, registry_id?, referent_id?, parent_task_id?,
+          task_type_id?, task_priority_id?, task_importance_id?, task_category_id?,
+          opportunity_id?, work_order_id?, requester_id?,
+          start_date?, end_date?, completion_date?, start_time?, end_time?,
+          estimated_minutes?, is_blocked?, requires_closure_feedback?, closure_feedback?,
+          assignee_ids?: int[], watcher_ids?: int[] }
+        `creator_id` e `completion_percentage` sono `prohibited`.
+      </request>
+      <response status="201">{ success, message: 'Created', data: {...}, permissions }</response>
+      <errors>
+        403 senza tasks.create;
+        422 title mancante; task_status_id inesistente; referent_id non collegato al
+        registry_id inviato; parent_task_id = se stesso o ciclo; feedback mancante su
+        stato di chiusura con requires_closure_feedback (D-7); creator_id o
+        completion_percentage presenti nel payload
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/tasks/{task}">
+      <request>Gli stessi campi, tutti `sometimes`. `creator_id` prohibited. I due array utente sono sincronizzati SOLO se la chiave e' presente (PATCH parziale).</request>
+      <response status="200">{ success, message: 'OK', data: {...}, permissions }</response>
+      <errors>403 senza tasks.update o fuori scope; 422 come sopra, valutato sullo stato RISULTANTE</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/tasks/{task}">
+      <response status="204">nessun body</response>
+      <errors>403 senza tasks.delete o fuori scope; 409 { success:false, message:'This task has sub-tasks and cannot be deleted.' }</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/for-select">
+      <request>search?, offset?, limit? (max 100), ids[]?, exclude_id? (per escludere se stesso dal picker del Task padre)</request>
+      <response status="200">{ items: [{id, label: title, subtitle: stato, meta: {}}], pagination }</response>
+      <errors>401 senza auth; nessun gate di permesso (ADR 0011). Le righe sono comunque ristrette dallo scope di visibilita'.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/{task-statuses|task-types|task-categories|task-priorities|task-importances}">
+      <request>
+        store: { name (required, unique), color (required, token), icon?, description?, is_active? }
+               task-statuses aggiunge: completion_percentage (required, 0-100)
+        update: gli stessi, `sometimes`. `system_key` e `sort_order` non sono mai accettati.
+      </request>
+      <response status="200|201">{ success, message, data: {id, name, description, color, icon, sort_order, is_active, [system_key, completion_percentage]}, permissions }</response>
+      <errors>
+        403 senza il permesso corrispondente; 422 name duplicato, color fuori palette,
+        icon fuori catalogo, completion_percentage fuori 0-100, `system_key`/`sort_order`
+        presenti nel payload; 422 su update di una riga di sistema che invia una chiave
+        diversa da name/color/icon/completion_percentage; 422 su delete di una riga di
+        sistema; 409 su delete di una riga in uso da almeno un Task
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/task-statuses/reorder">
+      <request>{ ordered_ids: int[] }</request>
+      <response status="200">{ success, message, data: [...] }</response>
+      <errors>403 senza task-statuses.update; 422 id duplicati o insieme non esatto delle righe custom</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/{task-types|task-categories|task-priorities|task-importances}/reorder">
+      <request>{ ordered_ids: int[] }</request>
+      <response status="200">{ success, message, data: [...] }</response>
+      <errors>
+        403 senza il permesso `.update` della risorsa; 422 id duplicati o insieme
+        non esatto di TUTTE le righe della tabella (qui non esistono righe di
+        sistema da escludere, a differenza di task-statuses)
+      </errors>
+    </endpoint>
+
+    <delta entity="tabelle generiche">
+      Sei nuovi domini in `config/tables.php` e in `config/authorization.php`.
+      Colonne della griglia `tasks`: id, title, registry, task_type, task_status,
+      task_priority, task_importance, task_category, start_date, end_date, requester,
+      assignees, completion_percentage (derivata, ordinabile via subquery correlata),
+      estimated_minutes, is_blocked, opportunity, work_order, creator.
+      Filtri: set su stato/tipologia/categoria/priorita'/importanza; relazione su
+      anagrafica/opportunita'/commessa/richiedente/creatore/assegnatario/osservatore;
+      boolean su is_blocked; date range su start_date/end_date/completion_date;
+      boolean derivati "ha sotto-task" e "e' un sotto-task".
+      Ogni filtro di relazione passa da `whereHas` su allow-list: mai `whereRaw`,
+      mai `orderByRaw` su input.
+    </delta>
+
+  </data_contract>
+
+  <acceptance_criteria>
+
+    <criterion id="AC-001">Le migration creano le 5 tabelle di configurazione con name unique, color NOT NULL, icon nullable, sort_order, is_active; `down()` reversibile su tutte.</criterion>
+    <criterion id="AC-002">La migration di `task_statuses` crea le 6 righe di sistema con le system_key open/in_progress/pending/in_validation/closed_positive/closed_negative e le percentuali 0/25/50/75/100/0.</criterion>
+    <criterion id="AC-003">La migration `tasks` crea tutte le colonne del data_contract, NON crea `completion_percentage` e NON crea alcuna colonna di ricorrenza; `parent_task_id` e le 6 FK di configurazione sono restrictOnDelete.</criterion>
+    <criterion id="AC-004">Le migration dei due pivot creano `task_assignee` e `task_watcher` con unique (task_id, user_id) e cascadeOnDelete su entrambi i lati.</criterion>
+    <criterion id="AC-005">Il seed pulito e' idempotente su re-run e non sovrascrive un rename fatto dal modulo.</criterion>
+
+    <criterion id="AC-010">POST /api/tasks con title + task_status_id -> 201, riga persistita, `creator_id` uguale all'attore autenticato.</criterion>
+    <criterion id="AC-011">POST con `creator_id` nel payload -> 422 anche per super-admin. Idem con `completion_percentage`.</criterion>
+    <criterion id="AC-012">PATCH che cambia solo il titolo NON tocca assegnatari e osservatori; PATCH con `assignee_ids: []` li svuota.</criterion>
+    <criterion id="AC-013">POST con `parent_task_id` uguale all'id del task stesso -> 422; PATCH che creerebbe un ciclo A->B->A -> 422.</criterion>
+    <criterion id="AC-014">POST con `referent_id` che non appartiene al `registry_id` inviato -> 422 sul campo referent_id.</criterion>
+    <criterion id="AC-015">DELETE di un Task senza figli -> 204. DELETE di un Task con almeno un sotto-task -> 409 con messaggio esplicativo; ne' il padre ne' i figli vengono rimossi.</criterion>
+    <criterion id="AC-016">Il bulk-delete generico della tabella applica lo stesso guard: un Task con figli non viene cancellato.</criterion>
+    <criterion id="AC-017">Il guard sui figli conta anche i sotto-task che l'attore non vedrebbe (D-8a): un utente non puo' cancellare un padre perche' i figli gli sono invisibili.</criterion>
+
+    <criterion id="AC-020">`TaskResource.completion_percentage` e' sempre uguale a `task_status.completion_percentage`; cambiando lo stato del Task la percentuale cambia senza alcuna scrittura su `tasks`.</criterion>
+    <criterion id="AC-021">Modificando la percentuale di uno stato dal suo modulo, la percentuale di TUTTI i Task in quello stato cambia al reload, senza migration ne' backfill.</criterion>
+    <criterion id="AC-022">La colonna di griglia "Percentuale completamento" e' ordinabile e il risultato coincide con l'ordinamento per percentuale dello stato; l'export include la colonna.</criterion>
+    <criterion id="AC-023">Rinominando lo stato con system_key `closed_positive` da "Completato" a "Terminato", ogni comportamento applicativo resta identico (feedback obbligatorio, percentuale 100, filtro) — test che rinomina e ri-esegue le asserzioni.</criterion>
+    <criterion id="AC-024">Nessun file di produzione contiene una condizione sulla LABEL di uno stato: grep di verifica su "Aperto"/"Completato"/"Chiuso" fuori da migration, seeder e i18n.</criterion>
+
+    <criterion id="AC-030">Task con `requires_closure_feedback = true` portato a uno stato `closed_positive` senza `closure_feedback` -> 422 sul campo closure_feedback; il Task NON cambia stato.</criterion>
+    <criterion id="AC-031">Stesso caso con `closure_feedback` fatto di soli spazi -> 422.</criterion>
+    <criterion id="AC-032">Stesso caso con feedback valorizzato -> 200 e stato cambiato.</criterion>
+    <criterion id="AC-033">Task con `requires_closure_feedback = false` portato a `closed_negative` senza feedback -> 200.</criterion>
+    <criterion id="AC-034">Task con flag true portato a uno stato CUSTOM (system_key NULL) senza feedback -> 200 (conseguenza dichiarata di D-5).</criterion>
+    <criterion id="AC-035">La regola vale in PATCH parziale che invia SOLO `task_status_id`: flag e feedback sono letti dal record persistito.</criterion>
+
+    <criterion id="AC-040">DELETE di uno stato/tipologia/categoria/priorita'/importanza non usata da alcun Task -> 204.</criterion>
+    <criterion id="AC-041">DELETE di una riga usata da almeno un Task -> 409 con messaggio che nomina la risorsa; la riga NON e' rimossa e nessun Task e' cancellato.</criterion>
+    <criterion id="AC-042">DELETE di uno stato con `system_key` valorizzata -> 422, anche se non e' usato da alcun Task.</criterion>
+    <criterion id="AC-043">PATCH di uno stato di sistema che invia `is_active` -> 422; che invia solo `name`, `color`, `icon`, `completion_percentage` -> 200.</criterion>
+    <criterion id="AC-044">La percentuale di `closed_negative` e' modificabile da 0 a un altro valore e il cambiamento si riflette sui Task in quello stato (richiesta esplicita: valore configurabile).</criterion>
+    <criterion id="AC-045">`system_key` e `sort_order` non sono mai accettati nel payload di store/update di nessuno dei 5 configuratori -> 422. NON vale per `completion_percentage` sui quattro lookup puri (rettifica RITIRATA in build 2026-09-04, dopo obiezione di `backend-config`): li' quella chiave non e' server-managed ne' parte del contratto, e' semplicemente sconosciuta come lo sarebbe `foo`, e vietarne UNA fra le infinite ignote non ha un punto d'arresto principiato. Cio' che i cinque moduli vietano uniformemente e' lo stato SERVER-MANAGED (`system_key`, `sort_order`), che e' la ragione per cui quei due sono `prohibited` anche sui lookup che non ne hanno la colonna. Il contratto garantisce che `completion_percentage` non diventi mai un dato su quelle quattro tabelle, non che venga rifiutato.</criterion>
+    <criterion id="AC-046">`color` fuori dalla palette -> 422; `icon` fuori dal catalogo lucide curato -> 422; `completion_percentage` a 101 o -1 -> 422.</criterion>
+    <criterion id="AC-047">POST /api/task-statuses/reorder riordina le sole righe custom; un `ordered_ids` che include una riga di sistema o ne omette una custom -> 422.</criterion>
+    <criterion id="AC-056">`GET /api/work-orders/for-select` restituisce SOLO le Commesse visibili all'attore secondo `WorkOrderVisibilityScope` (spec 0096): un Responsabile/Partecipante vede le proprie, un non-membro riceve `{items: [], pagination: {total: 0}}`, chi ha `work-orders.viewAll` le vede tutte. Il percorso di idratazione `ids[]` passa dalla STESSA query scoped: un id fuori scope NON viene restituito nemmeno se richiesto esplicitamente per id — altrimenti l'endpoint diventa un oracolo di enumerazione su `code`/`title`. Aggiunto in build 2026-09-04: l'endpoint era entrato nello scope in corso d'opera senza generare un criterio, quindi il suo vincolo di non-divulgazione non era coperto da alcun test.</criterion>
+
+    <criterion id="AC-057">Le `rules()` di `contract-statuses`, `pipeline-statuses` e `reward-statuses` NON dichiarano ne' `icon` ne' `completion_percentage`. E' l'invariante su cui poggia AC-048: `SystemStatusGuard::MUTABLE_SYSTEM_FIELDS` e' stato allargato a `['name','color','icon','completion_percentage']` per TUTTI E QUATTRO i tipi di stato, quindi i tre preesistenti sono protetti solo dal fatto che quelle due chiavi non arrivano mai al guard dai loro form. Se un domani qualcuno dichiarasse `icon` nelle `rules()` di ContractStatus — plausibile, e' un configuratore con badge — quella chiave diventerebbe mutabile su una riga di sistema e l'intera suite resterebbe verde. Aggiunto in build 2026-09-04.</criterion>
+
+    <criterion id="AC-049">POST /api/{task-types|task-categories|task-priorities|task-importances}/reorder riordina le righe e l'ordine si riflette su tabella e for-select; `ordered_ids` con duplicati, con un id inesistente, o che non e' l'insieme esatto delle righe -> 422; senza il permesso `.update` della risorsa -> 403. `sort_order` resta `prohibited` in store/update su tutti e cinque i moduli.</criterion>
+
+    <criterion id="AC-048">I tre configuratori di stato preesistenti (contract/pipeline/reward) continuano a NON accettare `icon` e `completion_percentage` (rettifica di lettera, build 2026-09-04: a livello HTTP non li RIFIUTANO con un 422 — sono chiavi non dichiarate nelle loro `rules()`, quindi `validated()` le scarta e la risposta e' 200 senza effetto. Il criterio come scritto descriveva un comportamento che il sistema non ha; cio' che conta e' che non diventino mai un dato ne' raggiungano il guard. L'invariante e' pinnato da AC-057): la suite esistente su SystemStatusGuard resta verde dopo l'allargamento di MUTABLE_SYSTEM_FIELDS.</criterion>
+
+    <criterion id="AC-050">`permissions:sync` crea esattamente 8 permessi per ciascuna delle 6 risorse piu' `tasks.viewAll`, e nessuno in piu'.</criterion>
+    <criterion id="AC-051">403 su show/store/update/destroy senza il rispettivo permesso, su tutte e 6 le risorse; gli endpoint for-select rispondono 200 anche senza il permesso viewAny.</criterion>
+    <criterion id="AC-052">GET /api/tables/tasks/columns -> 403 senza tasks.viewAny, 200 con le colonne del data_contract.</criterion>
+    <criterion id="AC-053">GET /api/meta/tasks espone i campi nell'ordine congelato; `completion_percentage` e `creator_id` NON compaiono.</criterion>
+    <criterion id="AC-054">Una riga role_field_permissions che nega `estimated_minutes` rende il campo readonly nel meta e produce 422 se lo si modifica.</criterion>
+    <criterion id="AC-055">Le 6 risorse compaiono nel permission-catalogue con i loro permessi e i loro campi.</criterion>
+
+    <criterion id="AC-060">Un utente con `tasks.view` che non e' creatore, richiedente, assegnatario ne' osservatore riceve 403 su show e non vede la riga nella tabella.</criterion>
+    <criterion id="AC-061">Lo stesso utente con `tasks.viewAll` vede il Task in show, in tabella e nell'export.</criterion>
+    <criterion id="AC-062">Essere assegnatario NON sostituisce `tasks.view`: senza il permesso base -> 403.</criterion>
+    <criterion id="AC-063">`update` e `delete` sono scoped come `view`: un Task fuori scope -> 403 anche indovinandone l'id.</criterion>
+    <criterion id="AC-064">Attore null (job in coda senza utente) -> query vuota, mai una query non ristretta: l'export generato senza attore non contiene righe.</criterion>
+    <criterion id="AC-065">L'export della tabella Task rispetta lo scope dell'utente che lo ha richiesto.</criterion>
+    <criterion id="AC-066">`subtasks` nel dettaglio elenca solo i figli visibili all'attore.</criterion>
+
+    <criterion id="AC-070">La tabella Task supporta ricerca, ordinamento, paginazione server, selezione colonne, salvataggio preferenze ed export dal motore generico, senza endpoint dedicati.</criterion>
+    <criterion id="AC-071">Ogni filtro richiesto e' presente e restituisce l'insieme atteso: stato, tipologia, categoria, priorita', importanza, anagrafica, opportunita', commessa, richiedente, creatore, assegnatario, osservatore, bloccato, data inizio, data fine, data completamento, con/senza sotto-task, padre/sotto-task.</criterion>
+    <criterion id="AC-072">Stato, Tipologia, Categoria, Priorita' e Importanza sono renderizzati come badge con il colore, l'icona e la label configurati; cambiando il colore dal configuratore il badge cambia senza modifiche al codice.</criterion>
+    <criterion id="AC-073">Nessun filtro e nessun ordinamento costruisce SQL da input grezzo: grep di verifica su `whereRaw`/`orderByRaw` nei file del modulo.</criterion>
+
+    <criterion id="AC-080">Nel form Task, scegliendo un'Anagrafica il campo Referente si popola con i soli referenti di quella anagrafica (`registry_id` in query) ed e' disabilitato finche' l'anagrafica e' vuota.</criterion>
+    <criterion id="AC-081">Cambiando l'Anagrafica, il Referente gia' selezionato viene AZZERATO nello stesso handler (non in un useEffect), e il form resta valido.</criterion>
+    <criterion id="AC-082">Il picker del Task padre non offre il Task stesso.</criterion>
+    <criterion id="AC-083">Assegnatari e Osservatori usano il multi-select utenti esistente e inviano array piatti di id; lo stesso utente puo' essere in entrambi.</criterion>
+    <criterion id="AC-084">Il form mostra la percentuale come valore DERIVATO in sola lettura, che si aggiorna scegliendo un altro stato, e non e' mai inviata al server.</criterion>
+    <criterion id="AC-085">La sezione Sotto-task nel dettaglio elenca i figli, apre il loro dettaglio e permette di crearne uno nuovo con il padre precompilato e bloccato; le azioni rispettano i permessi.</criterion>
+    <criterion id="AC-086">Il flag bloccato/contestato e' visibile nella tabella, nel dettaglio e nel form, ed e' distinto dallo Stato.</criterion>
+    <criterion id="AC-087">I form dei 5 configuratori usano `ColorTokenPicker` e `IconPicker` esistenti, non nuovi componenti.</criterion>
+    <criterion id="AC-088">Il form Task e il dettaglio restano leggibili a 375px senza scrollbar orizzontale.</criterion>
+
+    <criterion id="AC-090">Le chiavi i18n it/en dei 6 moduli hanno parita' esatta e nessuna stringa vuota; `ASSIGNABLE_RESOURCES` e' aggiornato con le 6 nuove risorse.</criterion>
+    <criterion id="AC-091">Nessun file del modulo supera le 500 righe; nessuna emoji nel codice.</criterion>
+    <criterion id="AC-092">Nessun file di produzione del modulo contiene la parola `recurrence`/`recurring` (D-3: la ricorrenza non e' stata anticipata).</criterion>
+
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: composer.json e package.json restano invariati.</item>
+    <item>Identificatori in inglese (CLAUDE.md §2). Etichette italiane solo in i18n.</item>
+    <item>Authorization server-side su OGNI endpoint via Policy; nessuna eccezione, incluso il framework tabellare (`viewAny` nella TableDefinition).</item>
+    <item>Nessun `throttle`: regola di progetto backend.md §2 (decisione utente 2026-07-15).</item>
+    <item>Nessun `whereRaw`/`orderByRaw` costruito da input: filtri e ordinamenti da allow-list di colonne.</item>
+    <item>Mai restituire un model Eloquent raw: sempre via API Resource.</item>
+    <item>File entro 300 righe soft / 500 hard; nessuna emoji (hook `code-guard.js` blocca).</item>
+    <item>Riuso obbligatorio, mai reimplementazione: `AbstractTableDefinition`, `BasePolicy`, `AbstractResourceAuthorization`, `SystemStatusGuard`, `StatusOrderManager`, `ForSelectResource`, `RelationSelectField`, `RelationMultiSelectField`, `ColorTokenPicker`, `IconPicker`, `TableView`, `MetaField`, `Can`.</item>
+    <item>Definition of Done: Pest + Vitest ESEGUITI, Pint pulito, ESLint pulito, `cd frontend &amp;&amp; npx tsc -b --force --pretty false` EXIT=0 (mai `--noEmit`).</item>
+    <item>Deploy: serve `php artisan permissions:sync` sugli ambienti esistenti perche' i 49 nuovi permessi diventino assegnabili.</item>
+    <item>Git: nessun commit e nessun cambio di branch senza via libera esplicito dell'utente in quel momento (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

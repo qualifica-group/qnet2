@@ -48,10 +48,10 @@ use App\Tables\Shared\OfferLinesColumn;
  *    `quote.opportunity.registry` (phone = its primary phone/mobile
  *    contact), inline-editable, sortable + text-filterable + searchable, all
  *    three resolved against that card by RequestClientColumns.
- *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5) — a real
- *    `opportunities` column reached through `quote.opportunity`
- *    (`hasFilterValues: false`), sortable + date-filterable via
- *    RequestRelationColumns.
+ *  - `next_callback_at` ("Prossimo richiamo", spec 0052 D-1/D-5; user
+ *    directive 2026-09-04) — a real `quotes` column now, so the generic
+ *    engine sorts, filters and lists its distinct values with no
+ *    `opportunity` hop.
  *  - `operational_site` ("Sede operativa", spec 0056/0086 D-6) — a real FK on
  *    `quotes` itself (SPECIALLY-derived: the site has no own name), sortable
  *    + set-filterable via the shared App\Tables\Shared\OperationalSiteColumn,
@@ -60,7 +60,7 @@ use App\Tables\Shared\OfferLinesColumn;
  * All derived/anagraphic values are resolved by
  * RequestManagementTableDefinition::mapRow() from eager-loaded relations. A
  * hidden `created_at` column exists solely to back the default sort — a real
- * `quotes` column (AC-014), unlike `next_callback_at`.
+ * `quotes` column (AC-014).
  */
 final class RequestColumnCatalog
 {
@@ -295,17 +295,17 @@ final class RequestColumnCatalog
             self::clientColumn('tax_code', 'requestManagement.columns.taxCode', 'client_tax_code', [new TaxCode], 'tax_code'),
             self::clientColumn('phone', 'requestManagement.columns.phone', 'client_phone', format: 'phone'),
             [
-                // Real DB column (spec 0052 D-1/D-5) — but, spec 0086, on
-                // `opportunities`, not `quotes`: sorting/filtering are
-                // therefore DERIVED (RequestRelationColumns'
-                // OPPORTUNITY_SCALAR_COLUMNS), `hasFilterValues: false` skips
-                // the generic distinct-values fallback (no `quotes` column to
-                // SELECT DISTINCT on). Inline cell-editing (spec 0054, D-4):
-                // NOT in Opportunity::$fillable (mass-assignment guard), so
-                // RequestManagementTableDefinition overrides updateCell() to
-                // write it through RequestManagementService::updateWork() —
-                // never a plain `$row->update()` (spec 0052 D-4's
-                // reminder-marker invariant lives there).
+                // Real DB column on `quotes` itself since the user directive
+                // 2026-09-04 (the planned callback is per-OFFER now, no
+                // longer one shared cell per deal): sorting and filtering
+                // fall through to the generic engine — no derived handling,
+                // no `hasFilterValues: false` escape any more. Inline
+                // cell-editing (spec 0054, D-4): NOT in Quote::$fillable
+                // (mass-assignment guard), so RequestManagementTableDefinition
+                // overrides updateCell() to write it through
+                // RequestManagementService::updateWork() — never a plain
+                // `$row->update()` (spec 0052 D-4's reminder-marker invariant
+                // lives there).
                 'id' => 'next_callback_at',
                 'label' => 'requestManagement.columns.nextCallbackAt',
                 'type' => 'datetime',
@@ -313,7 +313,6 @@ final class RequestColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
-                'hasFilterValues' => false,
                 'editable' => true,
                 // Spec 0055, D-4: a real date/time picker instead of the raw
                 // `Y-m-d\TH:i` string the generic `datetime` editor used to

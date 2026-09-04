@@ -32,6 +32,12 @@ use App\Authorization\RolesAuthorization;
 use App\Authorization\SectorsAuthorization;
 use App\Authorization\SourcesAuthorization;
 use App\Authorization\TagsAuthorization;
+use App\Authorization\TaskCategoriesAuthorization;
+use App\Authorization\TaskImportancesAuthorization;
+use App\Authorization\TaskPrioritiesAuthorization;
+use App\Authorization\TasksAuthorization;
+use App\Authorization\TaskStatusesAuthorization;
+use App\Authorization\TaskTypesAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
 use App\Authorization\VatRatesAuthorization;
@@ -97,6 +103,13 @@ return [
         'vat-rates' => VatRatesAuthorization::class,
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
+        // spec 0101: il modulo Task e i suoi cinque configuratori.
+        'tasks' => TasksAuthorization::class,
+        'task-statuses' => TaskStatusesAuthorization::class,
+        'task-types' => TaskTypesAuthorization::class,
+        'task-categories' => TaskCategoriesAuthorization::class,
+        'task-priorities' => TaskPrioritiesAuthorization::class,
+        'task-importances' => TaskImportancesAuthorization::class,
     ],
 
     /*

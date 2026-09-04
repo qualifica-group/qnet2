@@ -53,6 +53,25 @@ export function buildBulkAssignPayload(
   }
 }
 
+/**
+ * Maps AG Grid's own server-side selection state and the bulk products
+ * popup's chosen ids onto the combined bulk-assign payload (spec 0094 bulk
+ * delta), mirroring `buildBulkAssignPayload` but for the review bar's
+ * "Assegna prodotti" action: `product_ids` only, no operator/site/mode
+ * fields. A pure function for the same reason as its sibling —
+ * unit-testable without mounting the grid.
+ */
+export function buildBulkAssignProductsPayload(
+  selection: ReviewBulkSelectionState,
+  productIds: number[],
+): BulkAssignImportRowPayload {
+  return {
+    product_ids: productIds,
+    select_all: selection.selectAll,
+    row_ids: selection.toggledNodes.map(Number),
+  }
+}
+
 interface UseReviewRowsArgs {
   domain: string
   importRunId: number
@@ -261,11 +280,12 @@ export function useReviewRows({ domain, importRunId, onRowUpdated }: UseReviewRo
     [onRowUpdated, updateRowProductsMutation],
   )
 
-  // Step 1: PATCH the combined bulk assignment (operator and/or site) for the
-  // current selection (`select_all`/`row_ids` mirror AG Grid's own
-  // server-side selection state 1:1 — built by the caller from
-  // `gridApi.getServerSideSelectionState()`). Step 2: on success, invalidate
-  // the summary query (its `conversion_readiness.rows_without_operator`/
+  // Step 1: PATCH the combined bulk assignment (operator and/or site, or
+  // products — spec 0094 bulk delta) for the current selection
+  // (`select_all`/`row_ids` mirror AG Grid's own server-side selection state
+  // 1:1 — built by the caller via `buildBulkAssignPayload`/
+  // `buildBulkAssignProductsPayload`). Step 2: on success, invalidate the
+  // summary query (its `conversion_readiness.rows_without_operator`/
   // `rows_without_site` depend on this) and notify with a toast; the caller
   // (which owns the grid api) still has to refresh the SSRM cache and clear
   // the selection itself. On failure, toast the error and rethrow so the

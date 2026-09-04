@@ -16,18 +16,26 @@ import type {
  * output unobservable through the full Sheet — see
  * `status-reorder-sheet.test.tsx`).
  *
- * `nameById` supplies the display name: the reorder response itself carries
- * no `name`, only id/sort_order/system_key.
+ * `previousById` supplies everything the response does NOT carry — it holds
+ * only id/sort_order/system_key, so both the display `name` and `isActive`
+ * (spec 0101) have to be carried over from the pre-drag items. Dropping
+ * `isActive` here would make the "inactive" marker vanish on the first
+ * successful drag, which reads as unreliable data rather than as a refresh.
  */
 export function reconcileReorderedItems(
   fresh: ReorderedStatusEntry[],
-  nameById: Map<number, string>,
+  previousById: Map<number, StatusReorderItem>,
 ): StatusReorderItem[] {
   return [...fresh]
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((entry) => ({
-      id: entry.id,
-      systemKey: entry.system_key ?? null,
-      name: nameById.get(entry.id) ?? '',
-    }))
+    .map((entry) => {
+      const previous = previousById.get(entry.id)
+
+      return {
+        id: entry.id,
+        systemKey: entry.system_key ?? null,
+        name: previous?.name ?? '',
+        isActive: previous?.isActive,
+      }
+    })
 }

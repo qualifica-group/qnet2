@@ -180,6 +180,10 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'company' => $this->summarizeCompany($row->company),
             'company_site' => $this->summarize($row->companySite),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
+            // "Prossimo richiamo" (user directive 2026-09-04): the Offerta's
+            // own column, projected in the SAME wire format Gestione Richieste
+            // uses so both grids parse the value identically.
+            'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
             'notes_count' => (int) ($row->notes_count ?? 0),
             // "Gestori Account" (spec 0087, D-1/T-10): the avatar stack —
             // ordered by pivot position (Quote::managers()), no `position`

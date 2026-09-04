@@ -8,6 +8,7 @@ use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\ResolvesDemoCategories;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\DemoCatalog\DemoCategoryCatalogue;
@@ -39,6 +40,7 @@ use Illuminate\Database\Seeder;
  */
 class DemoProductCategorySeeder extends Seeder
 {
+    use ResolvesDemoCategories;
     use SeedsAttributeLayouts;
     use SeedsCategoryAttributes;
 
@@ -72,9 +74,12 @@ class DemoProductCategorySeeder extends Seeder
                 ->where('name', $branch['business_function'])
                 ->value('id');
 
+            // Keyed on the node's POSITION, not on the name alone: a
+            // same-named category of another branch (the client catalogue) must
+            // never be adopted as a demo one (see ResolvesDemoCategories).
             $root = ProductCategory::firstOrCreate(
-                ['name' => $rootName],
-                ['parent_id' => null, 'business_function_id' => $businessFunctionId],
+                ['name' => $rootName, 'parent_id' => null],
+                ['business_function_id' => $businessFunctionId],
             );
 
             // A tree seeded before the business functions were (partial run)
@@ -85,7 +90,7 @@ class DemoProductCategorySeeder extends Seeder
             }
 
             foreach ($branch['children'] as $childName) {
-                ProductCategory::firstOrCreate(['name' => $childName], ['parent_id' => $root->id]);
+                ProductCategory::firstOrCreate(['name' => $childName, 'parent_id' => $root->id]);
             }
         }
     }
@@ -99,7 +104,7 @@ class DemoProductCategorySeeder extends Seeder
             // Created by seedTree() above: a miss means the two lists drifted
             // apart, which must fail loudly rather than silently drop a whole
             // category's fields.
-            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+            $category = $this->demoCategoryOrFail($categoryName);
 
             $this->seedCategoryAttributes($category, $specs, $context);
         }
@@ -111,7 +116,7 @@ class DemoProductCategorySeeder extends Seeder
     private function seedLayouts(array $sectionsByBranch, AttributeContext $context): void
     {
         foreach (DemoCategoryCatalogue::categoryNames() as $categoryName) {
-            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+            $category = $this->demoCategoryOrFail($categoryName);
             $branchSections = $sectionsByBranch[DemoCategoryCatalogue::branchOf($categoryName)] ?? [];
 
             $this->seedLayout($category, $context, $branchSections);

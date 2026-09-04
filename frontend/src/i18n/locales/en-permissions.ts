@@ -87,6 +87,13 @@ export const permissions = {
     tags: 'Tags',
     'units-of-measure': 'Units of Measure',
     'product-typologies': 'Product Typologies',
+    // Task module and its five configurators (spec 0101).
+    tasks: 'Tasks',
+    'task-statuses': 'Task Statuses',
+    'task-types': 'Task Types',
+    'task-categories': 'Task Categories',
+    'task-priorities': 'Task Priorities',
+    'task-importances': 'Task Importances',
     'vat-rates': 'VAT',
   },
   areas: {

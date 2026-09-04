@@ -11,8 +11,10 @@ use App\CustomFields\CustomFieldProvider;
  * (spec 0076): the two-panel Role-form explorer's single source for its
  * taxonomy, permissions and fields (native + custom) per module.
  *
- * The only real taxonomy is `config/navigation.php` (7 groups). A module is
- * included only when it also has assignable permissions
+ * The only real taxonomy is `config/navigation.php`. An area is either a
+ * navigation GROUP (its direct children are the modules) or a permissioned
+ * TOP-LEVEL entry, which is a module in its own right and forms an area of
+ * one. A module is included only when it also has assignable permissions
  * (AssignablePermissionCatalogue); the permission-only resources with no menu
  * entry (`notes`, `attachments`) are appended as a trailing "shared" area.
  */
@@ -69,12 +71,18 @@ final class PermissionCatalogueBuilder
         $areas = [];
 
         foreach ($items as $item) {
-            if (! isset($item['children'])) {
-                // Not a group (e.g. `dashboard`): no modules to offer here.
-                continue;
-            }
-
-            $resources = $this->resourcesFromGroup($item['children'], $permissionsByResource);
+            // A GROUP contributes its direct children; a CHILDLESS top-level
+            // entry is itself the module and forms an area of one. Skipping
+            // the latter outright is what kept spec 0101's Task — the first
+            // top-level entry the app ever had that carried a resource
+            // permission — out of the Role form entirely (AC-055): its
+            // permissions existed, were assignable, and could still never be
+            // granted from the UI. `dashboard` is unaffected: it carries no
+            // `permission`, so resourcesFromItems() drops it as before.
+            $resources = $this->resourcesFromItems(
+                $item['children'] ?? [$item],
+                $permissionsByResource,
+            );
 
             if ($resources === []) {
                 continue;
@@ -91,19 +99,21 @@ final class PermissionCatalogueBuilder
     }
 
     /**
-     * Only the group's DIRECT children are real modules; nested children
-     * (e.g. `imports` under `leads`) share their parent's permission prefix
-     * and are never modules of their own (spec 0076 context).
+     * Turn navigation entries into catalogue modules: a group's DIRECT
+     * children, or the single top-level entry that is a module itself.
+     * Deeper children (e.g. `imports` under `leads`) never reach here — they
+     * share their parent's permission prefix and are not modules of their own
+     * (spec 0076 context).
      *
-     * @param  array<int, array<string, mixed>>  $children
+     * @param  array<int, array<string, mixed>>  $items
      * @param  array<string, array<int, string>>  $permissionsByResource
      * @return array<int, array<string, mixed>>
      */
-    private function resourcesFromGroup(array $children, array $permissionsByResource): array
+    private function resourcesFromItems(array $items, array $permissionsByResource): array
     {
         $resources = [];
 
-        foreach ($children as $child) {
+        foreach ($items as $child) {
             $permission = $child['permission'] ?? null;
 
             if (! is_string($permission) || $permission === '') {

@@ -21,6 +21,7 @@ use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Support\ManagerPositions;
+use App\Support\PositionalPivotSync;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -238,7 +239,7 @@ class OpportunityService
 
             if ($data->hasManagerSlots()) {
                 $syncMap = ManagerPositions::syncMap($data->managerSlots);
-                $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
+                $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
             }
 
             if ($data->hasProductLines()) {
@@ -307,7 +308,7 @@ class OpportunityService
 
             if ($data->hasManagerSlots()) {
                 $syncMap = ManagerPositions::syncMap($data->managerSlots);
-                $attachedManagers = ManagerPositions::attachedPositions($syncMap, $opportunity->managers()->sync($syncMap));
+                $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
                 $this->propagateManagersToQuote($opportunity, $syncMap);
             }
 
@@ -430,7 +431,7 @@ class OpportunityService
             return;
         }
 
-        $quote->managers()->sync($syncMap);
+        PositionalPivotSync::sync($quote->managers(), $syncMap);
         $quote->unsetRelation('managers');
 
         $operatorId = null;

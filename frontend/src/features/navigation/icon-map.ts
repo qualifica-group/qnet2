@@ -31,6 +31,10 @@ import {
   Users,
   Waypoints,
   Workflow,
+  CircleDot,
+  Flag,
+  Folder,
+  Star,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +75,14 @@ const iconMap: Record<string, LucideIcon> = {
   'user-plus': UserPlus,
   'clipboard-list': ClipboardList,
   workflow: Workflow,
+  // Spec 0101 (tasks group): without these four the Task module and three of
+  // its five configurators fell through to the neutral Circle fallback — the
+  // menu did not break, it just showed a placeholder, which is why it went
+  // unnoticed until visual review.
+  'circle-dot': CircleDot,
+  flag: Flag,
+  folder: Folder,
+  star: Star,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

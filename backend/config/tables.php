@@ -34,6 +34,12 @@ use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
 use App\Tables\SourcesTableDefinition;
 use App\Tables\TagsTableDefinition;
+use App\Tables\TaskCategoriesTableDefinition;
+use App\Tables\TaskImportancesTableDefinition;
+use App\Tables\TaskPrioritiesTableDefinition;
+use App\Tables\TasksTableDefinition;
+use App\Tables\TaskStatusesTableDefinition;
+use App\Tables\TaskTypesTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
@@ -104,6 +110,13 @@ return [
         'vat-rates' => VatRatesTableDefinition::class,
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
         'product-typologies' => ProductTypologiesTableDefinition::class,
+        // spec 0101: il modulo Task e i suoi cinque configuratori.
+        'tasks' => TasksTableDefinition::class,
+        'task-statuses' => TaskStatusesTableDefinition::class,
+        'task-types' => TaskTypesTableDefinition::class,
+        'task-categories' => TaskCategoriesTableDefinition::class,
+        'task-priorities' => TaskPrioritiesTableDefinition::class,
+        'task-importances' => TaskImportancesTableDefinition::class,
     ],
 
 ];

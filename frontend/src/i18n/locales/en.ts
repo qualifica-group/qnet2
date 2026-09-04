@@ -38,6 +38,14 @@ import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
+import { tasks } from './en-tasks'
+import {
+  taskCategories,
+  taskImportances,
+  taskPriorities,
+  taskStatuses,
+  taskTypes,
+} from './en-task-lookups'
 import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
@@ -403,6 +411,12 @@ export const en = {
   contractStatuses,
   contracts,
   workOrders,
+  tasks,
+  taskStatuses,
+  taskTypes,
+  taskCategories,
+  taskPriorities,
+  taskImportances,
   commissionConfigurations,
   requestManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec

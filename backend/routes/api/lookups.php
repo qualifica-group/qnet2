@@ -17,6 +17,16 @@ use App\Http\Controllers\Sources\SourceController;
 use App\Http\Controllers\Sources\SourceForSelectController;
 use App\Http\Controllers\Tags\TagController;
 use App\Http\Controllers\Tags\TagForSelectController;
+use App\Http\Controllers\TaskCategories\TaskCategoryController;
+use App\Http\Controllers\TaskCategories\TaskCategoryForSelectController;
+use App\Http\Controllers\TaskImportances\TaskImportanceController;
+use App\Http\Controllers\TaskImportances\TaskImportanceForSelectController;
+use App\Http\Controllers\TaskPriorities\TaskPriorityController;
+use App\Http\Controllers\TaskPriorities\TaskPriorityForSelectController;
+use App\Http\Controllers\TaskStatuses\TaskStatusController;
+use App\Http\Controllers\TaskStatuses\TaskStatusForSelectController;
+use App\Http\Controllers\TaskTypes\TaskTypeController;
+use App\Http\Controllers\TaskTypes\TaskTypeForSelectController;
 use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureController;
 use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureForSelectController;
 use App\Http\Controllers\VatRates\VatRateController;
@@ -230,3 +240,109 @@ Route::get('contract-statuses/{contractStatus}', [ContractStatusController::clas
 Route::post('contract-statuses', [ContractStatusController::class, 'store']);
 Route::match(['put', 'patch'], 'contract-statuses/{contractStatus}', [ContractStatusController::class, 'update']);
 Route::delete('contract-statuses/{contractStatus}', [ContractStatusController::class, 'destroy']);
+
+// Task statuses CRUD (spec 0101). the Task working-state pick-list (spec 0101, D-5): six mandatory system
+// rows protected by the shared SystemStatusGuard, plus the completion
+// percentage every Task PROJECTS from its status (D-6).
+// Authorization (task-statuses.view/create/update/delete) is enforced server-side
+// in TaskStatusController via TaskStatusPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE task-statuses/{taskStatus} so the literal `for-select` segment wins
+// over the bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
+Route::get('task-statuses/for-select', TaskStatusForSelectController::class);
+
+// Row resequencing: `sort_order` is server-managed and `prohibited` in
+// store/update (AC-045), so this is the ONLY way to change it. Declared ABOVE
+// the bound wildcard for the same literal-segment reason as `for-select`.
+// Gated on task-statuses.update directly in TaskStatusController::reorder.
+Route::post('task-statuses/reorder', [TaskStatusController::class, 'reorder']);
+
+Route::get('task-statuses/{taskStatus}', [TaskStatusController::class, 'show']);
+Route::post('task-statuses', [TaskStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'task-statuses/{taskStatus}', [TaskStatusController::class, 'update']);
+Route::delete('task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy']);
+
+// Task types CRUD (spec 0101). one of the four PURE Task lookups (spec 0101, D-4): no system row, every
+// row renameable and deletable unless in use by a Task (D-8b).
+// Authorization (task-types.view/create/update/delete) is enforced server-side
+// in TaskTypeController via TaskTypePolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE task-types/{taskType} so the literal `for-select` segment wins
+// over the bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
+Route::get('task-types/for-select', TaskTypeForSelectController::class);
+
+// Row resequencing: `sort_order` is server-managed and `prohibited` in
+// store/update (AC-045), so this is the ONLY way to change it. Declared ABOVE
+// the bound wildcard for the same literal-segment reason as `for-select`.
+// Gated on task-types.update directly in TaskTypeController::reorder.
+Route::post('task-types/reorder', [TaskTypeController::class, 'reorder']);
+
+Route::get('task-types/{taskType}', [TaskTypeController::class, 'show']);
+Route::post('task-types', [TaskTypeController::class, 'store']);
+Route::match(['put', 'patch'], 'task-types/{taskType}', [TaskTypeController::class, 'update']);
+Route::delete('task-types/{taskType}', [TaskTypeController::class, 'destroy']);
+
+// Task categories CRUD (spec 0101). Same pure-lookup shape as `task-types` above
+// (spec 0101, D-4).
+// Authorization (task-categories.view/create/update/delete) is enforced server-side
+// in TaskCategoryController via TaskCategoryPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE task-categories/{taskCategory} so the literal `for-select` segment wins
+// over the bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
+Route::get('task-categories/for-select', TaskCategoryForSelectController::class);
+
+// Row resequencing: `sort_order` is server-managed and `prohibited` in
+// store/update (AC-045), so this is the ONLY way to change it. Declared ABOVE
+// the bound wildcard for the same literal-segment reason as `for-select`.
+// Gated on task-categories.update directly in TaskCategoryController::reorder.
+Route::post('task-categories/reorder', [TaskCategoryController::class, 'reorder']);
+
+Route::get('task-categories/{taskCategory}', [TaskCategoryController::class, 'show']);
+Route::post('task-categories', [TaskCategoryController::class, 'store']);
+Route::match(['put', 'patch'], 'task-categories/{taskCategory}', [TaskCategoryController::class, 'update']);
+Route::delete('task-categories/{taskCategory}', [TaskCategoryController::class, 'destroy']);
+
+// Task priorities CRUD (spec 0101). Same pure-lookup shape as `task-types` above
+// (spec 0101, D-4).
+// Authorization (task-priorities.view/create/update/delete) is enforced server-side
+// in TaskPriorityController via TaskPriorityPolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE task-priorities/{taskPriority} so the literal `for-select` segment wins
+// over the bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
+Route::get('task-priorities/for-select', TaskPriorityForSelectController::class);
+
+// Row resequencing: `sort_order` is server-managed and `prohibited` in
+// store/update (AC-045), so this is the ONLY way to change it. Declared ABOVE
+// the bound wildcard for the same literal-segment reason as `for-select`.
+// Gated on task-priorities.update directly in TaskPriorityController::reorder.
+Route::post('task-priorities/reorder', [TaskPriorityController::class, 'reorder']);
+
+Route::get('task-priorities/{taskPriority}', [TaskPriorityController::class, 'show']);
+Route::post('task-priorities', [TaskPriorityController::class, 'store']);
+Route::match(['put', 'patch'], 'task-priorities/{taskPriority}', [TaskPriorityController::class, 'update']);
+Route::delete('task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy']);
+
+// Task importances CRUD (spec 0101). Same pure-lookup shape as `task-types` above
+// (spec 0101, D-4).
+// Authorization (task-importances.view/create/update/delete) is enforced server-side
+// in TaskImportanceController via TaskImportancePolicy.
+// Minimal searchable/paginated list for entity-backed selects (ADR 0011).
+// Declared ABOVE task-importances/{taskImportance} so the literal `for-select` segment wins
+// over the bound wildcard. The only gate is auth:sanctum (ADR 0011, amended
+// 2026-07-31).
+Route::get('task-importances/for-select', TaskImportanceForSelectController::class);
+
+// Row resequencing: `sort_order` is server-managed and `prohibited` in
+// store/update (AC-045), so this is the ONLY way to change it. Declared ABOVE
+// the bound wildcard for the same literal-segment reason as `for-select`.
+// Gated on task-importances.update directly in TaskImportanceController::reorder.
+Route::post('task-importances/reorder', [TaskImportanceController::class, 'reorder']);
+
+Route::get('task-importances/{taskImportance}', [TaskImportanceController::class, 'show']);
+Route::post('task-importances', [TaskImportanceController::class, 'store']);
+Route::match(['put', 'patch'], 'task-importances/{taskImportance}', [TaskImportanceController::class, 'update']);
+Route::delete('task-importances/{taskImportance}', [TaskImportanceController::class, 'destroy']);

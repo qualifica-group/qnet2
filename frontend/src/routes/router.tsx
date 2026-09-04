@@ -47,6 +47,12 @@ const QuotesPage = lazy(() => import('@/pages/quotes-page'))
 const ContractStatusesPage = lazy(() => import('@/pages/contract-statuses-page'))
 const ContractsPage = lazy(() => import('@/pages/contracts-page'))
 const WorkOrdersPage = lazy(() => import('@/pages/work-orders-page'))
+const TasksPage = lazy(() => import('@/pages/tasks-page'))
+const TaskStatusesPage = lazy(() => import('@/pages/task-statuses-page'))
+const TaskTypesPage = lazy(() => import('@/pages/task-types-page'))
+const TaskCategoriesPage = lazy(() => import('@/pages/task-categories-page'))
+const TaskPrioritiesPage = lazy(() => import('@/pages/task-priorities-page'))
+const TaskImportancesPage = lazy(() => import('@/pages/task-importances-page'))
 const CommissionConfigurationsPage = lazy(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazy(() => import('@/pages/request-management-page'))
 const RewardTypesPage = lazy(() => import('@/pages/reward-types-page'))
@@ -251,6 +257,34 @@ export const router = createBrowserRouter([
           {
             path: 'work-orders',
             element: <WorkOrdersPage />,
+          },
+          // Task module (spec 0101). ONLY the six list routes are declared by
+          // hand: every `new`/`:id`/`:id/edit` deep link is generated from the
+          // module registry by `buildModuleRoutes()` below, since all six
+          // `*-screens.tsx` export a `moduleScreen` (spec 0042, AC-012).
+          {
+            path: 'tasks',
+            element: <TasksPage />,
+          },
+          {
+            path: 'task-statuses',
+            element: <TaskStatusesPage />,
+          },
+          {
+            path: 'task-types',
+            element: <TaskTypesPage />,
+          },
+          {
+            path: 'task-categories',
+            element: <TaskCategoriesPage />,
+          },
+          {
+            path: 'task-priorities',
+            element: <TaskPrioritiesPage />,
+          },
+          {
+            path: 'task-importances',
+            element: <TaskImportancesPage />,
           },
           {
             path: 'commission-configurations',

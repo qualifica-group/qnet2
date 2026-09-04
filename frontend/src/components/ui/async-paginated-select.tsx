@@ -59,6 +59,23 @@ interface AsyncPaginatedSelectProps {
    * whatever the query returns once loaded.
    */
   selectedItem?: ForSelectItem | null
+  /**
+   * An option kept in the list even when the server never returns it.
+   *
+   * Exists for a general problem, not a single form: an endpoint narrowed by
+   * a visibility scope (spec 0096 `WorkOrderVisibilityScope`,
+   * `RequestManagementScope`, spec 0101 `TaskVisibilityScope`) legitimately
+   * omits rows the actor may not browse — including, on an edit form, the
+   * value already persisted on the record. `selectedItem` keeps the TRIGGER
+   * label right, but the option list would still drop it, so a user who
+   * changed the selection could never pick the original back.
+   *
+   * Callers pass ONLY a value they already hold from the record's own detail
+   * payload, never an arbitrary id: pinning discloses nothing the caller was
+   * not already given. Deduplicated by `id`, so a pin the server does return
+   * is not rendered twice.
+   */
+  pinnedItem?: ForSelectItem | null
   labels: AsyncPaginatedSelectLabels
   /**
    * When set, the trigger and every option render an avatar (the item's
@@ -116,6 +133,7 @@ export function AsyncPaginatedSelect({
   onChange,
   onItemChange,
   selectedItem = null,
+  pinnedItem = null,
   labels,
   showAvatar = false,
   disabled,
@@ -164,10 +182,16 @@ export function AsyncPaginatedSelect({
     refetch,
   } = query
 
-  const options = useMemo(
-    () => flattenForSelectPages(data?.pages),
-    [data?.pages],
-  )
+  // The pinned option leads the list and the server's own rows follow; a page
+  // that already contains it wins on freshness, so the pin is dropped rather
+  // than duplicated.
+  const options = useMemo(() => {
+    const pages = flattenForSelectPages(data?.pages)
+    if (pinnedItem === null || pages.some((item) => item.id === pinnedItem.id)) {
+      return pages
+    }
+    return [pinnedItem, ...pages]
+  }, [data?.pages, pinnedItem])
 
   // The loaded page wins over the resolved sources (freshest data); the
   // hydration prop and the ids-keyed label query fill the gap before, or

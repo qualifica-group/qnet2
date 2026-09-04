@@ -230,20 +230,30 @@ class ImportService
      * bulk-assign. Marks every targeted row `is_edited` too, same as a
      * single-row PATCH.
      *
+     * `$productIds` (spec 0094 increment): bulk-assigns the "Prodotti di
+     * interesse" override, written on BOTH branches (`single`/`balanced`).
+     * `import_run_rows.product_ids` is a JSON column cast to `array` on the
+     * Model, but a mass UPDATE goes through the query builder, which never
+     * applies Eloquent casts — a raw PHP array bound as a query parameter
+     * would break the JSON column, so it is `json_encode()`d explicitly
+     * before being handed to `update()`.
+     *
      * @param  array<int, int>  $rowIds
+     * @param  array<int, int>|null  $productIds
      * @return int the number of rows updated
      */
-    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?int $operationalSiteId): int
+    public function bulkAssign(ImportRun $run, bool $selectAll, array $rowIds, LeadAssignmentMode $mode, ?int $operatorId, ?int $operationalSiteId, ?array $productIds = null): int
     {
         if ($mode === LeadAssignmentMode::Balanced) {
             // BulkAssignRequest guarantees operational_site_id is present
             // whenever mode=balanced.
-            return $this->bulkAssignBalanced($run, $selectAll, $rowIds, (int) $operationalSiteId);
+            return $this->bulkAssignBalanced($run, $selectAll, $rowIds, (int) $operationalSiteId, $productIds);
         }
 
         $attributes = [
             ...($operatorId !== null ? ['operator_id' => $operatorId] : []),
             ...($operationalSiteId !== null ? ['operational_site_id' => $operationalSiteId] : []),
+            ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
         ];
 
         if ($attributes === []) {
@@ -263,11 +273,15 @@ class ImportService
      * semantics), distribute them across $operationalSiteId's operators, and
      * write operator_id + operational_site_id + is_edited=true per operator
      * group (one mass UPDATE per operator, not per row). 422 when the Sede
-     * has zero operators (AC-012's import-side counterpart).
+     * has zero operators (AC-012's import-side counterpart). `$productIds`,
+     * when present, is written identically on every group — same
+     * `json_encode()` treatment as the `single` branch (see bulkAssign()'s
+     * docblock for the JSON-cast mass-update gotcha).
      *
      * @param  array<int, int>  $rowIds
+     * @param  array<int, int>|null  $productIds
      */
-    private function bulkAssignBalanced(ImportRun $run, bool $selectAll, array $rowIds, int $operationalSiteId): int
+    private function bulkAssignBalanced(ImportRun $run, bool $selectAll, array $rowIds, int $operationalSiteId, ?array $productIds = null): int
     {
         $targetRowIds = ImportRunRow::query()
             ->where('import_run_id', $run->id)
@@ -294,6 +308,7 @@ class ImportService
             ImportRunRow::query()->whereIn('id', $ids)->update([
                 'operator_id' => $assignedOperatorId,
                 'operational_site_id' => $operationalSiteId,
+                ...($productIds !== null ? ['product_ids' => json_encode($productIds)] : []),
                 'is_edited' => true,
             ]);
         }

@@ -19,7 +19,11 @@ import type { ReviewGeoGridContext } from '@/features/imports/wizard/review-geo-
 import type { ReviewOperatorGridContext } from '@/features/imports/wizard/review-operator-editor'
 import type { ReviewProductsGridContext } from '@/features/imports/wizard/review-products-editor'
 import type { ReviewSiteGridContext } from '@/features/imports/wizard/review-site-editor'
-import { buildBulkAssignPayload, useReviewRows } from '@/features/imports/wizard/use-review-rows'
+import {
+  buildBulkAssignPayload,
+  buildBulkAssignProductsPayload,
+  useReviewRows,
+} from '@/features/imports/wizard/use-review-rows'
 import { useReviewProductsScope } from '@/features/imports/wizard/use-review-products-scope'
 import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operators-dialog'
 import type { ImportRunDetail, ImportRunRowCounts, ImportRunRowItem } from '@/features/imports/wizard/types'
@@ -240,6 +244,17 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
     [handleBulkAssignRows, selection],
   )
 
+  // Same success/refresh/clear-selection contract as `handleBulkAssign`
+  // above (spec 0094 bulk delta), the "Assegna prodotti" dropdown action.
+  const handleBulkAssignProducts = useCallback(
+    (productIds: number[]) =>
+      handleBulkAssignRows(buildBulkAssignProductsPayload(selection, productIds)).then(() => {
+        gridApiRef.current?.setServerSideSelectionState(EMPTY_SELECTION)
+        gridApiRef.current?.refreshServerSide({ purge: true })
+      }),
+    [handleBulkAssignRows, selection],
+  )
+
   const gridOptions = useMemo<GridOptions<ImportRunRowItem>>(
     () => ({
       rowModelType: 'serverSide',
@@ -270,7 +285,9 @@ export function ReviewGrid({ domain, run, onRowUpdated = noopRowUpdated, readOnl
           selection={selection}
           totalRows={run.total_rows}
           defaultSiteId={defaultSiteId}
+          campaignCategoryIds={campaignCategoryIds}
           onAssign={handleBulkAssign}
+          onAssignProducts={handleBulkAssignProducts}
         />
       ) : null}
       <div

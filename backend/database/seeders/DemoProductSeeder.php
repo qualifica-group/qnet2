@@ -7,6 +7,7 @@ use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\ProductService;
+use Database\Seeders\Concerns\ResolvesDemoCategories;
 use Database\Seeders\DemoCatalog\DemoProductCatalogue;
 use Illuminate\Database\Seeder;
 
@@ -28,6 +29,8 @@ use Illuminate\Database\Seeder;
  */
 class DemoProductSeeder extends Seeder
 {
+    use ResolvesDemoCategories;
+
     public function __construct(private readonly ProductService $products) {}
 
     public function run(): void
@@ -36,7 +39,7 @@ class DemoProductSeeder extends Seeder
             // Created by DemoProductCategorySeeder: a miss means the two
             // catalogues drifted apart, which must fail loudly rather than
             // silently drop a whole category's offer.
-            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+            $category = $this->demoCategoryOrFail($categoryName);
 
             foreach ($products as $product) {
                 $this->seedProduct($category, $product);

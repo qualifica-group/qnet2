@@ -25,6 +25,7 @@ export const quotes = {
     company: 'Company',
     companySite: 'Company site',
     operationalSite: 'Operational site',
+    nextCallbackAt: 'Next callback',
   },
   advancedFilters: {
     opportunity: 'Opportunity',

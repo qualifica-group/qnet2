@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Import;
 
 use App\Enums\LeadAssignmentMode;
+use App\Imports\Leads\LeadImportProductCoherence;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,6 +37,16 @@ use Illuminate\Validation\Validator;
  * discipline. Ownership/authorization/the run's `reviewing` status guard are
  * NOT handled here — they stay in the controller, same convention as every
  * other Import* request.
+ *
+ * `product_ids` (spec 0094 increment): OPTIONAL, purely ADDITIVE bulk
+ * "Prodotti di interesse" assignment, combinable freely with
+ * `operator_id`/`operational_site_id`/`mode`. Bulk-only ASSIGNS, mirroring
+ * `operator_id`/`operational_site_id`: never `null`, never `[]` (`min:1`) —
+ * clearing/emptying a single row's override stays PATCH .../rows/{row}.
+ * Every submitted id must sit inside the effective product categories of the
+ * run's `global_config.campaign_id`, checked via the SAME
+ * `LeadImportProductCoherence` service `UpdateImportRowRequest` already
+ * applies to the per-row override — never re-implemented here.
  */
 class BulkAssignRequest extends FormRequest
 {
@@ -52,6 +63,8 @@ class BulkAssignRequest extends FormRequest
         return [
             'operator_id' => ['required_if:mode,single', 'integer', 'exists:users,id'],
             'operational_site_id' => ['required_if:mode,balanced', 'integer', 'exists:operational_sites,id'],
+            'product_ids' => ['sometimes', 'array', 'min:1'],
+            'product_ids.*' => ['integer', 'exists:products,id'],
             'mode' => ['sometimes', Rule::enum(LeadAssignmentMode::class)],
             'select_all' => ['nullable', 'boolean'],
             'row_ids' => ['array'],
@@ -65,16 +78,47 @@ class BulkAssignRequest extends FormRequest
             $this->validateAtLeastOneAssignment($validator);
             $this->validateRowIdsRequiredWhenNotSelectAll($validator);
             $this->validateRowIdsBelongToRun($validator);
+            $this->validateProductIdsCoverage($validator);
         });
     }
 
     private function validateAtLeastOneAssignment(Validator $validator): void
     {
-        if ($this->has('operator_id') || $this->has('operational_site_id')) {
+        if ($this->has('operator_id') || $this->has('operational_site_id') || $this->has('product_ids')) {
             return;
         }
 
-        $validator->errors()->add('operator_id', 'At least one of operator_id or operational_site_id is required.');
+        $validator->errors()->add('operator_id', 'At least one of operator_id, operational_site_id or product_ids is required.');
+    }
+
+    /**
+     * Bulk-only mirror of UpdateImportRowRequest::validateProductIdsCoverage()
+     * (AC-054's per-row coherence rule): every submitted product must sit
+     * inside the effective product categories of the run's own
+     * `global_config.campaign_id` — same `LeadImportProductCoherence`
+     * service, never re-implemented here. `[]` is already rejected by the
+     * `min:1` rule, so only a non-empty array reaches this check.
+     */
+    private function validateProductIdsCoverage(Validator $validator): void
+    {
+        $productIds = $this->input('product_ids');
+
+        if (! is_array($productIds) || $productIds === []) {
+            return;
+        }
+
+        $importRun = $this->route('importRun');
+        $campaignId = $importRun instanceof ImportRun ? ($importRun->global_config['campaign_id'] ?? null) : null;
+
+        $coherence = app(LeadImportProductCoherence::class);
+        $offending = $coherence->offendingProducts(
+            $campaignId === null ? null : (int) $campaignId,
+            array_map(static fn (mixed $id): int => (int) $id, $productIds),
+        );
+
+        if ($offending !== []) {
+            $validator->errors()->add('product_ids', $coherence->message($offending));
+        }
     }
 
     private function validateRowIdsRequiredWhenNotSelectAll(Validator $validator): void
@@ -138,6 +182,18 @@ class BulkAssignRequest extends FormRequest
     public function operationalSiteId(): ?int
     {
         return $this->has('operational_site_id') ? (int) $this->input('operational_site_id') : null;
+    }
+
+    /**
+     * @return array<int, int>|null null when `product_ids` was not submitted
+     */
+    public function productIds(): ?array
+    {
+        if (! $this->has('product_ids')) {
+            return null;
+        }
+
+        return array_map('intval', (array) $this->input('product_ids'));
     }
 
     /**

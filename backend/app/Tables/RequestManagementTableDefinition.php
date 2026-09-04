@@ -61,7 +61,7 @@ use Illuminate\Support\Facades\Auth;
  * capability baked into THIS concrete class would sit one layer too deep and
  * never be reached once wrapped.
  *
- * `source`/`product_categories`/`general_notes`/`next_callback_at` are
+ * `source`/`product_categories`/`general_notes` are
  * delegated to RequestRelationColumns (file-size split, engineering.md §6);
  * the four client anagraphic columns to RequestClientColumns. `operator_ga2`
  * is NOT sortable/filterable (AC-011 corrected in execution: this migration
@@ -85,16 +85,17 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     private const string OPERATIONAL_SITE_RELATION = 'operationalSite';
 
     /**
-     * AC-013: the two DateRange advanced filters whose real column lives on
+     * AC-013: the DateRange advanced filters whose real column lives on
      * `opportunities`, not `quotes` — applyAdvancedFilter() below scopes them
      * inside a `whereHas('opportunity', ...)` closure instead of the generic
-     * default's plain `$query->where($target, ...)`.
+     * default's plain `$query->where($target, ...)`. `next_callback_range`
+     * left this set with the user directive 2026-09-04: its column is a real
+     * `quotes` one now, so the generic default reaches it directly.
      *
      * @var array<string, string>
      */
     private const array OPPORTUNITY_RANGE_ADVANCED_FILTERS = [
         'expected_close_range' => 'expected_close_date',
-        'next_callback_range' => 'next_callback_at',
     ];
 
     public function __construct(
@@ -147,7 +148,8 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `Gate::allows('update', $row)` -> QuotePolicy (`quotes.update`), the
      * WRONG permission for this domain. `baseQuery()`'s own D-3 scoping
      * already keeps an out-of-scope row a 404 before this is ever reached.
-     * The editable columns here today (spec 0054: `next_callback_at`; spec
+     * The editable columns here today (spec 0054: `next_callback_at`, on the
+     * Offerta itself since the user directive 2026-09-04; spec
      * 0055: `operator_ga2` plus the four client anagraphic fields; user
      * directives 2026-07-23/2026-07-31: `offer_lines` is NOT among them
      * — AC-021/AC-022 —, `operational_site` and `source`) are each gated per
@@ -180,7 +182,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         $query = Quote::query()->with([
-            // `source`/`product_categories`/`general_notes`/`next_callback_at`/
+            // `source`/`product_categories`/`general_notes`/
             // the client anagraphic columns (spec 0086, D-2): nested
             // dot-paths eager-load the WHOLE `opportunity` record in one
             // shot, not just the leaf relation.
@@ -389,10 +391,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * AC-013: `expected_close_range`/`next_callback_range` target a real
-     * `opportunities` column (RequestAdvancedFilterCatalog docblock) — the
-     * generic default's plain `$query->where($target, ...)` would target a
-     * column that does not exist on `quotes`, so both are scoped inside a
+     * AC-013: `expected_close_range` targets a real `opportunities` column
+     * (RequestAdvancedFilterCatalog docblock) — the generic default's plain
+     * `$query->where($target, ...)` would target a column that does not
+     * exist on `quotes`, so it is scoped inside a
      * `whereHas('opportunity', ...)` closure instead, reusing the SAME
      * AdvancedFilterApplier the generic default itself calls (DRY: the exact
      * date-range operator set, no reimplementation). Every other advanced
@@ -440,8 +442,10 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * `operational_site` (spec 0056/0086 D-6) is delegated to the shared
      * OperationalSiteColumn, correlated against `quotes` itself (the FK
      * moved there); the four client anagraphic columns to RequestClientColumns'
-     * own correlated subquery; `source`/`general_notes`/`next_callback_at`
-     * fall through to RequestRelationColumns. `product_categories`/
+     * own correlated subquery; `source`/`general_notes` fall through to
+     * RequestRelationColumns. `next_callback_at` is a real `quotes` column
+     * (user directive 2026-09-04) and never reaches this method at all.
+     * `product_categories`/
      * `offer_lines`/`operator_ga2` are NOT sortable (the first two: no single
      * related row to order by; `operator_ga2`: AC-011 corrected in execution
      * — unchanged from before this migration).
@@ -469,8 +473,8 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
      * four client anagraphic columns to RequestClientColumns (the card
      * values of the rows matching every OTHER active filter); every other
      * derived column falls through to RequestRelationColumns.
-     * `general_notes`/`next_callback_at` are never reached here
-     * (`hasFilterValues: false`, RequestColumnCatalog).
+     * `general_notes` is never reached here (`hasFilterValues: false`,
+     * RequestColumnCatalog).
      *
      * @param  Builder<Quote>  $query
      * @param  array<string, mixed>  $columnConfig

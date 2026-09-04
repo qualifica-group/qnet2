@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { IRowNode } from 'ag-grid-community'
 import i18n from '@/i18n'
 import '@/features/imports/wizard/i18n'
-import { buildBulkAssignPayload, useReviewRows } from '@/features/imports/wizard/use-review-rows'
+import {
+  buildBulkAssignPayload,
+  buildBulkAssignProductsPayload,
+  useReviewRows,
+} from '@/features/imports/wizard/use-review-rows'
 import type { ImportRunRowItem } from '@/features/imports/wizard/types'
 
 /**
@@ -266,6 +270,24 @@ describe('buildBulkAssignPayload', () => {
   })
 })
 
+describe('buildBulkAssignProductsPayload (spec 0094 bulk delta)', () => {
+  it('forwards product_ids, no operator/site/mode fields', () => {
+    expect(buildBulkAssignProductsPayload({ selectAll: false, toggledNodes: ['3', '7'] }, [5, 9])).toEqual({
+      product_ids: [5, 9],
+      select_all: false,
+      row_ids: [3, 7],
+    })
+  })
+
+  it('maps a select-all selection to select_all: true with the excluded row ids', () => {
+    expect(buildBulkAssignProductsPayload({ selectAll: true, toggledNodes: ['9'] }, [5])).toEqual({
+      product_ids: [5],
+      select_all: true,
+      row_ids: [9],
+    })
+  })
+})
+
 describe('useReviewRows — bulk assign (operator + site)', () => {
   it('PATCHes the bulk payload, invalidates the summary query and toasts success', async () => {
     bulkAssignImportRowMock.mockResolvedValue({ updated: 5 })
@@ -282,6 +304,27 @@ describe('useReviewRows — bulk assign (operator + site)', () => {
 
     expect(bulkAssignImportRowMock).toHaveBeenCalledWith('leads', 7, payload)
     expect(result).toEqual({ updated: 5 })
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['imports', 'wizard', 'leads', 7, 'summary'],
+    })
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('PATCHes a bulk products payload (spec 0094 bulk delta) with the SAME success/invalidation handling', async () => {
+    bulkAssignImportRowMock.mockResolvedValue({ updated: 3 })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
+
+    const { result: hookResult } = renderHook(
+      () => useReviewRows({ domain: 'leads', importRunId: 7, onRowUpdated: vi.fn() }),
+      { wrapper: wrapper(client) },
+    )
+
+    const payload = buildBulkAssignProductsPayload({ selectAll: false, toggledNodes: ['1', '2'] }, [5])
+    const result = await act(async () => hookResult.current.handleBulkAssign(payload))
+
+    expect(bulkAssignImportRowMock).toHaveBeenCalledWith('leads', 7, payload)
+    expect(result).toEqual({ updated: 3 })
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['imports', 'wizard', 'leads', 7, 'summary'],
     })

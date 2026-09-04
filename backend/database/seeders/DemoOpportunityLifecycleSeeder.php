@@ -33,18 +33,14 @@ use Illuminate\Support\Collection;
  * the same path the module's own PATCH uses, so the activity log runs exactly
  * as it does for an operator. Spec 0086 (D-1) made the Offerta that method's
  * subject — a request-management row IS a Quote now — so this seeder iterates
- * Quotes; `next_callback_at` itself still lands on the parent Opportunity
- * (D-2 of spec 0086), which updateWork() resolves from the Offerta.
+ * Quotes, and `next_callback_at` lands on the Offerta itself since the user
+ * directive 2026-09-04 — the column moved off the Opportunity with the
+ * planning it represents.
  *
- * ONE Offerta per Opportunità, deliberately (`oneQuotePerOpportunity()`):
- * `next_callback_at` is the SAME cell on the grid's underlying Opportunity
- * regardless of which sibling Offerta writes it, so advancing two siblings of
- * the same Opportunità would just have the second overwrite the first for no
- * demo value. `DemoQuoteSeeder` already creates exactly one Offerta per
- * Opportunità, but this dedupes explicitly rather than silently trusting an
- * invariant owned by a different seeder — if that invariant ever changes,
- * this seeder still advances only one sibling instead of quietly starting to
- * overwrite the field.
+ * That move is also why every Offerta is walked, not one per Opportunità as
+ * before: the callback was the SAME cell on the parent for every sibling, so
+ * advancing two of them just had the second overwrite the first; now each
+ * Offerta owns its own and the demo shows a per-offer plan.
  *
  * Depends on DemoQuoteSeeder (the Offerte it walks) — must run AFTER it, not
  * merely after DemoOpportunitySeeder. A no-op without a privileged actor.
@@ -73,7 +69,7 @@ class DemoOpportunityLifecycleSeeder extends Seeder
         $faker = FakerFactory::create('it_IT');
         $faker->seed(self::SEED);
 
-        foreach ($this->oneQuotePerOpportunity() as $index => $quote) {
+        foreach ($this->quotesToAdvance() as $index => $quote) {
             $this->advance($quote, $actor, $faker, $index);
         }
     }
@@ -102,20 +98,18 @@ class DemoOpportunityLifecycleSeeder extends Seeder
     }
 
     /**
-     * See class docblock: first Offerta per `opportunity_id`, ordered so the
-     * pick is deterministic across runs.
+     * Every Offerta (see class docblock), ordered so the faked plan is
+     * deterministic across runs.
      *
      * @return Collection<int, Quote>
      */
-    private function oneQuotePerOpportunity(): Collection
+    private function quotesToAdvance(): Collection
     {
         return Quote::query()
             ->with('opportunity')
             ->orderBy('opportunity_id')
             ->orderBy('id')
-            ->get()
-            ->unique('opportunity_id')
-            ->values();
+            ->get();
     }
 
     private function advance(Quote $quote, User $actor, Generator $faker, int $index): void

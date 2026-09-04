@@ -57,6 +57,14 @@ export interface StatusReorderItem {
   id: number
   name: string
   systemKey: SystemStatusKey
+  /**
+   * `false` for a row the module has deactivated, `undefined` for a resource
+   * whose for-select projects no `meta.is_active` — every module except the
+   * five Task configurators (spec 0101). The sheet marks ONLY the explicit
+   * `false`, so those resources stay visually untouched; a tri-state is the
+   * point here, not a boolean with a default.
+   */
+  isActive?: boolean
 }
 
 /**

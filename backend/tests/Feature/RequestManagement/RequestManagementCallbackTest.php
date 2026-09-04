@@ -8,11 +8,15 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 
-// "Prossimo richiamo" (spec 0052, D-1..D-5): a plain nullable datetime column
-// on `opportunities`, written only via PATCH /api/request-management/{quote}
-// (spec 0086, D-2: through `quote.opportunity`), with an accompanying
-// reminder-marker invariant (D-4) and its own operative table column
-// (AC-006/AC-007).
+// "Prossimo richiamo" (spec 0052, D-1..D-5): a plain nullable datetime
+// column, written only via PATCH /api/request-management/{quote}, with an
+// accompanying reminder-marker invariant (D-4) and its own operative table
+// column (AC-006/AC-007).
+//
+// REQUIREMENT CHANGED (user directive 2026-09-04): the column moved from
+// `opportunities` to `quotes` — the planned callback is per-OFFER now — so
+// every assertion below reads it off the Quote, and sorting/filtering go
+// through the generic engine instead of the `opportunity` hop.
 
 uses(RefreshDatabase::class);
 
@@ -38,14 +42,39 @@ if (! function_exists('requestManagementUserWith')) {
 
 if (! function_exists('managedQuote')) {
     /**
-     * @param  array<string, mixed>  $opportunityAttributes
+     * The callback columns are outside Quote::$fillable (the mass-assignment
+     * guard travelled with them), so they are forceFill'ed rather than passed
+     * to the factory.
+     *
+     * @param  array<string, mixed>  $callbackAttributes
      */
-    function managedQuote(User $operator, array $opportunityAttributes = []): Quote
+    function managedQuote(User $operator, array $callbackAttributes = []): Quote
     {
-        $opportunity = Opportunity::factory()->create($opportunityAttributes);
+        $opportunity = Opportunity::factory()->create();
         $opportunity->managers()->sync([$operator->id => ['position' => 2]]);
 
-        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+        $quote = Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+
+        if ($callbackAttributes !== []) {
+            $quote->forceFill($callbackAttributes)->save();
+        }
+
+        return $quote;
+    }
+}
+
+if (! function_exists('quoteWithCallback')) {
+    /**
+     * A standalone Offerta carrying a planned callback: forceFill'ed, since
+     * the column sits outside Quote::$fillable (user directive 2026-09-04
+     * moved it here with its mass-assignment guard).
+     */
+    function quoteWithCallback(?string $callbackAt): Quote
+    {
+        $quote = Quote::factory()->create();
+        $quote->forceFill(['next_callback_at' => $callbackAt])->save();
+
+        return $quote;
     }
 }
 
@@ -62,7 +91,7 @@ it('PATCH next_callback_at persists it and GET returns it in the exact "Y-m-d\TH
         'next_callback_at' => '2026-08-03T15:30',
     ])->assertOk()->assertJsonPath('data.next_callback_at', '2026-08-03T15:30');
 
-    expect($quote->opportunity->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T15:30');
+    expect($quote->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T15:30');
 
     $this->getJson("/api/request-management/{$quote->id}")
         ->assertOk()
@@ -82,7 +111,7 @@ it('PATCH next_callback_at accepts a date with no time and stores it at midnight
         'next_callback_at' => '2026-08-03',
     ])->assertOk()->assertJsonPath('data.next_callback_at', '2026-08-03T00:00');
 
-    expect($quote->opportunity->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T00:00');
+    expect($quote->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T00:00');
 });
 
 it('PATCH next_callback_at: null clears a previously stored value (AC-002)', function () {
@@ -94,7 +123,7 @@ it('PATCH next_callback_at: null clears a previously stored value (AC-002)', fun
         'next_callback_at' => null,
     ])->assertOk()->assertJsonPath('data.next_callback_at', null);
 
-    expect($quote->opportunity->fresh()->next_callback_at)->toBeNull();
+    expect($quote->fresh()->next_callback_at)->toBeNull();
 });
 
 it('PATCH without the next_callback_at key leaves the persisted value untouched — sparse (AC-002)', function () {
@@ -104,7 +133,7 @@ it('PATCH without the next_callback_at key leaves the persisted value untouched 
 
     $this->patchJson("/api/request-management/{$quote->id}", [])->assertOk();
 
-    expect($quote->opportunity->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T15:30');
+    expect($quote->fresh()->next_callback_at->format('Y-m-d\TH:i'))->toBe('2026-08-03T15:30');
 });
 
 // ---------------------------------------------------------------------------
@@ -123,7 +152,7 @@ it('changing next_callback_at zeroes next_callback_reminded_at in the same save 
         'next_callback_at' => '2026-08-05T10:00',
     ])->assertOk();
 
-    expect($quote->opportunity->fresh()->next_callback_reminded_at)->toBeNull();
+    expect($quote->fresh()->next_callback_reminded_at)->toBeNull();
 });
 
 it('resubmitting the SAME next_callback_at value does NOT zero next_callback_reminded_at (AC-003)', function () {
@@ -138,7 +167,7 @@ it('resubmitting the SAME next_callback_at value does NOT zero next_callback_rem
         'next_callback_at' => '2026-08-03T15:30',
     ])->assertOk();
 
-    expect($quote->opportunity->fresh()->next_callback_reminded_at?->format('Y-m-d H:i:s'))->toBe('2026-08-01 09:00:00');
+    expect($quote->fresh()->next_callback_reminded_at?->format('Y-m-d H:i:s'))->toBe('2026-08-01 09:00:00');
 });
 
 // ---------------------------------------------------------------------------
@@ -206,7 +235,7 @@ it('PATCH with an unparsable next_callback_at -> 422 and no write (AC-005)', fun
         'next_callback_at' => 'non-una-data',
     ])->assertStatus(422)->assertJsonValidationErrors('next_callback_at');
 
-    expect($quote->opportunity->fresh()->next_callback_at)->toBeNull();
+    expect($quote->fresh()->next_callback_at)->toBeNull();
 });
 
 it('PATCH next_callback_at without request-management.update -> 403 (AC-005)', function () {
@@ -250,8 +279,8 @@ it('columns() exposes next_callback_at as visible/sortable/filterable datetime+d
 
 it('rows: next_callback_at is projected on every row in the same wire format as the panel (AC-006)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $withCallback = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-08-03 15:30:00']))->create();
-    $withoutCallback = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => null]))->create();
+    $withCallback = quoteWithCallback('2026-08-03 15:30:00');
+    $withoutCallback = quoteWithCallback(null);
     Sanctum::actingAs($actor);
 
     $items = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
@@ -267,8 +296,8 @@ it('rows: next_callback_at is projected on every row in the same wire format as 
 
 it('rows: sorting by next_callback_at orders rows in both directions (AC-007)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $earlier = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-08-01 09:00:00']))->create();
-    $later = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-08-10 09:00:00']))->create();
+    $earlier = quoteWithCallback('2026-08-01 09:00:00');
+    $later = quoteWithCallback('2026-08-10 09:00:00');
     Sanctum::actingAs($actor);
 
     $asc = $this->postJson('/api/tables/request-management/rows', [
@@ -288,8 +317,8 @@ it('rows: sorting by next_callback_at orders rows in both directions (AC-007)', 
 
 it('rows: the next_callback_at column date filter (inRange) narrows to the interval (AC-007)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $inRange = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-08-03 10:00:00']))->create();
-    $outOfRange = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-09-01 10:00:00']))->create();
+    $inRange = quoteWithCallback('2026-08-03 10:00:00');
+    $outOfRange = quoteWithCallback('2026-09-01 10:00:00');
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', [
@@ -306,8 +335,8 @@ it('rows: the next_callback_at column date filter (inRange) narrows to the inter
 
 it('rows: the next_callback_range advanced filter narrows to {from, to} (AC-007)', function () {
     $actor = requestManagementUserWith(['viewAny', 'viewAll']);
-    $inRange = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-08-03 10:00:00']))->create();
-    $outOfRange = Quote::factory()->for(Opportunity::factory()->state(['next_callback_at' => '2026-09-01 10:00:00']))->create();
+    $inRange = quoteWithCallback('2026-08-03 10:00:00');
+    $outOfRange = quoteWithCallback('2026-09-01 10:00:00');
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/request-management/rows', [

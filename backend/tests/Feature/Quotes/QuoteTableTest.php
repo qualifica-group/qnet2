@@ -64,11 +64,13 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // `supervisor`, where the two read together as "chi segue questa offerta";
     // appended last it was buried off the right edge. Safe because the stored
     // preference delta is keyed by column ID, so only DEFAULT layouts move.
+    // `next_callback_at` (user directive 2026-09-04) is appended after those
+    // three for the same reason — it arrived last.
     $ids = $columns->pluck('id')->all();
     expect($ids)->toBe([
         'id', 'code', 'title', 'opportunity', 'quote_workflow_status', 'commercial',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
-        'created_at', 'company', 'company_site', 'operational_site',
+        'created_at', 'company', 'company_site', 'operational_site', 'next_callback_at',
     ]);
 });
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\QuoteOfferLines\QuoteOfferLineForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderController;
+use App\Http\Controllers\WorkOrders\WorkOrderForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,6 +19,14 @@ use Illuminate\Support\Facades\Route;
 | work-orders/{workOrder} so their literal segments win over the
 | route-model-binding wildcard (mirrors quotes/next-code).
 */
+
+// Spec 0101 (T-04b): the Commessa option list the Task form's `work_order_id`
+// picker consumes — spec 0093 never shipped one. Declared ABOVE
+// work-orders/{workOrder} so the literal segment wins over the
+// route-model-binding wildcard. Gated by auth:sanctum only (ADR 0011), but
+// the rows are narrowed by WorkOrderVisibilityScope inside the Service, the
+// same scope WorkOrdersTableDefinition::baseQuery() applies to the grid.
+Route::get('work-orders/for-select', WorkOrderForSelectController::class);
 
 Route::get('work-orders/next-code', [WorkOrderController::class, 'nextCode']);
 

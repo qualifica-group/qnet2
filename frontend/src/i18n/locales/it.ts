@@ -33,6 +33,14 @@ import { quotes } from './it-quotes'
 import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
+import { tasks } from './it-tasks'
+import {
+  taskCategories,
+  taskImportances,
+  taskPriorities,
+  taskStatuses,
+  taskTypes,
+} from './it-task-lookups'
 import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
@@ -389,6 +397,12 @@ export const it: TranslationResources = {
   contractStatuses,
   contracts,
   workOrders,
+  tasks,
+  taskStatuses,
+  taskTypes,
+  taskCategories,
+  taskPriorities,
+  taskImportances,
   commissionConfigurations,
   requestManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`

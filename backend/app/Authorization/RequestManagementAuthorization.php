@@ -14,8 +14,9 @@ use Illuminate\Database\Eloquent\Model;
  * abstract's contract only needs a resource key + field/action catalogue, no
  * Eloquent class, so this mirrors the smallest existing authorizations
  * (VatRatesAuthorization) with the operative fields the work panel writes
- * (D-4/D-5, `next_callback_at` added by spec 0054 D-4) — visible+editable
- * when the actor may write, else read-only. Only `source_id` and
+ * (D-4/D-5, `next_callback_at` added by spec 0054 D-4, on the Offerta since
+ * the user directive 2026-09-04) — visible+editable when the actor may
+ * write, else read-only. Only `source_id` and
  * `product_lines` are mandatory-restrictive (user directives 2026-07-29 /
  * 2026-07-31); every other field blocks on nothing here. Spec 0086:
  * `products_of_interest` is REMOVED — its replacement, `offer_lines`, is the
@@ -71,9 +72,11 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
         return [
             // Spec 0054, D-4: written exclusively by
             // RequestManagementService::updateWork() (never mass-assigned —
-            // Opportunity::$fillable deliberately excludes it, spec 0052
-            // D-2); this catalogue entry only closes a gap in the per-field
-            // permission system, it grants nothing new.
+            // Quote::$fillable deliberately excludes it, the guard spec 0052
+            // D-2 set on the Opportunity and the user directive 2026-09-04
+            // carried over with the column); this catalogue entry only closes
+            // a gap in the per-field permission system, it grants nothing
+            // new.
             new FieldDefinition('next_callback_at', 'date'),
             // "Funzione aziendale" + "categoria prodotto" (user directive
             // 2026-07-31): the same `product_lines` collection the create form

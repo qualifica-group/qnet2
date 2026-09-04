@@ -103,10 +103,10 @@ final class RequestRowMapper
             // display-only, no inline editor exists for it (AC-024/AC-035).
             'is_transferred' => (bool) $row->is_transferred,
             ...$this->clientAnagraphics($opportunity),
-            // "Prossimo richiamo" (spec 0052 D-1/D-5): still
-            // `opportunity.next_callback_at`, same wire format as
+            // "Prossimo richiamo" (spec 0052 D-1/D-5): the OFFER's own real
+            // column since the user directive 2026-09-04, same wire format as
             // RequestManagementResource so FE date parsing stays identical.
-            'next_callback_at' => $opportunity?->next_callback_at?->format('Y-m-d\TH:i'),
+            'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
             // Hidden column, drives the default "most recently loaded first"
             // sort only — the OFFER's own `created_at` now (AC-014).
             'created_at' => $row->created_at,

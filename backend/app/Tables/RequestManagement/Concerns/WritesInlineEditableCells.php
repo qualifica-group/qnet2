@@ -63,12 +63,13 @@ trait WritesInlineEditableCells
     /**
      * Every editable column of this domain writes through
      * RequestManagementService::updateWork() rather than a plain
-     * `$row->update([...])`: `next_callback_at`/`source_id`/`product_lines`/
-     * `general_notes`-adjacent fields live on the OPPORTUNITY (spec 0086,
-     * D-2 — "i campi che vivono sull'Opportunità si leggono e si scrivono
-     * attraverso `quote.opportunity`"), each carrying its own writer and
-     * invariant (reminder-marker, cross-category coherence, etc.) behind
-     * that same call. `$actor` is not part of this contract method's
+     * `$row->update([...])`: `source_id`/`product_lines`/`general_notes`-
+     * adjacent fields live on the OPPORTUNITY (spec 0086, D-2 — "i campi che
+     * vivono sull'Opportunità si leggono e si scrivono attraverso
+     * `quote.opportunity`"), while `next_callback_at` lives on the Offerta
+     * itself (user directive 2026-09-04) but stays outside its #[Fillable];
+     * each carries its own writer and invariant (reminder-marker,
+     * cross-category coherence, etc.) behind that same call. `$actor` is not part of this contract method's
      * signature (spec 0053): it is read from the auth guard, same precedent
      * as baseQuery()'s `Auth::user()` call.
      */

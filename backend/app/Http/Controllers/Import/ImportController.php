@@ -294,15 +294,17 @@ class ImportController extends BaseApiController
 
     /**
      * PATCH /api/imports/{domain}/{importRun}/rows/assign — bulk-assign an
-     * operator and/or an operational site to many staged rows in a single
-     * mass UPDATE (spec 0045 bulk increment, extended to a COMBINED
-     * operator+site assignment), distinct from the single-row PATCH
-     * .../rows/{row} above, valid only from `reviewing`. AG Grid
+     * operator, an operational site and/or the "Prodotti di interesse" to
+     * many staged rows in a single mass UPDATE (spec 0045 bulk increment,
+     * extended to a COMBINED operator+site assignment, then to bulk
+     * `product_ids`), distinct from the single-row PATCH .../rows/{row}
+     * above, valid only from `reviewing`. AG Grid
      * `getServerSideSelectionState()` semantics: `row_ids` are the rows to
      * target, or to EXCLUDE when `select_all` is true — BulkAssignRequest
-     * already validated every id belongs to this run (anti-IDOR). Pure
-     * operator/site assignment, never gated by `opportunities.create` (that
-     * gate is confirm()'s own, spec 0045).
+     * already validated every id belongs to this run (anti-IDOR) and every
+     * product sits inside the run's campaign coverage. Pure
+     * operator/site/product assignment, never gated by `opportunities.create`
+     * (that gate is confirm()'s own, spec 0045).
      */
     public function bulkAssign(BulkAssignRequest $request, string $domain, ImportRun $importRun): JsonResponse
     {
@@ -322,6 +324,7 @@ class ImportController extends BaseApiController
                 $request->mode(),
                 $request->operatorId(),
                 $request->operationalSiteId(),
+                $request->productIds(),
             );
             $this->service->recomputeCounts($importRun->fresh());
 

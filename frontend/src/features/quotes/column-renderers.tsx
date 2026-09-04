@@ -21,7 +21,10 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * `opportunityColumnRenderers.operational_site` already renders with the same
  * `RelationCell`. `managers` (spec 0087) is the offer's own G.A. avatar
  * stack, appended last — the exact `UserStackCell` renderer
- * `opportunityColumnRenderers.managers` already uses.
+ * `opportunityColumnRenderers.managers` already uses. `next_callback_at`
+ * (user directive 2026-09-04, migrated off the Opportunity) reuses the SAME
+ * `optionalTime` datetime cell Gestione Richieste renders it with, so the
+ * planned callback reads identically in both grids.
  */
 export const quoteColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
@@ -38,4 +41,5 @@ export const quoteColumnRenderers: TableRendererMap = {
   company: (params) => <RelationCell {...params} icon={Building2} />,
   company_site: (params) => <RelationCell {...params} icon={Building} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
+  next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
 }

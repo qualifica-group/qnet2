@@ -30,14 +30,16 @@ use Illuminate\Support\Facades\DB;
  *    subquery address `quotes` directly, exactly as
  *    `App\Tables\Quotes\QuoteRelationColumns` does for the same relation on
  *    the Offerte grid.
- *  - OPPORTUNITY_SCALAR_COLUMNS: `general_notes`/`next_callback_at` — real
- *    `opportunities` columns with no relation label, reached via the SAME
- *    `opportunity` relation: filtering scopes the generic FilterApplier
- *    inside a `whereHas('opportunity', ...)` closure, sorting uses a
- *    correlated subquery on the real `opportunities` column. Both declare
+ *  - OPPORTUNITY_SCALAR_COLUMNS: `general_notes` — a real `opportunities`
+ *    column with no relation label, reached via the SAME `opportunity`
+ *    relation: filtering scopes the generic FilterApplier inside a
+ *    `whereHas('opportunity', ...)` closure, sorting uses a correlated
+ *    subquery on the real `opportunities` column. It declares
  *    `hasFilterValues: false` in RequestColumnCatalog (mirrors
  *    ContractColumnCatalog's QUOTE_SCALAR_COLUMNS): TableService never calls
- *    distinctValues() for them.
+ *    distinctValues() for it. `next_callback_at` used to sit here too —
+ *    the user directive 2026-09-04 moved the column onto `quotes`, so the
+ *    generic engine now sorts and filters it with no hop at all.
  *
  * `operator_ga2` (spec 0086, D-3: now `quote.supervisor`, a real FK on
  * `quotes` itself) is deliberately NOT handled here — corrected spec 0086
@@ -89,7 +91,7 @@ final class RequestRelationColumns
     /**
      * @var array<int, string>
      */
-    private const array OPPORTUNITY_SCALAR_COLUMNS = ['general_notes', 'next_callback_at'];
+    private const array OPPORTUNITY_SCALAR_COLUMNS = ['general_notes'];
 
     public function __construct(private readonly FilterApplier $filterApplier) {}
 

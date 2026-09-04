@@ -41,6 +41,12 @@ namespace App\DataObjects\Shared;
  *   so the work-order edit form keeps offering its own already-selected
  *   rows. Null by default (no exclusion widening) so every other consumer
  *   is unaffected.
+ * - `includeInactive` (spec 0101, T-03c): ADDITIVE, consumed ONLY by the five
+ *   Task configurator services, which otherwise serve `is_active = true`
+ *   rows only. The reorder sheet needs EVERY row, active or not: the server
+ *   validates `ordered_ids` against the full set, so a list missing the
+ *   deactivated rows is rejected as incomplete. False by default, so every
+ *   other consumer keeps its current filtering.
  */
 final readonly class ForSelectQuery
 {
@@ -61,6 +67,7 @@ final readonly class ForSelectQuery
         public array $statusGroups = [],
         public ?int $quoteId = null,
         public ?int $exceptWorkOrderId = null,
+        public bool $includeInactive = false,
     ) {}
 
     /**
@@ -102,6 +109,7 @@ final readonly class ForSelectQuery
             statusGroups: $statusGroups,
             quoteId: isset($data['quote_id']) ? (int) $data['quote_id'] : null,
             exceptWorkOrderId: isset($data['except_work_order_id']) ? (int) $data['except_work_order_id'] : null,
+            includeInactive: (bool) ($data['include_inactive'] ?? false),
         );
     }
 

@@ -32,7 +32,7 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
   })
 }
 
-// The 38 assignable resource prefixes (`AssignablePermissionCatalogue::names()`,
+// The assignable resource prefixes (`AssignablePermissionCatalogue::names()`,
 // `backend/config/authorization.php` `definitions` + `permission_only_resources`).
 const ASSIGNABLE_RESOURCES = [
   'attachments',
@@ -70,6 +70,13 @@ const ASSIGNABLE_RESOURCES = [
   'tags',
   'units-of-measure',
   'product-typologies',
+  // Task module and its five configurators (spec 0101).
+  'tasks',
+  'task-statuses',
+  'task-types',
+  'task-categories',
+  'task-priorities',
+  'task-importances',
   'users',
   'vat-rates',
 ]

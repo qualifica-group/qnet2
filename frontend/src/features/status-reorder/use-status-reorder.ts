@@ -75,8 +75,10 @@ export function useStatusReorder({ resource, enabled, labels, onReordered }: Use
 
       reorderStatuses(resource, customIds)
         .then((fresh) => {
-          const nameById = new Map(nextItems.map((item) => [item.id, item.name]))
-          const reconciled = reconcileReorderedItems(fresh, nameById)
+          // The whole item, not just its name: the reorder response carries
+          // neither `name` nor `isActive`, and both must survive the drag.
+          const previousById = new Map(nextItems.map((item) => [item.id, item]))
+          const reconciled = reconcileReorderedItems(fresh, previousById)
           setItems(reconciled)
           setSyncedFrom(reconciled)
           toast.success(labels.saved)

@@ -83,8 +83,6 @@ class Opportunity extends BaseModel
             'expected_close_date' => 'date',
             'estimated_value' => 'decimal:2',
             'success_probability' => 'integer',
-            'next_callback_at' => 'datetime',
-            'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
         ];
     }

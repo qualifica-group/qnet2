@@ -155,3 +155,28 @@ it('stores the catalogue attribute values on every seeded product', function ():
         'demo_platform' => 'teams',
     ]);
 });
+
+it('never adopts a same-named category of another branch', function (): void {
+    // `product_categories.name` is not unique table-wide: the client catalogue
+    // carries its own "Consulenza IT" under a different root. Resolving a demo
+    // category by name alone adopted that row — the demo leaf was never
+    // created and DemoProductSeeder then failed validating `demo_consulting_days`
+    // against the foreign category's attribute set.
+    $foreignRoot = ProductCategory::query()->create(['name' => 'Consulenza', 'parent_id' => null]);
+    $foreignLeaf = ProductCategory::query()->create(['name' => 'Consulenza IT', 'parent_id' => $foreignRoot->id]);
+
+    seedDemoCatalog();
+
+    $demoRoot = ProductCategory::query()->where('name', 'Consulenza Aziendale')->firstOrFail();
+    $demoLeaf = ProductCategory::query()
+        ->where('name', 'Consulenza IT')
+        ->where('parent_id', $demoRoot->id)
+        ->firstOrFail();
+
+    expect($demoLeaf->id)->not->toBe($foreignLeaf->id)
+        // The demo offer lands on the demo leaf, never on the client's row.
+        ->and(Product::query()->where('category_id', $demoLeaf->id)->count())
+        ->toBe(count(DemoProductCatalogue::PRODUCTS['Consulenza IT']))
+        ->and(Product::query()->where('category_id', $foreignLeaf->id)->count())->toBe(0)
+        ->and(AttributeLayout::query()->where('product_category_id', $foreignLeaf->id)->count())->toBe(0);
+});

@@ -75,6 +75,9 @@ class UpdateRequestRequest extends FormRequest
     /** The team field's wire key, gated by the field-permission matrix (spec 0097, D-3). */
     private const string MANAGER_SLOTS_FIELD = 'manager_slots';
 
+    /** The one catalogued field that still lives on the parent Opportunity (spec 0086, D-2). */
+    private const string PRODUCT_LINES_FIELD = 'product_lines';
+
     /**
      * The "the persisted team is NOT what was submitted" marker
      * currentManagerSlots() reports through: a plain string, so no submitted
@@ -182,10 +185,12 @@ class UpdateRequestRequest extends FormRequest
      * EnforcesFieldPermissions' generic dot-path reader only understands
      * relations/attributes declared on $model directly (spec 0008). Two of
      * this endpoint's catalogued fields no longer live on the route-bound
-     * Quote (spec 0086, D-2): `product_lines`/`next_callback_at` stayed
-     * Opportunity-level (read through the Quote's own `opportunity`
-     * relation). `source_id` needs no override: Quote's own virtual
-     * `sourceId()` accessor (D-10) already reads through correctly.
+     * Quote (spec 0086, D-2): `product_lines` stayed Opportunity-level
+     * (read through the Quote's own `opportunity` relation).
+     * `next_callback_at` left that set with the user directive 2026-09-04 —
+     * a real Quote column now, read by the generic reader. `source_id` needs
+     * no override: Quote's own virtual `sourceId()` accessor (D-10) already
+     * reads through correctly.
      *
      * `manager_slots` (spec 0097) needs one for a different reason: it is a
      * WIRE shape, not an attribute — the persisted side is the `quote_user`
@@ -202,7 +207,7 @@ class UpdateRequestRequest extends FormRequest
             return $this->currentManagerSlots($model);
         }
 
-        if ($model instanceof Quote && in_array($field, ['product_lines', 'next_callback_at'], true)) {
+        if ($model instanceof Quote && $field === self::PRODUCT_LINES_FIELD) {
             return $this->traitCurrentFieldValue($model->opportunity, $field);
         }
 

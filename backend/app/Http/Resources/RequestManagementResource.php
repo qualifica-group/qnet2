@@ -32,7 +32,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * (identity, attribution's Fonte, product lines, context) read through
  * `quote.opportunity`, while `reporter`/`operational_site`/`is_transferred`/
  * `transferred_from`/`operator` (still wired to `operator_id`/`operator` on
- * the wire) and `rewards` come straight off the Quote. `products_of_interest`
+ * the wire), `next_callback_at` (user directive 2026-09-04: the planned
+ * callback moved onto the offer) and `rewards` come straight off the Quote. `products_of_interest`
  * is REPLACED by `offer_lines` (AC-021), the Quote's own REVENUE lines —
  * projected by QuoteLineResource verbatim since the user directive
  * 2026-08-07 made them editable from this panel too.
@@ -151,7 +152,7 @@ class RequestManagementResource extends JsonResource
             'client_contacts' => $this->summarizeContacts($opportunity->registry),
             'client_address' => $this->summarizeClientAddress($opportunity->registry),
             'referent_contacts' => $this->summarizeContacts($opportunity->referent),
-            'next_callback_at' => $opportunity->next_callback_at?->format('Y-m-d\TH:i'),
+            'next_callback_at' => $quote->next_callback_at?->format('Y-m-d\TH:i'),
             // "Informazioni aggiuntive" (user directive 2026-08-07): the same
             // three blocks QuoteResource exposes, byte-for-byte — only the
             // applicable set is resolved by RequestAttributeResolver (D-1,

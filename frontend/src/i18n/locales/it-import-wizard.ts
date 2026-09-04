@@ -205,12 +205,20 @@ export const importWizard = {
       cancel: 'Annulla',
     },
     bulkAssign: {
-      toolbarLabel: 'Assegna in blocco operatore/sede alle righe selezionate',
+      toolbarLabel: 'Assegna in blocco operatore, sede o prodotti alle righe selezionate',
       count: '{{count}} riga/e selezionate',
       all: 'Tutte le righe selezionate',
       allExcept: 'Tutte le righe selezionate ({{count}} escluse)',
+      actionsLabel: 'Azioni ({{count}})',
       assign: 'Assegna operatori',
       success: 'Assegnato a {{count}} riga/e.',
+      products: {
+        menuLabel: 'Assegna prodotti',
+        title: 'Assegna prodotti',
+        description: 'Assegna i prodotti di interesse a {{count}} riga/e selezionate.',
+        apply: 'Applica',
+        cancel: 'Annulla',
+      },
     },
   },
   summary: {

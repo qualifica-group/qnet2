@@ -188,3 +188,44 @@ it('Step 4: outside synchronized mode, the opportunity pivot is left untouched',
 
     expect($opportunity->managers()->get()->pluck('id')->all())->toBe([$ga->id]);
 });
+
+// ---------------------------------------------------------------------------
+// Positional pivot: a map that MOVES someone between slots
+// ---------------------------------------------------------------------------
+
+it('Step 2: swapping two managers between slots does not trip the (quote, position) unique constraint', function () {
+    $opportunity = writerTestOpportunity();
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+    $opportunity->managers()->sync([$first->id => ['position' => 1], $second->id => ['position' => 2]]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $writer = app(QuoteManagerWriter::class);
+
+    $writer->sync($quote, [$first->id, $second->id], promoteToOpportunity: false);
+    $writer->sync($quote, [$second->id, $first->id], promoteToOpportunity: false);
+
+    $pivot = $quote->managers()->get();
+    expect($pivot->firstWhere('id', $second->id)->pivot->position)->toBe(1)
+        ->and($pivot->firstWhere('id', $first->id)->pivot->position)->toBe(ManagerPositions::OPERATOR)
+        // INV-2: `operator_id` still mirrors the OPERATOR slot after the move.
+        ->and((int) $quote->fresh()->operator_id)->toBe($first->id);
+});
+
+it('Step 4: replicating a map that moves the opportunity GA1 down a slot never collides on (opportunity, position)', function () {
+    // The demo seed's own failure (2026-09-04): the Offerta picked a newcomer
+    // for GA1 and the Opportunita's incumbent GA1 for GA2, so the newcomer was
+    // attached on a position its holder had not vacated yet.
+    $opportunity = writerTestSynchronizedOpportunity();
+    $incumbent = User::factory()->create();
+    $leaving = User::factory()->create();
+    $opportunity->managers()->sync([$incumbent->id => ['position' => 1], $leaving->id => ['position' => 2]]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+    $newcomer = User::factory()->create();
+
+    app(QuoteManagerWriter::class)->sync($quote, [$newcomer->id, $incumbent->id], promoteToOpportunity: true);
+
+    $opportunityManagers = $opportunity->managers()->get();
+    expect($opportunityManagers->firstWhere('id', $newcomer->id)->pivot->position)->toBe(1)
+        ->and($opportunityManagers->firstWhere('id', $incumbent->id)->pivot->position)->toBe(2)
+        ->and($opportunityManagers->pluck('id')->all())->not->toContain($leaving->id);
+});

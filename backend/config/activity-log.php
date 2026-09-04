@@ -31,6 +31,12 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\Task;
+use App\Models\TaskCategory;
+use App\Models\TaskImportance;
+use App\Models\TaskPriority;
+use App\Models\TaskStatus;
+use App\Models\TaskType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
@@ -225,6 +231,25 @@ return [
         ],
         'work-orders' => [
             'model' => WorkOrder::class,
+        ],
+        // spec 0101: il modulo Task e i suoi cinque configuratori.
+        'tasks' => [
+            'model' => Task::class,
+        ],
+        'task-statuses' => [
+            'model' => TaskStatus::class,
+        ],
+        'task-types' => [
+            'model' => TaskType::class,
+        ],
+        'task-categories' => [
+            'model' => TaskCategory::class,
+        ],
+        'task-priorities' => [
+            'model' => TaskPriority::class,
+        ],
+        'task-importances' => [
+            'model' => TaskImportance::class,
         ],
     ],
 
