@@ -98,10 +98,12 @@ function PendingChangeRequestsCell({ value }: ICellRendererParams) {
  * ("Fonte", user directive 2026-07-31) is a plain `{id, name}` relation, so it
  * reuses the shared `RelationCell` exactly as the leads grid does for the same
  * entity; `general_notes` is free text, truncated by the local `TextCell` with
- * the full note as its native tooltip. The GA2
- * `operator_ga2` renders as the shared `UserCell` (avatar + hover-card that
- * opens the user's profile Sheet — same component as the opportunities
- * `supervisor` column). `operational_site` (spec 0056) has no `name`, only the
+ * the full note as its native tooltip. The two Gestore
+ * Account slot columns, `operator_ga2` (GA2) and `manager_ga3` (GA3,
+ * direttiva utente 2026-09-07), render as the shared `UserCell` (avatar +
+ * hover-card that opens the user's profile Sheet — same component as the
+ * opportunities `supervisor` column); their HEADER is relabelled server-side
+ * per category tab, the cell itself is identical for both. `operational_site` (spec 0056) has no `name`, only the
  * server-composed `label`, which `RelationCell` reads. The client's
  * PersonalData anagraphic fields are display-only text, while the product
  * categories render their own pair projection (spec 0075). `next_callback_at`
@@ -119,6 +121,7 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   offer_lines: (params) => <RefNamesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
+  manager_ga3: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   // Spec 0079: a system flag, not auto-mounted by `resolveCellRenderer`
   // (only `type: 'badge'`/`enum` are) — without this row the cell would show

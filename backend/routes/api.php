@@ -35,6 +35,7 @@ use App\Http\Controllers\Table\TableController;
 use App\Http\Controllers\Table\TableFilterViewController;
 use App\Http\Controllers\Users\UserController;
 use App\Http\Controllers\Users\UserForSelectController;
+use App\Http\Controllers\Version\VersionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -52,6 +53,12 @@ use Illuminate\Support\Facades\Route;
 // The exposed surface is a fixed server-side allowlist (config/config.php),
 // never request input, so no arbitrary class can be reflected. See ADR 0008.
 Route::get('config', [ConfigController::class, 'index']);
+
+// PUBLIC deploy probe (unauthenticated). Serves the deployed backend build id
+// so a running SPA can detect a redeploy mid-session and prompt the user to
+// reload. Must stay outside auth:sanctum: an expired session still needs to
+// learn that its client is outdated.
+Route::get('version', [VersionController::class, 'index']);
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);

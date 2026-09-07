@@ -12,9 +12,10 @@ use App\Support\ManagerPositions;
 /**
  * Writes an offer's Gestori Account from the request-management module —
  * apply() moves the GA2 "Operatore" slot alone (the grid cell, the bulk
- * assign, the transfer), applySlots() replaces the WHOLE team (the work
- * panel, spec 0097). Both funnel into the same single writer, so the two
- * channels can never grow divergent rules.
+ * assign, the transfer), applyGa3() the GA3 slot alone (its own grid cell,
+ * direttiva utente 2026-09-07), applySlots() replaces the WHOLE team (the
+ * work panel, spec 0097). All three funnel into the same single writer, so
+ * the channels can never grow divergent rules.
  *
  * apply() (spec 0087, D-9) moves the `quote_user` OPERATOR slot
  * (`App\Support\ManagerPositions::OPERATOR`) onto the given user and lets
@@ -46,6 +47,14 @@ use App\Support\ManagerPositions;
  */
 final class RequestOperatorWriter
 {
+    /**
+     * The wire-facing key the GA3 transition is reported under — the same key
+     * the grid column declares as its `editableField` and
+     * RequestManagementAuthorization catalogues, so the operational history
+     * reads with the vocabulary the write channel used.
+     */
+    private const string GA3_FIELD = 'manager_ga3_id';
+
     public function __construct(private readonly QuoteManagerWriter $managerWriter) {}
 
     /**
@@ -55,14 +64,15 @@ final class RequestOperatorWriter
      * attribute, so the automatic model-event log never sees it and the
      * CALLER owns the explicit activity entry for that half of the write.
      *
-     * The stale `operator` relation cache is dropped for the SAME reason
-     * RequestSupervisorWriter used to drop `supervisor`: a caller scoped to
-     * "my rows" (RequestManagementScope) can lose the freshly-written row
-     * from ITS OWN re-read once the operator changes to someone else
+     * The stale `operator`/`managers` relation caches are dropped for the SAME
+     * reason RequestSupervisorWriter used to drop `supervisor`: a caller
+     * scoped to "my rows" (RequestManagementScope) can lose the freshly-written
+     * row from ITS OWN re-read once the operator changes to someone else
      * (TableCellUpdateService::update() falls back to the in-memory $quote
      * when the post-write re-fetch comes back empty). That fallback instance
-     * must already reflect the new operator, or the response ships the OLD
-     * one under a 200.
+     * must already reflect the new team, or the response ships the OLD one
+     * under a 200 — `managers` included, being what the `manager_ga3` column
+     * projects.
      *
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
@@ -75,11 +85,45 @@ final class RequestOperatorWriter
             return;
         }
 
-        $this->managerWriter->sync($quote, $this->slotsWithOperator($quote, $operatorId), promoteToOpportunity: true);
+        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::OPERATOR, $operatorId), promoteToOpportunity: true);
         $quote->unsetRelation('operator');
+        $quote->unsetRelation('managers');
 
         $old['operator_id'] = $current;
         $changed['operator_id'] = $operatorId;
+    }
+
+    /**
+     * The GA3 slot alone (direttiva utente 2026-09-07, the grid's
+     * `manager_ga3` cell): the same single-slot move apply() performs on the
+     * Operatore, through the same writer and the same
+     * `promoteToOpportunity: true` this module always opts into — every other
+     * slot, the Operatore included, survives untouched.
+     *
+     * THREE things apply() does that this deliberately does not: it reads the
+     * current occupant off the pivot rather than a denormalized column (GA3
+     * has none, and needs none), it drops the `managers` relation instead of
+     * `operator` (the projection the GA3 cell re-renders from), and its
+     * caller sends no assignment notification — GA3 scopes no visibility, and
+     * a move that leaves the Operatore in place assigns nobody, the rule
+     * applySlots() already follows (spec 0097, D-6/AC-007).
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function applyGa3(Quote $quote, ?int $userId, array &$changed, array &$old): void
+    {
+        $current = $this->currentPositions($quote)[ManagerPositions::GA3] ?? null;
+
+        if ($current === $userId) {
+            return;
+        }
+
+        $this->managerWriter->sync($quote, $this->slotsWithManagerAt($quote, ManagerPositions::GA3, $userId), promoteToOpportunity: true);
+        $quote->unsetRelation('managers');
+
+        $old[self::GA3_FIELD] = $current;
+        $changed[self::GA3_FIELD] = $userId;
     }
 
     /**
@@ -116,6 +160,7 @@ final class RequestOperatorWriter
 
         $this->managerWriter->sync($quote, $slots, promoteToOpportunity: true);
         $quote->unsetRelation('operator');
+        $quote->unsetRelation('managers');
 
         $old['manager_slots'] = $this->positionsToSlots($current);
         $changed['manager_slots'] = $this->positionsToSlots($submitted);
@@ -133,25 +178,25 @@ final class RequestOperatorWriter
 
     /**
      * The Offerta's CURRENT manager slots (index+1 = position, the shape
-     * QuoteManagerWriter::sync() consumes) with the OPERATOR position moved
-     * onto $operatorId: every other slot survives untouched. $operatorId is
-     * first dropped from wherever it currently sits — including the OPERATOR
-     * slot itself, a no-op in that case — so a user already attached at
-     * another position is MOVED rather than duplicated across two slots.
+     * QuoteManagerWriter::sync() consumes) with ONE position moved onto
+     * $userId: every other slot survives untouched. $userId is first dropped
+     * from wherever it currently sits — including $position itself, a no-op in
+     * that case — so a user already attached elsewhere is MOVED rather than
+     * duplicated across two slots.
      *
      * @return array<int, int|null>
      */
-    private function slotsWithOperator(Quote $quote, ?int $operatorId): array
+    private function slotsWithManagerAt(Quote $quote, int $position, ?int $userId): array
     {
         $positions = array_filter(
             $this->currentPositions($quote),
-            static fn (int $userId): bool => $operatorId === null || $userId !== $operatorId,
+            static fn (int $currentId): bool => $userId === null || $currentId !== $userId,
         );
 
-        if ($operatorId === null) {
-            unset($positions[ManagerPositions::OPERATOR]);
+        if ($userId === null) {
+            unset($positions[$position]);
         } else {
-            $positions[ManagerPositions::OPERATOR] = $operatorId;
+            $positions[$position] = $userId;
         }
 
         return $this->positionsToSlots($positions);

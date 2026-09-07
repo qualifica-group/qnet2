@@ -35,14 +35,11 @@ use App\Tables\Shared\OfferLinesColumn;
  *    same `note`-carrying path spec 0054 D-5 built for the Opportunity's
  *    former `workflow_status` column (removed by spec 0083 D-2 with the
  *    dimension it addressed, restored here on the record this module now IS).
- *  - `operator_ga2` ("Operatore") — spec 0086, D-3: the offer's own
- *    Supervisore (`quote.supervisor`, a real FK on `quotes`), no longer the
- *    GA2 pivot row. `editableField` stays `operator_id` (unchanged: the ONE
- *    logical write key `updateWork()` recognizes on both channels — a real
- *    production no-op bug, mt06, ruled out `supervisor_id` as a second key).
- *    NOT sortable/filterable, unchanged from before this migration (AC-011
- *    corrected in execution: only the source moves, filter/sort behaviour
- *    stays put).
+ *  - `operator_ga2` ("Operatore") and `manager_ga3` (direttiva utente
+ *    2026-09-07) — the offer's own GA2/GA3 Gestori Account, two slots of the
+ *    `quote_user` pivot, inline-editable and relabelled per category tab.
+ *    Declared together in RequestManagerColumns (see its docblock for the
+ *    write-key and scoping rules that differ between the two).
  *  - `first_name`/`last_name`/`tax_code`/`phone` — the CLIENT's anagraphic
  *    fields, read from the Registry's PersonalData card through
  *    `quote.opportunity.registry` (phone = its primary phone/mobile
@@ -226,64 +223,10 @@ final class RequestColumnCatalog
                 'filterable' => true,
                 'filterType' => 'boolean',
             ],
-            [
-                // Inline cell-editing (spec 0055, D-6): the same relation
-                // column LeadColumnCatalog already declares for its operator —
-                // an async `/for-select` picker over `users`. Spec 0086, D-3:
-                // the value now WRITES the offer's own Supervisore
-                // (`quotes.supervisor_id`), a real FK on the row's own table
-                // — no more a pivot row. Nullable: clearing the cell un-assigns
-                // the request (updateWork's supervisor writer un-sets it and
-                // syncs the GA2 slot).
-                //
-                // `editableField` (spec 0097, D-3a): `manager_slots`. The
-                // key is BOTH the field-permission key and the key
-                // TableCellUpdateService hands to `updateCell()` — and the
-                // two now answer different questions for this column:
-                //  - PERMISSION: the cell writes a Gestore Account slot, and
-                //    the only catalogued key for that block is the TEAM's
-                //    (`operator_id` was deleted from
-                //    RequestManagementAuthorization, D-3), so this column is
-                //    gated by the team's permission;
-                //  - WRITE: still the single OPERATOR slot, never the whole
-                //    team — WritesInlineEditableCells translates the cell
-                //    back into `['operator_id' => $value]` before calling
-                //    `updateWork()` (D-3b).
-                // That translation is what keeps the spec 0086 mt06 lesson
-                // intact: `editableField` is the LOGICAL key, never the DB
-                // column, and `updateWork()` must RECOGNIZE the key it is
-                // handed. Sending it a key it never learned (`supervisor_id`,
-                // the first cut of spec 0086 D-3) produced a silent 200 no-op
-                // — no write, no error. Passing `manager_slots` raw would
-                // repeat the mistake in reverse: `updateWork()` does learn
-                // that key now, but it expects an ordered slot LIST there and
-                // the cell carries a single user id.
-                //
-                // `relation.scope` (user directive 2026-07-23): the picker is
-                // narrowed to the operators of the row's OWN operational site,
-                // the in-grid twin of the work panel's site-filtered operator
-                // field — `users/for-select?operational_site_id=<the row's
-                // site>`. A row with no site keeps the full list.
-                //
-                // `sortable`/`filterable` (spec 0086, AC-011 corrected in
-                // execution): the user directive behind this migration keeps
-                // filters/sort/behaviour unchanged, only the underlying model
-                // moves — this column was never sortable/filterable before
-                // D-3 either, only its source changed (`quote.supervisor`).
-                'id' => 'operator_ga2',
-                'label' => 'requestManagement.columns.operator',
-                'type' => 'text',
-                'visible' => true,
-                'sortable' => false,
-                'filterable' => false,
-                'editable' => true,
-                'editableField' => 'manager_slots',
-                'relation' => [
-                    'resource' => 'users',
-                    'scope' => ['operational_site_id' => 'operational_site'],
-                ],
-                'nullable' => true,
-            ],
+            // The two Gestore Account SLOT columns (GA2 "Operatore", GA3):
+            // declared together in RequestManagerColumns, which also owns the
+            // position->column map the per-tab header relabel reads.
+            ...RequestManagerColumns::columns(),
             // `format` (user directive 2026-07-23): an inline edit stores the
             // value in the SAME canonical shape the card form does — the
             // engine applies it before the rules run (CellValueValidator).

@@ -101,3 +101,32 @@ describe('request-management is_transferred cell (spec 0079, AC-022)', () => {
     expect(screen.getByText('No')).toBeInTheDocument()
   })
 })
+
+/**
+ * Direttiva utente 2026-09-07: the GA3 column is a second Gestore Account
+ * slot, so it must render through the very same shared `UserCell` as the GA2
+ * "Operatore" — a plain text cell there would drop the avatar and the
+ * hover-card the operator already gets on GA2.
+ */
+describe('request-management G.A. slot cells (GA2 + GA3)', () => {
+  function renderManagerCell(columnId: string, value: unknown) {
+    const renderer = requestManagementColumnRenderers[columnId]
+    if (!renderer) {
+      throw new Error(`Missing renderer for column "${columnId}"`)
+    }
+
+    return render(<>{renderer({ value } as ICellRendererParams)}</>)
+  }
+
+  it.each(['operator_ga2', 'manager_ga3'])('renders the person behind %s', (columnId) => {
+    renderManagerCell(columnId, { id: 21, name: 'Mackenzie Stanton', avatar_url: null })
+
+    expect(screen.getByText('Mackenzie Stanton')).toBeInTheDocument()
+  })
+
+  it.each(['operator_ga2', 'manager_ga3'])('renders an em dash when %s is unassigned', (columnId) => {
+    renderManagerCell(columnId, null)
+
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})

@@ -122,6 +122,16 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // translates the cell's key back before calling it, so the two
             // can never silently decouple into a 200 no-op again.
             new FieldDefinition('manager_slots', 'multiselect'),
+            // `manager_ga3_id` (direttiva utente 2026-09-07): the grid's GA3
+            // cell — ONE slot of the very team `manager_slots` above gates as
+            // a whole. It needs a key of its own because `editableField` is
+            // BOTH the permission key and the key `updateCell()` receives:
+            // two columns sharing `manager_slots` would be indistinguishable
+            // at write time, the silent-no-op class of bug spec 0086 mt06
+            // documents. Consequence to be aware of when configuring roles:
+            // restricting `manager_slots` does NOT restrict this key, the two
+            // rows of the matrix are independent.
+            new FieldDefinition('manager_ga3_id', 'select'),
             // Spec 0056: the Sede operativa, editable from this same
             // attribution block (see OpportunitiesAuthorization's docblock for
             // the operational-sites.viewAny ceiling rule this field shares).
@@ -179,6 +189,7 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // identical terms, no extra ability on top.
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'manager_ga3_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (mirrors OpportunitiesAuthorization).
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

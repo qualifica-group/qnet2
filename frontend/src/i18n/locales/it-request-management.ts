@@ -20,6 +20,7 @@ export const requestManagement = {
     offerLines: 'Linee di prodotto',
     generalNotes: 'Note generali',
     operator: 'Operatore (GA2)',
+    managerGa3: 'Gestore account (GA3)',
     operationalSite: 'Sede operativa',
     firstName: 'Nome',
     lastName: 'Cognome',

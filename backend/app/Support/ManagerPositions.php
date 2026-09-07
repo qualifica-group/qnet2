@@ -36,6 +36,18 @@ final class ManagerPositions
     public const int OPERATOR = 2;
 
     /**
+     * The third G.A. slot, exposed by Gestione Richieste as its own grid
+     * column (`manager_ga3`, direttiva utente 2026-09-07) beside the GA2
+     * "Operatore". Unlike OPERATOR it carries no domain role of its own: it
+     * scopes nothing, denormalizes onto no column and notifies nobody — it is
+     * just position 3 of `quote_user`, named by the scoped category's
+     * `manager_labels[3]`. It lives here for the same reason OPERATOR does:
+     * the column catalogue, the row mapper, the header relabel and the writer
+     * must all mean the SAME slot.
+     */
+    public const int GA3 = 3;
+
+    /**
      * The subset of a `sync()` map that was genuinely ATTACHED, as
      * `userId => position` (spec 0081). A manager who merely MOVED between
      * slots comes back under sync()'s `updated` key and is deliberately left

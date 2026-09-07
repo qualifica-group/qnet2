@@ -125,6 +125,21 @@ final class RequestAttributionWriter
     }
 
     /**
+     * The GA3 slot (direttiva utente 2026-09-07): the grid's second Gestore
+     * Account cell, delegated to the SAME RequestOperatorWriter as the
+     * Operatore above. NO notification follows it, deliberately — GA3 scopes
+     * no visibility and assigns nobody, exactly like a reshuffle of the other
+     * slots in applyTeam() (spec 0097, D-6/AC-007).
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function applyManagerGa3(Quote $quote, mixed $value, array &$changed, array &$old): void
+    {
+        $this->operatorWriter->applyGa3($quote, $value === null ? null : (int) $value, $changed, $old);
+    }
+
+    /**
      * The WHOLE team, as the work panel now writes it (spec 0097, D-1/D-5):
      * delegated to the SAME RequestOperatorWriter — which reports
      * `manager_slots` on any genuine move and `operator_id` only when the

@@ -12,6 +12,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Quotes\QuoteWorkflowResolver;
+use App\Support\ManagerPositions;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -94,6 +95,12 @@ final class RequestRowMapper
             // real FK on `quotes` (`operator_id`), denormalized from the
             // `quote_user` pivot.
             'operator_ga2' => $this->userSummary($row->operator),
+            // GA3 (direttiva utente 2026-09-07): the slot right after the
+            // Operatore, read from the `quote_user` pivot itself — unlike GA2
+            // it has no denormalized column on `quotes` to shortcut through,
+            // and it needs none: the team is eager-loaded by the definition
+            // for the whole page, so this costs no per-row query.
+            'manager_ga3' => $this->userSummary($this->managerAt($row, ManagerPositions::GA3)),
             // Spec 0056/0086 D-6: the Sede operativa is now the OFFER's own
             // FK — the site has no own name, so its label is composed
             // server-side from its primary address.
@@ -167,6 +174,18 @@ final class RequestRowMapper
             'tax_code' => $card?->tax_code,
             'phone' => $this->primaryPhone($card?->contacts),
         ];
+    }
+
+    /**
+     * The manager occupying one `quote_user` position, or null when the slot
+     * is empty — read off the ALREADY-LOADED relation (this mapper never
+     * queries, see the class docblock).
+     */
+    private function managerAt(Quote $row, int $position): ?User
+    {
+        return $row->managers->first(
+            static fn (User $manager): bool => (int) $manager->pivot->position === $position,
+        );
     }
 
     /**

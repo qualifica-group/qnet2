@@ -100,6 +100,10 @@ export const en = {
       retry: 'Retry',
     },
   },
+  appVersion: {
+    available: 'A new version of the application is available. Reload to keep working on the current one.',
+    reload: 'Update',
+  },
   navigation,
   theme: {
     toggle: 'Toggle theme',

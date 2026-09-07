@@ -9,7 +9,6 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
-use App\Support\ManagerPositions;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
@@ -20,8 +19,9 @@ use Illuminate\Support\Collection;
 /**
  * Decorator that scopes the `request-management` domain to a single product
  * category (spec 0064's category tab strip), appends that category's
- * `attr.<code>` flexible columns, and relabels the `operator_ga2` column for
- * it (spec 0080).
+ * `attr.<code>` flexible columns, and relabels its Gestore Account columns
+ * (`operator_ga2`/`manager_ga3`) for it (spec 0080, extended to GA3 by the
+ * direttiva utente 2026-09-07).
  *
  * The `attr.*` half was removed by spec 0084 D-1, which moved "Informazioni
  * aggiuntive" from the Opportunity to the Offerta, and is RESTORED by the
@@ -35,7 +35,7 @@ use Illuminate\Support\Collection;
  * THREE scope-driven concerns: WHICH rows the tab shows (`baseQuery()`),
  * WHICH flexible columns it carries (`resolveConfig()`/`mapRow()` and the
  * derived filter/sort/distinct hooks, delegated to AttributeGridColumns),
- * and WHAT the `operator_ga2` column is called (`resolveConfig()`).
+ * and WHAT the Gestore Account columns are called (`resolveConfig()`).
  *
  * TWO independent scope concepts, set explicitly by the caller
  * (`TableController` for the request-scoped case, the Table FormRequests for
@@ -78,9 +78,6 @@ class RequestManagementScopedTableDefinition implements TableDefinition
         WritesAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
     }
 
-    /** The pre-existing `operator_ga2` column's id — never changes, only its `label` does. */
-    private const string OPERATOR_COLUMN_ID = 'operator_ga2';
-
     private ?int $categoryScope = null;
 
     private bool $allowListUnion = false;
@@ -104,7 +101,7 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     ) {}
 
     /**
-     * Narrows `baseQuery()`, the `attr.*` columns and the GA2 relabel to ONE
+     * Narrows `baseQuery()`, the `attr.*` columns and the G.A. relabel to ONE
      * product category (null = D-3 "Tutte", every row and zero `attr.*`
      * columns).
      */
@@ -196,19 +193,19 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     }
 
     /**
-     * Spec 0080: rewrites the pre-existing `operator_ga2` column's `label`
-     * to the scoped category's level-2 "Gestore Account" RAW TEXT when one
-     * is configured — every other column, and every property of this one,
-     * stay untouched. The "Tutte" tab (`categoryScope` null) or a category
-     * with no level-2 label leaves the column exactly as it is today (the
-     * `requestManagement.columns.operator` i18n key).
+     * Spec 0080 (extended to GA3, direttiva utente 2026-09-07): rewrites the
+     * `label` of each Gestore Account column to the scoped category's RAW
+     * TEXT for the position it names — every other column, and every other
+     * property of these two, stay untouched. The "Tutte" tab
+     * (`categoryScope` null), or a category defining no label for a position,
+     * leaves that column on its own i18n key.
      *
      * @return array<string, mixed>
      */
     public function resolveConfig(User $actor): array
     {
         $config = $this->inner->resolveConfig($actor);
-        $config['columns'] = $this->relabelOperatorColumn($config['columns']);
+        $config['columns'] = $this->relabelManagerColumns($config['columns']);
         $attributes = $this->categoryAttributes();
 
         if ($attributes->isEmpty()) {
@@ -346,16 +343,26 @@ class RequestManagementScopedTableDefinition implements TableDefinition
      * @param  array<int, array<string, mixed>>  $columns
      * @return array<int, array<string, mixed>>
      */
-    private function relabelOperatorColumn(array $columns): array
+    private function relabelManagerColumns(array $columns): array
     {
-        $label = $this->scopedOperatorLabel();
+        $labels = $this->scopedManagerLabels();
 
-        if ($label === null) {
+        if ($labels === []) {
             return $columns;
         }
 
-        return array_map(function (array $column) use ($label): array {
-            if (($column['id'] ?? null) === self::OPERATOR_COLUMN_ID) {
+        $byColumnId = [];
+
+        foreach (RequestManagerColumns::POSITIONS as $position => $columnId) {
+            if (isset($labels[$position])) {
+                $byColumnId[$columnId] = $labels[$position];
+            }
+        }
+
+        return array_map(static function (array $column) use ($byColumnId): array {
+            $label = $byColumnId[$column['id'] ?? ''] ?? null;
+
+            if ($label !== null) {
                 $column['label'] = $label;
             }
 
@@ -364,29 +371,33 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     }
 
     /**
-     * The scoped category's EFFECTIVE label for `ManagerPositions::OPERATOR`
-     * (GA2), or null when there is no scope, the category no longer exists,
-     * or it defines no label for that position.
+     * The scoped category's EFFECTIVE labels, restricted to the positions the
+     * grid exposes as their own column (RequestManagerColumns::POSITIONS —
+     * `ManagerPositions::OPERATOR` and `::GA3`). Empty when there is no scope,
+     * the category no longer exists, or it defines no label for any of them.
      *
-     * Spec 0087, D-10: reads `ManagerPositions::OPERATOR` directly rather
-     * than the `Opportunity::OPERATOR_MANAGER_POSITION` alias — the label
-     * this column now names belongs to the OFFERTA's own "operator_ga2"
-     * column (D-9), not the Opportunity's; the two constants carry the same
-     * numeric value (D-2), so this is a semantic correction, not a
-     * behavioural one.
+     * Spec 0087, D-10: the positions come from `ManagerPositions`, never the
+     * `Opportunity::OPERATOR_MANAGER_POSITION` alias — the labels these
+     * columns name belong to the OFFERTA's own team (D-9), not the
+     * Opportunity's.
+     *
+     * @return array<int, string>
      */
-    private function scopedOperatorLabel(): ?string
+    private function scopedManagerLabels(): array
     {
         if ($this->categoryScope === null) {
-            return null;
+            return [];
         }
 
         $category = ProductCategory::find($this->categoryScope);
 
         if ($category === null) {
-            return null;
+            return [];
         }
 
-        return $this->productCategoryService->effectiveManagerLabels($category)[ManagerPositions::OPERATOR] ?? null;
+        return array_intersect_key(
+            $this->productCategoryService->effectiveManagerLabels($category),
+            RequestManagerColumns::POSITIONS,
+        );
     }
 }

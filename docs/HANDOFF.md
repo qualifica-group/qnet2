@@ -3,6 +3,87 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## AVVISO DI NUOVA VERSIONE IN PRODUZIONE (2026-09-07) — VERDE, NON COMMITTATO
+
+**Direttiva utente.** "voglio che quando faccio push di una modifica, in produzione ci sia un
+sistema che se c'e' una nuova versione, il sistema ti dice di aggiornare, cosi' da evitare
+disguidi". Scelte confermate dall'utente: **banner fisso in alto** (non un toast, non un modale) e
+copertura **frontend + backend** (un deploy del solo Laravel deve comunque avvisare).
+
+**Contratto congelato.**
+- `GET /api/version` — PUBBLICO, fuori da `auth:sanctum` (una sessione scaduta deve comunque poter
+  scoprire di essere vecchia), nessun `throttle` (non e' un endpoint credenziali, `backend.md 2`).
+  Envelope standard: `{ success, message, data: { version: string|null } }` + `Cache-Control:
+  no-store`. Il valore e' `config('app.version')` <- `APP_VERSION` in `.env`. **Non impostato =
+  null = meta' backend del check spenta**, cosi' un ambiente non configurato non mostra mai un
+  avviso spurio. Il deploy deve valorizzare `APP_VERSION` (es. SHA del commit rilasciato).
+- `GET /version.json` — emesso in `dist/` dal plugin Vite `build-version` a ogni `vite build`.
+  `{ "version": "<git short SHA>" }`, fallback timestamp fuori da un checkout git. Lo STESSO valore
+  e' iniettato nel bundle come `__APP_BUILD_VERSION__` (`define`): il client confronta la versione
+  che **sta eseguendo** con quella **deployata**.
+
+**Due segnali indipendenti, o l'uno o l'altro accende il banner.**
+- FRONTEND: `env.buildVersion` vs `version.json`. Riferimento compilato, nessuno stato.
+- BACKEND: versione deployata vs **la prima osservata in questo page load** — il client non ha un
+  build id del backend baked-in, quindi il riferimento e' la prima risposta vista. Vive in
+  `features/app-version/backend-baseline.ts`, **module-scoped di proposito**: appartiene al page
+  load, sopravvive a re-render/remount e si azzera al reload che il banner chiede. `sessionStorage`
+  sopravviverebbe a quel reload lasciando il banner acceso per sempre; lo stato React non e'
+  scrivibile dal render senza violare `react-hooks/refs` / `set-state-in-effect` (provati
+  entrambi, bocciati dal lint). Scritto dentro la `queryFn` (confine effettuale), letto in render.
+- `hasChanged()` richiede che ENTRAMBI i lati siano noti: una sonda fallita o un `APP_VERSION`
+  non configurato non avvisano mai. Un falso "ricarica" e' peggio di uno mancato.
+
+**Nomi da rispettare.** `useAppVersion(enabled)` (l'`enabled` e' un parametro, non una lettura
+interna di env: il chiamante decide, e l'hook resta testabile), `AppVersionBanner`,
+`fetchDeployedVersions`, `DeployedVersions { frontend, backend }`, `appVersionKeys.deployed`,
+`rememberBackendVersion`/`backendBaselineVersion`, `lazyRoute`, i18n `appVersion.available` /
+`appVersion.reload`.
+
+**Sonde advisory: falliscono in silenzio DI PROPOSITO** (`api.ts`). Ogni sonda cattura il proprio
+errore e risolve a `null`: e' polling di background, una rete instabile o un riavvio dell'API deve
+degradare a "nessun aggiornamento rilevato", mai rompere l'app ne' abbattere la meta' che funziona.
+Il tick successivo riprova. `version.json` NON passa da `apiClient` (il cui `baseURL` punta all'host
+API): e' un file dell'origine della SPA, quindi `axios` diretto, con cache-busting doppio (query
+param + header) perche' un manifest cachato congelerebbe il client sulla propria versione.
+
+**Recupero dei chunk stale (`routes/lazy-route.ts`).** Dopo un deploy i chunk hash-ati della build
+precedente non esistono piu': navigare verso una route non ancora caricata falliva l'`import()` e
+lasciava una schermata morta. `lazyRoute` sostituisce `lazy` sui 60 moduli di route in `router.tsx`
+e ricarica UNA volta (guard in `sessionStorage`, chiave `app:chunk-reload`), cosi' un chunk rotto
+per altri motivi mostra l'errore invece di ciclare all'infinito. Rimossa da `router.tsx` la
+direttiva `eslint-disable react-refresh/only-export-components`, diventata inutilizzata (la regola
+non riconosce piu' component inline nel file) e segnalata come errore dal lint.
+
+**Montaggio.** `AppVersionBanner` in `app-layout.tsx` sopra `ImpersonationBanner`, in flusso e non
+`fixed`, cosi' non si sovrappone mai all'header. Non dismissibile: il punto e' che nessuno continui
+a operare su un client vecchio. Colori da token (`border-primary/40`, `bg-primary/10`,
+`text-foreground`), non dalla palette Tailwind grezza.
+
+**Env nuove.** `APP_VERSION` (backend, vuota = check spento) e `VITE_VERSION_POLL_INTERVAL`
+(frontend, default 60000), entrambe documentate nei rispettivi `.env.example`. Il check gira solo
+in bundle di produzione (`env.isProductionBuild` = `import.meta.env.PROD`): in `vite dev` e sotto
+Vitest non esiste nulla di deployato con cui confrontarsi.
+
+**Verifica ESEGUITA.**
+- Backend: `vendor/bin/pest` intero — **6385 test, 6384 passed, 1 skipped**. (`composer test` va in
+  segfault, signal 11: e' Xdebug, non il codice — con `xdebug.mode=off` passa.) Pint pulito.
+- Frontend: `npm run test:coverage` — **598 file, 4395 test, tutti verdi**. `npx tsc -b --force`
+  EXIT=0. `npx eslint` sui file toccati EXIT=0. `npx vite build` EXIT=0 e `dist/version.json`
+  contiene lo SHA reale (`f3e2ae8e`), presente anche nel bundle.
+- **Gate coverage globale ROSSO e PREESISTENTE**: 74.59% righe contro soglia 85%. Non e' causato da
+  questa modifica — i file nuovi stanno al 96.66% (app-version) e 94.44% (lazy-route), sopra la
+  media, quindi l'hanno alzata. Da affrontare separatamente: CI (`npm run test:coverage`) e' rosso
+  su `main` finche' non si copre il resto.
+
+**Prossimi passi.** (1) Impostare `APP_VERSION` nel deploy di produzione, altrimenti solo la meta'
+frontend del check e' attiva. (2) Verificare che il deploy pubblichi `dist/version.json` accanto a
+`index.html` e che il rewrite SPA non lo intercetti (se lo intercetta il client legge HTML, il
+payload viene scartato e il check si spegne in silenzio: fail-safe, ma silenzioso). (3) Il gate
+coverage preesistente.
+
+
+
 ## MODIFICA RAPIDA DELLE LINEE DI PRODOTTO IN GRIGLIA — VERDE, NON COMMITTATO (2026-09-07)
 
 **Direttiva utente.** "Gestione Richieste - modifica rapida della Linea di Prodotto, la colonna

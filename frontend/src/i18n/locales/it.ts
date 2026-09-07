@@ -93,6 +93,11 @@ export const it: TranslationResources = {
       retry: 'Riprova',
     },
   },
+  appVersion: {
+    available:
+      "È disponibile una nuova versione dell'applicazione. Aggiorna per continuare a lavorare su quella corrente.",
+    reload: 'Aggiorna',
+  },
   navigation,
   theme: {
     toggle: 'Cambia tema',
